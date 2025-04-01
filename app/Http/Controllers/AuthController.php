@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Session;
 
 class AuthController extends Controller
 {
-
     /**
      * Login cruzado con webservice de validador de usuarios desde GP
     */
