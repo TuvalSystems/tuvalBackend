@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * App\Models\GpClienteSucursal
+ *
+ * @property int $id
+ * @property string $CLI_SUC_RUC
+ * @property string|null $CLI_SUC_DESCRIPCION
+ * @property string|null $CLI_SUC_ID_DIRECCION
+ * @property string|null $CLI_SUC_DIRECCION
+ * @property string|null $CLI_SUC_CONTACTO
+ * @property string|null $CLI_SUC_REFERENCIA
+ * @property int|null $CLI_SUC_VENDEDOR
+ * @property string|null $CLI_SUC_TERRITORIO
+ * @property string|null $CLI_SUC_CIUDAD
+ * @property string|null $CLI_SUC_PROVINCIA
+ * @property string|null $CLI_SUC_PAIS
+ * @property string|null $CLI_SUC_TELEFONO
+ * @property string|null $CLI_SUC_CORREO_ELECTRONICO_SRI
+ * @property string|null $CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA
+ * @property string|null $coordenadas
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCCIUDAD($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCCONTACTO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCCORREOELECTRONICONOTIFICACIONINTERNA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCCORREOELECTRONICOSRI($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCDESCRIPCION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCDIRECCION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCIDDIRECCION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCPAIS($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCPROVINCIA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCREFERENCIA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCRUC($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCTELEFONO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCTERRITORIO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCVENDEDOR($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
+class GpClienteSucursal extends Model
+{
+    use HasFactory;
+}

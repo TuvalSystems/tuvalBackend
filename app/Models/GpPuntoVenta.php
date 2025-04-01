@@ -1,0 +1,53 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * App\Models\GpPuntoVenta
+ *
+ * @property int $id
+ * @property string $PTO_VTA_ID
+ * @property string|null $PTO_VTA_DESCRIPCION
+ * @property string|null $PTO_VTA_DIRECCION_1
+ * @property string|null $PTO_VTA_DIRECCION_2
+ * @property string|null $PTO_VTA_ESTADO
+ * @property string|null $PTO_VTA_CIUDAD
+ * @property string|null $PTO_VTA_PROVINCIA
+ * @property string|null $PTO_VTA_PAIS
+ * @property string|null $PTO_VTA_FONO_1
+ * @property string|null $PTO_VTA_FONO_2
+ * @property string|null $PTO_VTA_FONO_4
+ * @property int|null $PTO_VTA_DIAS_DEVOL_SIN_AUT
+ * @property int|null $PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO
+ * @property int|null $PTO_VTA_DIA_VALIDEZ_COTIZACION
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTACIUDAD($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADESCRIPCION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIASDEVOLSINAUT($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIAVALIDEZCOTIZACION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIRECCION1($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIRECCION2($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAESTADO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAFONO1($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAFONO2($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAFONO4($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAID($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAMAXIMOPORCSUBIDAPRECIO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAPAIS($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAPROVINCIA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
+class GpPuntoVenta extends Model
+{
+    use HasFactory;
+}
