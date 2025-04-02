@@ -29,5 +29,26 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
+    'api_gp' => [
+        'url' => env('API_GP_URL'),
+        'timeout' => env('API_GP_TIMEOUT', 15),
+        'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
+        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'company' => env('ID_COMPANIA'),
+        'endpoints' => [
+            'validar_usuario' => 'api/validar-usuario',
+            'consultar_cabecera' => 'api/consultar-cabecera',
+        ],
+    ],
+    'api_seedbilling' => [
+        'url' => env('API_SEED_BILLING_URL'),
+        'timeout' => env('API_SEED_BILLING_TIMEOUT', 15),
+        'token' => env('API_SEED_BILLING_TOKEN'),
+        'idSuscriptor' => env('API_SEED_BILLING_ID_SUSCRIPTOR'),
+        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'endpoints' => [
+            'anular_comprobante' => 'api/anulacionComprobante',
+        ]
+    ]
 
 ];
