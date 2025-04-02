@@ -24,7 +24,6 @@ class AuthController extends Controller
     /**
      * Login cruzado con webservice de validador de usuarios desde GP
     */
-
     public function login(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $credentials = $request->validate([
