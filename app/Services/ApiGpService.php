@@ -26,18 +26,30 @@ class ApiGpService
     }
 
 
-    public function makeRequest(string $urlKey, string $method, array $data )
+    public function getBranchesClientsList(array $params)
+    {
+
+        return $this->makeRequest($this->endpoints["consultar_sucursales_cliente"], 'GET', $params);
+    }
+
+    public function getCoordinatesList(array $params = [])
+    {
+        return $this->makeRequest($this->endpoints["consultar_coordenadas"], 'GET', $params);
+    }
+
+
+    public function makeRequest(string $urlKey, string $method, array $data)
     {
         try {
             if (!isset($urlKey) || empty($urlKey)) {
-            throw new \InvalidArgumentException("Endpoint '{$urlKey}' not defined in configuration.");
+                throw new \InvalidArgumentException("Endpoint '{$urlKey}' not defined in configuration.");
             }
             $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
-            if (strtoupper($method) === 'GET') {
-            $url .= '?' . http_build_query($data);
-            $response = Http::timeout($this->timeout)->get($url); // GET requests do not have a data payload
+            if (strtoupper($method) === 'GET' && !empty($data)) {
+                $url .= '?' . http_build_query($data);
+                $response = Http::timeout($this->timeout)->get($url); // GET requests do not have a data payload
             } else {
-            $response = Http::timeout($this->timeout)->{$method}($url, $data); // POST, PUT, DELETE, etc.
+                $response = Http::timeout($this->timeout)->{$method}($url, $data); // POST, PUT, DELETE, etc.
             }
             return $response->throw()->json();
         } catch (\InvalidArgumentException $e) {

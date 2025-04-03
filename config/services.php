@@ -36,8 +36,11 @@ return [
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'company' => env('ID_COMPANIA'),
         'endpoints' => [
-            'validar_usuario' => 'api/validar-usuario',
-            'consultar_cabecera' => 'api/consultar-cabecera',
+            'validar_usuario'                       => 'api/validar-usuario',
+            'consultar_transferencia_cabecera'      => 'api/consultar-cabecera-transferencia',
+            'consultar_transferencia_detalle'       => 'api/consultar-detalle-transferencia',
+            'consultar_sucursales_cliente'          => 'api/consultar-sucursales-clientes',
+            'consultar_coordenadas'                 => 'api/consultar-listado-coordenadas',
         ],
     ],
     'api_seedbilling' => [
