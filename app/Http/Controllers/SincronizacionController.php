@@ -35,6 +35,7 @@ use App\Models\GpRelacionUsuarioCaja;
 use App\Services\ApiGpService;
 use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class SincronizacionController extends Controller
 {
@@ -358,6 +359,7 @@ class SincronizacionController extends Controller
 
     public function llenadatoscoordenadasgp()
     {
+        set_time_limit(300);
         ini_set('memory_limit', '-1');
         $method = 'MST_Datos_Coordenadas';
         $coordenadas = $this->apiGp->getCoordinatesList($parms = []);
@@ -498,7 +500,8 @@ class SincronizacionController extends Controller
 
     public function llenaclientesucursalgp()
     {
-
+        set_time_limit(300);
+        ini_set('memory_limit', '-1');
         $method = 'MST_Cliente_Sucursal';
         $lastSyncDate = $this->getLastSyncDate($method);
 
