@@ -27,4 +27,7 @@ use Illuminate\Database\Eloquent\Model;
 class GpCronLog extends Model
 {
     use HasFactory;
+
+    protected $table ='gp_cron_logs';
+    protected $fillable = ['metodo','fecha','data'];
 }
