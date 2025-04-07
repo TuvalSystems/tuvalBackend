@@ -1246,4 +1246,13 @@ class DevolucionesController extends Controller
             $this->totaldevoluciones($devolucion, $detalles);
         }
     }
+
+
+    public function anularDevolucion(Request $request)
+    {
+        //pendiente proceso de anulación de facturas
+        $data = $request->all();
+        $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
+        return true ;
+    }
 }
