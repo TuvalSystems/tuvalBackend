@@ -4,14 +4,8 @@ namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\FuncionesController;
-use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpCaja;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
-use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpDatosItemsL;
 use App\Models\GpPuntoVenta;
 use App\Models\Notificaciones;
 use App\Models\reposicion\GpTrasladosReposicion;
@@ -21,16 +15,11 @@ use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpVendedor;
-use App\Models\GpUnidadMedida;
 use App\Models\GpTerritorio;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\GpGrupoCliente;
-use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpSubGrupoCliente;
-use App\Models\GpTempCart;
 use App\Models\GpPedidoDetalleStock;
 use App\Services\ApiGpService;
 use App\Traits\StockWarehouseTraits;
@@ -39,7 +28,6 @@ use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\WebserviceController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 
 class ConsultasController extends Controller
