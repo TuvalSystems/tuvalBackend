@@ -9,6 +9,7 @@ use App\Models\GpDescuentoFormaPago;
 use App\Models\GpCondicionPago;
 use App\Models\GpProveedor;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
+    use JsonResponseTrait;
     protected $apiGp ;
 
     public function __construct(ApiGpService $apiGp)
@@ -33,11 +35,11 @@ class AuthController extends Controller
         $validationResponse = $this->validateuserCredentials($credentials);
 
         if (!$this->isValidUser($validationResponse)) {
-            return $this->buildErrorResponse($validationResponse['msj'] ?? 'Usuario no encontrado');
+            return $this->buildErrorResponse($validationResponse['msj'] ?? 'Usuario no encontrado', 404);
         }
         $user = $this->getActiveUser($credentials['username']);
         if (!$user) {
-            return $this->buildErrorResponse('El perfil asignado se encuentra inactivo');
+            return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
         }
         return $this->buildSuccessResponse($user);
     }
@@ -73,10 +75,7 @@ class AuthController extends Controller
         return isset($validationResponse['codret']) && $validationResponse['codret'] == '0';
     }
 
-    private function buildErrorResponse(string $message, int $statusCode = 401): JsonResponse
-    {
-        return response()->json(['error' => $message], $statusCode);
-    }
+
 
     public function buildSuccessResponse($user): JsonResponse
     {

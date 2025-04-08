@@ -42,6 +42,7 @@ return [
             'consultar_sucursales_cliente'          => 'api/consultar-sucursales-clientes',
             'consultar_coordenadas'                 => 'api/consultar-listado-coordenadas',
             'consultar_stock_bodega'                => 'api/consultar-stock-bodega',
+            'consultar_articulo_bodega_compartimento' => 'api/consultar-stock-articulo-bodega-compartimento',
         ],
     ],
     'api_seedbilling' => [

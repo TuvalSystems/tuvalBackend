@@ -25,7 +25,6 @@ class ApiGpService
         return $this->makeRequest($this->endpoints["validar_usuario"], 'GET', $params);
     }
 
-
     public function getBranchesClientsList(array $params)
     {
 
@@ -41,6 +40,22 @@ class ApiGpService
     public function getStockWarehouse(array $params = [])
     {
         return $this->makeRequest($this->endpoints["consultar_stock_bodega"], 'GET', $params);
+    }
+
+
+    public function getTransferHeader(array $params = [])
+    {
+        return $this->makeRequest($this->endpoints["consultar_transferencia_cabecera"], 'GET', $params);
+    }
+
+    public function getTransferDetail(array $params = [])
+    {
+        return $this->makeRequest($this->endpoints["consultar_transferencia_detalle"], 'GET', $params);
+    }
+
+    public function getStockByWarehouseAndCompartment(array $params = [])
+    {
+        return $this->makeRequest($this->endpoints["consultar_articulo_bodega_compartimento"], 'GET', $params);
     }
 
 
