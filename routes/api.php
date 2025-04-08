@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/consultas/buscararticulo', [ConsultasController::class, 'buscararticulo']);
     Route::post('/consultas/buscarcliente', [ConsultasController::class, 'buscarcliente']);
     Route::post('/consultas/consultarstock', [ConsultasController::class, 'consultarstock']);
+    Route::post('/consultas/consultastockothers', [ConsultasController::class, 'consultaStockOthers']);
     Route::post('/cotizaciones/selectarticulo', [CotizacionesController::class, 'selectarticulo']);
     Route::post('/cotizaciones/selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
     Route::post('/cotizaciones/llenarcotizacion', [CotizacionesController::class, 'llenarcotizacion']);

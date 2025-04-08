@@ -38,6 +38,12 @@ class ApiGpService
     }
 
 
+    public function getStockWarehouse(array $params = [])
+    {
+        return $this->makeRequest($this->endpoints["consultar_stock_bodega"], 'GET', $params);
+    }
+
+
     public function makeRequest(string $urlKey, string $method, array $data)
     {
         try {

@@ -11,11 +11,12 @@ use App\Models\GpCaja;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
+use App\Models\GpDatosItemsL;
 use App\Models\GpPuntoVenta;
 use App\Models\Notificaciones;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\traslados\GpTrasladosVentas;
-use Illuminate\Http\Request;
+
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
@@ -31,15 +32,26 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpSubGrupoCliente;
 use App\Models\GpTempCart;
 use App\Models\GpPedidoDetalleStock;
+use App\Services\ApiGpService;
+use App\Traits\StockWarehouseTraits;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\WebserviceController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 
 class ConsultasController extends Controller
 {
+    use StockWarehouseTraits;
+    protected $apiGp;
+
+    public function __construct(ApiGpService $apiGp)
+    {
+        $this->apiGp = $apiGp;
+    }
+
     public function buscararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $busqueda = $request->validate([
@@ -52,40 +64,41 @@ class ConsultasController extends Controller
             'text_nombre' => '',
             'terminal' => '',
         ]);
-        if(isset($busqueda['puntodeventaselect']) && $busqueda['puntodeventaselect'] != ''){
+        if (isset($busqueda['puntodeventaselect']) && $busqueda['puntodeventaselect'] != '') {
 
             $funciones = new FuncionesController();
             $clave = false;
 
-            if(strtolower($busqueda['codigo3l']) == 'item l' || strtolower($busqueda['codigo3l']) == 'items l' ||
+            if (
+                strtolower($busqueda['codigo3l']) == 'item l' || strtolower($busqueda['codigo3l']) == 'items l' ||
                 strtolower($busqueda['text_codigo']) == 'item l' || strtolower($busqueda['text_codigo']) == 'items l' ||
                 strtolower($busqueda['text_nombre']) == 'item l' || strtolower($busqueda['text_nombre']) == 'items l' ||
                 strtolower($busqueda['terminal']) == 'item l' || strtolower($busqueda['terminal']) == 'items l' ||
                 strtolower($busqueda['terminal']) == 'l'
-            ){
+            ) {
                 $articulosL = GpArticulo::busquedaitemsl($busqueda);
                 $articulos = array();
-                foreach($articulosL as $key => $articulo){
+                foreach ($articulosL as $key => $articulo) {
                     $articulo->disponible = $funciones->checkarticulodisponible($articulo);
-                    if(!$articulo->disponible){
+                    if (!$articulo->disponible) {
                         unset($articulosL[$key]);
                         continue;
                     }
                     $articulos[] = $articulo;
 
-                    if(count($articulos) == 10)
+                    if (count($articulos) == 10)
                         break;
                 }
 
                 $clave = true;
-            }else{
+            } else {
                 $articulos = GpArticulo::busqueda($busqueda);
             }
 
 
 
 
-            if(!count($articulos)){
+            if (!count($articulos)) {
                 return response([
                     'error' => 'No existen resultados'
                 ], 401);
@@ -94,57 +107,57 @@ class ConsultasController extends Controller
 
 
             $consulta_precio = array();
-            foreach($articulos as $articulo){
+            foreach ($articulos as $articulo) {
 
-                if($articulo->ART_CLASE_ARTICULO != 'VTA-SERV-L' && $articulo->ART_CLASE_ARTICULO != 'VTA-BNS-L') {
+                if ($articulo->ART_CLASE_ARTICULO != 'VTA-SERV-L' && $articulo->ART_CLASE_ARTICULO != 'VTA-BNS-L') {
                     $consulta_precio[] = array(
                         'ART_CODIGO' => $articulo->ART_CODIGO,
                     );
                 }
             }
 
-            if(!$clave)
+            if (!$clave)
                 $articulos = $articulos->values();
 
             $webservices = new WebserviceController;
             $precios = $webservices->listaprecios($consulta_precio);
             $lista_precios_general = array();
-            foreach($precios as $precio){
+            foreach ($precios as $precio) {
                 $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
             }
 
-            foreach($articulos as $key => $articulo){
+            foreach ($articulos as $key => $articulo) {
 
-                if(!$clave){
+                if (!$clave) {
                     $articulo->disponible = $funciones->checkarticulodisponible($articulo);
-                    if(!$articulo->disponible){
+                    if (!$articulo->disponible) {
                         unset($articulos[$key]);
                         continue;
                     }
                 }
 
 
-                if($articulo->ART_CLASE_ARTICULO == 'VTA-SERV-L' || $articulo->ART_CLASE_ARTICULO == 'VTA-BNS-L'){
+                if ($articulo->ART_CLASE_ARTICULO == 'VTA-SERV-L' || $articulo->ART_CLASE_ARTICULO == 'VTA-BNS-L') {
                     $articulo->ART_TIPO_COMPRA = 'L';
                 }
-                if(isset($busqueda['nivel_precio'])) {
+                if (isset($busqueda['nivel_precio'])) {
 
                     if (isset($lista_precios_general[$articulo->ART_CODIGO])) {
-                        $articulo->ART_VALOR = (float)number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'],4,'.','');
-                        $articulo->ART_VALOR_ORIGINAL = (float)number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'],4,'.','');
-                    }else{
+                        $articulo->ART_VALOR = (float)number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
+                        $articulo->ART_VALOR_ORIGINAL = (float)number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
+                    } else {
                         $articulo->ART_VALOR = 0;
                         $articulo->ART_VALOR_ORIGINAL = 0;
                     }
                     $articulo->ART_DESCRIPCION_ORIGINAL = $articulo->ART_DESCRIPCION;
-                }else{
+                } else {
                     unset($lista_precios_general[$articulo->ART_CODIGO]['LST_PRC_ARTICULO']);
                     unset($lista_precios_general[$articulo->ART_CODIGO]['LST_PRC_AUTENTIFICACION']);
                     unset($lista_precios_general[$articulo->ART_CODIGO]['LST_PRC_MONEDA']);
 
-                    if(isset($lista_precios_general[$articulo->ART_CODIGO])){
+                    if (isset($lista_precios_general[$articulo->ART_CODIGO])) {
                         $articulo->precios = $lista_precios_general[$articulo->ART_CODIGO];
-                    }else{
+                    } else {
                         $articulo->precios = array();
                     }
                 }
@@ -155,69 +168,119 @@ class ConsultasController extends Controller
                 $articulo->modificador = 0;
                 $imagenes = array();
 
-                for($i = 1; $i <= 3; $i++){
-                    $file = 'images/productos/'.$articulo->ART_CODIGO_TRES_LETRAS.'_'.$i.'.jpg';
+                for ($i = 1; $i <= 3; $i++) {
+                    $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
 
                     if (File::exists($file)) {
-                        $imagenes[] = env('APP_URL').'/'.$file;
+                        $imagenes[] = env('APP_URL') . '/' . $file;
                     }
                 }
 
                 $articulo->imagenes = $imagenes;
-
-
             }
-            if(!$clave)
+            if (!$clave)
                 $articulos = $articulos->values();
 
             return response([
                 'success' => true,
                 'articulos' => $articulos
             ]);
-        }else{
+        } else {
             return response([
                 'error' => 'Hubo un error al buscar'
             ], 401);
         }
     }
 
-    public function consultarstock(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // public function consultarstock(Request $request)
+    // {
+    //     $data = $request->all();
+
+    //     $puntodeventaselect = $data['puntodeventa_id'];
+
+    //     $funciones = new FuncionesController();
+    //     $data_bodega = array('PTO_VTA_ID' => $puntodeventaselect);
+    //     $arr_bodegas = $funciones->gebodegas($data_bodega, $data['cliente_id']);
+
+    //     $consulta_bodega = array();
+
+    //     foreach ($arr_bodegas as $bodega) {
+    //         $consulta_bodega[] = array(
+    //             'STOCK_ARTICULO' => $data['articulo']['ART_CODIGO'] . '@' . $bodega,
+    //         );
+    //     }
+
+    //     $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+
+    //     $articulo = (object)$data['articulo'];
+
+    //     $funciones->formatStock($articulo, $stock_general);
+
+    //     $stock = array_values($articulo->stock);
+    //     $total = 0;
+    //     foreach ($stock as $st) {
+    //         $total += $st['STO_ART_STOCK_DISPONIBLE'];
+    //     }
+    //     return response([
+    //         'success' => true,
+    //         'stock' => $stock,
+    //         'ART_STOCK' => $total,
+    //     ]);
+    // }
+
+    public function consultarstock(Request $request)
     {
         $data = $request->all();
-
-        $puntodeventaselect = $data['puntodeventa_id'];
-
-        $funciones = new FuncionesController();
-        $data_bodega = array('PTO_VTA_ID' => $puntodeventaselect);
-        $arr_bodegas = $funciones->gebodegas($data_bodega, $data['cliente_id']);
-
-        $consulta_bodega = array();
-
-        foreach($arr_bodegas as $bodega){
-            $consulta_bodega[] = array(
-                'STOCK_ARTICULO'=>$data['articulo']['ART_CODIGO'].'@'.$bodega,
-            );
+        $articulo = $data['articulo'];
+        $warehouses = $this->getWarehouseNotConsult($data);
+        if (empty($warehouses)) {
+            return [];
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+        $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
+        $formatStock = $this->formatResultStocks($stockResults);
 
-        $articulo = (object)$data['articulo'];
+        $art =$this->newFormatStock($formatStock, $articulo); //nose porque hace pero va
 
-        $funciones->formatStock($articulo, $stock_general);
-
-        $stock = array_values($articulo->stock);
-
-        $total = 0;
-        foreach($stock as $st){
-            $total += $st['STO_ART_STOCK_DISPONIBLE'];
-        }
-
+        $total = array_sum(array_column($formatStock, 'STO_ART_STOCK_DISPONIBLE'));
         return response([
             'success' => true,
-            'stock' => $stock,
+            'stock' => $art['stock'],
             'ART_STOCK' => $total,
         ]);
     }
+
+    public function consultaStockOthers(Request $request)
+    {
+        $data = $request->all();
+        $articulo = $data['articulo'];
+        $warehouses = $this->getWarehouse($data);
+        if (empty($warehouses)) {
+            return [];
+        }
+
+        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+        $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
+        $formatStock = $this->formatResultStocks($stockResults);
+
+        $art =$this->newFormatStock($formatStock, $articulo); //nose porque hace pero va
+
+        $total = array_sum(array_column($formatStock, 'STO_ART_STOCK_DISPONIBLE'));
+        return response([
+            'success' => true,
+            'stock' => $art['stock'],
+            'ART_STOCK' => $total,
+        ]);
+    }
+
+
+
+
+
+
+
+
 
     public function consultastockpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -226,7 +289,7 @@ class ConsultasController extends Controller
 
         $alert = $funciones->consultastockdetalle($data, $data['cotizacion']);
 
-        if($alert){
+        if ($alert) {
             return response([
                 'success' => false,
                 'message' => $alert,
@@ -234,11 +297,11 @@ class ConsultasController extends Controller
             ]);
         }
 
-//        return response([
-//            'success' => false,
-//            'message' => 'Sin motivo',
-//            'cotizacion' => $data['cotizacion'],
-//        ]);
+        //        return response([
+        //            'success' => false,
+        //            'message' => 'Sin motivo',
+        //            'cotizacion' => $data['cotizacion'],
+        //        ]);
         return response([
             'success' => true,
             'message' => 'si hay stock'
@@ -254,9 +317,9 @@ class ConsultasController extends Controller
 
         $consulta_bodega = array();
 
-        foreach($arr_bodegas as $bodega){
+        foreach ($arr_bodegas as $bodega) {
             $consulta_bodega[] = array(
-                'STOCK_ARTICULO'=>$articulo.'@'.$bodega,
+                'STOCK_ARTICULO' => $articulo . '@' . $bodega,
             );
         }
 
@@ -273,8 +336,8 @@ class ConsultasController extends Controller
             'tipo' => '',
         ]);
         $busqueda = $data['busqueda'];
-        if(isset($busqueda) && $busqueda != ''){
-            $buscar = '%'.str_replace(' ', '%', $busqueda).'%';
+        if (isset($busqueda) && $busqueda != '') {
+            $buscar = '%' . str_replace(' ', '%', $busqueda) . '%';
 
 
 
@@ -286,13 +349,12 @@ class ConsultasController extends Controller
                 ->limit(100)
                 ->get();
 
-            foreach($clientes as $key => $cliente){
+            foreach ($clientes as $key => $cliente) {
 
-                if(isset($data['tipo']) && $data['tipo'] == 'cobranza'){
+                if (isset($data['tipo']) && $data['tipo'] == 'cobranza') {
+                } else {
 
-                }else{
-
-                    if($cliente->CLI_SUSPENDIDO == 'SI'){
+                    if ($cliente->CLI_SUSPENDIDO == 'SI') {
                         unset($clientes[$key]);
                         continue;
                     }
@@ -301,11 +363,11 @@ class ConsultasController extends Controller
                 $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
                 $cliente->vendedor = $vendedor;
 
-                $sucursales = GpClienteSucursal::join('gp_vendedors','gp_vendedors.VEND_ID','gp_cliente_sucursals.CLI_SUC_VENDEDOR')
-                        ->where('CLI_SUC_RUC', $cliente->CLI_RUC)
-                        ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS' )
-                        ->orderby('CLI_SUC_ID_DIRECCION','DESC')
-                        ->get();
+                $sucursales = GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
+                    ->where('CLI_SUC_RUC', $cliente->CLI_RUC)
+                    ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
+                    ->orderby('CLI_SUC_ID_DIRECCION', 'DESC')
+                    ->get();
 
                 $cliente->sucursales = $sucursales;
                 $cliente->sucursalesfacturacion = $sucursales;
@@ -318,14 +380,15 @@ class ConsultasController extends Controller
                 'success' => true,
                 'clientes' => $clientes
             ]);
-        }else{
+        } else {
             return response([
                 'error' => 'Hubo un error al buscar'
             ], 401);
         }
     }
 
-    public function cupodisponible($ruc){
+    public function cupodisponible($ruc)
+    {
 
         $parameters = array(
             'IDCompania' => env('ID_COMPANIA'),
@@ -338,8 +401,8 @@ class ConsultasController extends Controller
 
         $suspendido = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['SUSPENDIDO'] ?? 0;
         $cliente->suspendido = $suspendido;
-        $cliente->cupo_disponible = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP'],2,'.', ',');
-        $cliente->cupo_asignado = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_ASIGNADO'],2,'.', ',');
+        $cliente->cupo_disponible = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP'], 2, '.', ',');
+        $cliente->cupo_asignado = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_ASIGNADO'], 2, '.', ',');
         return response([
             'success' => true,
             'cliente' => $cliente
@@ -352,24 +415,24 @@ class ConsultasController extends Controller
 
         $provincia_ciudad = GpProvinciaCiudadParroquia::orderby('provincia', 'ASC')->get()->toArray();
         $provincia_arr = array();
-        foreach($provincia_ciudad as $pc){
+        foreach ($provincia_ciudad as $pc) {
             $provincia_arr[$pc['provincia']]['provincia'] = $pc['provincia'];
             $provincia_arr[$pc['provincia']]['ciudades'][$pc['ciudad']] = $pc['ciudad'];
         }
         $provincia_arr = array_values($provincia_arr);
 
-        foreach($provincia_arr as $key => $provincia){
+        foreach ($provincia_arr as $key => $provincia) {
             $provincia_arr[$key]['ciudades'] = array_values($provincia['ciudades']);
         }
 
         $grupos = GpGrupoCliente::orderby('GRUPO_CODIGO', 'ASC')->get()->toArray();
         $subgrupos = GpSubGrupoCliente::orderby('GRUPO_CODIGO', 'ASC')->get()->toArray();
         $grupos_arr = array();
-        foreach($grupos as $grupo){
+        foreach ($grupos as $grupo) {
             $grupos_arr[$grupo['GRUPO_CODIGO']]['GRUPO_CODIGO'] = $grupo['GRUPO_CODIGO'];
             $grupos_arr[$grupo['GRUPO_CODIGO']]['GRUPO_DESCRIPCION'] = $grupo['GRUPO_DESCRIPCION'];
-            foreach($subgrupos as $subgrupo){
-                if($subgrupo['GRUPO_CODIGO'] == $grupo['GRUPO_CODIGO'])
+            foreach ($subgrupos as $subgrupo) {
+                if ($subgrupo['GRUPO_CODIGO'] == $grupo['GRUPO_CODIGO'])
                     $grupos_arr[$grupo['GRUPO_CODIGO']]['subgrupos'][] = $subgrupo;
             }
         }
@@ -386,14 +449,14 @@ class ConsultasController extends Controller
     {
         $puntosdeventa = GpPuntoVenta::get();
 
-        foreach($puntosdeventa as $puntodeventa){
-            $cajas = GpCaja::join('gp_relacion_punto_venta_cajas','gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_CAJA','gp_cajas.CAJA_CODIGO')
-                ->join('gp_relacion_usuario_cajas', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA','gp_cajas.CAJA_CODIGO')
-                ->join('gp_usuarios','gp_usuarios.USERID','gp_relacion_usuario_cajas.CAJ_USER_USUARIO')
-                ->where('gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_PUNTO_VENTA',$puntodeventa->PTO_VTA_ID)
+        foreach ($puntosdeventa as $puntodeventa) {
+            $cajas = GpCaja::join('gp_relacion_punto_venta_cajas', 'gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_CAJA', 'gp_cajas.CAJA_CODIGO')
+                ->join('gp_relacion_usuario_cajas', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA', 'gp_cajas.CAJA_CODIGO')
+                ->join('gp_usuarios', 'gp_usuarios.USERID', 'gp_relacion_usuario_cajas.CAJ_USER_USUARIO')
+                ->where('gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_PUNTO_VENTA', $puntodeventa->PTO_VTA_ID)
                 ->select('gp_cajas.*', 'gp_usuarios.USERID', 'gp_usuarios.USERNAME')
                 ->distinct()
-                ->orderBy('gp_cajas.CAJA_DESCRIPCION','ASC')
+                ->orderBy('gp_cajas.CAJA_DESCRIPCION', 'ASC')
                 ->get();
             $puntodeventa->cajas = $cajas;
         }
@@ -405,31 +468,31 @@ class ConsultasController extends Controller
 
     public function reservados(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $articulos = GpPedidoDetalleStock::join('gp_pedido_detalles','gp_pedido_detalles.id','gp_pedido_detalle_stocks.detalle_id')
-            ->join('gp_pedidos','gp_pedidos.id','=','gp_pedido_detalle_stocks.pedido_id')
+        $articulos = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalles.id', 'gp_pedido_detalle_stocks.detalle_id')
+            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
             ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->where(function($q){
-                $q->where(function($query){
-                    $query->where('gp_pedidos.requiere_aprobacion_comercial','no');
+            ->where(function ($q) {
+                $q->where(function ($query) {
+                    $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no');
                 })
-                ->orWhere(function($query){
-                    $query->where('gp_pedidos.requiere_aprobacion_comercial','yes');
-                    $query->where('gp_pedidos.aprobado_comercial','yes');
-                });
+                    ->orWhere(function ($query) {
+                        $query->where('gp_pedidos.requiere_aprobacion_comercial', 'yes');
+                        $query->where('gp_pedidos.aprobado_comercial', 'yes');
+                    });
             })
-            ->where(function($q){
-                $q->where(function($query){
-                    $query->where('gp_pedidos.requiere_aprobacion_crediticia','no');
+            ->where(function ($q) {
+                $q->where(function ($query) {
+                    $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no');
                 })
-                ->orWhere(function($query){
-                    $query->where('gp_pedidos.requiere_aprobacion_crediticia','yes');
-                    $query->where('gp_pedidos.aprobado_crediticio','yes');
-                });
+                    ->orWhere(function ($query) {
+                        $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes');
+                        $query->where('gp_pedidos.aprobado_crediticio', 'yes');
+                    });
             })
-            ->where('gp_pedido_detalle_stocks.reservado','>',0)
+            ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
             ->where('gp_pedidos.estado', '!=', 'eliminado')
             ->where('gp_pedidos.estado', '!=', 'rechazado')
-            ->where(function($query){
+            ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado');
                 $query->orWhere('gp_pedidos.despachado', 0);
             })
@@ -442,24 +505,26 @@ class ConsultasController extends Controller
 
         $arreglo = array();
 
-        foreach($articulos as $articulo){
+        foreach ($articulos as $articulo) {
             $articulo->tipo = 'pedido';
             unset($articulo->seleccionado);
         }
 
-        foreach($articulos as $articulo){
+        foreach ($articulos as $articulo) {
             $arreglo[] = $articulo;
         }
 
         $trasladosreposicion = GpTrasladosReposicion::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
             ->whereNull('gp_traslados_reposicions.completado')
-            ->select('gp_articulos.ART_CODIGO as codigo',
+            ->select(
+                'gp_articulos.ART_CODIGO as codigo',
                 'gp_traslados_reposicions.cantidad',
                 'gp_traslados_reposicions.trasladado',
-                'gp_traslados_reposicions.bodega_origen as bodega')
+                'gp_traslados_reposicions.bodega_origen as bodega'
+            )
             ->get();
 
-        foreach($trasladosreposicion as $traslado){
+        foreach ($trasladosreposicion as $traslado) {
             $traslado->reservado = $traslado->cantidad - $traslado->trasladado;
             unset($traslado->cantidad);
             unset($traslado->trasladado);
@@ -476,16 +541,16 @@ class ConsultasController extends Controller
     public function transferenciaspendientes(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
-        $pedidos = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id','gp_traslados_ventas.pedido_id')
-            ->where(function($query){
-                $query->where('gp_pedidos.estado','traslado');
-                $query->orWhere('gp_pedidos.estado','orden_de_compra');
-             })
+        $pedidos = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
+            ->where(function ($query) {
+                $query->where('gp_pedidos.estado', 'traslado');
+                $query->orWhere('gp_pedidos.estado', 'orden_de_compra');
+            })
             ->join('gp_guia_remision_transferencias', 'gp_guia_remision_transferencias.pedido', 'gp_pedidos.pedido')
             ->join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
             ->join('gp_guia_remision_detalles', 'gp_guia_remision_detalles.guia_remision_id', 'gp_guia_remisions.id')
             ->where('gp_guia_remisions.estado', '!=', 'eliminada')
-            ->whereColumn('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO','=','gp_traslados_ventas.ART_CODIGO')
+            ->whereColumn('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', '=', 'gp_traslados_ventas.ART_CODIGO')
             ->select(
                 'gp_pedidos.pedido',
                 'gp_guia_remisions.tipo',
@@ -499,15 +564,15 @@ class ConsultasController extends Controller
             )
             ->get()->toArray();
 
-        $transferencias = GpTrasladosReposicion::where(function($query){
-                $query->whereNull('gp_traslados_reposicions.completado');
-                $query->orWhere('gp_traslados_reposicions.completado',0);
-            })
+        $transferencias = GpTrasladosReposicion::where(function ($query) {
+            $query->whereNull('gp_traslados_reposicions.completado');
+            $query->orWhere('gp_traslados_reposicions.completado', 0);
+        })
             ->join('gp_guia_remision_transferencias', 'gp_guia_remision_transferencias.pedido', 'gp_traslados_reposicions.Documento')
             ->join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
             ->join('gp_guia_remision_detalles', 'gp_guia_remision_detalles.guia_remision_id', 'gp_guia_remisions.id')
             ->where('gp_guia_remisions.estado', '!=', 'eliminada')
-            ->whereColumn('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO','=','gp_traslados_reposicions.ART_CODIGO')
+            ->whereColumn('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', '=', 'gp_traslados_reposicions.ART_CODIGO')
             ->select(
                 'gp_guia_remision_transferencias.pedido',
                 'gp_guia_remisions.tipo',
@@ -521,7 +586,7 @@ class ConsultasController extends Controller
             )
             ->get()->toArray();
 
-        foreach($transferencias as $transferencia){
+        foreach ($transferencias as $transferencia) {
             $pedidos[] = $transferencia;
         }
 
@@ -533,39 +598,40 @@ class ConsultasController extends Controller
     public function reservasweb($item = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
-        $articulos = GpPedidoDetalleStock::join('gp_pedido_detalles','gp_pedido_detalles.id','gp_pedido_detalle_stocks.detalle_id')
-            ->join('gp_pedidos','gp_pedidos.id','gp_pedido_detalles.pedido_id')
-            ->join('gp_clientes','gp_clientes.id','gp_pedidos.cliente_id')
+        $articulos = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalles.id', 'gp_pedido_detalle_stocks.detalle_id')
+            ->join('gp_pedidos', 'gp_pedidos.id', 'gp_pedido_detalles.pedido_id')
+            ->join('gp_clientes', 'gp_clientes.id', 'gp_pedidos.cliente_id')
             ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->where(function($q){
-                $q->where(function($query){
-                    $query->where('gp_pedidos.requiere_aprobacion_comercial','no');
+            ->where(function ($q) {
+                $q->where(function ($query) {
+                    $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no');
                 })
-                    ->orWhere(function($query){
-                        $query->where('gp_pedidos.requiere_aprobacion_comercial','yes');
-                        $query->where('gp_pedidos.aprobado_comercial','yes');
+                    ->orWhere(function ($query) {
+                        $query->where('gp_pedidos.requiere_aprobacion_comercial', 'yes');
+                        $query->where('gp_pedidos.aprobado_comercial', 'yes');
                     });
             })
-            ->where(function($q){
-                $q->where(function($query){
-                    $query->where('gp_pedidos.requiere_aprobacion_crediticia','no');
+            ->where(function ($q) {
+                $q->where(function ($query) {
+                    $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no');
                 })
-                    ->orWhere(function($query){
-                        $query->where('gp_pedidos.requiere_aprobacion_crediticia','yes');
-                        $query->where('gp_pedidos.aprobado_crediticio','yes');
+                    ->orWhere(function ($query) {
+                        $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes');
+                        $query->where('gp_pedidos.aprobado_crediticio', 'yes');
                     });
             })
             ->where('gp_pedidos.estado', '!=', 'eliminado')
             ->where('gp_pedidos.estado', '!=', 'rechazado');
-        if($item){
-            $articulos = $articulos->where('gp_pedido_detalles.ART_CODIGO',$item);
+        if ($item) {
+            $articulos = $articulos->where('gp_pedido_detalles.ART_CODIGO', $item);
         }
-        $articulos = $articulos->where('gp_pedido_detalle_stocks.reservado','>',0)
-            ->where(function($query){
+        $articulos = $articulos->where('gp_pedido_detalle_stocks.reservado', '>', 0)
+            ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado');
                 $query->orWhere('gp_pedidos.despachado', 0);
             })
-            ->select('gp_pedido_detalles.ART_CODIGO as codigo',
+            ->select(
+                'gp_pedido_detalles.ART_CODIGO as codigo',
                 'gp_pedido_detalles.ART_DESCRIPCION as descripcion',
                 'gp_pedido_detalle_stocks.STO_ART_BODEGA as bodega',
                 'gp_pedido_detalle_stocks.reservado',
@@ -574,38 +640,41 @@ class ConsultasController extends Controller
                 'gp_pedidos.created_at as fecha',
                 'gp_pedidos.CLI_RUC',
                 'gp_clientes.CLI_RAZON_SOCIAL',
-                'gp_pedido_detalles.ART_CANTIDAD as cantidad_pedida')
+                'gp_pedido_detalles.ART_CANTIDAD as cantidad_pedida'
+            )
             ->get();
 
         $arreglo = array();
 
-        foreach($articulos as $articulo){
+        foreach ($articulos as $articulo) {
             $articulo->tipo = 'pedido';
             $articulo->despachado = $articulo->seleccionado - $articulo->reservado;
             unset($articulo->seleccionado);
         }
 
-        foreach($articulos as $articulo){
+        foreach ($articulos as $articulo) {
             $arreglo[] = $articulo;
         }
 
         $trasladosreposicion = GpTrasladosReposicion::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
             ->whereNull('gp_traslados_reposicions.completado');
-        if($item){
-            $trasladosreposicion = $trasladosreposicion->where('gp_traslados_reposicions.ART_CODIGO',$item);
+        if ($item) {
+            $trasladosreposicion = $trasladosreposicion->where('gp_traslados_reposicions.ART_CODIGO', $item);
         }
         $trasladosreposicion = $trasladosreposicion
-            ->select('gp_articulos.ART_CODIGO as codigo',
-            'gp_articulos.ART_DESCRIPCION as descripcion',
-            'gp_traslados_reposicions.bodega_origen as bodega',
-            'gp_traslados_reposicions.cantidad',
-            'gp_traslados_reposicions.trasladado',
-            'gp_traslados_reposicions.Documento as pedido',
-            'gp_traslados_reposicions.created_at as fecha',
-            'gp_traslados_reposicions.cantidad as cantidad_pedida')
+            ->select(
+                'gp_articulos.ART_CODIGO as codigo',
+                'gp_articulos.ART_DESCRIPCION as descripcion',
+                'gp_traslados_reposicions.bodega_origen as bodega',
+                'gp_traslados_reposicions.cantidad',
+                'gp_traslados_reposicions.trasladado',
+                'gp_traslados_reposicions.Documento as pedido',
+                'gp_traslados_reposicions.created_at as fecha',
+                'gp_traslados_reposicions.cantidad as cantidad_pedida'
+            )
             ->get();
 
-        foreach($trasladosreposicion as $traslado){
+        foreach ($trasladosreposicion as $traslado) {
             $traslado->reservado = $traslado->cantidad - $traslado->trasladado;
             $traslado->despachado = $traslado->trasladado;
             unset($traslado->cantidad);
@@ -624,17 +693,17 @@ class ConsultasController extends Controller
 
     public function transferencias_pendientes_ingreso(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $pendientes = GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id','gp_guia_remision_detalles.guia_remision_id')
+        $pendientes = GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
             //->whereNull('completado')
             ->where('gp_guia_remisions.estado', 'enviada')
-            ->where(function($query){
+            ->where(function ($query) {
                 $query->where('gp_guia_remisions.tipo', 'transferencia');
                 $query->orWhere('gp_guia_remisions.tipo', 'reposicion');
             })
             ->select(
                 'gp_guia_remisions.id as guia_id',
                 'gp_guia_remision_detalles.detalle_id',
-            'gp_guia_remisions.GUI_REM_FECHA_INICIO as fecha_guia',
+                'gp_guia_remisions.GUI_REM_FECHA_INICIO as fecha_guia',
                 'gp_guia_remisions.GUI_REM_GUIA_REMISION as guia_remision',
                 'gp_guia_remisions.tipo',
                 'gp_guia_remisions.bodega_origen',
@@ -644,25 +713,24 @@ class ConsultasController extends Controller
                 'gp_guia_remision_detalles.recibido as cantidad_ingresada',
             )->get();
 
-        foreach($pendientes as $traslado){
+        foreach ($pendientes as $traslado) {
 
-            if(!$traslado->cantidad_ingresada)
+            if (!$traslado->cantidad_ingresada)
                 $traslado->cantidad_ingresada = 0;
 
-            $traslado->cantidad_pendiente = number_format($traslado->cantidad_total - $traslado->cantidad_ingresada,2,'.','');
+            $traslado->cantidad_pendiente = number_format($traslado->cantidad_total - $traslado->cantidad_ingresada, 2, '.', '');
 
-            if($traslado->tipo == 'transferencia'){
+            if ($traslado->tipo == 'transferencia') {
                 $origen = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
                     ->where('gp_traslados_ventas.id', $traslado->detalle_id)
                     ->select('gp_pedidos.pedido')
                     ->first();
                 $traslado->documento_pedido = '';
-                if($origen){
+                if ($origen) {
                     $traslado->documento_pedido = $origen->pedido;
                 }
-
             }
-            if($traslado->tipo == 'reposicion'){
+            if ($traslado->tipo == 'reposicion') {
                 $origen = GpTrasladosReposicion::where('id', $traslado->detalle_id)
                     ->select('Documento')
                     ->first();
@@ -674,8 +742,8 @@ class ConsultasController extends Controller
         }
 
         $response = array();
-        foreach($pendientes as $traslado){
-            if($traslado->cantidad_pendiente > 0){
+        foreach ($pendientes as $traslado) {
+            if ($traslado->cantidad_pendiente > 0) {
                 $response[] = $traslado;
             }
         }
@@ -685,12 +753,12 @@ class ConsultasController extends Controller
     }
     public function items_transferencia_venta($item = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-//        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
-//        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
+        //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
+        //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id','gp_traslados_ventas.pedido_id')
+        $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_origen', 'gp_bodegas.BOD_BODEGA')
-//            ->where('bodega_origen', $bodega)
+            //            ->where('bodega_origen', $bodega)
             ->whereNull('completado')
             ->where('gp_pedidos.estado', '!=', 'eliminado');
         $trasladosventas = $trasladosventas->select(
@@ -704,14 +772,14 @@ class ConsultasController extends Controller
 
         )->get();
 
-        foreach($trasladosventas as $traslado){
+        foreach ($trasladosventas as $traslado) {
 
-            if(!$traslado->reservado)
+            if (!$traslado->reservado)
                 $traslado->reservado = 0;
 
-            if(!$traslado->trasladado)
+            if (!$traslado->trasladado)
                 $traslado->trasladado = 0;
-            $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado,2,'.','');
+            $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado, 2, '.', '');
 
             $traslado->fecha = substr($traslado->fecha, 0, -3);
 
@@ -729,30 +797,30 @@ class ConsultasController extends Controller
 
     public function items_transferencia_reposicion($item = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-//        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
-//        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
+        //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
+        //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
         $trasladosreposicion = GpTrasladosReposicion::join('gp_bodegas', 'gp_traslados_reposicions.bodega_origen', 'gp_bodegas.BOD_BODEGA')
-//            ->where('bodega_origen', $bodega)
+            //            ->where('bodega_origen', $bodega)
             ->whereNull('completado')
             ->select(
-            'gp_traslados_reposicions.ART_CODIGO',
-            'gp_traslados_reposicions.cantidad',
-            'gp_traslados_reposicions.trasladado',
-            'gp_traslados_reposicions.Documento',
-            'gp_traslados_reposicions.bodega_origen',
-            'gp_traslados_reposicions.bodega_destino',
-        )
+                'gp_traslados_reposicions.ART_CODIGO',
+                'gp_traslados_reposicions.cantidad',
+                'gp_traslados_reposicions.trasladado',
+                'gp_traslados_reposicions.Documento',
+                'gp_traslados_reposicions.bodega_origen',
+                'gp_traslados_reposicions.bodega_destino',
+            )
             ->get();
 
-        foreach($trasladosreposicion as $traslado){
+        foreach ($trasladosreposicion as $traslado) {
 
-            if(!$traslado->reservado)
+            if (!$traslado->reservado)
                 $traslado->reservado = 0;
 
-            if(!$traslado->trasladado)
+            if (!$traslado->trasladado)
                 $traslado->trasladado = 0;
-            $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado,2,'.','');
+            $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado, 2, '.', '');
 
             unset($traslado->trasladado);
             unset($traslado->reservado);
@@ -768,13 +836,13 @@ class ConsultasController extends Controller
 
     public function reposiciones_pendientes(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-//        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
-//        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
+        //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
+        //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
         $trasladosreposicion = GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
             ->join('gp_bodegas', 'gp_guia_remisions.bodega_origen', 'gp_bodegas.BOD_BODEGA')
             ->join('gp_traslados_reposicions', 'gp_traslados_reposicions.id', 'gp_guia_remision_detalles.detalle_id')
-//            ->where('gp_guia_remisions.bodega_origen', $bodega)
+            //            ->where('gp_guia_remisions.bodega_origen', $bodega)
             ->where('gp_guia_remisions.tipo', 'reposicion')
             ->where('gp_guia_remisions.estado', 'enviada')
             ->select(
@@ -788,22 +856,22 @@ class ConsultasController extends Controller
             )
             ->get();
 
-        foreach($trasladosreposicion as $key => $traslado){
+        foreach ($trasladosreposicion as $key => $traslado) {
 
-            if(!$traslado->reservado)
+            if (!$traslado->reservado)
                 $traslado->reservado = 0;
 
-            if(!$traslado->trasladado)
+            if (!$traslado->trasladado)
                 $traslado->trasladado = 0;
-            $traslado->pendiente = number_format($traslado->GUI_REM_CANTIDAD - $traslado->recibido,2,'.','');
+            $traslado->pendiente = number_format($traslado->GUI_REM_CANTIDAD - $traslado->recibido, 2, '.', '');
 
             unset($traslado->GUI_REM_CANTIDAD);
             unset($traslado->recibido);
             unset($traslado->reservado);
             unset($traslado->trasladado);
 
-            if($traslado->pendiente == 0){
-               unset($trasladosreposicion[$key]);
+            if ($traslado->pendiente == 0) {
+                unset($trasladosreposicion[$key]);
             }
         }
 
@@ -820,7 +888,7 @@ class ConsultasController extends Controller
         $pedidos = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', 'gp_pedido_detalles.pedido_id')
             ->join('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
             ->whereNotNull('factura')
-            ->where(function($query){
+            ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado');
                 $query->orWhere('gp_pedidos.despachado', 0);
             })
@@ -848,7 +916,7 @@ class ConsultasController extends Controller
     public function notificaciones(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $user = Auth::user();
-        $notificaciones = Notificaciones::where('user_id', $user->id )
+        $notificaciones = Notificaciones::where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->get();
         return response([

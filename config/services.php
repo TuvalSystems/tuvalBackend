@@ -41,6 +41,7 @@ return [
             'consultar_transferencia_detalle'       => 'api/consultar-detalle-transferencia',
             'consultar_sucursales_cliente'          => 'api/consultar-sucursales-clientes',
             'consultar_coordenadas'                 => 'api/consultar-listado-coordenadas',
+            'consultar_stock_bodega'                => 'api/consultar-stock-bodega',
         ],
     ],
     'api_seedbilling' => [
