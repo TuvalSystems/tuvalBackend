@@ -219,7 +219,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/bodegas/guiasderemision/imprimirordenalmacenamiento', [GuiasderemisionController::class, 'imprimirordenalmacenamiento']);
     Route::post('/bodegas/guiasderemision/imprimirordenalmacenamientodevolucion', [GuiasderemisionController::class, 'imprimirordenalmacenamientodevolucion']);
 
-    Route::get('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
+    Route::post('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
 
     Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
     Route::get('/devoluciones/procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);

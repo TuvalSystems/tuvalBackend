@@ -170,7 +170,7 @@ trait TransferRepositionTrait
             'articulo' => $articleCode,
             'bodega' => $warehouse,
         ];
-        $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params);
+        $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params) ?? [];
         return  $compartment[0]['COMPARTIMIENTO'] ?? [];
     }
 
