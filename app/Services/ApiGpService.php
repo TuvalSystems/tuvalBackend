@@ -12,7 +12,7 @@ class ApiGpService
     protected $timeout;
     protected $endpoints;
 
-    public function __construct($baseUrl, $timeout, $endpoints)
+    public function __construct()
     {
         $config = config("services.api_gp");
         $this->baseUrl = $config["url"];
@@ -20,52 +20,64 @@ class ApiGpService
         $this->endpoints = $config["endpoints"];
     }
 
-    public function validateUser(array $params)
+    protected function validateUser(array $params)
     {
         return $this->makeRequest($this->endpoints["validar_usuario"], 'GET', $params);
     }
 
-    public function getBranchesClientsList(array $params)
+    protected function getBranchesClientsList(array $params)
     {
 
         return $this->makeRequest($this->endpoints["consultar_sucursales_cliente"], 'GET', $params);
     }
 
-    public function getCoordinatesList(array $params = [])
+    protected function getCoordinatesList(array $params = [])
     {
         return $this->makeRequest($this->endpoints["consultar_coordenadas"], 'GET', $params);
     }
 
 
-    public function getStockWarehouse(array $params = [])
+    protected function getStockWarehouse(array $params = [])
     {
         return $this->makeRequest($this->endpoints["consultar_stock_bodega"], 'GET', $params);
     }
 
 
-    public function getTransferHeader(array $params = [])
+    protected function getTransferHeader(array $params = [])
     {
         return $this->makeRequest($this->endpoints["consultar_transferencia_cabecera"], 'GET', $params);
     }
 
-    public function getTransferDetail(array $params = [])
+    protected function getTransferDetail(array $params = [])
     {
         return $this->makeRequest($this->endpoints["consultar_transferencia_detalle"], 'GET', $params);
     }
 
-    public function getStockByWarehouseAndCompartment(array $params = [])
+    protected function getStockByWarehouseAndCompartment(array $params = [])
     {
         return $this->makeRequest($this->endpoints["consultar_articulo_bodega_compartimento"], 'GET', $params);
     }
 
 
-    public function makeRequest(string $urlKey, string $method, array $data)
+    protected function makeRequest(string $urlKey, string $method, array $data)
     {
+        $url = null;
         try {
-            if (!isset($urlKey) || empty($urlKey)) {
+            if (empty($urlKey)) {
                 throw new \InvalidArgumentException("Endpoint '{$urlKey}' not defined in configuration.");
             }
+
+
+            $allowedMethods = ['GET', 'POST', 'PUTH', 'PATCH', 'delete'];
+            $method = strtolower($method);
+            if (!in_array($method, $allowedMethods)) {
+                throw new \InvalidArgumentException("HTTP method '{$method}' is not allowed.");
+            }
+
+
+
             $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
+
             if (strtoupper($method) === 'GET' && !empty($data)) {
                 $url .= '?' . http_build_query($data);
                 $response = Http::timeout($this->timeout)->get($url); // GET requests do not have a data payload
@@ -74,7 +86,7 @@ class ApiGpService
             }
             return $response->throw()->json();
         } catch (\InvalidArgumentException $e) {
-            Log::warning("Invalid API Endpoint - {$urlKey}: " . $e->getMessage(), [
+            Log::warning("Invalid API Request - {$urlKey}: " . $e->getMessage(), [
                 'urlKey' => $urlKey,
                 'data' => $data
             ]);
@@ -82,7 +94,7 @@ class ApiGpService
             return null;
         } catch (\Exception $e) {
             Log::error("API Request Error - {$url}: " . $e->getMessage(), [
-                'url' => $url ?? null,
+                'url' => $url,
                 'data' => $data
             ]);
             return null;
