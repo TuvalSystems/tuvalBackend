@@ -36,13 +36,25 @@ return [
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'company' => env('ID_COMPANIA'),
         'endpoints' => [
-            'validar_usuario'                       => 'api/validar-usuario',
-            'consultar_transferencia_cabecera'      => 'api/consultar-cabecera-transferencia',
-            'consultar_transferencia_detalle'       => 'api/consultar-detalle-transferencia',
-            'consultar_sucursales_cliente'          => 'api/consultar-sucursales-clientes',
-            'consultar_coordenadas'                 => 'api/consultar-listado-coordenadas',
-            'consultar_stock_bodega'                => 'api/consultar-stock-bodega',
-            'consultar_articulo_bodega_compartimento' => 'api/consultar-stock-articulo-bodega-compartimento',
+            'validar_usuario'                           => 'api/validar-usuario',
+            'consultar_transferencia_cabecera'          => 'api/consultar-cabecera-transferencia',
+            'consultar_transferencia_detalle'           => 'api/consultar-detalle-transferencia',
+            'consultar_sucursales_cliente'              => 'api/consultar-sucursales-clientes',
+            'consultar_coordenadas'                     => 'api/consultar-listado-coordenadas',
+            'consultar_stock_bodega'                    => 'api/consultar-stock-bodega',
+            'consultar_articulo_bodega_compartimento'   => 'api/consultar-stock-articulo-bodega-compartimento',
+        ],
+    ],
+    'api_sales' => [
+        'url' => env('API_SALES_URL'),
+        'timeout' => env('API_GP_TIMEOUT', 15),
+        'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
+        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'endpoints' => [
+            'obtener_clave_acceso'            => 'api/obtener-clave-acceso',
+            'anular_comprobante_gp'           => 'api/anularfactura',
+            'actualizar_estado_factura'       => 'api/actualizar-estado-factura',
+
         ],
     ],
     'api_seedbilling' => [

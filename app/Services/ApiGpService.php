@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use CodeDredd\Soap\Exceptions\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +13,7 @@ class ApiGpService
     protected $timeout;
     protected $endpoints;
 
-    public function __construct($baseUrl, $timeout, $endpoints)
+    public function __construct()
     {
         $config = config("services.api_gp");
         $this->baseUrl = $config["url"];
@@ -59,22 +60,36 @@ class ApiGpService
     }
 
 
-    public function makeRequest(string $urlKey, string $method, array $data)
+    protected function makeRequest(string $urlKey, string $method, array $data)
     {
+
+        $url = null;
         try {
-            if (!isset($urlKey) || empty($urlKey)) {
+            if (empty($urlKey)) {
                 throw new \InvalidArgumentException("Endpoint '{$urlKey}' not defined in configuration.");
             }
+
+
+            $allowedMethods = ['GET', 'POST', 'PUTH', 'PATCH', 'delete'];
+            // $method = strtolower($method);
+            if (!in_array($method, $allowedMethods)) {
+                throw new \InvalidArgumentException("HTTP method '{$method}' is not allowed.");
+            }
+
             $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
+
             if (strtoupper($method) === 'GET' && !empty($data)) {
                 $url .= '?' . http_build_query($data);
                 $response = Http::timeout($this->timeout)->get($url); // GET requests do not have a data payload
             } else {
-                $response = Http::timeout($this->timeout)->{$method}($url, $data); // POST, PUT, DELETE, etc.
+                $response = Http::timeout($this->timeout)->asForm()->{$method}($url, $data); // POST, PUT, DELETE, etc.
             }
-            return $response->throw()->json();
+            if ($response->successful()) {
+                return $response->json(); // 2xx
+            }
+            return $response->json(); // +4xx
         } catch (\InvalidArgumentException $e) {
-            Log::warning("Invalid API Endpoint - {$urlKey}: " . $e->getMessage(), [
+            Log::warning("Invalid API Request - {$urlKey}: " . $e->getMessage(), [
                 'urlKey' => $urlKey,
                 'data' => $data
             ]);
@@ -82,7 +97,7 @@ class ApiGpService
             return null;
         } catch (\Exception $e) {
             Log::error("API Request Error - {$url}: " . $e->getMessage(), [
-                'url' => $url ?? null,
+                'url' => $url,
                 'data' => $data
             ]);
             return null;
