@@ -45,13 +45,15 @@ return [
             'consultar_articulo_bodega_compartimento'   => 'api/consultar-stock-articulo-bodega-compartimento',
         ],
     ],
-    'api_ventas' => [
-        'url' => env('API_VENTAS_URL'),
+    'api_sales' => [
+        'url' => env('API_SALES_URL'),
         'timeout' => env('API_GP_TIMEOUT', 15),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'endpoints' => [
             'obtener_clave_acceso'            => 'api/obtener-clave-acceso',
+            'anular_comprobante_gp'           => 'api/anularfactura',
+            'actualizar_estado_factura'       => 'api/actualizar-estado-factura',
 
         ],
     ],
