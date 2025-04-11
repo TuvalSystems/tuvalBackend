@@ -28,6 +28,7 @@ use App\Services\ApiSalesService;
 use App\Services\ApiSeedBellingService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+// use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use PDF;
 
 class DevolucionesController extends Controller
