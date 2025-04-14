@@ -1276,7 +1276,8 @@ class DevolucionesController extends Controller
 
     public function anularDevolucion(Request $request)
     {
-        $pedido = GpPedido::find($request->id);
+        $data = $request->all();
+        $pedido = GpPedido::find($data['id']);
         if (!$this->isInvoiceAlreadyVoided($pedido)) {
             return $this->processCancellation($pedido);
         }
@@ -1285,7 +1286,7 @@ class DevolucionesController extends Controller
     public function isInvoiceAlreadyVoided($pedido)
     {
         return GpFacturaAnulada::where('factura', $pedido->factura)
-            ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->first();
+            ->where('pedido_id', $pedido->id)->where('estado', 'facturado')->first();
     }
 
     public function processCancellation($order)
