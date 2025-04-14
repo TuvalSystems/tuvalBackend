@@ -1276,8 +1276,7 @@ class DevolucionesController extends Controller
 
     public function anularDevolucion(Request $request)
     {
-        $id = '270297';
-        $pedido = GpPedido::find($id);
+        $pedido = GpPedido::find($request->id);
         if (!$this->isInvoiceAlreadyVoided($pedido)) {
             return $this->processCancellation($pedido);
         }
