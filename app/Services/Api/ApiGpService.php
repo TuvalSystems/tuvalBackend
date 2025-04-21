@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Api;
 
 use CodeDredd\Soap\Exceptions\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -71,7 +71,6 @@ class ApiGpService
 
 
             $allowedMethods = ['GET', 'POST', 'PUTH', 'PATCH', 'delete'];
-            // $method = strtolower($method);
             if (!in_array($method, $allowedMethods)) {
                 throw new \InvalidArgumentException("HTTP method '{$method}' is not allowed.");
             }

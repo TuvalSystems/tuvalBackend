@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\devoluciones\GpDevoluciones;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -143,4 +144,6 @@ class GpPedido extends Model
     {
         return $date->format('Y-m-d H:i:s');
     }
+
+   
 }

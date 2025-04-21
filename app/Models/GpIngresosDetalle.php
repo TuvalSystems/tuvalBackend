@@ -28,4 +28,10 @@ use Illuminate\Database\Eloquent\Model;
 class GpIngresosDetalle extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'ingreso_id',
+        'ART_CODIGO',
+        'ingresado',
+    ];
 }

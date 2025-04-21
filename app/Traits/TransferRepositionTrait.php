@@ -90,7 +90,7 @@ trait TransferRepositionTrait
     protected function buildResponse($processedDocuments)
     {
         if (empty($processedDocuments)) {
-            return $this->errorResponse('No se encontraron documentos de transferencia', 404);
+            return $this->errorResponse('No se encontraron documentos de transferencia', null ,404);
         }
         return $this->successResponse(
             'Reposición guardada',

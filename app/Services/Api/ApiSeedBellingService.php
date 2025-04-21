@@ -2,7 +2,7 @@
 
 
 
-namespace App\Services;
+namespace App\Services\Api;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
