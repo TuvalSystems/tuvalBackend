@@ -210,7 +210,6 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/devoluciones/pedidoscliente/{cliente_id}/{puntodeventa_id}', [DevolucionesController::class, 'pedidoscliente']);
     Route::post('/devoluciones/detallepedidodevolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
     Route::post('/devoluciones/enviardevolucion', [DevolucionesController::class, 'enviardevolucion']);
-    Route::post('/devoluciones/anulardevolucion', [DevolucionesController::class, 'anularDevolucion']);
     Route::post('/devoluciones/detalledevolucion', [DevolucionesController::class, 'detalledevolucion']);
     Route::get('/devoluciones/verdevolucionesporrecibir/{puntodeventa}', [DevolucionesController::class, 'verdevolucionesporrecibir']);
     Route::post('/devoluciones/recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);
