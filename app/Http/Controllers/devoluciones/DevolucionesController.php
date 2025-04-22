@@ -1135,7 +1135,7 @@ class DevolucionesController extends Controller
 
     public function recibirdevolucion(Request $request)
     {
-         $devolucion = GpDevoluciones::find(id: 15054);
+         $devolucion = GpDevoluciones::find(id: 17352);
         return $this->devolucionService->processDevolucion($devolucion);
         // $user = Auth::user();
         // $data = $request->all();

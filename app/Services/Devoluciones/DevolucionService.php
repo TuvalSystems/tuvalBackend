@@ -161,7 +161,7 @@ class   DevolucionService implements DevolucionServiceInterface
             $detalleDevolucion[] = [
                 'NC_VTA_DET_LINEA' => $linea,
                 'NC_VTA_DET_DOCU_ORIGEN' => $devolucion->devolucion,
-                'NC_VTA_DET_ID_TIPO' => 4,
+                'NC_VTA_DET_ID_TIPO' => '4',
                 'NC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
                 'NC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
                 'NC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
@@ -171,9 +171,9 @@ class   DevolucionService implements DevolucionServiceInterface
                 'NC_VTA_DET_PRECIO_UNITARIO' => $valorUnitario,
                 'NC_VTA_DET_DESCUENTO' => $descuento,
                 'NC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
-                'NC_VTA_DET_TOTAL_LINEA' => $totalLinea
+                'NC_VTA_DET_TOTAL' => $totalLinea
             ];
-            $subtotal += $totalLinea;
+            $subtotal +=  $totalLinea;
             $iva += $detalle->ART_IVA;
         }
         $total = $subtotal + $iva;
@@ -194,19 +194,18 @@ class   DevolucionService implements DevolucionServiceInterface
             'NC_VTA_SUBTOTAL' => $subtotal,
             'NC_VTA_DESCUENTO_COMERCIAL' => 0,
             'NC_VTA_IMPUESTO' => $iva,
-            'NC_VTA_TOTAL' => (float) $total,
+            'NC_VTA_TOTAL' =>  $total,
         ]];
 
         $parameters = [
             'Cabecera' => $cabecera,
             'Detalle' => $detalleDevolucion,
         ];
-         return $parameters; //aqui, migrar el api de msw a java con respuestas JSON
+          //aqui, migrar el api de msw a java con respuestas JSON
         $response = $this->webservice->transaccional('MST_NC_VTA', $parameters);
         if (!isset($response['MST_NC_VTAResult'])) {
             return $this->buildErrorResponse($response['MST_NC_VTAResult'], 500);
         }
-        // return $response;
         $consultaParams = [
             'documento_origen' => $devolucion->devolucion,
             'tipo_documento' => 4,
