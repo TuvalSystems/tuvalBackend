@@ -51,7 +51,6 @@ class   DevolucionService implements DevolucionServiceInterface
 
             if ($criterio['generarnotadecredito'] === true) {
                 $ntCredito =  $this->generarNotaDeCredito($devolucion);
-                return $ntCredito;
                 if (!$ntCredito->isSuccessful()) {
                     DB::rollBack();
                     return $ntCredito;
