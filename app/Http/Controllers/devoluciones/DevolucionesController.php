@@ -317,6 +317,7 @@ class DevolucionesController extends Controller
             $despachos = new DespachosController();
             $despachos->checkeliminardespacho($pedido);
             $this->updateStatusDevolutions($pedido);
+            $this->updateStatusOrders($pedido);
             DB::commit();
             return $this->buildSuccessResponse('La devolución ha sido solicitada', 200);
         } catch (\Throwable $th) {
@@ -1453,6 +1454,12 @@ class DevolucionesController extends Controller
     public function updateStatusDevolutions($order)
     {
         GpDevoluciones::where('pedido_id', $order->id)
+            ->update(['estado' => 'anulada']);
+    }
+
+    public function updateStatusOrders($order)
+    {
+        GpPedido::where('id', $order->id)
             ->update(['estado' => 'anulada']);
     }
 
