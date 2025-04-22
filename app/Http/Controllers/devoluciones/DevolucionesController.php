@@ -1133,10 +1133,10 @@ class DevolucionesController extends Controller
     //    }
 
 
-    public function recibirdevolucion(Request $request)
+    public function recibirdevolucionNuevoProceso(Request $request)
     {
-         $devolucion = GpDevoluciones::find(id: 17352);
-        return $this->devolucionService->processDevolucion($devolucion);
+        //  $devolucion = GpDevoluciones::find(id: 17352);
+        // return $this->devolucionService->processDevolucion($devolucion);
         // $user = Auth::user();
         // $data = $request->all();
         // try {
@@ -1169,7 +1169,7 @@ class DevolucionesController extends Controller
         // }
     }
 
-    public function recibirdevolucion2(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibirdevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $user = Auth::user();
         $data = $request->all();
