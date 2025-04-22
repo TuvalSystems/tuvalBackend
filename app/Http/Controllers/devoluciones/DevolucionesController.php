@@ -24,22 +24,34 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpVendedor;
-use App\Services\ApiSalesService;
-use App\Services\ApiSeedBellingService;
+
+use App\Services\Api\ApiSalesService;
+use App\Services\Api\ApiSeedBellingService;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Devoluciones\RegisterDocumentTypeService;
+use App\Traits\Devoluciones\RegisterDocumentTypeTrait;
+use App\Traits\JsonResponseTrait;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
-// use Barryvdh\DomPDF\Facade\Pdf as PDF;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Illuminate\Support\Facades\DB;
+
 
 class DevolucionesController extends Controller
 {
+    use JsonResponseTrait;
+    protected $entryService;
     protected $apiSales;
     protected $apiSeedBelling;
-    public function __construct(ApiSalesService $apiSales, ApiSeedBellingService $apiSeedBelling)
+    protected $devolucionService;
+    public function __construct(ApiSalesService $apiSales, ApiSeedBellingService $apiSeedBelling, EntryServiceInterface $entryService, DevolucionServiceInterface $devolucionServiceInterface)
     {
-
+        $this->entryService = $entryService;
         $this->apiSales = $apiSales;
         $this->apiSeedBelling = $apiSeedBelling;
+        $this->devolucionService = $devolucionServiceInterface;
     }
 
     public function pedidoscliente($cliente_id, $puntodeventa_id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -430,6 +442,7 @@ class DevolucionesController extends Controller
 
     public function procesardevoluciones()
     {
+        //1
         //Procesar devoluciones totales sin despacho y sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'solicitado')
@@ -462,6 +475,7 @@ class DevolucionesController extends Controller
             $devolucion->save();
         }
 
+        //3
         //Procesar devoluciones totales sin despacho y sin refacturacion aprobadas
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
@@ -490,6 +504,7 @@ class DevolucionesController extends Controller
             $devolucion->save();
         }
 
+        //2
         //Procesar devoluciones parciales sin despacho y sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'solicitado')
@@ -516,6 +531,7 @@ class DevolucionesController extends Controller
             $devolucion->save();
         }
 
+        //6
         //Procesar devoluciones parciales sin despacho y sin  aprobados
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
@@ -540,6 +556,7 @@ class DevolucionesController extends Controller
             $devolucion->save();
         }
 
+        //4
         //Procesar devoluciones totales, sin despacho, aprobados con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
@@ -570,7 +587,7 @@ class DevolucionesController extends Controller
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //7
         //Procesar devoluciones parciales, sin despacho, aprobados con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
@@ -599,7 +616,7 @@ class DevolucionesController extends Controller
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //9
         //Procesar devoluciones despachadas sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'recibido')
@@ -627,7 +644,7 @@ class DevolucionesController extends Controller
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //10
         //Procesar devoluciones despachadas parciales recibidas en bodega con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'recibido')
@@ -653,7 +670,7 @@ class DevolucionesController extends Controller
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //5
         //Procesar devoluciones despachadas totales aprobadas con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
@@ -1114,6 +1131,43 @@ class DevolucionesController extends Controller
     //            $this->bajardevolucionapedido($devolucion, $detalles, $pedido);
     //        }
     //    }
+
+
+    public function recibirdevolucionNuevoProceso(Request $request)
+    {
+        //  $devolucion = GpDevoluciones::find(id: 17352);
+        // return $this->devolucionService->processDevolucion($devolucion);
+        // $user = Auth::user();
+        // $data = $request->all();
+        // try {
+        // $devolucion = GpDevoluciones::find($data['devolucion']['id']);
+        // if (!$devolucion) {
+        //     return $this->buildErrorResponse('devolucion no encontrada',  404);
+        // }
+
+        // if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
+        //     return $this->buildErrorResponse('Esta devolución ya fue recibida en otra instancia', 404);
+        // }
+
+        // DB::transaction(function () use ($data, $user, $devolucion) {
+        //     foreach ($data['detalledevolucion'] as $detalle) {
+        //         GpDevolucionesDetalle::where('id', $detalle['id'])->update([
+        //             'devuelto' => $detalle['devuelto'],
+        //             'recibido' => $detalle['devuelto'],
+        //             'compartimiento' => $detalle['compartimiento'],
+        //             'USERID' => $user->USERID
+        //         ]);
+        //     }
+        //     $devolucion->update(['estado' => 'recibido']);
+        //     // $procesardevolucion  = $this->procesarDevolucionIndividual($devolucion);
+        //     $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
+        // });
+
+        // return $this->buildSuccessResponse('Devolución recibida',  200);
+        // } catch (\Throwable $th) {
+        //     return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
+        // }
+    }
 
     public function recibirdevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {

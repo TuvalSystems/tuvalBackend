@@ -37,7 +37,7 @@ class ReposicionController extends Controller
             return $this->buildResponse($proccessDocument);
 
         } catch (\Throwable $th) {
-            return $this->errorResponse('Error al obtener las transferencias', 500, $th->getMessage());
+            return $this->errorResponse('Error al obtener las transferencias', $th->getMessage(), 500);
         }
     }
 

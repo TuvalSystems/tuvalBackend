@@ -2,6 +2,7 @@
 
 namespace App\Models\devoluciones;
 
+use App\Models\GpPedido;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -79,6 +80,36 @@ class GpDevoluciones extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        "devolucion",
+        "estado",
+        "pedido_id",
+        "cliente_id",
+        "pedido",
+        "factura",
+        "volver_a_facturar",
+        "tipo_devolucion",
+        "despachado",
+        "cliente_volver_a_facturar_id",
+        "user_id",
+        "sucursal_id",
+        "sucursal_facturacion_id",
+        "motivo",
+        "orden_de_compra",
+        "requiere_aprobacion",
+        "aprobado",
+        "aprobador_id",
+        "aprobado_mensaje",
+        "devolucion_bodega",
+        "impuesto",
+        "procesando",
+        "subtotal",
+        "descuento",
+        "subtotalmenosdescuento",
+        "iva",
+        "total",
+        "observacion",
+    ];
     /**
      * Prepare a date for array / JSON serialization.
      *

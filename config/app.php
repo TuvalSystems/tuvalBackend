@@ -1,5 +1,8 @@
 <?php
 
+use App\Providers\ApiServiceProvider;
+use App\Providers\DevolucionServiceProvider;
+
 return [
 
     /*
@@ -177,6 +180,10 @@ return [
         Barryvdh\DomPDF\ServiceProvider::class,
         // Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
         Maatwebsite\Excel\ExcelServiceProvider::class,
+
+        //Providers DDD
+        ApiServiceProvider::class,
+        DevolucionServiceProvider::class,
     ],
 
     /*

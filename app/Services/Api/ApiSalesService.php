@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Services;
+namespace App\Services\Api;
 
 class ApiSalesService extends ApiGpService
 {
@@ -35,7 +35,7 @@ class ApiSalesService extends ApiGpService
         return $this->makeRequest($this->endpoints["actualizar_estado_factura"], 'POST', $params);
     }
 
-   
+
 
 
 }

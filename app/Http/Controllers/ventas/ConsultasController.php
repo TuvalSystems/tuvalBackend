@@ -10,7 +10,6 @@ use App\Models\GpPuntoVenta;
 use App\Models\Notificaciones;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\traslados\GpTrasladosVentas;
-
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
@@ -21,11 +20,10 @@ use App\Models\GpGrupoCliente;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpSubGrupoCliente;
 use App\Models\GpPedidoDetalleStock;
-use App\Services\ApiGpService;
+use App\Services\Api\ApiGpService;
 use App\Traits\StockWarehouseTraits;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-
 use App\Http\Controllers\WebserviceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
