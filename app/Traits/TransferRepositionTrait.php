@@ -5,7 +5,7 @@ namespace App\Traits;
 use App\Models\GpArticulo;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
-use App\Services\ApiGpService;
+use App\Services\Api\ApiGpService;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +30,7 @@ trait TransferRepositionTrait
     {
         $params = [
             'idCompany' => config('services.api_gp.company'),
-            'fecha' => date('Y-m-d', strtotime($request->fecha)),
+            'fecha' => date('Y-m-d', timestamp: strtotime($request->fecha)),
             'numDoc' => $request->numDoc,
         ];
         return  $this->apiGp->getTransferHeader($params) ?? [];

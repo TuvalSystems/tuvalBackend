@@ -21,18 +21,18 @@ class ApiSalesService extends ApiGpService
     public function getDocumentAccesKey(array $params)
     {
 
-        return $this->makeRequest($this->endpoints["obtener_clave_acceso"], 'GET', $params);
+        return $this->httpClient->makeRequest($this->endpoints["obtener_clave_acceso"], 'GET', $params);
     }
 
     public function invalidateGpVoucher(array $params)
     {
 
-        return $this->makeRequest($this->endpoints["anular_comprobante_gp"], 'POST', $params);
+        return $this->httpClient->makeRequest($this->endpoints["anular_comprobante_gp"], 'POST', $params);
     }
 
     public function updatedStatusDocumentGp(array $params)
     {
-        return $this->makeRequest($this->endpoints["actualizar_estado_factura"], 'POST', $params);
+        return $this->httpClient->makeRequest($this->endpoints["actualizar_estado_factura"], 'POST', $params);
     }
 
 

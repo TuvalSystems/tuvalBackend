@@ -13,6 +13,7 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Traits\Devoluciones\DevulucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
@@ -27,21 +28,23 @@ class   DevolucionService implements DevolucionServiceInterface
 
     protected WebserviceController $webservice;
     protected PedidosController $pedidosController;
+    protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
 
-    public function __construct(WebserviceController $webservice, PedidosController $pedidosController)
+    public function __construct(WebserviceController $webservice, PedidosController $pedidosController, ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService)
     {
         $this->webservice = $webservice;
         $this->pedidosController = $pedidosController;
+        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
     }
 
     public function processDevolucion($devolucion)
     {
 
         try {
-            DB::beginTransaction();
+            // DB::beginTransaction();
             $criterio = $this->getCriterioDevolucion($devolucion);
             if (!$criterio) {
-                DB::rollBack();
+                // DB::rollBack();
                 return $this->buildErrorResponse('Criterio de devolución no encontrado', 404);
             }
 
@@ -51,8 +54,9 @@ class   DevolucionService implements DevolucionServiceInterface
 
             if ($criterio['generarnotadecredito'] === true) {
                 $ntCredito =  $this->generarNotaDeCredito($devolucion);
+                return $ntCredito;
                 if (!$ntCredito->isSuccessful()) {
-                    DB::rollBack();
+                    // DB::rollBack();
                     return $ntCredito;
                 }
 
@@ -66,10 +70,10 @@ class   DevolucionService implements DevolucionServiceInterface
                     $this->generarDevolucionVenta($devolucion);
                 }
             }
-            DB::commit();
+            // DB::commit();
             return $this->buildSuccessResponse('Devolución procesada correctamente',  200);
         } catch (\Throwable $e) {
-            DB::rollBack();
+            // DB::rollBack();
             Log::error("Error al procesar devolución ID {$devolucion->id}: {$e->getMessage()}");
 
             return $this->buildErrorResponse(
@@ -197,31 +201,28 @@ class   DevolucionService implements DevolucionServiceInterface
         ]];
 
         $parameters = [
-            'Cabecera' => $cabecera,
-            'Detalle' => $detalleDevolucion,
+            'cabecera' => $cabecera,
+            'detalle' => $detalleDevolucion,
         ];
-          //aqui, migrar el api de msw a java con respuestas JSON
-        $response = $this->webservice->transaccional('MST_NC_VTA', $parameters);
-        if (!isset($response['MST_NC_VTAResult'])) {
-            return $this->buildErrorResponse($response['MST_NC_VTAResult'], 500);
+        $responseNtc = $this->apiGpReturnsIntegrationService->generateCreditNote($parameters);
+        if ($responseNtc['success'] === false)  {
+            return $this->buildErrorResponse($responseNtc['message'],404);
         }
-        $consultaParams = [
-            'documento_origen' => $devolucion->devolucion,
-            'tipo_documento' => 4,
-        ];
 
-        $respuesta =  $this->webservice->transaccional('MST_Respuesta_Nota_Credito_Vta', $consultaParams);
-        $respuestaNC = $respuesta['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0] ?? [];
-        return $respuesta;
-        if (!empty($respuestaNC['DOC_GENERADO'])) {
-            $devolucion->DOC_GENERADO = $respuestaNC['DOC_GENERADO'];
+        $consultaParams = [
+            'document' => $devolucion->devolucion,
+            'tipo' => 4,
+        ];
+        $responseCreditNote = $this->apiGpReturnsIntegrationService->responseCreditNote($consultaParams);
+
+        if (!empty(trim($responseCreditNote['respuesta'][0]['documentoGenerado']))) {
+            $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
             $devolucion->estado = 'procesado';
             $devolucion->fecha_NC = now()->format('Y-m-d');
-
             $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
             $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
         } else {
-            $devolucion->NC_VTA_MENSAJE = ($respuestaNC['NC_VTA_MENSAJE'] ?? '') . ' - ' . ($respuestaNC['NC_VTA_CODIGO'] ?? '');
+            $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
             $resultado = $this->buildErrorResponse('Error al generar la nota de crédito: ' . $devolucion->NC_VTA_MENSAJE, 500);
         }
 
