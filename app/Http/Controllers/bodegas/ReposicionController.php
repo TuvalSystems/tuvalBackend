@@ -33,7 +33,6 @@ class ReposicionController extends Controller
                 return $this->buildErrorResponse('No existen transferencias que sincronizar', 404);
             }
             $proccessDocument = $this->processDocumentsInBatches($soapRequest, $transferHeader);
-            return $proccessDocument;
             return $this->buildResponse($proccessDocument);
 
         } catch (\Throwable $th) {
