@@ -156,7 +156,7 @@ trait TransferRepositionTrait
 
     public function processTransferDetailsInBatches($transferDetail, $transferHeader)
     {
-        $batchSize = 200;
+        $batchSize = 40;
         $chunks = array_chunk($transferDetail, $batchSize);
 
         foreach ($chunks as $chunk) {
