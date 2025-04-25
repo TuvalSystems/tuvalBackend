@@ -28,7 +28,6 @@ class ReposicionController extends Controller
             $soapRequest = $request->all();
             $this->validateRequest($soapRequest);
             $transferHeader = $this->fectchTransferHeader($request);
-
             if (empty($transferHeader)) {
                 return $this->buildErrorResponse('No existen transferencias que sincronizar', 404);
             }

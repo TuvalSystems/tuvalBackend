@@ -52,49 +52,75 @@ trait TransferRepositionTrait
 
         $processedDocuments = [];
         $documentFilter = $request['numDoc'];
-        $batchSize = 10;
+        $batchSize = 100;
         $batch  = [];
+        $errors = [];
 
         foreach ($transferHeader as $header) {
             if (empty($documentFilter) || $header['numdoc'] == $documentFilter) {
                 $batch[] = $header;
                 if (count($batch) >= $batchSize) {
-                    $processedDocuments = array_merge($processedDocuments, $this->processBatch($batch));
+                    $result = $this->processBatch($batch);
+                    $processedDocuments = array_merge($processedDocuments, $result['processed']);
+                    $errors = array_merge($errors, $result['errors']);
                     $batch = [];
                 }
             }
         }
         if (!empty($batch)) {
-            $processedDocuments = array_merge($processedDocuments, $this->processBatch($batch));
+            $result = $this->processBatch($batch);
+            $processedDocuments = array_merge($processedDocuments, $result['processed']);
+            $errors = array_merge($errors, $result['errors']);
         }
-        return $processedDocuments;
+        return [
+            'processed' => $processedDocuments,
+            'errors' => $errors
+        ];
     }
 
     protected function processBatch(array $batch): array
     {
         $results = [];
-
+        $errors = [];
         foreach ($batch as $header) {
             try {
                 $results[] = $this->processIndividualReplacement($header);
             } catch (\Exception $e) {
                 // Registrar el error pero continuar con los demás
                 Log::error("Error procesando documento {$header['numdoc']}: " . $e->getMessage());
+                $errors[] = [
+                    'numdoc' => $header['numdoc'],
+                    'error' => $e->getMessage()
+                ];
             }
         }
 
-        return $results;
+        return [
+            'processed' => $results,
+            'errors' => $errors
+        ];
     }
 
 
     protected function buildResponse($processedDocuments)
     {
+        if (empty($processedDocuments['processed']) && empty($processedDocuments['errors'])) {
+            return $this->errorResponse('No se encontraron documentos de transferencia', null, 404);
+        }
+        if (!empty($processedDocuments['errors'])) {
+            return $this->errorResponse(
+                'Se encontraron errores al procesar los documentos de transferencia',
+                $processedDocuments['errors'],
+                422
+            );
+        }
+
         if (empty($processedDocuments)) {
-            return $this->errorResponse('No se encontraron documentos de transferencia', null ,404);
+            return $this->errorResponse('No se encontraron documentos de transferencia', null, 404);
         }
         return $this->successResponse(
             'Reposición guardada',
-            $processedDocuments,
+            $processedDocuments['processed'],
             200
         );
     }
@@ -102,9 +128,7 @@ trait TransferRepositionTrait
 
     public function processIndividualReplacement($document)
     {
-
         $transferDetail = $this->fetchTransferDetail($document['numdoc']);
-
         if (empty($transferDetail)) {
             throw new \RuntimeException('No existen detalles de la transferencia');
         }
@@ -129,37 +153,102 @@ trait TransferRepositionTrait
     }
 
 
+
     public function processTransferDetailsInBatches($transferDetail, $transferHeader)
     {
-        $batchSize = 10;
+        $batchSize = 200;
         $chunks = array_chunk($transferDetail, $batchSize);
 
         foreach ($chunks as $chunk) {
             DB::beginTransaction();
             try {
-                foreach ($chunk as $detail) {
-                    $article = $this->findArticleOrFail($detail['item']);
-                    $compartment = $this->getArticleCompartment($detail['item'], $detail['origen']);
-                    $this->updateOrCreateTransferDetail($transferHeader, $detail, $article, $compartment);
-                }
+                // ✅ Nuevo método optimizado, sin loops internos aquí
+                $this->bulkUpdateOrInsertTransferDetails($transferHeader, $chunk);
                 DB::commit();
             } catch (\Exception $e) {
                 DB::rollBack();
-                Log::error("Error procesando lote de detalles: " . $e->getMessage());
+                Log::error("Error procesando lote de detalles optimizado: " . $e->getMessage());
                 throw $e;
             }
         }
     }
 
 
-
-    public function findArticleOrFail($item)
+    public function bulkUpdateOrInsertTransferDetails($transferHeader, array $transferDetails)
     {
-        $article = GpArticulo::where('ART_CODIGO', $item)->first();
-        if (!$article) {
-            throw new \RuntimeException("El item $item no se encuentra registrado en la web");
+        $articleCodes = array_column($transferDetails, 'item');
+
+        // 1. Precargar artículos
+        $articles = GpArticulo::whereIn('ART_CODIGO', $articleCodes)
+            ->get()
+            ->keyBy('ART_CODIGO');
+
+        // 2. Cachear compartimentos únicos por item+origen
+        $compartmentCache = [];
+
+        // 3. Precargar registros ya existentes
+        $existing = GpTrasladosReposicion::where('cabecera_id', $transferHeader->id)
+            ->whereIn('ART_CODIGO', $articleCodes)
+            ->get()
+            ->keyBy('ART_CODIGO');
+
+        $insertData = [];
+
+        foreach ($transferDetails as $detail) {
+            $codigo = $detail['item'];
+            $origen = $detail['origen'];
+            $key = $codigo . '_' . $origen;
+
+            // 4. Obtener artículo
+            $article = $articles[$codigo] ?? null;
+
+            if (!$article) {
+                Log::warning("Artículo no encontrado: $codigo");
+                continue;
+            }
+
+            // 5. Obtener compartimento (con cache)
+            if (!array_key_exists($key, $compartmentCache)) {
+                $compartmentRaw = $this->getArticleCompartment($codigo, $origen);
+                $compartmentCache[$key] = $compartmentRaw;
+            }
+
+            $compartment = $compartmentCache[$key];
+
+            // 6. Armar datos
+            $data = [
+                'Documento' => $transferHeader->Documento,
+                'Codigo_Motivo' => $transferHeader->Codigo_Motivo,
+                'ART_DESCRIPCION' => $article['ART_DESCRIPCION'],
+                'ART_CODIGO_TRES_LETRAS' => $article['ART_CODIGO_TRES_LETRAS'],
+                'ART_PLAN_UMEDIDA' => $article['ART_PLAN_UMEDIDA'],
+                'ART_PESO' => $article['ART_PESO'],
+                'cantidad' => $detail['cantidad'],
+                'bodega_origen' => $transferHeader->Bodega_Origen,
+                'bodega_destino' => $transferHeader->Bodega_Destino,
+                'compartimiento' => $compartment ?? '',
+                'Fecha_Documento' => $transferHeader->Fecha_Documento,
+                'updated_at' => now()
+            ];
+
+
+            if ($existing->has($codigo)) {
+                // Update si existe
+                GpTrasladosReposicion::where('cabecera_id', $transferHeader->id)
+                    ->where('ART_CODIGO', $codigo)
+                    ->update($data);
+            } else {
+                // Insert nuevo
+                $data['cabecera_id'] = $transferHeader->id;
+                $data['ART_CODIGO'] = $codigo;
+                $data['created_at'] = now();
+                $insertData[] = $data;
+            }
         }
-        return $article->toArray();
+
+        if (!empty($insertData)) {
+            GpTrasladosReposicion::insert($insertData);
+        }
     }
 
 
@@ -171,31 +260,8 @@ trait TransferRepositionTrait
             'bodega' => $warehouse,
         ];
         $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params) ?? [];
-        return  $compartment[0]['COMPARTIMIENTO'] ?? [];
+        return  $compartment[0]['COMPARTIMIENTO'] ?? '';
     }
 
-    public function updateOrCreateTransferDetail($transferHeader, $detail, $article, $compartment)
-    {
 
-        $compartment = $compartment['COMPARTIMIENTO'] ?? '';
-        GpTrasladosReposicion::updateOrCreate(
-            [
-                'cabecera_id' => $transferHeader->id,
-                'ART_CODIGO' => $article['ART_CODIGO']
-            ],
-            [
-                'Documento' => $transferHeader->Documento,
-                'Codigo_Motivo' => $transferHeader->Codigo_Motivo,
-                'ART_DESCRIPCION' => $article['ART_DESCRIPCION'],
-                'ART_CODIGO_TRES_LETRAS' => $article['ART_CODIGO_TRES_LETRAS'],
-                'ART_PLAN_UMEDIDA' => $article['ART_PLAN_UMEDIDA'],
-                'ART_PESO' => $article['ART_PESO'],
-                'cantidad' => $detail['cantidad'],
-                'bodega_origen' => $transferHeader->Bodega_Origen,
-                'bodega_destino' => $transferHeader->Bodega_Destino,
-                'compartimiento' => $compartment,
-                'Fecha_Documento' => $transferHeader->Fecha_Documento,
-            ]
-        );
-    }
 }
