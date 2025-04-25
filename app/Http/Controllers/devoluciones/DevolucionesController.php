@@ -259,7 +259,6 @@ class DevolucionesController extends Controller
             $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
             if ($validateAnulationInvoice) {
                 $anulacionResponse =  $this->anularDevolucion($data['pedido']);
-                return $anulacionResponse;
                 $responseArray = $anulacionResponse->getData(true);
                 if ($responseArray['success'] == false) {
                     return $this->buildErrorResponse($responseArray['error'], 401);
