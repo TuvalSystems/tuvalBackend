@@ -259,6 +259,7 @@ class DevolucionesController extends Controller
             $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
             if ($validateAnulationInvoice) {
                 $anulacionResponse =  $this->anularDevolucion($data['pedido']);
+                return $anulacionResponse;
                 $responseArray = $anulacionResponse->getData(true);
                 if ($responseArray['success'] == false) {
                     return $this->buildErrorResponse($responseArray['error'], 401);
@@ -1145,7 +1146,8 @@ class DevolucionesController extends Controller
     //    }
 
 
-    public function recibirdevolucion(Request $request)
+    //proceso de revision
+    public function recibirdevolucion1(Request $request)
     {
         $user = Auth::user();
         $data = $request->all();
@@ -1185,7 +1187,7 @@ class DevolucionesController extends Controller
         }
     }
 
-    public function recibirdevolucion2(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibirdevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $user = Auth::user();
         $data = $request->all();

@@ -8,14 +8,14 @@ use App\Services\Api\Core\GpHttpClient;
 class ApiGpService
 {
 
-    protected GpHttpClient  $httpClient;
+    protected   $httpClient;
 
     protected $endpoints;
 
     public function __construct()
     {
-        $config = config("services.api_gp");
-        $this->httpClient = new GpHttpClient($config["url"], $config["timeout"]);
+        $config = config(key: "services.api_gp");
+        $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
         $this->endpoints = $config["endpoints"];
     }
 

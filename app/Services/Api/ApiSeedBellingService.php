@@ -10,13 +10,13 @@ use Illuminate\Support\Facades\Log;
 
 class ApiSeedBellingService
 {
-    protected SeedBellingHttpClient $httpClient;
+    protected  $httpClient;
     protected $endpoints;
 
-    public function __construct()
+    public function __construct( )
     {
         $config = config("services.api_seedbilling");
-        $this->httpClient = new SeedBellingHttpClient($config['url'], $config['timeout'], $config['token'], $config['idSuscriptor']);
+        $this->httpClient = new SeedBellingHttpClient($config['url'], $config['timeout'] , $config['token'], $config['idSuscriptor'], );
         $this->endpoints    = $config["endpoints"];
     }
 

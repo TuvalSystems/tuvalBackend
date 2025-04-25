@@ -5,7 +5,7 @@ namespace App\Services\Api\Core;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
-class   GpHttpClient
+class GpHttpClient
 {
     protected string $baseUrl;
     protected int $timeout;
