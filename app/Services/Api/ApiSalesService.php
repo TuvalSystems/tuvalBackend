@@ -5,15 +5,16 @@ namespace App\Services\Api;
 
 use App\Services\Api\Core\GpHttpClient;
 
-class ApiSalesService extends ApiGpService
+class ApiSalesService
 {
     protected $baseUrl;
     protected $timeout;
     protected $endpoints;
+    protected $httpClient;
 
     public function __construct()
     {
-        parent::__construct();
+
         $config = config("services.api_sales");
         $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
         $this->baseUrl = $config["url"];

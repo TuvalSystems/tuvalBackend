@@ -8,7 +8,7 @@ use App\Services\Api\Core\GpHttpClient;
 class ApiGpService
 {
 
-    protected   $httpClient;
+    protected  $httpClient;
 
     protected $endpoints;
 
