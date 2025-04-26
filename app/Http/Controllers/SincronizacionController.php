@@ -32,7 +32,8 @@ use App\Models\GpCaja;
 use App\Models\GpCajaBancos;
 use App\Models\GpUnidadMedida;
 use App\Models\GpRelacionUsuarioCaja;
-use App\Services\ApiGpService;
+
+use App\Services\Api\ApiGpService;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;

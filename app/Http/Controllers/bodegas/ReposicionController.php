@@ -10,8 +10,6 @@ use App\Models\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
-
-use App\Services\ApiGpService;
 use App\Traits\JsonResponseTrait;
 use App\Traits\TransferRepositionTrait;
 use Illuminate\Http\Request;
@@ -26,8 +24,8 @@ class ReposicionController extends Controller
     {
             set_time_limit(300);
         try {
-            $soapRequest = $request->all();
 
+            $soapRequest = $request->all();
             $this->validateRequest($soapRequest);
             $transferHeader = $this->fectchTransferHeader($request);
             if (empty($transferHeader)) {

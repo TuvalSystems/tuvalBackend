@@ -43,6 +43,10 @@ return [
             'consultar_coordenadas'                     => 'api/consultar-listado-coordenadas',
             'consultar_stock_bodega'                    => 'api/consultar-stock-bodega',
             'consultar_articulo_bodega_compartimento'   => 'api/consultar-stock-articulo-bodega-compartimento',
+
+            //devoluciones - recibir devolucion
+            'generar_nota_credito'                      => 'api/devoluciones/generar-nota-credito',
+            'respuesta_nota_credito'                    => 'api/devoluciones/respuesta-nota-credito',
         ],
     ],
     'api_sales' => [
