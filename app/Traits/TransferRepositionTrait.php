@@ -119,7 +119,7 @@ trait TransferRepositionTrait
             return $this->errorResponse('No se encontraron documentos de transferencia', null, 404);
         }
         return $this->successResponse(
-            'Reposición guardada',
+            'Reposicion guardada',
             $processedDocuments['processed'],
             200
         );
