@@ -25,8 +25,14 @@ use App\Models\GpCondicionPago;
 use App\Models\GpPedido;
 use App\Models\GpCotizacion;
 use App\Http\Controllers\WebserviceController;
+use App\Services\Api\ApiGpService;
+use App\Services\Api\ApiSalesService;
+use App\Services\Api\ApiSeedBellingService;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Devoluciones\EntryService;
 use Illuminate\Http\Request;
 use DateTime;
+use Dotenv\Parser\Entry;
 
 class AprobacionesController extends Controller
 {
@@ -337,7 +343,8 @@ class AprobacionesController extends Controller
         $pedido->aprobado_comercial = 'yes';
         $pedido->aprobador_comercial_id = $user->id;
         if($pedido->save()){
-            $pedidos = new PedidosController;
+            $apiGp = app(ApiGpService::class);
+            $pedidos = new PedidosController($apiGp);
             $pedidos->checkenviarfactura($pedido);
 
             return response([
@@ -403,8 +410,13 @@ class AprobacionesController extends Controller
         $devolucion->aprobador_id = $user->id;
         if($devolucion->save()){
 
-            $devoluciones = new DevolucionesController();
-            $devoluciones->procesardevoluciones();
+
+            // $apiSales = app(ApiSalesService::class);
+            // $apiSeedBelling = app(ApiSeedBellingService::class);
+            // $entryService = app(EntryService::class);
+            // $devlucionesService = app(DevolucionServiceInterface::class);
+            // $devoluciones = new DevolucionesController($apiSales, $apiSeedBelling, $entryService, $devlucionesService);
+            // $devoluciones->procesardevoluciones();
 
             return response([
                 'success' => true,
@@ -470,7 +482,8 @@ class AprobacionesController extends Controller
         $pedido->aprobado_crediticio = 'yes';
         $pedido->aprobador_crediticio_id = $user->id;
         if($pedido->save()){
-            $pedidos = new PedidosController;
+            $apiGp = app(ApiGpService::class); // Replace with the actual service or dependency
+            $pedidos = new PedidosController($apiGp);
             $pedidos->checkenviarfactura($pedido);
 
             return response([

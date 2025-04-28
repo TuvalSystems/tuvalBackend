@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Services\Api\ApiGpService;
 use PDF;
 use Illuminate\Support\Facades\DB;
 
@@ -240,7 +241,8 @@ class RecibosdecompraeleController extends Controller
             $orden->USERID = $user->USERID;
             $orden->save();
 
-            $pedidosControl = new PedidosController();
+            $apigp = app(ApiGpService::class);
+            $pedidosControl = new PedidosController(    $apigp);
 
             $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
             if($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI'){

@@ -19,16 +19,18 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Notificaciones;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Api\ApiGpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use PDF;
 
 class TransferenciasController extends Controller
 {
-    public function savetransferenciasventas(GpPedido $pedido, $detalles){
+    public function savetransferenciasventas(GpPedido $pedido, $detalles)
+    {
 
-        foreach($detalles as $detalle){
-            if($pedido->BOD_BODEGA != $detalle->STO_ART_BODEGA){
+        foreach ($detalles as $detalle) {
+            if ($pedido->BOD_BODEGA != $detalle->STO_ART_BODEGA) {
                 $traslado = new GpTrasladosVentas();
                 $traslado->pedido_id = $pedido->id;
                 $traslado->detalle_id = $detalle->id;
@@ -49,13 +51,14 @@ class TransferenciasController extends Controller
         }
     }
 
-    public function checktransferencias(){
+    public function checktransferencias()
+    {
         $pedidos = GpPedido::where('estado', 'traslado')->get();
 
-        foreach($pedidos as $pedido){
+        foreach ($pedidos as $pedido) {
             $detalles = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
                 ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-                ->where('gp_pedido_detalle_stocks.seleccionado', '>',0)
+                ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
                 ->select(['gp_pedido_detalles.*', 'gp_pedido_detalle_stocks.STO_ART_BODEGA', 'gp_pedido_detalle_stocks.seleccionado', 'gp_pedido_detalle_stocks.id AS detalle_stocks_id'])
                 ->get();
             $this->savetransferenciasventas($pedido, $detalles);
@@ -69,16 +72,17 @@ class TransferenciasController extends Controller
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id','gp_traslados_ventas.pedido_id')
+        $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
             ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_ventas.ART_CODIGO')
             ->where('bodega_origen', $bodega)
             ->whereNull('completado')
             ->where('gp_pedidos.estado', '!=', 'eliminado');
-        if($pedido && $pedido != 'null'){
+        if ($pedido && $pedido != 'null') {
             $trasladosventas = $trasladosventas->where('gp_pedidos.pedido', $pedido);
         }
-        $trasladosventas = $trasladosventas->select('gp_traslados_ventas.*',
+        $trasladosventas = $trasladosventas->select(
+            'gp_traslados_ventas.*',
             'gp_pedidos.pedido',
             'gp_bodegas.BOD_DESCRIPCION',
             'gp_bodegas.BOD_BODEGA',
@@ -90,16 +94,16 @@ class TransferenciasController extends Controller
 
         $bodegas = array();
 
-        foreach($trasladosventas as $traslado){
+        foreach ($trasladosventas as $traslado) {
 
 
 
-            if(!$traslado->reservado)
+            if (!$traslado->reservado)
                 $traslado->reservado = 0;
 
-            if(!$traslado->trasladado)
+            if (!$traslado->trasladado)
                 $traslado->trasladado = 0;
-            $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado,2,'.','');
+            $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado, 2, '.', '');
 
             $traslado->fecha = substr($traslado->fecha, 0, -3);
 
@@ -111,7 +115,7 @@ class TransferenciasController extends Controller
 
             $compartimento = $webservice->stockarticulobodegacompartimiento($parameters);
 
-            if(isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
+            if (isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
                 $compartimento = $compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'];
 
                 $stock = array_column($compartimento, 'STO_ART_COMPART_STOCK_DISPONIBLE');
@@ -119,18 +123,17 @@ class TransferenciasController extends Controller
                 array_multisort($stock, SORT_DESC, $compartimento);
 
                 $traslado->compartimiento = $compartimento[0]['STO_ART_COMPART_COMPARTIMIENTO'];
-
             }
 
             $funciones = new FuncionesController();
 
-            if($compartimiento && $compartimiento != 'null'){
-                if(!$funciones->like_match($compartimiento.'%', $traslado->compartimiento)){
+            if ($compartimiento && $compartimiento != 'null') {
+                if (!$funciones->like_match($compartimiento . '%', $traslado->compartimiento)) {
                     continue;
                 }
             }
 
-            $letra_compartimiento = explode('-',$traslado->compartimiento);
+            $letra_compartimiento = explode('-', $traslado->compartimiento);
             $letra_compartimiento = $letra_compartimiento[0];
             $bodegas[$traslado->bodega_destino]['bodega'] = $traslado->BOD_DESCRIPCION;
             $bodegas[$traslado->bodega_destino]['BOD_BODEGA'] = $traslado->BOD_BODEGA;
@@ -139,10 +142,9 @@ class TransferenciasController extends Controller
             $bodegas[$traslado->bodega_destino]['pedidos'][$traslado->pedido] = $traslado->pedido;
             $bodegas[$traslado->bodega_destino]['compartimientos'][$letra_compartimiento] = $letra_compartimiento;
             $bodegas[$traslado->bodega_destino]['tipo'] = 'transferencia';
-
         }
 
-        foreach ($bodegas as $key => &$bod){
+        foreach ($bodegas as $key => &$bod) {
             $guias = GpGuiaRemision::join('gp_bodegas', 'gp_guia_remisions.bodega_destino', 'gp_bodegas.BOD_BODEGA')
                 ->where('bodega_origen', $bodega)
                 ->where('bodega_destino', $key)
@@ -166,7 +168,7 @@ class TransferenciasController extends Controller
             $bod['pedidos'] = array_values($bod['pedidos']);
             $bod['compartimientos'] = array_values($bod['compartimientos']);
             $peso_total = 0;
-            foreach($bod['traslados'] as $traslado){
+            foreach ($bod['traslados'] as $traslado) {
                 $peso_total += $traslado->ART_PESO * $traslado->pendiente;
             }
             $bod['peso_total'] = $peso_total;
@@ -177,13 +179,13 @@ class TransferenciasController extends Controller
         $guias = new GuiasderemisionController();
         $guias->checkguiaremision();
 
-        if(!isset($bodegas[0])){
+        if (!isset($bodegas[0])) {
             return response([
                 'error' => 'No existen resultados'
             ], 401);
         }
 
-        if($pedido){
+        if ($pedido) {
             return response([
                 'success' => true,
                 'traslados' => $bodegas[0]['traslados'],
@@ -207,10 +209,9 @@ class TransferenciasController extends Controller
             ->where('tipo', 'transferencia')
             ->get();
 
-        foreach($guias as $guia){
-            $detalle = GpGuiaRemisionDetalle::
-                join('gp_traslados_ventas','gp_traslados_ventas.id','gp_guia_remision_detalles.detalle_id')
-                ->join('gp_pedidos', 'gp_pedidos.id','gp_traslados_ventas.pedido_id')
+        foreach ($guias as $guia) {
+            $detalle = GpGuiaRemisionDetalle::join('gp_traslados_ventas', 'gp_traslados_ventas.id', 'gp_guia_remision_detalles.detalle_id')
+                ->join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
                 ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
                 ->where('gp_guia_remision_detalles.guia_remision_id', $guia->id)
                 ->select('gp_guia_remision_detalles.*', 'gp_pedidos.pedido', 'gp_articulos.ART_DECIMAL_CANTIDAD')
@@ -220,12 +221,12 @@ class TransferenciasController extends Controller
 
             $pedidos = '';
 
-            foreach($transferencias as $transferencia){
-                $pedidos .= $transferencia->pedido.', ';
+            foreach ($transferencias as $transferencia) {
+                $pedidos .= $transferencia->pedido . ', ';
             }
 
-            foreach($detalle as $articulo){
-                $articulo->pendiente = number_format($articulo->GUI_REM_CANTIDAD - $articulo->recibido,2,'.','');
+            foreach ($detalle as $articulo) {
+                $articulo->pendiente = number_format($articulo->GUI_REM_CANTIDAD - $articulo->recibido, 2, '.', '');
                 $articulo->recibido = $articulo->pendiente;
             }
 
@@ -244,25 +245,25 @@ class TransferenciasController extends Controller
         $picking = $request->all();
         $user = Auth::user();
 
-        if(GpTrasladosVentas::where('id', $picking['id'])->update(['picking' => null])){
+        if (GpTrasladosVentas::where('id', $picking['id'])->update(['picking' => null])) {
 
             $traslados = GpTrasladosVentas::where('pedido_id', $picking['pedido_id'])->get();
             $tiene_picking = false;
-            foreach($traslados as $traslado){
-                if($traslado->picking){
+            foreach ($traslados as $traslado) {
+                if ($traslado->picking) {
                     $tiene_picking = true;
                 }
             }
 
             $pedido = GpPedido::where('id', $picking['pedido_id'])->first();
-            if(!$tiene_picking){
+            if (!$tiene_picking) {
                 $pedido->transferencia_en_proceso = null;
                 $pedido->save();
             }
             $notificacion = new Notificaciones();
             $notificacion->titulo = 'Picking Cancelado';
             $notificacion->user_id = $pedido->user_id;
-            $notificacion->mensaje = 'El usuario '.$user->USERID.' canceló el picking del artículo '.$picking['ART_CODIGO'].' del pedido '.$pedido->pedido;
+            $notificacion->mensaje = 'El usuario ' . $user->USERID . ' canceló el picking del artículo ' . $picking['ART_CODIGO'] . ' del pedido ' . $pedido->pedido;
             $notificacion->estado = 'nuevo';
             $notificacion->save();
 
@@ -283,13 +284,13 @@ class TransferenciasController extends Controller
 
         $peso_total = 0;
 
-        foreach($nuevo_detalle as $art){
+        foreach ($nuevo_detalle as $art) {
             $peso_total += $art['ART_PESO'] * $art['seleccionado'];
             $bodega = $art['bodega_origen'];
 
-            if(isset($art['pedido'])){
+            if (isset($art['pedido'])) {
                 $save = GpTrasladosVentas::where('id', $art['id'])->first();
-            }else{
+            } else {
                 $save = GpTrasladosReposicion::where('id', $art['id'])->first();
             }
             $save->picking = 1;
@@ -299,7 +300,7 @@ class TransferenciasController extends Controller
         $data = array();
         $puntodeventa = GpPuntoVenta::join('gp_relacion_punto_venta_bodegas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
             ->where('gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_BODEGA', $bodega)->first()->toarray();
-        $data['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
+        $data['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
 
 
         $data['reporte'] = $nuevo_detalle;
@@ -328,9 +329,9 @@ class TransferenciasController extends Controller
 
         $para_peso = array();
 
-        foreach($detalle as &$art){
+        foreach ($detalle as &$art) {
 
-            if(isset($art['pedido_id'])){
+            if (isset($art['pedido_id'])) {
                 $pedido = GpPedido::where('id', $art['pedido_id'])->first();
                 $pedido->transferencia_en_proceso = 1;
                 $pedido->save();
@@ -344,7 +345,7 @@ class TransferenciasController extends Controller
 
             $compartimento = $webservice->stockarticulobodegacompartimiento($parameters);
 
-            if(isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
+            if (isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
                 $compartimento = $compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'];
 
                 $stock = array_column($compartimento, 'STO_ART_COMPART_STOCK_DISPONIBLE');
@@ -363,7 +364,7 @@ class TransferenciasController extends Controller
                 $art['mejorStock'] = $arr_comp[0]['STO_ART_COMPART_COMPARTIMIENTO'];
 
                 $art['compartimento'] = $arr_comp;
-            }else{
+            } else {
                 $art['mejorStock'] = 0;
 
                 $art['compartimento'] = [];
@@ -379,23 +380,25 @@ class TransferenciasController extends Controller
 
 
         $peso_total = 0;
-        foreach($para_peso as $art){
-            $peso_total += number_format($art['ART_PESO'] * $art['seleccionado'], 2,'.', '');
+        foreach ($para_peso as $art) {
+            $peso_total += number_format($art['ART_PESO'] * $art['seleccionado'], 2, '.', '');
         }
 
         $picking = array();
         $picking['reporte'] = $detalle;
-        $picking['peso_total'] = number_format($peso_total,2,'.','');
+        $picking['peso_total'] = number_format($peso_total, 2, '.', '');
 
         return $picking;
     }
 
-    public function checkpedidostraslados(){
+    public function checkpedidostraslados()
+    {
         $pedidos = GpPedido::where('estado', 'traslado')
             ->get();
 
-        $pedidosControl = new PedidosController();
-        foreach($pedidos as $pedido){
+        $apigp = app(ApiGpService::class);
+        $pedidosControl = new PedidosController($apigp);
+        foreach ($pedidos as $pedido) {
             $pedidosControl->checkenviarfactura($pedido, true);
         }
     }

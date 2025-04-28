@@ -24,7 +24,7 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpVendedor;
-
+use App\Services\Api\ApiGpService;
 use App\Services\Api\ApiSalesService;
 use App\Services\Api\ApiSeedBellingService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
@@ -408,9 +408,9 @@ class DevolucionesController extends Controller
             $detalle->save();
         }
 
-        if ($estado == 'solicitado') {
-            $this->procesardevoluciones();
-        }
+        // if ($estado == 'solicitado') {
+        //     $this->procesardevoluciones();
+        // }
 
         return 'La devolución ' . $devolucion->devolucion . ' ha sido solicitada. ';
     }
@@ -581,7 +581,8 @@ class DevolucionesController extends Controller
             ->where('volver_a_facturar', 1)
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
-        $pedidos = new PedidosController();
+        $apiGp = app(ApiGpService::class);
+        $pedidos = new PedidosController($apiGp);
         foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
@@ -715,7 +716,7 @@ class DevolucionesController extends Controller
     public function procesardevolucionestest()
     {
 
-        $pedidos = new PedidosController();
+        // $pedidos = new PedidosController();
 
         //Procesar devoluciones despachadas sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
@@ -750,7 +751,8 @@ class DevolucionesController extends Controller
     {
         $devolucion = GpDevoluciones::where('id', $id)->first();
 
-        $pedidos = new PedidosController();
+        $apiGp = app(ApiGpService::class);
+        $pedidos = new PedidosController($apiGp);
         $pedidos->volverafacturar($devolucion, false);
     }
 

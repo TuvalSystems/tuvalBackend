@@ -57,6 +57,11 @@ class ApiGpService
         return $this->httpClient->makeRequest($this->endpoints["consultar_articulo_bodega_compartimento"], 'GET', $params);
     }
 
+    public function transferCompartment(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["transferencia_compartimento"], 'GET', $params);
+    }
+
 
 
 }

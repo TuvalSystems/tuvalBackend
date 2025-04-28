@@ -4,7 +4,6 @@ namespace App\Services\Devoluciones;
 
 use App\Http\Controllers\ventas\PedidosController;
 use App\Http\Controllers\WebserviceController;
-use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
@@ -15,16 +14,15 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
-use App\Traits\Devoluciones\DevulucionesCriteriosTrait;
+use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class   DevolucionService implements DevolucionServiceInterface
 {
-    use DevulucionesCriteriosTrait, JsonResponseTrait;
+    use DevolucionesCriteriosTrait, JsonResponseTrait;
 
     protected WebserviceController $webservice;
     protected PedidosController $pedidosController;
@@ -39,12 +37,9 @@ class   DevolucionService implements DevolucionServiceInterface
 
     public function processDevolucion($devolucion)
     {
-
         try {
-            // DB::beginTransaction();
             $criterio = $this->getCriterioDevolucion($devolucion);
             if (!$criterio) {
-                // DB::rollBack();
                 return $this->buildErrorResponse('Criterio de devolución no encontrado', 404);
             }
 
@@ -54,9 +49,7 @@ class   DevolucionService implements DevolucionServiceInterface
 
             if ($criterio['generarnotadecredito'] === true) {
                 $ntCredito =  $this->generarNotaDeCredito($devolucion);
-                return $ntCredito;
                 if (!$ntCredito->isSuccessful()) {
-                    // DB::rollBack();
                     return $ntCredito;
                 }
 
@@ -70,10 +63,9 @@ class   DevolucionService implements DevolucionServiceInterface
                     $this->generarDevolucionVenta($devolucion);
                 }
             }
-            // DB::commit();
+
             return $this->buildSuccessResponse('Devolución procesada correctamente',  200);
         } catch (\Throwable $e) {
-            // DB::rollBack();
             Log::error("Error al procesar devolución ID {$devolucion->id}: {$e->getMessage()}");
 
             return $this->buildErrorResponse(
@@ -228,7 +220,6 @@ class   DevolucionService implements DevolucionServiceInterface
 
         $devolucion->save();
         $this->totalDevoluciones($devolucion, $detalles);
-
         return $resultado;
     }
 

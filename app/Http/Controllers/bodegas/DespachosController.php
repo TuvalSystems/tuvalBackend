@@ -31,6 +31,7 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Services\Api\ApiGpService;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -46,7 +47,8 @@ class DespachosController extends Controller
     public function generarordendespacho($pedido)
     {
 
-        $pedidos = new PedidosController();
+        $apiGp = app()->make(ApiGpService::class); // Adjust this to the correct service or dependency
+        $pedidos = new PedidosController($apiGp);
         $pedidos->checktrasladado($pedido);
 
         if($pedido->estado == 'orden_de_compra') {
@@ -971,7 +973,8 @@ class DespachosController extends Controller
         $pedidos = GpPedido::where('estado', 'traslado')
             ->where('id', 29)
             ->get();
-        $pedidosControl = new PedidosController();
+        $apigp = app(ApiGpService::class);
+        $pedidosControl = new PedidosController($apigp );
 
         foreach($pedidos as $pedido){
 
@@ -1002,7 +1005,8 @@ class DespachosController extends Controller
             ->join('gp_usuarios','gp_usuarios.USERID','gp_pedidos.USERID')
             ->select('gp_pedidos.*','gp_cotizacions.cotizacion','gp_usuarios.USERNAME')
             ->where('gp_pedidos.id',$orden_despacho->pedido_id)->first()->toarray();
-        $pedidos = new PedidosController();
+            $apigp = app(ApiGpService::class);
+        $pedidos = new PedidosController($apigp);
         $pedido = $pedidos->getinfopedido($pedido['id']);
         $pedido['orden_despacho'] = $orden_despacho;
 
