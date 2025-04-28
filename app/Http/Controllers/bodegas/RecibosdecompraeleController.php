@@ -16,7 +16,7 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Api\ApiGpService;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 
 class RecibosdecompraeleController extends Controller

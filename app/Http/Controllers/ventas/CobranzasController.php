@@ -30,11 +30,11 @@ use App\Models\cobranzas\GpCobrosChequesFacturas;
 use App\Models\GpCliente;
 use App\Models\GpRelacionUsuarioCaja;
 use App\Models\GpCajaBancos;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
 use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Support\Facades\Session;
+
 
 
 class CobranzasController extends Controller

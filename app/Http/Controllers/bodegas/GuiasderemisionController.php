@@ -26,7 +26,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use stdClass;
 
 class GuiasderemisionController extends Controller
@@ -1201,7 +1201,8 @@ class GuiasderemisionController extends Controller
 
                 $pedido = GpPedido::where('pedido', $guia->pedido)->first();
                 if($pedido->estado != 'facturado'){
-                    $pedidosControl = new PedidosController();
+                    $apigp = app(ApiGpService::class);
+                    $pedidosControl = new PedidosController($apigp);
                     $pedidosControl->checkenviarfactura($pedido, true);
                 }
                 //aqui la notifiacion

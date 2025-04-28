@@ -39,7 +39,7 @@ use App\Http\Controllers\FuncionesController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\bodegas\RecibosdecompraeleController;
 use Illuminate\Support\Facades\File;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use Illuminate\Support\Carbon;

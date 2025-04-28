@@ -22,7 +22,7 @@ use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Api\ApiGpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class TransferenciasController extends Controller
 {
