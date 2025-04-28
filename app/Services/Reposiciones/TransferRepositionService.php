@@ -1,19 +1,20 @@
 <?php
 
-namespace App\Traits;
+namespace App\Services\Reposiciones;
 
 use App\Models\GpArticulo;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
+use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-trait TransferRepositionTrait
+class TransferRepositionService implements TransferRepositionServiceInterface
 {
-    use JsonResponseTrait;
-    protected $apiGp;
+ use JsonResponseTrait;
+    protected ApiGpService $apiGp;
     public function __construct(ApiGpService $apiGp)
     {
         $this->apiGp = $apiGp;
@@ -262,6 +263,4 @@ trait TransferRepositionTrait
         $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params) ?? [];
         return  $compartment[0]['COMPARTIMIENTO'] ?? '';
     }
-
-
 }

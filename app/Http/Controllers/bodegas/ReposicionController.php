@@ -10,6 +10,7 @@ use App\Models\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
+use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
 use App\Traits\TransferRepositionTrait;
 use Illuminate\Http\Request;
@@ -18,20 +19,26 @@ use App\Http\Controllers\WebserviceController;
 
 class ReposicionController extends Controller
 {
-    use JsonResponseTrait, TransferRepositionTrait;
+    use JsonResponseTrait;
+    protected $transferRepositionService;
+
+    public function __construct(TransferRepositionServiceInterface $transferRepositionService)
+    {
+        $this->transferRepositionService = $transferRepositionService;
+    }
+
 
     public function getreposicion(Request $request)
     {
             set_time_limit(300);
         try {
-
             $soapRequest = $request->all();
             $this->validateRequest($soapRequest);
-            $transferHeader = $this->fectchTransferHeader($request);
+            $transferHeader =  $this->transferRepositionService->fectchTransferHeader($request);
             if (empty($transferHeader)) {
                 return $this->buildErrorResponse('No existen transferencias que sincronizar', 404);
             }
-            $proccessDocument = $this->processDocumentsInBatches($soapRequest, $transferHeader);
+            $proccessDocument =  $this->transferRepositionService->processDocumentsInBatches($soapRequest, $transferHeader);
             return $this->buildResponse($proccessDocument);
 
         } catch (\Throwable $th) {
