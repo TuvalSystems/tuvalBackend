@@ -81,7 +81,7 @@ Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::c
 
 
 
-
+Route::get('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
 
 
 
