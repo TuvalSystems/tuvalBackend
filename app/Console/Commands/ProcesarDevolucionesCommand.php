@@ -6,6 +6,7 @@ use App\Http\Controllers\WebserviceController;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\DevolucionJobService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class ProcesarDevolucionesCommand extends Command
 {
@@ -37,7 +38,7 @@ class ProcesarDevolucionesCommand extends Command
      */
     public function handle(DevolucionJobService $devolucionJobService)
     {
-
+        Log::info('✅ Comando devoluciones:procesar ejecutado a las ' . now());
         $this->info('🔄 Procesando devoluciones...');
 
         $devoluciones = $devolucionJobService->listarTodasLasDevolucionesAplicables();
