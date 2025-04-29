@@ -33,13 +33,14 @@ class ReposicionController extends Controller
             set_time_limit(300);
         try {
             $soapRequest = $request->all();
-            $this->validateRequest($soapRequest);
+            $this->transferRepositionService->validateRequest($soapRequest);
             $transferHeader =  $this->transferRepositionService->fectchTransferHeader($request);
             if (empty($transferHeader)) {
                 return $this->buildErrorResponse('No existen transferencias que sincronizar', 404);
             }
             $proccessDocument =  $this->transferRepositionService->processDocumentsInBatches($soapRequest, $transferHeader);
-            return $this->buildResponse($proccessDocument);
+
+            return $this->transferRepositionService->buildResponse($proccessDocument);
 
         } catch (\Throwable $th) {
             return $this->errorResponse('Error al obtener las transferencias', $th->getMessage(), 500);

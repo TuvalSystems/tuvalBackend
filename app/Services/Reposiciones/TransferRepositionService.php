@@ -103,7 +103,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     }
 
 
-    protected function buildResponse($processedDocuments)
+    public function buildResponse($processedDocuments)
     {
         if (empty($processedDocuments['processed']) && empty($processedDocuments['errors'])) {
             return $this->errorResponse('No se encontraron documentos de transferencia', null, 404);
