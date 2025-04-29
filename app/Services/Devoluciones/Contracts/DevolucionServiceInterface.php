@@ -6,4 +6,5 @@ interface DevolucionServiceInterface
 {
 
     public function processDevolucion( $devolucion);
+
 }

@@ -22,6 +22,7 @@ use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
@@ -38,14 +39,19 @@ use App\Http\Controllers\FuncionesController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\bodegas\RecibosdecompraeleController;
 use Illuminate\Support\Facades\File;
-use Maatwebsite\Excel\Facades\Excel;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use Illuminate\Support\Carbon;
 
 class PedidosController extends Controller
 {
+    protected $apiGp;
+    public function __construct(ApiGpService $apiGp)
+    {
+        $this->apiGp = $apiGp;
+    }
+
     public function guardarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
@@ -183,7 +189,7 @@ class PedidosController extends Controller
     public function checkenviarfactura(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
 
-        if ($pedido->estado == 'rechazado')
+        if ($pedido->estado == 'rechazado' || $pedido->estado == 'anulada')
             return;
 
         if ($pedido->requiere_aprobacion_comercial == 'yes' && $pedido->aprobado_comercial == 'no')
@@ -1945,7 +1951,7 @@ class PedidosController extends Controller
     }
 
     public function volverafacturar($devolucion, $despachada = false){
-        $webservices = new WebserviceController();
+        // $webservices = new WebserviceController();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
         $cliente = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
@@ -2034,15 +2040,16 @@ class PedidosController extends Controller
                 $nuevo_proveedor->save();
 
                 $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Fecha' => date('Y/m/d'),
-                    'Item' => $nuevo_det->ART_CODIGO,
-                    'Bodega' => $nuevo_pedido->BOD_BODEGA,
-                    'Cantidad' => $nuevo_proveedor->CANTIDAD,
+                    // 'IDCompania' => env('ID_COMPANIA'),
+                    'fecha' => date('Y/m/d'),
+                    'item' => $nuevo_det->ART_CODIGO,
+                    'bodega' => $nuevo_pedido->BOD_BODEGA,
+                    'cantidad' => $nuevo_proveedor->CANTIDAD,
                     'BinOrigen' => $pedido->pedido,
                     'BinDestino' => $nuevo_pedido->pedido,
                 );
-                $webservices->inventario('TransferenciaCompartimento', $parameters);
+                // $webservices->inventario('TransferenciaCompartimento', $parameters);
+                $this->apiGp->transferCompartment($parameters);
             }
 
             $detalle_stocks = GpPedidoDetalleStock::where('pedido_id', $pedido->id)

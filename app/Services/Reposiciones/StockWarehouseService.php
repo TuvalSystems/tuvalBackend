@@ -1,17 +1,18 @@
 <?php
 
-namespace App\Traits;
+namespace App\Services\Reposiciones;
 
-use App\Models\GpTempCart;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
-use Illuminate\Support\Facades\DB;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Models\GpTempCart;
+use App\Models\reposicion\GpTrasladosReposicion;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use Illuminate\Support\Facades\DB;
 
-trait StockWarehouseTraits {
-
+class StockWarehouseService implements StockWarehouseServiceInterface
+{
 
     public function newFormatStock($stockResults,  $articulo)
     {
@@ -225,6 +226,4 @@ trait StockWarehouseTraits {
             ->pluck('PTO_VTA_BOD_REL_BODEGA', 'PTO_VTA_BOD_REL_BODEGA')
             ->toArray();
     }
-
-
 }

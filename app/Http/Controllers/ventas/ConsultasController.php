@@ -25,17 +25,19 @@ use App\Traits\StockWarehouseTraits;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\WebserviceController;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 
 class ConsultasController extends Controller
 {
-    use StockWarehouseTraits;
+    protected $stockWarehouseService;
     protected $apiGp;
 
-    public function __construct(ApiGpService $apiGp)
+    public function __construct(ApiGpService $apiGp, StockWarehouseServiceInterface $stockWarehouseService)
     {
         $this->apiGp = $apiGp;
+        $this->stockWarehouseService = $stockWarehouseService;
     }
 
     public function buscararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -178,56 +180,21 @@ class ConsultasController extends Controller
         }
     }
 
-    // public function consultarstock(Request $request)
-    // {
-    //     $data = $request->all();
-
-    //     $puntodeventaselect = $data['puntodeventa_id'];
-
-    //     $funciones = new FuncionesController();
-    //     $data_bodega = array('PTO_VTA_ID' => $puntodeventaselect);
-    //     $arr_bodegas = $funciones->gebodegas($data_bodega, $data['cliente_id']);
-
-    //     $consulta_bodega = array();
-
-    //     foreach ($arr_bodegas as $bodega) {
-    //         $consulta_bodega[] = array(
-    //             'STOCK_ARTICULO' => $data['articulo']['ART_CODIGO'] . '@' . $bodega,
-    //         );
-    //     }
-
-    //     $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-
-    //     $articulo = (object)$data['articulo'];
-
-    //     $funciones->formatStock($articulo, $stock_general);
-
-    //     $stock = array_values($articulo->stock);
-    //     $total = 0;
-    //     foreach ($stock as $st) {
-    //         $total += $st['STO_ART_STOCK_DISPONIBLE'];
-    //     }
-    //     return response([
-    //         'success' => true,
-    //         'stock' => $stock,
-    //         'ART_STOCK' => $total,
-    //     ]);
-    // }
-
+   
     public function consultarstock(Request $request)
     {
         $data = $request->all();
         $articulo = $data['articulo'];
-        $warehouses = $this->getWarehouseNotConsult($data);
+        $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
         if (empty($warehouses)) {
             return [];
         }
 
         $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
         $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-        $formatStock = $this->formatResultStocks($stockResults);
+        $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
 
-        $art =$this->newFormatStock($formatStock, $articulo); //nose porque hace pero va
+        $art = $this->stockWarehouseService->newFormatStock($formatStock, $articulo); //nose porque hace pero va
 
         $total = array_sum(array_column($formatStock, 'STO_ART_STOCK_DISPONIBLE'));
         return response([
@@ -241,16 +208,16 @@ class ConsultasController extends Controller
     {
         $data = $request->all();
         $articulo = $data['articulo'];
-        $warehouses = $this->getWarehouse($data);
+        $warehouses = $this->stockWarehouseService->getWarehouse($data);
         if (empty($warehouses)) {
             return [];
         }
 
         $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
         $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-        $formatStock = $this->formatResultStocks($stockResults);
+        $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
 
-        $art =$this->newFormatStock($formatStock, $articulo); //nose porque hace pero va
+        $art =$this->stockWarehouseService->newFormatStock($formatStock, $articulo); //nose porque hace pero va
 
         $total = array_sum(array_column($formatStock, 'STO_ART_STOCK_DISPONIBLE'));
         return response([

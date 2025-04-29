@@ -20,12 +20,13 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Notificaciones;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Api\ApiGpService;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use stdClass;
 
 class GuiasderemisionController extends Controller
@@ -1110,7 +1111,8 @@ class GuiasderemisionController extends Controller
         $guia = GpGuiaRemision::where('id', $data['id'])->first();
         $listo = $this->checkguiacompleta($guia);
 
-        $pedidosControl = new PedidosController();
+        $apigp = app(ApiGpService::class);
+        $pedidosControl = new PedidosController($apigp);
 
         $ingresos = new IngresosController();
         $ingresos->ingreso('traslado_venta', $data, $data['detalle']);
@@ -1199,7 +1201,8 @@ class GuiasderemisionController extends Controller
 
                 $pedido = GpPedido::where('pedido', $guia->pedido)->first();
                 if($pedido->estado != 'facturado'){
-                    $pedidosControl = new PedidosController();
+                    $apigp = app(ApiGpService::class);
+                    $pedidosControl = new PedidosController($apigp);
                     $pedidosControl->checkenviarfactura($pedido, true);
                 }
                 //aqui la notifiacion

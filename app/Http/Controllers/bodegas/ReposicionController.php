@@ -10,6 +10,7 @@ use App\Models\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
+use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
 use App\Traits\TransferRepositionTrait;
 use Illuminate\Http\Request;
@@ -18,165 +19,34 @@ use App\Http\Controllers\WebserviceController;
 
 class ReposicionController extends Controller
 {
-    use JsonResponseTrait, TransferRepositionTrait;
+    use JsonResponseTrait;
+    protected $transferRepositionService;
+
+    public function __construct(TransferRepositionServiceInterface $transferRepositionService)
+    {
+        $this->transferRepositionService = $transferRepositionService;
+    }
+
 
     public function getreposicion(Request $request)
     {
             set_time_limit(300);
         try {
-
             $soapRequest = $request->all();
-            $this->validateRequest($soapRequest);
-            $transferHeader = $this->fectchTransferHeader($request);
+            $this->transferRepositionService->validateRequest($soapRequest);
+            $transferHeader =  $this->transferRepositionService->fectchTransferHeader($request);
             if (empty($transferHeader)) {
                 return $this->buildErrorResponse('No existen transferencias que sincronizar', 404);
             }
-            $proccessDocument = $this->processDocumentsInBatches($soapRequest, $transferHeader);
-            return $this->buildResponse($proccessDocument);
+            $proccessDocument =  $this->transferRepositionService->processDocumentsInBatches($soapRequest, $transferHeader);
+
+            return $this->transferRepositionService->buildResponse($proccessDocument);
 
         } catch (\Throwable $th) {
             return $this->errorResponse('Error al obtener las transferencias', $th->getMessage(), 500);
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-    //     public function getreposicion($fecha, $numero_documento = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    //     {
-
-    //         $webservices = new WebserviceController();
-
-    //         $parameters = array(
-    //             'IDCompania' => env('ID_COMPANIA'),
-    //             'Fecha' => $fecha,//date('Y-m-d')
-    //         );
-
-    //         $respuesta = $webservices->inventario('ConsultaCabeceraTransferencia', $parameters);
-
-    // //        echo '<pre>';
-    // //        print_r($respuesta);
-    // //        die();
-    //         if(!isset($respuesta['ConsultaCabeceraTransferenciaResult']['Cabecera_Transferencias'])){
-    //             return response([
-    //                 'success' => false,
-    //                 'message' => 'No existen transferencias',
-    //             ]);
-    //         }
-
-    //         $documentos_procesados = array();
-
-    //         if(!$numero_documento){
-    //             foreach($respuesta['ConsultaCabeceraTransferenciaResult']['Cabecera_Transferencias'] as &$documento){
-    //                 $documentos_procesados[] = $this->getreposicionindividual($documento);
-    //             }
-    //         }else{
-    //             foreach($respuesta['ConsultaCabeceraTransferenciaResult']['Cabecera_Transferencias'] as &$documento){
-    //                 if($numero_documento && $numero_documento == $documento['Documento']) {
-    //                     $documentos_procesados[] = $this->getreposicionindividual($documento);
-    //                 }
-    //             }
-    //         }
-
-    //         if(count($documentos_procesados)){
-    //             return response([
-    //                 'success' => true,
-    //                 'message' => 'Reposición guardada',
-    //                 'documentos_procesados' => $documentos_procesados,
-    //             ]);
-    //         }else{
-    //             return response([
-    //                 'success' => false,
-    //                 'message' => 'La reposición no ha sido guardada',
-    //             ]);
-    //         }
-
-    //     }
-
-
-    // public function getreposicionindividual($documento)
-    // {
-    //     $webservices = new WebserviceController();
-    //     $parameters = array(
-    //         'IDCompania' => env('ID_COMPANIA'),
-    //         'Documento' => $documento['Documento'],
-    //     );
-
-    //     $detalle = $webservices->inventario('ConsultaDetalleTransferencia', $parameters);
-    //     //            print_r($detalle);
-    //     $documento['detalle'] = $detalle['ConsultaDetalleTransferenciaResult']['Detalle_Transferencia'];
-
-    //     $cabecera = GpTrasladosReposicionCabecera::where('Documento', $documento['Documento'])->first();
-    //     if (!$cabecera) {
-    //         $cabecera = new GpTrasladosReposicionCabecera;
-    //     }
-    //     $cabecera->Documento = $documento['Documento'];
-    //     $cabecera->Bodega_Origen = $documento['Bodega_Origen'];
-    //     $cabecera->Bodega_Destino = $documento['Bodega_Destino'];
-    //     $cabecera->Codigo_Motivo = $documento['Codigo_Motivo'];
-    //     $cabecera->Motivo = $documento['Motivo'];
-    //     $cabecera->Fecha_Documento = substr($documento['Fecha_Documento']['date'], 0, 10);
-    //     $cabecera->save();
-
-
-    //     foreach ($documento['detalle'] as &$item) {
-    //         $articulo = GpArticulo::where('ART_CODIGO', $item['Item'])->first();
-    //         if (!$articulo) {
-    //             return response([
-    //                 'error' => 'El item ' . $item['Item'] . ' no se encuentra registrado en la web'
-    //             ], 401);
-    //         }
-    //         $articulo = $articulo->toArray();
-    //         $item['ART_CODIGO'] = $articulo['ART_CODIGO'];
-    //         $item['ART_DESCRIPCION'] = $articulo['ART_DESCRIPCION'];
-    //         $item['ART_CODIGO_TRES_LETRAS'] = $articulo['ART_CODIGO_TRES_LETRAS'];
-    //         $item['ART_PLAN_UMEDIDA'] = $articulo['ART_PLAN_UMEDIDA'];
-    //         $item['ART_PESO'] = $articulo['ART_PESO'];
-
-    //         $parameters = array(
-    //             'id_articulo' => $item['ART_CODIGO'],
-    //             'id_bodega' => $item['Bodega_Origen'],
-    //             'id_compartimiento' => '',
-    //         );
-    //         $item['compartimiento'] = '';
-    //         $compartimento = $webservices->stockarticulobodegacompartimiento($parameters);
-    //         if (isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
-    //             $compartimento = $compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'];
-    //             $stock = array_column($compartimento, 'STO_ART_COMPART_STOCK_DISPONIBLE');
-    //             array_multisort($stock, SORT_DESC, $compartimento);
-    //             $item['compartimiento'] = $compartimento[0]['STO_ART_COMPART_COMPARTIMIENTO'];
-    //         }
-
-    //         $traslado = GpTrasladosReposicion::where('cabecera_id', $cabecera->id)
-    //             ->where('ART_CODIGO', $item['ART_CODIGO'])->first();
-    //         if (!$traslado) {
-    //             $traslado = new GpTrasladosReposicion();
-    //         }
-    //         $traslado->cabecera_id = $cabecera->id;
-    //         $traslado->Documento = $cabecera->Documento;
-    //         $traslado->Codigo_Motivo = $cabecera->Codigo_Motivo;
-    //         $traslado->ART_CODIGO = $item['ART_CODIGO'];
-    //         $traslado->ART_DESCRIPCION = $item['ART_DESCRIPCION'];
-    //         $traslado->ART_CODIGO_TRES_LETRAS = $item['ART_CODIGO_TRES_LETRAS'];
-    //         $traslado->ART_PLAN_UMEDIDA = $item['ART_PLAN_UMEDIDA'];
-    //         $traslado->ART_PESO = $item['ART_PESO'];
-    //         $traslado->cantidad = $item['Cantidad'];
-    //         $traslado->bodega_origen = $cabecera->Bodega_Origen;
-    //         $traslado->bodega_destino = $cabecera->Bodega_Destino;
-    //         $traslado->compartimiento = $item['compartimiento'];
-    //         $traslado->Fecha_Documento = $cabecera->Fecha_Documento;
-    //         $traslado->save();
-    //     }
-
-    //     return $cabecera->Documento;
-    // }
 
     public function transferenciasreposicion($id, $documento = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
