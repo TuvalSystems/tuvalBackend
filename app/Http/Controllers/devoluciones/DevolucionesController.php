@@ -408,9 +408,9 @@ class DevolucionesController extends Controller
             $detalle->save();
         }
 
-        // if ($estado == 'solicitado') {
-        //     $this->procesardevoluciones();
-        // }
+        if ($estado == 'solicitado') {
+            $this->procesardevoluciones();
+        }
 
         return 'La devolución ' . $devolucion->devolucion . ' ha sido solicitada. ';
     }

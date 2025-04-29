@@ -45,7 +45,7 @@ class DespachosController extends Controller
     public function generarordendespacho($pedido)
     {
 
-        $apiGp = app()->make(ApiGpService::class); // Adjust this to the correct service or dependency
+        $apiGp = app(ApiGpService::class);
         $pedidos = new PedidosController($apiGp);
         $pedidos->checktrasladado($pedido);
 

@@ -2,31 +2,36 @@
 
 namespace App\Http\Controllers\ventas;
 
-use App\Http\Controllers\Controller;
-use App\Http\Controllers\devoluciones\DevolucionesController;
-use App\Http\Controllers\FuncionesController;
-use App\Models\devoluciones\GpDevoluciones;
+use DateTime;
+use App\Models\GpPedido;
 use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
+use App\Models\GpCotizacion;
+use App\Models\GpPuntoVenta;
+use Illuminate\Http\Request;
 use App\Models\GpDatosItemsL;
-use App\Models\GpDescuentoFormaPago;
+use App\Models\Notificaciones;
+use App\Models\GpCondicionPago;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
-use App\Models\Notificaciones;
-use App\Models\traslados\GpTrasladosVentas;
-use Illuminate\Support\Facades\Auth;
-use App\Models\GpCondicionPago;
-use App\Models\GpPedido;
-use App\Models\GpCotizacion;
-use App\Http\Controllers\WebserviceController;
+use App\Models\GpClienteSucursal;
 use App\Services\Api\ApiGpService;
+use App\Models\GpCotizacionDetalle;
+use App\Http\Controllers\Controller;
+use App\Models\GpDescuentoFormaPago;
+use Illuminate\Support\Facades\Auth;
+use App\Services\Api\ApiSalesService;
+use App\Models\devoluciones\GpDevoluciones;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Api\ApiSeedBellingService;
 
-use Illuminate\Http\Request;
-use DateTime;
+use App\Services\Devoluciones\EntryService;
+use App\Http\Controllers\FuncionesController;
+use App\Http\Controllers\WebserviceController;
+use App\Models\GpCotizacionDetalleProveedores;
+use App\Http\Controllers\ventas\PedidosController;
+use App\Http\Controllers\devoluciones\DevolucionesController;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 
 class AprobacionesController extends Controller
 {
@@ -405,12 +410,12 @@ class AprobacionesController extends Controller
         if($devolucion->save()){
 
 
-            // $apiSales = app(ApiSalesService::class);
-            // $apiSeedBelling = app(ApiSeedBellingService::class);
-            // $entryService = app(EntryService::class);
-            // $devlucionesService = app(DevolucionServiceInterface::class);
-            // $devoluciones = new DevolucionesController($apiSales, $apiSeedBelling, $entryService, $devlucionesService);
-            // $devoluciones->procesardevoluciones();
+            $apiSales = app(ApiSalesService::class);
+            $apiSeedBelling = app(ApiSeedBellingService::class);
+            $entryService = app(EntryService::class);
+            $devlucionesService = app(DevolucionServiceInterface::class);
+            $devoluciones = new DevolucionesController($apiSales, $apiSeedBelling, $entryService, $devlucionesService);
+            $devoluciones->procesardevoluciones();
 
             return response([
                 'success' => true,
