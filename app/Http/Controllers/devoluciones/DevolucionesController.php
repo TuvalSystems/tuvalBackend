@@ -14,7 +14,6 @@ use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
-use App\Models\GpCronLog;
 use App\Models\GpMotivosDevolucion;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
@@ -29,10 +28,7 @@ use App\Services\Api\ApiSalesService;
 use App\Services\Api\ApiSeedBellingService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Devoluciones\RegisterDocumentTypeService;
-use App\Traits\Devoluciones\RegisterDocumentTypeTrait;
 use App\Traits\JsonResponseTrait;
-
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
@@ -46,8 +42,12 @@ class DevolucionesController extends Controller
     protected $apiSales;
     protected $apiSeedBelling;
     protected $devolucionService;
-    public function __construct(ApiSalesService $apiSales, ApiSeedBellingService $apiSeedBelling, EntryServiceInterface $entryService, DevolucionServiceInterface $devolucionServiceInterface)
-    {
+    public function __construct(
+        ApiSalesService $apiSales,
+        ApiSeedBellingService $apiSeedBelling,
+        EntryServiceInterface $entryService,
+        DevolucionServiceInterface $devolucionServiceInterface
+    ) {
         $this->entryService = $entryService;
         $this->apiSales = $apiSales;
         $this->apiSeedBelling = $apiSeedBelling;
@@ -1147,7 +1147,7 @@ class DevolucionesController extends Controller
     //    }
 
 
-    //proceso de revision
+    //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y job )
     public function recibirdevolucion1(Request $request)
     {
         $user = Auth::user();
@@ -1173,11 +1173,12 @@ class DevolucionesController extends Controller
                 }
                 $devolucion->update(['estado' => 'recibido']);
 
-                $response = $this->devolucionService->processDevolucion($devolucion);
-                if (!$response->isSuccessful()) {
-                    $responseData = (array) $response->getData();
-                    throw new \Exception("Error en el procesamiento: " . ($responseData['error'] ?? 'Proceso fallido'));
-                }
+                // lo pondre en espera ya que lo esta ejecutando el job
+                // $response = $this->devolucionService->processDevolucion($devolucion);
+                // if (!$response->isSuccessful()) {
+                //     $responseData = (array) $response->getData();
+                //     throw new \Exception("Error en el procesamiento: " . ($responseData['error'] ?? 'Proceso fallido'));
+                // }
                 $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
             });
 
