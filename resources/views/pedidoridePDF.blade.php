@@ -68,7 +68,7 @@
         }
 
         .bordered {
-            border: rgb(19, 19, 19) 1px solid;
+            border: #CCC 1px solid;
             -webkit-border-radius: 10px;
             -moz-border-radius: 10px;
             border-radius: 5px;
