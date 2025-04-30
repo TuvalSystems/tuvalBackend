@@ -141,6 +141,8 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/cotizaciones/imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
     Route::get('/pedidos/imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
     Route::get('/pedidos/imprimirpedidoimagenes/{id}', [PedidosController::class, 'imprimirpedidoimagenes']);
+    Route::get('/pedidos/imprimirpedidoride/{id}', [PedidosController::class, 'imprimirpedidoride']);
+    Route::get('/pedidos/imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
     Route::get('/pedidos/despachoenproceso/{id}', [PedidosController::class, 'despachoenproceso']);
     Route::get('/cobranzas/imprimircobro/{id}', [CobranzasController::class, 'imprimircobro']);
     Route::get('/cobranzas/imprimircierredecaja/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecaja']);

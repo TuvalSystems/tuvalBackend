@@ -59,6 +59,7 @@ return [
             'obtener_clave_acceso'            => 'api/obtener-clave-acceso',
             'anular_comprobante_gp'           => 'api/anularfactura',
             'actualizar_estado_factura'       => 'api/actualizar-estado-factura',
+            'obtener_datos_factura'          => 'api/obtener-datos-factura',
 
         ],
     ],

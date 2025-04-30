@@ -28,6 +28,7 @@ use App\Services\Api\ApiSalesService;
 use App\Services\Api\ApiSeedBellingService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -582,7 +583,8 @@ class DevolucionesController extends Controller
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
         $apiGp = app(ApiGpService::class);
-        $pedidos = new PedidosController($apiGp);
+        $order = app(OrderServiceInterface::class);
+        $pedidos = new PedidosController($apiGp, $order);
         foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
@@ -750,9 +752,9 @@ class DevolucionesController extends Controller
     public function volverafacturartesturl($id)
     {
         $devolucion = GpDevoluciones::where('id', $id)->first();
-
+        $order = app(OrderServiceInterface::class);
         $apiGp = app(ApiGpService::class);
-        $pedidos = new PedidosController($apiGp);
+        $pedidos = new PedidosController($apiGp, $order);
         $pedidos->volverafacturar($devolucion, false);
     }
 

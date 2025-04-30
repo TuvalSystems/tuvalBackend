@@ -6,14 +6,17 @@ use App\Http\Controllers\WebserviceController;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\DevolucionJobService;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Reposiciones\TransferRepositionService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Devoluciones\DevolucionService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Pedidos\OrderService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\StockWarehouseService;
-use App\Services\Reposiciones\TransferRepositionService;
+
 
 class DevolucionServiceProvider extends ServiceProvider
 {
@@ -39,6 +42,13 @@ class DevolucionServiceProvider extends ServiceProvider
         $this->app->bind(
             StockWarehouseServiceInterface::class,
             StockWarehouseService::class
+        );
+
+
+        // aqui agrego las ordenes para no crear otro provider
+        $this->app->bind(
+            OrderServiceInterface::class,
+            OrderService::class
         );
     }
 
