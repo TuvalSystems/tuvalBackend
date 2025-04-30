@@ -20,6 +20,7 @@ use App\Models\Notificaciones;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Api\ApiGpService;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -396,8 +397,9 @@ class TransferenciasController extends Controller
         $pedidos = GpPedido::where('estado', 'traslado')
             ->get();
 
+            $order = app(OrderServiceInterface::class);
         $apigp = app(ApiGpService::class);
-        $pedidosControl = new PedidosController($apigp);
+        $pedidosControl = new PedidosController($apigp, $order);
         foreach ($pedidos as $pedido) {
             $pedidosControl->checkenviarfactura($pedido, true);
         }

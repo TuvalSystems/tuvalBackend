@@ -40,6 +40,11 @@ class ApiSalesService
         return $this->httpClient->makeRequest($this->endpoints["actualizar_estado_factura"], 'POST', $params);
     }
 
+    public function getDataDocumentGp(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["obtener_datos_factura"], 'GET', $params);
+    }
+
 
 
 

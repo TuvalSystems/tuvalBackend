@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
-use App\Imports\PedidosImport;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\devoluciones\GpDevoluciones;
@@ -12,17 +11,14 @@ use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpCronLog;
-use App\Models\GpDatosItemsL;
-use App\Models\GpDescuentoFormaPago;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpRegistroCopia;
-use App\Models\GpVendedor;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Api\ApiGpService;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
@@ -38,19 +34,25 @@ use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\bodegas\RecibosdecompraeleController;
-use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Response;
+use Milon\Barcode\DNS1D;
 
 class PedidosController extends Controller
 {
+    use JsonResponseTrait;
     protected $apiGp;
-    public function __construct(ApiGpService $apiGp)
+    protected $orderService;
+    public function __construct(ApiGpService $apiGp, OrderServiceInterface $orderService)
     {
+        $this->orderService = $orderService;
         $this->apiGp = $apiGp;
     }
+
 
     public function guardarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -58,8 +60,8 @@ class PedidosController extends Controller
         $user = Auth::user();
         $aprobaciones = new AprobacionesController;
 
-        foreach($data['cotizacion'] as $det){
-            if($det['ART_CANTIDAD'] <= 0){
+        foreach ($data['cotizacion'] as $det) {
+            if ($det['ART_CANTIDAD'] <= 0) {
                 return response([
                     'error' => 'Artículo con cantidad menor o igual a cero, no es posible guardar pedido'
                 ], 401);
@@ -67,28 +69,28 @@ class PedidosController extends Controller
         }
 
         $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data, true);
-//        echo '<pre>';
-//        print_r($requiere_aprobacion_comercial);
-//        die();
+        //        echo '<pre>';
+        //        print_r($requiere_aprobacion_comercial);
+        //        die();
         $requiere_aprobacion_crediticia = $aprobaciones->checkAprobacionesCrediticias($data);
         $data['motivo_crediticio'] = null;
-        if($requiere_aprobacion_crediticia != 'no'){
+        if ($requiere_aprobacion_crediticia != 'no') {
             $data['motivo_crediticio'] = $requiere_aprobacion_crediticia;
             $requiere_aprobacion_crediticia = 'yes';
         }
         $pedido = new GpPedido;
 
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID',$data['PTO_VTA_ID'])->first();
+        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
-        $ultimoPedido = GpPedido::orderBy('id','DESC')->first();
+        $ultimoPedido = GpPedido::orderBy('id', 'DESC')->first();
 
-        if(!$ultimoPedido){
+        if (!$ultimoPedido) {
             $ultimoPedido = new \stdClass();
             $ultimoPedido->id = env('SECUENCIAL_PEDIDO');
             $pedido->id = $ultimoPedido->id + 1;
         }
 
-        $pedido->pedido = 'PED'.str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
+        $pedido->pedido = 'PED' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
         $pedido->user_id = $user->id;
         $pedido->sucursal_id = $data['sucursal_id'];
         $pedido->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
@@ -98,23 +100,23 @@ class PedidosController extends Controller
         $pedido->factura_siguiente_mes = $data['factura_siguiente_mes'];
         $pedido->impuesto = env('IVA_IMPUESTO');
 
-        if($data['despacho'] == 'Despacho en ruta'){
+        if ($data['despacho'] == 'Despacho en ruta') {
             $pedido->fecha_entrega = $data['fecha_entrega'];
         }
-        if(isset($data['cotizacion_id']) && $data['cotizacion_id'] != ''){
+        if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
             $pedido->cotizacion_id = $data['cotizacion_id'];
         }
         $pedido->BOD_BODEGA = $data['bodega_facturacion'];
         $this->setguardarpedido($data, $pedido, $puntodeventa['PTO_VTA_DESCRIPCION'], $user, $requiere_aprobacion_comercial, $requiere_aprobacion_crediticia);
 
-        if($pedido->save()){
+        if ($pedido->save()) {
             $i = 0;
-            foreach($data['cotizacion'] as $det){
+            foreach ($data['cotizacion'] as $det) {
                 $i++;
                 $detalle = $this->savePedidoDetalle($i, $pedido, $det);
 
-                if(count($det['proveedores']) > 0){
-                    foreach($det['proveedores'] as $pro){
+                if (count($det['proveedores']) > 0) {
+                    foreach ($det['proveedores'] as $pro) {
                         $proveedor = $this->savePedidoDetalleProveedores($pedido, $detalle, $pro);
                         $proveedor->MARGEN = $pro['MARGEN'];
                         $proveedor->save();
@@ -123,13 +125,13 @@ class PedidosController extends Controller
                 $this->savePedidoDetalleStock($det['stock'], $pedido, $detalle);
             }
 
-            GpTempCart::where('sucursal_id',$data['sucursal_id'])
-                ->where('puntodeventa_id',$data['PTO_VTA_ID'])
-                ->where('cliente_id',$data['cliente_id'])
-                ->where('user_id',$user->id)
+            GpTempCart::where('sucursal_id', $data['sucursal_id'])
+                ->where('puntodeventa_id', $data['PTO_VTA_ID'])
+                ->where('cliente_id', $data['cliente_id'])
+                ->where('user_id', $user->id)
                 ->delete();
 
-            if(isset($data['cotizacion_id']) && $data['cotizacion_id'] != ''){
+            if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
                 GpCotizacion::where('id', $data['cotizacion_id'])->update(['estado' => 'procesado']);
             }
 
@@ -137,9 +139,9 @@ class PedidosController extends Controller
 
             return response([
                 'success' => true,
-                'message' => 'El pedido ha sido guardado - '.$pedido->pedido
+                'message' => 'El pedido ha sido guardado - ' . $pedido->pedido
             ]);
-        }else{
+        } else {
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
@@ -163,7 +165,7 @@ class PedidosController extends Controller
 
         return response([
             'success' => true,
-            'message' => 'Pedido '.$pedido->pedido.' facturado',
+            'message' => 'Pedido ' . $pedido->pedido . ' facturado',
         ]);
     }
 
@@ -177,7 +179,7 @@ class PedidosController extends Controller
 
         return response([
             'success' => true,
-            'message' => 'Pedido '.$pedido->pedido.' facturado',
+            'message' => 'Pedido ' . $pedido->pedido . ' facturado',
         ]);
     }
 
@@ -199,9 +201,9 @@ class PedidosController extends Controller
             return;
 
 
-        if($trasladado){
+        if ($trasladado) {
             $this->checktrasladado($pedido);
-        }else {
+        } else {
             $this->checktraslado($pedido);
         }
 
@@ -214,14 +216,14 @@ class PedidosController extends Controller
         $ordendecompra->checkordendecomprarecibidos($pedido);
 
 
-        if($pedido->estado == 'orden_de_compra') {
+        if ($pedido->estado == 'orden_de_compra') {
             return;
         }
 
-        if($pedido->estado == 'traslado')
+        if ($pedido->estado == 'traslado')
             return;
 
-        if($checkDemanda) {
+        if ($checkDemanda) {
             $demanda = $this->checkfacturademanda($pedido);
             if ($demanda) {
                 return;
@@ -239,7 +241,8 @@ class PedidosController extends Controller
         return;
     }
 
-    public function generarordendespacho($id){
+    public function generarordendespacho($id)
+    {
         $pedido = GpPedido::where('id', $id)
             ->first();
 
@@ -251,11 +254,11 @@ class PedidosController extends Controller
     public function checkfacturademanda(GpPedido $pedido): bool
     {
         $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
-        if($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI'){
+        if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI') {
             $pedido->factura_posterior_despacho = 1;
-            if($cliente->CLI_DIA_MAXIMO_MES_FACTURACION == 1){
+            if ($cliente->CLI_DIA_MAXIMO_MES_FACTURACION == 1) {
                 $pedido->factura_a_demanda = 1;
-            }elseif(date('d') > $cliente->CLI_DIA_MAXIMO_MES_FACTURACION){
+            } elseif (date('d') > $cliente->CLI_DIA_MAXIMO_MES_FACTURACION) {
                 $pedido->factura_siguiente_mes = 1;
             }
         }
@@ -264,19 +267,19 @@ class PedidosController extends Controller
         $despachos = new DespachosController();
 
         //Facturar a demanda posterior al despacho (MINERA)
-        if($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes){
+        if ($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
 
             $despachos->generarordendespacho($pedido);
             return true;
         }
 
         //Facturar al día menor al límite
-        if($pedido->factura_posterior_despacho && !$pedido->factura_a_demanda && !$pedido->factura_siguiente_mes){
+        if ($pedido->factura_posterior_despacho && !$pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
             return false;
         }
 
         //Facturar al siguiente mes
-        if($pedido->factura_posterior_despacho && !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes){
+        if ($pedido->factura_posterior_despacho && !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes) {
 
             $despachos->generarordendespacho($pedido);
             return true;
@@ -287,9 +290,9 @@ class PedidosController extends Controller
     public function facturarsiguientemes(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
-        $mes = date("m",strtotime("-1 month"));
+        $mes = date("m", strtotime("-1 month"));
 
-        if($mes == date("m")){
+        if ($mes == date("m")) {
             return response([
                 'success' => true,
                 'message' => 'Aun no llega el mes',
@@ -298,7 +301,7 @@ class PedidosController extends Controller
 
         $pedidos = GpPedido::where('estado', 'espera')
             ->where('factura_posterior_despacho', 1)
-            ->where(function ($query){
+            ->where(function ($query) {
                 $query->whereNull('factura_a_demanda');
                 $query->orWhere('factura_a_demanda', 0);
             })
@@ -306,7 +309,7 @@ class PedidosController extends Controller
             ->whereMonth('created_at', '=', $mes)
             ->get();
 
-        foreach($pedidos as $pedido){
+        foreach ($pedidos as $pedido) {
             $this->checkenviarfactura($pedido, true, false);
         }
 
@@ -316,8 +319,9 @@ class PedidosController extends Controller
         ]);
     }
 
-    public function facturarfaltante(){
-        $pedido = GpPedido::where('id',1370	)->first();
+    public function facturarfaltante()
+    {
+        $pedido = GpPedido::where('id', 1370)->first();
 
         $this->checkenviarfactura($pedido, true, false);
     }
@@ -326,7 +330,7 @@ class PedidosController extends Controller
     {
 
         $date = date('Y-m-d h:i:s');
-        if(date('N', strtotime($date)) >= 6){
+        if (date('N', strtotime($date)) >= 6) {
             return response([
                 'success' => true,
                 'message' => 'Fin de semana',
@@ -340,7 +344,7 @@ class PedidosController extends Controller
         $webservices = new WebserviceController;
         $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
 
-        if($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0){
+        if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
             return response([
                 'success' => true,
                 'message' => 'Día no habil',
@@ -360,42 +364,42 @@ class PedidosController extends Controller
         $enviando = GpPedido::where('estado', 'enviando')
             ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())->get();
 
-        foreach($enviando as $pedido){
+        foreach ($enviando as $pedido) {
 
             $this->respuestaFacturaVenta($pedido, $webservices);
-//            $pedido->estado = 'espera';
-//            $pedido->save();
+            //            $pedido->estado = 'espera';
+            //            $pedido->save();
         }
     }
 
-    public function sendfacturasgp(){
+    public function sendfacturasgp()
+    {
 
         $webservices = new WebserviceController();
 
-        $pedidos = GpPedido::
-            where('estado', 'espera')
+        $pedidos = GpPedido::where('estado', 'espera')
             //->where('factura_siguiente_mes', 0)
             //where('id',69)
             ->get();
 
-        foreach($pedidos as $pedido){
+        foreach ($pedidos as $pedido) {
 
             $this->checkenviarfactura($pedido);
         }
         $traslados = GpPedido::where('estado', 'orden_de_compra')->get();
-        foreach($traslados as $pedido){
+        foreach ($traslados as $pedido) {
             $listo = 'yes';
-            $detalleProveedores = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados','gp_orden_de_compra_generados.detalle_id','gp_pedido_detalle_proveedores.detalle_id')
-                ->where('pedido_id',$pedido->id)
+            $detalleProveedores = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
+                ->where('pedido_id', $pedido->id)
                 ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
                 ->get();
 
-            if(!count($detalleProveedores)){
+            if (!count($detalleProveedores)) {
                 $listo = 'no';
             }
 
-            foreach($detalleProveedores as $prov){
-                if($prov->recibido == 'no'){
+            foreach ($detalleProveedores as $prov) {
+                if ($prov->recibido == 'no') {
                     $listo = 'no';
                 }
 
@@ -406,13 +410,12 @@ class PedidosController extends Controller
 
                 $result = $webservices->transaccional('MST_Estado_Recibo_Compra', $parameters);
 
-                if(isset($result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION']) && $result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION'] != 'PROCESADO'){
+                if (isset($result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION']) && $result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION'] != 'PROCESADO') {
                     $listo = 'no';
                 }
-
             }
             $despachos = new DespachosController();
-            if($listo == 'yes'){
+            if ($listo == 'yes') {
                 $pedido->estado = 'espera';
                 $pedido->save();
                 $despachos->generarordendespacho($pedido);
@@ -422,28 +425,28 @@ class PedidosController extends Controller
         }
     }
 
-    public function checktraslado(GpPedido $pedido){
+    public function checktraslado(GpPedido $pedido)
+    {
 
         $detalles = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
             ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-            ->where('gp_pedido_detalle_stocks.seleccionado', '>',0)
+            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
             ->whereNull('traslado')
             ->select(['gp_pedido_detalles.*', 'gp_pedido_detalle_stocks.STO_ART_BODEGA', 'gp_pedido_detalle_stocks.seleccionado', 'gp_pedido_detalle_stocks.id AS detalle_stocks_id'])
             ->get();
         $traslado = false;
-        foreach($detalles as $detalle){
-            if($pedido->BOD_BODEGA != $detalle->STO_ART_BODEGA)
+        foreach ($detalles as $detalle) {
+            if ($pedido->BOD_BODEGA != $detalle->STO_ART_BODEGA)
                 $traslado = true;
         }
 
-        if($traslado){
+        if ($traslado) {
             $pedido->estado = 'traslado';
             $pedido->save();
 
             $transferencias = new TransferenciasController();
             $transferencias->savetransferenciasventas($pedido, $detalles);
-
-        }else{
+        } else {
             $pedido->estado = 'espera';
             $pedido->save();
         }
@@ -451,29 +454,29 @@ class PedidosController extends Controller
         return;
     }
 
-    public function checktrasladado(GpPedido $pedido){
+    public function checktrasladado(GpPedido $pedido)
+    {
 
         $detalles = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
             ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-            ->where('gp_pedido_detalle_stocks.seleccionado', '>',0)
+            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
             //->select(['gp_pedido_detalles.*', 'gp_pedido_detalle_stocks.STO_ART_BODEGA', 'gp_pedido_detalle_stocks.seleccionado', 'gp_pedido_detalle_stocks.id AS detalle_stocks_id'])
             ->select('gp_pedido_detalle_stocks.STO_ART_BODEGA')
             ->get();
         $traslado = false;
 
-        foreach($detalles as $detalle){
+        foreach ($detalles as $detalle) {
 
-            if($pedido->BOD_BODEGA != $detalle->STO_ART_BODEGA)
+            if ($pedido->BOD_BODEGA != $detalle->STO_ART_BODEGA)
                 $traslado = true;
         }
-        if($traslado){
+        if ($traslado) {
             $pedido->estado = 'traslado';
-        }else{
+        } else {
             $pedido->estado = 'espera';
         }
 
         $pedido->save();
-
     }
 
     public function verpedidos(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -488,34 +491,34 @@ class PedidosController extends Controller
         ]);
 
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $data['puntodeventa_id'])
-                ->leftJoin('gp_cotizacions','gp_cotizacions.id','gp_pedidos.cotizacion_id')
-                ->select('gp_pedidos.*','gp_cotizacions.cotizacion');
+            ->leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
+            ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion');
 
-        if($data['estado'] != 'todos') {
+        if ($data['estado'] != 'todos') {
             $pedidos = $pedidos->where('gp_pedidos.estado', $data['estado']);
         }
-        if(isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != ''){
-            $pedidos = $pedidos->whereDate('gp_pedidos.created_at', '>=', $data['fecha_desde'].' 00:00:00');
-            $pedidos = $pedidos->whereDate('gp_pedidos.created_at', '<=', $data['fecha_hasta'].' 23:59:59');
+        if (isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != '') {
+            $pedidos = $pedidos->whereDate('gp_pedidos.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
+            $pedidos = $pedidos->whereDate('gp_pedidos.created_at', '<=', $data['fecha_hasta'] . ' 23:59:59');
         }
 
-        if(isset($data['cliente'])){
+        if (isset($data['cliente'])) {
             $pedidos = $pedidos->where('gp_pedidos.CLI_RUC', $data['cliente']['CLI_RUC']);
         }
 
         $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(1500)->get();
 
-        foreach($pedidos as $pedido){
+        foreach ($pedidos as $pedido) {
 
-            $pedido->direccion_entrega = GpClienteSucursal::where('id',$pedido->sucursal_id)->first();
+            $pedido->direccion_entrega = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
 
-            if($pedido->requiere_aprobacion_comercial == 'yes' && $pedido->aprobado_comercial == 'no'){
+            if ($pedido->requiere_aprobacion_comercial == 'yes' && $pedido->aprobado_comercial == 'no') {
                 $pedido->imprimir = 'no';
-            }elseif($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no'){
+            } elseif ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
                 $pedido->imprimir = 'no';
-            }elseif($pedido->estado == 'rechazado'){
+            } elseif ($pedido->estado == 'rechazado') {
                 $pedido->imprimir = 'no';
-            }else{
+            } else {
                 $pedido->imprimir = 'yes';
             }
         }
@@ -547,7 +550,7 @@ class PedidosController extends Controller
         $pendientes = false;
         $existentes = false;
         $funciones = new FuncionesController();
-        foreach($detalle as $item){
+        foreach ($detalle as $item) {
             $proveedores = $funciones->getitemproveedores($data, $item, $pendientes, $existentes);
             $item->proveedores = $proveedores['proveedores'];
             $pendientes = $proveedores['pendientes'];
@@ -557,7 +560,7 @@ class PedidosController extends Controller
             $stock = GpPedidoDetalleStock::where('detalle_id', $item->id)
                 ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
                 ->first();
-            if($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L'){
+            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
                 $existentes = true;
             }
         }
@@ -565,49 +568,51 @@ class PedidosController extends Controller
         $ordendecompra = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
             ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
             ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
-            ->where('gp_pedidos.pedido',$data['pedido'])
-            ->select('gp_orden_de_compra_generados.*',
+            ->where('gp_pedidos.pedido', $data['pedido'])
+            ->select(
+                'gp_orden_de_compra_generados.*',
                 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN',
                 'gp_proveedors.PROV_RAZON_SOCIAL',
                 'gp_proveedors.PROV_DIRECCION_1',
                 'gp_pedidos.CLI_RAZON_SOCIAL',
-                'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE')
+                'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE'
+            )
             ->get();
         $recibosdecompral = new RecibosdecompraeleController();
         $ordenes = array();
-        foreach($ordendecompra as $orden){
+        foreach ($ordendecompra as $orden) {
             $recibodecompra = $recibosdecompral->setdetalleordendecompra($orden);
-            if(count($recibodecompra->detalle) > 0){
+            if (count($recibodecompra->detalle) > 0) {
                 $ordenes[] = $recibodecompra;
             }
         }
 
         $traslados = array();
 
-        $trasladosVentas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id','gp_traslados_ventas.pedido_id')
+        $trasladosVentas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
-//            ->join('gp_guia_remision_transferencias', 'gp_guia_remision_transferencias.pedido', 'gp_pedidos.pedido')
-//            ->join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
-//            ->where('gp_guia_remisions.estado', '!=', 'eliminada')
+            //            ->join('gp_guia_remision_transferencias', 'gp_guia_remision_transferencias.pedido', 'gp_pedidos.pedido')
+            //            ->join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
+            //            ->where('gp_guia_remisions.estado', '!=', 'eliminada')
             ->where('pedido_id', $data['id'])
-            ->select('gp_traslados_ventas.*',
+            ->select(
+                'gp_traslados_ventas.*',
                 'gp_pedidos.id AS pedido_id',
                 'gp_pedidos.pedido',
                 'gp_bodegas.BOD_DESCRIPCION',
                 'gp_bodegas.BOD_BODEGA',
                 'gp_pedidos.created_at AS fecha',
                 'gp_pedidos.USERID AS usuario',
-//                'gp_guia_remisions.estado AS estado_guia'
+                //                'gp_guia_remisions.estado AS estado_guia'
             )
             ->get();
 
-        if($trasladosVentas){
+        if ($trasladosVentas) {
 
 
-            foreach($trasladosVentas as $traslado){
+            foreach ($trasladosVentas as $traslado) {
 
-                $guias = GpGuiaRemisionTransferencia::
-                    join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
+                $guias = GpGuiaRemisionTransferencia::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
                     ->join('gp_guia_remision_detalles', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
                     ->join('gp_traslados_ventas', 'gp_traslados_ventas.id', 'gp_guia_remision_detalles.detalle_id')
                     ->where('gp_guia_remision_transferencias.pedido', $traslado->pedido)
@@ -615,19 +620,18 @@ class PedidosController extends Controller
                     ->where('gp_guia_remision_detalles.detalle_id', $traslado->id)
                     ->where('gp_guia_remisions.estado', '!=', 'eliminada')
                     ->where('gp_traslados_ventas.pedido_id', $traslado->pedido_id)
-                    ->select('gp_guia_remisions.*', 'gp_guia_remision_detalles.GUI_REM_CANTIDAD', 'gp_guia_remision_detalles.recibido' )
+                    ->select('gp_guia_remisions.*', 'gp_guia_remision_detalles.GUI_REM_CANTIDAD', 'gp_guia_remision_detalles.recibido')
                     ->get();
 
                 $traslado->guias = $guias;
 
-                foreach($guias as $guia){
-                    if($guia->estado != 'recibida')
+                foreach ($guias as $guia) {
+                    if ($guia->estado != 'recibida')
                         $pendientes = true;
                     else
                         $existentes = true;
-
                 }
-                if(!$traslado->completado)
+                if (!$traslado->completado)
                     $pendientes = true;
             }
         }
@@ -667,17 +671,17 @@ class PedidosController extends Controller
         $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
         $funciones = new FuncionesController();
 
-        foreach($detalle as $key =>  $articulo){
+        foreach ($detalle as $key =>  $articulo) {
             $stocks = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                 ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
                 ->first();
 
-            if($stocks && $stocks->seleccionado == 0 && $articulo->ART_TIPO_COMPRA!= 'L' && $articulo->ART_TIPO_COMPRA!= 'SERV'){
+            if ($stocks && $stocks->seleccionado == 0 && $articulo->ART_TIPO_COMPRA != 'L' && $articulo->ART_TIPO_COMPRA != 'SERV') {
                 unset($detalle[$key]);
                 continue;
             }
 
-            if($stocks && $articulo->ART_TIPO_COMPRA!= 'L' && $articulo->ART_TIPO_COMPRA!= 'SERV'){
+            if ($stocks && $articulo->ART_TIPO_COMPRA != 'L' && $articulo->ART_TIPO_COMPRA != 'SERV') {
                 $articulo->ART_CANTIDAD = $stocks->seleccionado;
             }
             $articulo->stocks = $stocks;
@@ -685,17 +689,17 @@ class PedidosController extends Controller
             $proveedores = $funciones->getitemproveedores($data, $articulo, false);
             $array_prov = array();
 
-            if(count($proveedores['proveedores'])> 0){
+            if (count($proveedores['proveedores']) > 0) {
                 $articulo->ART_CANTIDAD = 0;
-                foreach($proveedores['proveedores'] as $proveedor){
-                    if($proveedor->ingresado > 0){
+                foreach ($proveedores['proveedores'] as $proveedor) {
+                    if ($proveedor->ingresado > 0) {
                         $articulo->ART_CANTIDAD += $proveedor->ingresado - $proveedor->ejecutado;
                         $array_prov[] = $proveedor;
                     }
                 }
             }
 
-            if($articulo->ART_CANTIDAD == 0){
+            if ($articulo->ART_CANTIDAD == 0) {
                 unset($detalle[$key]);
                 continue;
             }
@@ -703,18 +707,18 @@ class PedidosController extends Controller
             $articulo->proveedores = $array_prov;
 
             $articulo->ART_IMP_VTA = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first()->ART_IMP_VTA;
-            $articulo->ART_IVA = number_format(number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD), 2, '.','') * ($articulo->ART_IMP_VTA / 100), 2, '.','');
-            $articulo->subtotal = (float)number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD,2,'.','');
-            $data['subtotal'] += (float)number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD,2,'.','');
-            $data['descuento'] += (float)number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD,2,'.','');
-            $data['subtotalmenosdescuento'] += (float)number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.','');
+            $articulo->ART_IVA = number_format(number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD), 2, '.', '') * ($articulo->ART_IMP_VTA / 100), 2, '.', '');
+            $articulo->subtotal = (float)number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD, 2, '.', '');
+            $data['subtotal'] += (float)number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD, 2, '.', '');
+            $data['descuento'] += (float)number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD, 2, '.', '');
+            $data['subtotalmenosdescuento'] += (float)number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.', '');
             $data['iva'] += $articulo->ART_IVA;
         }
 
-        $data['descuento'] = number_format($data['descuento'], 2, '.','');
-        $data['subtotalmenosdescuento'] = number_format($data['subtotalmenosdescuento'], 2, '.','');
-        $data['iva'] = number_format($data['iva'], 2, '.','');
-        $data['total'] = number_format($data['subtotalmenosdescuento'] + (float)$data['iva'], 2, '.','');
+        $data['descuento'] = number_format($data['descuento'], 2, '.', '');
+        $data['subtotalmenosdescuento'] = number_format($data['subtotalmenosdescuento'], 2, '.', '');
+        $data['iva'] = number_format($data['iva'], 2, '.', '');
+        $data['total'] = number_format($data['subtotalmenosdescuento'] + (float)$data['iva'], 2, '.', '');
         $facturarExistente['pedido'] = $data;
         $facturarExistente['detalle'] = $detalle;
 
@@ -736,16 +740,16 @@ class PedidosController extends Controller
 
         $eliminar = array('');
 
-        foreach($detalle as $key =>  $articulo){
+        foreach ($detalle as $key =>  $articulo) {
             $stocks = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                 ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
                 ->first();
 
-            if($articulo->ART_TIPO_COMPRA != 'SERV'){
-                if($stocks->seleccionado == $articulo->ART_CANTIDAD){
+            if ($articulo->ART_TIPO_COMPRA != 'SERV') {
+                if ($stocks->seleccionado == $articulo->ART_CANTIDAD) {
                     //echo 'por eliminar: '.$articulo->ART_CODIGO.'<br>';
                     $articulo->delete();
-                }elseif($stocks->seleccionado > 0 && $stocks->seleccionado < $articulo->ART_CANTIDAD){
+                } elseif ($stocks->seleccionado > 0 && $stocks->seleccionado < $articulo->ART_CANTIDAD) {
                     //echo 'Encera stock bodega '.$stocks->id.' y edita cantidad linea: '.$articulo->ART_CODIGO.' a '.$articulo->ART_CANTIDAD - $stocks->seleccionado.'<br>';
                     $articulo->ART_CANTIDAD = $articulo->ART_CANTIDAD - $stocks->seleccionado;
                     $articulo->save();
@@ -757,34 +761,34 @@ class PedidosController extends Controller
 
                 $proveedores = $funciones->getitemproveedores($data, $articulo, false);
 
-                foreach($proveedores['proveedores'] as $proveedor){
-                    if(($proveedor->ingresado - $proveedor->ejecutado) > 0){
+                foreach ($proveedores['proveedores'] as $proveedor) {
+                    if (($proveedor->ingresado - $proveedor->ejecutado) > 0) {
                         //echo 'Eliminar Proveedor: '.$proveedor->id.'<br>';
                         $articulo->ART_CANTIDAD -= $proveedor->ingresado - $proveedor->ejecutado;
-                        if($proveedor->ingresado == $proveedor->CANTIDAD){
+                        if ($proveedor->ingresado == $proveedor->CANTIDAD) {
                             unset($proveedor->orden_detalle);
 
                             $eliminar['proveedores'][] = $proveedor;
 
                             //$proveedor->delete();
-                        }else{
+                        } else {
                             unset($proveedor->orden_detalle);
                             $proveedor->save();
                         }
                     }
                 }
 
-                if(count($proveedores['proveedores'])){
-                    if($articulo->ART_CANTIDAD == 0){
+                if (count($proveedores['proveedores'])) {
+                    if ($articulo->ART_CANTIDAD == 0) {
                         //echo 'Por eliminar L: '.$articulo->ART_CODIGO.'<br>';
                         $eliminar['articulos'][] = $articulo;
                         //$articulo->delete();
-                    }else{
+                    } else {
                         //echo 'Editar la cantidad del L '.$articulo->ART_CODIGO.' a: '.$articulo->ART_CANTIDAD.'<br>';
                         $articulo->save();
                     }
                 }
-            }else{
+            } else {
                 $articulo->delete();
             }
         }
@@ -796,14 +800,14 @@ class PedidosController extends Controller
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
-        $ultimoPedido = GpPedido::orderBy('id','DESC')->first();
+        $ultimoPedido = GpPedido::orderBy('id', 'DESC')->first();
 
-        if(!$ultimoPedido){
+        if (!$ultimoPedido) {
             $ultimoPedido = new \stdClass();
             $ultimoPedido->id = env('SECUENCIAL_PEDIDO');
             $pedido->id = $ultimoPedido->id + 1;
         }
-        $pedido->pedido = 'PED'.str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
+        $pedido->pedido = 'PED' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
         $pedido->user_id = $user->id;
         $pedido->sucursal_id = $data['sucursal_id'];
         $pedido->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
@@ -828,11 +832,11 @@ class PedidosController extends Controller
         $pedido->despacho = $data['despacho'];
         $pedido->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
         $pedido->porcentage_descuento = $data['porcentage_descuento'];
-        $pedido->subtotal = number_format((float)$data['subtotal'],2,'.','');
-        $pedido->descuento = number_format((float)$data['descuento'],2,'.','');
-        $pedido->subtotalmenosdescuento = number_format((float)$data['subtotalmenosdescuento'],2,'.','');
-        $pedido->iva = number_format((float)$data['iva'],2,'.','');
-        $pedido->total = number_format((float)$data['total'],2,'.','');
+        $pedido->subtotal = number_format((float)$data['subtotal'], 2, '.', '');
+        $pedido->descuento = number_format((float)$data['descuento'], 2, '.', '');
+        $pedido->subtotalmenosdescuento = number_format((float)$data['subtotalmenosdescuento'], 2, '.', '');
+        $pedido->iva = number_format((float)$data['iva'], 2, '.', '');
+        $pedido->total = number_format((float)$data['total'], 2, '.', '');
         $pedido->requiere_aprobacion_comercial = $data['requiere_aprobacion_comercial'];
         $pedido->aprobado_comercial = $data['aprobado_comercial'];
         $pedido->aprobador_comercial_id = $data['aprobador_comercial_id'];
@@ -851,7 +855,7 @@ class PedidosController extends Controller
                 $i++;
                 $detalle = $this->savePedidoDetalle($i, $pedido, $det);
 
-                if($det['ART_TIPO_COMPRA'] != 'SERV') {
+                if ($det['ART_TIPO_COMPRA'] != 'SERV') {
                     if (count($det['proveedores']) > 0) {
                         foreach ($det['proveedores'] as $pro) {
                             $pro['recibido'] = 'yes';
@@ -867,20 +871,20 @@ class PedidosController extends Controller
 
                                 $ejecutado = GpPedidoDetalleProveedores::where('id', $pro['id'])->first();
 
-//                                if(!$proveedor->ejecutado)
-//                                    $proveedor->ejecutado = 0;
+                                //                                if(!$proveedor->ejecutado)
+                                //                                    $proveedor->ejecutado = 0;
 
-                                if($ejecutado){
+                                if ($ejecutado) {
                                     $ejecutado->ejecutado += $det['ART_CANTIDAD'];
                                     $ejecutado->save();
                                 }
 
-                                if(!$ejecutado){
+                                if (!$ejecutado) {
                                     $ordenCompra->ORDEN_COMPRA_DOCU_ORIGEN = $pedido->pedido;
                                     $ordenCompra->detalle_id = $detalle->id;
                                     $ordenCompra->detalle_proveedores_id = $proveedor->id;
                                     $ordenCompra->save();
-                                }else{
+                                } else {
                                     $nueva_orden = $ordenCompra->replicate();
                                     $nueva_orden->ORDEN_COMPRA_DOCU_ORIGEN = $pedido->pedido;
                                     $nueva_orden->detalle_id = $detalle->id;
@@ -890,16 +894,16 @@ class PedidosController extends Controller
                                 }
 
                                 $ordenCompraGenerado = GpOrdenDeCompraGenerado::where('orden_id', $ordenCompra->id)
-//                                    ->where('detalle_id', $det['id'])
-//                                    ->where('detalle_proveedores_id', $pro['id'])
+                                    //                                    ->where('detalle_id', $det['id'])
+                                    //                                    ->where('detalle_proveedores_id', $pro['id'])
                                     ->first();
 
-                                if(!$ejecutado){
+                                if (!$ejecutado) {
                                     $ordenCompraGenerado->detalle_id = $detalle->id;
                                     $ordenCompraGenerado->detalle_proveedores_id = $proveedor->id;
                                     $ordenCompraGenerado->save();
-                                }else{
-                                    if($ordenCompraGenerado){
+                                } else {
+                                    if ($ordenCompraGenerado) {
                                         $nueva_ordenCompraGenerado = $ordenCompraGenerado->replicate();
                                         $nueva_ordenCompraGenerado->orden_id = $nueva_orden->id;
                                         $nueva_ordenCompraGenerado->detalle_id = $detalle->id;
@@ -907,9 +911,9 @@ class PedidosController extends Controller
                                         $nueva_ordenCompraGenerado->estado = 'recibido';
                                         $nueva_ordenCompraGenerado->save();
 
-                                        $ordenCompraGeneradoDetalle = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id',$ordenCompraGenerado->id)->get();
+                                        $ordenCompraGeneradoDetalle = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ordenCompraGenerado->id)->get();
 
-                                        foreach($ordenCompraGeneradoDetalle as $ocgd){
+                                        foreach ($ordenCompraGeneradoDetalle as $ocgd) {
                                             $nueva_ocgd = $ocgd->replicate();
                                             $nueva_ocgd->orden_generada_id = $nueva_ordenCompraGenerado->id;
                                             $nueva_ocgd->detalle_proveedores_id = $proveedor->id;
@@ -931,13 +935,13 @@ class PedidosController extends Controller
                 }
             }
 
-            if(isset($eliminar['proveedores']) && count($eliminar['proveedores'])>0){
-                foreach($eliminar['proveedores'] as $proveedor){
+            if (isset($eliminar['proveedores']) && count($eliminar['proveedores']) > 0) {
+                foreach ($eliminar['proveedores'] as $proveedor) {
                     $proveedor->delete();
                 }
             }
-            if(isset($eliminar['articulos']) && count($eliminar['articulos'])>0){
-                foreach($eliminar['articulos'] as $articulo){
+            if (isset($eliminar['articulos']) && count($eliminar['articulos']) > 0) {
+                foreach ($eliminar['articulos'] as $articulo) {
                     $articulo->delete();
                 }
             }
@@ -967,9 +971,9 @@ class PedidosController extends Controller
         $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
         $funciones = new FuncionesController();
 
-        foreach($detalle as $key =>  $articulo){
+        foreach ($detalle as $key =>  $articulo) {
 
-            if($articulo->trasladado == 0){
+            if ($articulo->trasladado == 0) {
                 unset($detalle[$key]);
                 continue;
             }
@@ -977,8 +981,8 @@ class PedidosController extends Controller
             $proveedores = $funciones->getitemproveedores($data, $articulo, false);
             $array_prov = array();
 
-            if(count($proveedores['proveedores'])> 0){
-                foreach($proveedores['proveedores'] as $proveedor){
+            if (count($proveedores['proveedores']) > 0) {
+                foreach ($proveedores['proveedores'] as $proveedor) {
                     $array_prov[] = $proveedor;
                 }
             }
@@ -988,15 +992,15 @@ class PedidosController extends Controller
             $articulo->ART_CANTIDAD = $articulo->trasladado;
 
             $data['subtotal'] += $articulo->ART_CANTIDAD * $articulo->ART_VALOR;
-            $data['descuento'] += (float)number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD,2,'.','');
-            $data['subtotalmenosdescuento'] += number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.','');
-            $data['iva'] += (float)number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD) * ($articulo->ART_IMP_VTA / 100), 2, '.','');
+            $data['descuento'] += (float)number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD, 2, '.', '');
+            $data['subtotalmenosdescuento'] += number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.', '');
+            $data['iva'] += (float)number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD) * ($articulo->ART_IMP_VTA / 100), 2, '.', '');
         }
 
-        $data['descuento'] = number_format($data['descuento'], 2, '.','');
-        $data['subtotalmenosdescuento'] = number_format($data['subtotalmenosdescuento'], 2, '.','');
-        $data['iva'] = number_format($data['iva'], 2, '.','');
-        $data['total'] = number_format($data['subtotalmenosdescuento'] + (float)$data['iva'], 2, '.','');
+        $data['descuento'] = number_format($data['descuento'], 2, '.', '');
+        $data['subtotalmenosdescuento'] = number_format($data['subtotalmenosdescuento'], 2, '.', '');
+        $data['iva'] = number_format($data['iva'], 2, '.', '');
+        $data['total'] = number_format($data['subtotalmenosdescuento'] + (float)$data['iva'], 2, '.', '');
 
         $facturarExistente['pedido'] = $data;
         $facturarExistente['detalle'] = $detalle;
@@ -1019,15 +1023,15 @@ class PedidosController extends Controller
 
         $eliminar = array('');
 
-        foreach($detalle as $key =>  $articulo){
+        foreach ($detalle as $key =>  $articulo) {
             $stocks = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                 ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
                 ->first();
 
-            if($articulo->ART_TIPO_COMPRA != 'SERV'){
-                if($articulo->trasladado == $articulo->ART_CANTIDAD){
+            if ($articulo->ART_TIPO_COMPRA != 'SERV') {
+                if ($articulo->trasladado == $articulo->ART_CANTIDAD) {
                     $articulo->delete();
-                }elseif($articulo->trasladado > 0 && $articulo->trasladado < $articulo->ART_CANTIDAD){
+                } elseif ($articulo->trasladado > 0 && $articulo->trasladado < $articulo->ART_CANTIDAD) {
                     $articulo->ART_CANTIDAD = $articulo->ART_CANTIDAD - $articulo->trasladado;
                     $articulo->trasladado = 0;
                     $articulo->save();
@@ -1039,34 +1043,34 @@ class PedidosController extends Controller
 
                 $proveedores = $funciones->getitemproveedores($data, $articulo, false);
 
-                foreach($proveedores['proveedores'] as $proveedor){
-                    if(($proveedor->ingresado - $proveedor->ejecutado) > 0){
+                foreach ($proveedores['proveedores'] as $proveedor) {
+                    if (($proveedor->ingresado - $proveedor->ejecutado) > 0) {
                         //echo 'Eliminar Proveedor: '.$proveedor->id.'<br>';
                         $articulo->ART_CANTIDAD -= $proveedor->ingresado - $proveedor->ejecutado;
-                        if($proveedor->ingresado == $proveedor->CANTIDAD){
+                        if ($proveedor->ingresado == $proveedor->CANTIDAD) {
                             unset($proveedor->orden_detalle);
 
                             $eliminar['proveedores'][] = $proveedor;
 
                             //$proveedor->delete();
-                        }else{
+                        } else {
                             unset($proveedor->orden_detalle);
                             $proveedor->save();
                         }
                     }
                 }
 
-                if(count($proveedores['proveedores'])){
-                    if($articulo->ART_CANTIDAD == 0){
+                if (count($proveedores['proveedores'])) {
+                    if ($articulo->ART_CANTIDAD == 0) {
                         //echo 'Por eliminar L: '.$articulo->ART_CODIGO.'<br>';
                         $eliminar['articulos'][] = $articulo;
                         //$articulo->delete();
-                    }else{
+                    } else {
                         //echo 'Editar la cantidad del L '.$articulo->ART_CODIGO.' a: '.$articulo->ART_CANTIDAD.'<br>';
                         $articulo->save();
                     }
                 }
-            }else{
+            } else {
                 $articulo->delete();
             }
         }
@@ -1078,14 +1082,14 @@ class PedidosController extends Controller
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
-        $ultimoPedido = GpPedido::orderBy('id','DESC')->first();
+        $ultimoPedido = GpPedido::orderBy('id', 'DESC')->first();
 
-        if(!$ultimoPedido){
+        if (!$ultimoPedido) {
             $ultimoPedido = new \stdClass();
             $ultimoPedido->id = env('SECUENCIAL_PEDIDO');
             $pedido->id = $ultimoPedido->id + 1;
         }
-        $pedido->pedido = 'PED'.str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
+        $pedido->pedido = 'PED' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
         $pedido->user_id = $user->id;
         $pedido->sucursal_id = $data['sucursal_id'];
         $pedido->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
@@ -1110,11 +1114,11 @@ class PedidosController extends Controller
         $pedido->despacho = $data['despacho'];
         $pedido->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
         $pedido->porcentage_descuento = $data['porcentage_descuento'];
-        $pedido->subtotal = number_format((float)$data['subtotal'],2,'.','');
-        $pedido->descuento = number_format((float)$data['descuento'],2,'.','');
-        $pedido->subtotalmenosdescuento = number_format((float)$data['subtotalmenosdescuento'],2,'.','');
-        $pedido->iva = number_format((float)$data['iva'],2,'.','');
-        $pedido->total = number_format((float)$data['total'],2,'.','');
+        $pedido->subtotal = number_format((float)$data['subtotal'], 2, '.', '');
+        $pedido->descuento = number_format((float)$data['descuento'], 2, '.', '');
+        $pedido->subtotalmenosdescuento = number_format((float)$data['subtotalmenosdescuento'], 2, '.', '');
+        $pedido->iva = number_format((float)$data['iva'], 2, '.', '');
+        $pedido->total = number_format((float)$data['total'], 2, '.', '');
         $pedido->requiere_aprobacion_comercial = $data['requiere_aprobacion_comercial'];
         $pedido->aprobado_comercial = $data['aprobado_comercial'];
         $pedido->aprobador_comercial_id = $data['aprobador_comercial_id'];
@@ -1134,7 +1138,7 @@ class PedidosController extends Controller
                 $i++;
                 $detalle = $this->savePedidoDetalle($i, $pedido, $det);
 
-                if($det['ART_TIPO_COMPRA'] != 'SERV') {
+                if ($det['ART_TIPO_COMPRA'] != 'SERV') {
                     if (count($det['proveedores']) > 0) {
                         foreach ($det['proveedores'] as $pro) {
                             $pro['recibido'] = 'yes';
@@ -1149,17 +1153,17 @@ class PedidosController extends Controller
 
                                 $ejecutado = GpPedidoDetalleProveedores::where('id', $pro['id'])->first();
 
-                                if($ejecutado){
+                                if ($ejecutado) {
                                     $ejecutado->ejecutado += $det['ART_CANTIDAD'];
                                     $ejecutado->save();
                                 }
 
-                                if(!$ejecutado){
+                                if (!$ejecutado) {
                                     $ordenCompra->ORDEN_COMPRA_DOCU_ORIGEN = $pedido->pedido;
                                     $ordenCompra->detalle_id = $detalle->id;
                                     $ordenCompra->detalle_proveedores_id = $proveedor->id;
                                     $ordenCompra->save();
-                                }else{
+                                } else {
                                     $nueva_orden = $ordenCompra->replicate();
                                     $nueva_orden->ORDEN_COMPRA_DOCU_ORIGEN = $pedido->pedido;
                                     $nueva_orden->detalle_id = $detalle->id;
@@ -1173,11 +1177,11 @@ class PedidosController extends Controller
                                     ->where('detalle_proveedores_id', $pro['id'])
                                     ->first();
 
-                                if(!$ejecutado){
+                                if (!$ejecutado) {
                                     $ordenCompraGenerado->detalle_id = $detalle->id;
                                     $ordenCompraGenerado->detalle_proveedores_id = $proveedor->id;
                                     $ordenCompraGenerado->save();
-                                }else{
+                                } else {
                                     $nueva_ordenCompraGenerado = $ordenCompraGenerado->replicate();
                                     $nueva_ordenCompraGenerado->orden_id = $nueva_orden->id;
                                     $nueva_ordenCompraGenerado->detalle_id = $detalle->id;
@@ -1185,9 +1189,9 @@ class PedidosController extends Controller
                                     $nueva_ordenCompraGenerado->estado = 'recibido';
                                     $nueva_ordenCompraGenerado->save();
 
-                                    $ordenCompraGeneradoDetalle = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id',$ordenCompraGenerado->id)->get();
+                                    $ordenCompraGeneradoDetalle = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ordenCompraGenerado->id)->get();
 
-                                    foreach($ordenCompraGeneradoDetalle as $ocgd){
+                                    foreach ($ordenCompraGeneradoDetalle as $ocgd) {
                                         $nueva_ocgd = $ocgd->replicate();
                                         $nueva_ocgd->orden_generada_id = $nueva_ordenCompraGenerado->id;
                                         $nueva_ocgd->detalle_proveedores_id = $proveedor->id;
@@ -1208,13 +1212,13 @@ class PedidosController extends Controller
                 }
             }
 
-            if(isset($eliminar['proveedores']) && count($eliminar['proveedores'])>0){
-                foreach($eliminar['proveedores'] as $proveedor){
+            if (isset($eliminar['proveedores']) && count($eliminar['proveedores']) > 0) {
+                foreach ($eliminar['proveedores'] as $proveedor) {
                     $proveedor->delete();
                 }
             }
-            if(isset($eliminar['articulos']) && count($eliminar['articulos'])>0){
-                foreach($eliminar['articulos'] as $articulo){
+            if (isset($eliminar['articulos']) && count($eliminar['articulos']) > 0) {
+                foreach ($eliminar['articulos'] as $articulo) {
                     $articulo->delete();
                 }
             }
@@ -1225,7 +1229,7 @@ class PedidosController extends Controller
             $pedido_anterior = GpPedido::where('id', $data['id'])->first();
             $pedido = GpPedido::where('id', $pedido->id)->first();
 
-            GpGuiaRemision::where('pedido', $pedido_anterior->pedido)->update(['pedido'=>$pedido->pedido]);
+            GpGuiaRemision::where('pedido', $pedido_anterior->pedido)->update(['pedido' => $pedido->pedido]);
 
             $this->checkenviarfactura($pedido, true, false);
         }
@@ -1241,15 +1245,15 @@ class PedidosController extends Controller
 
         $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
 
-        foreach($detalle as $key =>  $articulo){
+        foreach ($detalle as $key =>  $articulo) {
             $stocks = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                 ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
                 ->first();
 
-            if($articulo->ART_TIPO_COMPRA != 'SERV'){
-                if(!$articulo->trasladado){
+            if ($articulo->ART_TIPO_COMPRA != 'SERV') {
+                if (!$articulo->trasladado) {
                     $articulo->delete();
-                }elseif($articulo->trasladado > 0){
+                } elseif ($articulo->trasladado > 0) {
                     $articulo->ART_CANTIDAD = $articulo->trasladado;
                     $articulo->save();
 
@@ -1262,7 +1266,7 @@ class PedidosController extends Controller
 
         $pedido = GpPedido::where('id', $data['id'])->first();
 
-        GpOrdenDespacho::where('pedido_id', $pedido->id)->update(['estado'=>'despachada']);
+        GpOrdenDespacho::where('pedido_id', $pedido->id)->update(['estado' => 'despachada']);
 
         $this->checkenviarfactura($pedido, true, false);
 
@@ -1275,13 +1279,14 @@ class PedidosController extends Controller
     public function recalcularpedido($id): void
     {
         $funciones = new FuncionesController();
-        $pedido = GpPedido::where('id',$id)->first();
+        $pedido = GpPedido::where('id', $id)->first();
         $funciones->recalcularpedido($pedido);
     }
 
-    public function corregirpedidos(){
+    public function corregirpedidos()
+    {
         $pedidos = GpPedido::whereNotNull('pedido_origen')->get();
-        foreach($pedidos as $pedido){
+        foreach ($pedidos as $pedido) {
             $this->recalcularpedido($pedido->id);
         }
     }
@@ -1331,12 +1336,11 @@ class PedidosController extends Controller
         $registroCopia->USERID = $user->USERID;
         $registroCopia->tipo = 'copia';
 
-        if($data['tipo'] == 'cotizacion'){
+        if ($data['tipo'] == 'cotizacion') {
             $cotizaciones = new CotizacionesController();
             $detalle = $cotizaciones->getdetallecotizacion($data['pedido'], true);
             $registroCopia->cotizacion_origen = $data['pedido']['id'];
-
-        }else{
+        } else {
             $detalle = $this->getDetallePedido($data['pedido'], true);
             $registroCopia->pedido_origen = $data['pedido']['id'];
         }
@@ -1363,28 +1367,28 @@ class PedidosController extends Controller
         $consulta_precio = array();
         $stock_bodega_arr = array();
 
-        $detalle = GpPedidoDetalle::where('pedido_id',$data['id'])->get();
+        $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
 
 
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $articulo->proveedores = array();
 
-            $stockbodega = GpPedidoDetalleStock::where('pedido_id',$data['id'])
-                ->where('detalle_id',$articulo->id)
+            $stockbodega = GpPedidoDetalleStock::where('pedido_id', $data['id'])
+                ->where('detalle_id', $articulo->id)
                 ->get()->toArray();
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
-            foreach($arr_bodegas as $bodega){
+            foreach ($arr_bodegas as $bodega) {
                 $consulta_bodega[] = array(
-                    'STOCK_ARTICULO'=>$articulo->ART_CODIGO.'@'.$bodega,
+                    'STOCK_ARTICULO' => $articulo->ART_CODIGO . '@' . $bodega,
                 );
             }
 
             $consulta_precio[] = array(
-                'ART_CODIGO'=>$articulo->ART_CODIGO,
+                'ART_CODIGO' => $articulo->ART_CODIGO,
             );
 
-            if($encera){
+            if ($encera) {
                 $articulo->descuento = $cliente->CLI_DSTO_COMERCIAL;
                 $articulo->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
                 $articulo->ART_DESCUENTO = 0;
@@ -1394,17 +1398,17 @@ class PedidosController extends Controller
         }
 
         $webservices = new WebserviceController;
-        if($encera){
+        if ($encera) {
             $precios = $webservices->listaprecios($consulta_precio);
             $lista_precios_general = array();
-            foreach($precios as $precio){
+            foreach ($precios as $precio) {
                 $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
             }
         }
 
         $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-        foreach($stock_bodega_arr as $key => $bodegas) {
+        foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
                 $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
             }
@@ -1412,16 +1416,15 @@ class PedidosController extends Controller
 
         $articulos_array_l = array();
 
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $funciones->formatStock($articulo, $stock_general);
-            if($articulo->ART_TIPO_COMPRA != 'L') {
-                if($encera){
+            if ($articulo->ART_TIPO_COMPRA != 'L') {
+                if ($encera) {
                     $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
                     $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
                 }
-
             }
-            if(!$articulo->disponible){
+            if (!$articulo->disponible) {
                 $clase = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
                 $articulo->ART_CODIGO = $funciones->buscareledisponible($articulos_array_l, $clase->ART_CLASE_ARTICULO);
                 $articulos_array_l[] = $articulo->ART_CODIGO;
@@ -1439,16 +1442,16 @@ class PedidosController extends Controller
         $ordendecompra = new OrdendecompraController();
 
         $flag = $ordendecompra->checkordendecomprarecibidos($pedido);
-        if($flag){
+        if ($flag) {
             return;
         }
 
         $this->checktrasladado($pedido);
-        if($pedido->estado == 'orden_de_compra') {
+        if ($pedido->estado == 'orden_de_compra') {
             return;
         }
 
-        if($pedido->estado == 'espera') {
+        if ($pedido->estado == 'espera') {
             $pedido->estado = 'enviando';
             $pedido->save();
 
@@ -1470,7 +1473,7 @@ class PedidosController extends Controller
                 $FAC_VTA_ID_DIRECCION_ENVIO = $sucursalFacturacion->CLI_SUC_ID_DIRECCION;
             }
 
-            if(!$pedido->factura_origen)
+            if (!$pedido->factura_origen)
                 $pedido->factura_origen = '';
 
             $cabecera = array(
@@ -1489,10 +1492,10 @@ class PedidosController extends Controller
                     'FAC_VTA_DATE_DOCU' => date('Y-m-d H:i:s'),
                     'FAC_VTA_FORMA_PAGO' => $pedido->DESC_FORMA_PAGO_CODIGO,
                     'FAC_VTA_BODEGA' => $pedido->BOD_BODEGA,
-                    'FAC_VTA_SUBTOTAL' => number_format($pedido->subtotal - $pedido->descuento, 2, '.',''),
+                    'FAC_VTA_SUBTOTAL' => number_format($pedido->subtotal - $pedido->descuento, 2, '.', ''),
                     'FAC_VTA_DESCUENTO_COMERCIAL' => 0,
                     'FAC_VTA_IMPUESTO' => $pedido->iva,
-                    'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.',''), //$pedido->total,
+                    'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
                     'FAC_VTA_TIPO_DESPACHO' => $pedido->despacho,
                 )
             );
@@ -1501,13 +1504,13 @@ class PedidosController extends Controller
 
 
 
-            if(!count($detalles)){
+            if (!count($detalles)) {
                 return;
             }
 
             $DetallePedido = array();
             $linea = 0;
-            foreach($detalles as $key => $detalle){
+            foreach ($detalles as $key => $detalle) {
                 $linea++;
                 $DetallePedido[] = array(
                     'FAC_VTA_DET_LINEA' => $linea,
@@ -1522,7 +1525,7 @@ class PedidosController extends Controller
                     'FAC_VTA_DET_PRECIO_UNITARIO' => $detalle->ART_VALOR,
                     'FAC_VTA_DET_DESCUENTO' => $detalle->ART_DESCUENTO,
                     'FAC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
-                    'FAC_VTA_DET_TOTAL' => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD,2,'.','') ,
+                    'FAC_VTA_DET_TOTAL' => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD, 2, '.', ''),
                 );
             }
             $parameters = array(
@@ -1530,28 +1533,28 @@ class PedidosController extends Controller
                 'Detalle' => $DetallePedido
             );
 
-            if($pedido->rechazado){
+            if ($pedido->rechazado) {
                 $pedido->estado = 'rechazado';
                 $pedido->save();
                 return;
             }
 
-            if($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no'){
+            if ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
                 return;
             }
 
-//            $cronLog = new GpCronLog();
-//            $cronLog->metodo = 'Enviar pedido';
-//            $cronLog->fecha = date('Y-m-d H:i:s');
-//            $cronLog->data = json_encode($parameters);
-//            $cronLog->save();
+            //            $cronLog = new GpCronLog();
+            //            $cronLog->metodo = 'Enviar pedido';
+            //            $cronLog->fecha = date('Y-m-d H:i:s');
+            //            $cronLog->data = json_encode($parameters);
+            //            $cronLog->save();
 
             $webservices = new WebserviceController();
             $result = $webservices->transaccional('MST_FAC_VTA', $parameters);
 
 
 
-            if(isset($result['MST_FAC_VTAResult'])){
+            if (isset($result['MST_FAC_VTAResult'])) {
                 $pedido->MST_FAC_VTAResult = $result['MST_FAC_VTAResult'];
                 $pedido->save();
                 $this->respuestaFacturaVenta($pedido, $webservices);
@@ -1561,19 +1564,66 @@ class PedidosController extends Controller
 
     public function imprimirpedido($id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
     {
-        $pedido = $this->getinfopedido($id);
-        //return view('pedidoPDF', $pedido);
-        $pdf = PDF::loadView('pedidoPDF', $pedido);
-        return $pdf->stream('pedido-'.$pedido['pedido'].'.pdf');
+        try {
+            $pedido = $this->orderService->getOrderInfo($id);
+            if (is_string($pedido)) {
+                abort(403, $pedido); // Ej: 'No permitido'
+            }
+            $pdf = PDF::loadView('pedidoPDF', $pedido);
+            return $pdf->stream('pedido-' . $pedido['pedido'] . '.pdf');
+        } catch (\Exception $e) {
+            report($e);
+            abort(500, 'Error al generar el PDF del pedido');
+        }
     }
     public function imprimirpedidoimagenes($id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
     {
-        $pedido = $this->getinfopedido($id);
-        //return view('pedidoPDF', $pedido);
-        $pdf = PDF::loadView('pedidoimagenesPDF', $pedido);
-        return $pdf->stream('pedido-'.$pedido['pedido'].'.pdf');
+        try {
+            $pedido = $this->orderService->getOrderInfo($id);
+            if (is_string($pedido)) {
+                abort(403, $pedido); // Ej: 'No permitido'
+            }
+            $pdf = PDF::loadView('pedidoimagenesPDF', $pedido);
+            return $pdf->stream('pedido-' . $pedido['pedido'] . '.pdf');
+        } catch (\Exception $e) {
+            report($e);
+           return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
-    public function despachoenproceso($id){
+
+    public function imprimirpedidoride($id)
+    {
+        try {
+
+            $pedido = $this->orderService->generateInvoiceRide($id);
+
+            if (is_string($pedido)) {
+                abort(403, $pedido); // Ej: 'No permitido'
+            }
+            $pdf = PDF::loadView('pedidoridePDF', $pedido);
+            return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
+        } catch (\Exception $e) {
+            report($e);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function imprimirpedidoxml($id)
+    {
+        try {
+            $xmlContent  = $this->orderService->generateInvoiceXml($id);
+            $nombreArchivo = 'factura_' . $xmlContent['factura'] . '.xml';
+            return Response::make($xmlContent['xml'], 200, [
+                'Content-Type' => 'application/xml',
+                'Content-Disposition' => 'attachment; filename="' . $nombreArchivo . '"',
+            ]);
+        } catch (\Throwable $th) {
+            report($th);
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+    public function despachoenproceso($id)
+    {
         $pedido = gpPedido::where('id', $id)->first();
         return response([
             'success' => true,
@@ -1582,101 +1632,7 @@ class PedidosController extends Controller
         ]);
     }
 
-    public function getinfopedido($id): array|string
-    {
-        $webservice = new WebserviceController();
-        $pedido = GpPedido::leftJoin('gp_cotizacions','gp_cotizacions.id','gp_pedidos.cotizacion_id')
-            ->join('gp_usuarios','gp_usuarios.USERID','gp_pedidos.USERID')
-            ->select('gp_pedidos.*','gp_cotizacions.cotizacion','gp_usuarios.USERNAME')
-            ->where('gp_pedidos.id',$id)->first()->toarray();
 
-        $bodega = $pedido['BOD_BODEGA'];
-
-        if($pedido['requiere_aprobacion_comercial'] == 'yes' && $pedido['aprobado_comercial'] == 'no'){
-            return 'No permitido';
-        }elseif($pedido['requiere_aprobacion_crediticia'] == 'yes' && $pedido['aprobado_crediticio'] == 'no'){
-            return 'No permitido';
-        }elseif($pedido['estado'] == 'eliminado'){
-            return 'No permitido';
-        }
-
-        $detalle = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->toarray();
-        $peso = 0;
-        $pedido['subtotal12'] = 0;
-        $pedido['subtotal0'] = 0;
-
-        foreach($detalle as $art){
-            $pedido['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
-            $pedido['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
-        }
-
-        foreach($detalle as &$art){
-            $art['ART_PESO_TOTAL'] = number_format($art['ART_PESO'] * $art['ART_CANTIDAD'],2,'.','');
-            $peso += $art['ART_PESO'] * $art['ART_CANTIDAD'];
-
-            $parameters = array(
-                'id_articulo' => $art['ART_CODIGO'],
-                'id_bodega' => $bodega,
-                'id_compartimiento' => '',
-            );
-
-            $compartimento = $webservice->stockarticulobodegacompartimiento($parameters);
-
-            if(isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
-                $compartimento = $compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'];
-
-                $stock = array_column($compartimento, 'STO_ART_COMPART_STOCK_DISPONIBLE');
-
-                array_multisort($stock, SORT_DESC, $compartimento);
-
-                $art['compartimiento'] = $compartimento[0]['STO_ART_COMPART_COMPARTIMIENTO'];
-            }
-
-            $pedido['tipoimpuesto'][$art['ART_IMP_VTA']] += (float)number_format($art['ART_VALOR'] * $art['ART_CANTIDAD'],2,'.','');
-            $pedido['sumaimpuesto'][$art['ART_IMP_VTA']] += (float)number_format($art['ART_IVA'],2,'.','');
-
-            $imagenes = array();
-            for($i = 1; $i <= 3; $i++){
-                $file = 'images/productos/'.$art['ART_CODIGO_TRES_LETRAS'].'_'.$i.'.jpg';
-
-                if (File::exists($file)) {
-                    $imagenes[] = $file;
-                }
-            }
-
-            $art['imagenes'] = $imagenes;
-        }
-
-//        $pedido['subtotalmenosdescuento'] = $pedido['subtotal0'] + $pedido['subtotal12'] - $pedido['descuento'];
-//        $pedido['total'] = $pedido['subtotalmenosdescuento'] + $pedido['iva'];
-        $pedido['peso'] = $peso;
-
-        $pedido['detalle'] = $detalle;
-        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO',$pedido['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
-        $pedido['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'];
-        $pedido['formadepagoSRI'] = substr($formadepago['DESC_FORMA_PAGO_SRI'],3,);
-
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $pedido['PTO_VTA_ID'])->first()->toarray();
-
-        $cliente = GpCliente::where('id', $pedido['cliente_id'])->first()->toarray();
-
-        $email = explode(';', str_replace(',', ';',$cliente['CLI_CORREO_ELECT_SRI']));
-        $cliente['CLI_CORREO_ELECT_SRI'] = $email[0];
-
-        $pedido['cliente'] = $cliente;
-
-        $sucursal = GpClienteSucursal::where('id', $pedido['sucursal_facturacion_id'])->first()->toarray();
-        $pedido['sucursal'] = $sucursal;
-
-        $pedido['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
-
-//        echo '<pre>';
-//        print_r($pedido);
-        $pedido['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
-        $pedido['telefono'] = $puntodeventa['PTO_VTA_FONO_1'];
-
-        return $pedido;
-    }
 
     public function guardarordendecompra(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1715,7 +1671,7 @@ class PedidosController extends Controller
         $user = Auth::user();
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get()->toArray();
-        foreach($detalle as $key => $det){
+        foreach ($detalle as $key => $det) {
             $proveedores = GpCotizacionDetalleProveedores::where('detalle_id', $det['id'])->get()->toArray();
             $detalle[$key]['proveedores'] = $proveedores;
 
@@ -1833,11 +1789,11 @@ class PedidosController extends Controller
         $pedido->despacho = $data['despacho'];
         $pedido->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
         $pedido->porcentage_descuento = $data['porcentage_descuento'];
-        $pedido->subtotal = number_format((float)$data['subtotal'] + (float)$data['descuento'],2,'.','');
-        $pedido->descuento = number_format((float)$data['descuento'],2,'.','');
-        $pedido->subtotalmenosdescuento = number_format((float)$data['subtotal'],2,'.','');
-        $pedido->iva = number_format((float)$data['iva'],2,'.','');
-        $pedido->total = number_format((float)$data['total'],2,'.','');
+        $pedido->subtotal = number_format((float)$data['subtotal'] + (float)$data['descuento'], 2, '.', '');
+        $pedido->descuento = number_format((float)$data['descuento'], 2, '.', '');
+        $pedido->subtotalmenosdescuento = number_format((float)$data['subtotal'], 2, '.', '');
+        $pedido->iva = number_format((float)$data['iva'], 2, '.', '');
+        $pedido->total = number_format((float)$data['total'], 2, '.', '');
         $pedido->requiere_aprobacion_comercial = $requiere_aprobacion_comercial['requiere'];
         $pedido->motivo_aprobacion_comercial = $requiere_aprobacion_comercial['motivo'];
         $pedido->aprobado_comercial = 'no';
@@ -1860,16 +1816,16 @@ class PedidosController extends Controller
     public function savePedidoDetalle(int $i, GpPedido $pedido, mixed $det): GpPedidoDetalle
     {
 
-//        $articulos_array_l = array();
-//        $articulo = (object)$det;
-//        $funciones = new FuncionesController();
-//        $articulo->disponible = $funciones->checkarticulodisponible($articulo);
-//        if(!$articulo->disponible){
-//            $clase = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
-//            $articulo->ART_CODIGO = $funciones->buscareledisponible($articulos_array_l, $clase->ART_CLASE_ARTICULO);
-//            $articulos_array_l[] = $articulo->ART_CODIGO;
-//        }
-//        $det['ART_CODIGO'] = $articulo->ART_CODIGO;
+        //        $articulos_array_l = array();
+        //        $articulo = (object)$det;
+        //        $funciones = new FuncionesController();
+        //        $articulo->disponible = $funciones->checkarticulodisponible($articulo);
+        //        if(!$articulo->disponible){
+        //            $clase = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
+        //            $articulo->ART_CODIGO = $funciones->buscareledisponible($articulos_array_l, $clase->ART_CLASE_ARTICULO);
+        //            $articulos_array_l[] = $articulo->ART_CODIGO;
+        //        }
+        //        $det['ART_CODIGO'] = $articulo->ART_CODIGO;
 
         $detalle = new GpPedidoDetalle;
         $detalle->pedido_id = $pedido->id;
@@ -1919,10 +1875,10 @@ class PedidosController extends Controller
         $proveedor->TOTAL = (float)$pro['TOTAL'];
         $proveedor->TOTALCONIMPUESTO = (float)$pro['TOTALCONIMPUESTO'];
         $proveedor->NOTA = $pro['NOTA'];
-        if(isset($pro['recibido'])){
+        if (isset($pro['recibido'])) {
             $proveedor->recibido = $pro['recibido'];
         }
-        if(isset($pro['MARGEN'])){
+        if (isset($pro['MARGEN'])) {
             $proveedor->MARGEN = $pro['MARGEN'];
         }
         return $proveedor;
@@ -1950,7 +1906,8 @@ class PedidosController extends Controller
         }
     }
 
-    public function volverafacturar($devolucion, $despachada = false){
+    public function volverafacturar($devolucion, $despachada = false)
+    {
         // $webservices = new WebserviceController();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
         $cliente = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
@@ -1958,9 +1915,9 @@ class PedidosController extends Controller
 
         $nuevo_pedido = $pedido->replicate();
 
-        $ultimoPedido = GpPedido::orderBy('id','DESC')->first();
+        $ultimoPedido = GpPedido::orderBy('id', 'DESC')->first();
 
-        $nuevo_pedido->pedido = 'PED'.str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
+        $nuevo_pedido->pedido = 'PED' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
 
         $nuevo_pedido->factura = null;
         $nuevo_pedido->factura_origen = $pedido->factura;
@@ -1978,51 +1935,51 @@ class PedidosController extends Controller
 
         $nuevo_pedido->factura_siguiente_mes = 0;
 
-        if($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI'){
+        if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI') {
             $nuevo_pedido->factura_posterior_despacho = 1;
-            if($cliente->CLI_DIA_MAXIMO_MES_FACTURACION == 1){
+            if ($cliente->CLI_DIA_MAXIMO_MES_FACTURACION == 1) {
                 $nuevo_pedido->factura_a_demanda = 1;
-            }elseif(date('d') > $cliente->CLI_DIA_MAXIMO_MES_FACTURACION){
+            } elseif (date('d') > $cliente->CLI_DIA_MAXIMO_MES_FACTURACION) {
                 $nuevo_pedido->factura_siguiente_mes = 1;
             }
         }
 
-        if($despachada){
+        if ($despachada) {
             $nuevo_pedido->despachado = 1;
         }
 
         $nuevo_pedido->save();
 
-        foreach($detalle as $det){
+        foreach ($detalle as $det) {
             $nuevo_det = $det->replicate();
             $nuevo_det->pedido_id = $nuevo_pedido->id;
             $nuevo_det->devuelto = null;
 
-            if($devolucion->tipo_devolucion == 'parcial'){
+            if ($devolucion->tipo_devolucion == 'parcial') {
                 $articulo_devolucion = GpDevolucionesDetalle::where('detalle_id', $det->id)
                     ->where('devolucion_id', $devolucion->id)
                     ->first();
-                if($articulo_devolucion){
-                    if($despachada) {  //&& $devolucion->tipo_devolucion == 'total'
+                if ($articulo_devolucion) {
+                    if ($despachada) {  //&& $devolucion->tipo_devolucion == 'total'
                         $nuevo_det->ART_CANTIDAD = $articulo_devolucion->disponible - $articulo_devolucion->recibido;
-                    }else{
+                    } else {
                         $nuevo_det->ART_CANTIDAD = $articulo_devolucion->disponible - $articulo_devolucion->seleccionado;
                     }
-                }else{
+                } else {
                     $nuevo_det->ART_CANTIDAD = null;
                 }
-            }else{
+            } else {
                 $articulo_devolucion = GpDevolucionesDetalle::where('detalle_id', $det->id)
                     ->where('devolucion_id', $devolucion->id)
                     ->first();
-                if($articulo_devolucion){
+                if ($articulo_devolucion) {
                     $nuevo_det->ART_CANTIDAD = $articulo_devolucion->disponible;
-                }else{
+                } else {
                     $nuevo_det->ART_CANTIDAD = null;
                 }
             }
 
-            if(!$nuevo_det->ART_CANTIDAD)
+            if (!$nuevo_det->ART_CANTIDAD)
                 continue;
 
             $nuevo_det->ART_IMP_VTA = GpArticulo::where('ART_CODIGO', $nuevo_det->ART_CODIGO)->first()->ART_IMP_VTA;
@@ -2033,7 +1990,7 @@ class PedidosController extends Controller
                 ->where('detalle_id', $det->id)
                 ->get();
 
-            foreach($detalle_proveedores as $proveedor){
+            foreach ($detalle_proveedores as $proveedor) {
                 $nuevo_proveedor = $proveedor->replicate();
                 $nuevo_proveedor->pedido_id = $nuevo_pedido->id;
                 $nuevo_proveedor->detalle_id = $nuevo_det->id;
@@ -2056,21 +2013,20 @@ class PedidosController extends Controller
                 ->where('detalle_id', $det->id)
                 ->get();
 
-            foreach($detalle_stocks as $stock){
+            foreach ($detalle_stocks as $stock) {
                 $nuevo_stock = $stock->replicate();
                 $nuevo_stock->pedido_id = $nuevo_pedido->id;
                 $nuevo_stock->detalle_id = $nuevo_det->id;
 
-                if($devolucion->tipo_devolucion == 'parcial' && $nuevo_stock->STO_ART_BODEGA == $pedido->BOD_BODEGA){
+                if ($devolucion->tipo_devolucion == 'parcial' && $nuevo_stock->STO_ART_BODEGA == $pedido->BOD_BODEGA) {
                     $articulo_devolucion = GpDevolucionesDetalle::where('detalle_id', $det->id)
                         ->where('devolucion_id', $devolucion->id)
                         ->first();
-                    if($articulo_devolucion){
+                    if ($articulo_devolucion) {
                         $nuevo_stock->seleccionado = $articulo_devolucion->disponible - $articulo_devolucion->seleccionado;
                         $nuevo_stock->reservado = $nuevo_stock->seleccionado;
                     }
-
-                }elseif($devolucion->tipo_devolucion == 'total'){
+                } elseif ($devolucion->tipo_devolucion == 'total') {
                     $nuevo_stock->reservado = $nuevo_stock->seleccionado;
                 }
                 $nuevo_stock->save();
@@ -2091,10 +2047,10 @@ class PedidosController extends Controller
 
         $pedido = GpPedido::where('id', $data['id'])->get()->first();
 
-        if($pedido->estado == 'facturado'){
+        if ($pedido->estado == 'facturado') {
             return response([
                 'success' => true,
-                'message' => 'Pedido '.$pedido->pedido.' ya está facturado y no se puede eliminar',
+                'message' => 'Pedido ' . $pedido->pedido . ' ya está facturado y no se puede eliminar',
             ]);
         }
 
@@ -2108,11 +2064,12 @@ class PedidosController extends Controller
 
         return response([
             'success' => true,
-            'message' => 'Pedido '.$pedido->pedido.' eliminado',
+            'message' => 'Pedido ' . $pedido->pedido . ' eliminado',
         ]);
     }
 
-    public function recalcularpedidourl(){
+    public function recalcularpedidourl()
+    {
         $pedido = GpPedido::where('id', 115242)->get()->first();
 
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
@@ -2120,14 +2077,14 @@ class PedidosController extends Controller
         $descuento = 0;
         $subtotalmenosdescuento = 0;
         $iva = 0;
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $subtotal += $articulo->ART_VALOR * $articulo->ART_CANTIDAD;
-            $descuento += number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD,2,'.','');
-            $subtotalmenosdescuento += number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.','');
-            $iva += number_format((($articulo->ART_VALOR - ($articulo->ART_VALOR * ($articulo->descuento / 100))) * $articulo->ART_CANTIDAD) * ($articulo->ART_IMP_VTA / 100), 2, '.','');
+            $descuento += number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD, 2, '.', '');
+            $subtotalmenosdescuento += number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.', '');
+            $iva += number_format((($articulo->ART_VALOR - ($articulo->ART_VALOR * ($articulo->descuento / 100))) * $articulo->ART_CANTIDAD) * ($articulo->ART_IMP_VTA / 100), 2, '.', '');
         }
-        $subtotalmenosdescuento = number_format($subtotalmenosdescuento, 2, '.','');
-        $iva = number_format($iva, 2, '.','');
+        $subtotalmenosdescuento = number_format($subtotalmenosdescuento, 2, '.', '');
+        $iva = number_format($iva, 2, '.', '');
         $total =  $subtotalmenosdescuento + $iva;
 
         $pedido->subtotal = $subtotal;
@@ -2140,31 +2097,31 @@ class PedidosController extends Controller
         $pedido->save();
     }
 
-//    public function transferirtonglin(){
-//
-//        $webservices = new WebserviceController();
-//        $parameters = array(
-//            'IDCompania' => env('ID_COMPANIA'),
-//            'Fecha' => date('Y/m/d'),
-//            'Item' => '000-001060-L',
-//            'Bodega' => 'INMACONSA',
-//            'Cantidad' => 50,
-//            'BinOrigen' => 'PED00117106',
-//            'BinDestino' => 'PED00117030',
-//        );
-//        $webservices->inventario('TransferenciaCompartimento', $parameters);
-//
-//        $parameters = array(
-//            'IDCompania' => env('ID_COMPANIA'),
-//            'Fecha' => date('Y/m/d'),
-//            'Item' => '000-001061-L',
-//            'Bodega' => 'INMACONSA',
-//            'Cantidad' => 10,
-//            'BinOrigen' => 'PED00117106',
-//            'BinDestino' => 'PED00117030',
-//        );
-//        $webservices->inventario('TransferenciaCompartimento', $parameters);
-//    }
+    //    public function transferirtonglin(){
+    //
+    //        $webservices = new WebserviceController();
+    //        $parameters = array(
+    //            'IDCompania' => env('ID_COMPANIA'),
+    //            'Fecha' => date('Y/m/d'),
+    //            'Item' => '000-001060-L',
+    //            'Bodega' => 'INMACONSA',
+    //            'Cantidad' => 50,
+    //            'BinOrigen' => 'PED00117106',
+    //            'BinDestino' => 'PED00117030',
+    //        );
+    //        $webservices->inventario('TransferenciaCompartimento', $parameters);
+    //
+    //        $parameters = array(
+    //            'IDCompania' => env('ID_COMPANIA'),
+    //            'Fecha' => date('Y/m/d'),
+    //            'Item' => '000-001061-L',
+    //            'Bodega' => 'INMACONSA',
+    //            'Cantidad' => 10,
+    //            'BinOrigen' => 'PED00117106',
+    //            'BinDestino' => 'PED00117030',
+    //        );
+    //        $webservices->inventario('TransferenciaCompartimento', $parameters);
+    //    }
     /**
      * @param mixed $pedido
      * @param WebserviceController $webservices
@@ -2178,17 +2135,19 @@ class PedidosController extends Controller
         );
         $result = $webservices->transaccional('MST_Respuesta_Factura_Vta', $parameters);
 
-        if (isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'])
-            && $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'] != '') {
+        if (
+            isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'])
+            && $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'] != ''
+        ) {
             $pedido->factura = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'];
             $pedido->FAC_VTA_MENSAJE = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'];
             $pedido->estado = 'facturado';
             $pedido->fecha_factura = date('Y-m-d');
             $pedido->fecha_hora_factura = date('Y-m-d H:i:s');
             $pedido->save();
-
         } else {
-            if (isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'])
+            if (
+                isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'])
                 && $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'] != ''
             )
                 $pedido->FAC_VTA_MENSAJE = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'];
@@ -2198,5 +2157,4 @@ class PedidosController extends Controller
             $pedido->save();
         }
     }
-
 }

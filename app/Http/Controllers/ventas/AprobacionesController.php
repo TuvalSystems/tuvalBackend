@@ -32,6 +32,7 @@ use App\Models\GpCotizacionDetalleProveedores;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
 
 class AprobacionesController extends Controller
 {
@@ -342,8 +343,9 @@ class AprobacionesController extends Controller
         $pedido->aprobado_comercial = 'yes';
         $pedido->aprobador_comercial_id = $user->id;
         if($pedido->save()){
+            $order = app(OrderServiceInterface::class);
             $apiGp = app(ApiGpService::class);
-            $pedidos = new PedidosController($apiGp);
+            $pedidos = new PedidosController($apiGp, $order);
             $pedidos->checkenviarfactura($pedido);
 
             return response([
@@ -481,8 +483,9 @@ class AprobacionesController extends Controller
         $pedido->aprobado_crediticio = 'yes';
         $pedido->aprobador_crediticio_id = $user->id;
         if($pedido->save()){
+            $order = app(OrderServiceInterface::class);
             $apiGp = app(ApiGpService::class); // Replace with the actual service or dependency
-            $pedidos = new PedidosController($apiGp);
+            $pedidos = new PedidosController($apiGp , $order);
             $pedidos->checkenviarfactura($pedido);
 
             return response([

@@ -17,6 +17,7 @@ use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
@@ -83,7 +84,8 @@ class DevolucionJobService
     {
         $criterios = $this->listReturnCriteria();
         $apiGp = app(ApiGpService::class);
-        $pedidosController = new PedidosController($apiGp);
+        $order = app(OrderServiceInterface::class);
+        $pedidosController = new PedidosController($apiGp, $order);
 
         try {
             $criterioAplicable = $this->encontrarCriterioAplicable($devolucion, $criterios);
