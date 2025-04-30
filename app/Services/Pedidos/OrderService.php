@@ -84,7 +84,11 @@ class OrderService implements OrderServiceInterface
             $impKey = $item['ART_IMP_VTA'];
             $tipoImpuesto[$impKey] = ($tipoImpuesto[$impKey] ?? 0) + round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
             $sumaImpuesto[$impKey] = ($sumaImpuesto[$impKey] ?? 0) + round($item['ART_IVA'], 2);
-            $item['imagenes'] = $this->getImagenes($item['ART_CODIGO_TRES_LETRAS']);
+            if (!empty($item['ART_CODIGO_TRES_LETRAS'])) {
+                $item['imagenes'] = $this->getImagenes($item['ART_CODIGO_TRES_LETRAS']);
+            } else {
+                $item['imagenes'] = [];
+            }
         }
         return compact('detalle', 'peso', 'tipoImpuesto', 'sumaImpuesto');
     }
@@ -109,6 +113,8 @@ class OrderService implements OrderServiceInterface
 
     public function getImagenes(string $codigo): array
     {
+        if (!$codigo) return [];
+
         $imagenes = [];
         for ($i = 1; $i <= 3; $i++) {
             $path = "images/productos/{$codigo}_{$i}.jpg";
