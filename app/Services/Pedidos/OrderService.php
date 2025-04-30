@@ -162,6 +162,10 @@ class OrderService implements OrderServiceInterface
 
     public function getInvoiceDocumentInfo($pedido)
     {
+        if (!$pedido['factura']) {
+            return ['success' => false, 'message' => 'El pedido no tiene factura'];
+        }
+
         return $this->apiSalesService->getDataDocumentGp(array(
             'numdoc' => $pedido['factura'],
         ));
