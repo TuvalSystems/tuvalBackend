@@ -2,21 +2,19 @@
 
 namespace App\Services\Pedidos;
 
+use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpVendedor;
 use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
+use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
-use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
-use App\Http\Controllers\WebserviceController;
-use Carbon\Carbon;
-use Milon\Barcode\DNS1D;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
 
 class OrderService implements OrderServiceInterface
 {
