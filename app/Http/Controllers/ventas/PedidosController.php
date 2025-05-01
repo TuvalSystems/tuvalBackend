@@ -2,45 +2,44 @@
 
 namespace App\Http\Controllers\ventas;
 
-use App\Http\Controllers\Controller;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpArticulo;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
-use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpOrdenDespacho;
-use App\Models\GpRegistroCopia;
-use App\Models\ordendecompra\GpOrdenDeCompra;
-use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Models\traslados\GpTrasladosVentas;
-use App\Services\Api\ApiGpService;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
-use Illuminate\Support\Facades\Auth;
-use App\Models\GpCotizacion;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleProveedores;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpTempCart;
-use App\Models\GpPuntoVenta;
 use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpRelacionPuntoVentaIdVenta;
-use App\Http\Controllers\WebserviceController;
-use App\Http\Controllers\FuncionesController;
+use App\Models\GpArticulo;
+use App\Models\GpTempCart;
+use App\Models\GpCotizacion;
+use App\Models\GpPuntoVenta;
 use Illuminate\Http\Request;
-use App\Http\Controllers\bodegas\RecibosdecompraeleController;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Http\Controllers\bodegas\DespachosController;
-use App\Http\Controllers\bodegas\TransferenciasController;
-use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Carbon;
+use App\Models\GpOrdenDespacho;
+use App\Models\GpPedidoDetalle;
+use App\Models\GpRegistroCopia;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\GpClienteSucursal;
+use App\Traits\JsonResponseTrait;
+use App\Services\Api\ApiGpService;
+use App\Models\GpCotizacionDetalle;
+use App\Http\Controllers\Controller;
+use App\Models\GpPedidoDetalleStock;
+use Illuminate\Support\Facades\Auth;
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Support\Facades\Response;
-use Milon\Barcode\DNS1D;
+use App\Models\GpPedidoDetalleProveedores;
+use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Http\Controllers\FuncionesController;
+use App\Models\ordendecompra\GpOrdenDeCompra;
+use App\Http\Controllers\WebserviceController;
+use App\Models\GpCotizacionDetalleProveedores;
+use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Http\Controllers\bodegas\DespachosController;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Http\Controllers\bodegas\RecibosdecompraeleController;
 
 class PedidosController extends Controller
 {
@@ -54,12 +53,22 @@ class PedidosController extends Controller
     }
 
 
+    public function guardarpedido2(Request $request){
+        
+        try {
+            $orderData = $request->all();
+            return $this->orderService->storeOrder($orderData);
+        } catch (\Throwable $th) {
+           return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+        
+    }
+
     public function guardarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
         $user = Auth::user();
         $aprobaciones = new AprobacionesController;
-
         foreach ($data['cotizacion'] as $det) {
             if ($det['ART_CANTIDAD'] <= 0) {
                 return response([

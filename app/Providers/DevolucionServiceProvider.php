@@ -2,20 +2,22 @@
 
 namespace App\Providers;
 
-use App\Http\Controllers\WebserviceController;
-use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
-use App\Services\Devoluciones\DevolucionJobService;
-use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
-use App\Services\Reposiciones\TransferRepositionService;
+use App\Services\Pedidos\OrderService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
+use App\Http\Controllers\WebserviceController;
+use App\Services\Aprobaciones\ApprovalService;
 use App\Services\Devoluciones\DevolucionService;
-use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
-use App\Services\Pedidos\OrderService;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Devoluciones\DevolucionJobService;
 use App\Services\Reposiciones\StockWarehouseService;
+use App\Services\Reposiciones\TransferRepositionService;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 
 
 class DevolucionServiceProvider extends ServiceProvider
@@ -49,6 +51,12 @@ class DevolucionServiceProvider extends ServiceProvider
         $this->app->bind(
             OrderServiceInterface::class,
             OrderService::class
+        );
+
+        // aqui agrego las aprobaciones para no crear otro provider
+        $this->app->bind(
+            ApprovalServiceInterface::class,
+            ApprovalService::class
         );
     }
 
