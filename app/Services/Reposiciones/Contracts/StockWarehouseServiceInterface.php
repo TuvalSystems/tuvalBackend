@@ -7,7 +7,7 @@ interface StockWarehouseServiceInterface
 {
     public function getWarehouseNotConsult($data);
     public function newFormatStock($stockResults,  $articulo);
-    public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null): int;
+    public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null);
 
     public function formatResultStocks($stockResults);
 

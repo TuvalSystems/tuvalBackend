@@ -2,32 +2,32 @@
 
 namespace App\Http\Controllers\ventas;
 
-use App\Http\Controllers\Controller;
-use App\Http\Controllers\FuncionesController;
-use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpCaja;
-use App\Models\GpPuntoVenta;
-use App\Models\Notificaciones;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Models\traslados\GpTrasladosVentas;
-use App\Models\GpArticulo;
 use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
+use App\Models\GpArticulo;
 use App\Models\GpVendedor;
+use App\Models\GpPuntoVenta;
 use App\Models\GpTerritorio;
-use App\Models\GpProvinciaCiudadParroquia;
+use Illuminate\Http\Request;
 use App\Models\GpGrupoCliente;
+use App\Models\Notificaciones;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpClienteSucursal;
 use App\Models\GpSubGrupoCliente;
-use App\Models\GpPedidoDetalleStock;
 use App\Services\Api\ApiGpService;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use App\Models\GpPedidoDetalleStock;
 use App\Traits\StockWarehouseTraits;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\WebserviceController;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use App\Models\GpProvinciaCiudadParroquia;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Http\Controllers\FuncionesController;
+use App\Http\Controllers\WebserviceController;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\reposicion\GpTrasladosReposicion;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class ConsultasController extends Controller
 {
@@ -193,14 +193,11 @@ class ConsultasController extends Controller
         $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
         $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
         $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
-
         $art = $this->stockWarehouseService->newFormatStock($formatStock, $articulo); //nose porque hace pero va
-
-        $total = array_sum(array_column($formatStock, 'STO_ART_STOCK_DISPONIBLE'));
         return response([
             'success' => true,
             'stock' => $art['stock'],
-            'ART_STOCK' => $total,
+            'ART_STOCK' => $art['ART_STOCK'],
         ]);
     }
 
@@ -216,14 +213,11 @@ class ConsultasController extends Controller
         $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
         $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
         $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
-
         $art =$this->stockWarehouseService->newFormatStock($formatStock, $articulo); //nose porque hace pero va
-
-        $total = array_sum(array_column($formatStock, 'STO_ART_STOCK_DISPONIBLE'));
         return response([
             'success' => true,
             'stock' => $art['stock'],
-            'ART_STOCK' => $total,
+            'ART_STOCK' => $art['ART_STOCK'],
         ]);
     }
 
