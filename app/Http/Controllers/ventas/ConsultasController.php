@@ -472,7 +472,7 @@ class ConsultasController extends Controller
             ->get();
 
         foreach ($trasladosreposicion as $traslado) {
-            $traslado->reservado = $traslado->cantidad - $traslado->trasladado;
+            $traslado->reservado = ( $traslado->cantidad ?? 0) - ($traslado->trasladado ?? 0);
             unset($traslado->cantidad);
             unset($traslado->trasladado);
 
