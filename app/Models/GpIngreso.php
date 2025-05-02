@@ -32,4 +32,12 @@ use Illuminate\Database\Eloquent\Model;
 class GpIngreso extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'USERID',
+        'tipo',
+        'documento',
+        'GUI_REM_GUIA_REMISION',
+    ];
 }

@@ -29,5 +29,49 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
+    'api_gp' => [
+        'url' => env('API_GP_URL'),
+        'timeout' => env('API_GP_TIMEOUT', 15),
+        'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
+        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'company' => env('ID_COMPANIA'),
+        'endpoints' => [
+            'validar_usuario'                           => 'api/validar-usuario',
+            'consultar_transferencia_cabecera'          => 'api/consultar-cabecera-transferencia',
+            'consultar_transferencia_detalle'           => 'api/consultar-detalle-transferencia',
+            'consultar_sucursales_cliente'              => 'api/consultar-sucursales-clientes',
+            'consultar_coordenadas'                     => 'api/consultar-listado-coordenadas',
+            'consultar_stock_bodega'                    => 'api/consultar-stock-bodega',
+            'consultar_articulo_bodega_compartimento'   => 'api/consultar-stock-articulo-bodega-compartimento',
+            'transferencia_compartimento'                => 'api/transferencia-compartimento',
+
+            //devoluciones - recibir devolucion
+            'generar_nota_credito'                      => 'api/devoluciones/generar-nota-credito',
+            'respuesta_nota_credito'                    => 'api/devoluciones/respuesta-nota-credito',
+        ],
+    ],
+    'api_sales' => [
+        'url' => env('API_SALES_URL'),
+        'timeout' => env('API_GP_TIMEOUT', 15),
+        'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
+        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'endpoints' => [
+            'obtener_clave_acceso'            => 'api/obtener-clave-acceso',
+            'anular_comprobante_gp'           => 'api/anularfactura',
+            'actualizar_estado_factura'       => 'api/actualizar-estado-factura',
+            'obtener_datos_factura'          => 'api/obtener-datos-factura',
+
+        ],
+    ],
+    'api_seedbilling' => [
+        'url' => env('API_SEED_BILLING_URL'),
+        'timeout' => env('API_SEED_BILLING_TIMEOUT', 15),
+        'token' => env('API_SEED_BILLING_TOKEN'),
+        'idSuscriptor' => env('API_SEED_BILLING_ID_SUSCRIPTOR'),
+        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'endpoints' => [
+            'anular_comprobante' => 'api/anulacionComprobante',
+        ]
+    ]
 
 ];

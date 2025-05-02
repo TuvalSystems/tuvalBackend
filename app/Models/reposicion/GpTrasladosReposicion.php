@@ -54,4 +54,24 @@ use Illuminate\Database\Eloquent\Model;
 class GpTrasladosReposicion extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'cabecera_id',
+        'Documento',
+        'Codigo_Motivo',
+        'ART_CODIGO',
+        'ART_DESCRIPCION',
+        'ART_CODIGO_TRES_LETRAS',
+        'ART_PLAN_UMEDIDA',
+        'ART_PESO',
+        'cantidad',
+        'bodega_origen',
+        'bodega_destino',
+        'compartimiento',
+        'Fecha_Documento',
+        'reservado',
+        'trasladado',
+        'completado',
+        'picking'
+    ];
 }

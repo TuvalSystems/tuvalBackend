@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use App\Http\Controllers\Controller;
-use App\Http\Controllers\ventas\PedidosController;
-use App\Http\Controllers\WebserviceController;
-use App\Models\GpCliente;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalleProveedores;
-use App\Models\Notificaciones;
-use App\Models\ordendecompra\GpOrdenDeCompra;
+use App\Models\GpCliente;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use PDF;
+use App\Models\Notificaciones;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use App\Models\GpPedidoDetalleProveedores;
+use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\ordendecompra\GpOrdenDeCompra;
+use App\Http\Controllers\WebserviceController;
+use App\Http\Controllers\ventas\PedidosController;
+use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 
 class RecibosdecompraeleController extends Controller
 {
@@ -239,8 +241,9 @@ class RecibosdecompraeleController extends Controller
             $orden->estado = 'recibido';
             $orden->USERID = $user->USERID;
             $orden->save();
-
-            $pedidosControl = new PedidosController();
+            $order = app(OrderServiceInterface::class);
+            $apigp = app(ApiGpService::class);
+            $pedidosControl = new PedidosController(    $apigp, $order);
 
             $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
             if($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI'){

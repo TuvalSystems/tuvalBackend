@@ -15,10 +15,8 @@ use App\Models\cobranzas\GpCobrosEfectivoFactura;
 use App\Models\cobranzas\GpCobrosEfectivoMonto;
 use App\Models\cobranzas\GpCobrosRetenciones;
 use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCobrosAplicacionFactura;
@@ -31,13 +29,15 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Services\Api\ApiGpService;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use DateTime;
 use stdClass;
 
@@ -46,7 +46,9 @@ class DespachosController extends Controller
     public function generarordendespacho($pedido)
     {
 
-        $pedidos = new PedidosController();
+        $apiGp = app(ApiGpService::class);
+        $order = app(OrderServiceInterface::class);
+        $pedidos = new PedidosController($apiGp, $order);
         $pedidos->checktrasladado($pedido);
 
         if($pedido->estado == 'orden_de_compra') {
@@ -971,7 +973,9 @@ class DespachosController extends Controller
         $pedidos = GpPedido::where('estado', 'traslado')
             ->where('id', 29)
             ->get();
-        $pedidosControl = new PedidosController();
+            $order = app(OrderServiceInterface::class);
+        $apigp = app(ApiGpService::class);
+        $pedidosControl = new PedidosController($apigp, $order );
 
         foreach($pedidos as $pedido){
 
@@ -1002,7 +1006,9 @@ class DespachosController extends Controller
             ->join('gp_usuarios','gp_usuarios.USERID','gp_pedidos.USERID')
             ->select('gp_pedidos.*','gp_cotizacions.cotizacion','gp_usuarios.USERNAME')
             ->where('gp_pedidos.id',$orden_despacho->pedido_id)->first()->toarray();
-        $pedidos = new PedidosController();
+            $apigp = app(ApiGpService::class);
+            $order = app(OrderServiceInterface::class);
+        $pedidos = new PedidosController($apigp, $order);
         $pedido = $pedidos->getinfopedido($pedido['id']);
         $pedido['orden_despacho'] = $orden_despacho;
 

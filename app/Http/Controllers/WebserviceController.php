@@ -4,8 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use CodeDredd\Soap\Facades\Soap;
-
-
+use Exception;
 
 class WebserviceController extends Controller
 {

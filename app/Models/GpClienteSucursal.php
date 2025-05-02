@@ -51,4 +51,25 @@ use Illuminate\Database\Eloquent\Model;
 class GpClienteSucursal extends Model
 {
     use HasFactory;
+
+    protected $table ='gp_cliente_sucursals';
+
+
+    protected $fillable = [
+        'CLI_SUC_RUC',
+        'CLI_SUC_DESCRIPCION',
+        'CLI_SUC_ID_DIRECCION',
+        'CLI_SUC_DIRECCION',
+        'CLI_SUC_CONTACTO',
+        'CLI_SUC_REFERENCIA',
+        'CLI_SUC_VENDEDOR',
+        'CLI_SUC_TERRITORIO',
+        'CLI_SUC_CIUDAD',
+        'CLI_SUC_PROVINCIA',
+        'CLI_SUC_PAIS',
+        'CLI_SUC_TELEFONO',
+        'CLI_SUC_CORREO_ELECTRONICO_SRI',
+        'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA',
+        'coordenadas',
+    ];
 }

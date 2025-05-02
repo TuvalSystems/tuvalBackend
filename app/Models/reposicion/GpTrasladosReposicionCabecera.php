@@ -34,4 +34,13 @@ use Illuminate\Database\Eloquent\Model;
 class GpTrasladosReposicionCabecera extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'Documento',
+        'Bodega_Origen',
+        'Bodega_Destino',
+        'Codigo_Motivo',
+        'Fecha_Documento',
+        'Motivo',
+    ];
 }

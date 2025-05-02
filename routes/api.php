@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/consultas/buscararticulo', [ConsultasController::class, 'buscararticulo']);
     Route::post('/consultas/buscarcliente', [ConsultasController::class, 'buscarcliente']);
     Route::post('/consultas/consultarstock', [ConsultasController::class, 'consultarstock']);
+    Route::post('/consultas/consultastockothers', [ConsultasController::class, 'consultaStockOthers']);
     Route::post('/cotizaciones/selectarticulo', [CotizacionesController::class, 'selectarticulo']);
     Route::post('/cotizaciones/selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
     Route::post('/cotizaciones/llenarcotizacion', [CotizacionesController::class, 'llenarcotizacion']);
@@ -140,6 +141,8 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/cotizaciones/imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
     Route::get('/pedidos/imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
     Route::get('/pedidos/imprimirpedidoimagenes/{id}', [PedidosController::class, 'imprimirpedidoimagenes']);
+    Route::get('/pedidos/imprimirpedidoride/{id}', [PedidosController::class, 'imprimirpedidoride']);
+    Route::get('/pedidos/imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
     Route::get('/pedidos/despachoenproceso/{id}', [PedidosController::class, 'despachoenproceso']);
     Route::get('/cobranzas/imprimircobro/{id}', [CobranzasController::class, 'imprimircobro']);
     Route::get('/cobranzas/imprimircierredecaja/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecaja']);
@@ -217,7 +220,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/bodegas/guiasderemision/imprimirordenalmacenamiento', [GuiasderemisionController::class, 'imprimirordenalmacenamiento']);
     Route::post('/bodegas/guiasderemision/imprimirordenalmacenamientodevolucion', [GuiasderemisionController::class, 'imprimirordenalmacenamientodevolucion']);
 
-    Route::get('/bodegas/getreposicion/{fecha}', [ReposicionController::class, 'getreposicion']);
+    Route::post('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
 
     Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
     Route::get('/devoluciones/procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);

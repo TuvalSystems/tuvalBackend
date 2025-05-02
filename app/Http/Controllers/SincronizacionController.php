@@ -32,27 +32,38 @@ use App\Models\GpCaja;
 use App\Models\GpCajaBancos;
 use App\Models\GpUnidadMedida;
 use App\Models\GpRelacionUsuarioCaja;
+
+use App\Services\Api\ApiGpService;
+use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class SincronizacionController extends Controller
 {
+    protected $apiGp;
+
+    public function __construct(ApiGpService $apiGp)
+    {
+        $this->apiGp = $apiGp;
+    }
 
     /*
      * Sincroniza usuarios desde Dynamics GP
      */
+
     public function llenausuariosgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $obj = new WebserviceController;
         $usuarios = $obj->usuarios();
-        foreach($usuarios as $key => $data){
+        foreach ($usuarios as $key => $data) {
 
             $usuario = GpUsuario::where('USERID', trim($data['USERID']))->first();
-            if(!$usuario){
+            if (!$usuario) {
                 $usuario = new GpUsuario;
             }
             $usuario->USERID = trim($data['USERID']);
             $usuario->USERNAME = trim($data['USERNAME']);
-            $usuario->NIVEL_AUTORIZA_CRED = (int)trim($data['NIVEL_AUTORIZA_CRED']);
+            $usuario->NIVEL_AUTORIZA_CRED = (int) trim($data['NIVEL_AUTORIZA_CRED']);
             $usuario->save();
         }
         return response([
@@ -64,14 +75,16 @@ class SincronizacionController extends Controller
     /*
      * Sincroniza bodegas desde Dynamics GP
      */
-    public function llenabodegasgp(){
+
+    public function llenabodegasgp()
+    {
         $obj = new WebserviceController;
         $bodegas = $obj->bodegas();
 
-        foreach($bodegas as $data){
+        foreach ($bodegas as $data) {
 
             $bodega = GpBodega::where('BOD_BODEGA', trim($data['BOD_BODEGA']))->first();
-            if(!$bodega){
+            if (!$bodega) {
                 $bodega = new GpBodega;
             }
             $bodega->BOD_BODEGA = trim($data['BOD_BODEGA']);
@@ -81,7 +94,7 @@ class SincronizacionController extends Controller
         }
 
         $tipoDespachos = $obj->bodegastipodespacho();
-        foreach($tipoDespachos as $tipoDespachos){
+        foreach ($tipoDespachos as $tipoDespachos) {
             $bodega = GpBodega::where('BOD_BODEGA', trim($tipoDespachos['BOD_TIPO_DESPACHO_BODEGA']))->first();
             $bodega->PERMITE_DESPACHO = $tipoDespachos['BOD_TIPO_DESPACHO_PERMITE_DESPACHO'];
             $bodega->save();
@@ -95,33 +108,35 @@ class SincronizacionController extends Controller
     /*
      * Sincroniza Condicion de Pago desde Dynamics GP
      */
-    public function llenacondicionpagogp(){
+
+    public function llenacondicionpagogp()
+    {
         $obj = new WebserviceController;
         $condicionespago = $obj->condicionespago();
 
         $condicionpago = GpCondicionPago::get();
-        foreach($condicionpago as $condicion){
+        foreach ($condicionpago as $condicion) {
             $existe = false;
-            foreach($condicionespago as $data){
-                if($data['COND_ID'] == $condicion->COND_ID){
+            foreach ($condicionespago as $data) {
+                if ($data['COND_ID'] == $condicion->COND_ID) {
                     $existe = true;
                 }
             }
-            if(!$existe){
+            if (!$existe) {
                 $condicion->delete();
             }
         }
 
-        foreach($condicionespago as $key => $data){
+        foreach ($condicionespago as $key => $data) {
 
             $condicionpago = GpCondicionPago::where('COND_ID', trim($data['COND_ID']))->first();
-            if(!$condicionpago){
+            if (!$condicionpago) {
                 $condicionpago = new GpCondicionPago;
             }
-            $condicionpago->COND_DIAS = (int)trim($data['COND_DIAS']);
+            $condicionpago->COND_DIAS = (int) trim($data['COND_DIAS']);
             $condicionpago->COND_ID = trim($data['COND_ID']);
             $condicionpago->COND_TIPO_DESCUENTO = trim($data['COND_TIPO_DESCUENTO']);
-            $condicionpago->COND_VALOR = (float)trim($data['COND_VALOR']);
+            $condicionpago->COND_VALOR = (float) trim($data['COND_VALOR']);
             $condicionpago->save();
         }
         return response([
@@ -133,6 +148,7 @@ class SincronizacionController extends Controller
     /*
      * Sincroniza Condicion de Pago desde Dynamics GP
      */
+
     public function llenaarticulosgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $metodo = 'MST_Articulo';
@@ -140,7 +156,7 @@ class SincronizacionController extends Controller
         $obj = new WebserviceController;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if($cronLog){
+        if ($cronLog) {
             $fecha = $cronLog->fecha;
         }
 
@@ -150,7 +166,7 @@ class SincronizacionController extends Controller
 
         $articulos = $obj->maestros($metodo, $parameters);
 
-        if(!isset($articulos['MST_ArticuloResult']['CS_ARTICULO'])){
+        if (!isset($articulos['MST_ArticuloResult']['CS_ARTICULO'])) {
             return response([
                 'success' => true,
                 'message' => 'Ningun artículo por actualizar',
@@ -159,10 +175,10 @@ class SincronizacionController extends Controller
 
         $articulos = $articulos['MST_ArticuloResult']['CS_ARTICULO'];
 
-        foreach($articulos as $key => $data){
+        foreach ($articulos as $key => $data) {
 
             $articulo = GpArticulo::where('ART_CODIGO', trim($data['ART_CODIGO']))->first();
-            if(!$articulo){
+            if (!$articulo) {
                 $articulo = new GpArticulo;
             }
             $articulo->ART_CODIGO = trim($data['ART_CODIGO']);
@@ -176,12 +192,12 @@ class SincronizacionController extends Controller
             $articulo->ART_FECHA_MODIFICACION = trim($data['ART_FECHA_MODIFICACION']['date']);
             $articulo->ART_FECHA_CREACION = trim($data['ART_FECHA_CREACION']['date']);
             $articulo->ART_ESTADO = trim($data['ART_ESTADO']);
-            $articulo->ART_IMP_VTA = (float)trim($data['ART_IMP_VTA']);
-            $articulo->ART_DECIMAL_CANTIDAD = (int)trim($data['ART_DECIMAL_CANTIDAD']);
+            $articulo->ART_IMP_VTA = (float) trim($data['ART_IMP_VTA']);
+            $articulo->ART_DECIMAL_CANTIDAD = (int) trim($data['ART_DECIMAL_CANTIDAD']);
             $articulo->ART_DECIMAL_MONEDA = trim($data['ART_DECIMAL_MONEDA']);
-            $articulo->ART_COSTO_PROMEDIO = (float)trim($data['ART_COSTO_PROMEDIO']);
+            $articulo->ART_COSTO_PROMEDIO = (float) trim($data['ART_COSTO_PROMEDIO']);
             $articulo->ART_PLAN_UMEDIDA = trim($data['ART_PLAN_UMEDIDA']);
-            $articulo->ART_IMP_COMPRA = (float)trim($data['ART_IMP_COMPRA']);
+            $articulo->ART_IMP_COMPRA = (float) trim($data['ART_IMP_COMPRA']);
             $articulo->ART_SUSTITUTO_1 = trim($data['ART_SUSTITUTO_1']);
             $articulo->ART_SUSTITUTO_2 = trim($data['ART_SUSTITUTO_2']);
             $articulo->ART_MARCA = trim($data['ART_MARCA']);
@@ -189,25 +205,24 @@ class SincronizacionController extends Controller
             $articulo->ART_REFERENCIA_GENERAL = trim($data['ART_REFERENCIA_GENERAL']);
             $articulo->ART_REFERENCIA_DETALLADA = trim($data['ART_REFERENCIA_DETALLADA']);
             $articulo->ART_TIPO_COMPRA = trim($data['ART_TIPO_COMPRA']);
-            $articulo->ART_CODIGO_MARCA_MATERIAL = trim($data['ART_CODIGO']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']);
-            $articulo->ART_DESCRIPCION_MARCA_MATERIAL = trim($data['ART_DESCRIPCION']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']);
-            $articulo->ART_PESO = (float)trim($data['ART_PESO']);
-            $articulo->ART_TAMANO = (float)trim($data['ART_TAMANO']);
-            $articulo->combinado = trim($data['ART_CODIGO']).' '.trim($data['ART_DESCRIPCION']).' '.trim($data['ART_CODIGO_TRES_LETRAS']).' '.trim($data['ART_CODIGO']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']).' '.trim($data['ART_DESCRIPCION']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']);
+            $articulo->ART_CODIGO_MARCA_MATERIAL = trim($data['ART_CODIGO']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
+            $articulo->ART_DESCRIPCION_MARCA_MATERIAL = trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
+            $articulo->ART_PESO = (float) trim($data['ART_PESO']);
+            $articulo->ART_TAMANO = (float) trim($data['ART_TAMANO']);
+            $articulo->combinado = trim($data['ART_CODIGO']) . ' ' . trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_CODIGO_TRES_LETRAS']) . ' ' . trim($data['ART_CODIGO']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']) . ' ' . trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
             $articulo->save();
 
-            if(isset($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) && count($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) > 0){
+            if (isset($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) && count($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) > 0) {
                 $sugeridos = $data['ART_SUGERIDO']['CS_ARTICULO_ADI'];
                 GpArticuloSugerido::where('ART_CODIGO', trim($data['ART_CODIGO']))->delete();
-                foreach($sugeridos as $keyS => $dataS){
+                foreach ($sugeridos as $keyS => $dataS) {
                     $sugerido = new GpArticuloSugerido;
                     $sugerido->ART_CODIGO = trim($data['ART_CODIGO']);
-                    $sugerido->ART_ADI_CANTIDAD = (int)trim($dataS['ART_ADI_CANTIDAD']);
+                    $sugerido->ART_ADI_CANTIDAD = (int) trim($dataS['ART_ADI_CANTIDAD']);
                     $sugerido->ART_ADI_SUGERIDO = trim($dataS['ART_ADI_SUGERIDO']);
                     $sugerido->save();
                 }
             }
-
         }
 
         $cronLog = new GpCronLog();
@@ -225,29 +240,29 @@ class SincronizacionController extends Controller
     /*
      * Sincroniza Condicion de Pago desde Dynamics GP
      */
-//    public function llenalistadepreciosgp(){
-//        $obj = new WebserviceController;
-//        $listaprecios = $obj->listaprecios();
-//
-//        foreach($listaprecios as $key => $data){
-//
-//            $listaprecio = GpListaPrecio::where('LST_PRC_ARTICULO', trim($data['LST_PRC_ARTICULO']))
-//                    ->where('LST_PRC_ID', trim($data['LST_PRC_ID']))->first();
-//            if(!$listaprecio){
-//                $listaprecio = new GpListaPrecio;
-//            }
-//            $listaprecio->LST_PRC_ARTICULO = trim($data['LST_PRC_ARTICULO']);
-//            $listaprecio->LST_PRC_MONEDA = trim($data['LST_PRC_MONEDA']);
-//            $listaprecio->LST_PRC_UMEDIDA = trim($data['LST_PRC_UMEDIDA']);
-//            $listaprecio->LST_PRC_ID = trim($data['LST_PRC_ID']);
-//            $listaprecio->LST_PRC_VALOR = (float)trim($data['LST_PRC_VALOR']);
-//            $listaprecio->save();
-//        }
-//        return response([
-//            'success' => true,
-//            'message' => 'Lista de precios correctamente sincronizada'
-//        ]);
-//    }
+    //    public function llenalistadepreciosgp() {
+    //        $obj = new WebserviceController;
+    //        $listaprecios = $obj->listaprecios();
+    //
+    //        foreach ( $listaprecios as $key => $data ) {
+    //
+    //            $listaprecio = GpListaPrecio::where( 'LST_PRC_ARTICULO', trim( $data[ 'LST_PRC_ARTICULO' ] ) )
+    //                    ->where( 'LST_PRC_ID', trim( $data[ 'LST_PRC_ID' ] ) )->first();
+    //            if ( !$listaprecio ) {
+    //                $listaprecio = new GpListaPrecio;
+    //            }
+    //            $listaprecio->LST_PRC_ARTICULO = trim( $data[ 'LST_PRC_ARTICULO' ] );
+    //            $listaprecio->LST_PRC_MONEDA = trim( $data[ 'LST_PRC_MONEDA' ] );
+    //            $listaprecio->LST_PRC_UMEDIDA = trim( $data[ 'LST_PRC_UMEDIDA' ] );
+    //            $listaprecio->LST_PRC_ID = trim( $data[ 'LST_PRC_ID' ] );
+    //            $listaprecio->LST_PRC_VALOR = ( float )trim( $data[ 'LST_PRC_VALOR' ] );
+    //            $listaprecio->save();
+    //        }
+    //        return response( [
+    //            'success' => true,
+    //            'message' => 'Lista de precios correctamente sincronizada'
+    // ] );
+    //    }
 
     public function llenaclientesgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -259,7 +274,7 @@ class SincronizacionController extends Controller
         $obj = new WebserviceController;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if($cronLog){
+        if ($cronLog) {
             $fecha = $cronLog->fecha;
         }
 
@@ -271,7 +286,7 @@ class SincronizacionController extends Controller
 
         $clientes = $obj->maestros($metodo, $parameters);
 
-        if(!isset($clientes['MST_ClienteResult']['CS_CLIENTE']) || !count($clientes['MST_ClienteResult']['CS_CLIENTE'])){
+        if (!isset($clientes['MST_ClienteResult']['CS_CLIENTE']) || !count($clientes['MST_ClienteResult']['CS_CLIENTE'])) {
             return response([
                 'success' => true,
                 'message' => 'Ningun cliente por actualizar',
@@ -280,21 +295,21 @@ class SincronizacionController extends Controller
 
         $clientes = $clientes['MST_ClienteResult']['CS_CLIENTE'];
 
-//        echo '<pre>';
-//        print_r($clientes);
-//        die();
+        //        echo '<pre>';
+        //        print_r( $clientes );
+        //        die();
 
-        foreach($clientes as $data){
+        foreach ($clientes as $data) {
 
             $cliente = GpCliente::where('CLI_RUC', trim($data['CLI_RUC']))->first();
-            if(!$cliente){
+            if (!$cliente) {
                 $cliente = new GpCliente;
             }
             $cliente->CLI_RUC = trim($data['CLI_RUC']);
             $cliente->CLI_RAZON_SOCIAL = trim($data['CLI_RAZON_SOCIAL']);
             $cliente->CLI_NOMBRE_CORTO = trim($data['CLI_NOMBRE_CORTO']);
             $cliente->CLI_CLASE = trim($data['CLI_CLASE']);
-            $cliente->CLI_PRIORIDAD = (int)trim($data['CLI_PRIORIDAD']);
+            $cliente->CLI_PRIORIDAD = (int) trim($data['CLI_PRIORIDAD']);
             $cliente->CLI_ID_DIRECCION = trim($data['CLI_ID_DIRECCION']);
             $cliente->CLI_CONTACTO = trim($data['CLI_CONTACTO']);
             $cliente->CLI_DIRECCION = trim($data['CLI_DIRECCION']);
@@ -311,21 +326,21 @@ class SincronizacionController extends Controller
             $cliente->CLI_FECHA_CREACION = trim($data['CLI_FECHA_CREACION']['date']);
             $cliente->CLI_CORREO_ELECT_SRI = trim($data['CLI_CORREO_ELECT_SRI']);
             $cliente->CLI_CORREO_ELECT_NOTIFICACION_INTERNA = trim($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
-            $cliente->CLI_IMPUESTO = (float)trim($data['CLI_IMPUESTO']);
+            $cliente->CLI_IMPUESTO = (float) trim($data['CLI_IMPUESTO']);
             $cliente->CLI_DIRECCION_ENVIO = trim($data['CLI_DIRECCION_ENVIO']);
             $cliente->CLI_DIRECCION_FACTURA = trim($data['CLI_DIRECCION_FACTURA']);
             $cliente->CLI_VENDEDOR = trim($data['CLI_VENDEDOR']);
-            $cliente->CLI_DSTO_COMERCIAL = (float)trim($data['CLI_DSTO_COMERCIAL']);
+            $cliente->CLI_DSTO_COMERCIAL = (float) trim($data['CLI_DSTO_COMERCIAL']);
             $cliente->CLI_CONDICION_PAGO = trim($data['CLI_CONDICION_PAGO']);
-            $cliente->CLI_DIA_GRACIA_VTA_CREDITO = (int)trim($data['CLI_DIA_GRACIA_VTA_CREDITO']);
-            $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA = (int)trim($data['CLI_DIA_GRACIA_CHEQUE_A_FECHA']);
+            $cliente->CLI_DIA_GRACIA_VTA_CREDITO = (int) trim($data['CLI_DIA_GRACIA_VTA_CREDITO']);
+            $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA = (int) trim($data['CLI_DIA_GRACIA_CHEQUE_A_FECHA']);
             $cliente->CLI_NIVEL_PRECIO = trim($data['CLI_NIVEL_PRECIO']);
             $cliente->CLI_TIPO_CREDITO = trim($data['CLI_TIPO_CREDITO']);
-            $cliente->CLI_MONTO_CREDITO = (float)trim($data['CLI_MONTO_CREDITO']);
+            $cliente->CLI_MONTO_CREDITO = (float) trim($data['CLI_MONTO_CREDITO']);
             $cliente->CLI_GRUPO_ECONOMICO = trim($data['CLI_GRUPO_ECONOMICO']);
             $cliente->CLI_GRUPO = trim($data['CLI_GRUPO']);
             $cliente->CLI_SUBGRUPO = trim($data['CLI_SUBGRUPO']);
-            $cliente->CLI_DIA_MAXIMO_MES_FACTURACION = (int)trim($data['CLI_DIA_MAXIMO_MES_FACTURACION']);
+            $cliente->CLI_DIA_MAXIMO_MES_FACTURACION = (int) trim($data['CLI_DIA_MAXIMO_MES_FACTURACION']);
             $cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO = trim($data['CLI_FACTURA_POSTERIOR_AL_DESPACHO']);
             $cliente->save();
         }
@@ -342,66 +357,51 @@ class SincronizacionController extends Controller
         ]);
     }
 
+
     public function llenadatoscoordenadasgp()
     {
-
+        set_time_limit(300);
         ini_set('memory_limit', '-1');
+        $method = 'MST_Datos_Coordenadas';
+        $coordenadas = $this->apiGp->getCoordinatesList($parms = []);
 
-        $metodo = 'MST_Datos_Coordenadas';
-        $fecha = '';
-        $obj = new WebserviceController;
-
-        $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if($cronLog){
-            $fecha = $cronLog->fecha;
+        if (empty($coordenadas) || count($coordenadas) == 0) {
+            return $this->createResponse(false, 'Ninguna coordenada por actualizar');
         }
 
-        $parameters = [
-            'id_Cliente ' => '',
-            'FechaCreacion' => '',
-            'FechaModificacion' => $fecha
-        ];
-
-        $coordenadas = $obj->maestros($metodo, $parameters);
-
-        if(!isset($coordenadas['MST_Datos_CoordenadasResult']['CS_DATOS_COORDENADAS']) || !count($coordenadas['MST_Datos_CoordenadasResult']['CS_DATOS_COORDENADAS'])){
-            return response([
-                'success' => true,
-                'message' => 'Ninguna coordenada por actualizar',
-            ]);
-        }
-
-        $coordenadas = $coordenadas['MST_Datos_CoordenadasResult']['CS_DATOS_COORDENADAS'];
-
-
-
-        foreach($coordenadas as $data){
-
-            $direccion = GpClienteSucursal::where('CLI_SUC_RUC', trim($data['COORDENADAS_CLIENTE']))
-                ->where('CLI_SUC_ID_DIRECCION', trim($data['COORDENADAS_ID_DIRECCION']))
-                ->first();
-            if(!$direccion){
-                continue;
-            }
-            $direccion->coordenadas = trim($data['COORDENADAS_ID_COORDENADA']);
-
-            $direccion->save();
-        }
-
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = $metodo;
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
+        $this->processCoordinates($coordenadas);
+        $this->logSyncOperation($method);
+        return $this->createResponse(true, 'Coordenadas correctamente sincronizadas');
     }
 
-    public function llenapuntosdeventagp(){
+    public function processCoordinates($coordenadas)
+    {
+        foreach ($coordenadas as  $coordenada) {
+            $this->updateOrCreateCoordinates($coordenada);
+        }
+    }
+
+    public function updateOrCreateCoordinates($coordenada)
+    {
+        $coordenadaModel = GpClienteSucursal::where('CLI_SUC_RUC', $coordenada['id_Cliente'])
+            ->where('CLI_SUC_ID_DIRECCION', $coordenada['AddressCode'])->first();
+        if ($coordenadaModel) {
+            $coordenadaModel->update([
+                'coordenadas' => $coordenada['DatosCoordenadas'],
+            ]);
+        }
+    }
+
+
+    public function llenapuntosdeventagp()
+    {
         $obj = new WebserviceController;
         $puntosdeventa = $obj->puntodeventa();
 
-        foreach($puntosdeventa as $key => $data){
+        foreach ($puntosdeventa as $key => $data) {
 
             $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', trim($data['PTO_VTA_ID']))->first();
-            if(!$puntodeventa){
+            if (!$puntodeventa) {
                 $puntodeventa = new GpPuntoVenta;
             }
             $puntodeventa->PTO_VTA_ID = trim($data['PTO_VTA_ID']);
@@ -413,27 +413,28 @@ class SincronizacionController extends Controller
             $puntodeventa->PTO_VTA_PAIS = trim($data['PTO_VTA_PAIS']);
             $puntodeventa->PTO_VTA_ESTADO = trim($data['PTO_VTA_ESTADO']);
             $puntodeventa->PTO_VTA_FONO_1 = trim($data['PTO_VTA_FONO_1']);
-            if(isset($data['PTO_VTA_FONO_2']))
+            if (isset($data['PTO_VTA_FONO_2']))
                 $puntodeventa->PTO_VTA_FONO_2 = trim($data['PTO_VTA_FONO_2']);
             $puntodeventa->PTO_VTA_FONO_4 = trim($data['PTO_VTA_FONO_4']);
-            $puntodeventa->PTO_VTA_DIAS_DEVOL_SIN_AUT = (int)trim($data['PTO_VTA_DIAS_DEVOL_SIN_AUT']);
-            $puntodeventa->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO = (int)trim($data['PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO']);
-            $puntodeventa->PTO_VTA_DIA_VALIDEZ_COTIZACION = (int)trim($data['PTO_VTA_DIA_VALIDEZ_COTIZACION']);
+            $puntodeventa->PTO_VTA_DIAS_DEVOL_SIN_AUT = (int) trim($data['PTO_VTA_DIAS_DEVOL_SIN_AUT']);
+            $puntodeventa->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO = (int) trim($data['PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO']);
+            $puntodeventa->PTO_VTA_DIA_VALIDEZ_COTIZACION = (int) trim($data['PTO_VTA_DIA_VALIDEZ_COTIZACION']);
 
             $puntodeventa->save();
         }
         return;
     }
 
-    public function llenacajasgp(){
+    public function llenacajasgp()
+    {
         $obj = new WebserviceController;
         $cajas = $obj->caja();
 
-        foreach($cajas as $key => $data){
+        foreach ($cajas as $key => $data) {
 
             $caja = GpCaja::where('CAJA_CODIGO', trim($data['CAJA_CODIGO']))
-                    ->first();
-            if(!$caja){
+                ->first();
+            if (!$caja) {
                 $caja = new GpCaja;
             }
             $caja->CAJA_CODIGO = trim($data['CAJA_CODIGO']);
@@ -443,19 +444,20 @@ class SincronizacionController extends Controller
         return;
     }
 
-    public function llenaunidadmedidasgp(){
+    public function llenaunidadmedidasgp()
+    {
         $obj = new WebserviceController;
         $unidadmedidas = $obj->unidadmedida();
 
-        foreach($unidadmedidas as $key => $data){
+        foreach ($unidadmedidas as $key => $data) {
 
             $unidadmedida = GpUnidadMedida::where('UMEDIDA_PLAN', trim($data['UMEDIDA_PLAN']))
-                    ->first();
-            if(!$unidadmedida){
+                ->first();
+            if (!$unidadmedida) {
                 $unidadmedida = new GpUnidadMedida;
             }
             $unidadmedida->UMEDIDA_PLAN = trim($data['UMEDIDA_PLAN']);
-            $unidadmedida->UMEDIDA_CANTIDAD_DECIMAL = (int)trim($data['UMEDIDA_CANTIDAD_DECIMAL']);
+            $unidadmedida->UMEDIDA_CANTIDAD_DECIMAL = (int) trim($data['UMEDIDA_CANTIDAD_DECIMAL']);
             $unidadmedida->UMEDIDA_BASE = trim($data['UMEDIDA_BASE']);
             $unidadmedida->save();
         }
@@ -475,125 +477,157 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenaudatositemsl(){
+    public function llenaudatositemsl()
+    {
         $obj = new WebserviceController;
         $datositemsl = $obj->datositemsl();
 
-        foreach($datositemsl as $key => $data){
+        foreach ($datositemsl as $key => $data) {
 
             $datosl = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', trim($data['DATOS_ITEMS_L_CLASE']))
                 ->first();
-            if(!$datosl){
+            if (!$datosl) {
                 $datosl = new GpDatosItemsL;
             }
             $datosl->DATOS_ITEMS_L_CLASE = trim($data['DATOS_ITEMS_L_CLASE']);
             $datosl->DATOS_ITEMS_L_DESCRIPCION_CLASE = trim($data['DATOS_ITEMS_L_DESCRIPCION_CLASE']);
-            $datosl->DATOS_ITEMS_L_DIA_MAXIMO = (int)trim($data['DATOS_ITEMS_L_DIA_MAXIMO']);
-            $datosl->DATOS_ITEMS_L_MARGEN = (int)trim(str_replace('%','',$data['DATOS_ITEMS_L_MARGEN']));
-            $datosl->DATOS_ITEMS_L_TIPO = (int)trim($data['DATOS_ITEMS_L_TIPO']);
+            $datosl->DATOS_ITEMS_L_DIA_MAXIMO = (int) trim($data['DATOS_ITEMS_L_DIA_MAXIMO']);
+            $datosl->DATOS_ITEMS_L_MARGEN = (int) trim(str_replace('%', '', $data['DATOS_ITEMS_L_MARGEN']));
+            $datosl->DATOS_ITEMS_L_TIPO = (int) trim($data['DATOS_ITEMS_L_TIPO']);
             $datosl->save();
         }
         return;
     }
-    public function llenaclientesucursalgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+
+    public function llenaclientesucursalgp()
     {
-        $metodo = 'MST_Cliente_Sucursal';
-        $fecha = '';
-        $obj = new WebserviceController;
+        set_time_limit(300);
+        ini_set('memory_limit', '-1');
+        $method = 'MST_Cliente_Sucursal';
+        $lastSyncDate = $this->getLastSyncDate($method);
 
-        $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if($cronLog){
-            $fecha = $cronLog->fecha;
+        $branches = $this->apiGp->getBranchesClientsList([
+            'cliente' => '',
+            'fechacreacion' => '',
+            'fechamodificacion' => $lastSyncDate,
+            // 'fechamodificacion' => '',
+        ]);
+
+        if (empty($branches)) {
+            return $this->createResponse(true, 'Ninguna dirección por actualizar');
         }
-
-        $parameters = [
-            'id_cliente' => '',
-            'FechaCreacion' => '',
-            'FechaModificacion' => $fecha,
-        ];
-
-        $sucursales = $obj->maestros($metodo, $parameters);
-
+        $this->processBranches($branches);
+        $this->logSyncOperation($method);
         $this->llenadatoscoordenadasgp();
+        return $this->createResponse(true, 'Sucursales de clientes correctamente sincronizadas');
+    }
 
-        if(!isset($sucursales['MST_Cliente_SucursalResult']['CS_CLIENTE_SUCURSAL']) || !count($sucursales['MST_Cliente_SucursalResult']['CS_CLIENTE_SUCURSAL'])){
-            return response([
-                'success' => true,
-                'message' => 'Ninguna dirección por actualizar',
-            ]);
-        }
+    public function getLastSyncDate($method)
+    {
+        $cronLog = GpCronLog::where('metodo', $method)
+            ->orderBy('fecha', 'DESC')->first();
 
-        $sucursales = $sucursales['MST_Cliente_SucursalResult']['CS_CLIENTE_SUCURSAL'];
+        return $cronLog ? $cronLog->fecha : '';
+    }
 
-        foreach($sucursales as $key => $cliente){
+    public function processBranches($branches)
+    {
 
-            if(!isset($cliente['CLI_SUC_DIR_REFE_TEL_CIUD_PROVI_CONTACTO_CORREO']['CS_CLIENTE_SUCURSAL_ADI'])){
-                return response([
-                    'success' => false,
-                    'message' => 'El cliente : '.$cliente['CLI_SUC_DESCRIPCION'].' con RUC: '.$cliente['CLI_SUC_RUC'].' no cuenta con información adicional detallado en los campos: CLI_SUC_DIR_REFE_TEL_CIUD_PROVI_CONTACTO_CORREO => CS_CLIENTE_SUCURSAL_ADI',
-                ]);
+        foreach ($branches as  $branch) {
+            if (!$this->validateBranchData($branch)) {
+                continue;
             }
 
-            foreach($cliente['CLI_SUC_DIR_REFE_TEL_CIUD_PROVI_CONTACTO_CORREO']['CS_CLIENTE_SUCURSAL_ADI'] as $data){
-
-                $sucursal = GpClienteSucursal::where('CLI_SUC_RUC', trim($cliente['CLI_SUC_RUC']))
-                        ->where('CLI_SUC_ID_DIRECCION', trim($data['CLI_SUC_ID_DIRECCION']))->first();
-
-                if(
-                    $sucursal && $sucursal->CLI_SUC_DIRECCION == trim($data['CLI_SUC_DIRECCION'])
-                    && $sucursal->CLI_SUC_CONTACTO == trim($data['CLI_SUC_CONTACTO'])
-                    && $sucursal->CLI_SUC_REFERENCIA == trim($data['CLI_SUC_REFERENCIA'])
-                    && $sucursal->CLI_SUC_VENDEDOR == trim($data['CLI_SUC_VENDEDOR'])
-                    && $sucursal->CLI_SUC_CORREO_ELECTRONICO_SRI == trim($data['CLI_SUC_CORREO_ELECTRONICO_SRI'])
-                    && $sucursal->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA == trim($data['CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA'])
-                    && $sucursal->CLI_SUC_TELEFONO == trim($data['CLI_SUC_TELEFONO'])
-                )
-                    continue;
-
-                if(!$sucursal){
-                    $sucursal = new GpClienteSucursal;
-                }
-                $sucursal->CLI_SUC_RUC = trim($cliente['CLI_SUC_RUC']);
-                $sucursal->CLI_SUC_DESCRIPCION = trim($cliente['CLI_SUC_DESCRIPCION']);
-                $sucursal->CLI_SUC_ID_DIRECCION = trim($data['CLI_SUC_ID_DIRECCION']);
-                $sucursal->CLI_SUC_DIRECCION = trim($data['CLI_SUC_DIRECCION']);
-                $sucursal->CLI_SUC_CONTACTO = trim($data['CLI_SUC_CONTACTO']);
-                $sucursal->CLI_SUC_REFERENCIA = trim($data['CLI_SUC_REFERENCIA']);
-                $sucursal->CLI_SUC_VENDEDOR = trim($data['CLI_SUC_VENDEDOR']);
-                $sucursal->CLI_SUC_TERRITORIO = trim($data['CLI_SUC_TERRITORIO']);
-                $sucursal->CLI_SUC_CIUDAD = trim($data['CLI_SUC_CIUDAD']);
-                $sucursal->CLI_SUC_PROVINCIA = trim($data['CLI_SUC_PROVINCIA']);
-                $sucursal->CLI_SUC_PAIS = trim($data['CLI_SUC_PAIS']);
-                $sucursal->CLI_SUC_TELEFONO = trim($data['CLI_SUC_TELEFONO']);
-                $sucursal->CLI_SUC_CORREO_ELECTRONICO_SRI = trim($data['CLI_SUC_CORREO_ELECTRONICO_SRI']);
-                $sucursal->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = trim($data['CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA']);
-                $sucursal->save();
+            foreach ($branch['DIRECCIONES'] as  $address) {
+                $this->updateOrCreateBranch($branch, $address);
             }
+        }
+    }
 
+    public function validateBranchData($branch)
+    {
+        if (!isset($branch['DIRECCIONES'][0]['idDireccion'])) {
+            throw new Exception(
+                'El cliente :' . $branch['DESCRIPCION_CLINETE'] .
+                    'con RUC : ' . $branch['CLIENTE'] .
+                    'no cuenta con información adicional detallado en los campos direcciones'
+            );
         }
 
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = $metodo;
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
+        return true;
+    }
 
+    public function updateOrCreateBranch($branch, $address)
+    {
+        $sucursal = GpClienteSucursal::firstOrNew([
+            'CLI_SUC_RUC' => trim($branch['CLIENTE']),
+            'CLI_SUC_ID_DIRECCION' => trim($address['idDireccion']),
+        ]);
 
+        if ($this->needsUpdate($sucursal, $address)) {
+            $this->fillBranchData($sucursal, $branch, $address);
+            $sucursal->save();
+        }
+    }
 
-        return response([
-            'success' => true,
-            'message' => 'Sucursales de clientes correctamente sincronizadas',
+    public function needsUpdate($sucursal, $address)
+    {
+        return !$sucursal->exists ||
+            $sucursal->CLI_SUC_DIRECCION != trim($address['direccion']) ||
+            $sucursal->CLI_SUC_CONTACTO != trim($address['contacto']) ||
+            $sucursal->CLI_SUC_REFERENCIA != trim($address['referencia']) ||
+            $sucursal->CLI_SUC_VENDEDOR != trim($address['vendedor']) ||
+            $sucursal->CLI_SUC_CORREO_ELECTRONICO_SRI != trim($address['correo_sri']) ||
+            $sucursal->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA != trim($address['correo_modificacion_interna']) ||
+            $sucursal->CLI_SUC_TELEFONO != trim($address['telefono']);
+    }
+
+    public function fillBranchData($sucursal,   $branch,   $address)
+    {
+        $sucursal->CLI_SUC_DESCRIPCION = trim($branch['DESCRIPCION_CLIENTE']);
+        $sucursal->CLI_SUC_DIRECCION = trim($address['direccion']);
+        $sucursal->CLI_SUC_CONTACTO = trim($address['contacto']);
+        $sucursal->CLI_SUC_REFERENCIA = trim($address['referencia']);
+        $sucursal->CLI_SUC_VENDEDOR = trim($address['vendedor']);
+        $sucursal->CLI_SUC_TERRITORIO = trim($address['territorio']);
+        $sucursal->CLI_SUC_CIUDAD = trim($address['ciudad']);
+        $sucursal->CLI_SUC_PROVINCIA = trim($address['provincia']);
+        $sucursal->CLI_SUC_PAIS = trim($address['pais']);
+        $sucursal->CLI_SUC_TELEFONO = (strlen(trim($address['telefono'])) > 20)
+            ? 'xxxxxxxxxx'
+            : trim($address['telefono']);
+        $sucursal->CLI_SUC_CORREO_ELECTRONICO_SRI = trim($address['correo_sri']);
+        $sucursal->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = trim($address['correo_modificacion_interna']);
+    }
+
+    public function logSyncOperation($method)
+    {
+        GpCronLog::create([
+            'metodo' => $method,
+            'fecha' => now()->format('Y-m-d H:i:s'),
         ]);
     }
+
+    public function createResponse($success, $message)
+    {
+        return response()->json([
+            'success' => $success,
+            'message' => $message
+        ]);
+    }
+
+
+
 
     public function llenadescuentoformapagogp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $obj = new WebserviceController;
         $descuentos = $obj->descuentoformapago();
 
-        foreach($descuentos as $key => $data){
+        foreach ($descuentos as $key => $data) {
 
             $descuento = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', trim($data['DESC_FORMA_PAGO_CODIGO']))->first();
-            if(!$descuento){
+            if (!$descuento) {
                 $descuento = new GpDescuentoFormaPago;
             }
             $descuento->DESC_FORMA_PAGO_CODIGO = trim($data['DESC_FORMA_PAGO_CODIGO']);
@@ -601,7 +635,7 @@ class SincronizacionController extends Controller
             $descuento->DESC_FORMA_PAGO_DIAS_CREDITO = trim($data['DESC_FORMA_PAGO_DIAS_CREDITO']);
             $descuento->DESC_FORMA_PAGO_EMISOR = trim($data['DESC_FORMA_PAGO_EMISOR']);
             $descuento->DESC_FORMA_PAGO_TIPO_CREDITO = trim($data['DESC_FORMA_PAGO_TIPO_CREDITO']);
-            $descuento->DESC_FORMA_PAGO_PORCENTAJE_REBAJAR = (float)trim($data['DESC_FORMA_PAGO_PORCENTAJE_REBAJAR']);
+            $descuento->DESC_FORMA_PAGO_PORCENTAJE_REBAJAR = (float) trim($data['DESC_FORMA_PAGO_PORCENTAJE_REBAJAR']);
             $descuento->DESC_FORMA_PAGO_SRI = trim($data['DESC_FORMA_PAGO_SRI']);
             $descuento->DESC_FORMA_PAGO_TIPO_COBRO = trim($data['DESC_FORMA_PAGO_TIPO_COBRO']);
             $descuento->save();
@@ -612,14 +646,15 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenarelacionpuntodeventabodegagp(){
+    public function llenarelacionpuntodeventabodegagp()
+    {
         $obj = new WebserviceController;
         $relacionpuntodeventas = $obj->relacionpuntodeventabodega();
 
-        foreach($relacionpuntodeventas as $key => $data){
+        foreach ($relacionpuntodeventas as $key => $data) {
 
             $relacionpuntodeventa = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_BODEGA', trim($data['PTO_VTA_BOD_BODEGA']))->first();
-            if(!$relacionpuntodeventa){
+            if (!$relacionpuntodeventa) {
                 $relacionpuntodeventa = new GpRelacionPuntoVentaBodega;
             }
             $relacionpuntodeventa->PTO_VTA_BOD_BODEGA = trim($data['PTO_VTA_BOD_BODEGA']);
@@ -632,14 +667,15 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenarelacionpuntodeventabodegarelacionadagp(){
+    public function llenarelacionpuntodeventabodegarelacionadagp()
+    {
 
         $obj = new WebserviceController;
         $relacionpuntodeventabodegas = $obj->relacionpuntodeventabodegarelacionada();
 
         GpRelacionPuntoVentaBodegaRelacionada::truncate();
-        if(isset($relacionpuntodeventabodegas['MST_Relacion_Punto_Venta_Bodega_RelacionadaResult']['CS_PUNTO_VENTA_BODEGA_RELACIONADA'])){
-            foreach($relacionpuntodeventabodegas['MST_Relacion_Punto_Venta_Bodega_RelacionadaResult']['CS_PUNTO_VENTA_BODEGA_RELACIONADA'] as $key => $data){
+        if (isset($relacionpuntodeventabodegas['MST_Relacion_Punto_Venta_Bodega_RelacionadaResult']['CS_PUNTO_VENTA_BODEGA_RELACIONADA'])) {
+            foreach ($relacionpuntodeventabodegas['MST_Relacion_Punto_Venta_Bodega_RelacionadaResult']['CS_PUNTO_VENTA_BODEGA_RELACIONADA'] as $key => $data) {
                 $relacionpuntodeventabodega = new GpRelacionPuntoVentaBodegaRelacionada;
                 $relacionpuntodeventabodega->PTO_VTA_BOD_REL_BODEGA = trim($data['PTO_VTA_BOD_REL_BODEGA']);
                 $relacionpuntodeventabodega->PTO_VTA_BOD_REL_PUNTO_VENTA = trim($data['PTO_VTA_BOD_REL_PUNTO_VENTA']);
@@ -653,14 +689,15 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenarelacionpuntodeventacajagp(){
+    public function llenarelacionpuntodeventacajagp()
+    {
         $obj = new WebserviceController;
         $relacionpuntodeventacajas = $obj->relacionpuntodeventacaja();
 
-        foreach($relacionpuntodeventacajas as $key => $data){
+        foreach ($relacionpuntodeventacajas as $key => $data) {
 
             $relacionpuntodeventacaja = GpRelacionPuntoVentaCaja::where('PTO_VTA_CAJA_CAJA', trim($data['PTO_VTA_CAJA_CAJA']))->first();
-            if(!$relacionpuntodeventacaja){
+            if (!$relacionpuntodeventacaja) {
                 $relacionpuntodeventacaja = new GpRelacionPuntoVentaCaja;
             }
             $relacionpuntodeventacaja->PTO_VTA_CAJA_CAJA = trim($data['PTO_VTA_CAJA_CAJA']);
@@ -673,14 +710,15 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenarelacionpuntodeventaidventagp(){
+    public function llenarelacionpuntodeventaidventagp()
+    {
         $obj = new WebserviceController;
         $relacionpuntodeventaidventas = $obj->relacionpuntodeventaidventa();
 
-        foreach($relacionpuntodeventaidventas as $key => $data){
+        foreach ($relacionpuntodeventaidventas as $key => $data) {
 
             $relacionpuntodeventaidventa = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_FACTURA_NC', trim($data['PTO_VTA_ID_FACTURA_NC']))->first();
-            if(!$relacionpuntodeventaidventa){
+            if (!$relacionpuntodeventaidventa) {
                 $relacionpuntodeventaidventa = new GpRelacionPuntoVentaIdVenta;
             }
             $relacionpuntodeventaidventa->PTO_VTA_ID_FACTURA_NC = trim($data['PTO_VTA_ID_FACTURA_NC']);
@@ -693,14 +731,14 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenarelacionusuariopuntoventagp(){
+    public function llenarelacionusuariopuntoventagp()
+    {
         $obj = new WebserviceController;
         $relacionusuariopuntodeventas = $obj->relacionusuariopuntodeventa();
 
-
         GpRelacionUsuarioPuntoVenta::truncate();
-        foreach($relacionusuariopuntodeventas as $key => $data){
-            if($data['USER_PTO_VTA_PUNTO_VENTA'] != ''){
+        foreach ($relacionusuariopuntodeventas as $key => $data) {
+            if ($data['USER_PTO_VTA_PUNTO_VENTA'] != '') {
                 $relacionusuariopuntodeventa = new GpRelacionUsuarioPuntoVenta;
                 $relacionusuariopuntodeventa->USER_PTO_VTA_USUARIO = trim($data['USER_PTO_VTA_USUARIO']);
                 $relacionusuariopuntodeventa->USER_PTO_VTA_PUNTO_VENTA = trim($data['USER_PTO_VTA_PUNTO_VENTA']);
@@ -713,11 +751,12 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenarelacionusuariocajagp(){
+    public function llenarelacionusuariocajagp()
+    {
         $obj = new WebserviceController;
         $relacionusuariocajas = $obj->relacionusuariocaja();
         GpRelacionUsuarioCaja::truncate();
-        foreach($relacionusuariocajas as $key => $data){
+        foreach ($relacionusuariocajas as $key => $data) {
             $relacionusuariocaja = new GpRelacionUsuarioCaja;
             $relacionusuariocaja->CAJ_USER_USUARIO = trim($data['CAJ_USER_USUARIO']);
             $relacionusuariocaja->CAJ_USER_CAJA = trim($data['CAJ_USER_CAJA']);
@@ -725,7 +764,6 @@ class SincronizacionController extends Controller
         }
         return;
     }
-
 
     public function llenarelacionesgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -742,13 +780,14 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenavendedorgp(){
+    public function llenavendedorgp()
+    {
         $metodo = 'MST_Vendedor';
         $fecha = '';
         $obj = new WebserviceController;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if($cronLog){
+        if ($cronLog) {
             $fecha = $cronLog->fecha;
         }
 
@@ -757,7 +796,7 @@ class SincronizacionController extends Controller
         ];
         $vendedores = $obj->maestros($metodo, $parameters);
 
-        if(!isset($vendedores['MST_VendedorResult']['CS_VENDEDOR'])){
+        if (!isset($vendedores['MST_VendedorResult']['CS_VENDEDOR'])) {
             return response([
                 'success' => true,
                 'message' => 'Ningun vendedor por actualizar',
@@ -766,11 +805,10 @@ class SincronizacionController extends Controller
 
         $vendedores = $vendedores['MST_VendedorResult']['CS_VENDEDOR'];
 
-
-        foreach($vendedores as $key => $data){
+        foreach ($vendedores as $key => $data) {
 
             $vendedor = GpVendedor::where('VEND_ID', trim($data['VEND_ID']))->first();
-            if(!$vendedor){
+            if (!$vendedor) {
                 $vendedor = new GpVendedor;
             }
             $vendedor->VEND_ID = trim($data['VEND_ID']);
@@ -798,9 +836,6 @@ class SincronizacionController extends Controller
         ]);
     }
 
-
-
-
     public function llenaproveedorgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $metodo = 'MST_Proveedor';
@@ -808,7 +843,7 @@ class SincronizacionController extends Controller
         $obj = new WebserviceController;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if($cronLog){
+        if ($cronLog) {
             $fecha = $cronLog->fecha;
         }
 
@@ -817,7 +852,7 @@ class SincronizacionController extends Controller
         ];
         $proveedores = $obj->maestros($metodo, $parameters);
 
-        if(!isset($proveedores['MST_ProveedorResult']['CS_PROVEEDOR'])){
+        if (!isset($proveedores['MST_ProveedorResult']['CS_PROVEEDOR'])) {
             return response([
                 'success' => true,
                 'message' => 'Ningun proveedor por actualizar',
@@ -826,12 +861,11 @@ class SincronizacionController extends Controller
 
         $proveedores = $proveedores['MST_ProveedorResult']['CS_PROVEEDOR'];
 
-
-        foreach($proveedores as $key => $data){
+        foreach ($proveedores as $key => $data) {
 
             $proveedor = GpProveedor::where('PROV_RUC', trim($data['PROV_RUC']))
-                    ->first();
-            if(!$proveedor){
+                ->first();
+            if (!$proveedor) {
                 $proveedor = new GpProveedor;
             }
             $proveedor->PROV_RUC = trim($data['PROV_RUC']);
@@ -850,11 +884,11 @@ class SincronizacionController extends Controller
             $proveedor->PROV_TELEFONO_3 = trim($data['PROV_TELEFONO_3']);
             $proveedor->PROV_TELEFONO_4 = trim($data['PROV_TELEFONO_4']);
             $proveedor->PROV_CONDICION_PAGO = trim($data['PROV_CONDICION_PAGO']);
-            $proveedor->PROV_DSTO_COMERCIAL = (float)trim($data['PROV_DSTO_COMERCIAL']);
+            $proveedor->PROV_DSTO_COMERCIAL = (float) trim($data['PROV_DSTO_COMERCIAL']);
             $proveedor->PROV_FECHA_MODIFICACION = trim($data['PROV_FECHA_MODIFICACION']['date']);
             $proveedor->PROV_FECHA_CREACION = trim($data['PROV_FECHA_CREACION']['date']);
             $proveedor->PROV_CORREO_ELECT = trim($data['PROV_CORREO_ELECT']);
-            $proveedor->PROV_IMPUESTO = (float)trim($data['PROV_IMPUESTO']);
+            $proveedor->PROV_IMPUESTO = (float) trim($data['PROV_IMPUESTO']);
             $proveedor->PROV_ESTADO = trim($data['PROV_ESTADO']);
             $proveedor->save();
         }
@@ -870,15 +904,16 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenaclaseclientegp(){
+    public function llenaclaseclientegp()
+    {
         $obj = new WebserviceController;
         $claseclientes = $obj->clasecliente();
 
-        foreach($claseclientes as $key => $data){
+        foreach ($claseclientes as $key => $data) {
 
             $clasecliente = GpClaseCliente::where('CLASS_CODIGO', trim($data['CLASS_CODIGO']))
-                    ->first();
-            if(!$clasecliente){
+                ->first();
+            if (!$clasecliente) {
                 $clasecliente = new GpClaseCliente;
             }
             $clasecliente->CLASS_CODIGO = trim($data['CLASS_CODIGO']);
@@ -891,15 +926,16 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenagrupoclientegp(){
+    public function llenagrupoclientegp()
+    {
         $obj = new WebserviceController;
         $grupoclientes = $obj->grupocliente();
 
-        foreach($grupoclientes as $key => $data){
+        foreach ($grupoclientes as $key => $data) {
 
             $grupocliente = GpGrupoCliente::where('GRUPO_CODIGO', trim($data['GRUPO_CODIGO']))
-                    ->first();
-            if(!$grupocliente){
+                ->first();
+            if (!$grupocliente) {
                 $grupocliente = new GpGrupoCliente;
             }
             $grupocliente->GRUPO_CODIGO = trim($data['GRUPO_CODIGO']);
@@ -912,18 +948,19 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenasubgrupoclientegp(){
+    public function llenasubgrupoclientegp()
+    {
         $obj = new WebserviceController;
         $subgrupoclientes = $obj->subgrupocliente();
 
-        if(!isset($subgrupoclientes['MST_SubGrupo_ClienteResult']['CS_SUBGRUPO_CLIENTE']))
+        if (!isset($subgrupoclientes['MST_SubGrupo_ClienteResult']['CS_SUBGRUPO_CLIENTE']))
             return;
 
-        foreach($subgrupoclientes['MST_SubGrupo_ClienteResult']['CS_SUBGRUPO_CLIENTE'] as $key => $data){
+        foreach ($subgrupoclientes['MST_SubGrupo_ClienteResult']['CS_SUBGRUPO_CLIENTE'] as $key => $data) {
 
             $subgrupocliente = GpSubGrupoCliente::where('SUBGRUPO_CODIGO', trim($data['SUBGRUPO_CODIGO']))
-                    ->first();
-            if(!$subgrupocliente){
+                ->first();
+            if (!$subgrupocliente) {
                 $subgrupocliente = new GpSubGrupoCliente;
             }
             $subgrupocliente->SUBGRUPO_CODIGO = trim($data['SUBGRUPO_CODIGO']);
@@ -937,7 +974,8 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenagrupoysubgrupogp(){
+    public function llenagrupoysubgrupogp()
+    {
         $this->llenagrupoclientegp();
         $this->llenasubgrupoclientegp();
         return response([
@@ -946,15 +984,16 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenapaisgp(){
+    public function llenapaisgp()
+    {
         $obj = new WebserviceController;
         $paises = $obj->pais();
 
-        foreach($paises as $key => $data){
+        foreach ($paises as $key => $data) {
 
             $pais = GpPais::where('PAIS_CODIGO', trim($data['PAIS_CODIGO']))
-                    ->first();
-            if(!$pais){
+                ->first();
+            if (!$pais) {
                 $pais = new GpPais;
             }
             $pais->PAIS_CODIGO = trim($data['PAIS_CODIGO']);
@@ -964,15 +1003,16 @@ class SincronizacionController extends Controller
         return;
     }
 
-    public function llenaterritoriogp(){
+    public function llenaterritoriogp()
+    {
         $obj = new WebserviceController;
         $territorios = $obj->territorio();
 
-        foreach($territorios as $key => $data){
+        foreach ($territorios as $key => $data) {
 
             $territorio = GpTerritorio::where('TERRITORIO_CODIGO', trim($data['TERRITORIO_CODIGO']))
-                    ->first();
-            if(!$territorio){
+                ->first();
+            if (!$territorio) {
                 $territorio = new GpTerritorio;
             }
             $territorio->TERRITORIO_CODIGO = trim($data['TERRITORIO_CODIGO']);
@@ -982,7 +1022,8 @@ class SincronizacionController extends Controller
         return;
     }
 
-    public function llenapaisesyterritoriosgp(){
+    public function llenapaisesyterritoriosgp()
+    {
         $this->llenapaisgp();
         $this->llenaterritoriogp();
         return response([
@@ -991,22 +1032,24 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function checkusuario(){
+    public function checkusuario()
+    {
         $user = Auth::user();
         return response(
             $user
         );
     }
 
-    public function llenacajabancos(){
+    public function llenacajabancos()
+    {
         $obj = new WebserviceController;
         $cajabancos = $obj->consultacajabancos();
 
-        foreach($cajabancos as $key => $data){
+        foreach ($cajabancos as $key => $data) {
 
             $caja = GpCajaBancos::where('CB_ID', trim($data['CB_ID']))
-                    ->first();
-            if(!$caja){
+                ->first();
+            if (!$caja) {
                 $caja = new GpCajaBancos;
                 $caja->estado = 'activo';
             }
@@ -1018,7 +1061,8 @@ class SincronizacionController extends Controller
         return;
     }
 
-    public function updatetodo(){
+    public function updatetodo()
+    {
 
         ini_set('memory_limit', '-1');
 
@@ -1056,7 +1100,8 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function testchucknorris(){
+    public function testchucknorris()
+    {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, 'https://api.chucknorris.io/jokes/random');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -1068,7 +1113,8 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function updateperfilesusuarios(){
+    public function updateperfilesusuarios()
+    {
         GpUsuario::where('USERID', 'adminWeb')
             ->update(['perfil_id' => 1]);
         GpUsuario::where('USERID', 'ma')

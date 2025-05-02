@@ -11,9 +11,9 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
-use App\Models\GpCronLog;
 use App\Models\GpMotivosDevolucion;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
@@ -23,12 +23,38 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpVendedor;
+use App\Services\Api\ApiGpService;
+use App\Services\Api\ApiSalesService;
+use App\Services\Api\ApiSeedBellingService;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DevolucionesController extends Controller
 {
+    use JsonResponseTrait;
+    protected $entryService;
+    protected $apiSales;
+    protected $apiSeedBelling;
+    protected $devolucionService;
+    public function __construct(
+        ApiSalesService $apiSales,
+        ApiSeedBellingService $apiSeedBelling,
+        EntryServiceInterface $entryService,
+        DevolucionServiceInterface $devolucionServiceInterface
+    ) {
+        $this->entryService = $entryService;
+        $this->apiSales = $apiSales;
+        $this->apiSeedBelling = $apiSeedBelling;
+        $this->devolucionService = $devolucionServiceInterface;
+    }
+
     public function pedidoscliente($cliente_id, $puntodeventa_id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntodeventa_id)
@@ -36,39 +62,38 @@ class DevolucionesController extends Controller
             ->where('estado', 'facturado')
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
 
-        foreach($pedidos as $pedido){
-            $pedido->direccion_entrega = GpClienteSucursal::where('id',$pedido->sucursal_id)->first();
+        foreach ($pedidos as $pedido) {
+            $pedido->direccion_entrega = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
 
             $pedido->orden_despacho = false;
             $orden_despacho = GpOrdenDespacho::where('pedido_id', $pedido->id)
                 ->where('estado', '!=', 'pendiente')
                 ->first();
-            if($orden_despacho)
+            if ($orden_despacho)
                 $pedido->orden_despacho = true;
-
         }
 
         $devoluciones = GpDevoluciones::where('cliente_id', $cliente_id)
             ->orderBy('gp_devoluciones.created_at', 'desc')
             ->get();
 
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
 
             $devolucion->orden_despacho = false;
             $orden_despacho = GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)
                 ->where('estado', '!=', 'pendiente')
                 ->first();
-            if($orden_despacho)
+            if ($orden_despacho)
                 $devolucion->orden_despacho = true;
 
             $devolucion->cliente = GpCliente::where('id', $devolucion->cliente_id)->first();
 
-            if($devolucion->volver_a_facturar){
+            if ($devolucion->volver_a_facturar) {
                 $devolucion->cliente_volver_a_facturar = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
                 $devolucion->sucursal_volver_a_facturar = GpClienteSucursal::where('id', $devolucion->sucursal_facturacion_id)->first();
             }
         }
-//test
+        //test
         return response([
             'success' => true,
             'pedidos' => $pedidos,
@@ -84,14 +109,14 @@ class DevolucionesController extends Controller
             ->where('estado', '!=', 'procesado')
             ->where('estado', '!=', 'rechazado')
             ->first();
-        if($devolucion_en_proceso){
+        if ($devolucion_en_proceso) {
             return response([
                 'error' => 'Esta factura tiene una devolución en proceso'
             ], 401);
         }
 
         $pedido = GpPedido::where('id', $data['id'])->first();
-        if($pedido->despacho_en_proceso && !$pedido->despachado){
+        if ($pedido->despacho_en_proceso && !$pedido->despachado) {
             return response([
                 'error' => 'Este pedido está siendo despachado'
             ], 401);
@@ -110,27 +135,27 @@ class DevolucionesController extends Controller
 
         $clientes = array();
 
-        foreach($grupo['MST_Cliente_Grupo_EconomicoResult']['CS_CLIENTE_GRUPO_ECONOMICO'] as $grupo_economico){
-            $clientes[] = GpCliente::where('CLI_RUC',$grupo_economico['CGE_RUC'])->first();
+        foreach ($grupo['MST_Cliente_Grupo_EconomicoResult']['CS_CLIENTE_GRUPO_ECONOMICO'] as $grupo_economico) {
+            $clientes[] = GpCliente::where('CLI_RUC', $grupo_economico['CGE_RUC'])->first();
         }
 
-        foreach($clientes as $cliente){
-            $sucursales = GpClienteSucursal::join('gp_vendedors','gp_vendedors.VEND_ID','gp_cliente_sucursals.CLI_SUC_VENDEDOR')
+        foreach ($clientes as $cliente) {
+            $sucursales = GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
                 ->where('CLI_SUC_RUC', $cliente->CLI_RUC)
-                ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS' )
-                ->orderby('CLI_SUC_ID_DIRECCION','DESC')
+                ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
+                ->orderby('CLI_SUC_ID_DIRECCION', 'DESC')
                 ->get();
             $cliente->sucursales = $sucursales;
         }
 
         $arr_detalle = array();
 
-        foreach($detalle as $det){
+        foreach ($detalle as $det) {
 
-            if(!$det['reservado'])
+            if (!$det['reservado'])
                 $det['reservado'] = 0;
 
-            if(!$det['devuelto'])
+            if (!$det['devuelto'])
                 $det['devuelto'] = 0;
 
 
@@ -138,58 +163,58 @@ class DevolucionesController extends Controller
 
             $det['despacho'] = false;
 
-            $det['despachado'] = GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id','gp_guia_remision_detalles.guia_remision_id')
+            $det['despachado'] = GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
                 ->where('gp_guia_remision_detalles.detalle_id', $det['id'])
                 ->where('gp_guia_remisions.estado', 'enviada')
                 ->where('gp_guia_remisions.tipo', 'despacho')
                 ->sum('gp_guia_remision_detalles.GUI_REM_CANTIDAD');
 
-//            if($pedido->despachado && $det['despachado'] == 0) {
-//                $det['despachado'] = $det['ART_CANTIDAD'];
-//            }else{
-//                $arr_detalle[] = $det;
-//            }
+            //            if($pedido->despachado && $det['despachado'] == 0) {
+            //                $det['despachado'] = $det['ART_CANTIDAD'];
+            //            }else{
+            //                $arr_detalle[] = $det;
+            //            }
 
             $arr_detalle[] = $det;
 
-            if($det['despachado'] > 0){
+            if ($det['despachado'] > 0) {
                 $det['despacho'] = true;
                 $arr_detalle[] = $det;
             }
         }
-//        echo '<pre>';
-//        print_r($arr_detalle);
-//        print_r($pedido);
+        //        echo '<pre>';
+        //        print_r($arr_detalle);
+        //        print_r($pedido);
         $pedido_origen = null;
-        if(($pedido->factura_origen && $pedido->despachado)){
+        if (($pedido->factura_origen && $pedido->despachado)) {
             $pedido_origen = GpPedido::where('factura', $pedido->factura_origen)->first();
         }
-//        print_r($pedido_origen);
-//        die();
+        //        print_r($pedido_origen);
+        //        die();
 
-        foreach($arr_detalle as $key => &$det){
+        foreach ($arr_detalle as $key => &$det) {
 
-            if($det['despacho'] || $pedido_origen){
+            if ($det['despacho'] || $pedido_origen) {
 
-                $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id','gp_devoluciones_detalles.devolucion_id')
+                $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
                     ->where('gp_devoluciones.despachado', 1)
                     ->where('gp_devoluciones_detalles.detalle_id', $det['id'])
                     ->sum('gp_devoluciones_detalles.devuelto');
 
                 $det['devuelto'] = $devuelto;
                 $det['disponible'] = $det['despachado'] - $devuelto;
-                if($pedido_origen && $pedido_origen->despachado){
+                if ($pedido_origen && $pedido_origen->despachado) {
                     $det['disponible'] = $det['ART_CANTIDAD'] - $det['despachado'] - $devuelto;
                 }
-                if($pedido_origen && !$pedido_origen->despachado && !$det['despacho']){
+                if ($pedido_origen && !$pedido_origen->despachado && !$det['despacho']) {
                     $det['disponible'] = 0;
                 }
                 //$det['ART_CANTIDAD'] -= $det['despachado'];
-            }else{
+            } else {
                 //$devuelto = 0;
-                $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id','gp_devoluciones_detalles.devolucion_id')
-                    ->where( function ($q) {
-                        $q->where('gp_devoluciones.despachado',0);
+                $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                    ->where(function ($q) {
+                        $q->where('gp_devoluciones.despachado', 0);
                         $q->orWhereNull('gp_devoluciones.despachado');
                     })
                     ->where('gp_devoluciones_detalles.detalle_id', $det['id']);
@@ -198,24 +223,24 @@ class DevolucionesController extends Controller
                 $det['devuelto'] = $devuelto;
                 $det['disponible'] = $det['ART_CANTIDAD'] - $det['despachado'] - $devuelto;
 
-//                $det['ART_CANTIDAD'] -= $det['despachado'];
+                //                $det['ART_CANTIDAD'] -= $det['despachado'];
             }
 
 
-            if($det['disponible']<=0) {
+            if ($det['disponible'] <= 0) {
                 unset($arr_detalle[$key]);
             }
         }
-//        echo '<pre>';
-//        print_r($arr_detalle);
-//        die();
+        //        echo '<pre>';
+        //        print_r($arr_detalle);
+        //        die();
         $arr_detalle = array_values($arr_detalle);
 
         $anterior = false;
         $devoluciones = GpDevoluciones::where('pedido_id', $data['id'])
             ->where('estado', '!=', 'rechazado')
             ->first();
-        if($devoluciones)
+        if ($devoluciones)
             $anterior = true;
 
         return response([
@@ -227,72 +252,85 @@ class DevolucionesController extends Controller
         ]);
     }
 
-    public function enviardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function enviardevolucion(Request $request)
     {
-        $data = $request->all();
+        try {
+            $data = $request->all();
+            DB::beginTransaction();
+            // $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
+            // if ($validateAnulationInvoice) {
+            //     $anulacionResponse =  $this->anularDevolucion($data['pedido']);
+            //     $responseArray = $anulacionResponse->getData(true);
+            //     if ($responseArray['success'] == false) {
+            //         return $this->buildErrorResponse($responseArray['error'], 401);
+            //     }
+            // }
 
-        $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
-        if($pedido->despacho_en_proceso && !$pedido->despachado){
-            return response([
-                'message' => 'Este pedido está siendo despachado'
-            ], 401);
-        }
+            $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
+            if ($pedido->despacho_en_proceso && !$pedido->despachado) {
+                return response([
+                    'message' => 'Este pedido está siendo despachado'
+                ], 401);
+            }
 
-        if(!isset($data['pedido']['id'])){
-            return response([
-                'message' => 'Hubo un error al guardar'
-            ], 401);
-        }
+            if (!isset($data['pedido']['id'])) {
+                return response([
+                    'message' => 'Hubo un error al guardar'
+                ], 401);
+            }
 
-        $arr_despachados = array();
-        $arr_sindespacho = array();
+            $arr_despachados = array();
+            $arr_sindespacho = array();
 
-        foreach($data['detallepedido'] as $detalle){
+            foreach ($data['detallepedido'] as $detalle) {
 
-            if($data['devolucion']['volver_a_facturar']){
-                if($detalle['despacho']){
-                    $arr_despachados['detallepedido'][] = $detalle;
-                }else{
-                    $arr_sindespacho['detallepedido'][] = $detalle;
-                }
-            }else{
-                if($detalle['seleccionado']>0){
-                    if($detalle['despacho']){
+                if ($data['devolucion']['volver_a_facturar']) {
+                    if ($detalle['despacho']) {
                         $arr_despachados['detallepedido'][] = $detalle;
-                    }else{
+                    } else {
                         $arr_sindespacho['detallepedido'][] = $detalle;
+                    }
+                } else {
+                    if ($detalle['seleccionado'] > 0) {
+                        if ($detalle['despacho']) {
+                            $arr_despachados['detallepedido'][] = $detalle;
+                        } else {
+                            $arr_sindespacho['detallepedido'][] = $detalle;
+                        }
                     }
                 }
             }
-        }
 
-        $devolucion = '';
-        if(isset($arr_despachados['detallepedido']) && count($arr_despachados['detallepedido'])){
-            $arr_despachados['devolucion'] = $data['devolucion'];
-            $arr_despachados['pedido'] = $data['pedido'];
-            $arr_despachados['pedido']['despachado'] = 1;
-            $devolucion .= $this->ejecutardevolucion($arr_despachados);
-        }
-        if(isset($arr_sindespacho['detallepedido']) && count($arr_sindespacho['detallepedido'])){
-            $arr_sindespacho['devolucion'] = $data['devolucion'];
-            $arr_sindespacho['pedido'] = $data['pedido'];
-            $devolucion .= $this->ejecutardevolucion($arr_sindespacho);
-        }
+            $devolucion = '';
+            if (isset($arr_despachados['detallepedido']) && count($arr_despachados['detallepedido'])) {
+                $arr_despachados['devolucion'] = $data['devolucion'];
+                $arr_despachados['pedido'] = $data['pedido'];
+                $arr_despachados['pedido']['despachado'] = 1;
+                $devolucion .= $this->ejecutardevolucion($arr_despachados);
+            }
+            if (isset($arr_sindespacho['detallepedido']) && count($arr_sindespacho['detallepedido'])) {
+                $arr_sindespacho['devolucion'] = $data['devolucion'];
+                $arr_sindespacho['pedido'] = $data['pedido'];
+                $devolucion .= $this->ejecutardevolucion($arr_sindespacho);
+            }
 
-        $despachos = new DespachosController();
-        $despachos->checkeliminardespacho($pedido);
-
-        return response([
-            'success' => true,
-            'message' => $devolucion,
-        ]);
+            $despachos = new DespachosController();
+            $despachos->checkeliminardespacho($pedido);
+            $this->updateStatusDevolutions($pedido);
+            $this->updateStatusOrders($pedido);
+            DB::commit();
+            return $this->buildSuccessResponse('La devolución ha sido solicitada', 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 401);
+        }
     }
 
-    public function checkeliminardespachourl(){
+    public function checkeliminardespachourl()
+    {
 
-//        $pedido = GpPedido::where('id', 1115)->first();
-//        $despachos = new DespachosController();
-//        $despachos->checkeliminardespacho($pedido);
+        //        $pedido = GpPedido::where('id', 1115)->first();
+        //        $despachos = new DespachosController();
+        //        $despachos->checkeliminardespacho($pedido);
     }
 
     public function ejecutardevolucion($data): string
@@ -303,19 +341,19 @@ class DevolucionesController extends Controller
         $requiere_aprobacion = $aprobaciones->checkAprobacionesDevoluciones($data);
 
         $estado = 'solicitado';
-        if($requiere_aprobacion == 'yes'){
+        if ($requiere_aprobacion == 'yes') {
             $estado = 'espera';
         }
 
         $devolucion = new GpDevoluciones;
-        $ultimaDevolucion = GpDevoluciones::orderBy('id','DESC')->first();
+        $ultimaDevolucion = GpDevoluciones::orderBy('id', 'DESC')->first();
 
-        if(!$ultimaDevolucion){
+        if (!$ultimaDevolucion) {
             $ultimaDevolucion = new \stdClass();
             $ultimaDevolucion->id = 0;
         }
 
-        $devolucion->devolucion = 'DEV'.str_pad($ultimaDevolucion->id + 1, 8, "0", STR_PAD_LEFT);
+        $devolucion->devolucion = 'DEV' . str_pad($ultimaDevolucion->id + 1, 8, "0", STR_PAD_LEFT);
         $devolucion->estado = $estado;
         $devolucion->pedido_id = $data['pedido']['id'];
         $devolucion->cliente_id = $data['pedido']['cliente_id'];
@@ -337,10 +375,10 @@ class DevolucionesController extends Controller
         $devolucion->observacion = $data['devolucion']['observacion'];
         $devolucion->save();
 
-        foreach($data['detallepedido'] as $det){
+        foreach ($data['detallepedido'] as $det) {
 
-//            if($det['seleccionado'] == 0)
-//                continue;
+            //            if($det['seleccionado'] == 0)
+            //                continue;
 
             $detalle = new GpDevolucionesDetalle();
             $detalle->devolucion_id = $devolucion->id;
@@ -371,11 +409,11 @@ class DevolucionesController extends Controller
             $detalle->save();
         }
 
-        if($estado == 'solicitado'){
+        if ($estado == 'solicitado') {
             $this->procesardevoluciones();
         }
 
-        return 'La devolución '.$devolucion->devolucion.' ha sido solicitada. ';
+        return 'La devolución ' . $devolucion->devolucion . ' ha sido solicitada. ';
     }
 
     public function detalledevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -388,20 +426,20 @@ class DevolucionesController extends Controller
 
         $detalle = GpDevolucionesDetalle::where('devolucion_id', $data['id'])->get()->toArray();
 
-        foreach($detalle as $key => &$item){
-            if($item['seleccionado'] == 0 && $item['devuelto'] == 0){
+        foreach ($detalle as $key => &$item) {
+            if ($item['seleccionado'] == 0 && $item['devuelto'] == 0) {
                 unset($detalle[$key]);
-            }else {
+            } else {
                 $parameters = array(
                     'IDCompania' => env('ID_COMPANIA'),
                     'Bodega' => $pedido->BOD_BODEGA,
                     'Item' => $item['ART_CODIGO'],
                 );
                 $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
-//                echo '<pre>';
-//                print_r($parameters);
-//                print_r($respuesta['ConsultaItemCompartimentoResult']);
-//                die();
+                //                echo '<pre>';
+                //                print_r($parameters);
+                //                print_r($respuesta['ConsultaItemCompartimentoResult']);
+                //                die();
                 $item['compartimientos'] = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'];
                 $item['compartimiento'] = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'][0]['Compartimento'];
             }
@@ -415,252 +453,260 @@ class DevolucionesController extends Controller
         ]);
     }
 
-    public function procesardevoluciones(){
+    public function  procesardevoluciones()
+    {
+        //1
         //Procesar devoluciones totales sin despacho y sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'solicitado')
-            ->where( function ($q) {
-                $q->where('gp_devoluciones.despachado',0);
+            ->where(function ($q) {
+                $q->where('gp_devoluciones.despachado', 0);
                 $q->orWhereNull('gp_devoluciones.despachado');
             })
             ->whereNull('procesando')
             ->where('tipo_devolucion', 'total')
-            ->where('volver_a_facturar',0)
+            ->where('volver_a_facturar', 0)
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
 
 
 
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
 
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevoluciontotalsinrf($devolucion);
             $continua = $this->generarnotadecredito($devolucion);
-            if($continua) {
+            if ($continua) {
                 GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)->update(['estado' => 'cancelada']);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
 
+        //3
         //Procesar devoluciones totales sin despacho y sin refacturacion aprobadas
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
-            ->where( function ($q) {
-                $q->where('gp_devoluciones.despachado',0);
+            ->where(function ($q) {
+                $q->where('gp_devoluciones.despachado', 0);
                 $q->orWhereNull('gp_devoluciones.despachado');
             })
             ->whereNull('procesando')
             ->where('tipo_devolucion', 'total')
-            ->where('volver_a_facturar',0)
+            ->where('volver_a_facturar', 0)
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevoluciontotalsinrf($devolucion);
             $continua = $this->generarnotadecredito($devolucion);
-            if($continua) {
+            if ($continua) {
                 GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)->update(['estado' => 'cancelada']);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
 
+        //2
         //Procesar devoluciones parciales sin despacho y sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'solicitado')
-            ->where( function ($q) {
-                $q->where('gp_devoluciones.despachado',0);
+            ->where(function ($q) {
+                $q->where('gp_devoluciones.despachado', 0);
                 $q->orWhereNull('gp_devoluciones.despachado');
             })
             ->whereNull('procesando')
             ->where('tipo_devolucion', 'parcial')
-            ->where('volver_a_facturar',0)
+            ->where('volver_a_facturar', 0)
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
 
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevoluciontotalsinrf($devolucion);
             $this->generarnotadecredito($devolucion);
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
 
+        //6
         //Procesar devoluciones parciales sin despacho y sin  aprobados
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
-            ->where( function ($q) {
-                $q->where('gp_devoluciones.despachado',0);
+            ->where(function ($q) {
+                $q->where('gp_devoluciones.despachado', 0);
                 $q->orWhereNull('gp_devoluciones.despachado');
             })
             ->where('tipo_devolucion', 'parcial')
-            ->where('volver_a_facturar',0)
+            ->where('volver_a_facturar', 0)
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevoluciontotalsinrf($devolucion);
             $this->generarnotadecredito($devolucion);
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
 
+        //4
         //Procesar devoluciones totales, sin despacho, aprobados con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
-            ->where( function ($q) {
-                $q->where('gp_devoluciones.despachado',0);
+            ->where(function ($q) {
+                $q->where('gp_devoluciones.despachado', 0);
                 $q->orWhereNull('gp_devoluciones.despachado');
             })
             ->whereNull('procesando')
             ->where('tipo_devolucion', 'total')
-            ->where('volver_a_facturar',1)
+            ->where('volver_a_facturar', 1)
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
-        $pedidos = new PedidosController();
-        foreach($devoluciones as $devolucion){
+        $apiGp = app(ApiGpService::class);
+        $order = app(OrderServiceInterface::class);
+        $pedidos = new PedidosController($apiGp, $order);
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevoluciontotalsinrf($devolucion);
             $continua = $this->generarnotadecredito($devolucion);
 
-            if($continua) {
+            if ($continua) {
                 $pedidos->volverafacturar($devolucion);
                 GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)->update(['estado' => 'cancelada']);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //7
         //Procesar devoluciones parciales, sin despacho, aprobados con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
-            ->where( function ($q) {
-                $q->where('gp_devoluciones.despachado',0);
+            ->where(function ($q) {
+                $q->where('gp_devoluciones.despachado', 0);
                 $q->orWhereNull('gp_devoluciones.despachado');
             })
             ->whereNull('procesando')
             ->where('tipo_devolucion', 'parcial')
-            ->where('volver_a_facturar',1)
+            ->where('volver_a_facturar', 1)
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevolucionparcialconrf($devolucion);
             $continua = $this->generarnotadecredito($devolucion);
-            if($continua) {
+            if ($continua) {
                 $pedidos->volverafacturar($devolucion);
                 GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)->update(['estado' => 'cancelada']);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //9
         //Procesar devoluciones despachadas sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'recibido')
-            ->where('gp_devoluciones.despachado',1)
-            ->where('volver_a_facturar',0)
+            ->where('gp_devoluciones.despachado', 1)
+            ->where('volver_a_facturar', 0)
             ->whereNull('procesando')
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
 
-//        echo '<pre>';
-//        print_r($devoluciones);
-//        die();
+        //        echo '<pre>';
+        //        print_r($devoluciones);
+        //        die();
 
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $continua = $this->generarnotadecredito($devolucion);
-            if($continua) {
+            if ($continua) {
                 $this->generadevolucionventa($devolucion);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //10
         //Procesar devoluciones despachadas parciales recibidas en bodega con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'recibido')
-            ->where('gp_devoluciones.despachado',1)
-            ->where('volver_a_facturar',1)
+            ->where('gp_devoluciones.despachado', 1)
+            ->where('volver_a_facturar', 1)
             ->where('tipo_devolucion', 'parcial')
             ->whereNull('procesando')
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevolucionparcialconrf($devolucion);
             $continua = $this->generarnotadecredito($devolucion);
-            if($continua) {
+            if ($continua) {
                 $pedidos->volverafacturar($devolucion, true);
                 $this->generadevolucionventa($devolucion);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
-
+        //5
         //Procesar devoluciones despachadas totales aprobadas con refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'aprobado')
-            ->where('gp_devoluciones.despachado',1)
-            ->where('volver_a_facturar',1)
+            ->where('gp_devoluciones.despachado', 1)
+            ->where('volver_a_facturar', 1)
             ->where('tipo_devolucion', 'total')
             ->whereNull('procesando')
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $this->procesardevolucionparcialconrf($devolucion);
             $continua = $this->generarnotadecredito($devolucion);
-            if($continua) {
+            if ($continua) {
                 $pedidos->volverafacturar($devolucion, true);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
@@ -669,70 +715,74 @@ class DevolucionesController extends Controller
         return;
     }
 
-    public function procesardevolucionestest(){
+    public function procesardevolucionestest()
+    {
 
-        $pedidos = new PedidosController();
+        // $pedidos = new PedidosController();
 
         //Procesar devoluciones despachadas sin refacturacion
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'recibido')
-            ->where('gp_devoluciones.despachado',1)
-            ->where('volver_a_facturar',0)
+            ->where('gp_devoluciones.despachado', 1)
+            ->where('volver_a_facturar', 0)
             ->whereNull('procesando')
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
 
         echo '<pre>';
         print_r($devoluciones);
-//        die();
+        //        die();
 
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = 1;
             $devolucion->save();
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $continua = $this->generarnotadecredito($devolucion);
-            if($continua) {
+            if ($continua) {
                 $this->generadevolucionventa($devolucion);
             }
         }
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $devolucion->procesando = null;
             $devolucion->save();
         }
     }
 
-    public function volverafacturartesturl($id){
+    public function volverafacturartesturl($id)
+    {
         $devolucion = GpDevoluciones::where('id', $id)->first();
-
-        $pedidos = new PedidosController();
+        $order = app(OrderServiceInterface::class);
+        $apiGp = app(ApiGpService::class);
+        $pedidos = new PedidosController($apiGp, $order);
         $pedidos->volverafacturar($devolucion, false);
     }
 
-    public function generadevolucionventa($devolucion){
+    public function generadevolucionventa($devolucion)
+    {
         $user = Auth::user();
 
-        if(!isset($user->USERID)){
+        if (!isset($user->USERID)) {
             $user = new \stdClass();
             $user->USERID = 'adminWeb';
         }
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
         $Items_Devolucion = array();
-        foreach($detalles as $detalle){
+        foreach ($detalles as $detalle) {
 
-            if($detalle->ART_TIPO_COMPRA == 'SERV')
+            if ($detalle->ART_TIPO_COMPRA == 'SERV')
                 continue;
 
             $devuelto = $detalle->devuelto;
-            if($devolucion->despachado && $devolucion->volver_a_facturar)
+            if ($devolucion->despachado && $devolucion->volver_a_facturar)
                 $devuelto = $detalle->recibido;
 
             $compartimiento = $detalle->compartimiento;
-            if($detalle->ART_TIPO_COMPRA == 'L')
+            if ($detalle->ART_TIPO_COMPRA == 'L')
                 $compartimiento = $pedido->pedido;
 
-            if($devuelto){
+            if ($devuelto) {
                 $Items_Devolucion[] = [
                     'Item' => $detalle->ART_CODIGO,
                     'Cantidad' => $devuelto,
@@ -741,7 +791,7 @@ class DevolucionesController extends Controller
             }
         }
 
-        if(count($Items_Devolucion)){
+        if (count($Items_Devolucion)) {
             $parameters = array(
                 'IDCompania' => env('ID_COMPANIA'),
                 'Documento' => $devolucion->devolucion,
@@ -754,44 +804,48 @@ class DevolucionesController extends Controller
 
             $webservices = new WebserviceController();
             $respuesta = $webservices->inventario('GeneraDevolucionVenta', $parameters);
-//            print_r($respuesta);
+            //            print_r($respuesta);
 
-            if(isset($respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo']) &&
-                $respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo'] == 0){
+            if (
+                isset($respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo']) &&
+                $respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo'] == 0
+            ) {
                 $devolucion->devolucion_bodega = 1;
                 $devolucion->save();
-            }else{
+            } else {
                 $devolucion->AJ_VTA_MENSAJE = $respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Mensaje'];
                 $devolucion->save();
             }
-        }else{
+        } else {
             $devolucion->devolucion_bodega = 1;
             $devolucion->save();
         }
     }
 
-    public function generadevolucionventaurl(){
+    public function generadevolucionventaurl()
+    {
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'procesado')
-            ->where('gp_devoluciones.despachado',1)
-            ->where( function ($q) {
+            ->where('gp_devoluciones.despachado', 1)
+            ->where(function ($q) {
                 $q->whereNull('devolucion_bodega');
                 $q->orWhere('devolucion_bodega', 0);
             })
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID')
             ->get();
 
-        foreach($devoluciones as $key => $devolucion){
+        foreach ($devoluciones as $key => $devolucion) {
             $this->generadevolucionventa($devolucion);
         }
     }
 
-    public function generadevolucionventaurlalt(){
+    public function generadevolucionventaurlalt()
+    {
         $devoluciones = GpDevoluciones::join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->where('gp_devoluciones.estado', 'procesado')
-            ->where('gp_devoluciones.despachado',1)
+            ->where('gp_devoluciones.despachado', 1)
             ->where('gp_devoluciones.id', 6881)
-            ->where( function ($q) {
+            ->where(function ($q) {
                 $q->whereNull('devolucion_bodega');
                 $q->orWhere('devolucion_bodega', 0);
             })
@@ -801,35 +855,36 @@ class DevolucionesController extends Controller
         echo '<pre>';
         print_r($devoluciones);
 
-        foreach($devoluciones as $key => $devolucion){
+        foreach ($devoluciones as $key => $devolucion) {
             $this->generadevolucionventaalterno($devolucion);
         }
     }
 
-    public function generadevolucionventaalterno($devolucion){
+    public function generadevolucionventaalterno($devolucion)
+    {
         $user = Auth::user();
 
-        if(!isset($user->USERID)){
+        if (!isset($user->USERID)) {
             $user = new \stdClass();
             $user->USERID = 'adminWeb';
         }
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
         $Items_Devolucion = array();
-        foreach($detalles as $detalle){
+        foreach ($detalles as $detalle) {
 
-            if($detalle->ART_TIPO_COMPRA == 'SERV')
+            if ($detalle->ART_TIPO_COMPRA == 'SERV')
                 continue;
 
             $devuelto = $detalle->devuelto;
-            if($devolucion->despachado && $devolucion->volver_a_facturar)
+            if ($devolucion->despachado && $devolucion->volver_a_facturar)
                 $devuelto = $detalle->recibido;
 
             $compartimiento = $detalle->compartimiento;
-            if($detalle->ART_TIPO_COMPRA == 'L')
+            if ($detalle->ART_TIPO_COMPRA == 'L')
                 $compartimiento = $pedido->pedido;
 
-            if($devuelto && $devuelto > 0){
+            if ($devuelto && $devuelto > 0) {
                 $Items_Devolucion[] = [
                     'Item' => $detalle->ART_CODIGO,
                     'Cantidad' => $devuelto,
@@ -838,7 +893,7 @@ class DevolucionesController extends Controller
             }
         }
 
-        if(count($Items_Devolucion)){
+        if (count($Items_Devolucion)) {
             $parameters = array(
                 'IDCompania' => env('ID_COMPANIA'),
                 'Documento' => $devolucion->devolucion,
@@ -855,15 +910,17 @@ class DevolucionesController extends Controller
             $respuesta = $webservices->inventario('GeneraDevolucionVenta', $parameters);
             print_r($respuesta);
 
-            if(isset($respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo']) &&
-                $respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo'] == 0){
+            if (
+                isset($respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo']) &&
+                $respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Codigo'] == 0
+            ) {
                 $devolucion->devolucion_bodega = 1;
                 $devolucion->save();
-            }else{
+            } else {
                 $devolucion->AJ_VTA_MENSAJE = $respuesta['GeneraDevolucionVentaResult']['Retorno'][0]['Mensaje'];
                 $devolucion->save();
             }
-        }else{
+        } else {
             $devolucion->devolucion_bodega = 1;
             $devolucion->save();
         }
@@ -871,17 +928,19 @@ class DevolucionesController extends Controller
         die('saliendo');
     }
 
-    public function procesardevoluciontotalsinrf($devolucion){
+    public function procesardevoluciontotalsinrf($devolucion)
+    {
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        foreach($detalles as $detalle){
+        foreach ($detalles as $detalle) {
             $detalle->devuelto = $detalle->seleccionado;
             $detalle->save();
         }
     }
 
-    public function procesardevolucionparcialconrf($devolucion){
+    public function procesardevolucionparcialconrf($devolucion)
+    {
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        foreach($detalles as $detalle){
+        foreach ($detalles as $detalle) {
             $detalle->devuelto = $detalle->disponible;
             $detalle->save();
         }
@@ -895,11 +954,11 @@ class DevolucionesController extends Controller
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
 
-        $doc_id = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA',$devolucion->PTO_VTA_ID)
+        $doc_id = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $devolucion->PTO_VTA_ID)
             ->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'NC%')->first();
 
         $cliente = GpCliente::where('id', $devolucion->cliente_id)->first();
-        $sucursal = GpClienteSucursal::where('id',$devolucion->sucursal_facturacion_id)->first();
+        $sucursal = GpClienteSucursal::where('id', $devolucion->sucursal_facturacion_id)->first();
 
         $subtotal = 0;
         $iva = 0;
@@ -907,9 +966,9 @@ class DevolucionesController extends Controller
         $DetalleDevolucion = array();
 
         $linea = 0;
-        foreach($detalles as $detalle){
+        foreach ($detalles as $detalle) {
 
-            if($detalle->devuelto == 0)
+            if ($detalle->devuelto == 0)
                 continue;
 
             $linea++;
@@ -926,12 +985,11 @@ class DevolucionesController extends Controller
                 'NC_VTA_DET_PRECIO_UNITARIO' => $detalle->ART_VALOR,
                 'NC_VTA_DET_DESCUENTO' => $detalle->ART_DESCUENTO,
                 'NC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
-                'NC_VTA_DET_TOTAL' => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->devuelto,2,'.','') ,
+                'NC_VTA_DET_TOTAL' => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->devuelto, 2, '.', ''),
             );
 
-            $subtotal += (float)number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->devuelto,2,'.','');
+            $subtotal += (float)number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->devuelto, 2, '.', '');
             $iva += $detalle->ART_IVA;
-
         }
         $total = $subtotal + $iva;
 
@@ -949,7 +1007,7 @@ class DevolucionesController extends Controller
                 'NC_VTA_FECHA' => date('Y-m-d'),
                 'NC_VTA_BODEGA' =>  $pedido->BOD_BODEGA,
                 'NC_VTA_SUBTOTAL' => $subtotal,
-                'NC_VTA_DESCUENTO_COMERCIAL' => 0,//$pedido->porcentage_descuento,
+                'NC_VTA_DESCUENTO_COMERCIAL' => 0, //$pedido->porcentage_descuento,
                 'NC_VTA_IMPUESTO' => $iva,
                 'NC_VTA_TOTAL' => $total,
             )
@@ -960,22 +1018,22 @@ class DevolucionesController extends Controller
             'Detalle' => $DetalleDevolucion,
         );
 
-//        echo '<pre>';
-//        print_r($parameters);
-//        die();
+        //        echo '<pre>';
+        //        print_r($parameters);
+        //        die();
         $webservices = new WebserviceController();
         $result = $webservices->transaccional('MST_NC_VTA', $parameters);
 
-//        echo '<pre>';
-//        print_r($result);
+        //        echo '<pre>';
+        //        print_r($result);
 
-//        $cronLog = new GpCronLog();
-//        $cronLog->metodo = 'Ver Devolucion';
-//        $cronLog->fecha = date('Y-m-d H:i:s');
-//        $cronLog->data = json_encode($result);
-//        $cronLog->save();
+        //        $cronLog = new GpCronLog();
+        //        $cronLog->metodo = 'Ver Devolucion';
+        //        $cronLog->fecha = date('Y-m-d H:i:s');
+        //        $cronLog->data = json_encode($result);
+        //        $cronLog->save();
 
-        if(isset($result['MST_NC_VTAResult'])){
+        if (isset($result['MST_NC_VTAResult'])) {
             $parameters = array(
                 'documento_origen' => $devolucion->devolucion,
                 'tipo_documento' => 4,
@@ -984,17 +1042,19 @@ class DevolucionesController extends Controller
 
             $result = $webservices->transaccional('MST_Respuesta_Nota_Credito_Vta', $parameters);
 
-            if(isset($result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['DOC_GENERADO'])
-                && $result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['DOC_GENERADO'] != ''){
+            if (
+                isset($result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['DOC_GENERADO'])
+                && $result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['DOC_GENERADO'] != ''
+            ) {
                 $devolucion->DOC_GENERADO = $result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['DOC_GENERADO'];
                 $devolucion->estado = 'procesado';
                 $devolucion->fecha_NC = date('Y-m-d');
 
                 $this->bajardevolucionapedido($devolucion, $detalles, $pedido);
                 $return = true;
-            }else{
-                if(isset($result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['NC_VTA_MENSAJE']))
-                    $devolucion->NC_VTA_MENSAJE = $result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['NC_VTA_MENSAJE'].' - '.$result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['NC_VTA_CODIGO'];
+            } else {
+                if (isset($result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['NC_VTA_MENSAJE']))
+                    $devolucion->NC_VTA_MENSAJE = $result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['NC_VTA_MENSAJE'] . ' - ' . $result['MST_Respuesta_Nota_Credito_VtaResult']['CS_RESPUESTA_NOTA_CREDITO'][0]['NC_VTA_CODIGO'];
             }
             $devolucion->save();
         }
@@ -1004,22 +1064,23 @@ class DevolucionesController extends Controller
         return $return;
     }
 
-    public function bajardevolucionapedido($devolucion, $detalles, $pedido){
+    public function bajardevolucionapedido($devolucion, $detalles, $pedido)
+    {
 
-        if(!$devolucion->rebajado){
-            foreach($detalles as $detalle){
+        if (!$devolucion->rebajado) {
+            foreach ($detalles as $detalle) {
                 $articulo = GpPedidoDetalle::where('pedido_id', $devolucion->pedido_id)
                     ->where('id', $detalle->detalle_id)
                     ->first();
 
                 $articulo->devuelto += $detalle->devuelto;
                 $articulo->save();
-                if(!$devolucion->despachado){
+                if (!$devolucion->despachado) {
                     $articulo_stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                         ->where('STO_ART_BODEGA', $pedido->BOD_BODEGA)
                         ->first();
 
-                    if($articulo_stock){
+                    if ($articulo_stock) {
                         $articulo_stock->reservado -= $articulo->devuelto;
                         $articulo_stock->save();
                     }
@@ -1037,21 +1098,21 @@ class DevolucionesController extends Controller
         $devoluciones = GpDevoluciones::join('gp_clientes', 'gp_clientes.id', 'gp_devoluciones.cliente_id')
             ->join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
             ->join('gp_punto_ventas', 'gp_pedidos.PTO_VTA_ID', 'gp_punto_ventas.PTO_VTA_ID')
-            ->where( function($query){
+            ->where(function ($query) {
                 $query->where('gp_devoluciones.estado', 'aprobado');
                 $query->orWhere('gp_devoluciones.estado', 'solicitado');
             })
-            ->where('gp_devoluciones.despachado',1)
+            ->where('gp_devoluciones.despachado', 1)
             ->where('gp_pedidos.BOD_BODEGA', $bodega)
             ->select('gp_devoluciones.*', 'gp_clientes.CLI_RAZON_SOCIAL', 'gp_clientes.CLI_RUC', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
             ->get();
 
-//        ->where('volver_a_facturar',1)
-//        ->where('tipo_devolucion', 'total')
+        //        ->where('volver_a_facturar',1)
+        //        ->where('tipo_devolucion', 'total')
 
-        foreach($devoluciones as $key => $devolucion){
+        foreach ($devoluciones as $key => $devolucion) {
 
-            if($devolucion->volver_a_facturar == 1 && $devolucion->tipo_devolucion == 'total'){
+            if ($devolucion->volver_a_facturar == 1 && $devolucion->tipo_devolucion == 'total') {
                 unset($devoluciones[$key]);
             }
 
@@ -1059,11 +1120,11 @@ class DevolucionesController extends Controller
             $orden_despacho = GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)
                 ->where('estado', '!=', 'pendiente')
                 ->first();
-            if($orden_despacho)
+            if ($orden_despacho)
                 $devolucion->orden_despacho = true;
 
             $devolucion->cliente = GpCliente::where('id', $devolucion->cliente_id)->first();
-            if($devolucion->volver_a_facturar){
+            if ($devolucion->volver_a_facturar) {
                 $devolucion->cliente_volver_a_facturar = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
                 $devolucion->sucursal_volver_a_facturar = GpClienteSucursal::where('id', $devolucion->sucursal_facturacion_id)->first();
             }
@@ -1078,14 +1139,57 @@ class DevolucionesController extends Controller
         ]);
     }
 
-//    public function bajaratodos(){
-//        $devoluciones = GpDevoluciones::whereNotNull('DOC_GENERADO')->get();
-//        foreach($devoluciones as $devolucion){
-//            $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
-//            $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-//            $this->bajardevolucionapedido($devolucion, $detalles, $pedido);
-//        }
-//    }
+    //    public function bajaratodos(){
+    //        $devoluciones = GpDevoluciones::whereNotNull('DOC_GENERADO')->get();
+    //        foreach($devoluciones as $devolucion){
+    //            $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
+    //            $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+    //            $this->bajardevolucionapedido($devolucion, $detalles, $pedido);
+    //        }
+    //    }
+
+
+    //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y job )
+    public function recibirdevolucion1(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->all();
+        try {
+            $devolucion = GpDevoluciones::find($data['devolucion']['id']);
+            if (!$devolucion) {
+                return $this->buildErrorResponse('devolucion no encontrada',  404);
+            }
+
+            if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
+                return $this->buildErrorResponse('Esta devolución ya fue recibida en otra instancia', 404);
+            }
+
+            DB::transaction(function () use ($data, $user, $devolucion) {
+                foreach ($data['detalledevolucion'] as $detalle) {
+                    GpDevolucionesDetalle::where('id', $detalle['id'])->update([
+                        'devuelto' => $detalle['devuelto'],
+                        'recibido' => $detalle['devuelto'],
+                        'compartimiento' => $detalle['compartimiento'],
+                        'USERID' => $user->USERID
+                    ]);
+                }
+                $devolucion->update(['estado' => 'recibido']);
+
+                // lo pondre en espera ya que lo esta ejecutando el job
+                // $response = $this->devolucionService->processDevolucion($devolucion);
+                // if (!$response->isSuccessful()) {
+                //     $responseData = (array) $response->getData();
+                //     throw new \Exception("Error en el procesamiento: " . ($responseData['error'] ?? 'Proceso fallido'));
+                // }
+                $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
+            });
+
+            return $this->buildSuccessResponse('Devolución recibida',  200);
+        } catch (\Throwable $th) {
+            Log::error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
+            return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
+        }
+    }
 
     public function recibirdevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1096,13 +1200,13 @@ class DevolucionesController extends Controller
 
         $devolucion = GpDevoluciones::where('id', $data['devolucion']['id'])->first();
 
-        if($devolucion->estado == 'recibido' || $devolucion->estado == 'procesado'){
+        if ($devolucion->estado == 'recibido' || $devolucion->estado == 'procesado') {
             return response([
                 'error' => 'Esta devolución ya fue recibida en otra instancia'
             ], 401);
         }
 
-        foreach($data['detalledevolucion'] as $articulo){
+        foreach ($data['detalledevolucion'] as $articulo) {
             GpDevolucionesDetalle::where('id', $articulo['id'])
                 ->update(['devuelto' => $articulo['devuelto'], 'recibido' => $articulo['devuelto'], 'compartimiento' => $articulo['compartimiento'], 'USERID' => $user->USERID]);
         }
@@ -1123,9 +1227,9 @@ class DevolucionesController extends Controller
     public function imprimirdevolucion($id): \Illuminate\Http\Response
     {
         $devolucion = GpDevoluciones::where('id', $id)->first()->toArray();
-        $pedido = GpPedido::join('gp_usuarios','gp_usuarios.USERID','gp_pedidos.USERID')
+        $pedido = GpPedido::join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
             ->where('gp_pedidos.id', $devolucion['pedido_id'])
-            ->select('gp_pedidos.*','gp_usuarios.USERNAME')
+            ->select('gp_pedidos.*', 'gp_usuarios.USERNAME')
             ->first()->toArray();
         $detalle = GpDevolucionesDetalle::where('devolucion_id', $id)->get();
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $pedido['PTO_VTA_ID'])->first()->toarray();
@@ -1135,7 +1239,7 @@ class DevolucionesController extends Controller
         $data['pedido'] = $pedido;
         $cliente = GpCliente::where('id', $pedido['cliente_id'])->first()->toarray();
 
-        $email = explode(';', str_replace(',', ';',$cliente['CLI_CORREO_ELECT_SRI']));
+        $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
         $cliente['CLI_CORREO_ELECT_SRI'] = $email[0];
 
         $data['cliente'] = $cliente;
@@ -1148,43 +1252,42 @@ class DevolucionesController extends Controller
         $data['subtotalmenosdescuento'] = 0;
         $data['iva'] = 0;
 
-        foreach($detalle as $art){
+        foreach ($detalle as $art) {
             $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
             $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
         }
 
-        foreach($detalle as $key => $art){
+        foreach ($detalle as $key => $art) {
 
-            if($art->devuelto == 0){
+            if ($art->devuelto == 0) {
                 unset($detalle[$key]);
                 continue;
             }
 
-            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_VALOR * $art->devuelto,2,'.','');
-            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format( ($art->ART_IVA / $art->ART_CANTIDAD) * $art->devuelto,2,'.','');
+            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_VALOR * $art->devuelto, 2, '.', '');
+            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format(($art->ART_IVA / $art->ART_CANTIDAD) * $art->devuelto, 2, '.', '');
             //$data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100),4,'.','');
 
             //$data['subtotal'] += (float)number_format($art->ART_VALOR * $art->devuelto,2,'.','');
 
-            $data['descuento'] += (float)number_format($art->ART_DESCUENTO * $art->devuelto,2,'.','');
-            $data['subtotalmenosdescuento'] += (float)number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.','');
-            $data['iva'] += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100),2,'.','');
-
+            $data['descuento'] += (float)number_format($art->ART_DESCUENTO * $art->devuelto, 2, '.', '');
+            $data['subtotalmenosdescuento'] += (float)number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.', '');
+            $data['iva'] += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100), 2, '.', '');
         }
 
-        foreach($data['tipoimpuesto'] as $linea){
+        foreach ($data['tipoimpuesto'] as $linea) {
             $data['subtotal'] += $linea;
         }
 
-        $data['subtotalmenosdescuento'] = (float)number_format($data['subtotalmenosdescuento'], 2, '.','');
-        $data['descuento'] = (float)number_format($data['descuento'],2,'.','');
-        $data['iva'] = (float)number_format($data['iva'],2,'.','');
-        $data['total'] = number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.','');
+        $data['subtotalmenosdescuento'] = (float)number_format($data['subtotalmenosdescuento'], 2, '.', '');
+        $data['descuento'] = (float)number_format($data['descuento'], 2, '.', '');
+        $data['iva'] = (float)number_format($data['iva'], 2, '.', '');
+        $data['total'] = number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
 
 
         $data['detalle'] = $detalle;
         $data['PTO_VTA_DESCRIPCION'] = $puntodeventa['PTO_VTA_DESCRIPCION'];
-        $data['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
+        $data['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         $data['telefono'] = $puntodeventa['PTO_VTA_FONO_1'];
         $data['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
         //return view('devolucionPDF', $data);
@@ -1201,38 +1304,37 @@ class DevolucionesController extends Controller
         $devolucion->iva = 0;
 
         $data = array();
-        foreach($detalle as $art){
+        foreach ($detalle as $art) {
             $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
             $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
         }
 
-        foreach($detalle as $key => $art){
+        foreach ($detalle as $key => $art) {
 
-            if($art->devuelto == 0){
+            if ($art->devuelto == 0) {
                 unset($detalle[$key]);
                 continue;
             }
 
-            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_VALOR * $art->devuelto,2,'.','');
-            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_IVA,2,'.','');
+            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_VALOR * $art->devuelto, 2, '.', '');
+            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_IVA, 2, '.', '');
 
             //$devolucion->subtotal += (float)number_format(($art->ART_VALOR) * $art->devuelto,2,'.','');
 
-            $devolucion->descuento += (float)number_format($art->ART_DESCUENTO * $art->devuelto,2,'.','');
-            $devolucion->subtotalmenosdescuento += (float)number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.','');
-            $devolucion->iva += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100),2,'.','');
-
+            $devolucion->descuento += (float)number_format($art->ART_DESCUENTO * $art->devuelto, 2, '.', '');
+            $devolucion->subtotalmenosdescuento += (float)number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.', '');
+            $devolucion->iva += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100), 2, '.', '');
         }
 
-        foreach($data['tipoimpuesto'] as $linea){
+        foreach ($data['tipoimpuesto'] as $linea) {
             $devolucion->subtotal += $linea;
         }
 
-        $devolucion->subtotalmenosdescuento = (float)number_format($devolucion->subtotalmenosdescuento, 2, '.','');
-        $devolucion->descuento = (float)number_format($devolucion->descuento,2,'.','');
+        $devolucion->subtotalmenosdescuento = (float)number_format($devolucion->subtotalmenosdescuento, 2, '.', '');
+        $devolucion->descuento = (float)number_format($devolucion->descuento, 2, '.', '');
         //$devolucion->subtotal = $devolucion->subtotalmenosdescuento + $devolucion->descuento;
-        $devolucion->iva = (float)number_format($devolucion->iva,2,'.','');
-        $devolucion->total = number_format($devolucion->subtotalmenosdescuento + $devolucion->iva, 2, '.','');
+        $devolucion->iva = (float)number_format($devolucion->iva, 2, '.', '');
+        $devolucion->total = number_format($devolucion->subtotalmenosdescuento + $devolucion->iva, 2, '.', '');
         $devolucion->save();
     }
 
@@ -1241,9 +1343,163 @@ class DevolucionesController extends Controller
 
         $devoluciones = GpDevoluciones::get();
         //
-        foreach($devoluciones as $devolucion){
+        foreach ($devoluciones as $devolucion) {
             $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
             $this->totaldevoluciones($devolucion, $detalles);
         }
+    }
+
+
+    public function anularDevolucion($pedido)
+    {
+        $pedido = GpPedido::find($pedido['id']);
+        if ($this->isInvoiceAlreadyVoided($pedido)) {
+            return $this->buildErrorResponse('La factura ya fue anulada', 400);
+        }
+        return $this->processCancellation($pedido);
+    }
+
+    public function isInvoiceAlreadyVoided($pedido)
+    {
+        return GpFacturaAnulada::where('factura', $pedido->factura)
+            ->where('pedido_id', $pedido->id)->where('estado', 'facturado')->first();
+    }
+    public function validateInvoiceAnulation($pedido)
+    {
+        return GpPedido::where(function ($q) {
+            $q->where('despachado', 0)->orWhereNull('despachado');
+        })->where(function ($q) {
+            $q->where('despacho_en_proceso', 0)->orWhereNull('despacho_en_proceso');
+        })
+            ->where('id', $pedido['id'])->first();
+    }
+
+    public function processCancellation($order)
+    {
+        $cancelResponse  = $this->apiInvalidateGpVoucher($order);
+        if ($cancelResponse['success'] === false) {
+            $this->saveBaseCancellationInfo($order, $cancelResponse);
+            return $this->buildErrorResponse($cancelResponse['message'] ?? 'Error al anular la factura', 400);
+        }
+        $this->saveFailedCancellation($order, $cancelResponse);
+        $accessKeyResponse = $this->apiGetDocumentAccessKey($order);
+        $this->saveAccessKeyInfo($order, $accessKeyResponse);
+
+        if (!$this->isValidAccessKey($accessKeyResponse)) {
+            return $this->buildErrorResponse($accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso', 400);
+        }
+        $this->sendSeedBilling($order, $accessKeyResponse['claveAcceso']);
+
+        return $this->buildSuccessResponse('Factura anulada correctamente', 200);
+    }
+
+    public  function saveBaseCancellationInfo($order, $cancelResponse)
+    {
+
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id],
+            [
+                'pedido' => $order->pedido,
+                'factura' => $order->factura,
+                'msj_anulacion_gp' => $cancelResponse['message'],
+                'diario_response_gp' => $cancelResponse['diario'] ?? null,
+                'estado' => 'pendiente',
+            ]
+        );
+    }
+
+    public function saveAccessKeyInfo($order, $accessKeyResponse)
+    {
+
+        $data = [
+            'resp_document' => $accessKeyResponse['message'] ?? null,
+        ];
+
+        if (!empty($accessKeyResponse['claveAcceso'])) {
+            $data['claveacceso'] = $accessKeyResponse['claveAcceso'];
+            $data['documento_id'] = $accessKeyResponse['id'];
+        }
+
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id, 'factura' => $order->factura],
+            $data
+        );
+    }
+
+    private function isValidAccessKey($accessKeyResponse): bool
+    {
+        return !isset($accessKeyResponse['success'])
+            && !empty($accessKeyResponse['claveAcceso']);
+    }
+    private function sendSeedBilling($order, string $accessKey): void
+    {
+        $response = $this->apiResponseSeedBelling($accessKey);
+
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id, 'factura' => $order->factura],
+            [
+                'resp_seedbilling' => $response['respuesta'] ?? null,
+                'estado' =>  'enviada',
+            ]
+        );
+
+        $this->apiUpdateTbhFacAnuAutorize($order->factura);
+        // $this->updateStatusDevolutions($order);
+    }
+
+    private function saveFailedCancellation($order, array $cancelResponse): void
+    {
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id],
+            [
+                'pedido' => $order->pedido,
+                'factura' => $order->factura,
+                'msj_anulacion_gp' => $cancelResponse['message'],
+                'estado' => 'pendiente',
+            ]
+        );
+    }
+
+    public function updateStatusDevolutions($order)
+    {
+        GpDevoluciones::where('pedido_id', $order->id)
+            ->update(['estado' => 'anulada']);
+    }
+
+    public function updateStatusOrders($order)
+    {
+        GpPedido::where('id', $order->id)
+            ->update(['estado' => 'anulada']);
+    }
+
+
+    public function apiInvalidateGpVoucher($pedido)
+    {
+        return $this->apiSales->invalidateGpVoucher(array(
+            'numeroDocumento' => $pedido->factura,
+            'cliente' => $pedido->CLI_RUC
+        ));
+    }
+
+    public function apiGetDocumentAccessKey($pedido)
+    {
+        return $this->apiSales->getDocumentAccesKey(array(
+            'numdoc' => $pedido->factura,
+        ));
+    }
+
+    public function apiResponseSeedBelling($accesCode)
+    {
+
+        return  $this->apiSeedBelling->anularComprobante(array(
+            'claveAcceso' => $accesCode,
+        ));
+    }
+
+    public function apiUpdateTbhFacAnuAutorize($factura)
+    {
+        $this->apiSales->updatedStatusDocumentGp(array(
+            'numdoc' => $factura,
+        ));
     }
 }
