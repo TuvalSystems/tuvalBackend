@@ -2,14 +2,14 @@
 
 namespace App\Services\Reposiciones;
 
+use App\Models\GpTempCart;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Models\GpTempCart;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\DB;
+use App\Models\GpPedidoDetalleStock;
+use App\Models\reposicion\GpTrasladosReposicion;
+use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
@@ -39,20 +39,20 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 $articulo['ART_CODIGO'],
                 $stockItem['STO_ART_BODEGA']
             );
-
+            
             $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(
                 0,
                 $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado
             );
             $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
         }
-
+       
         $articulo['stock'] = $stockResults;
         $articulo['ART_STOCK'] = $stockTotal;
 
         return $articulo;
     }
-    public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null): int
+    public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null)
     {
         $reservado = 0;
 
@@ -94,12 +94,13 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
         // Stock en traslados de reposición
         $reservado += GpTrasladosReposicion::query()
-            ->where('bodega_origen', $bodega)
-            ->where('ART_CODIGO', $articulo)
-            ->whereNull('completado')
-            ->sum(DB::raw('cantidad - trasladado'));
-
-        return (int)$reservado;
+        ->where('bodega_origen', $bodega)
+        ->where('ART_CODIGO', $articulo)
+        ->whereNull('completado')
+        ->get()
+        ->sum(fn ($item) => ($item->cantidad ?? 0) - ($item->trasladado ?? 0));
+        
+        return $reservado;
     }
 
     public function checkArticuloDisponible($articulo)
