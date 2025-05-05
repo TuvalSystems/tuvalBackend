@@ -785,7 +785,8 @@ class GuiasderemisionController extends Controller
 
         if(count($detalle) == 0){
             //$guia->delete();
-            $despachos = new DespachosController();
+            $order = app(OrderServiceInterface::class);
+            $despachos = new DespachosController($order);
             $pedido = $despachos->checkdespacho($guia);
             return response([
                 'success' => true,
@@ -877,8 +878,8 @@ class GuiasderemisionController extends Controller
             $guia->estado= 'enviada';
             $guia->save();
         }
-
-        $despachos = new DespachosController();
+        $order = app(OrderServiceInterface::class);
+        $despachos = new DespachosController($order);
         $pedido = $despachos->checkdespacho($guia);
 //        $guia->procesando = null;
 //        $guia->save();

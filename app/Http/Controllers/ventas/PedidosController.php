@@ -229,8 +229,9 @@ class PedidosController extends Controller
                 return;
             }
         }
-
-        $despachos = new DespachosController();
+        $order = app(OrderServiceInterface::class);
+        $despachos = new DespachosController($order);
+        // $despachos = new DespachosController();
         $despachos->generarordendespacho($pedido);
 
         $funciones = new FuncionesController();
@@ -245,8 +246,9 @@ class PedidosController extends Controller
     {
         $pedido = GpPedido::where('id', $id)
             ->first();
-
-        $despachos = new DespachosController();
+            $order = app(OrderServiceInterface::class);
+            $despachos = new DespachosController($order);
+        // $despachos = new DespachosController();
         $despachos->generarordendespacho($pedido);
     }
 
@@ -263,8 +265,9 @@ class PedidosController extends Controller
             }
         }
         $pedido->save();
-
-        $despachos = new DespachosController();
+        $order = app(OrderServiceInterface::class);
+        $despachos = new DespachosController($order);
+        // $despachos = new DespachosController();
 
         //Facturar a demanda posterior al despacho (MINERA)
         if ($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
@@ -414,7 +417,9 @@ class PedidosController extends Controller
                     $listo = 'no';
                 }
             }
-            $despachos = new DespachosController();
+            $order = app(OrderServiceInterface::class);
+            $despachos = new DespachosController($order);
+            // $despachos = new DespachosController();
             if ($listo == 'yes') {
                 $pedido->estado = 'espera';
                 $pedido->save();
