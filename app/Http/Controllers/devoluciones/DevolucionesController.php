@@ -258,6 +258,7 @@ class DevolucionesController extends Controller
         try {
             $data = $request->all();
             DB::beginTransaction();
+
             $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
             if ($validateAnulationInvoice &&
             isset($data['devolucion']['tipo_devolucion']) &&
@@ -268,6 +269,7 @@ class DevolucionesController extends Controller
                     return $this->buildErrorResponse($responseArray['error'], 401);
                 }
             }
+
 
             $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
             if ($pedido->despacho_en_proceso && !$pedido->despachado) {
