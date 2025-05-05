@@ -60,6 +60,7 @@ class DevolucionesController extends Controller
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntodeventa_id)
             ->where('cliente_id', $cliente_id)
             ->where('estado', 'facturado')
+            ->orWhere('estado', 'anulada')
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
 
         foreach ($pedidos as $pedido) {
@@ -257,14 +258,14 @@ class DevolucionesController extends Controller
         try {
             $data = $request->all();
             DB::beginTransaction();
-            // $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
-            // if ($validateAnulationInvoice) {
-            //     $anulacionResponse =  $this->anularDevolucion($data['pedido']);
-            //     $responseArray = $anulacionResponse->getData(true);
-            //     if ($responseArray['success'] == false) {
-            //         return $this->buildErrorResponse($responseArray['error'], 401);
-            //     }
-            // }
+            $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
+            if ($validateAnulationInvoice) {
+                $anulacionResponse =  $this->anularDevolucion($data['pedido']);
+                $responseArray = $anulacionResponse->getData(true);
+                if ($responseArray['success'] == false) {
+                    return $this->buildErrorResponse($responseArray['error'], 401);
+                }
+            }
 
             $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
             if ($pedido->despacho_en_proceso && !$pedido->despachado) {
@@ -316,8 +317,8 @@ class DevolucionesController extends Controller
             $order = app(OrderServiceInterface::class);
             $despachos = new DespachosController($order);
             $despachos->checkeliminardespacho($pedido);
-            $this->updateStatusDevolutions($pedido);
-            $this->updateStatusOrders($pedido);
+            // $this->updateStatusDevolutions($pedido);
+            // $this->updateStatusOrders($pedido);
             DB::commit();
             return $this->buildSuccessResponse('La devolución ha sido solicitada', 200);
         } catch (\Throwable $th) {
@@ -1444,7 +1445,8 @@ class DevolucionesController extends Controller
         );
 
         $this->apiUpdateTbhFacAnuAutorize($order->factura);
-        // $this->updateStatusDevolutions($order);
+         $this->updateStatusDevolutions($order);
+         $this->updateStatusOrders($order);
     }
 
     private function saveFailedCancellation($order, array $cancelResponse): void
