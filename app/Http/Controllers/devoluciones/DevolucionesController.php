@@ -259,16 +259,16 @@ class DevolucionesController extends Controller
             $data = $request->all();
             DB::beginTransaction();
 
-            $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
-            if ($validateAnulationInvoice &&
-            isset($data['devolucion']['tipo_devolucion']) &&
-            $data['devolucion']['tipo_devolucion'] === "total") {
-                $anulacionResponse =  $this->anularDevolucion($data['pedido']);
-                $responseArray = $anulacionResponse->getData(true);
-                if ($responseArray['success'] == false) {
-                    return $this->buildErrorResponse($responseArray['error'], 401);
-                }
-            }
+            // $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
+            // if ($validateAnulationInvoice &&
+            // isset($data['devolucion']['tipo_devolucion']) &&
+            // $data['devolucion']['tipo_devolucion'] === "total") {
+            //     $anulacionResponse =  $this->anularDevolucion($data['pedido']);
+            //     $responseArray = $anulacionResponse->getData(true);
+            //     if ($responseArray['success'] == false) {
+            //         return $this->buildErrorResponse($responseArray['error'], 401);
+            //     }
+            // }
 
 
             $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
