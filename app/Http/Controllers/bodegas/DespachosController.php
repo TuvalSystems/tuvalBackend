@@ -43,6 +43,11 @@ use stdClass;
 
 class DespachosController extends Controller
 {
+    protected $orderService;
+    public function __construct(OrderServiceInterface $orderService)
+    {
+        $this->orderService = $orderService;
+    }
     public function generarordendespacho($pedido)
     {
 
@@ -987,7 +992,7 @@ class DespachosController extends Controller
     public function imprimirordendespacho($id): Response
     {
         $pedido = $this->detalleordendespacho($id);
-        $pdf = PDF::loadView('ordendespachoPDF', $pedido);
+        $pdf = Pdf::loadView('ordendespachoPDF', $pedido);
         return $pdf->stream('orden-despacho-'.$pedido['pedido'].'.pdf');
     }
 
@@ -1008,8 +1013,8 @@ class DespachosController extends Controller
             ->where('gp_pedidos.id',$orden_despacho->pedido_id)->first()->toarray();
             $apigp = app(ApiGpService::class);
             $order = app(OrderServiceInterface::class);
-        $pedidos = new PedidosController($apigp, $order);
-        $pedido = $pedidos->getinfopedido($pedido['id']);
+        // $pedidos = new PedidosController($apigp, $order);
+        $pedido = $this->orderService->getOrderInfo($pedido['id']);
         $pedido['orden_despacho'] = $orden_despacho;
 
         return $pedido;
@@ -1068,4 +1073,3 @@ class DespachosController extends Controller
         ]);
     }
 }
-

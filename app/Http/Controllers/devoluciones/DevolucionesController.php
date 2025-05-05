@@ -313,8 +313,8 @@ class DevolucionesController extends Controller
                 $arr_sindespacho['pedido'] = $data['pedido'];
                 $devolucion .= $this->ejecutardevolucion($arr_sindespacho);
             }
-
-            $despachos = new DespachosController();
+            $order = app(OrderServiceInterface::class);
+            $despachos = new DespachosController($order);
             $despachos->checkeliminardespacho($pedido);
             $this->updateStatusDevolutions($pedido);
             $this->updateStatusOrders($pedido);
