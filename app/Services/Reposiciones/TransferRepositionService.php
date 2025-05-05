@@ -259,6 +259,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'idCompany' => config('services.api_gp.company'),
             'articulo' => $articleCode,
             'bodega' => $warehouse,
+            'compartimento' => '',
         ];
         $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params) ?? [];
         return  $compartment[0]['COMPARTIMIENTO'] ?? '';

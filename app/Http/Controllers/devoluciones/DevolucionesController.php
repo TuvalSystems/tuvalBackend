@@ -259,7 +259,9 @@ class DevolucionesController extends Controller
             $data = $request->all();
             DB::beginTransaction();
             $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
-            if ($validateAnulationInvoice) {
+            if ($validateAnulationInvoice &&
+            isset($data['devolucion']['tipo_devolucion']) &&
+            $data['devolucion']['tipo_devolucion'] === "total") {
                 $anulacionResponse =  $this->anularDevolucion($data['pedido']);
                 $responseArray = $anulacionResponse->getData(true);
                 if ($responseArray['success'] == false) {
