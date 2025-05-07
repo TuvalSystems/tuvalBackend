@@ -412,12 +412,12 @@ class AprobacionesController extends Controller
         if($devolucion->save()){
 
 
-            // $apiSales = app(ApiSalesService::class);
-            // $apiSeedBelling = app(ApiSeedBellingService::class);
-            // $entryService = app(EntryService::class);
-            // $devlucionesService = app(DevolucionServiceInterface::class);
-            // $devoluciones = new DevolucionesController($apiSales, $apiSeedBelling, $entryService, $devlucionesService);
-            // $devoluciones->procesardevoluciones();
+            $apiSales = app(ApiSalesService::class);
+            $apiSeedBelling = app(ApiSeedBellingService::class);
+            $entryService = app(EntryService::class);
+            $devlucionesService = app(DevolucionServiceInterface::class);
+            $devoluciones = new DevolucionesController($apiSales, $apiSeedBelling, $entryService, $devlucionesService);
+            $devoluciones->procesardevoluciones();
 
             return response([
                 'success' => true,
