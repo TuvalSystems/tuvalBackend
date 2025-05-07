@@ -21,6 +21,10 @@ trait DevolucionesCriteriosTrait
             ['id'=>11 ,'estado' => 'recibido',   'volver_a_facturar' => 1, 'tipo_devolucion' => 'parcial', 'despachado' => 1, 'procesando' => null, 'devolucion_bodega' => 1,'metodo' => 'procesardevolucionparcialconrf', 'generarnotadecredito' => true,  'volverafacturar'   => true,  'generadevolucionventa'  => true  , 'gpOrdenDespacho'  => false],
             ['id'=>12 ,'estado' => 'procesado', 'volver_a_facturar' => 1,  'tipo_devolucion' => 'total',   'despachado' => 1, 'procesando' => null, 'devolucion_bodega' => 0,'metodo' =>                            null,  'generarnotadecredito' => false,  'volverafacturar'   => false, 'generadevolucionventa'  => true , 'gpOrdenDespacho'  => false],
             ['id'=>13 ,'estado' => 'procesado', 'volver_a_facturar' => 1,  'tipo_devolucion' => 'parcial', 'despachado' => 1, 'procesando' => null, 'devolucion_bodega' => 0,'metodo' =>                            null,  'generarnotadecredito' => false,  'volverafacturar'   => false, 'generadevolucionventa'  => true , 'gpOrdenDespacho'  => false],
+
+            //new
+            ['id'=>14 ,'estado' => 'procesado', 'volver_a_facturar' => 0,  'tipo_devolucion' => 'total', 'despachado' => 1, 'procesando' => null, 'devolucion_bodega' => 1,'metodo' =>  'procesardevolucionparcialconrf' ,  'generarnotadecredito' => true,  'volverafacturar'   => false, 'generadevolucionventa'  => true , 'gpOrdenDespacho'  => true],
+
         ];
     }
 }

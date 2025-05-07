@@ -2,8 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\WebserviceController;
-use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\DevolucionJobService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;

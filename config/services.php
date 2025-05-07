@@ -48,6 +48,7 @@ return [
             //devoluciones - recibir devolucion
             'generar_nota_credito'                      => 'api/devoluciones/generar-nota-credito',
             'respuesta_nota_credito'                    => 'api/devoluciones/respuesta-nota-credito',
+            'generar_devolucion_venta'                  => 'api/devoluciones/generar-devolucion-venta',
         ],
     ],
     'api_sales' => [

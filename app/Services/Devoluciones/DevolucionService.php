@@ -16,6 +16,7 @@ use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +38,16 @@ class   DevolucionService implements DevolucionServiceInterface
 
     public function processDevolucion($devolucion)
     {
+
+        // $criterio = $this->getCriterioDevolucion($devolucion);
+        // if (!$criterio) {
+        //     return $this->buildErrorResponse('Criterio de devolución no encontrado', 404);
+        // }
+        // if ($criterio['generadevolucionventa'] === true) {
+        //       $this->generarDevolucionVenta($devolucion);
+        // }
+
+
         try {
             $criterio = $this->getCriterioDevolucion($devolucion);
             if (!$criterio) {
@@ -197,8 +208,8 @@ class   DevolucionService implements DevolucionServiceInterface
             'detalle' => $detalleDevolucion,
         ];
         $responseNtc = $this->apiGpReturnsIntegrationService->generateCreditNote($parameters);
-        if ($responseNtc['success'] === false)  {
-            return $this->buildErrorResponse($responseNtc['message'],404);
+        if ($responseNtc['success'] === false) {
+            return $this->buildErrorResponse($responseNtc['message'], 404);
         }
 
         $consultaParams = [
@@ -301,57 +312,77 @@ class   DevolucionService implements DevolucionServiceInterface
 
     public function updateStatusOrdenDespacho($pedidoId)
     {
-        GpOrdenDespacho::update([
-            'estado' => 'cancelada',
-        ]);
+        GpOrdenDespacho::where('pedido_id', $pedidoId) // Filtrar por el ID del pedido
+            ->update(['estado' => 'cancelada']);
     }
+
+
 
     public function generarDevolucionVenta($devolucion)
     {
         $userId = Auth::user()->id ?? 'adminWeb';
 
-        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+        // Obtener el pedido y los detalles
         $pedido = GpPedido::find($devolucion->pedido_id);
+        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
+            ->where('ART_TIPO_COMPRA', '!=', 'SERV') // Filtramos los servicios directamente en la consulta
+            ->get();
 
-        $itemsDevolucion = [];
-        foreach ($detalles as $detalle) {
-            if ($detalle->ART_TIPO_COMPRA == 'SERV') {
-                continue;
-            }
+        // 🛠️ Preparación de los items para la devolución
+        $itemsDevolucion = $detalles->map(function ($detalle) use ($devolucion, $pedido) {
+            $devuelto = ($devolucion->despachado && $devolucion->volver_a_facturar)
+                ? $detalle->recibido
+                : $detalle->devuelto;
 
-            $devuelto = $devolucion->despachado && $devolucion->volver_a_facturar ? $detalle->recibido : $detalle->devuelto;
             if (!$devuelto) {
-                continue;
+                return null; // Si no hay devuelto, se ignora el item
             }
 
             $compartimiento = $detalle->ART_TIPO_COMPRA === 'L' ? $pedido->pedido : $detalle->compartimiento;
-            $itemsDevolucion[] = [
+
+            return [
                 'Item' => $detalle->ART_CODIGO,
                 'Cantidad' => $devuelto,
                 'Compartimento' => $compartimiento
             ];
-        }
-        if (!empty($itemsDevolucion)) {
-            $parms = [
-                'IDCompania' => env('ID_COMPANIA'),
-                'Documento' => $devolucion->devolucion,
-                'PedidoOrigen' => $pedido->pedido,
-                'Bodega' => $pedido->BOD_BODEGA,
-                'Observacion' => $devolucion->DOC_GENERADO,
-                'Usuario' => $userId,
-                'Items_Devolucion' => $itemsDevolucion,
-            ];
-            $respuesta =  $this->webservice->inventario('GeneraDevolucionVenta', $parms);
-            $retorno = $respuesta['GeneraDevolucionVentaResult']['Retorno'][0] ?? [];
-            if (!empty($retorno['Codigo']) && $retorno['Codigo'] == 0) {
-                $devolucion->devolucion_bodega = true;
-            } else {
-                $devolucion->AJ_VTA_MENSAJE = $retorno['Mensaje'] ?? 'Error desconocido';
-            }
-        } else {
+        })->filter()->values()->toArray(); // Removemos los nulos y reindexamos el array
+
+        // 🚫 Early return si no hay items
+        if (empty($itemsDevolucion)) {
             $devolucion->devolucion_bodega = true;
+            $devolucion->save();
+            return;
         }
 
+        // 🔄 Parámetros para la integración
+        $parms = [
+            'IDCompania' => env('ID_COMPANIA'),
+            'Documento' => $devolucion->devolucion,
+            'PedidoOrigen' => $pedido->pedido,
+            'Bodega' => $pedido->BOD_BODEGA,
+            'Observacion' => $devolucion->DOC_GENERADO,
+            'Usuario' => $userId,
+            'Items_Devolucion' => $itemsDevolucion,
+        ];
+
+        // 🚀 Llamada al servicio
+        $res1 = $this->apiGpReturnsIntegrationService->generateSalesReturn($parms);
+
+        // ✅ Validación de la respuesta
+        $codigo = Arr::get($res1, '0.codigo', 99); // Si no existe 'codigo', se asume error 99
+        $success = Arr::get($res1, '0.success', false);
+        $mensaje = Arr::get($res1, '0.mensaje', 'Error desconocido');
+
+        if (!$success) {
+            Log::error("Error en procesar la devolución: Código $codigo - $mensaje - " . json_encode($res1));
+            $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
+            $devolucion->devolucion_bodega = false;
+            $devolucion->save();
+            throw new \Exception('Error en la devolución: ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
+        }
+
+        // 🟢 Actualización correcta
+        $devolucion->devolucion_bodega = true;
         $devolucion->save();
     }
 }
