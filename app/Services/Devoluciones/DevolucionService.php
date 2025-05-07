@@ -2,38 +2,50 @@
 
 namespace App\Services\Devoluciones;
 
-use App\Http\Controllers\ventas\PedidosController;
-use App\Http\Controllers\WebserviceController;
-use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpRelacionPuntoVentaIdVenta;
-use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
-use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
-use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
-use App\Traits\JsonResponseTrait;
+use App\Models\GpCliente;
+use App\Services\Api\ApiSalesService;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Auth;
+use App\Models\GpOrdenDespacho;
+use App\Models\GpPedidoDetalle;
+use App\Models\GpClienteSucursal;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\GpPedidoDetalleStock;
+use Illuminate\Support\Facades\Auth;
+use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Models\devoluciones\GpFacturaAnulada;
+use App\Http\Controllers\WebserviceController;
+use App\Http\Controllers\ventas\PedidosController;
+use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Services\Api\ApiSeedBellingService;
+use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 
 class   DevolucionService implements DevolucionServiceInterface
 {
-    use DevolucionesCriteriosTrait, JsonResponseTrait;
-
+    use DevolucionesCriteriosTrait,
+    JsonResponseTrait;
     protected WebserviceController $webservice;
     protected PedidosController $pedidosController;
     protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
+    protected ApiSalesService $apiSales;
+    protected ApiSeedBellingService $apiSeedBelling;
 
-    public function __construct(WebserviceController $webservice, PedidosController $pedidosController, ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService)
+    public function __construct(WebserviceController $webservice,
+        PedidosController $pedidosController,
+        ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        ApiSalesService $apiSales,
+        ApiSeedBellingService $apiSeedBelling)
     {
         $this->webservice = $webservice;
         $this->pedidosController = $pedidosController;
         $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
+        $this->apiSales = $apiSales;
+        $this->apiSeedBelling = $apiSeedBelling;
     }
 
     public function processDevolucion($devolucion)
@@ -384,5 +396,164 @@ class   DevolucionService implements DevolucionServiceInterface
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
         $devolucion->save();
+    }
+
+
+
+    //solicitudes de devoluciones
+
+    public function anularDevolucion($pedido, $devolucion)
+    {
+        $pedido = GpPedido::find($pedido['id']);
+        if ($this->isInvoiceAlreadyVoided($pedido)) {
+            return $this->buildErrorResponse('La factura ya fue anulada', 400);
+        }
+        return $this->processCancellation($pedido, $devolucion);
+    }
+
+    public function isInvoiceAlreadyVoided($pedido)
+    {
+        return GpFacturaAnulada::where('factura', $pedido->factura)
+            ->where('pedido_id', $pedido->id)->where('estado', 'facturado')->first();
+    }
+    public function validateInvoiceAnulation($pedido)
+    {
+        return GpPedido::where(function ($q) {
+            $q->where('despachado', 0)->orWhereNull('despachado');
+        })->where(function ($q) {
+            $q->where('despacho_en_proceso', 0)->orWhereNull('despacho_en_proceso');
+        })
+            ->where('id', $pedido['id'])->first();
+    }
+
+    public function processCancellation($order, $devolucion)
+    {
+        $cancelResponse  = $this->apiInvalidateGpVoucher($order);
+        if ($cancelResponse['success'] === false) {
+            $this->saveBaseCancellationInfo($order, $cancelResponse);
+            return $this->buildErrorResponse($cancelResponse['message'] ?? 'Error al anular la factura', 400);
+        }
+        $this->saveFailedCancellation($order, $cancelResponse);
+        $accessKeyResponse = $this->apiGetDocumentAccessKey($order);
+        $this->saveAccessKeyInfo($order, $accessKeyResponse);
+
+        if (!$this->isValidAccessKey($accessKeyResponse)) {
+            return $this->buildErrorResponse($accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso', 400);
+        }
+        $this->sendSeedBilling($order, $accessKeyResponse['claveAcceso'], $devolucion);
+
+        return $this->buildSuccessResponse('Factura anulada correctamente', 200);
+    }
+
+    public  function saveBaseCancellationInfo($order, $cancelResponse)
+    {
+
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id],
+            [
+                'pedido' => $order->pedido,
+                'factura' => $order->factura,
+                'msj_anulacion_gp' => $cancelResponse['message'],
+                'diario_response_gp' => $cancelResponse['diario'] ?? null,
+                'estado' => 'pendiente',
+            ]
+        );
+    }
+
+    public function saveAccessKeyInfo($order, $accessKeyResponse)
+    {
+
+        $data = [
+            'resp_document' => $accessKeyResponse['message'] ?? null,
+        ];
+
+        if (!empty($accessKeyResponse['claveAcceso'])) {
+            $data['claveacceso'] = $accessKeyResponse['claveAcceso'];
+            $data['documento_id'] = $accessKeyResponse['id'];
+        }
+
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id, 'factura' => $order->factura],
+            $data
+        );
+    }
+
+    private function isValidAccessKey($accessKeyResponse): bool
+    {
+        return !isset($accessKeyResponse['success'])
+            && !empty($accessKeyResponse['claveAcceso']);
+    }
+    private function sendSeedBilling($order, string $accessKey, $devolucion): void
+    {
+        $response = $this->apiResponseSeedBelling($accessKey);
+
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id, 'factura' => $order->factura],
+            [
+                'resp_seedbilling' => $response['respuesta'] ?? null,
+                'estado' =>  'enviada',
+            ]
+        );
+
+        $this->apiUpdateTbhFacAnuAutorize($order->factura);
+        $this->updateStatusDevolutions($order, $devolucion);
+        $this->updateStatusOrders($order);
+    }
+
+    private function saveFailedCancellation($order, array $cancelResponse): void
+    {
+        GpFacturaAnulada::updateOrCreate(
+            ['pedido_id' => $order->id],
+            [
+                'pedido' => $order->pedido,
+                'factura' => $order->factura,
+                'msj_anulacion_gp' => $cancelResponse['message'],
+                'estado' => 'pendiente',
+            ]
+        );
+    }
+
+    public function updateStatusDevolutions($order, $devolucion)
+    {
+        GpDevoluciones::where('pedido_id', $order->id)
+            ->where('id', $devolucion->id ?? $devolucion['id'])
+            ->update(['estado' => 'anulada']);
+    }
+
+    public function updateStatusOrders($order)
+    {
+        GpPedido::where('id', $order->id)
+            ->update(['estado' => 'anulada']);
+    }
+
+
+    public function apiInvalidateGpVoucher($pedido)
+    {
+        return $this->apiSales->invalidateGpVoucher(array(
+            'numeroDocumento' => $pedido->factura,
+            'cliente' => $pedido->CLI_RUC
+        ));
+    }
+
+    public function apiGetDocumentAccessKey($pedido)
+    {
+        return $this->apiSales->getDocumentAccesKey(array(
+            'numdoc' => $pedido->factura,
+        ));
+    }
+
+    public function apiResponseSeedBelling($accesCode)
+    {
+
+        return  $this->apiSeedBelling->anularComprobante(array(
+            'claveAcceso' => $accesCode,
+        ));
+    }
+
+    public function apiUpdateTbhFacAnuAutorize($factura)
+    {
+        $this->apiSales->updatedStatusDocumentGp(array(
+            'numdoc' => $factura,
+        ));
     }
 }
