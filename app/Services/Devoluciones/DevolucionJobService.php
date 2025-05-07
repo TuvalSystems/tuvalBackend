@@ -89,7 +89,6 @@ class DevolucionJobService
 
         try {
             $criterioAplicable = $this->encontrarCriterioAplicable($devolucion, $criterios);
-
             if ($criterioAplicable) {
                 $this->ejecutarProcesosDevolucion($devolucion, $criterioAplicable, $pedidosController);
             } else {
@@ -153,7 +152,7 @@ class DevolucionJobService
                 throw new \Exception('Error generando nota de crédito: ' . ($respArray['error'] ?? 'Error desconocido'));
             }
         }
-        
+
         // Volver a Facturar si corresponde
         if (!empty($criterio['volverafacturar']) && $criterio['volverafacturar'] === true) {
             $pedidosController->volverafacturar($devolucion);
@@ -406,7 +405,7 @@ class DevolucionJobService
             $devolucion->save();
             throw new \Exception('Error en la devolución: ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
         }
-
+        Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $codigo - $mensaje - " . json_encode($res1));
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
         $devolucion->save();
