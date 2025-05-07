@@ -1155,48 +1155,53 @@ class DevolucionesController extends Controller
 
 
     //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y job )
-    public function recibirdevolucion1(Request $request)
+    public function recibirdevolucion(Request $request)
     {
-        $user = Auth::user();
-        $data = $request->all();
-        try {
-            $devolucion = GpDevoluciones::find($data['devolucion']['id']);
-            if (!$devolucion) {
-                return $this->buildErrorResponse('devolucion no encontrada',  404);
-            }
+        $devolucion = GpDevoluciones::find($request->id);
+      
+        $response = $this->devolucionService->processDevolucion($devolucion);
+        return response($response);
 
-            if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
-                return $this->buildErrorResponse('Esta devolución ya fue recibida en otra instancia', 404);
-            }
+        // $user = Auth::user();
+        // $data = $request->all();
+        // try {
+        //     $devolucion = GpDevoluciones::find($data['devolucion']['id']);
+        //     if (!$devolucion) {
+        //         return $this->buildErrorResponse('devolucion no encontrada',  404);
+        //     }
 
-            DB::transaction(function () use ($data, $user, $devolucion) {
-                foreach ($data['detalledevolucion'] as $detalle) {
-                    GpDevolucionesDetalle::where('id', $detalle['id'])->update([
-                        'devuelto' => $detalle['devuelto'],
-                        'recibido' => $detalle['devuelto'],
-                        'compartimiento' => $detalle['compartimiento'],
-                        'USERID' => $user->USERID
-                    ]);
-                }
-                $devolucion->update(['estado' => 'recibido']);
+        //     if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
+        //         return $this->buildErrorResponse('Esta devolución ya fue recibida en otra instancia', 404);
+        //     }
 
-                // lo pondre en espera ya que lo esta ejecutando el job
-                // $response = $this->devolucionService->processDevolucion($devolucion);
-                // if (!$response->isSuccessful()) {
-                //     $responseData = (array) $response->getData();
-                //     throw new \Exception("Error en el procesamiento: " . ($responseData['error'] ?? 'Proceso fallido'));
-                // }
-                $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
-            });
+        //     DB::transaction(function () use ($data, $user, $devolucion) {
+        //         foreach ($data['detalledevolucion'] as $detalle) {
+        //             GpDevolucionesDetalle::where('id', $detalle['id'])->update([
+        //                 'devuelto' => $detalle['devuelto'],
+        //                 'recibido' => $detalle['devuelto'],
+        //                 'compartimiento' => $detalle['compartimiento'],
+        //                 'USERID' => $user->USERID
+        //             ]);
+        //         }
+        //         $devolucion->update(['estado' => 'recibido']);
 
-            return $this->buildSuccessResponse('Devolución recibida',  200);
-        } catch (\Throwable $th) {
-            Log::error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
-            return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
-        }
+        //         // lo pondre en espera ya que lo esta ejecutando el job
+        //         // $response = $this->devolucionService->processDevolucion($devolucion);
+        //         // if (!$response->isSuccessful()) {
+        //         //     $responseData = (array) $response->getData();
+        //         //     throw new \Exception("Error en el procesamiento: " . ($responseData['error'] ?? 'Proceso fallido'));
+        //         // }
+        //         $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
+        //     });
+
+        //     return $this->buildSuccessResponse('Devolución recibida',  200);
+        // } catch (\Throwable $th) {
+        //     Log::error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
+        //     return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
+        // }
     }
 
-    public function recibirdevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibirdevolucion1(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $user = Auth::user();
         $data = $request->all();

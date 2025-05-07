@@ -15,4 +15,8 @@ class ApiGpReturnsIntegrationService extends ApiGpService{
         return $this->httpClient->makeRequest( $this->endpoints['respuesta_nota_credito'], 'POST', $params, );
     }
 
+    public function generateSalesReturn($params){
+        return $this->httpClient->makeRequest( $this->endpoints['generar_devolucion_venta'], 'POST', $params,  'json');
+    }
+
 }
