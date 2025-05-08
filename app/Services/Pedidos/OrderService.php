@@ -15,17 +15,20 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class OrderService implements OrderServiceInterface
 {
     use JsonResponseTrait;
     protected ApiSalesService $apiSalesService;
     protected ApiGpService $apiGpService;
+    protected ApprovalServiceInterface $approvalService;
 
-    public function __construct(ApiSalesService $apiSalesService, ApiGpService $apiGpService)
+    public function __construct(ApiSalesService $apiSalesService, ApiGpService $apiGpService, ApprovalServiceInterface $approvalService)
     {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
+        $this->approvalService = $approvalService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -178,5 +181,23 @@ class OrderService implements OrderServiceInterface
         $datos['xml'] = $datosFactura['data']['xml'];
         $datos['factura'] = $pedido['factura'];
         return $datos;
+    }
+
+
+
+    // PROCESO DE GUARDADO DE PEDIDOS 
+
+    public function storeOrder($order){
+        $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
+        return $order;
+    }
+
+
+    public function ensureAllItemsHaveValidQuantity($order){
+        foreach($order['cotizacion'] as $item){
+            if (empty($item['ART_CANTIDAD']) || $item['ART_CANTIDAD'] <= 0) {
+                throw new \InvalidArgumentException("La cantidad del artículo '{$item['ART_CODIGO']}' debe ser mayor a cero.");
+            }
+        }
     }
 }

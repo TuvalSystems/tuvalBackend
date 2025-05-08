@@ -291,12 +291,12 @@ class DevolucionesController extends Controller
                 $arr_despachados['devolucion'] = $data['devolucion'];
                 $arr_despachados['pedido'] = $data['pedido'];
                 $arr_despachados['pedido']['despachado'] = 1;
-                $devolucion = $this->ejecutardevolucion($arr_despachados);
+                $devolucion = $this->devolucionService->executeReturn($arr_despachados);
             }
             if (isset($arr_sindespacho['detallepedido']) && count($arr_sindespacho['detallepedido'])) {
                 $arr_sindespacho['devolucion'] = $data['devolucion'];
                 $arr_sindespacho['pedido'] = $data['pedido'];
-                $devolucion = $this->ejecutardevolucion($arr_sindespacho);
+                $devolucion = $this->devolucionService->executeReturn($arr_sindespacho);
             }
             $order = app(OrderServiceInterface::class);
             $despachos = new DespachosController($order);
@@ -334,88 +334,7 @@ class DevolucionesController extends Controller
         //        $despachos->checkeliminardespacho($pedido);
     }
 
-    public function ejecutardevolucion($data)
-    {
-        $user = Auth::user();
-        $aprobaciones = new AprobacionesController;
-
-        $requiere_aprobacion = $aprobaciones->checkAprobacionesDevoluciones($data);
-
-        $estado = 'solicitado';
-        if ($requiere_aprobacion == 'yes') {
-            $estado = 'espera';
-        }
-
-        $devolucion = new GpDevoluciones;
-        $ultimaDevolucion = GpDevoluciones::orderBy('id', 'DESC')->first();
-
-        if (!$ultimaDevolucion) {
-            $ultimaDevolucion = new \stdClass();
-            $ultimaDevolucion->id = 0;
-        }
-
-        $devolucion->devolucion = 'DEV' . str_pad($ultimaDevolucion->id + 1, 8, "0", STR_PAD_LEFT);
-        $devolucion->estado = $estado;
-        $devolucion->pedido_id = $data['pedido']['id'];
-        $devolucion->cliente_id = $data['pedido']['cliente_id'];
-        $devolucion->pedido = $data['pedido']['pedido'];
-        $devolucion->factura = $data['pedido']['factura'];
-        $devolucion->volver_a_facturar = $data['devolucion']['volver_a_facturar'];
-        $devolucion->tipo_devolucion = $data['devolucion']['tipo_devolucion'];
-        $devolucion->despachado = $data['pedido']['despachado'];
-        $devolucion->cliente_volver_a_facturar_id = $data['devolucion']['cliente_volver_a_facturar_id'];
-        $devolucion->user_id = $user->id;
-        $devolucion->USERID = $user->USERID;
-        $devolucion->sucursal_id = $data['devolucion']['sucursal_id'];
-        $devolucion->sucursal_facturacion_id = $data['devolucion']['sucursal_facturacion_id'];
-        $devolucion->motivo = $data['devolucion']['motivo'];
-        $devolucion->orden_de_compra = $data['pedido']['orden_de_compra'];
-        $devolucion->requiere_aprobacion = $requiere_aprobacion;
-        $devolucion->aprobado = 'no';
-        $devolucion->impuesto = $data['pedido']['impuesto'];
-        $devolucion->observacion = $data['devolucion']['observacion'];
-        $devolucion->save();
-
-        foreach ($data['detallepedido'] as $det) {
-
-            //            if($det['seleccionado'] == 0)
-            //                continue;
-
-            $detalle = new GpDevolucionesDetalle();
-            $detalle->devolucion_id = $devolucion->id;
-            $detalle->detalle_id = $det['id'];
-            $detalle->ART_CODIGO = $det['ART_CODIGO'];
-            $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
-            $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
-            $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
-            $detalle->ART_DECIMAL_CANTIDAD = (int)$det['ART_DECIMAL_CANTIDAD'];
-            $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
-            $detalle->ART_MARCA = $det['ART_MARCA'];
-            $detalle->ART_MATERIAL = $det['ART_MATERIAL'];
-            $detalle->ART_PESO = $det['ART_PESO'];
-            $detalle->ART_TIPO_COMPRA = $det['ART_TIPO_COMPRA'];
-            $detalle->ART_VALOR = (float)$det['ART_VALOR'];
-            $detalle->ART_IVA = (float)$det['ART_IVA'];
-            $detalle->ART_VALOR_ORIGINAL = (float)$det['ART_VALOR_ORIGINAL'];
-            $detalle->ART_DESCUENTO = (float)$det['ART_DESCUENTO'];
-            $detalle->ART_CANTIDAD = (float)$det['ART_CANTIDAD'];
-            $detalle->ART_STOCK = (float)$det['ART_STOCK'];
-            $detalle->ART_IMP_VTA = (float)$det['ART_IMP_VTA'];
-            $detalle->ART_COSTO_PROMEDIO = (float)$det['ART_COSTO_PROMEDIO'];
-            $detalle->descuento = (float)$det['descuento'];
-            $detalle->descuento_original = (float)$det['descuento_original'];
-            $detalle->modificador = (float)$det['modificador'];
-            $detalle->seleccionado = (float)$det['seleccionado'];
-            $detalle->disponible = (float)$det['disponible'];
-            $detalle->save();
-        }
-
-        // if ($estado == 'solicitado') {
-        //     $this->procesardevoluciones();
-        // }
-
-        return $devolucion;
-    }
+  
 
     public function detalledevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1350,7 +1269,4 @@ class DevolucionesController extends Controller
             $this->totaldevoluciones($devolucion, $detalles);
         }
     }
-
-
-
 }
