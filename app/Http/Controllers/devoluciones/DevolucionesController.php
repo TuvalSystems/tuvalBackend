@@ -5,7 +5,6 @@ namespace App\Http\Controllers\devoluciones;
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\bodegas\IngresosController;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
@@ -334,7 +333,7 @@ class DevolucionesController extends Controller
         //        $despachos->checkeliminardespacho($pedido);
     }
 
-  
+
 
     public function detalledevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
