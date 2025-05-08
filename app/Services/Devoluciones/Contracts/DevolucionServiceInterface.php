@@ -10,4 +10,6 @@ interface DevolucionServiceInterface
 
     public function anularDevolucion($pedido, $devolucion);
 
+    public function executeReturn($data);
+
 }

@@ -23,29 +23,34 @@ use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Services\Api\ApiSeedBellingService;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 
 class   DevolucionService implements DevolucionServiceInterface
 {
     use DevolucionesCriteriosTrait,
-    JsonResponseTrait;
+        JsonResponseTrait;
     protected WebserviceController $webservice;
     protected PedidosController $pedidosController;
     protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
     protected ApiSalesService $apiSales;
     protected ApiSeedBellingService $apiSeedBelling;
+    protected ApprovalServiceInterface $approvalService;
 
-    public function __construct(WebserviceController $webservice,
+    public function __construct(
+        WebserviceController $webservice,
         PedidosController $pedidosController,
         ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
         ApiSalesService $apiSales,
-        ApiSeedBellingService $apiSeedBelling)
-    {
+        ApiSeedBellingService $apiSeedBelling,
+        ApprovalServiceInterface $approvalService
+    ) {
         $this->webservice = $webservice;
         $this->pedidosController = $pedidosController;
         $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
         $this->apiSales = $apiSales;
         $this->apiSeedBelling = $apiSeedBelling;
+        $this->approvalService = $approvalService;
     }
 
     public function processDevolucion($devolucion)
@@ -555,5 +560,83 @@ class   DevolucionService implements DevolucionServiceInterface
         $this->apiSales->updatedStatusDocumentGp(array(
             'numdoc' => $factura,
         ));
+    }
+
+
+    public function executeReturn($data): GpDevoluciones
+    {
+        $user = Auth::user();
+        $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
+
+        $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
+
+        $lastReturn = GpDevoluciones::latest('id')->first();
+        $nextId = $lastReturn?->id + 1 ?? 1;
+
+
+        $return = new GpDevoluciones();
+        $return->devolucion = $this->generateReturnCode($nextId);
+        $return->estado = $status;
+        $return->pedido_id = Arr::get($data, 'pedido.id');
+        $return->cliente_id = Arr::get($data, 'pedido.cliente_id');
+        $return->pedido = Arr::get($data, 'pedido.pedido');
+        $return->factura = Arr::get($data, 'pedido.factura');
+        $return->volver_a_facturar = Arr::get($data, 'devolucion.volver_a_facturar');
+        $return->tipo_devolucion = Arr::get($data, 'devolucion.tipo_devolucion');
+        $return->despachado = Arr::get($data, 'pedido.despachado');
+        $return->cliente_volver_a_facturar_id = Arr::get($data, 'devolucion.cliente_volver_a_facturar_id');
+        $return->user_id = $user->id;
+        $return->USERID = $user->USERID;
+        $return->sucursal_id = Arr::get($data, 'devolucion.sucursal_id');
+        $return->sucursal_facturacion_id = Arr::get($data, 'devolucion.sucursal_facturacion_id');
+        $return->motivo = Arr::get($data, 'devolucion.motivo');
+        $return->orden_de_compra = Arr::get($data, 'pedido.orden_de_compra');
+        $return->requiere_aprobacion = $requiredApproval;
+        $return->aprobado = 'no';
+        $return->impuesto = Arr::get($data, 'pedido.impuesto');
+        $return->observacion = Arr::get($data, 'devolucion.observacion');
+        $return->save();
+
+        $this->storeReturnDetail($return->id, Arr::get($data, 'detallepedido', []));
+        return $return;
+    }
+
+    public function generateReturnCode(int $id): string
+    {
+        return 'DEV' . str_pad($id, 8, '0', STR_PAD_LEFT);
+    }
+
+    public function storeReturnDetail($returnId, $details): void
+    {
+
+        foreach ($details as $item) {
+            $detail = new GpDevolucionesDetalle();
+            $detail->devolucion_id = $returnId;
+            $detail->detalle_id = Arr::get($item, 'id');
+            $detail->ART_CODIGO = Arr::get($item, 'ART_CODIGO');
+            $detail->ART_DESCRIPCION = Arr::get($item, 'ART_DESCRIPCION');
+            $detail->ART_DESCRIPCION_ORIGINAL = Arr::get($item, 'ART_DESCRIPCION_ORIGINAL');
+            $detail->ART_CODIGO_TRES_LETRAS = Arr::get($item, 'ART_CODIGO_TRES_LETRAS');
+            $detail->ART_DECIMAL_CANTIDAD = (int) Arr::get($item, 'ART_DECIMAL_CANTIDAD');
+            $detail->ART_PLAN_UMEDIDA = Arr::get($item, 'ART_PLAN_UMEDIDA');
+            $detail->ART_MARCA = Arr::get($item, 'ART_MARCA');
+            $detail->ART_MATERIAL = Arr::get($item, 'ART_MATERIAL');
+            $detail->ART_PESO = Arr::get($item, 'ART_PESO');
+            $detail->ART_TIPO_COMPRA = Arr::get($item, 'ART_TIPO_COMPRA');
+            $detail->ART_VALOR = (float) Arr::get($item, 'ART_VALOR');
+            $detail->ART_IVA = (float) Arr::get($item, 'ART_IVA');
+            $detail->ART_VALOR_ORIGINAL = (float) Arr::get($item, 'ART_VALOR_ORIGINAL');
+            $detail->ART_DESCUENTO = (float) Arr::get($item, 'ART_DESCUENTO');
+            $detail->ART_CANTIDAD = (float) Arr::get($item, 'ART_CANTIDAD');
+            $detail->ART_STOCK = (float) Arr::get($item, 'ART_STOCK');
+            $detail->ART_IMP_VTA = (float) Arr::get($item, 'ART_IMP_VTA');
+            $detail->ART_COSTO_PROMEDIO = (float) Arr::get($item, 'ART_COSTO_PROMEDIO');
+            $detail->descuento = (float) Arr::get($item, 'descuento');
+            $detail->descuento_original = (float) Arr::get($item, 'descuento_original');
+            $detail->modificador = (float) Arr::get($item, 'modificador');
+            $detail->seleccionado = (float) Arr::get($item, 'seleccionado');
+            $detail->disponible = (float) Arr::get($item, 'disponible');
+            $detail->save();
+        }
     }
 }
