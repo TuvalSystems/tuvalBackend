@@ -11,7 +11,6 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpMotivosDevolucion;
@@ -24,8 +23,6 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpVendedor;
 use App\Services\Api\ApiGpService;
-use App\Services\Api\ApiSalesService;
-use App\Services\Api\ApiSeedBellingService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
@@ -40,18 +37,12 @@ class DevolucionesController extends Controller
 {
     use JsonResponseTrait;
     protected $entryService;
-    protected $apiSales;
-    protected $apiSeedBelling;
     protected $devolucionService;
     public function __construct(
-        ApiSalesService $apiSales,
-        ApiSeedBellingService $apiSeedBelling,
         EntryServiceInterface $entryService,
         DevolucionServiceInterface $devolucionServiceInterface
     ) {
         $this->entryService = $entryService;
-        $this->apiSales = $apiSales;
-        $this->apiSeedBelling = $apiSeedBelling;
         $this->devolucionService = $devolucionServiceInterface;
     }
 
@@ -255,17 +246,10 @@ class DevolucionesController extends Controller
 
     public function enviardevolucion(Request $request)
     {
+
         try {
             $data = $request->all();
             DB::beginTransaction();
-            $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
-            if ($validateAnulationInvoice) {
-                $anulacionResponse =  $this->anularDevolucion($data['pedido']);
-                $responseArray = $anulacionResponse->getData(true);
-                if ($responseArray['success'] == false) {
-                    return $this->buildErrorResponse($responseArray['error'], 401);
-                }
-            }
 
             $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
             if ($pedido->despacho_en_proceso && !$pedido->despachado) {
@@ -302,25 +286,41 @@ class DevolucionesController extends Controller
                 }
             }
 
-            $devolucion = '';
+            $devolucion = [];
             if (isset($arr_despachados['detallepedido']) && count($arr_despachados['detallepedido'])) {
                 $arr_despachados['devolucion'] = $data['devolucion'];
                 $arr_despachados['pedido'] = $data['pedido'];
                 $arr_despachados['pedido']['despachado'] = 1;
-                $devolucion .= $this->ejecutardevolucion($arr_despachados);
+                $devolucion = $this->ejecutardevolucion($arr_despachados);
             }
             if (isset($arr_sindespacho['detallepedido']) && count($arr_sindespacho['detallepedido'])) {
                 $arr_sindespacho['devolucion'] = $data['devolucion'];
                 $arr_sindespacho['pedido'] = $data['pedido'];
-                $devolucion .= $this->ejecutardevolucion($arr_sindespacho);
+                $devolucion = $this->ejecutardevolucion($arr_sindespacho);
             }
             $order = app(OrderServiceInterface::class);
             $despachos = new DespachosController($order);
             $despachos->checkeliminardespacho($pedido);
+
+            // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
+            $validateAnulationInvoice = $this->devolucionService->validateInvoiceAnulation($data['pedido']);
+            if (
+                $validateAnulationInvoice &&
+                isset($data['devolucion']['tipo_devolucion']) &&
+                $data['devolucion']['tipo_devolucion'] === "total"
+            ) {
+                $anulacionResponse =  $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
+                $responseArray = $anulacionResponse->getData(true);
+                if ($responseArray['success'] == false) {
+                    return $this->buildErrorResponse($responseArray['error'], 401);
+                }
+            }
+
+
             // $this->updateStatusDevolutions($pedido);
             // $this->updateStatusOrders($pedido);
             DB::commit();
-            return $this->buildSuccessResponse('La devolución ha sido solicitada', 200);
+            return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 401);
         }
@@ -334,7 +334,7 @@ class DevolucionesController extends Controller
         //        $despachos->checkeliminardespacho($pedido);
     }
 
-    public function ejecutardevolucion($data): string
+    public function ejecutardevolucion($data)
     {
         $user = Auth::user();
         $aprobaciones = new AprobacionesController;
@@ -410,11 +410,11 @@ class DevolucionesController extends Controller
             $detalle->save();
         }
 
-        if ($estado == 'solicitado') {
-            $this->procesardevoluciones();
-        }
+        // if ($estado == 'solicitado') {
+        //     $this->procesardevoluciones();
+        // }
 
-        return 'La devolución ' . $devolucion->devolucion . ' ha sido solicitada. ';
+        return $devolucion;
     }
 
     public function detalledevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1151,8 +1151,9 @@ class DevolucionesController extends Controller
 
 
     //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y job )
-    public function recibirdevolucion1(Request $request)
+    public function recibirdevolucion(Request $request)
     {
+
         $user = Auth::user();
         $data = $request->all();
         try {
@@ -1192,7 +1193,7 @@ class DevolucionesController extends Controller
         }
     }
 
-    public function recibirdevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibirdevolucion1(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $user = Auth::user();
         $data = $request->all();
@@ -1351,157 +1352,5 @@ class DevolucionesController extends Controller
     }
 
 
-    public function anularDevolucion($pedido)
-    {
-        $pedido = GpPedido::find($pedido['id']);
-        if ($this->isInvoiceAlreadyVoided($pedido)) {
-            return $this->buildErrorResponse('La factura ya fue anulada', 400);
-        }
-        return $this->processCancellation($pedido);
-    }
 
-    public function isInvoiceAlreadyVoided($pedido)
-    {
-        return GpFacturaAnulada::where('factura', $pedido->factura)
-            ->where('pedido_id', $pedido->id)->where('estado', 'facturado')->first();
-    }
-    public function validateInvoiceAnulation($pedido)
-    {
-        return GpPedido::where(function ($q) {
-            $q->where('despachado', 0)->orWhereNull('despachado');
-        })->where(function ($q) {
-            $q->where('despacho_en_proceso', 0)->orWhereNull('despacho_en_proceso');
-        })
-            ->where('id', $pedido['id'])->first();
-    }
-
-    public function processCancellation($order)
-    {
-        $cancelResponse  = $this->apiInvalidateGpVoucher($order);
-        if ($cancelResponse['success'] === false) {
-            $this->saveBaseCancellationInfo($order, $cancelResponse);
-            return $this->buildErrorResponse($cancelResponse['message'] ?? 'Error al anular la factura', 400);
-        }
-        $this->saveFailedCancellation($order, $cancelResponse);
-        $accessKeyResponse = $this->apiGetDocumentAccessKey($order);
-        $this->saveAccessKeyInfo($order, $accessKeyResponse);
-
-        if (!$this->isValidAccessKey($accessKeyResponse)) {
-            return $this->buildErrorResponse($accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso', 400);
-        }
-        $this->sendSeedBilling($order, $accessKeyResponse['claveAcceso']);
-
-        return $this->buildSuccessResponse('Factura anulada correctamente', 200);
-    }
-
-    public  function saveBaseCancellationInfo($order, $cancelResponse)
-    {
-
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id],
-            [
-                'pedido' => $order->pedido,
-                'factura' => $order->factura,
-                'msj_anulacion_gp' => $cancelResponse['message'],
-                'diario_response_gp' => $cancelResponse['diario'] ?? null,
-                'estado' => 'pendiente',
-            ]
-        );
-    }
-
-    public function saveAccessKeyInfo($order, $accessKeyResponse)
-    {
-
-        $data = [
-            'resp_document' => $accessKeyResponse['message'] ?? null,
-        ];
-
-        if (!empty($accessKeyResponse['claveAcceso'])) {
-            $data['claveacceso'] = $accessKeyResponse['claveAcceso'];
-            $data['documento_id'] = $accessKeyResponse['id'];
-        }
-
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id, 'factura' => $order->factura],
-            $data
-        );
-    }
-
-    private function isValidAccessKey($accessKeyResponse): bool
-    {
-        return !isset($accessKeyResponse['success'])
-            && !empty($accessKeyResponse['claveAcceso']);
-    }
-    private function sendSeedBilling($order, string $accessKey): void
-    {
-        $response = $this->apiResponseSeedBelling($accessKey);
-
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id, 'factura' => $order->factura],
-            [
-                'resp_seedbilling' => $response['respuesta'] ?? null,
-                'estado' =>  'enviada',
-            ]
-        );
-
-        $this->apiUpdateTbhFacAnuAutorize($order->factura);
-         $this->updateStatusDevolutions($order);
-         $this->updateStatusOrders($order);
-    }
-
-    private function saveFailedCancellation($order, array $cancelResponse): void
-    {
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id],
-            [
-                'pedido' => $order->pedido,
-                'factura' => $order->factura,
-                'msj_anulacion_gp' => $cancelResponse['message'],
-                'estado' => 'pendiente',
-            ]
-        );
-    }
-
-    public function updateStatusDevolutions($order)
-    {
-        GpDevoluciones::where('pedido_id', $order->id)
-            ->update(['estado' => 'anulada']);
-    }
-
-    public function updateStatusOrders($order)
-    {
-        GpPedido::where('id', $order->id)
-            ->update(['estado' => 'anulada']);
-    }
-
-
-    public function apiInvalidateGpVoucher($pedido)
-    {
-        return $this->apiSales->invalidateGpVoucher(array(
-            'numeroDocumento' => $pedido->factura,
-            'cliente' => $pedido->CLI_RUC
-        ));
-    }
-
-    public function apiGetDocumentAccessKey($pedido)
-    {
-        return $this->apiSales->getDocumentAccesKey(array(
-            'numdoc' => $pedido->factura,
-        ));
-    }
-
-    public function apiResponseSeedBelling($accesCode)
-    {
-
-        return  $this->apiSeedBelling->anularComprobante(array(
-            'claveAcceso' => $accesCode,
-        ));
-    }
-
-    public function apiUpdateTbhFacAnuAutorize($factura)
-    {
-        $this->apiSales->updatedStatusDocumentGp(array(
-            'numdoc' => $factura,
-        ));
-    }
 }

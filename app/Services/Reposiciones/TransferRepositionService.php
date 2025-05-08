@@ -185,7 +185,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->keyBy('ART_CODIGO');
 
         // 2. Cachear compartimentos únicos por item+origen
-        $compartmentCache = [];
+        // $compartmentCache = [];
 
         // 3. Precargar registros ya existentes
         $existing = GpTrasladosReposicion::where('cabecera_id', $transferHeader->id)
@@ -198,7 +198,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         foreach ($transferDetails as $detail) {
             $codigo = $detail['item'];
             $origen = $detail['origen'];
-            $key = $codigo . '_' . $origen;
+            //$key = $codigo . '_' . $origen;
 
             // 4. Obtener artículo
             $article = $articles[$codigo] ?? null;
@@ -209,12 +209,12 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             }
 
             // 5. Obtener compartimento (con cache)
-            if (!array_key_exists($key, $compartmentCache)) {
-                $compartmentRaw = $this->getArticleCompartment($codigo, $origen);
-                $compartmentCache[$key] = $compartmentRaw;
-            }
+            // if (!array_key_exists($key, $compartmentCache)) {
+            //     $compartmentRaw = $this->getArticleCompartment($codigo, $origen);
+            //     $compartmentCache[$key] = $compartmentRaw;
+            // }
 
-            $compartment = $compartmentCache[$key];
+            // $compartment = $compartmentCache[$key];
 
             // 6. Armar datos
             $data = [
@@ -227,7 +227,8 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 'cantidad' => $detail['cantidad'],
                 'bodega_origen' => $transferHeader->Bodega_Origen,
                 'bodega_destino' => $transferHeader->Bodega_Destino,
-                'compartimiento' => $compartment ?? '',
+                 'compartimiento' =>  $detail['trd_ubic'] ?? '', // $compartment['compartimento'], ya me devuelve en el detalle
+                // 'compartimiento' => $compartment ?? '',
                 'Fecha_Documento' => $transferHeader->Fecha_Documento,
                 'updated_at' => now()
             ];
@@ -259,6 +260,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'idCompany' => config('services.api_gp.company'),
             'articulo' => $articleCode,
             'bodega' => $warehouse,
+            'compartimento' => '',
         ];
         $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params) ?? [];
         return  $compartment[0]['COMPARTIMIENTO'] ?? '';
