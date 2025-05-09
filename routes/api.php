@@ -18,7 +18,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
-use App\Http\Controllers\ImportarPedidosController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
