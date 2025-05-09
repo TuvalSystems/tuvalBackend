@@ -83,7 +83,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/cotizaciones/limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
     Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
-    Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido2']);
+    Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
     Route::post('/consultas/consultastockpedido', [ConsultasController::class, 'consultastockpedido']);
     Route::post('/consultas/consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
     Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
