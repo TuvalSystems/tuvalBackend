@@ -431,6 +431,11 @@ class   DevolucionService implements DevolucionServiceInterface
             ->where('id', $pedido['id'])->first();
     }
 
+    public function countsReturnsByOrders($pedido, $devolucion)
+    {
+        return count(GpDevoluciones::where('pedido_id', $pedido['id'])->where('id','!=' , $devolucion['id'])->get());
+    }
+
     public function processCancellation($order, $devolucion)
     {
         $cancelResponse  = $this->apiInvalidateGpVoucher($order);

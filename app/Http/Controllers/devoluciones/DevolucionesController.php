@@ -303,15 +303,21 @@ class DevolucionesController extends Controller
 
             // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
             $validateAnulationInvoice = $this->devolucionService->validateInvoiceAnulation($data['pedido']);
+            $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'] , $devolucion);
+
             if (
                 $validateAnulationInvoice &&
                 isset($data['devolucion']['tipo_devolucion']) &&
-                $data['devolucion']['tipo_devolucion'] === "total"
+                $data['devolucion']['tipo_devolucion'] === "total" &&
+                $countsReturnsByOrders <= 0
             ) {
                 $anulacionResponse =  $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
-                $responseArray = $anulacionResponse->getData(true);
-                if ($responseArray['success'] == false) {
-                    return $this->buildErrorResponse($responseArray['error'], 401);
+                if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
+                    $responseArray = $anulacionResponse->getData(true);
+                    if ($responseArray['success'] == false) {
+                        $error = $anulacionResponse->getData(true)['error'] ?? 'A ocurrido un error al anular la factura';
+                        return $this->buildErrorResponse($error, 401);
+                    }
                 }
             }
 
@@ -323,14 +329,6 @@ class DevolucionesController extends Controller
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 401);
         }
-    }
-
-    public function checkeliminardespachourl()
-    {
-
-        //        $pedido = GpPedido::where('id', 1115)->first();
-        //        $despachos = new DespachosController();
-        //        $despachos->checkeliminardespacho($pedido);
     }
 
 
