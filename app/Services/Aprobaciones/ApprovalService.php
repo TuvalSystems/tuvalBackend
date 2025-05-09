@@ -29,9 +29,16 @@ class ApprovalService implements ApprovalServiceInterface
         $tieneL = collect($detallePedido)->contains(fn($detalle)=> strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l' || Arr::get($detalle, 'ART_TIPO_COMPRA', '') === 'L');
 
         if ($tipoDevolucion === 'parcial') {
-            if (!$volverAFacturar && !$despachado && !$tieneL) {
-                return 'no';
+            $origin = new DateTime($fechaFactura);
+            $target = new DateTime('now');
+
+            $daysDifference = $origin->diff($target)->days;
+            if ($daysDifference <= 7) {
+                if (!$volverAFacturar && !$despachado && !$tieneL) {
+                    return 'no';
+                }
             }
+
         }
 
         if ($tipoDevolucion === 'total' && !$volverAFacturar) {
