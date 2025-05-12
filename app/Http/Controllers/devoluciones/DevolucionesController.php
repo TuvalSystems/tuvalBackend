@@ -304,12 +304,14 @@ class DevolucionesController extends Controller
             // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
             $validateAnulationInvoice = $this->devolucionService->validateInvoiceAnulation($data['pedido']);
             $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'] , $devolucion);
+            $validateItemsL = $this->devolucionService->validateItemLDetailInvoice($devolucion);
 
             if (
                 $validateAnulationInvoice &&
                 isset($data['devolucion']['tipo_devolucion']) &&
                 $data['devolucion']['tipo_devolucion'] === "total" &&
-                $countsReturnsByOrders <= 0
+                $countsReturnsByOrders === 0 &&
+                $validateItemsL === 0
             ) {
                 $anulacionResponse =  $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {

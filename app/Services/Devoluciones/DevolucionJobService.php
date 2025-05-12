@@ -399,13 +399,13 @@ class DevolucionJobService
         $mensaje = Arr::get($res1, '0.mensaje', 'Error desconocido');
 
         if (!$success) {
-            Log::error("Error en procesar la devolución: Código $codigo - $mensaje - " . json_encode($res1));
+            Log::error("Error en procesar la devolución: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
             $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
             $devolucion->devolucion_bodega = false;
             $devolucion->save();
             throw new \Exception('Error en la devolución: ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
         }
-        Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $codigo - $mensaje - " . json_encode($res1));
+        Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
         $devolucion->save();

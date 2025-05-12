@@ -20,6 +20,7 @@ use App\Models\devoluciones\GpFacturaAnulada;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Services\Api\ApiSeedBellingService;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
@@ -36,6 +37,7 @@ class   DevolucionService implements DevolucionServiceInterface
     protected ApiSalesService $apiSales;
     protected ApiSeedBellingService $apiSeedBelling;
     protected ApprovalServiceInterface $approvalService;
+    protected DevolucionRepositoryInterface $devolucionRepository;
 
     public function __construct(
         WebserviceController $webservice,
@@ -43,7 +45,8 @@ class   DevolucionService implements DevolucionServiceInterface
         ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
         ApiSalesService $apiSales,
         ApiSeedBellingService $apiSeedBelling,
-        ApprovalServiceInterface $approvalService
+        ApprovalServiceInterface $approvalService,
+        DevolucionRepositoryInterface $devolucionRepository
     ) {
         $this->webservice = $webservice;
         $this->pedidosController = $pedidosController;
@@ -51,6 +54,7 @@ class   DevolucionService implements DevolucionServiceInterface
         $this->apiSales = $apiSales;
         $this->apiSeedBelling = $apiSeedBelling;
         $this->approvalService = $approvalService;
+        $this->devolucionRepository = $devolucionRepository;
     }
 
     public function processDevolucion($devolucion)
@@ -418,22 +422,24 @@ class   DevolucionService implements DevolucionServiceInterface
 
     public function isInvoiceAlreadyVoided($pedido)
     {
-        return GpFacturaAnulada::where('factura', $pedido->factura)
-            ->where('pedido_id', $pedido->id)->where('estado', 'facturado')->first();
+         return $this->devolucionRepository->isInvoiceAlreadyVoided($pedido);
     }
     public function validateInvoiceAnulation($pedido)
     {
-        return GpPedido::where(function ($q) {
-            $q->where('despachado', 0)->orWhereNull('despachado');
-        })->where(function ($q) {
-            $q->where('despacho_en_proceso', 0)->orWhereNull('despacho_en_proceso');
-        })
-            ->where('id', $pedido['id'])->first();
+        return $this->devolucionRepository->validateInvoiceAnulation($pedido);
     }
 
     public function countsReturnsByOrders($pedido, $devolucion)
     {
-        return count(GpDevoluciones::where('pedido_id', $pedido['id'])->where('id','!=' , $devolucion['id'])->get());
+
+        return $this->devolucionRepository->countsReturnsByOrders($pedido, $devolucion);
+    }
+
+    public function validateItemLDetailInvoice( $devolucion)
+    {
+        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion,);
+
+
     }
 
     public function processCancellation($order, $devolucion)

@@ -1,8 +1,5 @@
 <?php
 
-use App\Providers\ApiServiceProvider;
-use App\Providers\DevolucionServiceProvider;
-
 return [
 
     /*
@@ -183,8 +180,9 @@ return [
         Milon\Barcode\BarcodeServiceProvider::class,
 
         //Providers DDD
-        ApiServiceProvider::class,
-        DevolucionServiceProvider::class,
+         App\Providers\ApiServiceProvider::class,
+         App\Providers\DevolucionServiceProvider::class,
+         App\Providers\RepositoryServiceProvider::class,
     ],
 
     /*

@@ -4,10 +4,8 @@ namespace App\Providers;
 
 use App\Services\Api\ApiGpService;
 use App\Services\Api\ApiSalesService;
-use App\Services\Api\Core\SeedBellingHttpClient;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Api\ApiSeedBellingService;
-use App\Services\Api\Core\GpHttpClient;
 
 class ApiServiceProvider extends ServiceProvider
 {
