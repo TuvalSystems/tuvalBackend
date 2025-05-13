@@ -60,21 +60,50 @@ class DevolucionJobService
             ->where('gp_devoluciones.volver_a_facturar', $criterio['volver_a_facturar']);
 
         if (!is_null($criterio['despachado'])) {
-            $query->where('gp_devoluciones.despachado', $criterio['despachado']);
+            $query->where(function ($q) use ($criterio) {
+                if ($criterio['despachado'] == 0) {
+                    $q->where('gp_devoluciones.despachado', 0)
+                        ->orWhereNull('gp_devoluciones.despachado');
+                } elseif ($criterio['despachado'] == 1) {
+                    $q->where('gp_devoluciones.despachado', 1);
+                }
+            });
         }
 
-        // if (!is_null($criterio['procesando'])) {
-        //     $query->where('gp_devoluciones.procesando', $criterio['procesando']);
-        // } else {
-        //     $query->whereNull('gp_devoluciones.procesando');
-        // }
+        //validacion de estado solicitado
+        if ($criterio['estado'] == 'solicitado' && $criterio['tipo_devolucion'] == 'total') {
+            $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
+                ->where('dvd.ART_TIPO_COMPRA', 'L');
+        }
+
+        // validacion de estado recibido
+        if ($criterio['estado'] == 'recibido') {
+            $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
+                ->where(function ($q) {
+                    $q->where('dvd.devuelto', '>', 0)
+                        ->orWhereNull('dvd.devuelto');
+                })
+                ->where('dvd.recibido', '>', 0)
+                ->whereNotNull('dvd.compartimiento');
+        }
+
+        //validacione en estado aprobado
+        if($criterio['estado'] === 'aprobado'){
+            $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
+               ->where(function ($q) {
+                    $q->where('dvd.devuelto', '>', 0)
+                        ->orWhereNull('dvd.devuelto');
+                })
+                ->where('dvd.recibido', '>', 0)
+                ->whereNotNull('dvd.compartimiento');
+        }
 
         if (array_key_exists('devolucion_bodega', $criterio)) {
-            if (is_null($criterio['devolucion_bodega'])) {
-                $query->whereNull('gp_devoluciones.devolucion_bodega');
-            } else {
-                $query->where('gp_devoluciones.devolucion_bodega', $criterio['devolucion_bodega']);
-            }
+            $query->when(is_null($criterio['devolucion_bodega']), function ($q) {
+                $q->whereNull('gp_devoluciones.devolucion_bodega');
+            }, function ($q) use ($criterio) {
+                $q->where('gp_devoluciones.devolucion_bodega', $criterio['devolucion_bodega']);
+            });
         }
         return $query->get();
     }
@@ -139,8 +168,8 @@ class DevolucionJobService
             $this->{$criterio['metodo']}($devolucion);
         }
 
-         // Generar Devolución de Venta si corresponde
-         if (!empty($criterio['generadevolucionventa']) && $criterio['generadevolucionventa'] === true) {
+        // Generar Devolución de Venta si corresponde
+        if (!empty($criterio['generadevolucionventa']) && $criterio['generadevolucionventa'] === true) {
             $this->generarDevolucionVenta($devolucion);
         }
 
