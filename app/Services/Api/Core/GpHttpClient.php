@@ -22,7 +22,7 @@ class GpHttpClient
 
     public function makeRequest(string $urlKey, string $method, array $data, $format = 'form')
     {
-        $url = null;
+
         try {
             if (empty($urlKey)) {
                 throw new \InvalidArgumentException("Endpoint '{$urlKey}' not defined in configuration.");
@@ -32,24 +32,30 @@ class GpHttpClient
                 throw new \InvalidArgumentException("HTTP method '{$method}' is not allowed.");
             }
 
+            // ✅ Construcción de URL
             $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
 
-            if (strtoupper($method) === 'GET' && !empty($data)) {
-                $url .= '?' . http_build_query($data);
-                $response = Http::timeout($this->timeout)->get($url); // GET requests do not have a data payload
+            // ✅ Configuración del cliente HTTP
+            $client = Http::timeout($this->timeout);
+
+            if ($format === 'json') {
+                $client = $client->asJson();
             } else {
-                $client = Http::timeout($this->timeout);
-                if ($format === 'json') {
-                    $client = $client->asJson();
-                } else {
-                    $client = $client->asForm();
-                }
-                $response = $client->{$method}($url, $data);
-                // $response = Http::timeout($this->timeout)->asForm()->{$method}($url, $data); // POST, PUT, DELETE, etc.
+                $client = $client->asForm();
             }
+
+            $response = ($method === 'GET' && !empty($data))  ? $client->get($url . '?' . http_build_query($data))  : $client->{$method}($url, $data);
             if ($response->successful()) {
                 return $response->json(); // 2xx
             }
+            Log::warning("API Request Warning - {$url}: " . $response->body(), [
+                'url' => $url,
+                'data' => $data,
+                'status' => $response->status()
+
+            ]);
+
+
             return $response->json(); // +4xx
         } catch (\InvalidArgumentException $e) {
             Log::warning("Invalid API Request - {$urlKey}: " . $e->getMessage(), [
