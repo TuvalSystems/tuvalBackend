@@ -422,7 +422,7 @@ class   DevolucionService implements DevolucionServiceInterface
 
     public function isInvoiceAlreadyVoided($pedido)
     {
-         return $this->devolucionRepository->isInvoiceAlreadyVoided($pedido);
+        return $this->devolucionRepository->isInvoiceAlreadyVoided($pedido);
     }
     public function validateInvoiceAnulation($pedido)
     {
@@ -435,11 +435,9 @@ class   DevolucionService implements DevolucionServiceInterface
         return $this->devolucionRepository->countsReturnsByOrders($pedido, $devolucion);
     }
 
-    public function validateItemLDetailInvoice( $devolucion)
+    public function validateItemLDetailInvoice($devolucion)
     {
         return $this->devolucionRepository->validateItemLDetailInvoice($devolucion,);
-
-
     }
 
     public function processCancellation($order, $devolucion)
@@ -647,7 +645,47 @@ class   DevolucionService implements DevolucionServiceInterface
             $detail->modificador = (float) Arr::get($item, 'modificador');
             $detail->seleccionado = (float) Arr::get($item, 'seleccionado');
             $detail->disponible = (float) Arr::get($item, 'disponible');
+            $detail->despachado_parcial = (float) Arr::get($item, 'despacho');
             $detail->save();
         }
+    }
+
+
+
+
+    /**
+     * ✅ Obtiene los detalles de una devolución específica.
+     *
+     * @param array $devolucion
+     *
+     */
+
+    public function getReturnsDetailDevolucion($devolucion)
+    {
+        $pedido = $this->devolucionRepository->getOrderbyId($devolucion['pedido_id']);
+        $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id']);
+
+
+        $detalle =collect($detalle)
+        ->filter(fn($item) => $item['seleccionado'] > 0 || $item['devuelto'] > 0)
+        ->map(function($item) use ($pedido){
+            $parms =[
+                // 'IDCompania' => env('ID_COMPANIA'),  //pendiente hasta que haya nuevas empresas xd
+                'bodega' => $pedido->BOD_BODEGA,
+                'item' => $item['ART_CODIGO'],
+            ];
+
+            $responseCompartimento = $this->apiGpReturnsIntegrationService->consultItemBin($parms);
+            $item['compartimiento'] = $responseCompartimento['data']['bin'] ??null;
+            $item['compartimientos'] = $responseCompartimento['lista'] ??[];
+            return $item;
+        })
+        ->values() // Re-indexar la colección
+        ->toArray(); // Convertir a array
+
+        return response([
+            'success' => true,
+            'detalle' => $detalle,
+        ]);
     }
 }

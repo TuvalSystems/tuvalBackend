@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Aprobaciones;
 
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -19,44 +20,46 @@ class ApprovalService implements ApprovalServiceInterface
 
     }
 
-     public function checkoutApprovalDevoluciones($data){
+    public function checkoutApprovalDevoluciones($data)
+    {
 
         $tipoDevolucion = Arr::get($data, 'devolucion.tipo_devolucion');
         $volverAFacturar = Arr::get($data, 'devolucion.volver_a_facturar', false);
         $despachado = Arr::get($data, 'pedido.despachado', null);
         $detallePedido = Arr::get($data, 'detallepedido', []);
         $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
-        $tieneL = collect($detallePedido)->contains(fn($detalle)=> strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l' || Arr::get($detalle, 'ART_TIPO_COMPRA', '') === 'L');
+        $tieneL = collect($detallePedido)->contains(fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l' || Arr::get($detalle, 'ART_TIPO_COMPRA', '') === 'L');
+        $daysDifference = $this->daysDifference($fechaFactura);
+
+        if ($despachado) {
+            return 'yes';
+        }
 
         if ($tipoDevolucion === 'parcial') {
-            $origin = new DateTime($fechaFactura);
-            $target = new DateTime('now');
-
-            $daysDifference = $origin->diff($target)->days;
             if ($daysDifference <= 7) {
-                if (!$volverAFacturar && !$despachado && !$tieneL) {
+                if (!$volverAFacturar &&  !$tieneL) {
                     return 'no';
                 }
             }
-
         }
 
         if ($tipoDevolucion === 'total' && !$volverAFacturar) {
-            if ($despachado && !$tieneL) {
-                return 'no';
+            if ($tieneL) {
+                return $daysDifference <= 7 ? 'no' : 'yes';
             }
-
-            if ($despachado && !$tieneL && $fechaFactura) {
-                $origin = new DateTime($fechaFactura);
-                $target = new DateTime('now');
-
-                if ($origin->diff($target)->days<=7) {
-                    return 'no';
-                }
-            }
+            return $daysDifference <= 7 ? 'no' : 'yes';
         }
 
         return 'yes';
+    }
 
-     }
+
+    public function daysDifference($fecha)
+    {
+        if (!$fecha) return 0;
+
+        $origin = new DateTime($fecha);
+        $target = new DateTime('now');
+        return $origin->diff($target)->days;
+    }
 }

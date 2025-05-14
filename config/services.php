@@ -49,6 +49,7 @@ return [
             'generar_nota_credito'                      => 'api/devoluciones/generar-nota-credito',
             'respuesta_nota_credito'                    => 'api/devoluciones/respuesta-nota-credito',
             'generar_devolucion_venta'                  => 'api/devoluciones/generar-devolucion-venta',
+            'consultar_item_compartimento'              => 'api/devoluciones/consulta-item-compartimento-bin',
         ],
     ],
     'api_sales' => [

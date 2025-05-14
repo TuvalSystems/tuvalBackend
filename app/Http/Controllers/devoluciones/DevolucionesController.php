@@ -249,61 +249,53 @@ class DevolucionesController extends Controller
         try {
             $data = $request->all();
             DB::beginTransaction();
+            // 🔎 **1️⃣ Validación de Pedido**
+            $pedido = GpPedido::find($data['pedido']['id']);
 
-            $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
+            if (!$pedido) {
+                return response(['message' => 'Pedido no encontrado'], 404);
+            }
             if ($pedido->despacho_en_proceso && !$pedido->despachado) {
-                return response([
-                    'message' => 'Este pedido está siendo despachado'
-                ], 401);
+                return response(['message' => 'Este pedido está siendo despachado'], 401);
             }
 
-            if (!isset($data['pedido']['id'])) {
-                return response([
-                    'message' => 'Hubo un error al guardar'
-                ], 401);
-            }
+            // 🔎 **2️⃣ Inicialización de la estructura agrupada**
+            $detallePedidoAgrupado = [
+                'devolucion' => $data['devolucion'],
+                'pedido' => $data['pedido'],
+                'detallepedido' => []
+            ];
 
-            $arr_despachados = array();
-            $arr_sindespacho = array();
 
+            // 🔄 **3️⃣ Filtrado de detalles válidos**
             foreach ($data['detallepedido'] as $detalle) {
-
-                if ($data['devolucion']['volver_a_facturar']) {
-                    if ($detalle['despacho']) {
-                        $arr_despachados['detallepedido'][] = $detalle;
-                    } else {
-                        $arr_sindespacho['detallepedido'][] = $detalle;
-                    }
-                } else {
-                    if ($detalle['seleccionado'] > 0) {
-                        if ($detalle['despacho']) {
-                            $arr_despachados['detallepedido'][] = $detalle;
-                        } else {
-                            $arr_sindespacho['detallepedido'][] = $detalle;
-                        }
-                    }
+                $isValid = $data['devolucion']['volver_a_facturar'] || $detalle['seleccionado'] > 0;
+                if ($isValid) {
+                    //se verifica que este despachado y asignamos el estado al pedido
+                    $detallePedidoAgrupado['detallepedido'][] = $detalle;
                 }
             }
 
-            $devolucion = [];
-            if (isset($arr_despachados['detallepedido']) && count($arr_despachados['detallepedido'])) {
-                $arr_despachados['devolucion'] = $data['devolucion'];
-                $arr_despachados['pedido'] = $data['pedido'];
-                $arr_despachados['pedido']['despachado'] = 1;
-                $devolucion = $this->devolucionService->executeReturn($arr_despachados);
+            // 🔄 **4️⃣ Verificación de despacho**
+            $countDetalle = count(array_filter($data['detallepedido'], function ($detalle) {
+                return isset($detalle['despacho']) && $detalle['despacho'] === true;
+            }));
+
+            $detallePedidoAgrupado['pedido']['despachado'] = $countDetalle > 0 ? 1 : 0;
+
+            // 🔄 **5️⃣ Ejecución de la devolución**
+            if (count($detallePedidoAgrupado['detallepedido']) > 0) {
+                $devolucion = $this->devolucionService->executeReturn($detallePedidoAgrupado);
             }
-            if (isset($arr_sindespacho['detallepedido']) && count($arr_sindespacho['detallepedido'])) {
-                $arr_sindespacho['devolucion'] = $data['devolucion'];
-                $arr_sindespacho['pedido'] = $data['pedido'];
-                $devolucion = $this->devolucionService->executeReturn($arr_sindespacho);
-            }
+
+
             $order = app(OrderServiceInterface::class);
             $despachos = new DespachosController($order);
             $despachos->checkeliminardespacho($pedido);
 
             // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
             $validateAnulationInvoice = $this->devolucionService->validateInvoiceAnulation($data['pedido']);
-            $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'] , $devolucion);
+            $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'], $devolucion);
             $validateItemsL = $this->devolucionService->validateItemLDetailInvoice($devolucion);
 
             if (
@@ -334,43 +326,14 @@ class DevolucionesController extends Controller
     }
 
 
+    public function detalledevolucion(Request $request){
 
-    public function detalledevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
         $data = $request->all();
+        return $this->devolucionService->getReturnsDetailDevolucion($data);
 
-        $webservices = new WebserviceController();
-
-        $pedido = GpPedido::where('id', $data['pedido_id'])->first();
-
-        $detalle = GpDevolucionesDetalle::where('devolucion_id', $data['id'])->get()->toArray();
-
-        foreach ($detalle as $key => &$item) {
-            if ($item['seleccionado'] == 0 && $item['devuelto'] == 0) {
-                unset($detalle[$key]);
-            } else {
-                $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Bodega' => $pedido->BOD_BODEGA,
-                    'Item' => $item['ART_CODIGO'],
-                );
-                $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
-                //                echo '<pre>';
-                //                print_r($parameters);
-                //                print_r($respuesta['ConsultaItemCompartimentoResult']);
-                //                die();
-                $item['compartimientos'] = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'];
-                $item['compartimiento'] = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'][0]['Compartimento'];
-            }
-        }
-
-        $detalle = array_values($detalle);
-
-        return response([
-            'success' => true,
-            'detalle' => $detalle,
-        ]);
     }
+
+
 
     public function  procesardevoluciones()
     {
