@@ -9,4 +9,7 @@ interface DevolucionRepositoryInterface
     public function validateInvoiceAnulation($pedido);
     public function countsReturnsByOrders($pedido, $devolucion);
     public function validateItemLDetailInvoice($devolucion);
+
+    public function getOrderbyId( $pedido_id);
+    public function getDetailDevolucion( $devolucion_id);
 }

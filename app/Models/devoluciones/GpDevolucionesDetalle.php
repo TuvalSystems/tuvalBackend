@@ -108,5 +108,6 @@ class GpDevolucionesDetalle extends Model
         'devuelto',
         'compartimiento',
         'USERID',
+        'despachado_parcial'
     ];
 }

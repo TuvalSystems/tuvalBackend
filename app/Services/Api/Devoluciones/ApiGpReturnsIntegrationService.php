@@ -19,4 +19,9 @@ class ApiGpReturnsIntegrationService extends ApiGpService{
         return $this->httpClient->makeRequest( $this->endpoints['generar_devolucion_venta'], 'POST', $params,  'json');
     }
 
+    public function consultItemBin(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["consultar_item_compartimento"], 'GET', $params);
+    }
+
 }

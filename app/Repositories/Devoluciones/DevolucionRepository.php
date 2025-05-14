@@ -38,4 +38,27 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])->where('ART_TIPO_COMPRA', 'L')->count();
     }
+
+
+    public function getOrderbyId( $pedido_id){
+
+        return GpPedido::find( $pedido_id);
+    }
+
+    public function getDetailDevolucion( $devolucion_id){
+       
+        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion_id)
+            ->get()
+            ->filter(function ($item) {
+                // ✅ Verificación de datos correctos y no nulos
+                return is_array($item->toArray()) && isset($item['ART_CODIGO']);
+            })
+            ->map(function ($item) {
+                // 🚀 Convertimos cada item a array para asegurar tipado
+                return $item->toArray();
+            })
+            ->toArray();
+
+        return $detalles;
+    }
 }
