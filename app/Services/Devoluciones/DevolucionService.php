@@ -670,6 +670,9 @@ class   DevolucionService implements DevolucionServiceInterface
             ->filter(fn($item) => $item['seleccionado'] > 0 || $item['devuelto'] > 0)
             ->pluck('ART_CODIGO')
             ->toArray();
+
+            
+            // $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
         $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $pedido['BOD_BODEGA']);
         $detalle = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
             $compartimento = collect($responseCompartimentos)
@@ -684,23 +687,6 @@ class   DevolucionService implements DevolucionServiceInterface
             return $item;
         })->toArray();
 
-        // funcional
-        // $detalle =collect($detalle)
-        // ->filter(fn($item) => $item['seleccionado'] > 0 || $item['devuelto'] > 0)
-        // ->map(function($item) use ($pedido){
-        //     $parms =[
-        //         // 'IDCompania' => env('ID_COMPANIA'),  //pendiente hasta que haya nuevas empresas xd
-        //         'bodega' => $pedido->BOD_BODEGA,
-        //         'item' => $item['ART_CODIGO'],
-        //     ];
-
-        //     $responseCompartimento = $this->apiGpReturnsIntegrationService->consultItemBin($parms);
-        //     $item['compartimiento'] = $responseCompartimento['data']['bin'] ??null;
-        //     $item['compartimientos'] = $responseCompartimento['lista'] ??[];
-        //     return $item;
-        // })
-        // ->values() // Re-indexar la colección
-        // ->toArray(); // Convertir a array
 
         return response([
             'success' => true,
