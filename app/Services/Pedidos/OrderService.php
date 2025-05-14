@@ -12,8 +12,10 @@ use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
+use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
@@ -24,11 +26,15 @@ class OrderService implements OrderServiceInterface
     protected ApiGpService $apiGpService;
     protected ApprovalServiceInterface $approvalService;
 
-    public function __construct(ApiSalesService $apiSalesService, ApiGpService $apiGpService, ApprovalServiceInterface $approvalService)
+    protected OrderRepositoryInterface $orderRepository;
+    protected ApiBillingService $apiBillingService;
+    public function __construct(ApiSalesService $apiSalesService, ApiGpService $apiGpService, ApprovalServiceInterface $approvalService, OrderRepositoryInterface $orderRepository, ApiBillingService $apiBillingService)
     {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
         $this->approvalService = $approvalService;
+        $this->orderRepository = $orderRepository;
+        $this->apiBillingService = $apiBillingService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -185,7 +191,7 @@ class OrderService implements OrderServiceInterface
 
 
 
-    // PROCESO DE GUARDADO DE PEDIDOS 
+    // PROCESO DE GUARDADO DE PEDIDOS
 
     public function storeOrder($order){
         $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
@@ -200,4 +206,26 @@ class OrderService implements OrderServiceInterface
             }
         }
     }
+
+
+
+
+     /**
+     * ✅ Obtiene el detalle de un pedido especifico.
+     *
+     */
+
+     public function detailOrderById($data){
+
+        $detalle =  $this->orderRepository->getAllDetailsOrderById($data['id']);
+        $estadoCuenta =[];
+
+        $credito = $this->apiBillingService->consultCreditClient([
+            'ruc' => $data['CLI_RUC'],
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $credito;
+
+     }
+
 }
