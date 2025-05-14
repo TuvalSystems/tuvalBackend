@@ -665,23 +665,28 @@ class   DevolucionService implements DevolucionServiceInterface
         $pedido = $this->devolucionRepository->getOrderbyId($devolucion['pedido_id']);
         $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id']);
 
+        //test
+        $items = collect($detalle)
+            ->filter(fn($item) => $item['seleccionado'] > 0 || $item['devuelto'] > 0)
+            ->pluck('ART_CODIGO')
+            ->toArray();
 
-        $detalle =collect($detalle)
-        ->filter(fn($item) => $item['seleccionado'] > 0 || $item['devuelto'] > 0)
-        ->map(function($item) use ($pedido){
-            $parms =[
-                // 'IDCompania' => env('ID_COMPANIA'),  //pendiente hasta que haya nuevas empresas xd
-                'bodega' => $pedido->BOD_BODEGA,
-                'item' => $item['ART_CODIGO'],
-            ];
+            
+            // $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
+        $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $pedido['BOD_BODEGA']);
+        $detalle = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
+            $compartimento = collect($responseCompartimentos)
+                ->first(function ($response) use ($item) {
+                    // 🔍 Verificar dentro de 'data' si existe el item
+                    return $response['data']['Item'] === $item['ART_CODIGO'];
+                });
 
-            $responseCompartimento = $this->apiGpReturnsIntegrationService->consultItemBin($parms);
-            $item['compartimiento'] = $responseCompartimento['data']['bin'] ??null;
-            $item['compartimientos'] = $responseCompartimento['lista'] ??[];
+            $item['compartimientos'] = $compartimento['lista'] ?? [];
+            $item['compartimiento'] = $compartimento['data']['bin'] ?? null;
+
             return $item;
-        })
-        ->values() // Re-indexar la colección
-        ->toArray(); // Convertir a array
+        })->toArray();
+
 
         return response([
             'success' => true,

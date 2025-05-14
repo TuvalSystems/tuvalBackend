@@ -2,21 +2,25 @@
 
 namespace App\Services\Api\Core;
 
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use GuzzleHttp\Promise\Utils;
 
 class GpHttpClient
 {
     protected string $baseUrl;
     protected int $timeout;
+    protected Client $client;
 
     public function __construct(string $baseUrl, int $timeout)
     {
         $this->baseUrl = $baseUrl;
         $this->timeout = $timeout;
+        $this->client = new Client(['timeout' => $this->timeout]);
     }
 
-    public function makeRequest(string $urlKey, string $method, array $data , $format = 'form')
+    public function makeRequest(string $urlKey, string $method, array $data, $format = 'form')
     {
         $url = null;
         try {
@@ -64,4 +68,32 @@ class GpHttpClient
     }
 
 
+    public function makeAsyncRequest(string $urlKey, array $requests, string $method = 'POST', $format = 'form')
+    {
+        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
+        $promises = [];
+
+        foreach ($requests as $key => $data) {
+            if (strtoupper($method) === 'GET') {
+                // ✅ Si es un GET, los parámetros van en la URL
+                $fullUrl = $url . '?' . http_build_query($data);
+                $promises[$key] = $this->client->getAsync($fullUrl);
+            } else {
+                // ✅ Si es un POST, se envía en el cuerpo
+                $options = $format === 'json' ? ['json' => $data] : ['form_params' => $data];
+                $promises[$key] = $this->client->postAsync($url, $options);
+            }
+        }
+
+        $results = Utils::settle($promises)->wait();
+        // $results = Promise\settle($promises)->wait();
+
+        // 🔄 Devolver solo las que fueron exitosas
+        return collect($results)->map(function ($result, $key) {
+            if ($result['state'] === 'fulfilled') {
+                return json_decode($result['value']->getBody(), true);
+            }
+            return null;
+        })->filter()->toArray();
+    }
 }
