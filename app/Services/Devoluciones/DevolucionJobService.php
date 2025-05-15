@@ -77,31 +77,30 @@ class DevolucionJobService
                 // esto me valida que solo procese las devoluciones que tengan devoluciones anteriores en estado parcial
                 ->whereExists(function ($q) {
                     $q->select(DB::raw(1))
-                    ->from('gp_devoluciones as dp')
-                    ->where('dp.pedido_id', '=', DB::raw('gp_devoluciones.pedido_id'))
-                    ->where('dp.tipo_devolucion', 'parcial');
+                        ->from('gp_devoluciones as dp')
+                        ->where('dp.pedido_id', '=', DB::raw('gp_devoluciones.pedido_id'))
+                        ->where('dp.tipo_devolucion', 'parcial');
                 });
         }
 
         // validacion de estado recibido
         if ($criterio['estado'] == 'recibido') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-              ->where(function ($q){
-                 $q->where(function ($subQ){
-                    // ✅ Caso 1: Despachado Parcial = 1
-                     $subQ->where('dvd.despachado_parcial',  1)
-                         ->orWhereNotNull('dvd.compartimiento')
-                         ->where('dvd.recibido', '>', 0)
-                         ->where('dvd.devuelto', '>', 0);
-                 });
-              });
-
+                ->where(function ($q) {
+                    $q->where(function ($subQ) {
+                        // ✅ Caso 1: Despachado Parcial = 1
+                        $subQ->where('dvd.despachado_parcial',  1)
+                            ->orWhereNotNull('dvd.compartimiento')
+                            ->where('dvd.recibido', '>', 0)
+                            ->where('dvd.devuelto', '>', 0);
+                    });
+                });
         }
 
         //validacione en estado aprobado
-        if($criterio['estado'] === 'aprobado'){
+        if ($criterio['estado'] === 'aprobado') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-               ->where(function ($q) {
+                ->where(function ($q) {
                     $q->where('dvd.devuelto', '>', 0)
                         ->orWhereNull('dvd.devuelto');
                 })
@@ -128,7 +127,10 @@ class DevolucionJobService
         $pedidosController = new PedidosController($apiGp, $order);
 
         try {
+
             $criterioAplicable = $this->encontrarCriterioAplicable($devolucion, $criterios);
+
+
             if ($criterioAplicable) {
                 $this->ejecutarProcesosDevolucion($devolucion, $criterioAplicable, $pedidosController);
             } else {
@@ -159,10 +161,7 @@ class DevolucionJobService
                 $devolucion->volver_a_facturar == $criterio['volver_a_facturar'] &&
                 $devolucion->tipo_devolucion == $criterio['tipo_devolucion'] &&
                 ($criterio['despachado'] === null || $devolucion->despachado == $criterio['despachado']) &&
-                (
-                    $criterio['devolucion_bodega'] === null ||
-                    $devolucion->devolucion_bodega == $criterio['devolucion_bodega']
-                )
+                ($criterio['devolucion_bodega'] === null ||  $devolucion->devolucion_bodega == $criterio['devolucion_bodega'])
             ) {
                 return $criterio;
             }
@@ -443,7 +442,7 @@ class DevolucionJobService
             $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
             $devolucion->devolucion_bodega = false;
             $devolucion->save();
-            throw new \Exception('Error en la devolución: ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
+            throw new \Exception('Error en la al realizar el ajuste: ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
         }
         Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
         // 🟢 Actualización correcta
@@ -471,6 +470,7 @@ class DevolucionJobService
 
         $afectados = DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
+            ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);

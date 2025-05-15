@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
+use App\Services\Bodegas\PurchaseReceiptService;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Funciones\FunctionsService;
 use App\Services\Pedidos\OrderService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
@@ -50,6 +54,18 @@ class DevolucionServiceProvider extends ServiceProvider
         $this->app->bind(
             ApprovalServiceInterface::class,
             ApprovalService::class
+        );
+
+        //aqui agrego las funciones para no crear otro provider
+        $this->app->bind(
+            FunctionsServiceInterface::class,
+            FunctionsService::class
+        );
+
+         //aqui agrego las RecibidosdeCompraL para no crear otro provider
+        $this->app->bind(
+            PurchaseReceiptServiceInterface::class,
+            PurchaseReceiptService::class
         );
     }
 
