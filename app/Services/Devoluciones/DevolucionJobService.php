@@ -425,7 +425,7 @@ class DevolucionJobService
             'PedidoOrigen' => $pedido->pedido,
             'Bodega' => $pedido->BOD_BODEGA,
             'Observacion' => $devolucion->DOC_GENERADO,
-            'Usuario' => $userId,
+            'Usuario' => $userId  ?? 'adminWeb',
             'Items_Devolucion' => $itemsDevolucion,
         ];
 

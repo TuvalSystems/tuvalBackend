@@ -10,7 +10,7 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('devoluciones:procesar')->everyFiveMinutes()->withoutOverlapping(30);
+        $schedule->command('devoluciones:procesar')->everyMinute()->withoutOverlapping(60);
     }
 
 
