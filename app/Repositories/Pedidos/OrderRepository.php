@@ -2,12 +2,18 @@
 
 namespace App\Repositories\Pedidos;
 
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use Illuminate\Support\Facades\Cache;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -41,7 +47,10 @@ class OrderRepository implements OrderRepositoryInterface
             ->first();
     }
 
-    public function getPurchaseOrdersByOrderNumber(string $orderNumber){
+    public function getPurchaseOrdersByOrderNumber(string $orderNumber)
+    {
+        // $cacheKey = "pruchase_orders_by_order_number_{$orderNumber}";
+        //  return Cache::remember($cacheKey, 60, function () use ($orderNumber) {
         return GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
             ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
             ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
@@ -54,6 +63,67 @@ class OrderRepository implements OrderRepositoryInterface
                 'gp_pedidos.CLI_RAZON_SOCIAL as client_name',
                 'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE as client_id'
             )
+            ->get();
+        // });
+
+    }
+
+    public function getTransferOrdersBySale(int $orderId)
+    {
+        // $cacheKey = "transfer_orders_byId_{$orderId}";
+        // return Cache::remember($cacheKey, 60, function () use ($orderId) {
+            return GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
+                ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
+                ->where('gp_traslados_ventas.pedido_id', $orderId)
+                ->select(
+                    'gp_traslados_ventas.*',
+                    'gp_pedidos.id AS pedido_id',
+                    'gp_pedidos.pedido',
+                    'gp_bodegas.BOD_DESCRIPCION AS warehouse_description',
+                    'gp_bodegas.BOD_BODEGA AS warehouse_code',
+                    'gp_pedidos.created_at AS order_date',
+                    'gp_pedidos.USERID AS user_id'
+                )
+                ->get();
+        // });
+    }
+
+    public function getShipmentGuidesByTransfer(object $transfer)
+    {
+        // $cacheKey = "shipment_guides_{$transfer->pedido}_{$transfer->ART_CODIGO}_{$transfer->id}";
+        // return Cache::remember($cacheKey, 60, function () use ($transfer) {
+            return GpGuiaRemisionTransferencia::join('gp_guia_remisions', 'gp_guia_remisions.id', '=', 'gp_guia_remision_transferencias.guia_remision_id')
+                ->join('gp_guia_remision_detalles', 'gp_guia_remisions.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
+                ->join('gp_traslados_ventas', 'gp_traslados_ventas.id', '=', 'gp_guia_remision_detalles.detalle_id')
+                ->where('gp_guia_remision_transferencias.pedido', $transfer->pedido)
+                ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $transfer->ART_CODIGO)
+                ->where('gp_guia_remision_detalles.detalle_id', $transfer->id)
+                ->where('gp_guia_remisions.estado', '!=', 'eliminada')
+                ->where('gp_traslados_ventas.pedido_id', $transfer->pedido_id)
+                ->select(
+                    'gp_guia_remisions.*',
+                    'gp_guia_remision_detalles.GUI_REM_CANTIDAD as quantity',
+                    'gp_guia_remision_detalles.recibido as received'
+                )
+                ->get();
+        // });
+    }
+
+
+    public function getDispatchOrder(int $orderId)
+    {
+        return GpOrdenDespacho::where('pedido_id', $orderId)->first();
+    }
+
+    public function getShipmentGuides(string $orderCode)
+    {
+        return GpGuiaRemision::where('pedido', $orderCode)->where('estado', '!=', 'eliminada')->get();
+    }
+
+    public function getReturnsByOrder(int $orderId)
+    {
+        return GpDevoluciones::where('pedido_id', $orderId)
+            ->orderBy('gp_devoluciones.created_at', 'desc')
             ->get();
     }
 }

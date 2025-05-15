@@ -2,6 +2,7 @@
 
 namespace App\Services\Pedidos;
 
+use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Carbon\Carbon;
 use App\Models\GpPedido;
@@ -30,13 +31,15 @@ class OrderService implements OrderServiceInterface
     protected OrderRepositoryInterface $orderRepository;
     protected ApiBillingService $apiBillingService;
     protected FunctionsServiceInterface $functionsService;
+    protected PurchaseReceiptServiceInterface $purchaseReceiptService;
     public function __construct(
         ApiSalesService $apiSalesService,
         ApiGpService $apiGpService,
         ApprovalServiceInterface $approvalService,
         OrderRepositoryInterface $orderRepository,
         ApiBillingService $apiBillingService,
-        FunctionsServiceInterface $functionsService
+        FunctionsServiceInterface $functionsService,
+        PurchaseReceiptServiceInterface $purchaseReceiptService
     ) {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
@@ -44,6 +47,7 @@ class OrderService implements OrderServiceInterface
         $this->orderRepository = $orderRepository;
         $this->apiBillingService = $apiBillingService;
         $this->functionsService = $functionsService;
+        $this->purchaseReceiptService = $purchaseReceiptService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -230,31 +234,118 @@ class OrderService implements OrderServiceInterface
 
     public function detailOrderById($data)
     {
-
+        // 🔍 1. Obtener detalles del pedido
         $detalle =  $this->orderRepository->getAllDetailsOrderById($data['id']);
-        $estadoCuenta = [];
 
+        // 🔍 2. Consultar el crédito del cliente
         //  $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
         $credito = $this->apiBillingService->consultCreditClient([
             'ruc' => $data['CLI_RUC'],
             'idCompania' => config('services.api_gp.company'),
         ]);
-        $estadoCuenta['cupoDisponible'] =    $credito['cupos'][0] ?? [];
 
+        $estadoCuenta = [
+            'cupoDisponible' => $credito['cupos'][0] ?? []
+        ];
+
+        // 🔍 3. Procesar proveedores y stock
         $pendientes = false;
         $existentes = false;
-        foreach ($detalle as $key => $item) {
+
+        $detalle->each(function ($item) use ($data, &$pendientes, &$existentes) {
             $proveedores = $this->functionsService->getItemProviders($data, $item, $pendientes, $existentes);
             $item->proveedores = $proveedores['proveedores'];
-            $pendientes = $proveedores['pendientes'];
-            $existentes = $proveedores['existentes'];
+            $pendientes = $proveedores['pendientes'] ?: $pendientes;
+            $existentes = $proveedores['existentes'] ?: $existentes;
 
             $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
             if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
                 $existentes = true;
             }
-        }
+        });
 
-        $ordenCompra = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido']);
+
+        // foreach ($detalle as $key => $item) {
+        //     $proveedores = $this->functionsService->getItemProviders($data, $item, $pendientes, $existentes);
+        //     $item->proveedores = $proveedores['proveedores'];
+        //     $pendientes = $proveedores['pendientes'];
+        //     $existentes = $proveedores['existentes'];
+
+        //     $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
+        //     if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
+        //         $existentes = true;
+        //     }
+        // }
+
+
+
+         // 🔍 4. Obtener órdenes de compra optimizadas
+
+         $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
+         ->map(function ($orden){
+            $recibodecompra =  $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+            return count($recibodecompra->detalle) > 0 ? $recibodecompra : null;
+         })
+         ->filter()
+         ->values();
+
+
+        // $ordenCompra = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido']);
+        // $ordenes = array();
+        // foreach ($ordenCompra as $key => $orden) {
+        //     $recibodecompra =  $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+        //     if (count($recibodecompra->detalle) > 0) {
+        //         $ordenes[] = $recibodecompra;
+        //     }
+        // }
+
+
+    // 🔍 5. Procesar traslados
+        $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
+        $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
+            $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
+            $trasladoVenta->guias = $guias;
+            $guias->each(function ($guia) use (&$pendientes, &$existentes) {
+                if ($guia->estado != 'recibida')
+                    $pendientes = true;
+                else
+                    $existentes = true;
+            });
+            if (!$trasladoVenta->completado)
+                $pendientes = true;
+        });
+        // if ($trasladosVentas->count() > 0) {
+        //     foreach ($trasladosVentas as $trasladoVenta) {
+        //         $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
+        //         $trasladoVenta->guias = $guias;
+        //         foreach ($guias as $guia) {
+        //             if ($guia->estado != 'recibida')
+        //                 $pendientes = true;
+        //             else
+        //                 $existentes = true;
+        //         }
+        //         if (!$trasladoVenta->completado)
+        //             $pendientes = true;
+        //     }
+        // }
+        // $pendientes = true;
+
+ // 🔍 6. Obtener despacho, guías y devoluciones
+        $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
+        $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
+        $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
+
+        return response([
+            'success' => true,
+            'detalle'   => $detalle,
+            'estadodecuenta'    => $estadoCuenta,
+            'ordendecompra' => $ordenes,
+            'traslados' => $trasladosVentas,
+            'orden_despacho' => $orderDespacho,
+            'guias_remision' => $guiaRemision,
+            'devoluciones' => $devoluciones,
+            'pendientes' => $pendientes,
+            'existentes' => $existentes,
+        ]);
     }
 }
