@@ -663,7 +663,11 @@ class   DevolucionService implements DevolucionServiceInterface
     public function getReturnsDetailDevolucion($devolucion)
     {
         $pedido = $this->devolucionRepository->getOrderbyId($devolucion['pedido_id']);
-        $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id']);
+        if ($devolucion['estado'] == 'aprobado' && $devolucion['aprobado'] == 'yes') {
+            $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id'], 1);
+        } else {
+            $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id']);
+        }
 
         //test
         $items = collect($detalle)
@@ -671,8 +675,8 @@ class   DevolucionService implements DevolucionServiceInterface
             ->pluck('ART_CODIGO')
             ->toArray();
 
-            
-            // $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
+
+        // $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
         $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $pedido['BOD_BODEGA']);
         $detalle = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
             $compartimento = collect($responseCompartimentos)

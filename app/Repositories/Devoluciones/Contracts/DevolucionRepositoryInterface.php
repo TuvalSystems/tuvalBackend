@@ -11,5 +11,5 @@ interface DevolucionRepositoryInterface
     public function validateItemLDetailInvoice($devolucion);
 
     public function getOrderbyId( $pedido_id);
-    public function getDetailDevolucion( $devolucion_id);
+    public function getDetailDevolucion( $devolucion_id, $despachadoParcial = null);
 }

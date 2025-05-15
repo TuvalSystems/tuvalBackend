@@ -73,18 +73,29 @@ class DevolucionJobService
         //validacion de estado solicitado
         if ($criterio['estado'] == 'solicitado' && $criterio['tipo_devolucion'] == 'total') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-                ->where('dvd.ART_TIPO_COMPRA', 'L');
+                ->where('dvd.ART_TIPO_COMPRA', 'L')
+                // esto me valida que solo procese las devoluciones que tengan devoluciones anteriores en estado parcial
+                ->whereExists(function ($q) {
+                    $q->select(DB::raw(1))
+                    ->from('gp_devoluciones as dp')
+                    ->where('dp.pedido_id', '=', DB::raw('gp_devoluciones.pedido_id'))
+                    ->where('dp.tipo_devolucion', 'parcial');
+                });
         }
 
         // validacion de estado recibido
         if ($criterio['estado'] == 'recibido') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-                ->where(function ($q) {
-                    $q->where('dvd.devuelto', '>', 0)
-                        ->orWhereNull('dvd.devuelto');
-                })
-                ->where('dvd.recibido', '>', 0)
-                ->whereNotNull('dvd.compartimiento');
+              ->where(function ($q){
+                 $q->where(function ($subQ){
+                    // ✅ Caso 1: Despachado Parcial = 1
+                     $subQ->where('dvd.despachado_parcial',  1)
+                         ->orWhereNotNull('dvd.compartimiento')
+                         ->where('dvd.recibido', '>', 0)
+                         ->where('dvd.devuelto', '>', 0);
+                 });
+              });
+
         }
 
         //validacione en estado aprobado
