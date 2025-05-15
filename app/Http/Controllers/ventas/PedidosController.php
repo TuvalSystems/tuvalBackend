@@ -543,7 +543,7 @@ class PedidosController extends Controller
         ]);
     }
 
-    public function detallepedido2(Request $request){
+    public function detallepedido1(Request $request){
 
         $data = $request->all();
         return $this->orderService->detailOrderById($data);

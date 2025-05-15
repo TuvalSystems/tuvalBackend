@@ -2,6 +2,7 @@
 
 namespace App\Services\Pedidos;
 
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
@@ -28,13 +29,21 @@ class OrderService implements OrderServiceInterface
 
     protected OrderRepositoryInterface $orderRepository;
     protected ApiBillingService $apiBillingService;
-    public function __construct(ApiSalesService $apiSalesService, ApiGpService $apiGpService, ApprovalServiceInterface $approvalService, OrderRepositoryInterface $orderRepository, ApiBillingService $apiBillingService)
-    {
+    protected FunctionsServiceInterface $functionsService;
+    public function __construct(
+        ApiSalesService $apiSalesService,
+        ApiGpService $apiGpService,
+        ApprovalServiceInterface $approvalService,
+        OrderRepositoryInterface $orderRepository,
+        ApiBillingService $apiBillingService,
+        FunctionsServiceInterface $functionsService
+    ) {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
         $this->approvalService = $approvalService;
         $this->orderRepository = $orderRepository;
         $this->apiBillingService = $apiBillingService;
+        $this->functionsService = $functionsService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -178,11 +187,12 @@ class OrderService implements OrderServiceInterface
         ));
     }
 
-    public function generateInvoiceXml($id){
+    public function generateInvoiceXml($id)
+    {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
         if ($datosFactura['success'] === false) {
-           throw new \Exception($datosFactura['message']);
+            throw new \Exception($datosFactura['message']);
         }
         $datos['xml'] = $datosFactura['data']['xml'];
         $datos['factura'] = $pedido['factura'];
@@ -193,14 +203,16 @@ class OrderService implements OrderServiceInterface
 
     // PROCESO DE GUARDADO DE PEDIDOS
 
-    public function storeOrder($order){
+    public function storeOrder($order)
+    {
         $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
         return $order;
     }
 
 
-    public function ensureAllItemsHaveValidQuantity($order){
-        foreach($order['cotizacion'] as $item){
+    public function ensureAllItemsHaveValidQuantity($order)
+    {
+        foreach ($order['cotizacion'] as $item) {
             if (empty($item['ART_CANTIDAD']) || $item['ART_CANTIDAD'] <= 0) {
                 throw new \InvalidArgumentException("La cantidad del artículo '{$item['ART_CODIGO']}' debe ser mayor a cero.");
             }
@@ -210,22 +222,39 @@ class OrderService implements OrderServiceInterface
 
 
 
-     /**
+    /**
      * ✅ Obtiene el detalle de un pedido especifico.
+     *  detallepedido
      *
      */
 
-     public function detailOrderById($data){
+    public function detailOrderById($data)
+    {
 
         $detalle =  $this->orderRepository->getAllDetailsOrderById($data['id']);
-        $estadoCuenta =[];
+        $estadoCuenta = [];
 
+        //  $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
         $credito = $this->apiBillingService->consultCreditClient([
             'ruc' => $data['CLI_RUC'],
             'idCompania' => config('services.api_gp.company'),
         ]);
-        return $credito;
+        $estadoCuenta['cupoDisponible'] =    $credito['cupos'][0] ?? [];
 
-     }
+        $pendientes = false;
+        $existentes = false;
+        foreach ($detalle as $key => $item) {
+            $proveedores = $this->functionsService->getItemProviders($data, $item, $pendientes, $existentes);
+            $item->proveedores = $proveedores['proveedores'];
+            $pendientes = $proveedores['pendientes'];
+            $existentes = $proveedores['existentes'];
 
+            $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
+            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
+                $existentes = true;
+            }
+        }
+
+        $ordenCompra = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido']);
+    }
 }
