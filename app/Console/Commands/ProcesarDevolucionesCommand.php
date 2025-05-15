@@ -47,6 +47,7 @@ class ProcesarDevolucionesCommand extends Command
 
         // $cl = collect($devoluciones)->pluck('id')->toArray();
         // dd($cl, $total);
+        
         if ($total === 0) {
             $this->info('✅ No hay devoluciones pendientes por procesar.');
             return 0;
