@@ -8,4 +8,6 @@ interface OrderServiceInterface
         public function generateInvoiceRide($id);
         public function generateInvoiceXml($id);
         public function storeOrder($order);
+
+        public function detailOrderById($data);
 }

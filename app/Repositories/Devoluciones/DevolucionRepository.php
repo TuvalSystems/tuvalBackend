@@ -40,15 +40,19 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getOrderbyId( $pedido_id){
+    public function getOrderbyId($pedido_id)
+    {
 
-        return GpPedido::find( $pedido_id);
+        return GpPedido::find($pedido_id);
     }
 
-    public function getDetailDevolucion( $devolucion_id){
-       
-        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion_id)
-            ->get()
+    public function getDetailDevolucion($devolucion_id, $despachadoParcial = null)
+    {
+        $query = GpDevolucionesDetalle::where('devolucion_id', $devolucion_id);
+        if (!is_null($despachadoParcial)) {
+            $query->where('despachado_parcial', $despachadoParcial);
+        }
+       return $query->get()
             ->filter(function ($item) {
                 // ✅ Verificación de datos correctos y no nulos
                 return is_array($item->toArray()) && isset($item['ART_CODIGO']);
@@ -58,7 +62,5 @@ class DevolucionRepository implements DevolucionRepositoryInterface
                 return $item->toArray();
             })
             ->toArray();
-
-        return $detalles;
     }
 }
