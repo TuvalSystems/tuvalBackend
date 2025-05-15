@@ -543,13 +543,13 @@ class PedidosController extends Controller
         ]);
     }
 
-    public function detallepedido1(Request $request){
+    public function detallepedido(Request $request){
 
         $data = $request->all();
         return $this->orderService->detailOrderById($data);
     }
 
-    public function detallepedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function detallepedido1(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
 

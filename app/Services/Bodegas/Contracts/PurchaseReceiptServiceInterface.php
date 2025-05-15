@@ -4,5 +4,5 @@ namespace App\Services\Bodegas\Contracts;
 
 interface PurchaseReceiptServiceInterface
 {
-    public function setPurcharseOrderdetails();
+    public function setPurcharseOrderdetails($OrderPurcharse);
 }
