@@ -243,7 +243,6 @@ class OrderService implements OrderServiceInterface
             'ruc' => $data['CLI_RUC'],
             'idCompania' => config('services.api_gp.company'),
         ]);
-
         $estadoCuenta = [
             'cupoDisponible' => $credito['cupos'][0] ?? []
         ];
@@ -251,7 +250,6 @@ class OrderService implements OrderServiceInterface
         // 🔍 3. Procesar proveedores y stock
         $pendientes = false;
         $existentes = false;
-
         $detalle->each(function ($item) use ($data, &$pendientes, &$existentes) {
             $proveedores = $this->functionsService->getItemProviders($data, $item, $pendientes, $existentes);
             $item->proveedores = $proveedores['proveedores'];
@@ -265,22 +263,7 @@ class OrderService implements OrderServiceInterface
         });
 
 
-        // foreach ($detalle as $key => $item) {
-        //     $proveedores = $this->functionsService->getItemProviders($data, $item, $pendientes, $existentes);
-        //     $item->proveedores = $proveedores['proveedores'];
-        //     $pendientes = $proveedores['pendientes'];
-        //     $existentes = $proveedores['existentes'];
-
-        //     $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
-        //     if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
-        //         $existentes = true;
-        //     }
-        // }
-
-
-
          // 🔍 4. Obtener órdenes de compra optimizadas
-
          $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
          ->map(function ($orden){
             $recibodecompra =  $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
@@ -288,17 +271,6 @@ class OrderService implements OrderServiceInterface
          })
          ->filter()
          ->values();
-
-
-        // $ordenCompra = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido']);
-        // $ordenes = array();
-        // foreach ($ordenCompra as $key => $orden) {
-        //     $recibodecompra =  $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
-        //     if (count($recibodecompra->detalle) > 0) {
-        //         $ordenes[] = $recibodecompra;
-        //     }
-        // }
-
 
     // 🔍 5. Procesar traslados
         $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
@@ -314,21 +286,6 @@ class OrderService implements OrderServiceInterface
             if (!$trasladoVenta->completado)
                 $pendientes = true;
         });
-        // if ($trasladosVentas->count() > 0) {
-        //     foreach ($trasladosVentas as $trasladoVenta) {
-        //         $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
-        //         $trasladoVenta->guias = $guias;
-        //         foreach ($guias as $guia) {
-        //             if ($guia->estado != 'recibida')
-        //                 $pendientes = true;
-        //             else
-        //                 $existentes = true;
-        //         }
-        //         if (!$trasladoVenta->completado)
-        //             $pendientes = true;
-        //     }
-        // }
-        // $pendientes = true;
 
  // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
