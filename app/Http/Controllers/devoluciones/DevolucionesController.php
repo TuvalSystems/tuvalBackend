@@ -5,6 +5,7 @@ namespace App\Http\Controllers\devoluciones;
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\bodegas\IngresosController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
@@ -243,7 +244,8 @@ class DevolucionesController extends Controller
         ]);
     }
 
-    public function enviardevolucion(Request $request)
+    //procesos nuevos comentados para no afectar produccion en espera de aprobacion de Dennis para deploy a producccion
+    public function enviardevolucion1(Request $request)
     {
 
         try {
@@ -325,12 +327,210 @@ class DevolucionesController extends Controller
         }
     }
 
-
-    public function detalledevolucion(Request $request){
+    public function detalledevolucion1(Request $request)
+    {
 
         $data = $request->all();
         return $this->devolucionService->getReturnsDetailDevolucion($data);
+    }
 
+    //procesos actuales en produccion
+    public function enviardevolucion(Request $request)
+    {
+        try {
+            $data = $request->all();
+            DB::beginTransaction();
+
+            // $validateAnulationInvoice = $this->validateInvoiceAnulation($data['pedido']);
+            // if ($validateAnulationInvoice &&
+            // isset($data['devolucion']['tipo_devolucion']) &&
+            // $data['devolucion']['tipo_devolucion'] === "total") {
+            //     $anulacionResponse =  $this->anularDevolucion($data['pedido']);
+            //     $responseArray = $anulacionResponse->getData(true);
+            //     if ($responseArray['success'] == false) {
+            //         return $this->buildErrorResponse($responseArray['error'], 401);
+            //     }
+            // }
+
+
+            $pedido = GpPedido::where('id', $data['pedido']['id'])->first();
+            if ($pedido->despacho_en_proceso && !$pedido->despachado) {
+                return response([
+                    'message' => 'Este pedido está siendo despachado'
+                ], 401);
+            }
+
+            if (!isset($data['pedido']['id'])) {
+                return response([
+                    'message' => 'Hubo un error al guardar'
+                ], 401);
+            }
+
+            $arr_despachados = array();
+            $arr_sindespacho = array();
+
+            foreach ($data['detallepedido'] as $detalle) {
+
+                if ($data['devolucion']['volver_a_facturar']) {
+                    if ($detalle['despacho']) {
+                        $arr_despachados['detallepedido'][] = $detalle;
+                    } else {
+                        $arr_sindespacho['detallepedido'][] = $detalle;
+                    }
+                } else {
+                    if ($detalle['seleccionado'] > 0) {
+                        if ($detalle['despacho']) {
+                            $arr_despachados['detallepedido'][] = $detalle;
+                        } else {
+                            $arr_sindespacho['detallepedido'][] = $detalle;
+                        }
+                    }
+                }
+            }
+
+            $devolucion = '';
+            if (isset($arr_despachados['detallepedido']) && count($arr_despachados['detallepedido'])) {
+                $arr_despachados['devolucion'] = $data['devolucion'];
+                $arr_despachados['pedido'] = $data['pedido'];
+                $arr_despachados['pedido']['despachado'] = 1;
+                $devolucion .= $this->ejecutardevolucion($arr_despachados);
+            }
+            if (isset($arr_sindespacho['detallepedido']) && count($arr_sindespacho['detallepedido'])) {
+                $arr_sindespacho['devolucion'] = $data['devolucion'];
+                $arr_sindespacho['pedido'] = $data['pedido'];
+                $devolucion .= $this->ejecutardevolucion($arr_sindespacho);
+            }
+            $order = app(OrderServiceInterface::class);
+            $despachos = new DespachosController($order);
+            $despachos->checkeliminardespacho($pedido);
+            // $this->updateStatusDevolutions($pedido);
+            // $this->updateStatusOrders($pedido);
+            DB::commit();
+            return $this->buildSuccessResponse('La devolución ha sido solicitada', 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 401);
+        }
+    }
+
+
+    public function ejecutardevolucion($data): string
+    {
+        $user = Auth::user();
+        $aprobaciones = new AprobacionesController;
+
+        $requiere_aprobacion = $aprobaciones->checkAprobacionesDevoluciones($data);
+
+        $estado = 'solicitado';
+        if ($requiere_aprobacion == 'yes') {
+            $estado = 'espera';
+        }
+
+        $devolucion = new GpDevoluciones;
+        $ultimaDevolucion = GpDevoluciones::orderBy('id', 'DESC')->first();
+
+        if (!$ultimaDevolucion) {
+            $ultimaDevolucion = new \stdClass();
+            $ultimaDevolucion->id = 0;
+        }
+
+        $devolucion->devolucion = 'DEV' . str_pad($ultimaDevolucion->id + 1, 8, "0", STR_PAD_LEFT);
+        $devolucion->estado = $estado;
+        $devolucion->pedido_id = $data['pedido']['id'];
+        $devolucion->cliente_id = $data['pedido']['cliente_id'];
+        $devolucion->pedido = $data['pedido']['pedido'];
+        $devolucion->factura = $data['pedido']['factura'];
+        $devolucion->volver_a_facturar = $data['devolucion']['volver_a_facturar'];
+        $devolucion->tipo_devolucion = $data['devolucion']['tipo_devolucion'];
+        $devolucion->despachado = $data['pedido']['despachado'];
+        $devolucion->cliente_volver_a_facturar_id = $data['devolucion']['cliente_volver_a_facturar_id'];
+        $devolucion->user_id = $user->id;
+        $devolucion->USERID = $user->USERID;
+        $devolucion->sucursal_id = $data['devolucion']['sucursal_id'];
+        $devolucion->sucursal_facturacion_id = $data['devolucion']['sucursal_facturacion_id'];
+        $devolucion->motivo = $data['devolucion']['motivo'];
+        $devolucion->orden_de_compra = $data['pedido']['orden_de_compra'];
+        $devolucion->requiere_aprobacion = $requiere_aprobacion;
+        $devolucion->aprobado = 'no';
+        $devolucion->impuesto = $data['pedido']['impuesto'];
+        $devolucion->observacion = $data['devolucion']['observacion'];
+        $devolucion->save();
+
+        foreach ($data['detallepedido'] as $det) {
+
+            //            if($det['seleccionado'] == 0)
+            //                continue;
+
+            $detalle = new GpDevolucionesDetalle();
+            $detalle->devolucion_id = $devolucion->id;
+            $detalle->detalle_id = $det['id'];
+            $detalle->ART_CODIGO = $det['ART_CODIGO'];
+            $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
+            $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
+            $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
+            $detalle->ART_DECIMAL_CANTIDAD = (int)$det['ART_DECIMAL_CANTIDAD'];
+            $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
+            $detalle->ART_MARCA = $det['ART_MARCA'];
+            $detalle->ART_MATERIAL = $det['ART_MATERIAL'];
+            $detalle->ART_PESO = $det['ART_PESO'];
+            $detalle->ART_TIPO_COMPRA = $det['ART_TIPO_COMPRA'];
+            $detalle->ART_VALOR = (float)$det['ART_VALOR'];
+            $detalle->ART_IVA = (float)$det['ART_IVA'];
+            $detalle->ART_VALOR_ORIGINAL = (float)$det['ART_VALOR_ORIGINAL'];
+            $detalle->ART_DESCUENTO = (float)$det['ART_DESCUENTO'];
+            $detalle->ART_CANTIDAD = (float)$det['ART_CANTIDAD'];
+            $detalle->ART_STOCK = (float)$det['ART_STOCK'];
+            $detalle->ART_IMP_VTA = (float)$det['ART_IMP_VTA'];
+            $detalle->ART_COSTO_PROMEDIO = (float)$det['ART_COSTO_PROMEDIO'];
+            $detalle->descuento = (float)$det['descuento'];
+            $detalle->descuento_original = (float)$det['descuento_original'];
+            $detalle->modificador = (float)$det['modificador'];
+            $detalle->seleccionado = (float)$det['seleccionado'];
+            $detalle->disponible = (float)$det['disponible'];
+            $detalle->save();
+        }
+
+        if ($estado == 'solicitado') {
+            $this->procesardevoluciones();
+        }
+
+        return 'La devolución ' . $devolucion->devolucion . ' ha sido solicitada. ';
+    }
+
+    public function detalledevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    {
+        $data = $request->all();
+
+        $webservices = new WebserviceController();
+
+        $pedido = GpPedido::where('id', $data['pedido_id'])->first();
+
+        $detalle = GpDevolucionesDetalle::where('devolucion_id', $data['id'])->get()->toArray();
+
+        foreach ($detalle as $key => &$item) {
+            if ($item['seleccionado'] == 0 && $item['devuelto'] == 0) {
+                unset($detalle[$key]);
+            } else {
+                $parameters = array(
+                    'IDCompania' => env('ID_COMPANIA'),
+                    'Bodega' => $pedido->BOD_BODEGA,
+                    'Item' => $item['ART_CODIGO'],
+                );
+                $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
+                //                echo '<pre>';
+                //                print_r($parameters);
+                //                print_r($respuesta['ConsultaItemCompartimentoResult']);
+                //                die();
+                $item['compartimientos'] = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'];
+                $item['compartimiento'] = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'][0]['Compartimento'];
+            }
+        }
+
+        $detalle = array_values($detalle);
+
+        return response([
+            'success' => true,
+            'detalle' => $detalle,
+        ]);
     }
 
 
