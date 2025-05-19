@@ -26,7 +26,6 @@ use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\DB;
 
 class CotizacionesController extends Controller
 {
@@ -676,9 +675,7 @@ class CotizacionesController extends Controller
 
         $cotizaciones = GpCotizacion::where('gp_cotizacions.PTO_VTA_ID', '=',$data['puntodeventa_id'])
             ->join('gp_descuento_forma_pagos','gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO','gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
-            ->leftJoin('gp_pedidos as pd', 'pd.cotizacion_id', 'gp_cotizacions.id')
-            ->select('gp_cotizacions.*','gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO',
-            DB::raw('IF(pd.id IS NOT NULL, "si", "no") as venta')); // para validar el modal y  guardar el recordatorio 
+            ->select('gp_cotizacions.*','gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
 
         if($data['estado'] == 'pendientes'){
             $cotizaciones = $cotizaciones
