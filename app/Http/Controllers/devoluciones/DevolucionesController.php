@@ -245,6 +245,7 @@ class DevolucionesController extends Controller
     }
 
     //procesos nuevos comentados para no afectar produccion en espera de aprobacion de Dennis para deploy a producccion
+    //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y repositorios )
     public function enviardevolucion1(Request $request)
     {
 
@@ -327,7 +328,7 @@ class DevolucionesController extends Controller
         }
     }
 
-    public function detalledevolucion1(Request $request)
+    public function detalledevolucion(Request $request)
     {
 
         $data = $request->all();
@@ -496,7 +497,7 @@ class DevolucionesController extends Controller
         return 'La devolución ' . $devolucion->devolucion . ' ha sido solicitada. ';
     }
 
-    public function detalledevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function detalledevolucion1(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
 
