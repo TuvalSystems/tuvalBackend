@@ -53,6 +53,7 @@ class PedidosController extends Controller
     }
 
 
+    //en proceso de mejora
     public function guardarpedido2(Request $request){
 
         try {
