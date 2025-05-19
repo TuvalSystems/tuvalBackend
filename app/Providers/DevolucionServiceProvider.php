@@ -17,6 +17,8 @@ use App\Services\Reposiciones\TransferRepositionService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Bodegas\DispatchService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
@@ -67,6 +69,8 @@ class DevolucionServiceProvider extends ServiceProvider
             PurchaseReceiptServiceInterface::class,
             PurchaseReceiptService::class
         );
+
+        $this->app->singleton(DispatchServiceInterface::class, DispatchService::class);
     }
 
 
