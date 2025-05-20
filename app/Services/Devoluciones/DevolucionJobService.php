@@ -27,14 +27,10 @@ use Illuminate\Support\Facades\Log;
 class DevolucionJobService
 {
     use DevolucionesCriteriosTrait, JsonResponseTrait;
-
-
-    protected WebserviceController $webservice;
     protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
 
-    public function __construct(WebserviceController $webservice, ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService)
+    public function __construct(ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService)
     {
-        $this->webservice = $webservice;
         $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
     }
 
@@ -384,7 +380,7 @@ class DevolucionJobService
 
     public function generarDevolucionVenta($devolucion)
     {
-        $userId = Auth::user()->id ?? 'adminWeb';
+        $userId = 'adminWeb';
 
         // Obtener el pedido y los detalles
         $pedido = GpPedido::find($devolucion->pedido_id);

@@ -40,6 +40,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Http\Controllers\bodegas\RecibosdecompraeleController;
+use App\Services\Venta\Contracts\QuotationServiceInterface;
 
 class PedidosController extends Controller
 {
@@ -54,15 +55,15 @@ class PedidosController extends Controller
 
 
     //en proceso de mejora
-    public function guardarpedido2(Request $request){
+    public function guardarpedido2(Request $request)
+    {
 
         try {
             $orderData = $request->all();
             return $this->orderService->storeOrder($orderData);
         } catch (\Throwable $th) {
-           return $this->buildErrorResponse($th->getMessage(), 500);
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
-
     }
 
     public function guardarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -142,7 +143,7 @@ class PedidosController extends Controller
                 ->delete();
 
             if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
-                GpCotizacion::where('id', $data['cotizacion_id'])->update(['estado' => 'procesado']);
+                GpCotizacion::where('id', $data['cotizacion_id'])->update(['estado' => 'procesado', 'facturado' => 1]);
             }
 
             $this->checkenviarfactura($pedido);
@@ -256,8 +257,8 @@ class PedidosController extends Controller
     {
         $pedido = GpPedido::where('id', $id)
             ->first();
-            $order = app(OrderServiceInterface::class);
-            $despachos = new DespachosController($order);
+        $order = app(OrderServiceInterface::class);
+        $despachos = new DespachosController($order);
         // $despachos = new DespachosController();
         $despachos->generarordendespacho($pedido);
     }
@@ -544,7 +545,8 @@ class PedidosController extends Controller
         ]);
     }
 
-    public function detallepedido(Request $request){
+    public function detallepedido(Request $request)
+    {
 
         $data = $request->all();
         return $this->orderService->detailOrderById($data);
@@ -1358,7 +1360,8 @@ class PedidosController extends Controller
         $registroCopia->tipo = 'copia';
 
         if ($data['tipo'] == 'cotizacion') {
-            $cotizaciones = new CotizacionesController();
+            $quotationService = app(QuotationServiceInterface::class);
+            $cotizaciones = new CotizacionesController($quotationService);
             $detalle = $cotizaciones->getdetallecotizacion($data['pedido'], true);
             $registroCopia->cotizacion_origen = $data['pedido']['id'];
         } else {
@@ -1608,7 +1611,7 @@ class PedidosController extends Controller
             return $pdf->stream('pedido-' . $pedido['pedido'] . '.pdf');
         } catch (\Exception $e) {
             report($e);
-           return $this->buildErrorResponse($e->getMessage(), 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
