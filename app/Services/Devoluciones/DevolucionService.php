@@ -538,6 +538,7 @@ class   DevolucionService implements DevolucionServiceInterface
                 'pedido' => $order->pedido,
                 'factura' => $order->factura,
                 'msj_anulacion_gp' => $cancelResponse['message'],
+                'diario_response_gp' => $cancelResponse['diario'] ?? null,
                 'estado' => 'pendiente',
             ]
         );
