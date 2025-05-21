@@ -484,6 +484,12 @@ class   DevolucionService implements DevolucionServiceInterface
     public function saveAccessKeyInfo($order, $accessKeyResponse, $devolucion)
     {
 
+        $data = [
+            'resp_document' => $accessKeyResponse['message'] ?? null,
+            'pedido' => $order->pedido,
+            'estado' => 'pendiente',
+        ];
+
         // si existe la clave de acceso
         if (!empty($accessKeyResponse['claveAcceso'])) {
             $data['claveacceso'] = $accessKeyResponse['claveAcceso'];
@@ -493,11 +499,6 @@ class   DevolucionService implements DevolucionServiceInterface
         }
 
         // si existe el mensaje de error y no existe la clave de acceso
-        $data = [
-            'resp_document' => $accessKeyResponse['message'] ?? null,
-            'pedido' => $order->pedido,
-            'estado' => 'pendiente',
-        ];
 
 
         GpFacturaAnulada::updateOrCreate(

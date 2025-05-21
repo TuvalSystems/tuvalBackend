@@ -107,7 +107,7 @@ class DevolucionesController extends Controller
             ->first();
         if ($devolucionAnulada) {
             return response([
-                'error' => 'Esta factura tiene una devolución anulada en el SRI'
+                'error' => 'Esta factura se encuentra anulada en el SRI'
             ], 401);
         }
         $devolucion_en_proceso = GpDevoluciones::where('pedido_id', $data['id'])
