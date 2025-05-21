@@ -11,6 +11,7 @@ class GpFacturaAnulada extends Model
 
     protected $table = 'gp_factura_anuladas';
     protected $fillable = [
+        'devolucion_id',
         'pedido_id',
         'factura',
         'pedido',
