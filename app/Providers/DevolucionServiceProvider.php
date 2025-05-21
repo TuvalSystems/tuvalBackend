@@ -6,6 +6,7 @@ use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\FunctionsService;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\OrderService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
@@ -18,6 +19,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Notificacion\NotificationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 
@@ -27,9 +29,9 @@ class DevolucionServiceProvider extends ServiceProvider
 
     public function register()
     {
-        $this->app->singleton(EntryServiceInterface::class,EntryService::class);
+        $this->app->singleton(EntryServiceInterface::class, EntryService::class);
         $this->app->singleton(DevolucionServiceInterface::class, DevolucionService::class);
-        $this->app->bind(DevolucionJobService::class) ;
+        $this->app->bind(DevolucionJobService::class);
 
         //aqui agrego las transferencias para no crear otro provider
 
@@ -62,16 +64,15 @@ class DevolucionServiceProvider extends ServiceProvider
             FunctionsService::class
         );
 
-         //aqui agrego las RecibidosdeCompraL para no crear otro provider
+        //aqui agrego las RecibidosdeCompraL para no crear otro provider
         $this->app->bind(
             PurchaseReceiptServiceInterface::class,
             PurchaseReceiptService::class
         );
+
+        $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
     }
 
 
-    public function boot()
-    {
-
-    }
+    public function boot() {}
 }
