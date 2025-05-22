@@ -7,6 +7,7 @@ use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\FunctionsService;
 use App\Services\Pedidos\OrderService;
+use App\Services\Venta\QuotationService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Aprobaciones\ApprovalService;
@@ -20,7 +21,6 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
-use App\Services\Venta\Contracts\QuotationService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 
 class DevolucionServiceProvider extends ServiceProvider
