@@ -6,6 +6,7 @@ use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\FunctionsService;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\OrderService;
 use App\Services\Venta\QuotationService;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +20,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Notificacion\NotificationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
@@ -28,6 +30,7 @@ class DevolucionServiceProvider extends ServiceProvider
 
     public function register()
     {
+        
         $this->app->bind(EntryServiceInterface::class, EntryService::class);
         $this->app->bind(DevolucionServiceInterface::class, DevolucionService::class);
         $this->app->bind(DevolucionJobService::class);
@@ -64,6 +67,7 @@ class DevolucionServiceProvider extends ServiceProvider
         );
 
         //aqui agrego las RecibidosdeCompraL para no crear otro provider
+
         $this->app->singleton(
             PurchaseReceiptServiceInterface::class,
             PurchaseReceiptService::class
@@ -71,6 +75,9 @@ class DevolucionServiceProvider extends ServiceProvider
 
         //aqui agrego las Cotizaciones para no crear otro provider
         $this->app->singleton(QuotationServiceInterface::class, QuotationService::class);
+    
+
+        $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
     }
 
 

@@ -12,10 +12,10 @@ use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 class DevolucionRepository implements DevolucionRepositoryInterface
 {
 
-    public function isInvoiceAlreadyVoided($pedido)
+    public function isInvoiceAlreadyVoided($pedido , $devolucion)
     {
-        return GpFacturaAnulada::where('factura', $pedido->factura)
-            ->where('pedido_id', $pedido->id)->where('estado', 'facturado')->first();
+        return GpFacturaAnulada::where('factura', $pedido->factura)->where('devolucion_id', $devolucion['id'])
+            ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->first();
     }
 
     public function validateInvoiceAnulation($pedido)

@@ -5,6 +5,7 @@ namespace App\Services\Devoluciones;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Services\Api\ApiSalesService;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use Illuminate\Support\Arr;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
@@ -38,6 +39,7 @@ class   DevolucionService implements DevolucionServiceInterface
     protected ApiSeedBellingService $apiSeedBelling;
     protected ApprovalServiceInterface $approvalService;
     protected DevolucionRepositoryInterface $devolucionRepository;
+    protected NotificationServiceInterface $notificationService;
 
     public function __construct(
         WebserviceController $webservice,
@@ -46,7 +48,7 @@ class   DevolucionService implements DevolucionServiceInterface
         ApiSalesService $apiSales,
         ApiSeedBellingService $apiSeedBelling,
         ApprovalServiceInterface $approvalService,
-        DevolucionRepositoryInterface $devolucionRepository
+        DevolucionRepositoryInterface $devolucionRepository,
     ) {
         $this->webservice = $webservice;
         $this->pedidosController = $pedidosController;
@@ -414,15 +416,15 @@ class   DevolucionService implements DevolucionServiceInterface
     public function anularDevolucion($pedido, $devolucion)
     {
         $pedido = GpPedido::find($pedido['id']);
-        if ($this->isInvoiceAlreadyVoided($pedido)) {
+        if ($this->isInvoiceAlreadyVoided($pedido, $devolucion)) {
             return $this->buildErrorResponse('La factura ya fue anulada', 400);
         }
         return $this->processCancellation($pedido, $devolucion);
     }
 
-    public function isInvoiceAlreadyVoided($pedido)
+    public function isInvoiceAlreadyVoided($pedido, $devolucion)
     {
-        return $this->devolucionRepository->isInvoiceAlreadyVoided($pedido);
+        return $this->devolucionRepository->isInvoiceAlreadyVoided($pedido, $devolucion);
     }
     public function validateInvoiceAnulation($pedido)
     {
@@ -442,29 +444,34 @@ class   DevolucionService implements DevolucionServiceInterface
 
     public function processCancellation($order, $devolucion)
     {
+        // VALIDACION DE CLAVE DE ACCESO
+        $accessKeyResponse = $this->apiGetDocumentAccessKey($order);
+        $this->saveAccessKeyInfo($order, $accessKeyResponse, $devolucion);
+        if (!$this->isValidAccessKey($accessKeyResponse)) {
+            throw new \Exception('La devolución es válida para anulación, pero ' . ' ' . $accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso');
+            // return $this->buildErrorResponse($accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso', 400);
+        }
+
+        //VALIDACION DE ANULACION DE FACTURA GP
         $cancelResponse  = $this->apiInvalidateGpVoucher($order);
         if ($cancelResponse['success'] === false) {
-            $this->saveBaseCancellationInfo($order, $cancelResponse);
-            return $this->buildErrorResponse($cancelResponse['message'] ?? 'Error al anular la factura', 400);
-        }
-        $this->saveFailedCancellation($order, $cancelResponse);
-        $accessKeyResponse = $this->apiGetDocumentAccessKey($order);
-        $this->saveAccessKeyInfo($order, $accessKeyResponse);
+            $this->saveBaseCancellationInfo($order, $cancelResponse,  $devolucion);
 
-        if (!$this->isValidAccessKey($accessKeyResponse)) {
-            return $this->buildErrorResponse($accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso', 400);
+            throw new \Exception('La devolución es válida para anulación, pero ' . $cancelResponse['message'] ?? 'Error al anular la factura');
+            // return $this->buildErrorResponse($cancelResponse['message'] ?? 'Error al anular la factura', 400);
         }
+        $this->saveFailedCancellation($order, $cancelResponse, $devolucion);
         $this->sendSeedBilling($order, $accessKeyResponse['claveAcceso'], $devolucion);
-
         return $this->buildSuccessResponse('Factura anulada correctamente', 200);
     }
 
-    public  function saveBaseCancellationInfo($order, $cancelResponse)
+    public  function saveBaseCancellationInfo($order, $cancelResponse, $devolucion)
     {
 
         GpFacturaAnulada::updateOrCreate(
             ['pedido_id' => $order->id],
             [
+                'devolucion_id' => $devolucion['id'],
                 'pedido' => $order->pedido,
                 'factura' => $order->factura,
                 'msj_anulacion_gp' => $cancelResponse['message'],
@@ -474,20 +481,28 @@ class   DevolucionService implements DevolucionServiceInterface
         );
     }
 
-    public function saveAccessKeyInfo($order, $accessKeyResponse)
+    public function saveAccessKeyInfo($order, $accessKeyResponse, $devolucion)
     {
 
         $data = [
             'resp_document' => $accessKeyResponse['message'] ?? null,
+            'pedido' => $order->pedido,
+            'estado' => 'pendiente',
         ];
 
+        // si existe la clave de acceso
         if (!empty($accessKeyResponse['claveAcceso'])) {
             $data['claveacceso'] = $accessKeyResponse['claveAcceso'];
             $data['documento_id'] = $accessKeyResponse['id'];
+            $data['pedido'] = $order->pedido;
+            $data['estado'] = 'pendiente';
         }
 
+        // si existe el mensaje de error y no existe la clave de acceso
+
+
         GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id, 'factura' => $order->factura],
+            ['pedido_id' => $order->id, 'factura' => $order->factura, 'devolucion_id' => $devolucion['id']],
             $data
         );
     }
@@ -502,7 +517,7 @@ class   DevolucionService implements DevolucionServiceInterface
         $response = $this->apiResponseSeedBelling($accessKey);
 
         GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id, 'factura' => $order->factura],
+            ['pedido_id' => $order->id, 'factura' => $order->factura, 'devolucion_id' => $devolucion['id']],
             [
                 'resp_seedbilling' => $response['respuesta'] ?? null,
                 'estado' =>  'enviada',
@@ -514,14 +529,16 @@ class   DevolucionService implements DevolucionServiceInterface
         $this->updateStatusOrders($order);
     }
 
-    private function saveFailedCancellation($order, array $cancelResponse): void
+    private function saveFailedCancellation($order, array $cancelResponse, $devolucion): void
     {
         GpFacturaAnulada::updateOrCreate(
             ['pedido_id' => $order->id],
             [
+                'devolucion_id' => $devolucion['id'],
                 'pedido' => $order->pedido,
                 'factura' => $order->factura,
                 'msj_anulacion_gp' => $cancelResponse['message'],
+                'diario_response_gp' => $cancelResponse['diario'] ?? null,
                 'estado' => 'pendiente',
             ]
         );

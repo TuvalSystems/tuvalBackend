@@ -22,9 +22,11 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpVendedor;
+use App\Models\Notificaciones;
 use App\Services\Api\ApiGpService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
@@ -38,12 +40,15 @@ class DevolucionesController extends Controller
     use JsonResponseTrait;
     protected $entryService;
     protected $devolucionService;
+    protected  $notificationService;
     public function __construct(
         EntryServiceInterface $entryService,
-        DevolucionServiceInterface $devolucionServiceInterface
+        DevolucionServiceInterface $devolucionServiceInterface,
+        NotificationServiceInterface $notificationServiceInterface
     ) {
         $this->entryService = $entryService;
         $this->devolucionService = $devolucionServiceInterface;
+        $this->notificationService = $notificationServiceInterface;
     }
 
     public function pedidoscliente($cliente_id, $puntodeventa_id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -97,6 +102,14 @@ class DevolucionesController extends Controller
     {
         $data = $request->all();
 
+        $devolucionAnulada = GpDevoluciones::where('pedido_id', $data['id'])
+            ->where('estado', 'anulada')
+            ->first();
+        if ($devolucionAnulada) {
+            return response([
+                'error' => 'Esta factura se encuentra anulada en el SRI'
+            ], 401);
+        }
         $devolucion_en_proceso = GpDevoluciones::where('pedido_id', $data['id'])
             ->where('estado', '!=', 'procesado')
             ->where('estado', '!=', 'rechazado')
@@ -246,7 +259,7 @@ class DevolucionesController extends Controller
 
     //procesos nuevos comentados para no afectar produccion en espera de aprobacion de Dennis para deploy a producccion
     //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y repositorios )
-    public function enviardevolucion1(Request $request)
+    public function enviardevolucion(Request $request)
     {
 
         try {
@@ -317,13 +330,16 @@ class DevolucionesController extends Controller
                     }
                 }
             }
-
-
-            // $this->updateStatusDevolutions($pedido);
-            // $this->updateStatusOrders($pedido);
             DB::commit();
             return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
         } catch (\Throwable $th) {
+            DB::rollBack();
+             $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
+            $this->notificationService->sendNotification(
+                $userId,
+                'Error al anular la factura',
+                $th->getMessage()
+            );
             return $this->buildErrorResponse($th->getMessage(), 401);
         }
     }
@@ -336,7 +352,7 @@ class DevolucionesController extends Controller
     }
 
     //procesos actuales en produccion
-    public function enviardevolucion(Request $request)
+    public function enviardevolucion1(Request $request)
     {
         try {
             $data = $request->all();
