@@ -4,11 +4,17 @@ namespace App\Services\Venta;
 
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionVentaMotivo;
+use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 class QuotationService implements QuotationServiceInterface
 {
+    protected $quotationRepository;
+    public function __construct(QuotationRepositoryInterface $quotationRepository)
+    {
+        $this->quotationRepository = $quotationRepository;
+    }
 
 
     public function getNonSalesReasons(): Collection
@@ -26,4 +32,20 @@ class QuotationService implements QuotationServiceInterface
 
         ]);
     }
+
+
+
+    //proceso job
+
+    public function processJobNotificacionNonSales()
+    {
+
+    }
+
+    public function getQuotationsWithReminderToday()
+    {
+        return   $this->quotationRepository->getScheduledReminders();
+    }
+
+   
 }

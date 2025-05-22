@@ -4,8 +4,6 @@ namespace App\Services\Notificacion;
 
 use App\Models\Notificaciones;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
-use Illuminate\Support\Facades\Log;
-
 class NotificationService implements NotificationServiceInterface
 {
 

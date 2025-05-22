@@ -30,7 +30,7 @@ class DevolucionServiceProvider extends ServiceProvider
 
     public function register()
     {
-        
+
         $this->app->bind(EntryServiceInterface::class, EntryService::class);
         $this->app->bind(DevolucionServiceInterface::class, DevolucionService::class);
         $this->app->bind(DevolucionJobService::class);
@@ -74,8 +74,8 @@ class DevolucionServiceProvider extends ServiceProvider
         );
 
         //aqui agrego las Cotizaciones para no crear otro provider
-        $this->app->singleton(QuotationServiceInterface::class, QuotationService::class);
-    
+        $this->app->bind(QuotationServiceInterface::class, QuotationService::class);
+
 
         $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
     }
