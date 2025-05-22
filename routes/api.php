@@ -229,6 +229,10 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/cotizaciones/imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
     Route::get('/devoluciones/imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
     Route::post('/consultas/notificaciones', [ConsultasController::class, 'notificaciones']);
+
+    //new routes
+    Route::get('cotizaciones/lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
+    Route::put('cotizaciones/guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 });
 Route::post('/login', [AuthController::class, 'login']);
 
