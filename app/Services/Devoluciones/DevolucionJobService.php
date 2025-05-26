@@ -416,7 +416,7 @@ class DevolucionJobService
 
         // 🔄 Parámetros para la integración
         $parms = [
-            'IDCompania' => env('ID_COMPANIA'),
+            'IDCompania' => config('services.api_gp.company'),
             'Documento' => $devolucion->devolucion,
             'PedidoOrigen' => $pedido->pedido,
             'Bodega' => $pedido->BOD_BODEGA,
