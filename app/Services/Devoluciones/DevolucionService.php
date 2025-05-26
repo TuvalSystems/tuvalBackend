@@ -28,7 +28,7 @@ use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 
-class   DevolucionService implements DevolucionServiceInterface
+class DevolucionService implements DevolucionServiceInterface
 {
     use DevolucionesCriteriosTrait,
         JsonResponseTrait;
@@ -82,7 +82,7 @@ class   DevolucionService implements DevolucionServiceInterface
             }
 
             if ($criterio['generarnotadecredito'] === true) {
-                $ntCredito =  $this->generarNotaDeCredito($devolucion);
+                $ntCredito = $this->generarNotaDeCredito($devolucion);
                 if (!$ntCredito->isSuccessful()) {
                     return $ntCredito;
                 }
@@ -98,7 +98,7 @@ class   DevolucionService implements DevolucionServiceInterface
                 }
             }
 
-            return $this->buildSuccessResponse('Devolución procesada correctamente',  200);
+            return $this->buildSuccessResponse('Devolución procesada correctamente', 200);
         } catch (\Throwable $e) {
             Log::error("Error al procesar devolución ID {$devolucion->id}: {$e->getMessage()}");
 
@@ -146,7 +146,7 @@ class   DevolucionService implements DevolucionServiceInterface
         $this->actualizarDetalleDevolucion($devolucion, 'disponible');
     }
 
-    public function actualizarDetalleDevolucion($devolucion, String $origen)
+    public function actualizarDetalleDevolucion($devolucion, string $origen)
     {
         if (!in_array($origen, ['seleccionado', 'disponible'])) {
             Log::warning("Intento de uso de campo inválido: $origen");
@@ -179,12 +179,13 @@ class   DevolucionService implements DevolucionServiceInterface
         $detalleDevolucion = [];
 
         foreach ($detalles as $key => $detalle) {
-            if ($detalle->devuelto ==  0) continue;
+            if ($detalle->devuelto == 0)
+                continue;
 
             $linea++;
             $cantidad = $detalle->devuelto;
             $valorUnitario = $detalle->ART_VALOR;
-            $descuento =  $detalle->ART_DESCUENTO;
+            $descuento = $detalle->ART_DESCUENTO;
             $totalLinea = round(($valorUnitario - $descuento) * $cantidad, 2);
 
             $detalleDevolucion[] = [
@@ -194,7 +195,7 @@ class   DevolucionService implements DevolucionServiceInterface
                 'NC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
                 'NC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
                 'NC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
-                'NC_VTA_DET_BODEGA' =>  $pedido->BOD_BODEGA,
+                'NC_VTA_DET_BODEGA' => $pedido->BOD_BODEGA,
                 'NC_VTA_DET_CANTIDAD' => $cantidad,
                 'NC_VTA_DET_COSTO_UNITARIO' => $valorUnitario,
                 'NC_VTA_DET_PRECIO_UNITARIO' => $valorUnitario,
@@ -202,29 +203,31 @@ class   DevolucionService implements DevolucionServiceInterface
                 'NC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
                 'NC_VTA_DET_TOTAL' => $totalLinea
             ];
-            $subtotal +=  $totalLinea;
+            $subtotal += $totalLinea;
             $iva += $detalle->ART_IVA;
         }
         $total = $subtotal + $iva;
 
         // return $detalles;
-        $cabecera = [[
-            'NC_VTA_DOCU_ORIGEN' => $devolucion->devolucion,
-            'NC_VTA_ID_TIPO' => '4',
-            'NC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
-            'NC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
-            'NC_VTA_ID_CLIENTE' => $cliente->CLI_RUC,
-            'NC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
-            'NC_VTA_ID_DIRECCION' => $sucursal->CLI_SUC_ID_DIRECCION,
-            'NC_VTA_COND_PAGO' => $pedido->COND_ID,
-            'NC_VTA_NOTA_DOCU' => $devolucion->factura,
-            'NC_VTA_FECHA' => now()->format('Y-m-d'),
-            'NC_VTA_BODEGA' => $pedido->BOD_BODEGA,
-            'NC_VTA_SUBTOTAL' => $subtotal,
-            'NC_VTA_DESCUENTO_COMERCIAL' => 0,
-            'NC_VTA_IMPUESTO' => $iva,
-            'NC_VTA_TOTAL' =>  $total,
-        ]];
+        $cabecera = [
+            [
+                'NC_VTA_DOCU_ORIGEN' => $devolucion->devolucion,
+                'NC_VTA_ID_TIPO' => '4',
+                'NC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
+                'NC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
+                'NC_VTA_ID_CLIENTE' => $cliente->CLI_RUC,
+                'NC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
+                'NC_VTA_ID_DIRECCION' => $sucursal->CLI_SUC_ID_DIRECCION,
+                'NC_VTA_COND_PAGO' => $pedido->COND_ID,
+                'NC_VTA_NOTA_DOCU' => $devolucion->factura,
+                'NC_VTA_FECHA' => now()->format('Y-m-d'),
+                'NC_VTA_BODEGA' => $pedido->BOD_BODEGA,
+                'NC_VTA_SUBTOTAL' => $subtotal,
+                'NC_VTA_DESCUENTO_COMERCIAL' => 0,
+                'NC_VTA_IMPUESTO' => $iva,
+                'NC_VTA_TOTAL' => $total,
+            ]
+        ];
 
         $parameters = [
             'cabecera' => $cabecera,
@@ -299,8 +302,9 @@ class   DevolucionService implements DevolucionServiceInterface
 
         $tipoImpuesto = [];
         $sumaImpuesto = [];
-        foreach ($detalles  as $key => $detalle) {
-            if ($detalle->devuelto == 0) continue;
+        foreach ($detalles as $key => $detalle) {
+            if ($detalle->devuelto == 0)
+                continue;
 
             $cantidad = (float) $detalle->devuelto;
             $valorUnitario = (float) $detalle->ART_VALOR;
@@ -309,7 +313,7 @@ class   DevolucionService implements DevolucionServiceInterface
 
             $valorTotal = round($valorUnitario * $cantidad, 2);
             $descuentoTotal = round($descuentoUnitario * $cantidad, 2);
-            $valorNeto = round(($valorUnitario - $descuentoTotal) * $cantidad,     2);
+            $valorNeto = round(($valorUnitario - $descuentoTotal) * $cantidad, 2);
             $iva = round($valorNeto * ($porcentajeImpuesto / 100), 2);
 
             $tipoImpuesto[$porcentajeImpuesto] = ($tipoImpuesto[$porcentajeImpuesto] ?? 0) + $valorTotal;
@@ -439,7 +443,7 @@ class   DevolucionService implements DevolucionServiceInterface
 
     public function validateItemLDetailInvoice($devolucion)
     {
-        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion,);
+        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion, );
     }
 
     public function processCancellation($order, $devolucion)
@@ -453,9 +457,9 @@ class   DevolucionService implements DevolucionServiceInterface
         }
 
         //VALIDACION DE ANULACION DE FACTURA GP
-        $cancelResponse  = $this->apiInvalidateGpVoucher($order);
+        $cancelResponse = $this->apiInvalidateGpVoucher($order);
         if ($cancelResponse['success'] === false) {
-            $this->saveBaseCancellationInfo($order, $cancelResponse,  $devolucion);
+            $this->saveBaseCancellationInfo($order, $cancelResponse, $devolucion);
 
             throw new \Exception('La devolución es válida para anulación, pero ' . $cancelResponse['message'] ?? 'Error al anular la factura');
             // return $this->buildErrorResponse($cancelResponse['message'] ?? 'Error al anular la factura', 400);
@@ -465,7 +469,7 @@ class   DevolucionService implements DevolucionServiceInterface
         return $this->buildSuccessResponse('Factura anulada correctamente', 200);
     }
 
-    public  function saveBaseCancellationInfo($order, $cancelResponse, $devolucion)
+    public function saveBaseCancellationInfo($order, $cancelResponse, $devolucion)
     {
 
         GpFacturaAnulada::updateOrCreate(
@@ -520,7 +524,7 @@ class   DevolucionService implements DevolucionServiceInterface
             ['pedido_id' => $order->id, 'factura' => $order->factura, 'devolucion_id' => $devolucion['id']],
             [
                 'resp_seedbilling' => $response['respuesta'] ?? null,
-                'estado' =>  'enviada',
+                'estado' => 'enviada',
             ]
         );
 
@@ -576,7 +580,7 @@ class   DevolucionService implements DevolucionServiceInterface
     public function apiResponseSeedBelling($accesCode)
     {
 
-        return  $this->apiSeedBelling->anularComprobante(array(
+        return $this->apiSeedBelling->anularComprobante(array(
             'claveAcceso' => $accesCode,
         ));
     }
@@ -609,7 +613,7 @@ class   DevolucionService implements DevolucionServiceInterface
         $return->factura = Arr::get($data, 'pedido.factura');
         $return->volver_a_facturar = Arr::get($data, 'devolucion.volver_a_facturar');
         $return->tipo_devolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $return->despachado = Arr::get($data, 'pedido.despachado');
+        $return->despachado = $this->requiresDispatchForReturn(Arr::get($data, 'detallepedido', []));
         $return->cliente_volver_a_facturar_id = Arr::get($data, 'devolucion.cliente_volver_a_facturar_id');
         $return->user_id = $user->id;
         $return->USERID = $user->USERID;
@@ -625,6 +629,13 @@ class   DevolucionService implements DevolucionServiceInterface
 
         $this->storeReturnDetail($return->id, Arr::get($data, 'detallepedido', []));
         return $return;
+    }
+
+    public function requiresDispatchForReturn(array $orderDetails): bool
+    {
+        return collect($orderDetails)->contains(
+            fn($detail) => in_array(Arr::get($detail, 'despacho', false), [true, '1', 1], true)
+        );
     }
 
     public function generateReturnCode(int $id): string
@@ -716,7 +727,8 @@ class   DevolucionService implements DevolucionServiceInterface
     }
 
 
-     public function validateItemPartialDispatch($devolucion){
+    public function validateItemPartialDispatch($devolucion)
+    {
         return $this->devolucionRepository->validateItemsPartialDispatch($devolucion);
-     }
+    }
 }
