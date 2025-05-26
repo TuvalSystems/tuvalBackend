@@ -1249,7 +1249,7 @@ class DevolucionesController extends Controller
 
 
     //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y job )
-    public function recibirdevolucion1(Request $request)
+    public function recibirdevolucion(Request $request)
     {
 
         $user = Auth::user();
@@ -1291,7 +1291,7 @@ class DevolucionesController extends Controller
         }
     }
 
-    public function recibirdevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibirdevolucion1(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $user = Auth::user();
         $data = $request->all();
