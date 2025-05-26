@@ -29,16 +29,18 @@ class ApprovalService implements ApprovalServiceInterface
         $detallePedido = Arr::get($data, 'detallepedido', []);
         $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
         $tieneL = collect($detallePedido)->contains(fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l' || Arr::get($detalle, 'ART_TIPO_COMPRA', '') === 'L');
-        $despachoDetallePedido = collect($detallePedido)->contains(fn($detalle) => Arr::get($detalle, 'despacho', false) === true || Arr::get($detalle, 'despacho', false) === '1' || Arr::get($detalle, 'despacho', false) === 1);
-         $daysDifference = $this->daysDifference($fechaFactura);
+        $requiresDispatch = collect($detallePedido)->contains(
+            fn($detalle) => in_array(Arr::get($detalle, 'despacho', false), [true, '1', 1], true)
+        );
+        $daysDifference = $this->daysDifference($fechaFactura);
 
-        if ($despachoDetallePedido) {
+        if ($requiresDispatch) {
             return 'yes';
         }
 
         if ($tipoDevolucion === 'parcial') {
             if ($daysDifference <= 7) {
-                if (!$volverAFacturar &&  !$tieneL) {
+                if (!$volverAFacturar && !$tieneL) {
                     return 'no';
                 }
             }
@@ -57,7 +59,8 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function daysDifference($fecha)
     {
-        if (!$fecha) return 0;
+        if (!$fecha)
+            return 0;
 
         $origin = new DateTime($fecha);
         $target = new DateTime('now');
