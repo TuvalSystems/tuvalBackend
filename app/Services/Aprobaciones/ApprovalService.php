@@ -25,13 +25,14 @@ class ApprovalService implements ApprovalServiceInterface
 
         $tipoDevolucion = Arr::get($data, 'devolucion.tipo_devolucion');
         $volverAFacturar = Arr::get($data, 'devolucion.volver_a_facturar', false);
-        $despachado = Arr::get($data, 'pedido.despachado', null);
+        // $despachado = Arr::get($data, 'pedido.despachado', null);
         $detallePedido = Arr::get($data, 'detallepedido', []);
         $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
         $tieneL = collect($detallePedido)->contains(fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l' || Arr::get($detalle, 'ART_TIPO_COMPRA', '') === 'L');
-        $daysDifference = $this->daysDifference($fechaFactura);
+        $despachoDetallePedido = collect($detallePedido)->contains(fn($detalle) => Arr::get($detalle, 'despacho', false) === true || Arr::get($detalle, 'despacho', false) === '1' || Arr::get($detalle, 'despacho', false) === 1);
+         $daysDifference = $this->daysDifference($fechaFactura);
 
-        if ($despachado) {
+        if ($despachoDetallePedido) {
             return 'yes';
         }
 

@@ -313,13 +313,14 @@ class DevolucionesController extends Controller
             $validateAnulationInvoice = $this->devolucionService->validateInvoiceAnulation($data['pedido']);
             $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'], $devolucion);
             $validateItemsL = $this->devolucionService->validateItemLDetailInvoice($devolucion);
-
+            $validateItemsPartialDispatch = $this->devolucionService->validateItemPartialDispatch($devolucion);
             if (
                 $validateAnulationInvoice &&
                 isset($data['devolucion']['tipo_devolucion']) &&
                 $data['devolucion']['tipo_devolucion'] === "total" &&
                 $countsReturnsByOrders === 0 &&
-                $validateItemsL === 0
+                $validateItemsL === 0 &&
+                $validateItemsPartialDispatch === 0
             ) {
                 $anulacionResponse =  $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {

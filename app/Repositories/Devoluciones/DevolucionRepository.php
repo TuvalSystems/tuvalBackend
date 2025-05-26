@@ -63,4 +63,12 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             })
             ->toArray();
     }
+
+
+    public function validateItemsPartialDispatch($devolucion)
+    {
+        return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])
+            ->where('despachado_parcial', 1)
+            ->count();
+    }
 }

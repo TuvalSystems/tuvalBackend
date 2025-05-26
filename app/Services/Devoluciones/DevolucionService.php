@@ -714,4 +714,9 @@ class   DevolucionService implements DevolucionServiceInterface
             'detalle' => $detalle,
         ]);
     }
+
+
+     public function validateItemPartialDispatch($devolucion){
+        return $this->devolucionRepository->validateItemsPartialDispatch($devolucion);
+     }
 }
