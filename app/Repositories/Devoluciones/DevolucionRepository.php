@@ -52,7 +52,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
         if (!is_null($despachadoParcial)) {
             $query->where('despachado_parcial', $despachadoParcial);
         }
-       return $query->get()
+       return $query->where('seleccionado','>',0)->get()
             ->filter(function ($item) {
                 // ✅ Verificación de datos correctos y no nulos
                 return is_array($item->toArray()) && isset($item['ART_CODIGO']);
