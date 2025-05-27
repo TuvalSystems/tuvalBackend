@@ -645,11 +645,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function storeReturnDetail($returnId, $details): void
     {
-
         foreach ($details as $item) {
-            if ($item['seleccionado'] <= 0) {
-                continue; // Si no hay cantidad seleccionada no se guarda el detalle
-            }
             $detail = new GpDevolucionesDetalle();
             $detail->devolucion_id = $returnId;
             $detail->detalle_id = Arr::get($item, 'id');
