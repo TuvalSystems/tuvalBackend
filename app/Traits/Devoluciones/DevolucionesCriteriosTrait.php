@@ -28,7 +28,6 @@ trait DevolucionesCriteriosTrait
             ['id' => 11, 'estado' => 'aprobado', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'total', 'despachado' => 1, 'devolucion_bodega' => 0, 'metodo' => 'procesardevolucionparcialconrf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => false, 'gpOrdenDespacho' => true],
             ['id' => 12, 'estado' => 'aprobado', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'total', 'despachado' => 1, 'devolucion_bodega' => null, 'metodo' => 'procesardevolucionparcialconrf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => false, 'gpOrdenDespacho' => true],
 
-
         ];
     }
 }
