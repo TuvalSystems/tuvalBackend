@@ -94,14 +94,13 @@ class DevolucionJobService
         }
 
         //validacione en estado aprobado
-        if ($criterio['estado'] === 'aprobado') {
-            $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-                ->where(function ($q) {
-                    $q->where('dvd.devuelto', '>', 0)
-                        ->orWhereNull('dvd.devuelto');
-                })
-                ->where('dvd.recibido', '>', 0)
-                ->whereNotNull('dvd.compartimiento');
+        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total') {
+            $query->where(function ($q){
+                $q->where('gp_devoluciones.requiere_aprobacion', 1)
+                ->where('gp_devoluciones.estado', 'aprobado')
+                ->where('gp_devoluciones.volver_a_facturar', 1)
+                ->whereNotNull('gp_devoluciones.aprobador_id');
+            });
         }
 
         if (array_key_exists('devolucion_bodega', $criterio)) {
