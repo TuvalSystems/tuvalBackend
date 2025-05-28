@@ -2,9 +2,12 @@
 
 namespace App\Services\Aprobaciones;
 
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use DateTime;
+use App\Models\GpPedido;
 use Illuminate\Support\Arr;
+use App\Models\GpPedidoDetalle;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -25,7 +28,6 @@ class ApprovalService implements ApprovalServiceInterface
 
         $tipoDevolucion = Arr::get($data, 'devolucion.tipo_devolucion');
         $volverAFacturar = Arr::get($data, 'devolucion.volver_a_facturar', false);
-        // $despachado = Arr::get($data, 'pedido.despachado', null);
         $detallePedido = Arr::get($data, 'detallepedido', []);
         $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
         $daysDifference = $this->daysDifference($fechaFactura);
@@ -33,9 +35,11 @@ class ApprovalService implements ApprovalServiceInterface
             fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l'
         );
 
-        $requiresDispatch = collect($detallePedido)->contains(
-            fn($detalle) => in_array(Arr::get($detalle, 'despacho', false), [true, '1', 1], true)
-        );
+        // Verifica si el pedido tiene detalles de orden despachados
+        // Esto es necesario para determinar si se requiere despacho
+        // en caso de que la devolucion sea parcial o total
+        // y no se vuelva a facturar
+        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []));
 
 
         if ($requiresDispatch) {
@@ -69,5 +73,14 @@ class ApprovalService implements ApprovalServiceInterface
         $origin = new DateTime($fecha);
         $target = new DateTime('now');
         return $origin->diff($target)->days;
+    }
+
+     public function hasDispatchedOrderDetails($pedido)
+    {
+        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+            ->where('estado', '!=', 'anulada')
+            ->pluck( 'id');
+        $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
+       return  GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
     }
 }

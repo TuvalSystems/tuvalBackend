@@ -20,6 +20,8 @@ use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\ventas\PedidosController;
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Services\Api\ApiSeedBellingService;
@@ -613,7 +615,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->factura = Arr::get($data, 'pedido.factura');
         $return->volver_a_facturar = Arr::get($data, 'devolucion.volver_a_facturar');
         $return->tipo_devolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $return->despachado = $this->requiresDispatchForReturn(Arr::get($data, 'detallepedido', []));
+        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []));;
         $return->cliente_volver_a_facturar_id = Arr::get($data, 'devolucion.cliente_volver_a_facturar_id');
         $return->user_id = $user->id;
         $return->USERID = $user->USERID;
@@ -627,23 +629,31 @@ class DevolucionService implements DevolucionServiceInterface
         $return->observacion = Arr::get($data, 'devolucion.observacion');
         $return->save();
 
-        $this->storeReturnDetail($return->id, Arr::get($data, 'detallepedido', []));
+        $this->storeReturnDetail($return->id,Arr::get($data, 'pedido', []) ,Arr::get($data, 'detallepedido', []));
         return $return;
     }
 
-    public function requiresDispatchForReturn(array $orderDetails): bool
+    // esta función verifica si el pedido tiene guías de remisión asociadas o no
+    // y con eso determinamos si la devlucion pasa de despachado a no despachado
+
+    public function hasDispatchedOrderDetails($pedido)
     {
-        return collect($orderDetails)->contains(
-            fn($detail) => in_array(Arr::get($detail, 'despacho', false), [true, '1', 1], true)
-        );
+        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+            ->where('estado', '!=', 'anulada')
+            ->pluck( 'id');
+        $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
+        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
+        return $detalleGuias;
+
     }
+
 
     public function generateReturnCode(int $id): string
     {
         return 'DEV' . str_pad($id, 8, '0', STR_PAD_LEFT);
     }
 
-    public function storeReturnDetail($returnId, $details): void
+    public function storeReturnDetail($returnId, $pedido, $details): void
     {
         foreach ($details as $item) {
             $detail = new GpDevolucionesDetalle();
@@ -672,10 +682,30 @@ class DevolucionService implements DevolucionServiceInterface
             $detail->modificador = (float) Arr::get($item, 'modificador');
             $detail->seleccionado = (float) Arr::get($item, 'seleccionado');
             $detail->disponible = (float) Arr::get($item, 'disponible');
-            $detail->despachado_parcial = (float) Arr::get($item, 'despacho');
+            $detail->despachado_parcial = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
             $detail->save();
         }
     }
+
+    public function isDevolucionItemDispatchedInGuia($pedido, $item): bool
+    {
+
+        // 1./ obtengo todos los id de pedidos relacionados a esa cotizacion del pedido que estoy procesando
+        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+            ->where('estado', '!=', 'anulada')
+            ->pluck('id');
+
+        // 2./ obtengo todos los id de detalles de pedidos relacionados a esos pedidos con el codigo del item que estoy procesando
+        $detallePedidoIds = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)
+        ->where('ART_CODIGO', $item['ART_CODIGO'])->pluck('id');
+
+        // 3./ obtengo todos los id de guias relacionados a esos detalles
+        $fueDespachado  = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidoIds)
+            ->exists();
+
+        return $fueDespachado;
+    }
+
 
 
 
