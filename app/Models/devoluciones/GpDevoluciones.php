@@ -189,6 +189,17 @@ class GpDevoluciones extends Model
             });
         }
 
+         //validacione en estado aprobado
+        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial') {
+            $query->where(function ($q) {
+                $q->where('gp_devoluciones.requiere_aprobacion', 1)
+                    ->where('gp_devoluciones.volver_a_facturar', 1)
+                    ->where('gp_devoluciones.estado', 'aprobado')
+                    ->whereNotNull('gp_devoluciones.aprobador_id');
+            });
+        }
+
+
         // Validación de devoluciones en bodega
         if (array_key_exists('devolucion_bodega', $criterio)) {
             $query->when(is_null($criterio['devolucion_bodega']), function ($q) {

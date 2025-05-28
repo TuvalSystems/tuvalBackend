@@ -322,7 +322,8 @@ class DevolucionesController extends Controller
                 $data['devolucion']['tipo_devolucion'] === "total" &&
                 $countsReturnsByOrders === 0 &&
                 $validateItemsL === 0 &&
-                $validateItemsPartialDispatch === 0
+                $validateItemsPartialDispatch === 0 &&
+                $data['devolucion']['volver_a_facturar'] === false
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {

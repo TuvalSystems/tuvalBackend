@@ -54,9 +54,12 @@ class ApprovalService implements ApprovalServiceInterface
             }
         }
 
-        if ($tipoDevolucion === 'total' && !$volverAFacturar) {
+        if ($tipoDevolucion === 'total') {
+            if ($volverAFacturar) {
+                return 'yes';
+            }
             if ($hasTypeLItems) {
-                return $daysDifference <= 7 ? 'no' : 'yes';
+                return 'yes';
             }
             return $daysDifference <= 7 ? 'no' : 'yes';
         }
@@ -75,12 +78,12 @@ class ApprovalService implements ApprovalServiceInterface
         return $origin->diff($target)->days;
     }
 
-     public function hasDispatchedOrderDetails($pedido)
+    public function hasDispatchedOrderDetails($pedido)
     {
         $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
             ->where('estado', '!=', 'anulada')
-            ->pluck( 'id');
+            ->pluck('id');
         $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-       return  GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
+        return GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
     }
 }
