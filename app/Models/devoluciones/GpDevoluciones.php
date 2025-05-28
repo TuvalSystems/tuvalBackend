@@ -179,7 +179,7 @@ class GpDevoluciones extends Model
                 });
         }
 
-        //validacione en estado aprobado
+        //validacione en estado aprobado total
         if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total') {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
@@ -189,7 +189,7 @@ class GpDevoluciones extends Model
             });
         }
 
-         //validacione en estado aprobado
+         //validacione en estado aprobado parcial
         if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial') {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
