@@ -51,7 +51,7 @@ class DevolucionJobService
     {
         // Trabaja con un Scope para aplicar los criterios de búsqueda
        return  GpDevoluciones::conCriterios($criterio)->get();
-  
+
     }
 
 
@@ -411,7 +411,7 @@ class DevolucionJobService
 
         $afectados = DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
-            ->where('despachado_parcial', 0)
+            // ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
