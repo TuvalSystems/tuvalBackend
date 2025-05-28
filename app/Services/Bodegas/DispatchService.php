@@ -124,14 +124,15 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.id',
             'gp_guia_remisions.GUI_REM_GUIA_REMISION',
             'gp_guia_remisions.bodega_destino',
-            'gp_guia_remisions.bodega_origen',
+            'gp_guia_remisions.pedido',
+            // 'gp_guia_remisions.bodega_origen',
             'gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO',
             'gp_guia_remisions.GUI_REM_DIRECCION_DESTINATARIO',
             'gp_guia_remisions.GUI_REM_FECHA_INICIO',
             'gp_guia_remisions.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA',
             'gp_guia_remisions.GUI_REM_PLACA',
         ])
-            ->where('gp_guia_remisions.bodega_origen', $bodega)
+            ->where('gp_guia_remisions.bodega_destino', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'reposicion');
 
@@ -156,7 +157,7 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.id',
             'gp_guia_remisions.GUI_REM_GUIA_REMISION',
             'gp_guia_remisions.bodega_origen',
-            'gp_guia_remisions.bodega_destino',
+            'gp_guia_remisions.pedido',
             'gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO',
             'gp_guia_remisions.GUI_REM_DIRECCION_DESTINATARIO',
             'gp_guia_remisions.GUI_REM_FECHA_INICIO',
