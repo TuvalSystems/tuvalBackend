@@ -17,4 +17,6 @@ interface DevolucionServiceInterface
 
     public function getReturnsDetailDevolucion($devolucion);
 
+    public function validateItemPartialDispatch($devolucion);
+
 }

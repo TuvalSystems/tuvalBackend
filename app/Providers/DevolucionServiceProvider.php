@@ -6,7 +6,9 @@ use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\FunctionsService;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\OrderService;
+use App\Services\Venta\QuotationService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Aprobaciones\ApprovalService;
@@ -20,62 +22,68 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\DispatchService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Notificacion\NotificationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
-
+use App\Services\Venta\Contracts\QuotationServiceInterface;
 
 class DevolucionServiceProvider extends ServiceProvider
 {
 
     public function register()
     {
-        $this->app->singleton(EntryServiceInterface::class,EntryService::class);
-        $this->app->singleton(DevolucionServiceInterface::class, DevolucionService::class);
-        $this->app->bind(DevolucionJobService::class) ;
+        
+        $this->app->bind(EntryServiceInterface::class, EntryService::class);
+        $this->app->bind(DevolucionServiceInterface::class, DevolucionService::class);
+        $this->app->bind(DevolucionJobService::class);
 
         //aqui agrego las transferencias para no crear otro provider
 
-        $this->app->bind(
+        $this->app->singleton(
             TransferRepositionServiceInterface::class,
             TransferRepositionService::class
         );
 
-        $this->app->bind(
+        $this->app->singleton(
             StockWarehouseServiceInterface::class,
             StockWarehouseService::class
         );
 
 
         // aqui agrego las ordenes para no crear otro provider
-        $this->app->bind(
+        $this->app->singleton(
             OrderServiceInterface::class,
             OrderService::class
         );
 
         // aqui agrego las aprobaciones para no crear otro provider
-        $this->app->bind(
+        $this->app->singleton(
             ApprovalServiceInterface::class,
             ApprovalService::class
         );
 
         //aqui agrego las funciones para no crear otro provider
-        $this->app->bind(
+        $this->app->singleton(
             FunctionsServiceInterface::class,
             FunctionsService::class
         );
 
-         //aqui agrego las RecibidosdeCompraL para no crear otro provider
-        $this->app->bind(
+        //aqui agrego las RecibidosdeCompraL para no crear otro provider
+
+        $this->app->singleton(
             PurchaseReceiptServiceInterface::class,
             PurchaseReceiptService::class
         );
 
         $this->app->singleton(DispatchServiceInterface::class, DispatchService::class);
+    
+        //aqui agrego las Cotizaciones para no crear otro provider
+        $this->app->singleton(QuotationServiceInterface::class, QuotationService::class);
+    
+
+        $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
     }
 
 
-    public function boot()
-    {
-
-    }
+    public function boot() {}
 }

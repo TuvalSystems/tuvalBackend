@@ -2,9 +2,12 @@
 
 namespace App\Services\Aprobaciones;
 
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use DateTime;
+use App\Models\GpPedido;
 use Illuminate\Support\Arr;
+use App\Models\GpPedidoDetalle;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -25,26 +28,34 @@ class ApprovalService implements ApprovalServiceInterface
 
         $tipoDevolucion = Arr::get($data, 'devolucion.tipo_devolucion');
         $volverAFacturar = Arr::get($data, 'devolucion.volver_a_facturar', false);
-        $despachado = Arr::get($data, 'pedido.despachado', null);
         $detallePedido = Arr::get($data, 'detallepedido', []);
         $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
-        $tieneL = collect($detallePedido)->contains(fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l' || Arr::get($detalle, 'ART_TIPO_COMPRA', '') === 'L');
         $daysDifference = $this->daysDifference($fechaFactura);
+        $hasTypeLItems = collect($detallePedido)->contains(
+            fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l'
+        );
 
-        if ($despachado) {
+        // Verifica si el pedido tiene detalles de orden despachados
+        // Esto es necesario para determinar si se requiere despacho
+        // en caso de que la devolucion sea parcial o total
+        // y no se vuelva a facturar
+        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []));
+
+
+        if ($requiresDispatch) {
             return 'yes';
         }
 
         if ($tipoDevolucion === 'parcial') {
             if ($daysDifference <= 7) {
-                if (!$volverAFacturar &&  !$tieneL) {
+                if (!$volverAFacturar && !$hasTypeLItems) {
                     return 'no';
                 }
             }
         }
 
         if ($tipoDevolucion === 'total' && !$volverAFacturar) {
-            if ($tieneL) {
+            if ($hasTypeLItems) {
                 return $daysDifference <= 7 ? 'no' : 'yes';
             }
             return $daysDifference <= 7 ? 'no' : 'yes';
@@ -56,10 +67,20 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function daysDifference($fecha)
     {
-        if (!$fecha) return 0;
+        if (!$fecha)
+            return 0;
 
         $origin = new DateTime($fecha);
         $target = new DateTime('now');
         return $origin->diff($target)->days;
+    }
+
+     public function hasDispatchedOrderDetails($pedido)
+    {
+        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+            ->where('estado', '!=', 'anulada')
+            ->pluck( 'id');
+        $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
+       return  GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
     }
 }

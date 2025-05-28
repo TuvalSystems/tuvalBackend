@@ -24,11 +24,17 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
+use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CotizacionesController extends Controller
 {
+    protected $quotationService;
+    public function __construct(QuotationServiceInterface $quotationService)
+    {
+        $this->quotationService = $quotationService;
+    }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
@@ -1472,7 +1478,7 @@ class CotizacionesController extends Controller
         $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
         $data = $cotizacion;
         //return view('cotizacionPDF', $data);
-        $pdf = PDF::loadView('cotizacionPDF', $data);
+        $pdf = Pdf::loadView('cotizacionPDF', $data);
         return $pdf->stream('cotizacion-'.$cotizacion['cotizacion'].'.pdf');
     }
 
@@ -1570,7 +1576,7 @@ class CotizacionesController extends Controller
         $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
         $data = $cotizacion;
         //return view('cotizacionPDF', $data);
-        $pdf = PDF::loadView('cotizacionImagenesPDF', $data);
+        $pdf = Pdf::loadView('cotizacionImagenesPDF', $data);
         return $pdf->stream('cotizacion-'.$cotizacion['cotizacion'].'.pdf');
     }
 
@@ -1615,7 +1621,7 @@ class CotizacionesController extends Controller
 
         $data = $cotizacion;
         //return view('cotizacionPDF', $data);
-        $pdf = PDF::loadView('cotizacionProspectoPDF', $data);
+        $pdf = Pdf::loadView('cotizacionProspectoPDF', $data);
         return $pdf->stream('cotizacion-'.$cotizacion['cotizacion'].'.pdf');
     }
 
@@ -1678,5 +1684,16 @@ class CotizacionesController extends Controller
         return response([
             'success' => false,
         ]);
+    }
+
+
+    public function getlistNonSaleReasons(){
+        return $this->quotationService->getNonSalesReasons();
+    }
+
+
+    public function updateNonSaleAndReminderData(Request $request){
+        $data = $request->all();
+        return $this->quotationService->updateNonSaleAndReminderData($data);
     }
 }

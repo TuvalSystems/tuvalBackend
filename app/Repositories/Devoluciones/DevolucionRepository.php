@@ -12,10 +12,10 @@ use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 class DevolucionRepository implements DevolucionRepositoryInterface
 {
 
-    public function isInvoiceAlreadyVoided($pedido)
+    public function isInvoiceAlreadyVoided($pedido , $devolucion)
     {
-        return GpFacturaAnulada::where('factura', $pedido->factura)
-            ->where('pedido_id', $pedido->id)->where('estado', 'facturado')->first();
+        return GpFacturaAnulada::where('factura', $pedido->factura)->where('devolucion_id', $devolucion['id'])
+            ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->first();
     }
 
     public function validateInvoiceAnulation($pedido)
@@ -52,7 +52,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
         if (!is_null($despachadoParcial)) {
             $query->where('despachado_parcial', $despachadoParcial);
         }
-       return $query->get()
+       return $query->where('seleccionado','>',0)->get()
             ->filter(function ($item) {
                 // ✅ Verificación de datos correctos y no nulos
                 return is_array($item->toArray()) && isset($item['ART_CODIGO']);
@@ -62,5 +62,13 @@ class DevolucionRepository implements DevolucionRepositoryInterface
                 return $item->toArray();
             })
             ->toArray();
+    }
+
+
+    public function validateItemsPartialDispatch($devolucion)
+    {
+        return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])
+            ->where('despachado_parcial', 1)
+            ->count();
     }
 }

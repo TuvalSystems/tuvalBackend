@@ -663,6 +663,7 @@ class AprobacionesController extends Controller
             ->select('gp_devoluciones.*', 'gp_clientes.CLI_RAZON_SOCIAL', 'gp_clientes.CLI_RUC', 'gp_punto_ventas.PTO_VTA_DESCRIPCION', 'gp_pedidos.fecha_factura')
             ->where('requiere_aprobacion', 'yes')
             ->where('aprobado', 'no')
+            ->where('gp_devoluciones.estado', '=', 'espera')
             ->orderBy('created_at','DESC')->get();
 
         foreach($devoluciones as $devolucion){
