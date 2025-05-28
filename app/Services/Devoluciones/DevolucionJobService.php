@@ -394,28 +394,29 @@ class DevolucionJobService
 
     public function procesardevoluciontotalsinrf($devolucion)
     {
-        $this->actualizarDetalleDevolucion($devolucion, 'seleccionado');
-    }
-
-    public function procesardevolucionparcialconrf($devolucion)
-    {
-        $this->actualizarDetalleDevolucion($devolucion, 'disponible');
-    }
-
-    public function actualizarDetalleDevolucion($devolucion, string $origen)
-    {
-        if (!in_array($origen, ['seleccionado', 'disponible'])) {
-            Log::warning("Intento de uso de campo inválido: $origen");
-            return;
-        }
-
+        $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
         $afectados = DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
-            // ->where('despachado_parcial', 0)
+             ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
         Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
         return $afectados;
     }
+
+    public function procesardevolucionparcialconrf($devolucion)
+    {
+        $origen = 'disponible'; // Por defecto, usamos 'seleccionado'
+        $afectados = DB::table('gp_devoluciones_detalles')
+            ->where('devolucion_id', $devolucion->id)
+            //  ->where('despachado_parcial', 0)
+            ->update([
+                'devuelto' => DB::raw("`$origen`")
+            ]);
+        Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
+        return $afectados;
+    }
+
+
 }
