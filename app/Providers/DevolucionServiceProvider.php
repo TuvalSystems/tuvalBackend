@@ -19,6 +19,8 @@ use App\Services\Reposiciones\TransferRepositionService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Bodegas\DispatchService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Notificacion\NotificationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
@@ -73,6 +75,8 @@ class DevolucionServiceProvider extends ServiceProvider
             PurchaseReceiptService::class
         );
 
+        $this->app->singleton(DispatchServiceInterface::class, DispatchService::class);
+    
         //aqui agrego las Cotizaciones para no crear otro provider
         $this->app->singleton(QuotationServiceInterface::class, QuotationService::class);
     
