@@ -615,7 +615,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->factura = Arr::get($data, 'pedido.factura');
         $return->volver_a_facturar = Arr::get($data, 'devolucion.volver_a_facturar');
         $return->tipo_devolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []));;
+        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []),Arr::get($data, 'detallepedido', []) );
         $return->cliente_volver_a_facturar_id = Arr::get($data, 'devolucion.cliente_volver_a_facturar_id');
         $return->user_id = $user->id;
         $return->USERID = $user->USERID;
@@ -636,13 +636,17 @@ class DevolucionService implements DevolucionServiceInterface
     // esta función verifica si el pedido tiene guías de remisión asociadas o no
     // y con eso determinamos si la devlucion pasa de despachado a no despachado
 
-    public function hasDispatchedOrderDetails($pedido)
+    public function hasDispatchedOrderDetails($pedido, $detallepedido): bool
     {
+        $detalleIdsActuales = collect($detallepedido)->pluck('id');
         $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
             ->where('estado', '!=', 'anulada')
             ->pluck( 'id');
-        $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
+
+        $todosLosDetallesRelacionados  = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
+        $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
+
+        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
         return $detalleGuias;
 
     }

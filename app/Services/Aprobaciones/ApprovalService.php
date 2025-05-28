@@ -39,7 +39,7 @@ class ApprovalService implements ApprovalServiceInterface
         // Esto es necesario para determinar si se requiere despacho
         // en caso de que la devolucion sea parcial o total
         // y no se vuelva a facturar
-        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []));
+        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
 
 
         if ($requiresDispatch) {
@@ -80,12 +80,19 @@ class ApprovalService implements ApprovalServiceInterface
         return $origin->diff($target)->days;
     }
 
-    public function hasDispatchedOrderDetails($pedido)
+
+     public function hasDispatchedOrderDetails($pedido, $detallepedido): bool
     {
+        $detalleIdsActuales = collect($detallepedido)->pluck('id');
         $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
             ->where('estado', '!=', 'anulada')
-            ->pluck('id');
-        $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-        return GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
+            ->pluck( 'id');
+
+        $todosLosDetallesRelacionados  = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
+        $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
+
+        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
+        return $detalleGuias;
+
     }
 }
