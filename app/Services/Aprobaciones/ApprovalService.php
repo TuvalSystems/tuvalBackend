@@ -47,11 +47,13 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         if ($tipoDevolucion === 'parcial') {
-            if ($daysDifference <= 7) {
-                if (!$volverAFacturar && !$hasTypeLItems) {
-                    return 'no';
-                }
+            if ($volverAFacturar) {
+                return 'yes';
             }
+            if ($hasTypeLItems) {
+                return 'yes';
+            }
+            return $daysDifference <= 7 ? 'no' : 'yes';
         }
 
         if ($tipoDevolucion === 'total') {
