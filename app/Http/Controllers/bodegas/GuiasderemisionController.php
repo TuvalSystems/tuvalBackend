@@ -2,33 +2,34 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use App\Http\Controllers\Controller;
-use App\Http\Controllers\ventas\PedidosController;
-use App\Http\Controllers\WebserviceController;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpCronLog;
-use App\Models\GpOrdenDespacho;
+use stdClass;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
+use App\Models\GpCliente;
+use App\Models\GpCronLog;
 use App\Models\GpPuntoVenta;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\Notificaciones;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Models\traslados\GpTrasladosVentas;
-use App\Services\Api\ApiGpService;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
-use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Notificaciones;
+use App\Models\GpOrdenDespacho;
+use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
-use stdClass;
+use App\Models\GpClienteSucursal;
+use App\Services\Api\ApiGpService;
+use App\Http\Controllers\Controller;
+use App\Models\GpPedidoDetalleStock;
+use Illuminate\Support\Facades\Auth;
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Http\Controllers\WebserviceController;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\reposicion\GpTrasladosReposicion;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Http\Controllers\ventas\PedidosController;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 
 class GuiasderemisionController extends Controller
 {
@@ -786,7 +787,8 @@ class GuiasderemisionController extends Controller
         if(count($detalle) == 0){
             //$guia->delete();
             $order = app(OrderServiceInterface::class);
-            $despachos = new DespachosController($order);
+             $dispatch = app(DispatchServiceInterface::class);
+        $despachos = new DespachosController($order, $dispatch);
             $pedido = $despachos->checkdespacho($guia);
             return response([
                 'success' => true,
@@ -879,7 +881,8 @@ class GuiasderemisionController extends Controller
             $guia->save();
         }
         $order = app(OrderServiceInterface::class);
-        $despachos = new DespachosController($order);
+       $dispatch = app(DispatchServiceInterface::class);
+        $despachos = new DespachosController($order, $dispatch);
         $pedido = $despachos->checkdespacho($guia);
 //        $guia->procesando = null;
 //        $guia->save();
