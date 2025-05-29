@@ -155,7 +155,7 @@ class GpDevoluciones extends Model
         //validacion de estado solicitado
         if ($criterio['estado'] == 'solicitado' && $criterio['tipo_devolucion'] == 'total') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-                ->where('dvd.ART_TIPO_COMPRA', 'L')
+                ->where('dvd.ART_TIPO_COMPRA', '!=','L')
                 // esto me valida que solo procese las devoluciones que tengan devoluciones anteriores en estado parcial
                 ->whereExists(function ($q) {
                     $q->select(DB::raw(1))
