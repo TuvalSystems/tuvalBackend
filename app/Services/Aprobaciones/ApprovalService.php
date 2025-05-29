@@ -95,9 +95,9 @@ class ApprovalService implements ApprovalServiceInterface
             $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
             return $detalleGuias;
         }
-        
+
         $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
-            return isset($item['despachado']) && $item['despachado'] > 0 && $item['despacho'] === true;
+            return isset($item['despachado']) && (float)$item['despachado'] > 0 && $item['despacho'] === true;
         })->count();
         return $countDetalle > 0;
     }
