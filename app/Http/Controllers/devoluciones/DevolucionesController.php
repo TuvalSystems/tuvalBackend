@@ -295,7 +295,7 @@ class DevolucionesController extends Controller
 
             // 🔄 **4️⃣ Verificación de despacho**
             $countDetalle = count(array_filter($data['detallepedido'], function ($detalle) {
-                return isset($detalle['despacho']) && $detalle['despacho'] === true;
+                return isset($detalle['despacho']) && $detalle['despacho'] === true && $detalle['despachado'] > 0;
             }));
 
             $detallePedidoAgrupado['pedido']['despachado'] = $countDetalle > 0 ? 1 : 0;
