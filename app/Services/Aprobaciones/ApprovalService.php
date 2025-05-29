@@ -92,7 +92,7 @@ class ApprovalService implements ApprovalServiceInterface
                 return false;
             }
             $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
-            return GpPedidoDetalle::whereIn('pedido_id', $lastOrder->id)
+            return GpPedidoDetalle::where('pedido_id', $lastOrder->id)
                 ->whereIn('ART_CODIGO', $codigos)
                 ->where('trasladado', '>', 0)
                 ->exists();

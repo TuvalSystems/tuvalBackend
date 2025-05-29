@@ -645,7 +645,7 @@ class DevolucionService implements DevolucionServiceInterface
                 ->orderByDesc('id')
                 ->first();
             $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
-            return GpPedidoDetalle::whereIn('pedido_id', $pedidoIds->id)
+            return GpPedidoDetalle::where('pedido_id', $pedidoIds->id)
                 ->whereIn('ART_CODIGO', $codigos)
                 ->where('trasladado', '>', 0)
                 ->exists();
