@@ -88,7 +88,12 @@ class ApprovalService implements ApprovalServiceInterface
                 ->where('estado', '!=', 'anulada')
                 ->orderByDesc('id')
                 ->first();
+            if (!$lastOrder) {
+                return false;
+            }
+            $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
             return GpPedidoDetalle::whereIn('pedido_id', $lastOrder->id)
+                ->whereIn('ART_CODIGO', $codigos)
                 ->where('trasladado', '>', 0)
                 ->exists();
         }

@@ -640,15 +640,15 @@ class DevolucionService implements DevolucionServiceInterface
     {
         // Verifica si la devolucion es de volver a facturar
         if ($devolucion['volver_a_facturar'] === true) {
-
             $pedidoIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
                 ->where('estado', '!=', 'anulada')
                 ->orderByDesc('id')
                 ->first();
-            return GpPedidoDetalle::whereIn('pedido_id', $pedidoIds)
+            $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
+            return GpPedidoDetalle::whereIn('pedido_id', $pedidoIds->id)
+                ->whereIn('ART_CODIGO', $codigos)
                 ->where('trasladado', '>', 0)
                 ->exists();
-
         }
 
         // verifica si el pedido tiene factura origen para determinar si tiene o no despacho
