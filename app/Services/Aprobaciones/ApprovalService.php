@@ -84,22 +84,19 @@ class ApprovalService implements ApprovalServiceInterface
     public function hasDispatchedOrderDetails($pedido, $detallepedido, $volverAFacturar): bool
     {
         if ($volverAFacturar === true) {
-            $detalleIdsActuales = collect($detallepedido)->pluck('id');
-            $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+            $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
                 ->where('estado', '!=', 'anulada')
-                ->pluck('id');
-
-            $todosLosDetallesRelacionados = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-            $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
-
-            $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
-            return $detalleGuias;
+                ->orderByDesc('id')
+                ->first();
+            return GpPedidoDetalle::whereIn('pedido_id', $lastOrder->id)
+                ->where('trasladado', '>', 0)
+                ->exists();
         }
 
         $pedidoConsulta = GpPedido::find($pedido['id']);
         if (!empty($pedidoConsulta['factura_origen'])) {
-            $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->first();
-            return $pedido_origen['despachado'];
+            $pedido_origen = GpPedido::where('factura', operator: $pedido['factura_origen'])->orderByDesc('id')->first();
+            return $pedido_origen['despachado'] ?? $pedido_origen->despachado;
         }
 
         $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
