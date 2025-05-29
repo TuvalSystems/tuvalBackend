@@ -615,7 +615,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->factura = Arr::get($data, 'pedido.factura');
         $return->volver_a_facturar = Arr::get($data, 'devolucion.volver_a_facturar');
         $return->tipo_devolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []),Arr::get($data, 'detallepedido', []) );
+        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []), Arr::get($data, 'devolucion', []));
         $return->cliente_volver_a_facturar_id = Arr::get($data, 'devolucion.cliente_volver_a_facturar_id');
         $return->user_id = $user->id;
         $return->USERID = $user->USERID;
@@ -629,26 +629,35 @@ class DevolucionService implements DevolucionServiceInterface
         $return->observacion = Arr::get($data, 'devolucion.observacion');
         $return->save();
 
-        $this->storeReturnDetail($return->id,Arr::get($data, 'pedido', []) ,Arr::get($data, 'detallepedido', []));
+        $this->storeReturnDetail($return->id, Arr::get($data, 'detallepedido', []));
         return $return;
     }
 
     // esta función verifica si el pedido tiene guías de remisión asociadas o no
     // y con eso determinamos si la devlucion pasa de despachado a no despachado
 
-    public function hasDispatchedOrderDetails($pedido, $detallepedido): bool
+    public function hasDispatchedOrderDetails($pedido, $detallepedido, $devolucion): bool
     {
-        $detalleIdsActuales = collect($detallepedido)->pluck('id');
-        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-            ->where('estado', '!=', 'anulada')
-            ->pluck( 'id');
+        // Verifica si la devolucion es de volver a facturar
+        if ($devolucion['volver_a_facturar'] === true) {
+            $detalleIdsActuales = collect($detallepedido)->pluck('id');
+            $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+                ->where('estado', '!=', 'anulada')
+                ->pluck('id');
 
-        $todosLosDetallesRelacionados  = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-        $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
+            $todosLosDetallesRelacionados = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
+            $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
+            $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
+            return $detalleGuias;
 
-        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
-        return $detalleGuias;
+        }
 
+        // Verifica si alguno de los detalles del pedido tiene despacho
+       
+        $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
+            return isset($item['despachado']) && $item['despachado'] > 0 && $item['despacho'] === true;
+        })->count();
+        return $countDetalle > 0;
     }
 
 
@@ -657,7 +666,7 @@ class DevolucionService implements DevolucionServiceInterface
         return 'DEV' . str_pad($id, 8, '0', STR_PAD_LEFT);
     }
 
-    public function storeReturnDetail($returnId, $pedido, $details): void
+    public function storeReturnDetail($returnId, $details): void
     {
         foreach ($details as $item) {
             $detail = new GpDevolucionesDetalle();
@@ -686,28 +695,18 @@ class DevolucionService implements DevolucionServiceInterface
             $detail->modificador = (float) Arr::get($item, 'modificador');
             $detail->seleccionado = (float) Arr::get($item, 'seleccionado');
             $detail->disponible = (float) Arr::get($item, 'disponible');
-            $detail->despachado_parcial = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
+            $detail->despachado_parcial = $this->isDevolucionItemDispatchedInGuia($item);
             $detail->save();
         }
     }
 
-    public function isDevolucionItemDispatchedInGuia($pedido, $item): bool
+    public function isDevolucionItemDispatchedInGuia($item): bool
     {
+        $countItem = collect($item)->filter(function ($value, $key) {
+            return !empty($value['despacho']) && $value['despachado'] > 0;
+        })->sum();
 
-        // 1./ obtengo todos los id de pedidos relacionados a esa cotizacion del pedido que estoy procesando
-        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-            ->where('estado', '!=', 'anulada')
-            ->pluck('id');
-
-        // 2./ obtengo todos los id de detalles de pedidos relacionados a esos pedidos con el codigo del item que estoy procesando
-        $detallePedidoIds = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)
-        ->where('ART_CODIGO', $item['ART_CODIGO'])->pluck('id');
-
-        // 3./ obtengo todos los id de guias relacionados a esos detalles
-        $fueDespachado  = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidoIds)
-            ->exists();
-
-        return $fueDespachado;
+        return $countItem > 0;
     }
 
 

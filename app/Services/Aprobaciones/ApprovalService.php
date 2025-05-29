@@ -39,7 +39,7 @@ class ApprovalService implements ApprovalServiceInterface
         // Esto es necesario para determinar si se requiere despacho
         // en caso de que la devolucion sea parcial o total
         // y no se vuelva a facturar
-        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
+        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), $detallePedido, $volverAFacturar);
 
 
         if ($requiresDispatch) {
@@ -81,18 +81,24 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-     public function hasDispatchedOrderDetails($pedido, $detallepedido): bool
+    public function hasDispatchedOrderDetails($pedido, $detallepedido, $volverAFacturar): bool
     {
-        $detalleIdsActuales = collect($detallepedido)->pluck('id');
-        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-            ->where('estado', '!=', 'anulada')
-            ->pluck( 'id');
+        if ($volverAFacturar === true) {
+            $detalleIdsActuales = collect($detallepedido)->pluck('id');
+            $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+                ->where('estado', '!=', 'anulada')
+                ->pluck('id');
 
-        $todosLosDetallesRelacionados  = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-        $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
+            $todosLosDetallesRelacionados = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
+            $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
 
-        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
-        return $detalleGuias;
-
+            $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
+            return $detalleGuias;
+        }
+        
+        $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
+            return isset($item['despachado']) && $item['despachado'] > 0 && $item['despacho'] === true;
+        })->count();
+        return $countDetalle > 0;
     }
 }
