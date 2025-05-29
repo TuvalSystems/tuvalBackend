@@ -629,7 +629,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->observacion = Arr::get($data, 'devolucion.observacion');
         $return->save();
 
-        $this->storeReturnDetail($return->id, Arr::get($data, 'detallepedido', []));
+        $this->storeReturnDetail($return->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
         return $return;
     }
 
@@ -649,11 +649,16 @@ class DevolucionService implements DevolucionServiceInterface
             $detallesValidos = $detalleIdsActuales->intersect($todosLosDetallesRelacionados);
             $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallesValidos)->exists();
             return $detalleGuias;
+        }
 
+        // verifica si el pedido tiene factura origen para determinar si tiene o no despacho
+        $pedidoConsulta = GpPedido::find($pedido['id']);
+        if (!empty($pedidoConsulta['factura_origen'])) {
+            $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->first();
+            return $pedido_origen['despachado'];
         }
 
         // Verifica si alguno de los detalles del pedido tiene despacho
-
         $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
             return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
         })->count();
@@ -666,7 +671,7 @@ class DevolucionService implements DevolucionServiceInterface
         return 'DEV' . str_pad($id, 8, '0', STR_PAD_LEFT);
     }
 
-    public function storeReturnDetail($returnId, $details): void
+    public function storeReturnDetail($returnId, $pedido, $details): void
     {
         foreach ($details as $item) {
             $detail = new GpDevolucionesDetalle();
@@ -695,13 +700,35 @@ class DevolucionService implements DevolucionServiceInterface
             $detail->modificador = (float) Arr::get($item, 'modificador');
             $detail->seleccionado = (float) Arr::get($item, 'seleccionado');
             $detail->disponible = (float) Arr::get($item, 'disponible');
-            $detail->despachado_parcial = $this->isDevolucionItemDispatchedInGuia($item);
+            $detail->despachado_parcial = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
             $detail->save();
         }
     }
 
-    public function isDevolucionItemDispatchedInGuia($item): bool
+    public function isDevolucionItemDispatchedInGuia($pedido, $item): bool
     {
+        //verifica si el pedido tiene factura origen
+        $pedidoConsulta = GpPedido::find($pedido['id']);
+        if (!empty($pedidoConsulta['factura_origen'])) {
+            $pedidoOrigenIds = GpPedido::where('factura', $pedido['factura_origen'])->pluck('id');
+            $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
+            $pedidosRelacionados = GpPedido::whereIn('cotizacion_id', $cotizacionesOrigen)->pluck('id');
+
+            $detallesRelacionados = GpPedidoDetalle::whereIn('pedido_id', $pedidosRelacionados)
+                ->where('ART_CODIGO', $item['ART_CODIGO']) // comparar por código del artículo
+                ->get();
+
+            foreach ($detallesRelacionados as $detalle) {
+                $cantidadPedido = (float) $detalle->ART_CANTIDAD + (float) $detalle->trasladado ?? 0;
+                $cantidadDespachada = GpGuiaRemisionDetalle::where('detalle_id', $detalle->id)
+                    ->sum('GUI_REM_CANTIDAD');
+
+                $cantidadPendiente = $cantidadPedido - $cantidadDespachada;
+                if ((float) $item['ART_CANTIDAD'] <= $cantidadPendiente) {
+                    return true;
+                }
+            }
+        }
         return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
     }
 
