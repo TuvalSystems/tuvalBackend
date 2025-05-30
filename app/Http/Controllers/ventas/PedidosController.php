@@ -1806,10 +1806,11 @@ class PedidosController extends Controller
         }
     }
 
-    public function volverafacturar($devolucion, $despachada = false)
+    public function volverafacturar($devolucion)
     {
         // $webservices = new WebserviceController();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
+        $despachada =  $pedido->despachado == 1 ? true : false;
         $cliente = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
