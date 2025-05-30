@@ -3,7 +3,6 @@
 namespace App\Services\Devoluciones;
 
 use App\Http\Controllers\ventas\PedidosController;
-use App\Http\Controllers\WebserviceController;
 use App\Models\devoluciones\GpDevolucionErroresJob;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -20,7 +19,6 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
