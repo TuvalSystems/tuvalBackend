@@ -24,6 +24,7 @@ use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpVendedor;
 use App\Models\Notificaciones;
 use App\Services\Api\ApiGpService;
+use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
@@ -40,7 +41,7 @@ class DevolucionesController extends Controller
     use JsonResponseTrait;
     protected $entryService;
     protected $devolucionService;
-    protected  $notificationService;
+    protected $notificationService;
     public function __construct(
         EntryServiceInterface $entryService,
         DevolucionServiceInterface $devolucionServiceInterface,
@@ -294,7 +295,7 @@ class DevolucionesController extends Controller
 
             // 🔄 **4️⃣ Verificación de despacho**
             $countDetalle = count(array_filter($data['detallepedido'], function ($detalle) {
-                return isset($detalle['despacho']) && $detalle['despacho'] === true;
+                return isset($detalle['despacho']) && $detalle['despacho'] === true && $detalle['despachado'] > 0;
             }));
 
             $detallePedidoAgrupado['pedido']['despachado'] = $countDetalle > 0 ? 1 : 0;
@@ -306,7 +307,8 @@ class DevolucionesController extends Controller
 
 
             $order = app(OrderServiceInterface::class);
-            $despachos = new DespachosController($order);
+            $dispatch = app(DispatchServiceInterface::class);
+            $despachos = new DespachosController($order, $dispatch);
             $despachos->checkeliminardespacho($pedido);
 
             // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
@@ -320,9 +322,10 @@ class DevolucionesController extends Controller
                 $data['devolucion']['tipo_devolucion'] === "total" &&
                 $countsReturnsByOrders === 0 &&
                 $validateItemsL === 0 &&
-                $validateItemsPartialDispatch === 0
+                $validateItemsPartialDispatch === 0 &&
+                $data['devolucion']['volver_a_facturar'] === false
             ) {
-                $anulacionResponse =  $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
+                $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
                     $responseArray = $anulacionResponse->getData(true);
                     if ($responseArray['success'] == false) {
@@ -335,7 +338,7 @@ class DevolucionesController extends Controller
             return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
         } catch (\Throwable $th) {
             DB::rollBack();
-             $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
+            $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
             $this->notificationService->sendNotification(
                 $userId,
                 'Error al anular la factura',
@@ -419,7 +422,8 @@ class DevolucionesController extends Controller
                 $devolucion .= $this->ejecutardevolucion($arr_sindespacho);
             }
             $order = app(OrderServiceInterface::class);
-            $despachos = new DespachosController($order);
+            $dispatch = app(DispatchServiceInterface::class);
+            $despachos = new DespachosController($order, $dispatch);
             $despachos->checkeliminardespacho($pedido);
             // $this->updateStatusDevolutions($pedido);
             // $this->updateStatusOrders($pedido);
@@ -485,25 +489,25 @@ class DevolucionesController extends Controller
             $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
             $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
             $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
-            $detalle->ART_DECIMAL_CANTIDAD = (int)$det['ART_DECIMAL_CANTIDAD'];
+            $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
             $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
             $detalle->ART_MARCA = $det['ART_MARCA'];
             $detalle->ART_MATERIAL = $det['ART_MATERIAL'];
             $detalle->ART_PESO = $det['ART_PESO'];
             $detalle->ART_TIPO_COMPRA = $det['ART_TIPO_COMPRA'];
-            $detalle->ART_VALOR = (float)$det['ART_VALOR'];
-            $detalle->ART_IVA = (float)$det['ART_IVA'];
-            $detalle->ART_VALOR_ORIGINAL = (float)$det['ART_VALOR_ORIGINAL'];
-            $detalle->ART_DESCUENTO = (float)$det['ART_DESCUENTO'];
-            $detalle->ART_CANTIDAD = (float)$det['ART_CANTIDAD'];
-            $detalle->ART_STOCK = (float)$det['ART_STOCK'];
-            $detalle->ART_IMP_VTA = (float)$det['ART_IMP_VTA'];
-            $detalle->ART_COSTO_PROMEDIO = (float)$det['ART_COSTO_PROMEDIO'];
-            $detalle->descuento = (float)$det['descuento'];
-            $detalle->descuento_original = (float)$det['descuento_original'];
-            $detalle->modificador = (float)$det['modificador'];
-            $detalle->seleccionado = (float)$det['seleccionado'];
-            $detalle->disponible = (float)$det['disponible'];
+            $detalle->ART_VALOR = (float) $det['ART_VALOR'];
+            $detalle->ART_IVA = (float) $det['ART_IVA'];
+            $detalle->ART_VALOR_ORIGINAL = (float) $det['ART_VALOR_ORIGINAL'];
+            $detalle->ART_DESCUENTO = (float) $det['ART_DESCUENTO'];
+            $detalle->ART_CANTIDAD = (float) $det['ART_CANTIDAD'];
+            $detalle->ART_STOCK = (float) $det['ART_STOCK'];
+            $detalle->ART_IMP_VTA = (float) $det['ART_IMP_VTA'];
+            $detalle->ART_COSTO_PROMEDIO = (float) $det['ART_COSTO_PROMEDIO'];
+            $detalle->descuento = (float) $det['descuento'];
+            $detalle->descuento_original = (float) $det['descuento_original'];
+            $detalle->modificador = (float) $det['modificador'];
+            $detalle->seleccionado = (float) $det['seleccionado'];
+            $detalle->disponible = (float) $det['disponible'];
             $detalle->save();
         }
 
@@ -553,7 +557,7 @@ class DevolucionesController extends Controller
 
 
 
-    public function  procesardevoluciones()
+    public function procesardevoluciones()
     {
         //1
         //Procesar devoluciones totales sin despacho y sin refacturacion
@@ -1088,7 +1092,7 @@ class DevolucionesController extends Controller
                 'NC_VTA_DET_TOTAL' => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->devuelto, 2, '.', ''),
             );
 
-            $subtotal += (float)number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->devuelto, 2, '.', '');
+            $subtotal += (float) number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->devuelto, 2, '.', '');
             $iva += $detalle->ART_IVA;
         }
         $total = $subtotal + $iva;
@@ -1105,7 +1109,7 @@ class DevolucionesController extends Controller
                 'NC_VTA_COND_PAGO' => $pedido->COND_ID,
                 'NC_VTA_NOTA_DOCU' => $devolucion->factura,
                 'NC_VTA_FECHA' => date('Y-m-d'),
-                'NC_VTA_BODEGA' =>  $pedido->BOD_BODEGA,
+                'NC_VTA_BODEGA' => $pedido->BOD_BODEGA,
                 'NC_VTA_SUBTOTAL' => $subtotal,
                 'NC_VTA_DESCUENTO_COMERCIAL' => 0, //$pedido->porcentage_descuento,
                 'NC_VTA_IMPUESTO' => $iva,
@@ -1258,7 +1262,7 @@ class DevolucionesController extends Controller
         try {
             $devolucion = GpDevoluciones::find($data['devolucion']['id']);
             if (!$devolucion) {
-                return $this->buildErrorResponse('devolucion no encontrada',  404);
+                return $this->buildErrorResponse('devolucion no encontrada', 404);
             }
 
             if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
@@ -1285,7 +1289,7 @@ class DevolucionesController extends Controller
                 $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
             });
 
-            return $this->buildSuccessResponse('Devolución recibida',  200);
+            return $this->buildSuccessResponse('Devolución recibida', 200);
         } catch (\Throwable $th) {
             Log::error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
             return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
@@ -1365,24 +1369,24 @@ class DevolucionesController extends Controller
                 continue;
             }
 
-            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_VALOR * $art->devuelto, 2, '.', '');
-            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format(($art->ART_IVA / $art->ART_CANTIDAD) * $art->devuelto, 2, '.', '');
+            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float) number_format($art->ART_VALOR * $art->devuelto, 2, '.', '');
+            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float) number_format(($art->ART_IVA / $art->ART_CANTIDAD) * $art->devuelto, 2, '.', '');
             //$data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100),4,'.','');
 
             //$data['subtotal'] += (float)number_format($art->ART_VALOR * $art->devuelto,2,'.','');
 
-            $data['descuento'] += (float)number_format($art->ART_DESCUENTO * $art->devuelto, 2, '.', '');
-            $data['subtotalmenosdescuento'] += (float)number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.', '');
-            $data['iva'] += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100), 2, '.', '');
+            $data['descuento'] += (float) number_format($art->ART_DESCUENTO * $art->devuelto, 2, '.', '');
+            $data['subtotalmenosdescuento'] += (float) number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.', '');
+            $data['iva'] += (float) number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100), 2, '.', '');
         }
 
         foreach ($data['tipoimpuesto'] as $linea) {
             $data['subtotal'] += $linea;
         }
 
-        $data['subtotalmenosdescuento'] = (float)number_format($data['subtotalmenosdescuento'], 2, '.', '');
-        $data['descuento'] = (float)number_format($data['descuento'], 2, '.', '');
-        $data['iva'] = (float)number_format($data['iva'], 2, '.', '');
+        $data['subtotalmenosdescuento'] = (float) number_format($data['subtotalmenosdescuento'], 2, '.', '');
+        $data['descuento'] = (float) number_format($data['descuento'], 2, '.', '');
+        $data['iva'] = (float) number_format($data['iva'], 2, '.', '');
         $data['total'] = number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
 
 
@@ -1417,24 +1421,24 @@ class DevolucionesController extends Controller
                 continue;
             }
 
-            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_VALOR * $art->devuelto, 2, '.', '');
-            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float)number_format($art->ART_IVA, 2, '.', '');
+            $data['tipoimpuesto'][$art->ART_IMP_VTA] += (float) number_format($art->ART_VALOR * $art->devuelto, 2, '.', '');
+            $data['sumaimpuesto'][$art->ART_IMP_VTA] += (float) number_format($art->ART_IVA, 2, '.', '');
 
             //$devolucion->subtotal += (float)number_format(($art->ART_VALOR) * $art->devuelto,2,'.','');
 
-            $devolucion->descuento += (float)number_format($art->ART_DESCUENTO * $art->devuelto, 2, '.', '');
-            $devolucion->subtotalmenosdescuento += (float)number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.', '');
-            $devolucion->iva += (float)number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100), 2, '.', '');
+            $devolucion->descuento += (float) number_format($art->ART_DESCUENTO * $art->devuelto, 2, '.', '');
+            $devolucion->subtotalmenosdescuento += (float) number_format(($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto, 2, '.', '');
+            $devolucion->iva += (float) number_format(((($art->ART_VALOR - $art->ART_DESCUENTO) * $art->devuelto) * $art->ART_IMP_VTA / 100), 2, '.', '');
         }
 
         foreach ($data['tipoimpuesto'] as $linea) {
             $devolucion->subtotal += $linea;
         }
 
-        $devolucion->subtotalmenosdescuento = (float)number_format($devolucion->subtotalmenosdescuento, 2, '.', '');
-        $devolucion->descuento = (float)number_format($devolucion->descuento, 2, '.', '');
+        $devolucion->subtotalmenosdescuento = (float) number_format($devolucion->subtotalmenosdescuento, 2, '.', '');
+        $devolucion->descuento = (float) number_format($devolucion->descuento, 2, '.', '');
         //$devolucion->subtotal = $devolucion->subtotalmenosdescuento + $devolucion->descuento;
-        $devolucion->iva = (float)number_format($devolucion->iva, 2, '.', '');
+        $devolucion->iva = (float) number_format($devolucion->iva, 2, '.', '');
         $devolucion->total = number_format($devolucion->subtotalmenosdescuento + $devolucion->iva, 2, '.', '');
         $devolucion->save();
     }

@@ -615,7 +615,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->factura = Arr::get($data, 'pedido.factura');
         $return->volver_a_facturar = Arr::get($data, 'devolucion.volver_a_facturar');
         $return->tipo_devolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []));;
+        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []), Arr::get($data, 'devolucion', []));
         $return->cliente_volver_a_facturar_id = Arr::get($data, 'devolucion.cliente_volver_a_facturar_id');
         $return->user_id = $user->id;
         $return->USERID = $user->USERID;
@@ -629,22 +629,40 @@ class DevolucionService implements DevolucionServiceInterface
         $return->observacion = Arr::get($data, 'devolucion.observacion');
         $return->save();
 
-        $this->storeReturnDetail($return->id,Arr::get($data, 'pedido', []) ,Arr::get($data, 'detallepedido', []));
+        $this->storeReturnDetail($return->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
         return $return;
     }
 
     // esta función verifica si el pedido tiene guías de remisión asociadas o no
     // y con eso determinamos si la devlucion pasa de despachado a no despachado
 
-    public function hasDispatchedOrderDetails($pedido)
+    public function hasDispatchedOrderDetails($pedido, $detallepedido, $devolucion): bool
     {
-        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-            ->where('estado', '!=', 'anulada')
-            ->pluck( 'id');
-        $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
-        return $detalleGuias;
+        // Verifica si la devolucion es de volver a facturar
+        if ($devolucion['volver_a_facturar'] === true) {
+            $pedidoIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+                ->where('estado', '!=', 'anulada')
+                ->orderByDesc('id')
+                ->first();
+            $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
+            return GpPedidoDetalle::where('pedido_id', $pedidoIds->id)
+                ->whereIn('ART_CODIGO', $codigos)
+                ->where('trasladado', '>', 0)
+                ->exists();
+        }
 
+        // verifica si el pedido tiene factura origen para determinar si tiene o no despacho
+        $pedidoConsulta = GpPedido::find($pedido['id']);
+        if (!empty($pedidoConsulta['factura_origen'])) {
+            $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
+            return $pedido_origen['despachado'];
+        }
+
+        // Verifica si alguno de los detalles del pedido tiene despacho
+        $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
+            return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+        })->count();
+        return $countDetalle > 0;
     }
 
 
@@ -689,21 +707,20 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function isDevolucionItemDispatchedInGuia($pedido, $item): bool
     {
+        //verifica si el pedido tiene factura origen
+        $pedidoConsulta = GpPedido::find($pedido['id']);
+        if (!empty($pedidoConsulta['factura_origen'])) {
+            $pedidoOrigenIds = GpPedido::where('factura', $pedido['factura_origen'])->pluck('id');
+            $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
+            $pedidosRelacionados = GpPedido::whereIn('cotizacion_id', $cotizacionesOrigen)->pluck('id');
 
-        // 1./ obtengo todos los id de pedidos relacionados a esa cotizacion del pedido que estoy procesando
-        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-            ->where('estado', '!=', 'anulada')
-            ->pluck('id');
+            return GpPedidoDetalle::whereIn('pedido_id', $pedidosRelacionados)
+                ->where('ART_CODIGO', $item['ART_CODIGO'])
+                ->where('trasladado', '>', 0) // comparar por código del artículo
+                ->exists();
 
-        // 2./ obtengo todos los id de detalles de pedidos relacionados a esos pedidos con el codigo del item que estoy procesando
-        $detallePedidoIds = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)
-        ->where('ART_CODIGO', $item['ART_CODIGO'])->pluck('id');
-
-        // 3./ obtengo todos los id de guias relacionados a esos detalles
-        $fueDespachado  = GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidoIds)
-            ->exists();
-
-        return $fueDespachado;
+        }
+        return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
     }
 
 

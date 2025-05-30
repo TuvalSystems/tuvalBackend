@@ -39,7 +39,7 @@ class ApprovalService implements ApprovalServiceInterface
         // Esto es necesario para determinar si se requiere despacho
         // en caso de que la devolucion sea parcial o total
         // y no se vuelva a facturar
-        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []));
+        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), $detallePedido, $volverAFacturar);
 
 
         if ($requiresDispatch) {
@@ -47,16 +47,21 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         if ($tipoDevolucion === 'parcial') {
-            if ($daysDifference <= 7) {
-                if (!$volverAFacturar && !$hasTypeLItems) {
-                    return 'no';
-                }
+            if ($volverAFacturar) {
+                return 'yes';
             }
+            if ($hasTypeLItems) {
+                return 'yes';
+            }
+            return $daysDifference <= 7 ? 'no' : 'yes';
         }
 
-        if ($tipoDevolucion === 'total' && !$volverAFacturar) {
+        if ($tipoDevolucion === 'total') {
+            if ($volverAFacturar) {
+                return 'yes';
+            }
             if ($hasTypeLItems) {
-                return $daysDifference <= 7 ? 'no' : 'yes';
+                return 'yes';
             }
             return $daysDifference <= 7 ? 'no' : 'yes';
         }
@@ -75,12 +80,33 @@ class ApprovalService implements ApprovalServiceInterface
         return $origin->diff($target)->days;
     }
 
-     public function hasDispatchedOrderDetails($pedido)
+
+    public function hasDispatchedOrderDetails($pedido, $detallepedido, $volverAFacturar): bool
     {
-        $pedidosIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-            ->where('estado', '!=', 'anulada')
-            ->pluck( 'id');
-        $detallePedidos = GpPedidoDetalle::whereIn('pedido_id', $pedidosIds)->pluck('id');
-       return  GpGuiaRemisionDetalle::whereIn('detalle_id', $detallePedidos)->exists();
+        if ($volverAFacturar === true) {
+            $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+                ->where('estado', '!=', 'anulada')
+                ->orderByDesc('id')
+                ->first();
+            if (!$lastOrder) {
+                return false;
+            }
+            $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
+            return GpPedidoDetalle::where('pedido_id', $lastOrder->id)
+                ->whereIn('ART_CODIGO', $codigos)
+                ->where('trasladado', '>', 0)
+                ->exists();
+        }
+
+        $pedidoConsulta = GpPedido::find($pedido['id']);
+        if (!empty($pedidoConsulta['factura_origen'])) {
+            $pedido_origen = GpPedido::where('factura', operator: $pedido['factura_origen'])->orderByDesc('id')->first();
+            return $pedido_origen['despachado'] ?? $pedido_origen->despachado;
+        }
+
+        $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
+            return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+        })->count();
+        return $countDetalle > 0;
     }
 }
