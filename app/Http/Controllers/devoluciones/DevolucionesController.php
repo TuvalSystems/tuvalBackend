@@ -286,7 +286,9 @@ class DevolucionesController extends Controller
 
             // 🔄 **3️⃣ Filtrado de detalles válidos**
             foreach ($data['detallepedido'] as $detalle) {
-                if ($detalle['seleccionado'] >= 1) {
+                $isValid = $data['devolucion']['volver_a_facturar'] || $detalle['seleccionado'] > 0;
+                if ($isValid) {
+                    //se verifica que este despachado y asignamos el estado al pedido
                     $detallePedidoAgrupado['detallepedido'][] = $detalle;
                 }
             }
