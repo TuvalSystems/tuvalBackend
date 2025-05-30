@@ -1078,13 +1078,6 @@ class DevolucionesController extends Controller
                     ]);
                 }
                 $devolucion->update(['estado' => 'recibido']);
-
-                // lo pondre en espera ya que lo esta ejecutando el job
-                // $response = $this->devolucionService->processDevolucion($devolucion);
-                // if (!$response->isSuccessful()) {
-                //     $responseData = (array) $response->getData();
-                //     throw new \Exception("Error en el procesamiento: " . ($responseData['error'] ?? 'Proceso fallido'));
-                // }
                 $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
             });
 
