@@ -659,10 +659,17 @@ class DevolucionService implements DevolucionServiceInterface
         }
 
         // Verifica si alguno de los detalles del pedido tiene despacho
-        $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
-            return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
-        })->count();
-        return $countDetalle > 0;
+        $hasDetailDispatched = collect($detallepedido)
+            ->contains(function ($item) {
+                return !empty($item['despachado'])
+                    && (float) $item['despachado'] > 0
+                    && isset($item['despacho'])
+                    && $item['despacho'] === true;
+            });
+        if ($hasDetailDispatched) {
+            return true;
+        }
+        return false;
     }
 
 
