@@ -100,7 +100,7 @@ class ApprovalService implements ApprovalServiceInterface
 
         $pedidoConsulta = GpPedido::find($pedido['id']);
         if (!empty($pedidoConsulta['factura_origen'])) {
-            $pedido_origen = GpPedido::where('factura', operator: $pedido['factura_origen'])->orderByDesc('id')->first();
+            $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
              return (bool) optional($pedido_origen)->despachado;
         }
 
