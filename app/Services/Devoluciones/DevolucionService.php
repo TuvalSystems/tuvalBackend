@@ -644,6 +644,9 @@ class DevolucionService implements DevolucionServiceInterface
                 ->where('estado', '!=', 'anulada')
                 ->orderByDesc('id')
                 ->first();
+            if (!$pedidoIds) {
+                return false;
+            }
             $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
             return GpPedidoDetalle::where('pedido_id', $pedidoIds->id)
                 ->whereIn('ART_CODIGO', $codigos)
@@ -655,7 +658,7 @@ class DevolucionService implements DevolucionServiceInterface
         $pedidoConsulta = GpPedido::find($pedido['id']);
         if (!empty($pedidoConsulta['factura_origen'])) {
             $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
-           return (bool) optional($pedido_origen)->despachado;
+            return (bool) optional($pedido_origen)->despachado;
         }
 
         // Verifica si alguno de los detalles del pedido tiene despacho
