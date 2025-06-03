@@ -589,7 +589,7 @@ class DevolucionService implements DevolucionServiceInterface
             $base['devuelto'] = $group->sum('devuelto');
             $base['recibido'] = $group->sum('recibido');
             return $base;
-        })->values();
+        })->sortBy('detalle_id')->values();
 
         foreach ($detalleGrouped as $art) {
             $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
