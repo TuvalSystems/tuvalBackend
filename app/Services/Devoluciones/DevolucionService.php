@@ -598,7 +598,7 @@ class DevolucionService implements DevolucionServiceInterface
         foreach ($detalleGrouped as $key => $art) {
 
             if ($art['devuelto'] == 0) {
-                unset($detalle[$key]);
+                unset($detalleGrouped[$key]);
                 continue;
             }
 
