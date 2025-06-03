@@ -328,15 +328,19 @@ class DevolucionJobService
         $pedido = GpPedido::find($devolucion->pedido_id);
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
             ->where('ART_TIPO_COMPRA', '!=', 'SERV') // Filtramos los servicios directamente en la consulta
-            ->where('despachado_parcial', 1) // Solo consideramos los que no están despachados parcialmente
+            ->where('despachado_parcial', 1)
+            ->where(function ($query) {
+                $query->where('devuelto', '>', 0)
+                    ->whereNotNull('devuelto')
+                    ->where('recibido', '>', 0)
+                    ->whereNotNull('recibido');
+            })
             ->get();
 
         // 🛠️ Preparación de los items para la devolución
         $itemsDevolucion = $detalles->map(function ($detalle) use ($devolucion, $pedido) {
-            $devuelto = ($devolucion->despachado && $devolucion->volver_a_facturar)
-                ? $detalle->recibido
-                : $detalle->devuelto;
-
+            // Obtenemos el valor devuelto del detalle
+            $devuelto = ($devolucion->despachado && $devolucion->volver_a_facturar) ? $detalle->recibido : $detalle->devuelto;
             if (!$devuelto) {
                 return null; // Si no hay devuelto, se ignora el item
             }
