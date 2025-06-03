@@ -123,4 +123,20 @@ class GpCotizacion extends Model
     {
         return $date->format('Y-m-d H:i');
     }
+
+
+    public function detallecotizacion()
+    {
+        return $this->hasMany(GpCotizacionDetalle::class, 'cotizacion_id', 'id');
+    }
+
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
+
+    public function motivosNoVenta()
+    {
+        return $this->belongsTo(GpCotizacionVentaMotivo::class, 'cotizacion_venta_motivo_id');
+    }
 }
