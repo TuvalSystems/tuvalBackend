@@ -46,4 +46,10 @@ class ApiGpReturnsIntegrationService extends ApiGpService
             'GET'
         );
     }
+
+
+    public function consultGroupEconomicByClient(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["consultar_grupo_economico_cliente"], 'GET', $params);
+    }
 }

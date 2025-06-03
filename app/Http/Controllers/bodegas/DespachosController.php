@@ -30,6 +30,7 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
+use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -44,9 +45,11 @@ use stdClass;
 class DespachosController extends Controller
 {
     protected $orderService;
-    public function __construct(OrderServiceInterface $orderService)
+    protected $dispatchService;
+    public function __construct(OrderServiceInterface $orderService, DispatchServiceInterface $dispatchService)
     {
         $this->orderService = $orderService;
+        $this->dispatchService = $dispatchService;
     }
     public function generarordendespacho($pedido)
     {
@@ -56,59 +59,59 @@ class DespachosController extends Controller
         $pedidos = new PedidosController($apiGp, $order);
         $pedidos->checktrasladado($pedido);
 
-        if($pedido->estado == 'orden_de_compra') {
+        if ($pedido->estado == 'orden_de_compra') {
             return;
         }
 
-        if($pedido->estado == 'traslado') {
+        if ($pedido->estado == 'traslado') {
             return;
         }
 
         $generada = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
-        if($generada){
+        if ($generada) {
             return;
         }
 
-        if($pedido->despachado){
+        if ($pedido->despachado) {
             return;
         }
         $ordenDespacho = new GpOrdenDespacho();
         $estado = 'pendiente';
         $fecha_hora_liberacion = null;
-        if($pedido->COND_ID != 'CONTADO'){
+        if ($pedido->COND_ID != 'CONTADO') {
             $fecha_hora_liberacion = date('Y-m-d H:i:s');
             $estado = 'liberada';
         }
         $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $pedido->COND_ID)->first();
 
-        if(isset($formaPago->DESC_FORMA_PAGO_TIPO_COBRO) && $formaPago->DESC_FORMA_PAGO_TIPO_COBRO == 'CHEQUE'){
+        if (isset($formaPago->DESC_FORMA_PAGO_TIPO_COBRO) && $formaPago->DESC_FORMA_PAGO_TIPO_COBRO == 'CHEQUE') {
             $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
-            if($cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0){
+            if ($cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0) {
                 $estado = 'pendiente';
             }
         }
 
-        if(
+        if (
             ($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes)
-//            ||
-//            ($pedido->factura_posterior_despacho && !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes)
-        ){
+            //            ||
+            //            ($pedido->factura_posterior_despacho && !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes)
+        ) {
             $estado = 'pendiente';
         }
 
         $orden_anterior = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
-        if($orden_anterior){
+        if ($orden_anterior) {
             return;
         }
 
-        $ultimaOrden = GpOrdenDespacho::orderBy('id','DESC')->first();
+        $ultimaOrden = GpOrdenDespacho::orderBy('id', 'DESC')->first();
 
-        if(!$ultimaOrden){
+        if (!$ultimaOrden) {
             $ultimaOrden = new stdClass();
             $ultimaOrden->id = 0;
         }
 
-        $ordenDespacho->orden = 'ODD'.str_pad($ultimaOrden->id + 1, 8, "0", STR_PAD_LEFT);
+        $ordenDespacho->orden = 'ODD' . str_pad($ultimaOrden->id + 1, 8, "0", STR_PAD_LEFT);
         $ordenDespacho->pedido_id = $pedido->id;
         $ordenDespacho->estado = $estado;
         $ordenDespacho->fecha_hora_liberacion = $fecha_hora_liberacion;
@@ -117,51 +120,52 @@ class DespachosController extends Controller
         $ordenDespacho->save();
     }
 
-    public function checkfacturasdespachos($cobro_id){
+    public function checkfacturasdespachos($cobro_id)
+    {
 
         $facturas = array();
 
 
         $fac_aplicacion = GpCobrosAplicacionFactura::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach($fac_aplicacion as $fac){
+        foreach ($fac_aplicacion as $fac) {
             $facturas[$fac['id_factura']] = $fac['id_factura'];
         }
 
         $fac_cheques = GpCobrosChequesFacturas::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach($fac_cheques as $fac){
+        foreach ($fac_cheques as $fac) {
             $facturas[$fac['id_factura']] = $fac['id_factura'];
         }
 
-        $fac_depositos = GpCobrosDepositosFacturas::join('gp_cobros_depositos', 'gp_cobros_depositos.id','gp_cobros_depositos_facturas.deposito_id')
+        $fac_depositos = GpCobrosDepositosFacturas::join('gp_cobros_depositos', 'gp_cobros_depositos.id', 'gp_cobros_depositos_facturas.deposito_id')
             ->where('gp_cobros_depositos.estado', 'enviado')
             ->where('gp_cobros_depositos.cobro_id', $cobro_id)
             ->get()->toArray();
-        foreach($fac_depositos as $fac){
+        foreach ($fac_depositos as $fac) {
             $facturas[$fac['id_factura']] = $fac['id_factura'];
         }
 
         $fac_efectivo = GpCobrosEfectivoFactura::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach($fac_efectivo as $fac){
+        foreach ($fac_efectivo as $fac) {
             $facturas[$fac['id_factura']] = $fac['id_factura'];
         }
 
         $fac_retenciones = GpCobrosRetenciones::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach($fac_retenciones as $fac){
+        foreach ($fac_retenciones as $fac) {
             $facturas[$fac['ret_factura']] = $fac['ret_factura'];
         }
 
         $fac_tarjetas = GpCobrosTarjetaFactura::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach($fac_tarjetas as $fac){
+        foreach ($fac_tarjetas as $fac) {
             $facturas[$fac['id_factura']] = $fac['id_factura'];
         }
 
-        foreach($facturas as $fac){
+        foreach ($facturas as $fac) {
             $fac = substr($fac, 0, 17);
 
             $pedido = GpPedido::where('factura', $fac)->get()->first();
-            if($pedido)
+            if ($pedido)
                 $pedido = $pedido->toArray();
-            else{
+            else {
                 continue;
             }
 
@@ -169,127 +173,130 @@ class DespachosController extends Controller
 
             $retencion = $pedido['total'] * env('COLCHON_RETENCION');
 
-            foreach($fac_aplicacion as $apl){
+            foreach ($fac_aplicacion as $apl) {
                 $pedido['total'] -= $apl['monto'];
             }
 
-            foreach($fac_cheques as $che){
+            foreach ($fac_cheques as $che) {
                 $cheque = GpCobrosCheques::where('cobro_id', $che['cobro_id'])->get()->first()->toArray();
-                if($cheque['fecha_vencimiento'] <= $che['ECD_DET_FECHA_VENCIMIENTO']){
+                if ($cheque['fecha_vencimiento'] <= $che['ECD_DET_FECHA_VENCIMIENTO']) {
                     $pedido['total'] -= $che['monto'];
                 }
             }
 
-            foreach($fac_depositos as $dep){
+            foreach ($fac_depositos as $dep) {
                 $pedido['total'] -= $dep['monto'];
             }
 
-            foreach($fac_efectivo as $efe){
+            foreach ($fac_efectivo as $efe) {
                 $pedido['total'] -= $efe['monto'];
             }
 
-            foreach($fac_tarjetas as $tar){
+            foreach ($fac_tarjetas as $tar) {
                 $pedido['total'] -= $tar['monto'];
             }
 
-            foreach($fac_retenciones as $ret){
+            foreach ($fac_retenciones as $ret) {
                 $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv']  + $ret['ret_renta_srv'];
             }
 
-            if($pedido['total'] <= $retencion){
+            if ($pedido['total'] <= $retencion) {
                 $this->liberardespacho($pedido['id']);
-            }else{
+            } else {
                 $this->checksumacobros($pedido);
             }
         }
 
-        if(!count($facturas)){
+        if (!count($facturas)) {
             $this->checkpagopedido($cobro_id);
         }
     }
 
-    public function checkpagopedido($cobro_id){
+    public function checkpagopedido($cobro_id)
+    {
 
         $cobro = GpCobro::where('id', $cobro_id)->first();
         $pedido = GpPedido::where('pedido', $cobro->pedido)->first();
 
-        if($pedido){
+        if ($pedido) {
             $pedido = $pedido->toArray();
             $retencion = $pedido['total'] * env('COLCHON_RETENCION');
 
             $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro_id)->get()->toArray();
-            foreach($retenciones as $ret){
+            foreach ($retenciones as $ret) {
                 $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv']  + $ret['ret_renta_srv'];
             }
 
-            $efectivo = GpCobrosEfectivoMonto::where('cobro_id',$cobro_id)->get()->toArray();
-            foreach($efectivo as $efe){
+            $efectivo = GpCobrosEfectivoMonto::where('cobro_id', $cobro_id)->get()->toArray();
+            foreach ($efectivo as $efe) {
                 $pedido['total'] -= $efe['monto'];
             }
-            $cheque = GpCobrosChequesMonto::where('cobro_id',$cobro_id)->get()->toArray();
-            foreach($cheque as $che){
+            $cheque = GpCobrosChequesMonto::where('cobro_id', $cobro_id)->get()->toArray();
+            foreach ($cheque as $che) {
                 $pedido['total'] -= $che['monto'];
             }
-            $deposito = GpCobrosDeposito::where('cobro_id',$cobro_id)->get()->toArray();
-            foreach($deposito as $dep){
+            $deposito = GpCobrosDeposito::where('cobro_id', $cobro_id)->get()->toArray();
+            foreach ($deposito as $dep) {
                 $pedido['total'] -= $dep['monto'];
             }
-            $tarjeta = GpCobrosTarjetaMonto::where('cobro_id',$cobro_id)->get()->toArray();
-            foreach($tarjeta as $tar){
+            $tarjeta = GpCobrosTarjetaMonto::where('cobro_id', $cobro_id)->get()->toArray();
+            foreach ($tarjeta as $tar) {
                 $pedido['total'] -= $tar['monto'];
             }
-            if($pedido['total'] <= $retencion){
+            if ($pedido['total'] <= $retencion) {
                 $this->liberardespacho($pedido['id']);
             }
         }
     }
 
-    public function checksumacobros($pedido){
+    public function checksumacobros($pedido)
+    {
 
         $pedido['total'] = $pedido['total_anterior'];
         $retencion = $pedido['total'] * env('COLCHON_RETENCION');
 
         $fac_retenciones = GpCobrosRetenciones::where('ret_factura', $pedido['factura'])->get()->toArray();
-        foreach($fac_retenciones as $ret){
+        foreach ($fac_retenciones as $ret) {
             $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv']  + $ret['ret_renta_srv'];
         }
 
-        $fac_aplicacion = GpCobrosAplicacionFactura::where('id_factura','LIKE',$pedido['factura'].'%')->get()->toArray();
-        foreach($fac_aplicacion as $fac){
+        $fac_aplicacion = GpCobrosAplicacionFactura::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
+        foreach ($fac_aplicacion as $fac) {
             $pedido['total'] -= $fac['monto'];
         }
 
-        $fac_cheques = GpCobrosChequesFacturas::where('id_factura','LIKE',$pedido['factura'].'%')->get()->toArray();
-        foreach($fac_cheques as $fac){
+        $fac_cheques = GpCobrosChequesFacturas::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
+        foreach ($fac_cheques as $fac) {
             $pedido['total'] -= $fac['monto'];
         }
 
-        $fac_depositos = GpCobrosDepositosFacturas::join('gp_cobros_depositos', 'gp_cobros_depositos.id','gp_cobros_depositos_facturas.deposito_id')
+        $fac_depositos = GpCobrosDepositosFacturas::join('gp_cobros_depositos', 'gp_cobros_depositos.id', 'gp_cobros_depositos_facturas.deposito_id')
             ->where('gp_cobros_depositos.estado', 'enviado')
-            ->where('id_factura','LIKE',$pedido['factura'].'%')
+            ->where('id_factura', 'LIKE', $pedido['factura'] . '%')
             ->get()->toArray();
-        foreach($fac_depositos as $fac){
+        foreach ($fac_depositos as $fac) {
             $pedido['total'] -= $fac['monto'];
         }
 
-        $fac_efectivo = GpCobrosEfectivoFactura::where('id_factura','LIKE',$pedido['factura'].'%')->get()->toArray();
-        foreach($fac_efectivo as $fac){
+        $fac_efectivo = GpCobrosEfectivoFactura::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
+        foreach ($fac_efectivo as $fac) {
             $pedido['total'] -= $fac['monto'];
         }
 
-        $fac_tarjetas = GpCobrosTarjetaFactura::where('id_factura','LIKE',$pedido['factura'].'%')->get()->toArray();
-        foreach($fac_tarjetas as $fac){
+        $fac_tarjetas = GpCobrosTarjetaFactura::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
+        foreach ($fac_tarjetas as $fac) {
             $pedido['total'] -= $fac['monto'];
         }
 
         $pedido['total'] = number_format($pedido['total'], 2, '.', '');
 
-        if($pedido['total'] <= $retencion){
+        if ($pedido['total'] <= $retencion) {
             $this->liberardespacho($pedido['id']);
         }
     }
 
-    public function liberardespacho($pedido_id){
+    public function liberardespacho($pedido_id)
+    {
 
 
 
@@ -297,14 +304,13 @@ class DespachosController extends Controller
             ->where('estado', '!=', 'despachada')
             ->get()->first();
 
-        if($ordenDespacho){
-            if(!$ordenDespacho->fecha_hora_liberacion){
+        if ($ordenDespacho) {
+            if (!$ordenDespacho->fecha_hora_liberacion) {
                 $ordenDespacho->fecha_hora_liberacion = date('Y-m-d H:i:s');
             }
             $ordenDespacho->estado = 'liberada';
             $ordenDespacho->save();
         }
-
     }
 
     public function rechazarordendespacho($id): Response|Application|ResponseFactory
@@ -327,20 +333,20 @@ class DespachosController extends Controller
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
         $ordenes =  GpOrdenDespacho::where('BOD_BODEGA', $bodega)
-            ->where('estado',$estado);
-        if($estado == 'despachada'){
-            $ordenes = $ordenes->orWhere('estado','cancelada');
+            ->where('estado', $estado);
+        if ($estado == 'despachada') {
+            $ordenes = $ordenes->orWhere('estado', 'cancelada');
             $ordenes = $ordenes->orderBy('id', 'DESC');
-        }else{
+        } else {
             $ordenes = $ordenes->orderBy('created_at', 'ASC');
         }
 
         $ordenes = $ordenes->get();
 
-        foreach($ordenes as $key => $orden){
+        foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if($pedido->estado == 'rechazado'){
+            if ($pedido->estado == 'rechazado') {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();
@@ -348,17 +354,17 @@ class DespachosController extends Controller
                 continue;
             }
 
-            $envio = GpClienteSucursal::where('id',$pedido->sucursal_id)->first()->toArray();
+            $envio = GpClienteSucursal::where('id', $pedido->sucursal_id)->first()->toArray();
             $orden->envio = $envio;
             $orden->direccion = $envio['CLI_SUC_DIRECCION'];
             $orden->ciudad = $envio['CLI_SUC_CIUDAD'];
             $orden->fecha_entrega = $pedido->fecha_entrega;
 
             $peso_total = 0;
-            if($estado == 'liberada'){
+            if ($estado == 'liberada') {
                 $reporte = $this->pesopicking($pedido);
-                foreach($reporte as &$art){
-                    $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2,'.', '');
+                foreach ($reporte as &$art) {
+                    $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2, '.', '');
                 }
             }
             $orden->peso = $peso_total;
@@ -370,7 +376,7 @@ class DespachosController extends Controller
             $orden->CLI_RAZON_SOCIAL = $orden->pedido->CLI_RAZON_SOCIAL;
             $orden->CLI_RUC = $orden->pedido->CLI_RUC;
             $orden->BOD_BODEGA = $orden->pedido->BOD_BODEGA;
-            $orden->fecha = substr($orden->created_at,0,16);
+            $orden->fecha = substr($orden->created_at, 0, 16);
             $orden->despacho = $orden->pedido->despacho;
             $orden->total = $orden->pedido->total;
 
@@ -379,7 +385,7 @@ class DespachosController extends Controller
             $orden->dias = $origin->diff($target)->days;
 
             $estadoGuia = 'enviada';
-            if($estado == 'liberada')
+            if ($estado == 'liberada')
                 $estadoGuia = 'pendiente';
 
             $orden->guias = [];
@@ -394,7 +400,7 @@ class DespachosController extends Controller
 
 
             $guias = GpGuiaRemision::where('pedido', $pedido->pedido)
-                ->where('estado', '!=','pendiente')
+                ->where('estado', '!=', 'pendiente')
                 ->where('tipo', 'despacho')
                 ->orderBy('created_at')
                 ->get()->count();
@@ -427,20 +433,20 @@ class DespachosController extends Controller
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
         $ordenes =  GpOrdenDespacho::where('BOD_BODEGA', $bodega)
-            ->where('estado',$estado);
-        if($estado == 'despachada'){
-            $ordenes = $ordenes->orWhere('estado','cancelada');
+            ->where('estado', $estado);
+        if ($estado == 'despachada') {
+            $ordenes = $ordenes->orWhere('estado', 'cancelada');
             $ordenes = $ordenes->orderBy('id', 'DESC');
-        }else{
+        } else {
             $ordenes = $ordenes->orderBy('fecha_hora_liberacion', 'ASC');
         }
 
         $ordenes = $ordenes->get();
 
-        foreach($ordenes as $key => $orden){
+        foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if($pedido->estado == 'rechazado'){
+            if ($pedido->estado == 'rechazado') {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();
@@ -448,7 +454,7 @@ class DespachosController extends Controller
                 continue;
             }
 
-            $envio = GpClienteSucursal::where('id',$pedido->sucursal_id)->first()->toArray();
+            $envio = GpClienteSucursal::where('id', $pedido->sucursal_id)->first()->toArray();
             $orden->envio = $envio;
             $orden->direccion = $envio['CLI_SUC_DIRECCION'];
             $orden->ciudad = $envio['CLI_SUC_CIUDAD'];
@@ -464,7 +470,7 @@ class DespachosController extends Controller
             $orden->CLI_RAZON_SOCIAL = $orden->pedido->CLI_RAZON_SOCIAL;
             $orden->CLI_RUC = $orden->pedido->CLI_RUC;
             $orden->BOD_BODEGA = $orden->pedido->BOD_BODEGA;
-            $orden->fecha = substr($orden->fecha_hora_liberacion,0,16);
+            $orden->fecha = substr($orden->fecha_hora_liberacion, 0, 16);
             $orden->despacho = $orden->pedido->despacho;
             $orden->total = $orden->pedido->total;
 
@@ -523,13 +529,13 @@ class DespachosController extends Controller
 
         $peso_total = 0;
         $reporte = $this->pesopicking($pedido);
-        foreach($reporte as &$art){
-            $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2,'.', '');
+        foreach ($reporte as &$art) {
+            $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2, '.', '');
         }
         $orden->peso = $peso_total;
 
         $estadoGuia = 'enviada';
-        if($orden->estado == 'liberada')
+        if ($orden->estado == 'liberada')
             $estadoGuia = 'pendiente';
 
         $guias = GpGuiaRemision::where('pedido', $pedido->pedido)
@@ -540,7 +546,7 @@ class DespachosController extends Controller
         $orden->guias = $guias;
 
         $guias = GpGuiaRemision::where('pedido', $pedido->pedido)
-            ->where('estado', '!=','pendiente')
+            ->where('estado', '!=', 'pendiente')
             ->where('tipo', 'despacho')
             ->orderBy('created_at')
             ->get()->count();
@@ -554,16 +560,16 @@ class DespachosController extends Controller
     public function detalleorden($id): Response|Application|ResponseFactory
     {
 
-        $devolucion = GpDevoluciones::where('pedido_id','=', $id)
-            ->where(function($query){
+        $devolucion = GpDevoluciones::where('pedido_id', '=', $id)
+            ->where(function ($query) {
                 $query->where('estado', 'espera');
                 $query->orWhere('estado', 'solicitado');
             })
             ->first();
-        if($devolucion){
+        if ($devolucion) {
             return response([
                 'success' => false,
-                'message' => 'Este pedido tiene una devolución en proceso : '.$devolucion->devolucion,
+                'message' => 'Este pedido tiene una devolución en proceso : ' . $devolucion->devolucion,
                 'detalle' => array(),
             ]);
         }
@@ -572,7 +578,7 @@ class DespachosController extends Controller
             ->where('estado', 'cancelada')
             ->first();
 
-        if($ordenCancelada){
+        if ($ordenCancelada) {
             return response([
                 'success' => false,
                 'message' => 'Esta orden de despacho ha sido cancelada',
@@ -584,7 +590,7 @@ class DespachosController extends Controller
             ->where('estado', 'despachada')
             ->first();
 
-        if($ordenDespachada){
+        if ($ordenDespachada) {
             return response([
                 'success' => false,
                 'message' => 'Esta orden de despacho ha sido despachada por completo, el pedido fue marcado con "Facturar lo despachado"',
@@ -598,31 +604,31 @@ class DespachosController extends Controller
         $pedido->save();
 
         $detalle = GpPedidoDetalle::where('pedido_id', $id)->get();
-        foreach($detalle as$key => $det){
-            if(!$det->reservado)
+        foreach ($detalle as $key => $det) {
+            if (!$det->reservado)
                 $det->reservado = 0;
 
-            if(!$det->trasladado)
+            if (!$det->trasladado)
                 $det->trasladado = 0;
 
-            if(!$det->devuelto)
+            if (!$det->devuelto)
                 $det->devuelto = 0;
 
-            $det->devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id','gp_devoluciones_detalles.devolucion_id')
-                ->where( function ($q) {
-                    $q->where('gp_devoluciones.despachado',0);
+            $det->devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where(function ($q) {
+                    $q->where('gp_devoluciones.despachado', 0);
                     $q->orWhereNull('gp_devoluciones.despachado');
                 })
                 ->where('gp_devoluciones_detalles.detalle_id', $det->id)
                 ->sum('gp_devoluciones_detalles.devuelto');
 
-            $det->pendiente = number_format($det->ART_CANTIDAD - $det->reservado - $det->trasladado - $det->devuelto,2,'.','');
+            $det->pendiente = number_format($det->ART_CANTIDAD - $det->reservado - $det->trasladado - $det->devuelto, 2, '.', '');
             $det->seleccionado = 0;
-            if($det->pendiente <= 0){
+            if ($det->pendiente <= 0) {
                 unset($detalle[$key]);
             }
 
-            if($det->ART_DECIMAL_CANTIDAD == 0) {
+            if ($det->ART_DECIMAL_CANTIDAD == 0) {
                 $det->ART_CANTIDAD = (int)$det->ART_CANTIDAD;
                 $det->pendiente = (int)$det->pendiente;
                 $det->reservado = (int)$det->reservado;
@@ -643,15 +649,15 @@ class DespachosController extends Controller
 
     public function ordenespendientes($puntodeventa_id): Response|Application|ResponseFactory
     {
-        $ordenes =  GpOrdenDespacho::join('gp_pedidos','gp_pedidos.id','gp_orden_despachos.pedido_id')
+        $ordenes =  GpOrdenDespacho::join('gp_pedidos', 'gp_pedidos.id', 'gp_orden_despachos.pedido_id')
             ->where('gp_orden_despachos.PTO_VTA_ID', $puntodeventa_id)
-            ->where('gp_orden_despachos.estado','pendiente')
+            ->where('gp_orden_despachos.estado', 'pendiente')
             ->select('gp_orden_despachos.*', 'gp_pedidos.fecha_entrega')
             ->get();
 
-        foreach($ordenes as $orden){
+        foreach ($ordenes as $orden) {
             $orden->pedido = GpPedido::where('id', $orden->pedido_id)->first();
-            $orden->pedido->direccion_entrega = GpClienteSucursal::where('id',$orden->pedido->sucursal_id)->first();
+            $orden->pedido->direccion_entrega = GpClienteSucursal::where('id', $orden->pedido->sucursal_id)->first();
         }
 
         return response([
@@ -667,7 +673,7 @@ class DespachosController extends Controller
 
         $orden = GpOrdenDespacho::where('id', $data['id'])->first();
         $orden->autorizacion_fecha = date('Y-m-d H:i:s');
-        if(!$orden->fecha_hora_liberacion){
+        if (!$orden->fecha_hora_liberacion) {
             $orden->fecha_hora_liberacion = date('Y-m-d H:i:s');
         }
         $orden->estado = 'liberada';
@@ -678,7 +684,7 @@ class DespachosController extends Controller
 
         return response([
             'success' => true,
-            'message' => 'Órden de despacho '.$orden->orden.' liberada',
+            'message' => 'Órden de despacho ' . $orden->orden . ' liberada',
             'orden' => $orden,
         ]);
     }
@@ -701,8 +707,8 @@ class DespachosController extends Controller
         $reporte = $this->reportepicking($pedido);
 
         $peso_total = 0;
-        foreach($reporte as &$art){
-            $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2,'.', '');
+        foreach ($reporte as &$art) {
+            $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2, '.', '');
         }
 
         $picking = array();
@@ -721,8 +727,8 @@ class DespachosController extends Controller
         $reporte = $this->reportepicking($pedido);
 
         $peso_total = 0;
-        foreach($reporte as $art){
-            $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2,'.', '');
+        foreach ($reporte as $art) {
+            $peso_total += number_format($art['ART_PESO'] * $art['pendiente'], 2, '.', '');
         }
 
         $data = array();
@@ -732,14 +738,15 @@ class DespachosController extends Controller
 
         //return view('pickingPDF', $data);
         $pdf = PDF::loadView('pickingPDF', $data);
-        return $pdf->stream('picking-'.$pedido['pedido'].'.pdf');
+        return $pdf->stream('picking-' . $pedido['pedido'] . '.pdf');
     }
 
-    public function checkeliminardespacho(GpPedido $pedido){
+    public function checkeliminardespacho(GpPedido $pedido)
+    {
         $reporte = $this->reportepicking($pedido);
-        if(!count($reporte)){
+        if (!count($reporte)) {
             $orden_despacho = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
-            if($orden_despacho){
+            if ($orden_despacho) {
                 $orden_despacho->estado = 'cancelada';
                 $orden_despacho->fecha_hora_liberacion = null;
                 $orden_despacho->save();
@@ -753,27 +760,27 @@ class DespachosController extends Controller
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get()->toArray();
         $bodega = $pedido->BOD_BODEGA;
 
-        foreach($detalle as $key => &$art){
+        foreach ($detalle as $key => &$art) {
 
-//            if($art['ART_TIPO_COMPRA'] == 'S')
-//               continue;
+            //            if($art['ART_TIPO_COMPRA'] == 'S')
+            //               continue;
 
-            if($art['ART_TIPO_COMPRA'] == 'L'){
+            if ($art['ART_TIPO_COMPRA'] == 'L') {
                 $art['ART_DESCRIPCION_ORIGINAL'] = $art['ART_DESCRIPCION'];
             }
 
-            if(!$art['reservado'])
+            if (!$art['reservado'])
                 $art['reservado'] = 0;
 
-            if(!$art['trasladado'])
+            if (!$art['trasladado'])
                 $art['trasladado'] = 0;
 
-            if(!$art['devuelto'])
+            if (!$art['devuelto'])
                 $art['devuelto'] = 0;
 
-            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id','gp_devoluciones_detalles.devolucion_id')
-                ->where( function ($q) {
-                    $q->where('gp_devoluciones.despachado',0);
+            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where(function ($q) {
+                    $q->where('gp_devoluciones.despachado', 0);
                     $q->orWhereNull('gp_devoluciones.despachado');
                 })
                 ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
@@ -781,9 +788,9 @@ class DespachosController extends Controller
 
             $art['devuelto'] = $devuelto;
 
-            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'],2,'.','');
+            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
 
-            if($art['pendiente'] <= 0){
+            if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
                 continue;
             }
@@ -797,7 +804,7 @@ class DespachosController extends Controller
 
             $compartimento = $webservice->stockarticulobodegacompartimiento($parameters);
 
-            if(isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])){
+            if (isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
                 $compartimento = $compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'];
                 $stock = array_column($compartimento, 'STO_ART_COMPART_STOCK_DISPONIBLE');
 
@@ -805,17 +812,17 @@ class DespachosController extends Controller
 
                 $cantidad = $art['ART_CANTIDAD'];
                 $arr_comp = array();
-                foreach($compartimento as $comp){
+                foreach ($compartimento as $comp) {
                     $arr_comp[] =  $comp;
                     $cantidad -= $comp['STO_ART_COMPART_STOCK_DISPONIBLE'];
-                    if($cantidad <= 0)
+                    if ($cantidad <= 0)
                         break;
                 }
 
                 $art['mejorStock'] = $arr_comp[0]['STO_ART_COMPART_COMPARTIMIENTO'];
 
                 $art['compartimento'] = $arr_comp;
-            }else{
+            } else {
                 $art['mejorStock'] = 0;
 
                 $art['compartimento'] = [];
@@ -835,20 +842,20 @@ class DespachosController extends Controller
     public function pesopicking(GpPedido $pedido): Collection|array
     {
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get()->toArray();
-        foreach($detalle as $key => &$art){
+        foreach ($detalle as $key => &$art) {
 
-            if(!$art['reservado'])
+            if (!$art['reservado'])
                 $art['reservado'] = 0;
 
-            if(!$art['trasladado'])
+            if (!$art['trasladado'])
                 $art['trasladado'] = 0;
 
-            if(!$art['devuelto'])
+            if (!$art['devuelto'])
                 $art['devuelto'] = 0;
 
-            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id','gp_devoluciones_detalles.devolucion_id')
-                ->where( function ($q) {
-                    $q->where('gp_devoluciones.despachado',0);
+            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where(function ($q) {
+                    $q->where('gp_devoluciones.despachado', 0);
                     $q->orWhereNull('gp_devoluciones.despachado');
                 })
                 ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
@@ -856,9 +863,9 @@ class DespachosController extends Controller
 
             $art['devuelto'] = $devuelto;
 
-            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'],2,'.','');
+            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
 
-            if($art['pendiente'] <= 0){
+            if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
             }
         }
@@ -866,21 +873,22 @@ class DespachosController extends Controller
         return array_values($detalle);
     }
 
-    public function checkdespacho(GpGuiaRemision $guia){
+    public function checkdespacho(GpGuiaRemision $guia)
+    {
         $pedido = GpPedido::where('pedido', $guia->pedido)->first();
         $listo = true;
 
         $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
-        foreach($detallepedido as $item){
-            if($item->ART_TIPO_COMPRA != 'SERV') {
+        foreach ($detallepedido as $item) {
+            if ($item->ART_TIPO_COMPRA != 'SERV') {
                 if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
                     $listo = false;
                 }
             }
         }
 
-        if($listo){
+        if ($listo) {
             $pedido->despachado = 1;
             $pedido->save();
 
@@ -894,15 +902,15 @@ class DespachosController extends Controller
     public function checkdespachadoscompletos()
     {
         $ordenes = GpOrdenDespacho::where('estado', 'liberada')->get();
-        foreach($ordenes as $orden){
+        foreach ($ordenes as $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
             $listo = true;
 
             $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
-            foreach($detallepedido as $item){
+            foreach ($detallepedido as $item) {
 
-                if($item->ART_TIPO_COMPRA != 'SERV') {
+                if ($item->ART_TIPO_COMPRA != 'SERV') {
 
                     if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
                         $listo = false;
@@ -910,7 +918,7 @@ class DespachosController extends Controller
                 }
             }
 
-            if($listo){
+            if ($listo) {
                 $pedido->despachado = 1;
                 $pedido->save();
 
@@ -923,12 +931,12 @@ class DespachosController extends Controller
         $pedidos = GpPedido::leftJoin('gp_pedido_detalles', 'gp_pedido_detalles.pedido_id', 'gp_pedidos.id')
             ->leftJoin('gp_guia_remisions', 'gp_guia_remisions.pedido', 'gp_pedidos.pedido')
             ->leftJoin('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
-        ->where( function($query){
-            $query->whereNull('gp_pedidos.despachado');
-            $query->orWhere('gp_pedidos.despachado', 0);
-        })
-            ->where('gp_pedido_detalles.ART_TIPO_COMPRA', '!=','SERV')
-            ->where('gp_pedido_detalles.reservado', '>',0)
+            ->where(function ($query) {
+                $query->whereNull('gp_pedidos.despachado');
+                $query->orWhere('gp_pedidos.despachado', 0);
+            })
+            ->where('gp_pedido_detalles.ART_TIPO_COMPRA', '!=', 'SERV')
+            ->where('gp_pedido_detalles.reservado', '>', 0)
             ->where('gp_guia_remisions.tipo', 'despacho')
             ->where('gp_guia_remisions.estado', 'enviada')
             ->where('gp_orden_despachos.estado', 'despachada')
@@ -936,7 +944,7 @@ class DespachosController extends Controller
             ->distinct()
             ->get();
 
-        foreach($pedidos as $pedido){
+        foreach ($pedidos as $pedido) {
             $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
             foreach ($detalle as $item) {
                 $item->reservado = 0;
@@ -974,29 +982,30 @@ class DespachosController extends Controller
         ]);
     }
 
-    public function checktrasladados(){
+    public function checktrasladados()
+    {
         $pedidos = GpPedido::where('estado', 'traslado')
             ->where('id', 29)
             ->get();
-            $order = app(OrderServiceInterface::class);
+        $order = app(OrderServiceInterface::class);
         $apigp = app(ApiGpService::class);
-        $pedidosControl = new PedidosController($apigp, $order );
+        $pedidosControl = new PedidosController($apigp, $order);
 
-        foreach($pedidos as $pedido){
+        foreach ($pedidos as $pedido) {
 
             $pedidosControl->checkenviarfactura($pedido, true);
         }
-
     }
 
     public function imprimirordendespacho($id): Response
     {
         $pedido = $this->detalleordendespacho($id);
         $pdf = Pdf::loadView('ordendespachoPDF', $pedido);
-        return $pdf->stream('orden-despacho-'.$pedido['pedido'].'.pdf');
+        return $pdf->stream('orden-despacho-' . $pedido['pedido'] . '.pdf');
     }
 
-    public function verordendespacho($id){
+    public function verordendespacho($id)
+    {
         $pedido = $this->detalleordendespacho($id);
         return response([
             'success' => true,
@@ -1004,15 +1013,16 @@ class DespachosController extends Controller
         ]);
     }
 
-    public function detalleordendespacho($id){
+    public function detalleordendespacho($id)
+    {
         $orden_despacho =  GpOrdenDespacho::where('id', $id)->first();
 
-        $pedido = GpPedido::leftJoin('gp_cotizacions','gp_cotizacions.id','gp_pedidos.cotizacion_id')
-            ->join('gp_usuarios','gp_usuarios.USERID','gp_pedidos.USERID')
-            ->select('gp_pedidos.*','gp_cotizacions.cotizacion','gp_usuarios.USERNAME')
-            ->where('gp_pedidos.id',$orden_despacho->pedido_id)->first()->toarray();
-            $apigp = app(ApiGpService::class);
-            $order = app(OrderServiceInterface::class);
+        $pedido = GpPedido::leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
+            ->join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
+            ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
+            ->where('gp_pedidos.id', $orden_despacho->pedido_id)->first()->toarray();
+        $apigp = app(ApiGpService::class);
+        $order = app(OrderServiceInterface::class);
         // $pedidos = new PedidosController($apigp, $order);
         $pedido = $this->orderService->getOrderInfo($pedido['id']);
         $pedido['orden_despacho'] = $orden_despacho;
@@ -1028,37 +1038,37 @@ class DespachosController extends Controller
         $guias_despachadas =  GpGuiaRemision::join('gp_pedidos', 'gp_pedidos.pedido', 'gp_guia_remisions.pedido')
             ->join('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
             ->where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado','!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo','despacho')
+            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
+            ->Where('gp_guia_remisions.tipo', 'despacho')
             ->select('gp_guia_remisions.*', 'gp_orden_despachos.orden', 'gp_orden_despachos.id AS orden_id')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1500)
             ->get();
 
         $transferencias_enviadas =  GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado','!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo','transferencia')
+            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
+            ->Where('gp_guia_remisions.tipo', 'transferencia')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1000)
             ->get();
 
         $transferencias_recibidas =  GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
-            ->where('gp_guia_remisions.estado','!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo','transferencia')
+            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
+            ->Where('gp_guia_remisions.tipo', 'transferencia')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1000)
             ->get();
 
         $reposiciones_enviadas =  GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado','!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo','reposicion')
+            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
+            ->Where('gp_guia_remisions.tipo', 'reposicion')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1000)
             ->get();
 
         $reposiciones_recibidas =  GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
-            ->where('gp_guia_remisions.estado','!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo','reposicion')
+            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
+            ->Where('gp_guia_remisions.tipo', 'reposicion')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1000)
             ->get();
@@ -1070,6 +1080,76 @@ class DespachosController extends Controller
             'transferencias_recibidas' => $transferencias_recibidas,
             'reposiciones_enviadas' => $reposiciones_enviadas,
             'reposiciones_recibidas' => $reposiciones_recibidas,
+        ]);
+    }
+
+    public function getDispatchedGuides(Request $request, $puntodeventa_id)
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'asc');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->dispatchService->guiasDespachadas($bodega, $perPage, $search, $sortBy, $sortOrder),
+        ]);
+    }
+
+    public function getDispatchedTransfers(Request $request, $puntodeventa_id)
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'asc');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->dispatchService->transferenciasEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder),
+        ]);
+    }
+
+    public function getReceivedTransfers(Request $request, $puntodeventa_id)
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'asc');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->dispatchService->transferenciasRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder),
+        ]);
+    }
+
+    public function getDispatchedRepositions(Request $request, $puntodeventa_id)
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'asc');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->dispatchService->reposicionesEnviadas($bodega, $perPage, $search,$sortBy, $sortOrder),
+        ]);
+    }
+
+    public function getReceivedRepositions(Request $request, $puntodeventa_id)
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'asc');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->dispatchService->reposicionesRecibidas($bodega, $perPage, $search,$sortBy, $sortOrder),
         ]);
     }
 }

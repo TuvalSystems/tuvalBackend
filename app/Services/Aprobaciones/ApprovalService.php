@@ -2,9 +2,12 @@
 
 namespace App\Services\Aprobaciones;
 
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use DateTime;
+use App\Models\GpPedido;
 use Illuminate\Support\Arr;
+use App\Models\GpPedidoDetalle;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -25,27 +28,40 @@ class ApprovalService implements ApprovalServiceInterface
 
         $tipoDevolucion = Arr::get($data, 'devolucion.tipo_devolucion');
         $volverAFacturar = Arr::get($data, 'devolucion.volver_a_facturar', false);
-        $despachado = Arr::get($data, 'pedido.despachado', null);
         $detallePedido = Arr::get($data, 'detallepedido', []);
         $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
-        $tieneL = collect($detallePedido)->contains(fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l' || Arr::get($detalle, 'ART_TIPO_COMPRA', '') === 'L');
         $daysDifference = $this->daysDifference($fechaFactura);
+        $hasTypeLItems = collect($detallePedido)->contains(
+            fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l'
+        );
 
-        if ($despachado) {
+        // Verifica si el pedido tiene detalles de orden despachados
+        // Esto es necesario para determinar si se requiere despacho
+        // en caso de que la devolucion sea parcial o total
+        // y no se vuelva a facturar
+        $requiresDispatch = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), $detallePedido, $volverAFacturar);
+
+
+        if ($requiresDispatch) {
             return 'yes';
         }
 
         if ($tipoDevolucion === 'parcial') {
-            if ($daysDifference <= 7) {
-                if (!$volverAFacturar &&  !$tieneL) {
-                    return 'no';
-                }
+            if ($volverAFacturar) {
+                return 'yes';
             }
+            if ($hasTypeLItems) {
+                return 'yes';
+            }
+            return $daysDifference <= 7 ? 'no' : 'yes';
         }
 
-        if ($tipoDevolucion === 'total' && !$volverAFacturar) {
-            if ($tieneL) {
-                return $daysDifference <= 7 ? 'no' : 'yes';
+        if ($tipoDevolucion === 'total') {
+            if ($volverAFacturar) {
+                return 'yes';
+            }
+            if ($hasTypeLItems) {
+                return 'yes';
             }
             return $daysDifference <= 7 ? 'no' : 'yes';
         }
@@ -56,10 +72,48 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function daysDifference($fecha)
     {
-        if (!$fecha) return 0;
+        if (!$fecha)
+            return 0;
 
         $origin = new DateTime($fecha);
         $target = new DateTime('now');
         return $origin->diff($target)->days;
+    }
+
+
+    public function hasDispatchedOrderDetails($pedido, $detallepedido, $volverAFacturar): bool
+    {
+        if ($volverAFacturar === true) {
+            $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
+                ->where('estado', '!=', 'anulada')
+                ->orderByDesc('id')
+                ->first();
+            if (!$lastOrder) {
+                return false;
+            }
+            $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
+            return GpPedidoDetalle::where('pedido_id', $lastOrder->id)
+                ->whereIn('ART_CODIGO', $codigos)
+                ->where('trasladado', '>', 0)
+                ->exists();
+        }
+
+        $pedidoConsulta = GpPedido::find($pedido['id']);
+        if (!empty($pedidoConsulta['factura_origen'])) {
+            $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
+            return (bool) optional($pedido_origen)->despachado;
+        }
+
+        $hasDetailDispatched = collect($detallepedido)
+            ->contains(function ($item) {
+                return !empty($item['despachado'])
+                    && (float) $item['despachado'] > 0
+                    && isset($item['despacho'])
+                    && $item['despacho'] === true;
+            });
+        if ($hasDetailDispatched) {
+            return true;
+        }
+        return false;
     }
 }

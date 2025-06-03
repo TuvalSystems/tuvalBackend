@@ -57,11 +57,11 @@ class OrderRepository implements OrderRepositoryInterface
             ->where('gp_pedidos.pedido', $orderNumber)
             ->select(
                 'gp_orden_de_compra_generados.*',
-                'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN as document_origin',
-                'gp_proveedors.PROV_RAZON_SOCIAL as supplier_name',
-                'gp_proveedors.PROV_DIRECCION_1 as supplier_address',
-                'gp_pedidos.CLI_RAZON_SOCIAL as client_name',
-                'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE as client_id'
+                'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN',
+                'gp_proveedors.PROV_RAZON_SOCIAL',
+                'gp_proveedors.PROV_DIRECCION_1',
+                'gp_pedidos.CLI_RAZON_SOCIAL',
+                'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE'
             )
             ->get();
         // });
@@ -76,13 +76,13 @@ class OrderRepository implements OrderRepositoryInterface
                 ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
                 ->where('gp_traslados_ventas.pedido_id', $orderId)
                 ->select(
-                    'gp_traslados_ventas.*',
-                    'gp_pedidos.id AS pedido_id',
-                    'gp_pedidos.pedido',
-                    'gp_bodegas.BOD_DESCRIPCION AS warehouse_description',
-                    'gp_bodegas.BOD_BODEGA AS warehouse_code',
-                    'gp_pedidos.created_at AS order_date',
-                    'gp_pedidos.USERID AS user_id'
+                     'gp_traslados_ventas.*',
+                'gp_pedidos.id AS pedido_id',
+                'gp_pedidos.pedido',
+                'gp_bodegas.BOD_DESCRIPCION',
+                'gp_bodegas.BOD_BODEGA',
+                'gp_pedidos.created_at AS fecha',
+                'gp_pedidos.USERID AS usuario',
                 )
                 ->get();
         // });
@@ -102,8 +102,8 @@ class OrderRepository implements OrderRepositoryInterface
                 ->where('gp_traslados_ventas.pedido_id', $transfer->pedido_id)
                 ->select(
                     'gp_guia_remisions.*',
-                    'gp_guia_remision_detalles.GUI_REM_CANTIDAD as quantity',
-                    'gp_guia_remision_detalles.recibido as received'
+                    'gp_guia_remision_detalles.GUI_REM_CANTIDAD',
+                    'gp_guia_remision_detalles.recibido'
                 )
                 ->get();
         // });
