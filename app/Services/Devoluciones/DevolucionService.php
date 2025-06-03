@@ -442,9 +442,6 @@ class DevolucionService implements DevolucionServiceInterface
     /**
      * Metodo para obtener el detalle del pedido devuelto y que se solicitara devolucion.
      * Se migro la funcion de SP de MSW MST_Cliente_Grupo_Economico a Java
-     * @param $data $data [explicite description]
-     *
-     *
      */
     public function getDetailOrderReturnById($order)
     {
