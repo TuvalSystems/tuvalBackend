@@ -339,7 +339,7 @@ class DevolucionJobService
 
         // 🛠️ Preparación de los items para la devolución
         $itemsDevolucion = $detalles->map(function ($detalle) use ($devolucion, $pedido) {
-            $devuelto = $detalle->devuelto; // Obtenemos el valor devuelto del detalle
+            // Obtenemos el valor devuelto del detalle
             $devuelto = ($devolucion->despachado && $devolucion->volver_a_facturar) ? $detalle->recibido : $detalle->devuelto;
             if (!$devuelto) {
                 return null; // Si no hay devuelto, se ignora el item
