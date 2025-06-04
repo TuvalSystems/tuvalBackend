@@ -125,11 +125,6 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->where('gp_guia_remisions.estado', 'enviada')
             ->where('gp_guia_remisions.tipo', 'despacho')
             ->sum('gp_guia_remision_detalles.GUI_REM_CANTIDAD');
-        // return GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
-        //     ->where('gp_guia_remision_detalles.detalle_id', $detalle_id)
-        //     ->where('gp_guia_remisions.estado', 'enviada')
-        //     ->where('gp_guia_remisions.tipo', 'despacho')
-        //     ->sum('gp_guia_remision_detalles.GUI_REM_CANTIDAD');
     }
 
     public function getOrderOriginByInvoice($invoice)
