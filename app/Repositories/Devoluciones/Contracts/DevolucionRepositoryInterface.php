@@ -31,7 +31,6 @@ interface DevolucionRepositoryInterface
     public function getClientsSucursByClientRuc($ruc);
 
     public function getSumGuidesRemisionByOrderDetailId($detalle_id);
-    public function getOrderOriginByInvoice($invoice);
 
     public function sumReturnedQtyByDetailId($detalle_id, $despacho_parcial);
 

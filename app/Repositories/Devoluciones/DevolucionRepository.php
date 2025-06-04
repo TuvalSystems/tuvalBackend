@@ -2,8 +2,7 @@
 
 namespace App\Repositories\Devoluciones;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDetalle;
+
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpMotivosDevolucion;
@@ -125,11 +124,6 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->where('gp_guia_remisions.estado', 'enviada')
             ->where('gp_guia_remisions.tipo', 'despacho')
             ->sum('gp_guia_remision_detalles.GUI_REM_CANTIDAD');
-    }
-
-    public function getOrderOriginByInvoice($invoice)
-    {
-        return GpPedido::where('factura', $invoice)->first();
     }
 
     public function sumReturnedQtyByDetailId($detalle_id, $despacho_parcial)

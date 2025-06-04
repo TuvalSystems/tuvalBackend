@@ -497,11 +497,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function getDetailFormatPedido($detalles, $pedido)
     {
-        $pedidoOrigen = ($pedido->factura_origen && $pedido->despachado)
-            ? $this->devolucionRepository->getOrderOriginByInvoice($pedido->factura_origen)
-            : null;
         $result = [];
-
         $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
             ->where('volver_a_facturar', true)->exists();
         if ($yaFueRefacturado) {
