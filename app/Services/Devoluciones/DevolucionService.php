@@ -12,7 +12,6 @@ use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpFacturaAnulada;
-use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
@@ -503,13 +502,19 @@ class DevolucionService implements DevolucionServiceInterface
             : null;
         $result = [];
 
+        $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
+            ->where('volver_a_facturar', true)->exists();
+        if ($yaFueRefacturado) {
+            return [];
+        }
+
         foreach ($detalles as $dt) {
+
             $common = clone $dt;
             $common->reservado = $dt->reservado ?? 0;
-            $common->devuelto = $det->devuelto ?? 0;
+            $common->devuelto = $dt->devuelto ?? 0;
             $common->seleccionado = 0;
             $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
-
 
             $devueltoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
             $devueltoNoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 0);
@@ -517,6 +522,8 @@ class DevolucionService implements DevolucionServiceInterface
             $totalCantidad = (float) $common->ART_CANTIDAD;
             $totalDespachado = (float) $common->despachado;
             $totalNoDespachados = max($totalCantidad - $totalDespachado, 0);
+            //logica para validar items del pedido origen
+
 
             // Lógica cuando hay items despachado
             if ($totalDespachado > 0) {
@@ -525,9 +532,6 @@ class DevolucionService implements DevolucionServiceInterface
                 $itemDespachado->devuelto = $devueltoDespachado;
                 $itemDespachado->disponible = max($totalDespachado - $devueltoDespachado, 0);
 
-                if ($pedidoOrigen && !$pedidoOrigen->despachado) {
-                    $itemDespachado->disponible = 0;
-                }
                 if ($itemDespachado->disponible > 0) {
                     $result[] = $itemDespachado;
                 }
@@ -540,9 +544,6 @@ class DevolucionService implements DevolucionServiceInterface
                 $itemNoDespachado->devuelto = $devueltoNoDespachado;
                 $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado, 0);
 
-                if ($pedidoOrigen && !$pedidoOrigen->despachado) {
-                    $itemNoDespachado->disponible = 0;
-                }
 
                 if ($itemNoDespachado->disponible > 0) {
                     $result[] = $itemNoDespachado;

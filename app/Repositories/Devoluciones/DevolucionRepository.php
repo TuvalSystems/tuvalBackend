@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Devoluciones;
 
+use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
@@ -12,6 +13,7 @@ use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 
 class DevolucionRepository implements DevolucionRepositoryInterface
 {
@@ -117,11 +119,17 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
     public function getSumGuidesRemisionByOrderDetailId($detalle_id)
     {
-        return GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
+        return DB::table('gp_guia_remision_detalles')
+            ->join('gp_guia_remisions', 'gp_guia_remisions.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
             ->where('gp_guia_remision_detalles.detalle_id', $detalle_id)
             ->where('gp_guia_remisions.estado', 'enviada')
             ->where('gp_guia_remisions.tipo', 'despacho')
             ->sum('gp_guia_remision_detalles.GUI_REM_CANTIDAD');
+        // return GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
+        //     ->where('gp_guia_remision_detalles.detalle_id', $detalle_id)
+        //     ->where('gp_guia_remisions.estado', 'enviada')
+        //     ->where('gp_guia_remisions.tipo', 'despacho')
+        //     ->sum('gp_guia_remision_detalles.GUI_REM_CANTIDAD');
     }
 
     public function getOrderOriginByInvoice($invoice)
