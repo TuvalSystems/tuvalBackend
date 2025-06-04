@@ -155,7 +155,7 @@ class GpDevoluciones extends Model
         //validacion de estado solicitado
         if ($criterio['estado'] == 'solicitado' && $criterio['tipo_devolucion'] == 'total') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-                ->where('dvd.ART_TIPO_COMPRA', '!=','L')
+                ->where('dvd.ART_TIPO_COMPRA', '!=', 'L')
                 // esto me valida que solo procese las devoluciones que tengan devoluciones anteriores en estado parcial
                 ->whereExists(function ($q) {
                     $q->select(DB::raw(1))
@@ -189,9 +189,9 @@ class GpDevoluciones extends Model
             });
         }
 
-         //validacione en estado aprobado parcial
+        //validacione en estado aprobado parcial
         if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial' && $criterio['volver_a_facturar'] === 1) {
-            $query->where(function ($q)  {
+            $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 1)
                     ->where('gp_devoluciones.estado', 'aprobado')
@@ -201,25 +201,33 @@ class GpDevoluciones extends Model
 
         //validacion con estad aprobado sin volver a facturar pero no despachadas parciales
         if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial' && $criterio['volver_a_facturar'] === 0) {
-            $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-                ->where('dvd.despachado_parcial', 0)
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.requiere_aprobacion', 1)
-                        ->where('gp_devoluciones.volver_a_facturar', 0)
-                        ->where('gp_devoluciones.estado', 'aprobado')
-                        ->whereNotNull('gp_devoluciones.aprobador_id');
+            $query->where(function ($q) {
+                $q->where('gp_devoluciones.requiere_aprobacion', 1)
+                    ->where('gp_devoluciones.volver_a_facturar', 0)
+                    ->where('gp_devoluciones.estado', 'aprobado')
+                    ->whereNotNull('gp_devoluciones.aprobador_id');
+            })
+                ->whereNotExists(function ($sub) {
+                    $sub->selectRaw(1)
+                        ->from('gp_devoluciones_detalles as dvd')
+                        ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
+                        ->where('dvd.despachado_parcial', 1);
                 });
         }
 
         //validacion con estado aprobado sin volver a facturar pero no despachadas totales
         if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 0) {
-             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
-                ->where('dvd.despachado_parcial', 0)
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.requiere_aprobacion', 1)
-                        ->where('gp_devoluciones.volver_a_facturar', 0)
-                        ->where('gp_devoluciones.estado', 'aprobado')
-                        ->whereNotNull('gp_devoluciones.aprobador_id');
+            $query->where(function ($q) {
+                $q->where('gp_devoluciones.requiere_aprobacion', 1)
+                    ->where('gp_devoluciones.volver_a_facturar', 0)
+                    ->where('gp_devoluciones.estado', 'aprobado')
+                    ->whereNotNull('gp_devoluciones.aprobador_id');
+            })
+                ->whereNotExists(function ($sub) {
+                    $sub->selectRaw(1)
+                        ->from('gp_devoluciones_detalles as dvd')
+                        ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
+                        ->where('dvd.despachado_parcial', 1);
                 });
         }
 
