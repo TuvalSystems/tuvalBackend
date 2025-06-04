@@ -134,7 +134,7 @@ class GpDevoluciones extends Model
         if (!empty($criterio['tipo_devolucion'])) {
             $query->where('gp_devoluciones.tipo_devolucion', $criterio['tipo_devolucion']);
         }
-        if (!empty($criterio['volver_a_facturar'])) {
+        if (isset($criterio['volver_a_facturar'])) {
             $query->where('gp_devoluciones.volver_a_facturar', $criterio['volver_a_facturar']);
         }
 
