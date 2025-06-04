@@ -399,7 +399,7 @@ class DevolucionJobService
         $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
         $afectados = DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
-            ->where('despachado_parcial', 0)
+            // ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
