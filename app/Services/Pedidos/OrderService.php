@@ -2,6 +2,7 @@
 
 namespace App\Services\Pedidos;
 
+use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Carbon\Carbon;
@@ -79,7 +80,7 @@ class OrderService implements OrderServiceInterface
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $id)
             ->first()
-            ?->toArray();
+                ?->toArray();
     }
     public function isPedidoBlocked(array $pedido): bool
     {
@@ -133,7 +134,8 @@ class OrderService implements OrderServiceInterface
 
     public function getImagenes(string $codigo): array
     {
-        if (!$codigo) return [];
+        if (!$codigo)
+            return [];
 
         $imagenes = [];
         for ($i = 1; $i <= 3; $i++) {
@@ -147,7 +149,7 @@ class OrderService implements OrderServiceInterface
 
     public function appendPagoAndClienteInfo(&$pedido)
     {
-        $formaPago  = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $pedido['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
+        $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $pedido['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
         $pedido['formadepago'] = $formaPago['DESC_FORMA_PAGO_TIPO_CREDITO'] ?? null;
         $pedido['formadepagoSRI'] = substr($formaPago['DESC_FORMA_PAGO_SRI'] ?? '', 3);
 
@@ -235,7 +237,7 @@ class OrderService implements OrderServiceInterface
     public function detailOrderById($data)
     {
         // 🔍 1. Obtener detalles del pedido
-        $detalle =  $this->orderRepository->getAllDetailsOrderById($data['id']);
+        $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
 
         // 🔍 2. Consultar el crédito del cliente
         //  $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
@@ -263,16 +265,16 @@ class OrderService implements OrderServiceInterface
         });
 
 
-         // 🔍 4. Obtener órdenes de compra optimizadas
-         $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
-         ->map(function ($orden){
-            $recibodecompra =  $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
-            return count($recibodecompra->detalle) > 0 ? $recibodecompra : null;
-         })
-         ->filter()
-         ->values();
+        // 🔍 4. Obtener órdenes de compra optimizadas
+        $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
+            ->map(function ($orden) {
+                $recibodecompra = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+                return count($recibodecompra->detalle) > 0 ? $recibodecompra : null;
+            })
+            ->filter()
+            ->values();
 
-    // 🔍 5. Procesar traslados
+        // 🔍 5. Procesar traslados
         $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
         $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
             $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
@@ -287,15 +289,15 @@ class OrderService implements OrderServiceInterface
                 $pendientes = true;
         });
 
- // 🔍 6. Obtener despacho, guías y devoluciones
+        // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
 
         return response([
             'success' => true,
-            'detalle'   => $detalle,
-            'estadodecuenta'    => $estadoCuenta,
+            'detalle' => $detalle,
+            'estadodecuenta' => $estadoCuenta,
             'ordendecompra' => $ordenes,
             'traslados' => $trasladosVentas,
             'orden_despacho' => $orderDespacho,
@@ -304,5 +306,12 @@ class OrderService implements OrderServiceInterface
             'pendientes' => $pendientes,
             'existentes' => $existentes,
         ]);
+    }
+
+
+    public function checkOutValidateDispatchReInvoice($devolucion)
+    {
+        return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
+            ->where('despachado_parcial', 1)->exists();
     }
 }

@@ -10,4 +10,7 @@ interface OrderServiceInterface
         public function storeOrder($order);
 
         public function detailOrderById($data);
+
+        //volver a facturar
+        public function checkOutValidateDispatchReInvoice($devolucion);
 }

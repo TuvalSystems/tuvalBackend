@@ -25,7 +25,6 @@ use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Support\Facades\Response;
 use App\Models\GpPedidoDetalleProveedores;
-use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Http\Controllers\FuncionesController;
@@ -34,12 +33,10 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Http\Controllers\bodegas\DespachosController;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Http\Controllers\bodegas\RecibosdecompraeleController;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 
@@ -1808,9 +1805,8 @@ class PedidosController extends Controller
 
     public function volverafacturar($devolucion)
     {
-        // $webservices = new WebserviceController();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
-        $despachada =  $pedido->despachado == 1 ? true : false;
+        $despachada =  $this->orderService->checkOutValidateDispatchReInvoice($devolucion);
         $cliente = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
