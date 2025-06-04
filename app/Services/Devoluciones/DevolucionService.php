@@ -498,7 +498,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function getDetailFormatPedido($detalles, $pedido)
     {
-        $pedidoOrigen = ($pedido->factura_origen && $pedido->despachada)
+        $pedidoOrigen = ($pedido->factura_origen && $pedido->despachado)
             ? $this->devolucionRepository->getOrderOriginByInvoice($pedido->factura_origen)
             : null;
         $result = [];
@@ -524,9 +524,14 @@ class DevolucionService implements DevolucionServiceInterface
                 $itemDespachado->despacho = true;
                 $itemDespachado->devuelto = $devueltoDespachado;
                 $itemDespachado->disponible = max($totalDespachado - $devueltoDespachado, 0);
+
+                if ($pedidoOrigen && !$pedidoOrigen->despachado) {
+                    $itemDespachado->disponible = 0;
+                }
                 if ($itemDespachado->disponible > 0) {
                     $result[] = $itemDespachado;
                 }
+
             }
 
             if ($totalNoDespachados > 0) {
@@ -535,7 +540,7 @@ class DevolucionService implements DevolucionServiceInterface
                 $itemNoDespachado->devuelto = $devueltoNoDespachado;
                 $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado, 0);
 
-                if ($pedidoOrigen && !$pedidoOrigen->despachada) {
+                if ($pedidoOrigen && !$pedidoOrigen->despachado) {
                     $itemNoDespachado->disponible = 0;
                 }
 

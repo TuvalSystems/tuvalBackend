@@ -215,7 +215,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function getDetailDevolucionById($devolucion_id)
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion_id)
-            ->where('seleccionado', '>', 0)
+            // ->where('seleccionado', '>', 0)  //comente la condicional porque tambien se considera para el volver a facturar
             ->get()
             ->filter(function ($item) {
                 // ✅ Verificación de datos correctos y no nulos
