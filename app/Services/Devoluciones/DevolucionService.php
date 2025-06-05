@@ -525,7 +525,7 @@ class DevolucionService implements DevolucionServiceInterface
             if ($totalDespachado > 0) {
                 $itemDespachado = clone $common;
                 $itemDespachado->despacho = true;
-                $itemDespachado->devuelto = $devueltoDespachado;
+                $itemDespachado->devuelto =  $devueltoDespachado;
                 $itemDespachado->disponible = max($totalDespachado - $devueltoDespachado, 0);
 
                 if ($itemDespachado->disponible > 0) {
@@ -538,7 +538,7 @@ class DevolucionService implements DevolucionServiceInterface
                 $itemNoDespachado = clone $common;
                 $itemNoDespachado->despacho = false;
                 $itemNoDespachado->devuelto = $devueltoNoDespachado;
-                $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado, 0);
+                $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado , 0);
 
 
                 if ($itemNoDespachado->disponible > 0) {
