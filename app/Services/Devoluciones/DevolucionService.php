@@ -491,6 +491,7 @@ class DevolucionService implements DevolucionServiceInterface
             'motivos' => $motivos,
             'clientes' => $clientesArr,
             'devolucion_anterior' => $devolucionAnterior,
+            'items_devueltos' => $this->validarItemNoTengaDespachoParcial($detalles),
         ]);
     }
 
@@ -522,35 +523,40 @@ class DevolucionService implements DevolucionServiceInterface
 
 
             // Lógica cuando hay items despachado
-            if ($totalDespachado > 0) {
+
+            //neva logica para despachado y no despachado
+            if ($devueltoDespachado >= 0) {
                 $itemDespachado = clone $common;
                 $itemDespachado->despacho = true;
-                $itemDespachado->devuelto =  $devueltoDespachado;
-                $itemDespachado->disponible = max($totalDespachado - $devueltoDespachado, 0);
-
+                $itemDespachado->devuelto = $devueltoDespachado;
+                $itemDespachado->disponible = max($common->despachado - $devueltoDespachado, 0);
                 if ($itemDespachado->disponible > 0) {
                     $result[] = $itemDespachado;
                 }
-
             }
 
-            if ($totalNoDespachados > 0) {
+            if ($devueltoNoDespachado >= 0) {
                 $itemNoDespachado = clone $common;
                 $itemNoDespachado->despacho = false;
                 $itemNoDespachado->devuelto = $devueltoNoDespachado;
-                $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado , 0);
-
-
+                $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado, 0);
                 if ($itemNoDespachado->disponible > 0) {
                     $result[] = $itemNoDespachado;
                 }
             }
+
+
         }
         return collect($result)->sortBy('ART_CODIGO')->values()->all();
     }
 
 
-
+    public function validarItemNoTengaDespachoParcial($detalles)
+    {
+        return collect($detalles)->contains(function ($item) {
+            return ($item['devuelto'] ?? 0) > 0 && ($item['trasladado'] ?? 0) > 0;
+        });
+    }
 
 
     /** function imprimirdevolucion -controlador
