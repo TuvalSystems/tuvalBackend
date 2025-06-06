@@ -309,7 +309,7 @@ class DevolucionService implements DevolucionServiceInterface
 
         // verifica si el pedido tiene factura origen para determinar si tiene o no despacho
         $pedidoConsulta = GpPedido::find($pedido['id']);
-         if (!empty($pedidoConsulta['factura_origen'])) {
+        if (!empty($pedidoConsulta['factura_origen'])) {
             $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
 
             if (is_null(optional($pedido_origen)->despachado)) {
@@ -561,7 +561,10 @@ class DevolucionService implements DevolucionServiceInterface
     public function validarItemNoTengaDespachoParcial($detalles)
     {
         return collect($detalles)->contains(function ($item) {
-            return ($item['devuelto'] ?? 0) > 0 && ($item['trasladado'] ?? 0) > 0;
+            $cantidad = (float) ($item['ART_CANTIDAD'] ?? 0);
+            $trasladado = (float) ($item['trasladado'] ?? 0);
+
+            return $trasladado > 0 && $trasladado < $cantidad;
         });
     }
 
