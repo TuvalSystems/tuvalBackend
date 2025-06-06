@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Http\Controllers\ventas\PedidosController;
+use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
@@ -377,6 +378,10 @@ class DevolucionService implements DevolucionServiceInterface
         //verifica si el pedido tiene factura origen
         $pedidoConsulta = GpPedido::find($pedido['id']);
         if (!empty($pedidoConsulta['factura_origen']) && ($pedido['despachado'] === false || $pedido['despachado'] === null)) {
+            $existItemGuia = GpGuiaRemisionDetalle::where('detalle_id', $item['id'])->exists();
+            if ($existItemGuia) {
+                return true;
+            }
             $pedidoOrigenIds = GpPedido::where('factura', $pedido['factura_origen'])->pluck('id');
             $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
             $pedidosRelacionados = GpPedido::whereIn('cotizacion_id', $cotizacionesOrigen)->pluck('id');
