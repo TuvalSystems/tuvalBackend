@@ -380,7 +380,7 @@ class DevolucionService implements DevolucionServiceInterface
         if (!empty($pedidoConsulta['factura_origen']) && ($pedido['despachado'] === false || $pedido['despachado'] === null)) {
             $existItemGuia = GpGuiaRemisionDetalle::where('detalle_id', $item['id'])->exists();
             if ($existItemGuia) {
-                return true;
+                 return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
             }
             $pedidoOrigenIds = GpPedido::where('factura', $pedido['factura_origen'])->pluck('id');
             $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
