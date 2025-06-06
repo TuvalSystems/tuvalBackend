@@ -376,7 +376,7 @@ class DevolucionService implements DevolucionServiceInterface
     {
         //verifica si el pedido tiene factura origen
         $pedidoConsulta = GpPedido::find($pedido['id']);
-        if (!empty($pedidoConsulta['factura_origen'])) {
+        if (!empty($pedidoConsulta['factura_origen']) && ($pedido['despachado'] === false || $pedido['despachado'] === null)) {
             $pedidoOrigenIds = GpPedido::where('factura', $pedido['factura_origen'])->pluck('id');
             $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
             $pedidosRelacionados = GpPedido::whereIn('cotizacion_id', $cotizacionesOrigen)->pluck('id');
