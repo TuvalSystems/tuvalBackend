@@ -16,9 +16,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\SectionsController;
-
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -38,13 +39,30 @@ class AuthController extends Controller
         if (!$this->isValidUser($validationResponse)) {
             return $this->buildErrorResponse($validationResponse['msj'] ?? 'Usuario no encontrado', 404);
         }
+        if (!$this->isValidUserWeb($credentials)) {
+            return $this->buildErrorResponse('Las credenciales no son validas', 401);
+        }
         $user = $this->getActiveUser($credentials['username']);
+        $userWeb = $this->getUserWeb($credentials['username']);
         if (!$user) {
             return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
         }
-        return $this->buildSuccessResponse($user);
+        return $this->buildSuccessResponse($user, $userWeb);
     }
 
+    public function isValidUserWeb(array $credentials): bool
+    {
+         $user = User::where('username', $credentials['username'])->where('status', true)->first();
+         if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            return false;
+         }
+         return true;
+    }
+
+    public function getUserWeb($username): ?Model
+    {
+        return User::where('username', $username)->first();
+    }
     public function getActiveUser($username): ?Model
     {
         return  GpUsuario::join('perfiles', 'perfiles.id', 'gp_usuarios.perfil_id')
@@ -78,7 +96,7 @@ class AuthController extends Controller
 
 
 
-    public function buildSuccessResponse($user): JsonResponse
+    public function buildSuccessResponse($user, $userWeb): JsonResponse
     {
 
         return  response()->json([
@@ -91,6 +109,7 @@ class AuthController extends Controller
             'formadepago' =>  $this->getPaymentMethods(),
             'condiciondepago' => $this->getPaymentConditions(),
             'proveedores' => $this->getSuppliers(),
+            'userWeb' => $userWeb
 
         ]);
     }
