@@ -2,6 +2,7 @@
 
 namespace App\Services\Devoluciones;
 
+use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpVendedor;
 use App\Services\Api\ApiSalesService;
@@ -180,6 +181,7 @@ class DevolucionService implements DevolucionServiceInterface
         $this->apiUpdateTbhFacAnuAutorize($order->factura);
         $this->updateStatusDevolutions($order, $devolucion);
         $this->updateStatusOrders($order);
+        $this->updatedStatusOrderDispatch($order);
     }
 
     private function saveFailedCancellation($order, array $cancelResponse, $devolucion): void
@@ -208,6 +210,11 @@ class DevolucionService implements DevolucionServiceInterface
     {
         GpPedido::where('id', $order->id)
             ->update(['estado' => 'anulada']);
+    }
+    public function updatedStatusOrderDispatch($order)
+    {
+        GpOrdenDespacho::where('pedido_id', $order->id)
+            ->update(['estado' => 'cancelada']);
     }
 
 
