@@ -309,10 +309,10 @@ class DevolucionService implements DevolucionServiceInterface
 
         // verifica si el pedido tiene factura origen para determinar si tiene o no despacho
         $pedidoConsulta = GpPedido::find($pedido['id']);
-        if (!empty($pedidoConsulta['factura_origen'])) {
+        if (!empty($pedidoConsulta['factura_origen']) && ($pedido['despachado'] === false || $pedido['despachado'] === null)) {
             $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
 
-            if (is_null(optional($pedido_origen)->despachado)) {
+            if (is_null(optional($pedido_origen)->despachado) || $pedido_origen->despachado === false) {
                 $tieneDetalleDespachadoYDevuelto = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->contains(function ($item) {
                     return ($item->trasladado ?? 0) > 0 && ($item->devuelto ?? 0) > 0;
                 });
@@ -322,17 +322,14 @@ class DevolucionService implements DevolucionServiceInterface
         }
 
         // Verifica si alguno de los detalles del pedido tiene despacho
-        $hasDetailDispatched = collect($detallepedido)
+         $hasDetailDispatched = collect($detallepedido)
             ->contains(function ($item) {
                 return !empty($item['despachado'])
                     && (float) $item['despachado'] > 0
                     && isset($item['despacho'])
                     && $item['despacho'] === true;
             });
-        if ($hasDetailDispatched) {
-            return true;
-        }
-        return false;
+        return $hasDetailDispatched;
     }
 
 

@@ -99,10 +99,10 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         $pedidoConsulta = GpPedido::find($pedido['id']);
-        if (!empty($pedidoConsulta['factura_origen'])) {
+        if (!empty($pedidoConsulta['factura_origen']) && ($pedido['despachado'] === false || $pedido['despachado'] === null)) {
             $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
 
-            if (is_null(optional($pedido_origen)->despachado)) {
+            if (is_null(optional($pedido_origen)->despachado) || $pedido_origen->despachado === false) {
                 $tieneDetalleDespachadoYDevuelto = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->contains(function ($item) {
                     return ($item->trasladado ?? 0) > 0 && ($item->devuelto ?? 0) > 0;
                 });
@@ -118,9 +118,6 @@ class ApprovalService implements ApprovalServiceInterface
                     && isset($item['despacho'])
                     && $item['despacho'] === true;
             });
-        if ($hasDetailDispatched) {
-            return true;
-        }
-        return false;
+        return $hasDetailDispatched;
     }
 }
