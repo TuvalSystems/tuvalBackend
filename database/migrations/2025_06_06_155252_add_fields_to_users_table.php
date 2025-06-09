@@ -13,10 +13,11 @@ class AddFieldsToUsersTable extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('username')->after('email');
-            $table->boolean('status')->default(1)->after('remember_token');
-            $table->boolean('must_change_password')->default(true)->after('password');
+        Schema::table('gp_usuarios', function (Blueprint $table) {
+            $table->string('password')->nullable();
+            $table->boolean('status')->default(1);
+            $table->boolean('must_change_password')->default(true);
+            $table->boolean('process_job')->default(false);
         });
     }
 
@@ -27,10 +28,11 @@ class AddFieldsToUsersTable extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('username');
+        Schema::table('gp_usuarios', function (Blueprint $table) {
+            $table->string('password')->nullable();
             $table->dropColumn('status');
             $table->dropColumn('must_change_password');
+            $table->dropColumn('process_job');
         });
     }
 }

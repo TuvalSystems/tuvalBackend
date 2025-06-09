@@ -18,7 +18,6 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
-use App\Http\Controllers\ImportarPedidosController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -31,9 +30,14 @@ use App\Http\Controllers\ImportarPedidosController;
 */
 
 Route::middleware('auth:sanctum')->group(function(){
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
+
+});
+Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::post('/resetpassword', [AuthController::class, 'resetPassword']);
     Route::get('/logout', [AuthController::class, 'logout']);
     Route::get('/notificaciones', [AuthController::class, 'notificaciones']);
     Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);

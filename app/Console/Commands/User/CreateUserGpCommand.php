@@ -41,27 +41,19 @@ class CreateUserGpCommand extends Command
      */
     public function handle()
     {
-        $gpUsers = GpUsuario::select('USERID', 'USERNAME')->where('USERID', 'jmagallanes')->take(1)->get();
+        $gpUsers = GpUsuario::where('USERID', 'jmagallanes')->take(1)->get();
 
-        $existingUsernames = User::pluck('username')->flip();
-        $newUsers = $gpUsers->filter(fn($gpUser) => !$existingUsernames->has($gpUser->USERID));
-
-
-        $insertData = $newUsers->map(function ($gpUser) {
-            return [
-                'username' => $gpUser->USERID,
-                'name' => $gpUser->USERNAME,
-                'email' => $gpUser->USERID . '@example.com',
+        $insertData = [];
+        foreach ($gpUsers as $gpUser) {
+            $insertData[] = [
                 'password' => Hash::make('12345'),
-                'must_change_password' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ];
-        })->all();
+
+        }
 
         if (!empty($insertData)) {
-            User::insert($insertData); // 5. Insertar en lote para rendimiento
-            Log::info(count($insertData) . ' nuevos usuarios sincronizados desde GpUsuario.');
+           $gpUser->update($insertData[0]);
+            Log::info(count($insertData) . 'Se realizo la actualizacion de credenciales del usuario.');
         }
         return 0;
     }

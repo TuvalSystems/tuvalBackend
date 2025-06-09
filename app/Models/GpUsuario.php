@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
@@ -17,6 +16,9 @@ use Illuminate\Notifications\Notifiable;
  * @property int|null $perfil_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $password
+ *
+ * @propertu int|null $status
  * @property-read \Illuminate\Notifications\DatabaseNotificationCollection|\Illuminate\Notifications\DatabaseNotification[] $notifications
  * @property-read int|null $notifications_count
  * @property-read \Illuminate\Database\Eloquent\Collection|\Laravel\Sanctum\PersonalAccessToken[] $tokens
@@ -33,6 +35,7 @@ use Illuminate\Notifications\Notifiable;
  * @mixin \Eloquent
  * @property int|null $NIVEL_AUTORIZA_CRED
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereNIVELAUTORIZACRED($value)
+ * @property int|null  $must_change_password
  */
 class GpUsuario extends Authenticatable
 {
@@ -41,5 +44,15 @@ class GpUsuario extends Authenticatable
     protected $fillable = [
         'USERID',
         'USERNAME',
+        'NIVEL_AUTORIZA_CRED',
+        'perfil_id',
+        'co_usr',
+        'password',
+        'must_change_password',
+        'status'
+
+    ];
+    protected $hidden = [
+        'password',
     ];
 }
