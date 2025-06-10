@@ -33,8 +33,15 @@ class UserService
 
     public function isValidUserWeb(array $credentials): bool
     {
-        $user = GpUsuario::where('USERID', $credentials['username'])->where('status', true)->first();
+        $user = GpUsuario::where('USERID', $credentials['username'])->first();
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            return false;
+        }
+        return true;
+    }
+    public function validateStatusGpUser( $credentials): bool{
+        $user = GpUsuario::where('USERID', $credentials['username'])->where('status', true)->first();
+        if (!$user) {
             return false;
         }
         return true;
@@ -45,6 +52,7 @@ class UserService
         return GpUsuario::join('perfiles', 'perfiles.id', 'gp_usuarios.perfil_id')
             ->where('USERID', trim($username))
             ->where('perfiles.state', 'active')
+            ->where('gp_usuarios.status', true)
             ->select('gp_usuarios.id', 'gp_usuarios.perfil_id', 'gp_usuarios.USERID', 'gp_usuarios.USERNAME', 'gp_usuarios.must_change_password', 'gp_usuarios.status')
             ->first();
     }
@@ -220,5 +228,24 @@ class UserService
             return $this->errorResponse('Error', $th->getMessage(), 500);
         }
     }
+
+
+    /***
+     *  changeStatusGpUser
+     *
+     *
+     */
+
+     public function changeStatusGpUser($userId){
+
+        try {
+            $user = GpUsuario::where('USERID', $userId[0])->first();
+            $user->status = $user->status === 1 ? 0 : 1;
+            $user->save();
+            return $this->buildSuccessResponse('Estado actualizado correctamente!', 200);
+        } catch (\Throwable $th) {
+            return $this->errorResponse('Error', $th->getMessage(), 500);
+        }
+     }
 
 }

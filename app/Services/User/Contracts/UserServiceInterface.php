@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 interface UserServiceInterface
 {
 
+    public function validateStatusGpUser( $credentials): bool;
     public function validateCredentials(Request $request): array;
     public function validateUserCredentials(array $credentials): array;
     public function isValidUser(array $validationResponse): bool;
@@ -26,4 +27,8 @@ interface UserServiceInterface
 
      public function resetPassword($data);
 
+     /**
+      * Cambio de status
+      */
+     public function changeStatusGpUser($userId);
 }

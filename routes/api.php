@@ -38,6 +38,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
         return $request->user();
     });
     Route::post('/resetpassword', [AuthController::class, 'resetPassword']);
+    Route::post('/change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('/logout', [AuthController::class, 'logout']);
     Route::get('/notificaciones', [AuthController::class, 'notificaciones']);
     Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);

@@ -29,6 +29,9 @@ class AuthController extends Controller
         if (!$this->userService->isValidUserWeb($credentials)) {
             return $this->buildErrorResponse('Las credenciales no son validas', 401);
         }
+        if (!$this->userService->validateStatusGpUser($credentials)) {
+            return $this->buildErrorResponse('El usuario ingresado se encuentra inactivo', 404);
+        }
         $user = $this->userService->getActiveUser($credentials['username']);
         if (!$user) {
             return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
@@ -99,5 +102,12 @@ class AuthController extends Controller
     {
         $data = $request->all();
         return $this->userService->resetPassword($data);
+    }
+
+
+    public function changeStatusGpUser (Request $request)
+    {
+        $userId = $request->all();
+        return $this->userService->changeStatusGpUser($userId);
     }
 }
