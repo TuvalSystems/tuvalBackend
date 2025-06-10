@@ -36,6 +36,7 @@ use Illuminate\Notifications\Notifiable;
  * @property int|null $NIVEL_AUTORIZA_CRED
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereNIVELAUTORIZACRED($value)
  * @property int|null  $must_change_password
+ * @property int|null $process_job
  */
 class GpUsuario extends Authenticatable
 {
@@ -49,7 +50,8 @@ class GpUsuario extends Authenticatable
         'co_usr',
         'password',
         'must_change_password',
-        'status'
+        'status',
+        'process_job'
 
     ];
     protected $hidden = [

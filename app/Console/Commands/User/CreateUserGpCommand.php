@@ -22,7 +22,7 @@ class CreateUserGpCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Comando para crear usuarios web desde la Tabla GpUsuario';
+    protected $description = 'Comando para agregegar contraseña por defecto a todos los usuarios';
 
     /**
      * Create a new command instance.
@@ -42,15 +42,16 @@ class CreateUserGpCommand extends Command
     public function handle()
     {
         $gpUsers = GpUsuario::where('USERID', 'jmagallanes')->take(1)->get();
-
+        // $gpUsers = GpUsuario::where ('process_job', 0)->get();
         $insertData = [];
         foreach ($gpUsers as $gpUser) {
             $insertData[] = [
-                'password' => Hash::make('12345'),
+                'password' => Hash::make($gpUser->USERID),
+                 'must_change_password' => 1,
+                 'process_job' => 1
             ];
 
         }
-
         if (!empty($insertData)) {
            $gpUser->update($insertData[0]);
             Log::info(count($insertData) . 'Se realizo la actualizacion de credenciales del usuario.');

@@ -213,6 +213,7 @@ class UserService
             $user = GpUsuario::where('USERID', $data[0])->first();
             $user->must_change_password = true;
             $user->password = Hash::make($user->USERID);
+            $user->process_job = 1;
             $user->save();
             return $this->buildSuccessResponse('Contraseña restaurada correctamente!', 200);
         } catch (\Throwable $th) {
