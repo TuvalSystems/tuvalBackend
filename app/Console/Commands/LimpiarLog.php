@@ -36,8 +36,6 @@ class LimpiarLog extends Command
 
             }
 
-
-
             // Vaciar archivo
             file_put_contents($path, '');
 
