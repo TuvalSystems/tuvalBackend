@@ -16,24 +16,37 @@ class LimpiarLog extends Command
 
     public function handle(): int
     {
-        $logFile = storage_path('logs/laravel.log');
-
-        if (!file_exists($logFile)) {
-            $this->error('❌ El archivo laravel.log no existe.');
-            return 1;
-        }
-
-        // Vaciar archivo
-        file_put_contents($logFile, '');
+        $logFiles = [
+            'laravel.log',
+            'laravel-queue.log'
+        ];
 
         // Obtener propietario real del directorio storage
         $owner = $this->getStorageOwner();
-        if (!$owner) return 1;
+        if (!$owner)
+            return 1;
 
-        // Restaurar permisos sobre el archivo de log
-        $this->setPermissions($logFile, $owner);
+        foreach ($logFiles as $fileName) {
 
-        $this->info("🧹 laravel.log vaciado y permisos restaurados (propietario: $owner).");
+            $path = storage_path("logs/$fileName");
+
+            if (!file_exists($path)) {
+                file_put_contents($path, '');
+                $this->info("📄 El archivo $fileName fue creado porque no existía.");
+
+            }
+
+
+
+            // Vaciar archivo
+            file_put_contents($path, '');
+
+            $this->setPermissions($path, $owner);
+
+            $this->info("🧹 $fileName vaciado y permisos restaurados (propietario: $owner).");
+        }
+
+
 
         // Opcional: sesiones
         if ($this->option('sessions')) {

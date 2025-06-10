@@ -12,9 +12,11 @@ class RecordatorioCotizacionNoVentaMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $cotizaciones;
-    public function __construct($cotizaciones)
+    public $PtoVentaDescripcion;
+    public function __construct($cotizaciones, $PtoVentaDescripcion)
     {
         $this->cotizaciones = $cotizaciones;
+        $this->PtoVentaDescripcion = $PtoVentaDescripcion;
     }
 
     /**
@@ -24,7 +26,7 @@ class RecordatorioCotizacionNoVentaMail extends Mailable implements ShouldQueue
      */
     public function build()
     {
-        return $this->subject('Recordatorio de Cotizaciones No Vendidas')
+        return $this->subject('Recordatorio de Cotizaciones No Vendidas'.' - ' .$this->PtoVentaDescripcion)
             ->view('emails.cotizacion.recordatorio_cotizacion_no_venta')
             ->with([
                 'cotizaciones' => $this->cotizaciones,
