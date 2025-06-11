@@ -186,7 +186,13 @@ class GpDevoluciones extends Model
                     ->where('gp_devoluciones.volver_a_facturar', 1)
                     ->where('gp_devoluciones.estado', 'aprobado')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
-            });
+            })
+                ->whereNotExists(function ($sub) {
+                    $sub->selectRaw(1)
+                        ->from('gp_devoluciones_detalles as dvd')
+                        ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
+                        ->where('dvd.despachado_parcial', 1);
+                });
         }
 
         //validacione en estado aprobado parcial
@@ -196,6 +202,11 @@ class GpDevoluciones extends Model
                     ->where('gp_devoluciones.volver_a_facturar', 1)
                     ->where('gp_devoluciones.estado', 'aprobado')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
+            })->whereNotExists(function ($sub) {
+                $sub->selectRaw(1)
+                    ->from('gp_devoluciones_detalles as dvd')
+                    ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
+                    ->where('dvd.despachado_parcial', 1);
             });
         }
 
@@ -223,7 +234,7 @@ class GpDevoluciones extends Model
                     ->where('gp_devoluciones.estado', 'aprobado')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
             })
-                ->whereNotExists(function ($sub) {
+            ->whereNotExists(function ($sub) {
                     $sub->selectRaw(1)
                         ->from('gp_devoluciones_detalles as dvd')
                         ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
