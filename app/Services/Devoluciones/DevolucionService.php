@@ -317,30 +317,39 @@ class DevolucionService implements DevolucionServiceInterface
 
         // verifica si el pedido tiene factura origen para determinar si tiene o no despacho
         $pedidoConsulta = GpPedido::find($pedido['id']);
-        if (!empty($pedidoConsulta['factura_origen']) && ($pedido['despachado'] === false || $pedido['despachado'] === null)) {
-            $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
-
-            if (is_null(optional($pedido_origen)->despachado) || $pedido_origen->despachado === false) {
-                return collect($detallepedido)
-                    ->contains(function ($item) {
-                        return !empty($item['despachado'])
-                            && (float) $item['despachado'] > 0
-                            && isset($item['despacho'])
-                            && $item['despacho'] === true;
-                    });
+        $tieneFacturaOrigen = !empty($pedidoConsulta->factura_origen);
+        if ($tieneFacturaOrigen) {
+            //validador para casos donde el pedido tiene despachado null se verifica en caso de que tenga factura origen y si haya items despachados parciales
+            if ($pedidoConsulta->despachado === false || $pedidoConsulta->despachado === null) {
+                $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
+                if (is_null(optional($pedido_origen)->despachado) || $pedido_origen->despachado === false) {
+                    return $this->hasDetailDispatched($detallepedido);
+                }
             }
-            return (bool) optional($pedido_origen)->despachado;
+
+            //esta condicional valida que pedido tenga factura origen y despachado
+            if ($pedidoConsulta->despachado === true || $pedidoConsulta->despachado === 1) {
+                $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
+                return GpPedidoDetalle::where('pedido_id', $pedidoConsulta->id)
+                    ->whereIn('ART_CODIGO', $codigos)
+                    ->where('trasladado', '>', 0)
+                    ->exists();
+            }
         }
 
         // Verifica si alguno de los detalles del pedido tiene despacho
-        $hasDetailDispatched = collect($detallepedido)
+        return $this->hasDetailDispatched($detallepedido);
+    }
+
+    public function hasDetailDispatched($detallepedido): bool
+    {
+        return collect($detallepedido)
             ->contains(function ($item) {
                 return !empty($item['despachado'])
                     && (float) $item['despachado'] > 0
                     && isset($item['despacho'])
                     && $item['despacho'] === true;
             });
-        return $hasDetailDispatched;
     }
 
 
@@ -398,7 +407,7 @@ class DevolucionService implements DevolucionServiceInterface
                 }
                 return $this->hasItemTrasladadoPedidoRelacionados($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
             }
-             //verifica que el pedido tenga factura origen y que este despachado
+            //verifica que el pedido tenga factura origen y que este despachado
             if ($pedidoConsulta->despachado === true || $pedidoConsulta->despachado === 1) {
                 return $this->hasItemTrasladadoPedidoRelacionados($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
             }
