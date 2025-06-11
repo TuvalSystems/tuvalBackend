@@ -575,7 +575,7 @@ class DevolucionService implements DevolucionServiceInterface
 
                 //para pedidos de refacturacion no despachados totalmente
                 if ($condicionalDespachoOrigen === false && ($pedidoOrigen->despachado === false || $pedidoOrigen->despachado === null)) {
-                    $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id);
+                    $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
                     $devueltoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
                     $devueltoNoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 0);
 
