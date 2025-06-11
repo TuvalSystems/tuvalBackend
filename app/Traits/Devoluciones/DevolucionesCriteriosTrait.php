@@ -62,9 +62,6 @@ trait DevolucionesCriteriosTrait
             ['id' => 24, 'estado' => 'aprobado', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'parcial', 'despachado' => 1, 'devolucion_bodega' => null, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => true, 'gpOrdenDespacho' => true],
 
 
-             //devoluciones recibidas parciales con volver a facturar todos los materiales despachados de la factura -- se repite de id 13 y 14 pero con devolucion bodega 1
-            ['id' => 25, 'estado' => 'recibido', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'parcial', 'despachado' => 1, 'devolucion_bodega' => 1, 'metodo' => 'procesarDevolucionesRecibirParcialesSinRf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => true, 'gpOrdenDespacho' => true],
-
         ];
     }
 }
