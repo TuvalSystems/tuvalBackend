@@ -31,9 +31,15 @@ use App\Http\Controllers\bodegas\ReposicionController;
 */
 
 Route::middleware('auth:sanctum')->group(function(){
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
+
+});
+Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::post('/resetpassword', [AuthController::class, 'resetPassword']);
+    Route::post('/change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('/logout', [AuthController::class, 'logout']);
     Route::get('/notificaciones', [AuthController::class, 'notificaciones']);
     Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);
