@@ -542,11 +542,16 @@ class DevolucionService implements DevolucionServiceInterface
     public function getDetailFormatPedido($detalles, $pedido)
     {
         $result = [];
+
         $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
             ->where('volver_a_facturar', true)->exists();
         if ($yaFueRefacturado) {
             return [];
         }
+
+        $esRefacturacion = !is_null($pedido->pedido_origen);
+        $pedidoOrigen = $esRefacturacion ? GpPedido::find($pedido->factura_origen) : null;
+        $condicionalDespachoOrigen = $pedidoOrigen ? ($pedidoOrigen->despachado != null) : false;
 
         foreach ($detalles as $dt) {
 
@@ -554,30 +559,38 @@ class DevolucionService implements DevolucionServiceInterface
             $common->reservado = $dt->reservado ?? 0;
             $common->devuelto = $dt->devuelto ?? 0;
             $common->seleccionado = 0;
-            $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
 
+            // Determinación única de despachado
+            if ($esRefacturacion) {
+                if ($condicionalDespachoOrigen) {
+                    $common->despachado = $dt->ART_CANTIDAD;
+                } else {
+                    $common->despachado = 0;
+                }
+            } else {
+                $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id);
+            }
+
+            // Devoluciones siempre sobre el detalle actual (pedido hijo o normal)
             $devueltoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
             $devueltoNoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 0);
 
             $totalCantidad = (float) $common->ART_CANTIDAD;
             $totalDespachado = (float) $common->despachado;
             $totalNoDespachados = max($totalCantidad - $totalDespachado, 0);
-            //logica para validar items del pedido origen
 
-
-            // Lógica cuando hay items despachado
-
-            //neva logica para despachado y no despachado
+            // Bloque para los items despachados
             if ($devueltoDespachado >= 0) {
                 $itemDespachado = clone $common;
                 $itemDespachado->despacho = true;
                 $itemDespachado->devuelto = $devueltoDespachado;
-                $itemDespachado->disponible = max($common->despachado - $devueltoDespachado, 0);
+                $itemDespachado->disponible = max($totalDespachado - $devueltoDespachado, 0);
                 if ($itemDespachado->disponible > 0) {
                     $result[] = $itemDespachado;
                 }
             }
 
+            // Bloque para los items no despachados
             if ($devueltoNoDespachado >= 0) {
                 $itemNoDespachado = clone $common;
                 $itemNoDespachado->despacho = false;
@@ -587,10 +600,39 @@ class DevolucionService implements DevolucionServiceInterface
                     $result[] = $itemNoDespachado;
                 }
             }
-
-
         }
+
         return collect($result)->sortBy('ART_CODIGO')->values()->all();
+    }
+
+    public function getDetailFormatPedidoV2($detalles, $pedido)
+    {
+        $result = [];
+        $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
+            ->where('volver_a_facturar', true)->exists();
+        if ($yaFueRefacturado) {
+            return [];
+        }
+
+
+        $esRefacturacion = !is_null($pedido->pedido_origen);
+        $pedidoOrigen = $esRefacturacion ? GpPedido::find($pedido->factura_origen) : null;
+        $condicionalDespachoOrigen = $pedidoOrigen ? ($pedidoOrigen->despachado != null) : false;
+
+        foreach ($detalles as $key => $dt) {
+            if ($esRefacturacion) {
+                // para pedidoes de refacturacion despachados totalmente
+                if ($condicionalDespachoOrigen === true && $pedidoOrigen->despachado === true) {
+                    # code...
+                }
+
+                //para pedidos de refacturacion no despachados totalmente
+                if ($condicionalDespachoOrigen === false && $pedidoOrigen->despachado === false) {
+
+                }
+            }
+        }
+
     }
 
 
