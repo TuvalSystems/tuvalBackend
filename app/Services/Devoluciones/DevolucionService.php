@@ -387,22 +387,37 @@ class DevolucionService implements DevolucionServiceInterface
     {
         //verifica si el pedido tiene factura origen
         $pedidoConsulta = GpPedido::find($pedido['id']);
-        if (!empty($pedidoConsulta['factura_origen']) && ($pedido['despachado'] === false || $pedido['despachado'] === null)) {
-            $existItemGuia = GpGuiaRemisionDetalle::where('detalle_id', $item['id'])->exists();
-            if ($existItemGuia) {
-                return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+        $tienefacturaOrigen = !empty($pedidoConsulta->factura_origen);
+
+        if ($tienefacturaOrigen) {
+            //verifica que el pedido tenga factura origen y que no este despachado
+            if ($pedidoConsulta->despachado === false || $pedidoConsulta->despachado === null) {
+                $existItemGuia = GpGuiaRemisionDetalle::where('detalle_id', $item['id'])->exists();
+                if ($existItemGuia) {
+                    return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+                }
+                return $this->hasItemTrasladadoPedidoRelacionados($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
             }
-            $pedidoOrigenIds = GpPedido::where('factura', $pedido['factura_origen'])->pluck('id');
-            $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
-            $pedidosRelacionados = GpPedido::whereIn('cotizacion_id', $cotizacionesOrigen)->pluck('id');
-
-            return GpPedidoDetalle::whereIn('pedido_id', $pedidosRelacionados)
-                ->where('ART_CODIGO', $item['ART_CODIGO'])
-                ->where('trasladado', '>', 0) // comparar por código del artículo
-                ->exists();
-
+             //verifica que el pedido tenga factura origen y que este despachado
+            if ($pedidoConsulta->despachado === true || $pedidoConsulta->despachado === 1) {
+                return $this->hasItemTrasladadoPedidoRelacionados($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
+            }
         }
+
+        //retorna en el proceso normal
         return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+    }
+
+    public function hasItemTrasladadoPedidoRelacionados($facturaOrigen, $artCodigo): bool
+    {
+        $pedidoOrigenIds = GpPedido::where('factura', $facturaOrigen)->pluck('id');
+        $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
+        $pedidosRelacionados = GpPedido::whereIn('cotizacion_id', $cotizacionesOrigen)->pluck('id');
+
+        return GpPedidoDetalle::whereIn('pedido_id', $pedidosRelacionados)
+            ->where('ART_CODIGO', $artCodigo)
+            ->where('trasladado', '>', 0)
+            ->exists();
     }
 
 
