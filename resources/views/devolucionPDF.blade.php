@@ -231,17 +231,17 @@
         @foreach ($detalle as $key => $value)
             <tr>
                 <td class="nowrap">
-                    @if($value->ART_IMP_VTA == 5)
+                    @if($value['ART_IMP_VTA'] == 5)
                         *
                     @endif
-                    {{$value->ART_CODIGO}}
+                    {{$value['ART_CODIGO']}}
                 </td>
-                <td>{{$value->ART_PLAN_UMEDIDA}}</td>
-                <td class="text-right">{{$value->devuelto}}</td>
-                <td>{{$value->ART_DESCRIPCION}}</td>
-                <td class="text-right">${{ number_format($value->ART_DESCUENTO, 2, '.','')}}</td>
-                <td class="text-right">${{ $value->ART_VALOR }}</td>
-                <td class="text-right">${{ number_format(($value->ART_VALOR - $value->ART_DESCUENTO) * $value->devuelto,2,'.','') }}</td>
+                <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
+                <td class="text-right">{{$value['devuelto']}}</td>
+                <td>{{$value['ART_DESCRIPCION']}}</td>
+                <td class="text-right">${{ number_format($value['ART_DESCUENTO'], 2, '.','')}}</td>
+                <td class="text-right">${{ $value['ART_VALOR'] }}</td>
+                <td class="text-right">${{ number_format(($value['ART_VALOR'] - $value['ART_DESCUENTO']) * $value['devuelto'],2,'.','') }}</td>
             </tr>
         @endforeach
         </tbody>

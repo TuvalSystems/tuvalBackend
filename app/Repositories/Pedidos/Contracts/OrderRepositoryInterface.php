@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Repositories\Pedidos\Contracts;
+
+interface OrderRepositoryInterface
+{
+    public function getAllDetailsOrderById($id);
+
+    public function getSuppliersByOrderAndItem($pedidoId, $itemId);
+    public function getPurchaseOrdersBySupplier($proveedorId);
+
+    public function getStockByItemAndWarehouse(int $itemId, string $warehouse);
+
+    public function getPurchaseOrdersByOrderNumber(string $orderNumber);
+
+    public function getTransferOrdersBySale(int $orderId);
+    public function getShipmentGuidesByTransfer(object $transfer);
+     public function getDispatchOrder (int $orderId);
+     public function getShipmentGuides(string $orderCode );
+     public function getReturnsByOrder(int $orderId);
+}

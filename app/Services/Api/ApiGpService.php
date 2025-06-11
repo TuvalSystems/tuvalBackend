@@ -14,7 +14,7 @@ class ApiGpService
 
     public function __construct()
     {
-        $config = config(key: "services.api_gp");
+        $config = config( "services.api_gp");
         $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
         $this->endpoints = $config["endpoints"];
     }
@@ -61,6 +61,8 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest($this->endpoints["transferencia_compartimento"], 'GET', $params);
     }
+
+
 
 
 

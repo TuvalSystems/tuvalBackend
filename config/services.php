@@ -49,11 +49,18 @@ return [
             'generar_nota_credito'                      => 'api/devoluciones/generar-nota-credito',
             'respuesta_nota_credito'                    => 'api/devoluciones/respuesta-nota-credito',
             'generar_devolucion_venta'                  => 'api/devoluciones/generar-devolucion-venta',
+            'consultar_item_compartimento'              => 'api/devoluciones/consulta-item-compartimento-bin',
+            'consultar_grupo_economico_cliente'         => 'api/devoluciones/consultar-grupo-economico-cliente',
+
+            //cobros
+            'consultar_cupo_disponible_cliente'         => 'api/cobros/consultar-cupo-disponible-cliente',
+
+
         ],
     ],
     'api_sales' => [
         'url' => env('API_SALES_URL'),
-        'timeout' => env('API_GP_TIMEOUT', 15),
+        'timeout' => env('API_GP_TIMEOUT', default: 150),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'endpoints' => [
@@ -66,7 +73,7 @@ return [
     ],
     'api_seedbilling' => [
         'url' => env('API_SEED_BILLING_URL'),
-        'timeout' => env('API_SEED_BILLING_TIMEOUT', 15),
+        'timeout' => env('API_SEED_BILLING_TIMEOUT', 150),
         'token' => env('API_SEED_BILLING_TOKEN'),
         'idSuscriptor' => env('API_SEED_BILLING_ID_SUSCRIPTOR'),
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
