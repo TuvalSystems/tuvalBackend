@@ -9,7 +9,7 @@ trait DevolucionesCriteriosTrait
         return [
             //estado, tipo_devolucion, despachado, procesando, volver_a_facturar, devolucion_bodega, funciones->>>> metodo, generarnotadecredito, volverafacturar, generadevolucionventa
             ['id' => 1, 'estado' => 'solicitado', 'volver_a_facturar' => 0, 'tipo_devolucion' => 'total', 'despachado' => 0, 'devolucion_bodega' => null, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => false, 'generadevolucionventa' => false, 'gpOrdenDespacho' => true],
-            ['id' => 2, 'estado' => 'solicitado', 'volver_a_facturar' => 0, 'tipo_devolucion' => 'parcial', 'despachado' => 0, 'devolucion_bodega' => null, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => false, 'generadevolucionventa' => false, 'gpOrdenDespacho' => true],
+            ['id' => 2, 'estado' => 'solicitado', 'volver_a_facturar' => 0, 'tipo_devolucion' => 'parcial', 'despachado' => 0, 'devolucion_bodega' => null, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => false, 'generadevolucionventa' => false, 'gpOrdenDespacho' => false],
 
 
             //devoluciones recibidas parciales con volver a facturar con despacho
@@ -25,8 +25,8 @@ trait DevolucionesCriteriosTrait
             ['id' => 8, 'estado' => 'recibido', 'volver_a_facturar' => 0, 'tipo_devolucion' => 'total', 'despachado' => 1, 'devolucion_bodega' => null, 'metodo' => 'procesarDevolucionesRecibirParcialesSinRf', 'generarnotadecredito' => true, 'volverafacturar' => false, 'generadevolucionventa' => true, 'gpOrdenDespacho' => true],
 
             //devoluciones recibidas parciales con volver a facturar todos los materiales despachados de la factura
-            ['id' => 9, 'estado' => 'recibido', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'parcial', 'despachado' => 1, 'devolucion_bodega' => null, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => true, 'gpOrdenDespacho' => true],
-            ['id' => 10, 'estado' => 'recibido', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'parcial', 'despachado' => 1, 'devolucion_bodega' => 0, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => true, 'gpOrdenDespacho' => true],
+            ['id' => 9, 'estado' => 'recibido', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'parcial', 'despachado' => 1, 'devolucion_bodega' => null, 'metodo' => 'procesarDevolucionesRecibirParcialesSinRf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => true, 'gpOrdenDespacho' => true],
+            ['id' => 10, 'estado' => 'recibido', 'volver_a_facturar' => 1, 'tipo_devolucion' => 'parcial', 'despachado' => 1, 'devolucion_bodega' => 0, 'metodo' => 'procesarDevolucionesRecibirParcialesSinRf', 'generarnotadecredito' => true, 'volverafacturar' => true, 'generadevolucionventa' => true, 'gpOrdenDespacho' => true],
 
 
             //devoluciones aprobadas totales con volve a facturar con despacho todos los materiales despachados de la factura
@@ -45,7 +45,7 @@ trait DevolucionesCriteriosTrait
 
             //devoluciones solicitadas totales sin volvera facturar, sin despacho pero con devolucion a bodega 0 y sin devolucion a bodega 1
             ['id' => 17, 'estado' => 'solicitado', 'volver_a_facturar' => 0, 'tipo_devolucion' => 'total', 'despachado' => 0, 'devolucion_bodega' => 0, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => false, 'generadevolucionventa' => false, 'gpOrdenDespacho' => true],
-            ['id' => 18, 'estado' => 'solicitado', 'volver_a_facturar' => 0, 'tipo_devolucion' => 'parcial', 'despachado' => 0, 'devolucion_bodega' => 0, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => false, 'generadevolucionventa' => false, 'gpOrdenDespacho' => true],
+            ['id' => 18, 'estado' => 'solicitado', 'volver_a_facturar' => 0, 'tipo_devolucion' => 'parcial', 'despachado' => 0, 'devolucion_bodega' => 0, 'metodo' => 'procesardevoluciontotalsinrf', 'generarnotadecredito' => true, 'volverafacturar' => false, 'generadevolucionventa' => false, 'gpOrdenDespacho' => false],
 
 
             //devoluciones aprobadas parciales sin volvera facturar, sin despacho pero que requieren aprobación
