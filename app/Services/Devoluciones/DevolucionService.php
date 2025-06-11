@@ -548,7 +548,7 @@ class DevolucionService implements DevolucionServiceInterface
         }
 
 
-        $esRefacturacion = !is_null($pedido->factura_origen);
+        $esRefacturacion = !empty($pedido->factura_origen);
         $pedidoOrigen = $esRefacturacion ? GpPedido::find($pedido->factura_origen) : null;
         $condicionalDespachoOrigen = $pedidoOrigen ? ($pedidoOrigen->despachado != null) : false;
 
