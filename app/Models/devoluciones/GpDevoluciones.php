@@ -165,6 +165,17 @@ class GpDevoluciones extends Model
                 });
         }
 
+        //validacion para estado solicitado parcial
+        if ($criterio['estado'] == 'solicitado' && $criterio['tipo_devolucion'] == 'parcial') {
+            $query->whereNotExists(function ($sub) {
+                $sub->selectRaw(1)
+                    ->from('gp_devoluciones_detalles as dvd')
+                    ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
+                    ->where('dvd.despachado_parcial', 1);
+            });
+
+        }
+
         // validacion de estado recibido
         if ($criterio['estado'] == 'recibido') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
