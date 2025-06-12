@@ -234,6 +234,9 @@ class GpDevoluciones extends Model
                     ->where('gp_devoluciones.tipo_devolucion', 'total')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
             })
+                /* este where es para que no se muestren las devoluciones despachadas parciales en 1 si esta parcialmente despachado no lo procesa
+                    es decir si hay un item que no esta despachado o un item tiene despacho parcial que si tiene cant = 10 y se despacho 5 y quedan 5
+                    no despachados, pues no entra aqui */
                 ->whereNotExists(function ($sub) {
                     $sub->selectRaw(1)
                         ->from('gp_devoluciones_detalles as dvd')
@@ -251,6 +254,10 @@ class GpDevoluciones extends Model
                      ->where('gp_devoluciones.tipo_devolucion', 'total')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
             })
+            /*
+                En cambio en este procesa todos los despachados parcial = 0, siempre y cuando el pedido no haya sido despachado parcialmente o totalmente
+                ya que entraria en el where de arriba
+             */
             ->whereNotExists(function ($sub) {
                     $sub->selectRaw(1)
                         ->from('gp_devoluciones_detalles as dvd')
