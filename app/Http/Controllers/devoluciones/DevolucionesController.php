@@ -13,17 +13,11 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
-use App\Models\GpMotivosDevolucion;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\GpRelacionPuntoVentaIdVenta;
-use App\Models\GpVendedor;
-use App\Models\Notificaciones;
-use App\Services\Api\ApiGpService;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
@@ -99,7 +93,8 @@ class DevolucionesController extends Controller
         ]);
     }
 
-    public function detallepedidodevolucion(){
+    public function detallepedidodevolucion()
+    {
         $data = request()->all();
         return $this->devolucionService->getDetailOrderReturnById($data);
 
@@ -314,12 +309,28 @@ class DevolucionesController extends Controller
     }
 
 
-    public function imprimirdevolucion($id){
+    public function imprimirdevolucion($id)
+    {
         $devolucion = $this->devolucionService->printReturn($id);
         $pdf = PDF::loadView('devolucionPDF', $devolucion);
         return $pdf->stream('nota_de_credito.pdf');
     }
 
+
+
+    /**
+     * PRUEBAS PARA GENERACION DE NOTA DE CREDITO --web
+     */
+
+    public function generarNotaCreditoDevolucionesFallidas($id)
+    {
+        return $this->devolucionService->generarNotaCreditoDevolucionesFallidas($id);
+    }
+
+    public function generarAjusteDevolucionesFallidas($id)
+    {
+        return $this->devolucionService->generarAjusteDevolucionesVentaFallidas($id);
+    }
 
 
 

@@ -90,4 +90,5 @@ Route::get('/lista-ordenes-despachadas-pendientes', [OrdendecompraController::cl
 Route::get('/pedidos/lista-pedidos-sin-coordenadas',[PedidosController::class,'getListPedidosSinCoordenadas']);
 
 
-
+Route::get('/devolucion/generar-nota-credito-errores/{id}',[DevolucionesController::class, 'generarNotaCreditoDevolucionesFallidas']);
+Route::get('/devolucion/generar-ajuste-devolucion/{id}',[DevolucionesController::class, 'generarAjusteDevolucionesFallidas']);

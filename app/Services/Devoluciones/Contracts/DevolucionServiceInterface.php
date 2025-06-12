@@ -21,4 +21,8 @@ interface DevolucionServiceInterface
 
     public function printReturn($devolucion_id);
 
+    /** funciones a ejecutar en caso de que no se genere la nota de credito o el ajuste  */
+    public function generarNotaCreditoDevolucionesFallidas($id);
+    public function generarAjusteDevolucionesVentaFallidas($id);
+
 }
