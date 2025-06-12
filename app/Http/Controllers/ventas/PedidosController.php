@@ -2057,4 +2057,8 @@ class PedidosController extends Controller
             $pedido->save();
         }
     }
+
+    public function getListPedidosSinCoordenadas (){
+        return $this->orderService->getLisOrdersWithoutCoordinated();
+    }
 }

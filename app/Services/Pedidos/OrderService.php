@@ -21,6 +21,7 @@ use App\Services\Api\ApiSalesService;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use Illuminate\Support\Facades\DB;
 
 class OrderService implements OrderServiceInterface
 {
@@ -313,5 +314,20 @@ class OrderService implements OrderServiceInterface
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
             ->where('despachado_parcial', 1)->exists();
+    }
+
+
+
+    /**
+     * API PARA LISTAR LOS PEDIDOS SIN COORDENADAS
+     *
+     */
+
+    public function getLisOrdersWithoutCoordinated()
+    {
+        $orders = DB::table('tuvalapi.vw_pedidos_sin_coordenadas')->get();
+
+        return $this->successResponse('Información Obtenida Correctamente', $orders, 200);
+
     }
 }

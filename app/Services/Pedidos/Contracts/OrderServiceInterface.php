@@ -13,4 +13,6 @@ interface OrderServiceInterface
 
         //volver a facturar
         public function checkOutValidateDispatchReInvoice($devolucion);
+
+        public function getLisOrdersWithoutCoordinated();
 }

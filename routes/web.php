@@ -87,5 +87,7 @@ Route::get('/bodegas/getreposicion', [ReposicionController::class, 'getreposicio
 Route::get('/lista-ordenes-compra-recepcion', [OrdendecompraController::class, 'getViewPurchaseOrder']);
 Route::get('/lista-ordenes-despachadas-pendientes', [OrdendecompraController::class, 'getOrdesDispatchPending']);
 
+Route::get('/pedidos/lista-pedidos-sin-coordenadas',[PedidosController::class,'getListPedidosSinCoordenadas']);
+
 
 
