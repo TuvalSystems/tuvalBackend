@@ -84,4 +84,8 @@ Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::c
 Route::get('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
 
 
+Route::get('/lista-ordenes-compra-recepcion', [OrdendecompraController::class, 'getViewPurchaseOrder']);
+Route::get('/lista-ordenes-despachadas-pendientes', [OrdendecompraController::class, 'getOrdesDispatchPending']);
+
+
 

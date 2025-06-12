@@ -11,12 +11,18 @@ use App\Models\GpProveedor;
 use App\Models\GpPedido;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use Illuminate\Http\Request;
-use JetBrains\PhpStorm\NoReturn;
+use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
+use App\Traits\JsonResponseTrait;
 
 class OrdendecompraController extends Controller
 {
+    use JsonResponseTrait;
+    protected $purchaseOrder ;
 
+    public function __construct(PurchaseOrderServiceInterface $purchaseOrder)
+    {
+        $this->purchaseOrder = $purchaseOrder;
+    }
     public function checkordendecomprarecibidos(GpPedido $pedido): bool
     {
         $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)
@@ -245,5 +251,17 @@ class OrdendecompraController extends Controller
         foreach($ordenes_arr as $orden){
             $this->generarordendecompra($orden);
         }
+    }
+
+
+    public function getViewPurchaseOrder(){
+
+        $orders =  $this->purchaseOrder->getViewPurchaseOrder();
+        return $this->successResponse('Información obtenida de la vista',$orders, 200);
+    }
+
+    public function getOrdesDispatchPending(){
+        $orders =  $this->purchaseOrder->getOrdersDispatchPending();
+        return $this->successResponse('Información obtenida de la vista',$orders, 200);
     }
 }

@@ -38,6 +38,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 
 class PedidosController extends Controller
@@ -216,7 +217,8 @@ class PedidosController extends Controller
             $this->checktraslado($pedido);
         }
 
-        $ordendecompra = new OrdendecompraController();
+        $order = app(PurchaseOrderServiceInterface::class);
+        $ordendecompra = new OrdendecompraController($order  );
 
         $ordendecompra->checkordendecompra($pedido);
 
@@ -1336,7 +1338,8 @@ class PedidosController extends Controller
     public function sendfacturagp($pedido): void
     {
 
-        $ordendecompra = new OrdendecompraController();
+        $order = app(PurchaseOrderServiceInterface::class);
+        $ordendecompra = new OrdendecompraController($order  );
 
         $flag = $ordendecompra->checkordendecomprarecibidos($pedido);
         if ($flag) {

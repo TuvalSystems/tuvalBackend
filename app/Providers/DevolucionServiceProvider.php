@@ -25,7 +25,9 @@ use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Notificacion\NotificationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Services\Venta\PurchaseOrderService;
 
 class DevolucionServiceProvider extends ServiceProvider
 {
@@ -76,12 +78,14 @@ class DevolucionServiceProvider extends ServiceProvider
         );
 
         $this->app->singleton(DispatchServiceInterface::class, DispatchService::class);
-    
+
         //aqui agrego las Cotizaciones para no crear otro provider
         $this->app->bind(QuotationServiceInterface::class, QuotationService::class);
 
 
         $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
+
+        $this->app->bind(PurchaseOrderServiceInterface::class, PurchaseOrderService::class);
     }
 
 
