@@ -15,7 +15,7 @@ class CreateUserGpCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'user:create-user-gp';
+    protected $signature = 'user:add-password';
 
     /**
      * The console command description.
@@ -41,21 +41,21 @@ class CreateUserGpCommand extends Command
      */
     public function handle()
     {
-        $gpUsers = GpUsuario::where('USERID', 'jmagallanes')->take(1)->get();
-        // $gpUsers = GpUsuario::where ('process_job', 0)->get();
-        $insertData = [];
-        foreach ($gpUsers as $gpUser) {
-            $insertData[] = [
-                'password' => Hash::make($gpUser->USERID),
-                 'must_change_password' => 1,
-                 'process_job' => 1
-            ];
+        // $gpUsers = GpUsuario::where('USERID', 'jmagallanes')->take(1)->get();
+        $totalActualizados = 0;
+        GpUsuario::where('process_job', 0)->chunk(100, function ($gpUsers) use ($totalActualizados) {
+            foreach ($gpUsers as $gpUser) {
+                $gpUser->update([
+                    'password' => Hash::make($gpUser->USERID),
+                    'must_change_password' => 1,
+                    'process_job' => 1
+                ]);
+                $totalActualizados++;
+            }
 
-        }
-        if (!empty($insertData)) {
-           $gpUser->update($insertData[0]);
-            Log::info(count($insertData) . 'Se realizo la actualizacion de credenciales del usuario.');
-        }
+        });
+        Log::info($totalActualizados . 'Se realizo la actualizacion de credenciales del usuario.');
+
         return 0;
     }
 }

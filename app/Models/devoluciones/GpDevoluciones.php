@@ -190,27 +190,14 @@ class GpDevoluciones extends Model
                 });
         }
 
-        //validacione en estado aprobado total
-        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 1) {
-            $query->where(function ($q) {
-                $q->where('gp_devoluciones.requiere_aprobacion', 1)
-                    ->where('gp_devoluciones.volver_a_facturar', 1)
-                    ->where('gp_devoluciones.estado', 'aprobado')
-                    ->whereNotNull('gp_devoluciones.aprobador_id');
-            })
-                ->whereNotExists(function ($sub) {
-                    $sub->selectRaw(1)
-                        ->from('gp_devoluciones_detalles as dvd')
-                        ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
-                        ->where('dvd.despachado_parcial', 1);
-                });
-        }
+
 
         //validacione en estado aprobado parcial
         if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial' && $criterio['volver_a_facturar'] === 1) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 1)
+                    ->where('gp_devoluciones.tipo_devolucion', 'parcial')
                     ->where('gp_devoluciones.estado', 'aprobado')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
             })->whereNotExists(function ($sub) {
@@ -227,6 +214,7 @@ class GpDevoluciones extends Model
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 0)
                     ->where('gp_devoluciones.estado', 'aprobado')
+                    ->where('gp_devoluciones.tipo_devolucion', 'parcial')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
             })
                 ->whereNotExists(function ($sub) {
@@ -237,12 +225,30 @@ class GpDevoluciones extends Model
                 });
         }
 
+          //validacione en estado aprobado total
+        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 1 && $criterio['despachado'] === 1) {
+            $query->where(function ($q) {
+                $q->where('gp_devoluciones.requiere_aprobacion', 1)
+                    ->where('gp_devoluciones.volver_a_facturar', 1)
+                    ->where('gp_devoluciones.estado', 'aprobado')
+                    ->where('gp_devoluciones.tipo_devolucion', 'total')
+                    ->whereNotNull('gp_devoluciones.aprobador_id');
+            })
+                ->whereNotExists(function ($sub) {
+                    $sub->selectRaw(1)
+                        ->from('gp_devoluciones_detalles as dvd')
+                        ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
+                        ->where('dvd.despachado_parcial', '!=',1);
+                });
+        }
+
         //validacion con estado aprobado sin volver a facturar pero no despachadas totales
-        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 0) {
+        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 0 && ($criterio['despachado'] === 0 || $criterio['despachado'] === null) ) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 0)
                     ->where('gp_devoluciones.estado', 'aprobado')
+                     ->where('gp_devoluciones.tipo_devolucion', 'total')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
             })
             ->whereNotExists(function ($sub) {
