@@ -192,32 +192,6 @@ class DevolucionesController extends Controller
         return $this->devolucionService->getReturnsDetailDevolucion($data);
     }
 
-    public function bajardevolucionapedido($devolucion, $detalles, $pedido)
-    {
-
-        if (!$devolucion->rebajado) {
-            foreach ($detalles as $detalle) {
-                $articulo = GpPedidoDetalle::where('pedido_id', $devolucion->pedido_id)
-                    ->where('id', $detalle->detalle_id)
-                    ->first();
-
-                $articulo->devuelto += $detalle->devuelto;
-                $articulo->save();
-                if (!$devolucion->despachado) {
-                    $articulo_stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
-                        ->where('STO_ART_BODEGA', $pedido->BOD_BODEGA)
-                        ->first();
-
-                    if ($articulo_stock) {
-                        $articulo_stock->reservado -= $articulo->devuelto;
-                        $articulo_stock->save();
-                    }
-                }
-            }
-            $devolucion->rebajado = 1;
-            $devolucion->save();
-        }
-    }
 
     public function verdevolucionesporrecibir($puntodeventa): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
