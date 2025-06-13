@@ -27,7 +27,8 @@ class GpHttpClient
             if (empty($urlKey)) {
                 throw new \InvalidArgumentException("Endpoint '{$urlKey}' not defined in configuration.");
             }
-            $allowedMethods = ['GET', 'POST', 'PUTH', 'PATCH', 'delete'];
+            $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'delete'];
+
             if (!in_array($method, $allowedMethods)) {
                 throw new \InvalidArgumentException("HTTP method '{$method}' is not allowed.");
             }
@@ -44,19 +45,45 @@ class GpHttpClient
                 $client = $client->asForm();
             }
 
-            $response = ($method === 'GET' && !empty($data))  ? $client->get($url . '?' . http_build_query($data))  : $client->{$method}($url, $data);
-            if ($response->successful()) {
-                return $response->json(); // 2xx
+            $response = ($method === 'GET' && !empty($data)) ? $client->get($url . '?' . http_build_query($data)) : $client->{$method}($url, $data);
+            $responseData = null;
+            try {
+                // Intentar decodificar solo si el Content-Type es JSON
+                if (str_contains(strtolower($response->header('Content-Type')), 'application/json')) {
+                    $responseData = $response->json();
+                } else {
+                    $responseData = $response->body();
+                }
+            } catch (\Exception $e) {
+                $responseData = $response->body();
             }
-            Log::warning("API Request Warning - {$url}: " . $response->body(), [
-                'url' => $url,
-                'data' => $data,
-                'status' => $response->status()
+            // Log para depuración avanzada cuando la respuesta es vacía o no JSON
+            if (empty($responseData)) {
+                Log::error("API Response vacío o no JSON en {$url}", [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'url' => $url,
+                    'data' => $data,
+                ]);
+                return [
+                    'success' => false,
+                    'status' => $response->status(),
+                    'message' => 'Respuesta vacía o formato inesperado del API',
+                    'body' => $response->body(),
+                ];
+            }
 
-            ]);
+            // Log para warnings (4xx/5xx)
+            if (!$response->successful()) {
+                Log::warning("API Request Warning - {$url}: " . $response->body(), [
+                    'url' => $url,
+                    'data' => $data,
+                    'status' => $response->status()
+                ]);
+            }
 
+            return $responseData;
 
-            return $response->json(); // +4xx
         } catch (\InvalidArgumentException $e) {
             $errorResponse = [
                 'success' => false,
@@ -106,26 +133,25 @@ class GpHttpClient
         // $results = Promise\settle($promises)->wait();
 
         // 🔄 Devolver solo las que fueron exitosas
-        return collect($results)->map(function ($result, $key) use ($url, $method)  {
+        return collect($results)->map(function ($result, $key) use ($url, $method) {
             if ($result['state'] === 'fulfilled') {
                 return json_decode($result['value']->getBody(), true);
+            } else {
+                // 🔍 Manejo de error en Promesas
+                $errorResponse = [
+                    'success' => false,
+                    'status' => $result['reason']->getCode(),
+                    'error' => $result['reason']->getMessage(),
+                    'message' => "Async API Request failed",
+                    'url' => $url,
+                    'method' => $method
+                ];
+
+                // 🚀 Log detallado del error
+                Log::error("Async API Request Error", $errorResponse);
+
+                return $errorResponse;
             }
-             else {
-            // 🔍 Manejo de error en Promesas
-            $errorResponse = [
-                'success' => false,
-                'status' => $result['reason']->getCode(),
-                'error' => $result['reason']->getMessage(),
-                'message' => "Async API Request failed",
-                'url' => $url,
-                'method' => $method
-            ];
-
-            // 🚀 Log detallado del error
-            Log::error("Async API Request Error", $errorResponse);
-
-            return $errorResponse;
-         }
         })->filter()->toArray();
     }
 }

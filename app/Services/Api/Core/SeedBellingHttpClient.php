@@ -28,7 +28,7 @@ class  SeedBellingHttpClient
             if (empty($urlKey)) {
                 throw new \InvalidArgumentException("Endpoint '{$urlKey}' no definido en configuración.");
             }
-            $allowedMethods = ['GET', 'POST', 'PUTH', 'PATCH', 'delete'];
+            $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'delete'];
             if (!in_array($method, $allowedMethods)) {
                 throw new \InvalidArgumentException("HTTP method '{$method}' is not allowed.");
             }
