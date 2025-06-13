@@ -107,6 +107,7 @@ use \DateTimeInterface;
  * @property string|null $aprobado_comercial_mensaje
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoComercialMensaje($value)
  * @property string|null $fecha_entrega
+ * @property boolean $facturado
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaEntrega($value)
  */
 class GpCotizacion extends Model
