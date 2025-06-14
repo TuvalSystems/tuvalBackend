@@ -43,7 +43,7 @@ class CreateUserGpCommand extends Command
     {
         // $gpUsers = GpUsuario::where('USERID', 'jmagallanes')->take(1)->get();
         $totalActualizados = 0;
-        GpUsuario::where('process_job', 0)->chunk(100, function ($gpUsers) use ($totalActualizados) {
+        GpUsuario::where('process_job', 0)->chunk(500, function ($gpUsers) use ($totalActualizados) {
             foreach ($gpUsers as $gpUser) {
                 $gpUser->update([
                     'password' => Hash::make($gpUser->USERID),
