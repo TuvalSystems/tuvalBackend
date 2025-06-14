@@ -2,6 +2,9 @@
 
 namespace App\Services\Pedidos;
 
+use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
@@ -12,20 +15,41 @@ use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
+use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use Illuminate\Support\Facades\DB;
 
 class OrderService implements OrderServiceInterface
 {
     use JsonResponseTrait;
     protected ApiSalesService $apiSalesService;
     protected ApiGpService $apiGpService;
+    protected ApprovalServiceInterface $approvalService;
 
-    public function __construct(ApiSalesService $apiSalesService, ApiGpService $apiGpService)
-    {
+    protected OrderRepositoryInterface $orderRepository;
+    protected ApiBillingService $apiBillingService;
+    protected FunctionsServiceInterface $functionsService;
+    protected PurchaseReceiptServiceInterface $purchaseReceiptService;
+    public function __construct(
+        ApiSalesService $apiSalesService,
+        ApiGpService $apiGpService,
+        ApprovalServiceInterface $approvalService,
+        OrderRepositoryInterface $orderRepository,
+        ApiBillingService $apiBillingService,
+        FunctionsServiceInterface $functionsService,
+        PurchaseReceiptServiceInterface $purchaseReceiptService
+    ) {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
+        $this->approvalService = $approvalService;
+        $this->orderRepository = $orderRepository;
+        $this->apiBillingService = $apiBillingService;
+        $this->functionsService = $functionsService;
+        $this->purchaseReceiptService = $purchaseReceiptService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -57,7 +81,7 @@ class OrderService implements OrderServiceInterface
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $id)
             ->first()
-            ?->toArray();
+                ?->toArray();
     }
     public function isPedidoBlocked(array $pedido): bool
     {
@@ -111,7 +135,8 @@ class OrderService implements OrderServiceInterface
 
     public function getImagenes(string $codigo): array
     {
-        if (!$codigo) return [];
+        if (!$codigo)
+            return [];
 
         $imagenes = [];
         for ($i = 1; $i <= 3; $i++) {
@@ -125,7 +150,7 @@ class OrderService implements OrderServiceInterface
 
     public function appendPagoAndClienteInfo(&$pedido)
     {
-        $formaPago  = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $pedido['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
+        $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $pedido['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
         $pedido['formadepago'] = $formaPago['DESC_FORMA_PAGO_TIPO_CREDITO'] ?? null;
         $pedido['formadepagoSRI'] = substr($formaPago['DESC_FORMA_PAGO_SRI'] ?? '', 3);
 
@@ -169,14 +194,140 @@ class OrderService implements OrderServiceInterface
         ));
     }
 
-    public function generateInvoiceXml($id){
+    public function generateInvoiceXml($id)
+    {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
         if ($datosFactura['success'] === false) {
-           throw new \Exception($datosFactura['message']);
+            throw new \Exception($datosFactura['message']);
         }
         $datos['xml'] = $datosFactura['data']['xml'];
         $datos['factura'] = $pedido['factura'];
         return $datos;
+    }
+
+
+
+    // PROCESO DE GUARDADO DE PEDIDOS
+
+    public function storeOrder($order)
+    {
+        $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
+        return $order;
+    }
+
+
+    public function ensureAllItemsHaveValidQuantity($order)
+    {
+        foreach ($order['cotizacion'] as $item) {
+            if (empty($item['ART_CANTIDAD']) || $item['ART_CANTIDAD'] <= 0) {
+                throw new \InvalidArgumentException("La cantidad del artículo '{$item['ART_CODIGO']}' debe ser mayor a cero.");
+            }
+        }
+    }
+
+
+
+
+    /**
+     * ✅ Obtiene el detalle de un pedido especifico.
+     *  detallepedido
+     *
+     */
+
+    public function detailOrderById($data)
+    {
+        // 🔍 1. Obtener detalles del pedido
+        $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
+
+        // 🔍 2. Consultar el crédito del cliente
+        //  $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
+        $credito = $this->apiBillingService->consultCreditClient([
+            'ruc' => $data['CLI_RUC'],
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        $estadoCuenta = [
+            'cupoDisponible' => $credito['cupos'][0] ?? []
+        ];
+
+        // 🔍 3. Procesar proveedores y stock
+        $pendientes = false;
+        $existentes = false;
+        $detalle->each(function ($item) use ($data, &$pendientes, &$existentes) {
+            $proveedores = $this->functionsService->getItemProviders($data, $item, $pendientes, $existentes);
+            $item->proveedores = $proveedores['proveedores'];
+            $pendientes = $proveedores['pendientes'] ?: $pendientes;
+            $existentes = $proveedores['existentes'] ?: $existentes;
+
+            $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
+            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
+                $existentes = true;
+            }
+        });
+
+
+        // 🔍 4. Obtener órdenes de compra optimizadas
+        $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
+            ->map(function ($orden) {
+                $recibodecompra = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+                return count($recibodecompra->detalle) > 0 ? $recibodecompra : null;
+            })
+            ->filter()
+            ->values();
+
+        // 🔍 5. Procesar traslados
+        $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
+        $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
+            $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
+            $trasladoVenta->guias = $guias;
+            $guias->each(function ($guia) use (&$pendientes, &$existentes) {
+                if ($guia->estado != 'recibida')
+                    $pendientes = true;
+                else
+                    $existentes = true;
+            });
+            if (!$trasladoVenta->completado)
+                $pendientes = true;
+        });
+
+        // 🔍 6. Obtener despacho, guías y devoluciones
+        $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
+        $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
+        $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
+
+        return response([
+            'success' => true,
+            'detalle' => $detalle,
+            'estadodecuenta' => $estadoCuenta,
+            'ordendecompra' => $ordenes,
+            'traslados' => $trasladosVentas,
+            'orden_despacho' => $orderDespacho,
+            'guias_remision' => $guiaRemision,
+            'devoluciones' => $devoluciones,
+            'pendientes' => $pendientes,
+            'existentes' => $existentes,
+        ]);
+    }
+
+
+    public function checkOutValidateDispatchReInvoice($devolucion)
+    {
+        return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
+            ->where('despachado_parcial', 1)->exists();
+    }
+
+
+
+    /**
+     * API PARA LISTAR LOS PEDIDOS SIN COORDENADAS
+     *
+     */
+
+    public function getLisOrdersWithoutCoordinated()
+    {
+        $orders = DB::table('tuvalapi.vw_pedidos_sin_coordenadas')->get();
+
+        return $this->successResponse('Información Obtenida Correctamente', $orders, 200);
+
     }
 }

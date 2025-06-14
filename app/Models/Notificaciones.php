@@ -37,6 +37,13 @@ class Notificaciones extends Model
      * @param  \DateTimeInterface  $date
      * @return string
      */
+
+     protected $fillable = [
+        'titulo',
+        'user_id',
+        'mensaje',
+        'estado',
+    ];
     protected function serializeDate(DateTimeInterface $date)
     {
         return $date->format('Y-m-d H:i:s');

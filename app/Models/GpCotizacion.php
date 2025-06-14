@@ -107,6 +107,7 @@ use \DateTimeInterface;
  * @property string|null $aprobado_comercial_mensaje
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoComercialMensaje($value)
  * @property string|null $fecha_entrega
+ * @property boolean $facturado
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaEntrega($value)
  */
 class GpCotizacion extends Model
@@ -122,5 +123,21 @@ class GpCotizacion extends Model
     protected function serializeDate(DateTimeInterface $date): string
     {
         return $date->format('Y-m-d H:i');
+    }
+
+
+    public function detallecotizacion()
+    {
+        return $this->hasMany(GpCotizacionDetalle::class, 'cotizacion_id', 'id');
+    }
+
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
+
+    public function motivosNoVenta()
+    {
+        return $this->belongsTo(GpCotizacionVentaMotivo::class, 'cotizacion_venta_motivo_id');
     }
 }

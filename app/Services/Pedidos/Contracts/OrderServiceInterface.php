@@ -7,4 +7,12 @@ interface OrderServiceInterface
         public function getOrderInfo($id);
         public function generateInvoiceRide($id);
         public function generateInvoiceXml($id);
+        public function storeOrder($order);
+
+        public function detailOrderById($data);
+
+        //volver a facturar
+        public function checkOutValidateDispatchReInvoice($devolucion);
+
+        public function getLisOrdersWithoutCoordinated();
 }

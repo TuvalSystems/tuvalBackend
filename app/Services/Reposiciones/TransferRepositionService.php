@@ -262,6 +262,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'bodega' => $warehouse,
             'compartimento' => '',
         ];
+        // MST_Stock_Articulo_Bodega_CompartimientoResult
         $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params) ?? [];
         return  $compartment[0]['COMPARTIMIENTO'] ?? '';
     }

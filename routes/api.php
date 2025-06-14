@@ -18,7 +18,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
-use App\Http\Controllers\ImportarPedidosController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -31,9 +31,15 @@ use App\Http\Controllers\ImportarPedidosController;
 */
 
 Route::middleware('auth:sanctum')->group(function(){
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
+
+});
+Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::post('/resetpassword', [AuthController::class, 'resetPassword']);
+    Route::post('/change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('/logout', [AuthController::class, 'logout']);
     Route::get('/notificaciones', [AuthController::class, 'notificaciones']);
     Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);
@@ -198,6 +204,13 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/despachos/checkdespachadoscompletos', [DespachosController::class, 'checkdespachadoscompletos']);
     Route::get('/despachos/guiasprocesadas/{id}', [DespachosController::class, 'guiasprocesadas']);
 
+    // neuvas rutas de consulta de guiasprocesadas separadas por consulta y no una sola como esta en /despachos/guiasprocesadas/{id}
+    Route::get('/despachos/guiasdespachadas/{id}', [DespachosController::class, 'getDispatchedGuides']);
+    Route::get('/despachos/transferenciasEnviadas/{id}', [DespachosController::class, 'getDispatchedTransfers']);
+    Route::get('/despachos/transferenciasRecibidas/{id}', [DespachosController::class, 'getReceivedTransfers']);
+    Route::get('/despachos/reposicionesEnviadas/{id}', [DespachosController::class, 'getDispatchedRepositions']);
+    Route::get('/despachos/reposicionesRecibidas/{id}', [DespachosController::class, 'getReceivedRepositions']);
+
     Route::post('/bodegas/guiasderemision/generarguiatraslado', [GuiasderemisionController::class, 'generarguiatraslado']);
     Route::post('/bodegas/guiasderemision/consultarguiagenerada', [GuiasderemisionController::class, 'consultarguiagenerada']);
     Route::get('/bodegas/guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
@@ -229,6 +242,10 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/cotizaciones/imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
     Route::get('/devoluciones/imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
     Route::post('/consultas/notificaciones', [ConsultasController::class, 'notificaciones']);
+
+    //new routes
+    Route::get('cotizaciones/lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
+    Route::put('cotizaciones/guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 });
 Route::post('/login', [AuthController::class, 'login']);
 

@@ -84,4 +84,11 @@ Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::c
 Route::get('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
 
 
+Route::get('/lista-ordenes-compra-recepcion', [OrdendecompraController::class, 'getViewPurchaseOrder']);
+Route::get('/lista-ordenes-despachadas-pendientes', [OrdendecompraController::class, 'getOrdesDispatchPending']);
 
+Route::get('/pedidos/lista-pedidos-sin-coordenadas',[PedidosController::class,'getListPedidosSinCoordenadas']);
+
+
+Route::get('/devolucion/generar-nota-credito-errores/{id}',[DevolucionesController::class, 'generarNotaCreditoDevolucionesFallidas']);
+Route::get('/devolucion/generar-ajuste-devolucion/{id}',[DevolucionesController::class, 'generarAjusteDevolucionesFallidas']);

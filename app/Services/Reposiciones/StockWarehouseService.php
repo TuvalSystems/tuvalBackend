@@ -5,7 +5,6 @@ namespace App\Services\Reposiciones;
 use App\Models\GpTempCart;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
-use Illuminate\Support\Facades\DB;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
@@ -39,14 +38,14 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 $articulo['ART_CODIGO'],
                 $stockItem['STO_ART_BODEGA']
             );
-            
+
             $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(
                 0,
                 $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado
             );
             $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
         }
-       
+
         $articulo['stock'] = $stockResults;
         $articulo['ART_STOCK'] = $stockTotal;
 
@@ -99,7 +98,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         ->whereNull('completado')
         ->get()
         ->sum(fn ($item) => ($item->cantidad ?? 0) - ($item->trasladado ?? 0));
-        
+
         return $reservado;
     }
 

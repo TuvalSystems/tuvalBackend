@@ -1,8 +1,5 @@
 <?php
 
-use App\Providers\ApiServiceProvider;
-use App\Providers\DevolucionServiceProvider;
-
 return [
 
     /*
@@ -16,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Tuval S.A.'),
 
     /*
     |--------------------------------------------------------------------------
@@ -183,8 +180,9 @@ return [
         Milon\Barcode\BarcodeServiceProvider::class,
 
         //Providers DDD
-        ApiServiceProvider::class,
-        DevolucionServiceProvider::class,
+         App\Providers\ApiServiceProvider::class,
+         App\Providers\DevolucionServiceProvider::class,
+         App\Providers\RepositoryServiceProvider::class,
     ],
 
     /*

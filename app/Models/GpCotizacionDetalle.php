@@ -66,4 +66,11 @@ use Illuminate\Database\Eloquent\Model;
 class GpCotizacionDetalle extends Model
 {
     use HasFactory;
+
+
+
+    public function cotizacion()
+    {
+        return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
+    }
 }
