@@ -87,15 +87,14 @@ class NotificarCotizacionesVencidasCommand extends Command
             foreach ($resultado as $value) {
                 $ptoVentaId = $value['ptoVentaId'];
                 $PtoVentaDescripcion = $value['ptoVenta'];
-                // $email = $value['email'];
-                $email = 'sistemas6@tuvalsa.com';
-                $userId = 179;
+                $email = $value['email'];
+                // $email = 'sistemas6@tuvalsa.com';
+                // $userId = 179;
                 $cotizaciones = $value['cotizaciones'];
                 Mail::to($email)->send(new RecordatorioCotizacionNoVentaMail($cotizaciones, $PtoVentaDescripcion));
                 foreach ($cotizaciones as $cot) {
                     $notificationService->sendNotification(
-                        $userId,
-                        // $cot->user_id,
+                        $cot->user_id,
                         'Cotización No Vendida',
                         'La cotización ' . $cot->cotizacion . ' no ha sido vendida y tiene un recordatorio programado para hoy.',
 
