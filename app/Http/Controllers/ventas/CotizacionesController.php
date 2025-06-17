@@ -1082,35 +1082,26 @@ class CotizacionesController extends Controller
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
 
-            foreach ($arr_bodegas as $bodega) {
-                $arrArticulos[] = array(
-                    'articulo' => $articulo->ART_CODIGO,
-                );
-            }
+            // foreach ($arr_bodegas as $bodega) {
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
+            );
+            // }
         }
 
         $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
         // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-        foreach ($stock_general as &$stockItem) {
-            $articulo = $stockItem['STO_ART_ARTICULO'];
-            $bodegaCodigo = $stockItem['STO_ART_BODEGA'];
-
-            $seleccionado = false;
-
-            // Buscamos si existe el "seleccionado" en stock_bodega_arr
-            if (isset($stock_bodega_arr[$articulo])) {
-                foreach ($stock_bodega_arr[$articulo] as $bodega) {
-                    if ($bodega['STO_ART_BODEGA'] === $bodegaCodigo) {
-                        $seleccionado = $bodega['seleccionado'];
-                        break;
-                    }
-                }
+        foreach ($stock_bodega_arr as $key => $bodegas) {
+            foreach ($bodegas as $bodega) {
+                $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
             }
-
-            $stockItem['seleccionado'] = $seleccionado;
         }
-        unset($stockItem);
 
         $articulos_array_l = array();
 
@@ -1198,7 +1189,7 @@ class CotizacionesController extends Controller
         $stock_bodega_arr = array();
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-
+        $arrArticulos = array();
         foreach ($detalle as $articulo) {
             $articulo->proveedores = array();
 
@@ -1208,11 +1199,10 @@ class CotizacionesController extends Controller
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
 
-            foreach ($arr_bodegas as $bodega) {
-                $consulta_bodega[] = array(
-                    'STOCK_ARTICULO' => $articulo->ART_CODIGO . '@' . $bodega,
-                );
-            }
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
+            );
+
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
             );
@@ -1233,7 +1223,14 @@ class CotizacionesController extends Controller
             $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+
+         $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
 
         foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
@@ -1263,7 +1260,7 @@ class CotizacionesController extends Controller
         $consulta_bodega = array();
         $consulta_precio = array();
         $stock_bodega_arr = array();
-
+        $arrArticulos = array();
         $cotizacion = GpCotizacion::where('id', $data['id'])->first();
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
@@ -1277,11 +1274,9 @@ class CotizacionesController extends Controller
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
 
-            foreach ($arr_bodegas as $bodega) {
-                $consulta_bodega[] = array(
-                    'STOCK_ARTICULO' => $articulo->ART_CODIGO . '@' . $bodega,
-                );
-            }
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
+            );
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
             );
@@ -1294,7 +1289,13 @@ class CotizacionesController extends Controller
             $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+           $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
 
         foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
