@@ -330,4 +330,47 @@ class OrderService implements OrderServiceInterface
         return $this->successResponse('Información Obtenida Correctamente', $orders, 200);
 
     }
+
+
+    /** RECUPERAR PEDIDOS Y COPIAR PEDIDOS */
+
+    public function restoreOrders($articulos, $bodegas)
+    {
+        $formatStock = [];
+        foreach ($articulos as $value) {
+            $stockRequests = array_map(fn($whr) => ['articulo' => $value['articulo'], 'bodega' => $whr,], $bodegas);
+            $stockResults = array_map(fn($params) => $this->apiGpService->getStockWarehouse($params), $stockRequests);
+            $formatted = $this->formatResultStocksOrders($stockResults);
+            $formatStock = array_merge($formatStock, $formatted);
+        }
+
+        return $formatStock;
+
+    }
+
+
+    public function formatResultStocksOrders($stockResults)
+    {
+        if (empty($stockResults)) {
+            return [];
+        }
+        $formattedStocks = [];
+        foreach ($stockResults as $value) {
+            if (!is_array($value)) {
+                continue;
+            }
+            $formattedStocks = array_merge(
+                $formattedStocks,
+                array_map(
+                    fn($item) => [
+                        'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
+                        'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
+                        'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
+                    ],
+                    array_values($value)
+                )
+            );
+        }
+        return $formattedStocks;
+    }
 }

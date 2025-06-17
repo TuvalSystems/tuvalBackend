@@ -218,7 +218,7 @@ class PedidosController extends Controller
         }
 
         $order = app(PurchaseOrderServiceInterface::class);
-        $ordendecompra = new OrdendecompraController($order  );
+        $ordendecompra = new OrdendecompraController($order);
 
         $ordendecompra->checkordendecompra($pedido);
 
@@ -1265,6 +1265,7 @@ class PedidosController extends Controller
         $consulta_bodega = array();
         $consulta_precio = array();
         $stock_bodega_arr = array();
+        $arrArticulos = array();
 
         $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
 
@@ -1277,11 +1278,9 @@ class PedidosController extends Controller
                 ->get()->toArray();
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
-            foreach ($arr_bodegas as $bodega) {
-                $consulta_bodega[] = array(
-                    'STOCK_ARTICULO' => $articulo->ART_CODIGO . '@' . $bodega,
-                );
-            }
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
+            );
 
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
@@ -1305,8 +1304,13 @@ class PedidosController extends Controller
             }
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-
+        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        $stock_general = $this->orderService->restoreOrders($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
         foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
                 $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
@@ -1339,7 +1343,7 @@ class PedidosController extends Controller
     {
 
         $order = app(PurchaseOrderServiceInterface::class);
-        $ordendecompra = new OrdendecompraController($order  );
+        $ordendecompra = new OrdendecompraController($order);
 
         $flag = $ordendecompra->checkordendecomprarecibidos($pedido);
         if ($flag) {
@@ -1809,7 +1813,7 @@ class PedidosController extends Controller
     public function volverafacturar($devolucion)
     {
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
-        $despachada =  $this->orderService->checkOutValidateDispatchReInvoice($devolucion);
+        $despachada = $this->orderService->checkOutValidateDispatchReInvoice($devolucion);
         $cliente = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
@@ -2058,7 +2062,8 @@ class PedidosController extends Controller
         }
     }
 
-    public function getListPedidosSinCoordenadas (){
+    public function getListPedidosSinCoordenadas()
+    {
         return $this->orderService->getLisOrdersWithoutCoordinated();
     }
 }

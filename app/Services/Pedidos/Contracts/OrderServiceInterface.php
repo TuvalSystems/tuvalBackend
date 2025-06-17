@@ -15,4 +15,8 @@ interface OrderServiceInterface
         public function checkOutValidateDispatchReInvoice($devolucion);
 
         public function getLisOrdersWithoutCoordinated();
+
+        //recuperar pedidos
+
+        public function restoreOrders($articulos, $bodegas);
 }
