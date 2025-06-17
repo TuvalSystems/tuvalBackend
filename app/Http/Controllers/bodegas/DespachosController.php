@@ -881,11 +881,11 @@ class DespachosController extends Controller
         $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
         foreach ($detallepedido as $item) {
-            if ($item->ART_TIPO_COMPRA != 'SERV') {
+            // if ($item->ART_TIPO_COMPRA != 'SERV') {
                 if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
                     $listo = false;
                 }
-            }
+            // }
         }
 
         if ($listo) {
@@ -910,12 +910,12 @@ class DespachosController extends Controller
 
             foreach ($detallepedido as $item) {
 
-                if ($item->ART_TIPO_COMPRA != 'SERV') {
+                // if ($item->ART_TIPO_COMPRA != 'SERV') {
 
                     if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
                         $listo = false;
                     }
-                }
+                // }
             }
 
             if ($listo) {
