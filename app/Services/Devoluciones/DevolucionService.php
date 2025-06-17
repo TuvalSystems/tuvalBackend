@@ -65,7 +65,25 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
 
-    //solicitudes de devoluciones
+    /**
+     * LISTADO DE DEVOLUCIONES Y PEDIDOS PARA VISUALIAR EN LA PANTALLA DE SOLICITUD DE DEVOLUCIONES
+     *
+     * PENDIENTE DE MEJORAR
+     */
+
+     public function getAllOrdersWithDevoluciones($cienteId, $puntVentaId)
+     {
+        $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
+            ->where('cliente_id', $cienteId)
+            ->where('estado', 'facturado')
+            ->orWhere('estado', 'anulada')
+            ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
+     }
+
+
+    /**
+     * PROCESO DE ANULACION DE DEVOLUCION
+     */
 
     public function anularDevolucion($pedido, $devolucion)
     {

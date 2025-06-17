@@ -2,6 +2,9 @@
 
 namespace App\Models\devoluciones;
 
+use App\Models\GpCliente;
+use App\Models\GpClienteSucursal;
+use App\Models\GpPedido;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -279,5 +282,27 @@ class GpDevoluciones extends Model
 
         return $query;
 
+    }
+
+
+    public function cliente ()
+    {
+        return $this->belongsTo(GpCliente::class, 'cliente_id');
+    }
+
+
+    public function cliente_volver_a_facturar (){
+        return $this->belongsTo(GpCliente::class, 'cliente_volver_a_facturar_id');
+    }
+
+    public function sucursal_volver_a_facturar ()
+    {
+        return $this->belongsTo(GpClienteSucursal::class, 'sucursal_facturacion_id');
+    }
+
+
+    public function pedido ()
+    {
+        return $this->belongsTo(GpPedido::class, 'pedido_id');
     }
 }
