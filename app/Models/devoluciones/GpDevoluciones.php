@@ -79,6 +79,7 @@ use Illuminate\Support\Facades\DB;
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereEstado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereFechaNC($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereNCVTAMENSAJE($value)
+ * @property boolean $permite_anulacion
  */
 class GpDevoluciones extends Model
 {
@@ -160,11 +161,14 @@ class GpDevoluciones extends Model
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
                 ->where('dvd.ART_TIPO_COMPRA', '!=', 'L')
                 // esto me valida que solo procese las devoluciones que tengan devoluciones anteriores en estado parcial
-                ->whereExists(function ($q) {
-                    $q->select(DB::raw(1))
-                        ->from('gp_devoluciones as dp')
-                        ->where('dp.pedido_id', '=', DB::raw('gp_devoluciones.pedido_id'))
-                        ->where('dp.tipo_devolucion', 'parcial');
+                ->where(function ($subQuery) {
+                    $subQuery->whereExists(function ($q) {
+                        $q->select(DB::raw(1))
+                            ->from('gp_devoluciones as dp')
+                            ->where('dp.pedido_id', '=', DB::raw('gp_devoluciones.pedido_id'))
+                            ->where('dp.tipo_devolucion', 'parcial');
+                    })
+                     ->orWhere('gp_devoluciones.permite_anulacion', 0);
                 });
         }
 
@@ -228,7 +232,7 @@ class GpDevoluciones extends Model
                 });
         }
 
-          //validacione en estado aprobado total
+        //validacione en estado aprobado total
         if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 1 && $criterio['despachado'] === 1) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
@@ -244,24 +248,24 @@ class GpDevoluciones extends Model
                     $sub->selectRaw(1)
                         ->from('gp_devoluciones_detalles as dvd')
                         ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
-                        ->where('dvd.despachado_parcial', '!=',1);
+                        ->where('dvd.despachado_parcial', '!=', 1);
                 });
         }
 
         //validacion con estado aprobado sin volver a facturar pero no despachadas totales
-        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 0 && ($criterio['despachado'] === 0 || $criterio['despachado'] === null) ) {
+        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 0 && ($criterio['despachado'] === 0 || $criterio['despachado'] === null)) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 0)
                     ->where('gp_devoluciones.estado', 'aprobado')
-                     ->where('gp_devoluciones.tipo_devolucion', 'total')
+                    ->where('gp_devoluciones.tipo_devolucion', 'total')
                     ->whereNotNull('gp_devoluciones.aprobador_id');
             })
-            /*
-                En cambio en este procesa todos los despachados parcial = 0, siempre y cuando el pedido no haya sido despachado parcialmente o totalmente
-                ya que entraria en el where de arriba
-             */
-            ->whereNotExists(function ($sub) {
+                /*
+                    En cambio en este procesa todos los despachados parcial = 0, siempre y cuando el pedido no haya sido despachado parcialmente o totalmente
+                    ya que entraria en el where de arriba
+                 */
+                ->whereNotExists(function ($sub) {
                     $sub->selectRaw(1)
                         ->from('gp_devoluciones_detalles as dvd')
                         ->whereColumn('dvd.devolucion_id', 'gp_devoluciones.id')
@@ -285,23 +289,24 @@ class GpDevoluciones extends Model
     }
 
 
-    public function cliente ()
+    public function cliente()
     {
         return $this->belongsTo(GpCliente::class, 'cliente_id');
     }
 
 
-    public function cliente_volver_a_facturar (){
+    public function cliente_volver_a_facturar()
+    {
         return $this->belongsTo(GpCliente::class, 'cliente_volver_a_facturar_id');
     }
 
-    public function sucursal_volver_a_facturar ()
+    public function sucursal_volver_a_facturar()
     {
         return $this->belongsTo(GpClienteSucursal::class, 'sucursal_facturacion_id');
     }
 
 
-    public function pedido ()
+    public function pedido()
     {
         return $this->belongsTo(GpPedido::class, 'pedido_id');
     }

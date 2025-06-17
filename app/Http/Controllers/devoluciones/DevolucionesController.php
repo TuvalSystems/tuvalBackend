@@ -60,7 +60,7 @@ class DevolucionesController extends Controller
             $pedido->orden_despacho = in_array($pedido->id, $ordenesDespachoPedidos);
         }
 
-        $devoluciones = GpDevoluciones::with(['cliente', 'cliente_volver_a_facturar','sucursal_volver_a_facturar',])
+        $devoluciones = GpDevoluciones::with(['cliente', 'cliente_volver_a_facturar', 'sucursal_volver_a_facturar',])
             ->where('cliente_id', $cliente_id)
             ->whereHas('pedido', function ($query) use ($puntodeventa_id) {
                 $query->where('PTO_VTA_ID', $puntodeventa_id);
@@ -156,7 +156,8 @@ class DevolucionesController extends Controller
                 $countsReturnsByOrders === 0 &&
                 $validateItemsL === 0 &&
                 $validateItemsPartialDispatch === 0 &&
-                $data['devolucion']['volver_a_facturar'] === false
+                $data['devolucion']['volver_a_facturar'] === false &&
+                ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
@@ -168,6 +169,9 @@ class DevolucionesController extends Controller
                 }
             }
             DB::commit();
+            if ($devolucion->estado === 'solicitado' && $devolucion->permite_anulacion === false || $devolucion->permite_anulacion === 0) {
+                return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. Pero se procesara la devolución sin anular la factura porque tiene pagos aplicados', 200);
+            }
             return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
         } catch (\Throwable $th) {
             DB::rollBack();

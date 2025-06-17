@@ -71,14 +71,14 @@ class DevolucionService implements DevolucionServiceInterface
      * PENDIENTE DE MEJORAR
      */
 
-     public function getAllOrdersWithDevoluciones($cienteId, $puntVentaId)
-     {
+    public function getAllOrdersWithDevoluciones($cienteId, $puntVentaId)
+    {
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
             ->where('cliente_id', $cienteId)
             ->where('estado', 'facturado')
             ->orWhere('estado', 'anulada')
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
-     }
+    }
 
 
     /**
@@ -358,6 +358,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->aprobado = 'no';
         $return->impuesto = Arr::get($data, 'pedido.impuesto');
         $return->observacion = Arr::get($data, 'devolucion.observacion');
+        $return->permite_anulacion = $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []));
         $return->save();
 
         $this->storeReturnDetail($return->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
@@ -422,6 +423,19 @@ class DevolucionService implements DevolucionServiceInterface
             });
     }
 
+    public function getCheckoutPaymentInvoiceGp($pedido): bool
+    {
+        $check = $this->apiSales->getCheckoutPaymentInvoiceGp(
+            array(
+                'numeroDocumento' => $pedido['factura'],
+                'cliente' => $pedido['CLI_RUC']
+            )
+        );
+        if ($check['documento'] === "PAGOS") {
+            return false;
+        }
+        return true;
+    }
 
     public function generateReturnCode(int $id): string
     {

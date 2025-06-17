@@ -69,6 +69,9 @@ return [
             'actualizar_estado_factura'       => 'api/actualizar-estado-factura',
             'obtener_datos_factura'          => 'api/obtener-datos-factura',
 
+            //validar si tiene pago o no la factura para anular
+            'validar_pago_factura'            => 'api/validar-pago-factura',
+
         ],
     ],
     'api_seedbilling' => [
