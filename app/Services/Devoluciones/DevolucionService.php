@@ -425,7 +425,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function getCheckoutPaymentInvoiceGp($pedido, $devolucion, $status): bool
     {
-        if ($devolucion['tipo_devlolucion'] === 'total' && $status === 'solicitado') {
+        if ($devolucion['tipo_devolucion']  === 'total' && $status === 'solicitado') {
             $check = $this->apiSales->getCheckoutPaymentInvoiceGp(
                 array(
                     'numeroDocumento' => $pedido['factura'],
