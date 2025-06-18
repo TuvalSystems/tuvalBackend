@@ -169,7 +169,7 @@ class DevolucionesController extends Controller
                 }
             }
             DB::commit();
-            if ($devolucion->estado === 'solicitado' && $devolucion->permite_anulacion === false || $devolucion->permite_anulacion === 0) {
+            if ($devolucion->estado === 'solicitado' && ($devolucion->permite_anulacion === false || $devolucion->permite_anulacion === 0) && $devolucion->tipo_devolucion === 'total') {
                 return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. Pero se procesara la devolución sin anular la factura porque tiene pagos aplicados', 200);
             }
             return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);

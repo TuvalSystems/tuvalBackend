@@ -358,7 +358,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->aprobado = 'no';
         $return->impuesto = Arr::get($data, 'pedido.impuesto');
         $return->observacion = Arr::get($data, 'devolucion.observacion');
-        $return->permite_anulacion = $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []));
+        $return->permite_anulacion = $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status);
         $return->save();
 
         $this->storeReturnDetail($return->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
@@ -423,18 +423,21 @@ class DevolucionService implements DevolucionServiceInterface
             });
     }
 
-    public function getCheckoutPaymentInvoiceGp($pedido): bool
+    public function getCheckoutPaymentInvoiceGp($pedido, $devolucion, $status): bool
     {
-        $check = $this->apiSales->getCheckoutPaymentInvoiceGp(
-            array(
-                'numeroDocumento' => $pedido['factura'],
-                'cliente' => $pedido['CLI_RUC']
-            )
-        );
-        if (!isset($check['documento']) || $check['documento'] === "PAGOS") {
-            return false;
+        if ($devolucion['tipo_devlolucion'] === 'total' && $status === 'solicitado') {
+            $check = $this->apiSales->getCheckoutPaymentInvoiceGp(
+                array(
+                    'numeroDocumento' => $pedido['factura'],
+                    'cliente' => $pedido['CLI_RUC']
+                )
+            );
+            if (isset($check['documento']) && $check['documento'] === "OK") {
+                return true;
+            }
         }
-        return true;
+
+        return false;
     }
 
     public function generateReturnCode(int $id): string
