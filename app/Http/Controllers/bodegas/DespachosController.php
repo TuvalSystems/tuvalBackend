@@ -630,7 +630,7 @@ class DespachosController extends Controller
             $detTDevuelto = $det->trasladado - $det->reservado - $devueltoDesp;
             $detTNoDevuelto = ($det->ART_CANTIDAD - $det->trasladado) - $det->reservado - $devueltoNoDesp;
 
-            $det->pendiente = number_format($detTDevuelto + $detTNoDevuelto, 2, '.', '');
+            $det->pendiente = number_format( $detTNoDevuelto, 2, '.', '');
 
             $det->seleccionado = 0;
             if ($det->pendiente <= 0) {
@@ -803,7 +803,7 @@ class DespachosController extends Controller
             $detTDevuelto = $art['trasladado'] - $art['reservado'] - $devueltoDesp;
             $detTNoDevuelto = ($art['ART_CANTIDAD'] - $art['trasladado']) - $art['reservado'] - $devueltoNoDesp;
 
-            $art['pendiente'] = number_format($detTDevuelto + $detTNoDevuelto, 2, '.', '');
+            $art['pendiente'] = number_format( $detTNoDevuelto, 2, '.', '');
 
             if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
@@ -884,7 +884,7 @@ class DespachosController extends Controller
             $detTDevuelto = $art['trasladado'] - $art['reservado'] - $devueltoDesp;
             $detTNoDevuelto = ($art['ART_CANTIDAD'] - $art['trasladado']) - $art['reservado'] - $devueltoNoDesp;
 
-            $art['pendiente'] = number_format($detTDevuelto + $detTNoDevuelto, 2, '.', '');
+            $art['pendiente'] = number_format($detTNoDevuelto, 2, '.', '');
 
 
             if ($art['pendiente'] <= 0) {
