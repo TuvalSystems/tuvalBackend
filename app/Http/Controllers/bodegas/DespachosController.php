@@ -614,15 +614,24 @@ class DespachosController extends Controller
             if (!$det->devuelto)
                 $det->devuelto = 0;
 
-            $det->devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.despachado', 0);
-                    $q->orWhereNull('gp_devoluciones.despachado');
-                })
+            $detTDevuelto = 0;
+            $detTNoDevuelto = 0;
+
+            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
+                ->where('gp_devoluciones_detalles.detalle_id', $det->id)
+                ->sum('gp_devoluciones_detalles.devuelto');
+            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
                 ->where('gp_devoluciones_detalles.detalle_id', $det->id)
                 ->sum('gp_devoluciones_detalles.devuelto');
 
-            $det->pendiente = number_format($det->ART_CANTIDAD - $det->reservado - $det->trasladado - $det->devuelto, 2, '.', '');
+
+            $detTDevuelto = $det->trasladado - $det->reservado - $devueltoDesp;
+            $detTNoDevuelto = ($det->ART_CANTIDAD - $det->trasladado) - $det->reservado - $devueltoNoDesp;
+
+            $det->pendiente = $detTDevuelto + $detTNoDevuelto;
+
             $det->seleccionado = 0;
             if ($det->pendiente <= 0) {
                 unset($detalle[$key]);
@@ -778,17 +787,36 @@ class DespachosController extends Controller
             if (!$art['devuelto'])
                 $art['devuelto'] = 0;
 
-            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.despachado', 0);
-                    $q->orWhereNull('gp_devoluciones.despachado');
-                })
+            $detTDevuelto = 0;
+            $detTNoDevuelto = 0;
+
+            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
+                ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
+                ->sum('gp_devoluciones_detalles.devuelto');
+            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
                 ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
                 ->sum('gp_devoluciones_detalles.devuelto');
 
-            $art['devuelto'] = $devuelto;
 
-            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
+            $detTDevuelto = $art['trasladado'] - $art['reservado'] - $devueltoDesp;
+            $detTNoDevuelto = ($art['ART_CANTIDAD'] - $art['trasladado']) - $art['reservado'] - $devueltoNoDesp;
+
+            $art['pendiente'] = number_format($detTDevuelto + $detTNoDevuelto, 2, '.', '');
+
+
+            // $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+            //     // ->where(function ($q) {
+            //     //     $q->where('gp_devoluciones.despachado', 0);
+            //     //     $q->orWhereNull('gp_devoluciones.despachado');
+            //     // })
+            //     ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
+            //     ->sum('gp_devoluciones_detalles.devuelto');
+
+            // $art['devuelto'] = $devuelto;
+
+            // $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
 
             if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
@@ -853,17 +881,34 @@ class DespachosController extends Controller
             if (!$art['devuelto'])
                 $art['devuelto'] = 0;
 
-            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.despachado', 0);
-                    $q->orWhereNull('gp_devoluciones.despachado');
-                })
+            $detTDevuelto = 0;
+            $detTNoDevuelto = 0;
+
+            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
+                ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
+                ->sum('gp_devoluciones_detalles.devuelto');
+            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
                 ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
                 ->sum('gp_devoluciones_detalles.devuelto');
 
-            $art['devuelto'] = $devuelto;
 
-            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
+            $detTDevuelto = $art['trasladado'] - $art['reservado'] - $devueltoDesp;
+            $detTNoDevuelto = ($art['ART_CANTIDAD'] - $art['trasladado']) - $art['reservado'] - $devueltoNoDesp;
+
+            $art['pendiente'] = number_format($detTDevuelto + $detTNoDevuelto, 2, '.', '');
+            // $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+            //     // ->where(function ($q) {
+            //     //     $q->where('gp_devoluciones.despachado', 0);
+            //     //     $q->orWhereNull('gp_devoluciones.despachado');
+            //     // })
+            //     ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
+            //     ->sum('gp_devoluciones_detalles.devuelto');
+
+            // $art['devuelto'] = $devuelto;
+
+            // $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
 
             if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
