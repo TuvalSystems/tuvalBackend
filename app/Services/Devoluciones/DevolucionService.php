@@ -431,7 +431,7 @@ class DevolucionService implements DevolucionServiceInterface
                 'cliente' => $pedido['CLI_RUC']
             )
         );
-        if (isset($check['documento']) && $check['documento'] === "PAGOS") {
+        if (!isset($check['documento']) && $check['documento'] === "PAGOS") {
             return false;
         }
         return true;
