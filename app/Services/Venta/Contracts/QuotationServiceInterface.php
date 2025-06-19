@@ -8,4 +8,10 @@ interface QuotationServiceInterface {
 
     public function updateNonSaleAndReminderData($data);
     public function getQuotationsWithReminderToday();
+
+    /**
+     *  recuperar cotizacion
+     */
+
+     public function restoreQuotation($articulos, $bodegas);
 }

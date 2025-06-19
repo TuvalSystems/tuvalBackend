@@ -41,46 +41,41 @@ class DevolucionesController extends Controller
         $this->notificationService = $notificationServiceInterface;
     }
 
-    public function pedidoscliente($cliente_id, $puntodeventa_id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+
+    public function pedidoscliente($cliente_id, $puntodeventa_id)
     {
-        $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntodeventa_id)
+        $pedidos = GpPedido::with('direccion_entrega')->where('PTO_VTA_ID', $puntodeventa_id)
             ->where('cliente_id', $cliente_id)
-            ->where('estado', 'facturado')
-            ->orWhere('estado', 'anulada')
-            ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
+            ->where(function ($query) {
+                $query->where('estado', 'facturado')
+                    ->orWhere('estado', 'anulada');
+            })
+            ->orderBy('created_at', 'desc')->limit(10000)->get();
+
+        $ordenesDespachoPedidos = GpOrdenDespacho::whereIn('pedido_id', $pedidos->pluck('id'))
+            ->where('estado', '!=', 'pendiente')
+            ->pluck('pedido_id')->toArray();
 
         foreach ($pedidos as $pedido) {
-            $pedido->direccion_entrega = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
-
-            $pedido->orden_despacho = false;
-            $orden_despacho = GpOrdenDespacho::where('pedido_id', $pedido->id)
-                ->where('estado', '!=', 'pendiente')
-                ->first();
-            if ($orden_despacho)
-                $pedido->orden_despacho = true;
+            $pedido->orden_despacho = in_array($pedido->id, $ordenesDespachoPedidos);
         }
 
-        $devoluciones = GpDevoluciones::where('cliente_id', $cliente_id)
-            ->orderBy('gp_devoluciones.created_at', 'desc')
+        $devoluciones = GpDevoluciones::with(['cliente', 'cliente_volver_a_facturar', 'sucursal_volver_a_facturar',])
+            ->where('cliente_id', $cliente_id)
+            ->whereHas('pedido', function ($query) use ($puntodeventa_id) {
+                $query->where('PTO_VTA_ID', $puntodeventa_id);
+            })
+            ->orderBy('created_at', 'desc')
             ->get();
 
+        $ordenesDespachoDevoluciones = GpOrdenDespacho::whereIn('pedido_id', $devoluciones->pluck('pedido_id'))
+            ->where('estado', '!=', 'pendiente')
+            ->pluck('pedido_id')
+            ->toArray();
         foreach ($devoluciones as $devolucion) {
-
-            $devolucion->orden_despacho = false;
-            $orden_despacho = GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)
-                ->where('estado', '!=', 'pendiente')
-                ->first();
-            if ($orden_despacho)
-                $devolucion->orden_despacho = true;
-
-            $devolucion->cliente = GpCliente::where('id', $devolucion->cliente_id)->first();
-
-            if ($devolucion->volver_a_facturar) {
-                $devolucion->cliente_volver_a_facturar = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
-                $devolucion->sucursal_volver_a_facturar = GpClienteSucursal::where('id', $devolucion->sucursal_facturacion_id)->first();
-            }
+            $devolucion->orden_despacho = in_array($devolucion->pedido_id, $ordenesDespachoDevoluciones);
         }
-        //test
+
         return response([
             'success' => true,
             'pedidos' => $pedidos,
@@ -161,7 +156,8 @@ class DevolucionesController extends Controller
                 $countsReturnsByOrders === 0 &&
                 $validateItemsL === 0 &&
                 $validateItemsPartialDispatch === 0 &&
-                $data['devolucion']['volver_a_facturar'] === false
+                $data['devolucion']['volver_a_facturar'] === false &&
+                ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
@@ -173,6 +169,9 @@ class DevolucionesController extends Controller
                 }
             }
             DB::commit();
+            if ($devolucion->estado === 'solicitado' && ($devolucion->permite_anulacion === false || $devolucion->permite_anulacion === 0) && $devolucion->tipo_devolucion === 'total') {
+                return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. Pero se procesara la devolución sin anular la factura porque tiene pagos aplicados', 200);
+            }
             return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
         } catch (\Throwable $th) {
             DB::rollBack();

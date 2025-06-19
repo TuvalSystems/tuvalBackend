@@ -46,7 +46,7 @@ class DevolucionServiceProvider extends ServiceProvider
             TransferRepositionService::class
         );
 
-        $this->app->singleton(
+        $this->app->bind(
             StockWarehouseServiceInterface::class,
             StockWarehouseService::class
         );

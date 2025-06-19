@@ -5,15 +5,18 @@ namespace App\Services\Venta;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionVentaMotivo;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
+use App\Services\Api\ApiGpService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 class QuotationService implements QuotationServiceInterface
 {
     protected $quotationRepository;
-    public function __construct(QuotationRepositoryInterface $quotationRepository)
+    protected $apiGpService;
+    public function __construct(QuotationRepositoryInterface $quotationRepository, ApiGpService $apiGpService)
     {
         $this->quotationRepository = $quotationRepository;
+        $this->apiGpService = $apiGpService;
     }
 
 
@@ -37,15 +40,54 @@ class QuotationService implements QuotationServiceInterface
 
     //proceso job
 
-    public function processJobNotificacionNonSales()
-    {
-
-    }
-
     public function getQuotationsWithReminderToday()
     {
-        return   $this->quotationRepository->getScheduledReminders();
+        return $this->quotationRepository->getScheduledReminders();
     }
 
-   
+
+    /***
+     * RECUPERAR COTIZACION
+     */
+
+    public function restoreQuotation($articulos, $bodegas)
+    {
+        $formatStock = [];
+        foreach ($articulos as $value) {
+            $stockRequests = array_map(fn($whr) => ['articulo' => $value['articulo'], 'bodega' => $whr,], $bodegas);
+            $stockResults = array_map(fn($params) => $this->apiGpService->getStockWarehouse($params), $stockRequests);
+            $formatted = $this->formatResultStocksQuotation($stockResults);
+            $formatStock = array_merge($formatStock, $formatted);
+        }
+
+        return $formatStock;
+
+    }
+
+
+    public function formatResultStocksQuotation($stockResults)
+    {
+        if (empty($stockResults)) {
+            return [];
+        }
+        $formattedStocks = [];
+        foreach ($stockResults as $value) {
+            if (!is_array($value)) {
+                continue;
+            }
+            $formattedStocks = array_merge(
+                $formattedStocks,
+                array_map(
+                    fn($item) => [
+                        'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
+                        'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
+                        'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
+                    ],
+                    array_values($value)
+                )
+            );
+        }
+        return $formattedStocks;
+    }
+
 }

@@ -27,6 +27,7 @@ use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DevolucionService implements DevolucionServiceInterface
@@ -64,7 +65,25 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
 
-    //solicitudes de devoluciones
+    /**
+     * LISTADO DE DEVOLUCIONES Y PEDIDOS PARA VISUALIAR EN LA PANTALLA DE SOLICITUD DE DEVOLUCIONES
+     *
+     * PENDIENTE DE MEJORAR
+     */
+
+    public function getAllOrdersWithDevoluciones($cienteId, $puntVentaId)
+    {
+        $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
+            ->where('cliente_id', $cienteId)
+            ->where('estado', 'facturado')
+            ->orWhere('estado', 'anulada')
+            ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
+    }
+
+
+    /**
+     * PROCESO DE ANULACION DE DEVOLUCION
+     */
 
     public function anularDevolucion($pedido, $devolucion)
     {
@@ -182,10 +201,12 @@ class DevolucionService implements DevolucionServiceInterface
             ]
         );
 
-        $this->apiUpdateTbhFacAnuAutorize($order->factura);
-        $this->updateStatusDevolutions($order, $devolucion);
-        $this->updateStatusOrders($order);
-        $this->updatedStatusOrderDispatch($order);
+        $this->apiUpdateTbhFacAnuAutorize($order->factura); //me actualiza el estado de la factura anulada
+        $this->updateStatusDevolutions($order, $devolucion); //me actualiza el estado de la devolucion
+        $this->updateStatusOrders($order); //me actualiza el estado del pedido
+        $this->updatedStatusOrderDispatch($order); //me actualiza el estado del despacho
+        $this->updateDevolucionWithSelectedQuantity($devolucion); //me actualiza el devuelto con el seleccionado
+        $this->updateDetailOrderStock($order, $devolucion); //me actualiza el detalle pedido stock de cada item
     }
 
     private function saveFailedCancellation($order, array $cancelResponse, $devolucion): void
@@ -252,6 +273,51 @@ class DevolucionService implements DevolucionServiceInterface
         ));
     }
 
+    public function updateDetailOrderStock($order, $devolucion)
+    {
+        if ($devolucion['rebajado'] || $devolucion->rebajado) {
+            return;
+        }
+        $pedidoId = $order->id;
+        $bodega = $order->BOD_BODEGA;
+        $actualizarStock = !$devolucion->despachado;
+        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+        foreach ($detalles as $key => $value) {
+            $articulo = GpPedidoDetalle::find($value->detalle_id);
+
+            if (!$articulo || $articulo->pedido_id !== $pedidoId) {
+                continue;
+            }
+
+            $articulo->devuelto += $value->devuelto;
+            $articulo->save();
+            if ($actualizarStock) {
+                $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
+                    ->where('STO_ART_BODEGA', $bodega)
+                    ->first();
+                if ($stock) {
+                    $stock->reservado -= $value->devuelto;
+                    $stock->save();
+                }
+            }
+        }
+        $devolucion->rebajado = true;
+        $devolucion->save();
+    }
+
+    public function updateDevolucionWithSelectedQuantity($devolucion)
+    {
+        $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
+        $afectados = DB::table('gp_devoluciones_detalles')
+            ->where('devolucion_id', $devolucion->id)
+            // ->where('despachado_parcial', 0)
+            ->update([
+                'devuelto' => DB::raw("`$origen`")
+            ]);
+        Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado anulada");
+        return $afectados;
+    }
+
 
     /**
      * ✅ Ejecuta la devolución de un pedido.
@@ -292,6 +358,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->aprobado = 'no';
         $return->impuesto = Arr::get($data, 'pedido.impuesto');
         $return->observacion = Arr::get($data, 'devolucion.observacion');
+        $return->permite_anulacion = $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status);
         $return->save();
 
         $this->storeReturnDetail($return->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
@@ -356,6 +423,22 @@ class DevolucionService implements DevolucionServiceInterface
             });
     }
 
+    public function getCheckoutPaymentInvoiceGp($pedido, $devolucion, $status): bool
+    {
+        if ($devolucion['tipo_devolucion']  === 'total' && $status === 'solicitado') {
+            $check = $this->apiSales->getCheckoutPaymentInvoiceGp(
+                array(
+                    'numeroDocumento' => $pedido['factura'],
+                    'cliente' => $pedido['CLI_RUC']
+                )
+            );
+            if (isset($check['documento']) && $check['documento'] === "OK") {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public function generateReturnCode(int $id): string
     {
@@ -983,7 +1066,7 @@ class DevolucionService implements DevolucionServiceInterface
                 $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
                 $devolucion->devolucion_bodega = false;
                 $devolucion->save();
-                throw new \Exception('Ajuste : Codigo - '. ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
+                throw new \Exception('Ajuste : Codigo - ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
             }
             Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1[0]));
             // 🟢 Actualización correcta
