@@ -629,7 +629,7 @@ class DevolucionService implements DevolucionServiceInterface
     {
         $result = [];
         $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
-            ->where('volver_a_facturar', true)->exists();
+            ->where('volver_a_facturar', true)->where('estado', '!=', 'rechazado')->exists();
         if ($yaFueRefacturado) {
             return [];
         }
