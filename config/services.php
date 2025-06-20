@@ -55,7 +55,8 @@ return [
             //cobros
             'consultar_cupo_disponible_cliente'         => 'api/cobros/consultar-cupo-disponible-cliente',
 
-
+            //cotizaciones
+            'guardar_cotizacion_recordatorio'           => 'api/cotizaciones/guardar-cotizacion-recordatorio',
         ],
     ],
     'api_sales' => [

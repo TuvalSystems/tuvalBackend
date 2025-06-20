@@ -63,6 +63,12 @@ class ApiGpService
     }
 
 
+    public function storeQuoteReminderGp(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guardar_cotizacion_recordatorio"], 'POST', $params, 'json');
+
+    }
+
 
 
 

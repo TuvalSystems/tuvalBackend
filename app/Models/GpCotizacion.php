@@ -142,5 +142,10 @@ class GpCotizacion extends Model
         return $this->belongsTo(GpCotizacionVentaMotivo::class, 'cotizacion_venta_motivo_id');
     }
 
-    
+    public function usuariorecordatorio()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_ing_recordatorio');
+    }
+
+
 }
