@@ -2,7 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
-interface QuotationServiceInterface {
+interface QuotationServiceInterface
+{
 
     public function getNonSalesReasons();
 
@@ -13,5 +14,10 @@ interface QuotationServiceInterface {
      *  recuperar cotizacion
      */
 
-     public function restoreQuotation($articulos, $bodegas);
+    public function restoreQuotation($articulos, $bodegas);
+
+
+    //  enviar cotizaciones sql server
+    public function sendStoreReminderGp($cotizacion);
+
 }

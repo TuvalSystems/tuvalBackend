@@ -1717,4 +1717,17 @@ class CotizacionesController extends Controller
         $data = $request->all();
         return $this->quotationService->updateNonSaleAndReminderData($data);
     }
+
+
+    /**
+     * Summary of sendAllQuotesRecorderSQLServer
+     *  Se enviar todas las cotizaciones pendientes de recordatorio de venta a SQL Server que tengan un motivo asignado
+     * @return void
+     */
+    public function sendAllQuotesRecorderSQLServer(){
+        $cotizaciones =  GpCotizacion::with(['usuario', 'usuariorecordatorio','motivosNoVenta'])->where('cotizacion_venta_motivo_id', '!=', null)->get();
+        foreach ($cotizaciones as  $cotizacion) {
+             $this->quotationService->sendStoreReminderGp($cotizacion);
+        }
+    }
 }
