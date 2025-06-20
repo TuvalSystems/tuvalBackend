@@ -425,19 +425,26 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function getCheckoutPaymentInvoiceGp($pedido, $devolucion, $status): bool
     {
-        if ($devolucion['tipo_devolucion']  === 'total' && $status === 'solicitado') {
-            $check = $this->apiSales->getCheckoutPaymentInvoiceGp(
-                array(
-                    'numeroDocumento' => $pedido['factura'],
-                    'cliente' => $pedido['CLI_RUC']
-                )
-            );
-            if (isset($check['documento']) && $check['documento'] === "OK") {
-                return true;
-            }
+        $isTotalSolicitada = $devolucion['tipo_devolucion'] === 'total' && $status === 'solicitado';
+        if (!$isTotalSolicitada) {
+            return false;
         }
+        $response = $this->apiSales->getCheckoutPaymentInvoiceGp(
+            array(
+                'numeroDocumento' => $pedido['factura'],
+                'cliente' => $pedido['CLI_RUC']
+            )
+        );
 
-        return false;
+        if (isset($response['success']) && $response['success'] === false) {
+            return true;
+        }
+        if (isset($response['documento']) && $response['documento'] === 'PAGOS') {
+            return false;
+        }
+        return true;
+
+
     }
 
     public function generateReturnCode(int $id): string
