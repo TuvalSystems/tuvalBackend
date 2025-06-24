@@ -64,6 +64,7 @@ class CotizacionesController extends Controller
         $articulo->ART_CODIGO = $data['articulo']['ART_CODIGO'];
         $articulo->ART_DESCRIPCION = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION']));
         $articulo->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION_ORIGINAL']));
+        // $articulo->CHECK_ALTERNATIVO = $data['articulo']['CHECK_ALTERNATIVO'] ?? 0; // no va pero igual va comentado por si acaso
         $articulo->ART_CODIGO_TRES_LETRAS = $data['articulo']['ART_CODIGO_TRES_LETRAS'];
         $articulo->ART_DECIMAL_CANTIDAD = $data['articulo']['ART_DECIMAL_CANTIDAD'];
         $articulo->ART_PLAN_UMEDIDA = $data['articulo']['ART_PLAN_UMEDIDA'];
