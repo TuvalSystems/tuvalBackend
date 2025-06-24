@@ -14,7 +14,7 @@ class AddColumnCheckAlternativoGpTempCartsTable extends Migration
     public function up()
     {
           Schema::table('gp_temp_carts', function (Blueprint $table) {
-           $table->boolean('CHECK_ALTERNATIVO')->default(false)->after('ART_DESCRIPCION_ORIGINAL');
+           $table->boolean('CHECK_ALTERNATIVO')->default(0)->after('ART_DESCRIPCION_ORIGINAL');
 
         });
     }

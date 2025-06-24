@@ -14,7 +14,7 @@ class AddColumnCheckAlternativoGpCotizacionesDetallesTable extends Migration
     public function up()
     {
          Schema::table('gp_cotizacion_detalles', function (Blueprint $table) {
-           $table->boolean('CHECK_ALTERNATIVO')->default(false)->after('ART_DESCRIPCION_ORIGINAL');
+           $table->boolean('CHECK_ALTERNATIVO')->default(0)->after('ART_DESCRIPCION_ORIGINAL');
 
         });
     }
