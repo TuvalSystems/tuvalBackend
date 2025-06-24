@@ -62,6 +62,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereUpdatedAt($value)
  * @mixin \Eloquent
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTPESO($value)
+ * @property boolean|null $CHECK_ALTERNATIVO
  */
 class GpCotizacionDetalle extends Model
 {

@@ -2,16 +2,25 @@
 
 namespace App\Services\Venta;
 
+use App\Http\Controllers\WebserviceController;
+use App\Models\GpCliente;
+use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
+use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionVentaMotivo;
+use App\Models\GpDescuentoFormaPago;
+use App\Models\GpPuntoVenta;
+use App\Models\GpTempCart;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\ApiGpService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class QuotationService implements QuotationServiceInterface
 {
+    use JsonResponseTrait;
     protected $quotationRepository;
     protected $apiGpService;
     public function __construct(QuotationRepositoryInterface $quotationRepository, ApiGpService $apiGpService)
@@ -21,10 +30,22 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
+    /**
+     * OBTENER MOTIVOS DE NO VENTA
+     * @return Collection
+     */
     public function getNonSalesReasons(): Collection
     {
         return GpCotizacionVentaMotivo::orderBy('id')->get();
     }
+
+    /**
+     * ENVIAR LAS COTIZACIONES QUE TENGAN RECORDATORIO A DYNAMIC GP
+     * @param GpCotizacion $cotizacion
+     * @return void
+     * @throws \Exception
+     * @throws \Throwable
+     */
 
     public function updateNonSaleAndReminderData($data)
     {
@@ -37,33 +58,34 @@ class QuotationService implements QuotationServiceInterface
             'user_ing_recordatorio' => $user->USERID,
 
         ]);
-        $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio','motivosNoVenta'])->find($data['cotizacion_id']);
+        $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
         $this->sendStoreReminderGp($sendQuote);
         return $cotizacion;
     }
+
 
     public function sendStoreReminderGp($cotizacion)
     {
         $parmas = [
             'txCot' => $cotizacion->cotizacion,
             'txUsr' => $cotizacion->usuario->USERID,
-            'txCliRuc' =>  $cotizacion->CLI_RUC,
+            'txCliRuc' => $cotizacion->CLI_RUC,
             'txCliRazSoc' => $cotizacion->CLI_RAZON_SOCIAL,
             'txCotCliSri' => $cotizacion->CLI_CORREO_ELECT_SRI,
             'txEst' => $cotizacion->estado,
             'txBod' => $cotizacion->BOD_BODEGA,
-            'txPtoVta' =>  $cotizacion->PTO_VTA_ID,
-            'txPtoVtaDesc'=> $cotizacion->PTO_VTA_DESCRIPCION,
+            'txPtoVta' => $cotizacion->PTO_VTA_ID,
+            'txPtoVtaDesc' => $cotizacion->PTO_VTA_DESCRIPCION,
             'txCotReqapr' => $cotizacion->requiere_aprobacion_comercial,
             'txCotAprCom' => $cotizacion->aprobado_comercial,
             'txCotMot' => $cotizacion->motivosNoVenta->descripcion,
             'coCotRec' => $cotizacion->recordar,
             'feCotRec' => $cotizacion->fecha_recordatorio,
             'txObsMot' => $cotizacion->observacion,
-            'feIng' =>  date('Y-m-d'),
+            'feIng' => date('Y-m-d'),
             'txUsrIng' => $cotizacion->user_ing_recordatorio,
             'feUltmod' => date('Y-m-d'),
-            'txUsrMod' =>   $cotizacion->user_ing_recordatorio
+            'txUsrMod' => $cotizacion->user_ing_recordatorio
         ];
         $this->apiGpService->storeQuoteReminderGp($parmas);
 
@@ -71,7 +93,10 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    //proceso job
+    /**
+     * RECUPERAR COTIZACIONES CON RECORDATORIO PARA HOY PARA PROCESO JOB ENVIO DE NOTIFICACION Y CORREO ELECTRONICO
+     * @return Collection
+     */
 
     public function getQuotationsWithReminderToday()
     {
@@ -122,5 +147,151 @@ class QuotationService implements QuotationServiceInterface
         }
         return $formattedStocks;
     }
+
+
+
+    /**
+     * LISTA DE ALTERNATIVAS
+     */
+
+    public function getItemsAlternatives($item)
+    {
+        return $this->apiGpService->getListQuotationItemsAlternatives(array('item' => $item));
+    }
+
+
+
+    /**
+     *  ACTUALIZACION DE DATOS DE COTIZACIÓN - GPTEMPCART
+     */
+
+    public function updateCheckAlternativeItem($id, $checkAlternative)
+    {
+
+        GpTempCart::where('id', $id)
+            ->update(['CHECK_ALTERNATIVO' => $checkAlternative]);
+
+        return $this->buildSuccessResponse(
+            'Check alternativo actualizado correctamente',
+            200
+        );
+    }
+
+
+
+    /**
+     * IMPRIMIR COTIZCIONES EN PDF
+     */
+
+    public function printQuotationPdf($id)
+    {
+        $cotizacion = GpCotizacion::where('id', $id)->first()->toArray();
+
+        if (!$cotizacion) {
+            return $this->buildErrorResponse(
+                'No se encontró la cotización',
+                404
+            );
+        }
+        if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
+            return $this->buildErrorResponse(
+                'La cotización requiere aprobación comercial y aún no ha sido aprobada',
+                403
+            );
+        }
+
+        if ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
+            return $this->buildErrorResponse(
+                'La cotización requiere aprobación crediticia y aún no ha sido aprobada',
+                403
+            );
+        }
+        if ($cotizacion['estado'] == 'caducado') {
+            return $this->buildErrorResponse(
+                'La cotización ha caducado y no puede ser impresa',
+                403
+            );
+        }
+
+        $this->updatePrintsQuotation($id);
+        $detalle = GpCotizacionDetalle::where('cotizacion_id', $id)
+            ->orderBy('id', 'asc')
+            ->get()
+            ->toArray();
+
+        $peso = 0;
+        $tipoImpuesto = [];
+        $sumaImpuesto = [];
+
+        foreach ($detalle as $item) {
+            $clave = $item['ART_IMP_VTA'];
+            $subtotal = round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
+            $iva = round($item['ART_IVA'], 2);
+
+            $peso += $item['ART_PESO'] * $item['ART_CANTIDAD'];
+
+            $tipoImpuesto[$clave] = ($tipoImpuesto[$clave] ?? 0) + $subtotal;
+            $sumaImpuesto[$clave] = ($sumaImpuesto[$clave] ?? 0) + $iva;
+        }
+
+        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toArray();
+        $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toArray();
+        $sucursal = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toArray();
+        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toArray();
+
+        $validezDias = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] ?? 0;
+        $validezTexto = $validezDias === 0 ? '0 días' : $validezDias . " días habiles";
+        $validezReal = $this->calcularDiasHabiles($validezDias, $cotizacion['created_at']);
+
+        $cotizacion['peso'] = $peso;
+        $cotizacion['detalle'] = $detalle;
+        $cotizacion['tipoimpuesto'] = $tipoImpuesto;
+        $cotizacion['sumaimpuesto'] = $sumaImpuesto;
+        $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'] ?? '';
+        $cotizacion['cliente'] = $cliente;
+        $cotizacion['sucursal'] = $sucursal;
+        $cotizacion['validez'] = $validezTexto;
+        $cotizacion['expira'] = $validezReal;
+        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
+        return $cotizacion;
+    }
+
+    public function calcularDiasHabiles($dias, $desde)
+    {
+        $webService = new WebserviceController();
+        $validez = $dias;
+        $fecha = $desde;
+
+        for ($i = 1; $i < $validez; $i++) {
+            $fechaPropuesta = date('Y-m-d', strtotime("+$i days", strtotime($fecha)));
+            $parameters = [
+                'IDCompania' => env('ID_COMPANIA'),
+                'Fecha' => $fechaPropuesta,
+            ];
+
+            $respuesta = $webService->cobranzas('ConsultaDiaFeriado', $parameters);
+            if ($respuesta['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
+                $validez++;
+            }
+        }
+
+        return date('Y-m-d', strtotime("+$validez days", strtotime($desde)));
+
+    }
+
+
+    public function updatePrintsQuotation($id)
+    {
+        $cotizacion = GpCotizacion::find($id);
+        $cotizacion->impreso = 'yes';
+
+        if (is_null($cotizacion->fecha_impreso)) {
+            $cotizacion->fecha_impreso = date('Y-m-d H:i:s');
+        }
+        $cotizacion->save();
+
+    }
+
+
 
 }

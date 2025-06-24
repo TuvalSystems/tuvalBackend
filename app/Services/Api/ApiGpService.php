@@ -8,13 +8,13 @@ use App\Services\Api\Core\GpHttpClient;
 class ApiGpService
 {
 
-    protected  $httpClient;
+    protected $httpClient;
 
     protected $endpoints;
 
     public function __construct()
     {
-        $config = config( "services.api_gp");
+        $config = config("services.api_gp");
         $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
         $this->endpoints = $config["endpoints"];
     }
@@ -67,6 +67,13 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest($this->endpoints["guardar_cotizacion_recordatorio"], 'POST', $params, 'json');
 
+    }
+
+
+
+    public function getListQuotationItemsAlternatives(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["lista_items_alternativos"], 'GET', $params);
     }
 
 
