@@ -173,7 +173,7 @@ class CotizacionesController extends Controller
 
         $consulta_precio = array();
         foreach ($articulos as $articulo) {
-
+            $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($articulo);
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
             );

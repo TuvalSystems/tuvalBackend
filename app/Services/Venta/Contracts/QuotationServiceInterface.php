@@ -28,6 +28,7 @@ interface QuotationServiceInterface
     /**
      * actualizaciones de campos de gp_temp_cart
      */
+     public function syncAndGetCheckAlternativo($articulo);
      public function updateCheckAlternativeItem($id, $checkAlternative);
 
 

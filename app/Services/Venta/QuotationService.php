@@ -178,6 +178,23 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
+    public function syncAndGetCheckAlternativo($articulo)
+    {
+        $item = GpTempCart::find( $articulo->id);
+
+        if (!$item || !$item->detalle_id) {
+            return 0;
+        }
+        $detalle = GpCotizacionDetalle::find($articulo->detalle_id);
+        if (!$detalle) {
+            return 0;
+        }
+        $item->CHECK_ALTERNATIVO = $detalle->CHECK_ALTERNATIVO;
+        $item->save();
+        return $detalle->CHECK_ALTERNATIVO;
+    }
+
+
 
     /**
      * IMPRIMIR COTIZCIONES EN PDF
