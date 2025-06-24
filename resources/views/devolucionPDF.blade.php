@@ -281,7 +281,7 @@
                         <td class="text-right">{{$value['devuelto']}}</td>
                         <td>{{$value['ART_DESCRIPCION']}}
                             @if($value['CHECK_ALTERNATIVO'] === 1)
-                                <span class="text-danger" style="color: red;">(Alternativo)</span>
+                                <span class="text-danger" style="color: red;">(Alternativa)</span>
                             @endif
                         </td>
                         <td class="text-right">${{ number_format($value['ART_DESCUENTO'], 2, '.', '')}}</td>
