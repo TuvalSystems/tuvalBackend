@@ -381,6 +381,8 @@ class QuotationService implements QuotationServiceInterface
             ->get();
 
         $resumen = $cotizaciones->groupBy('user_id')->map(function ($group) {
+
+            $sucursal = $group->first()->BOD_BODEGA;
             $usuario = $group->first()->USERID;
             $total = collect($group)->count();
             $facturados = collect($group)->filter(fn($c) => $c->estado === 'procesado' && is_null($c->observacion))->count();
@@ -389,12 +391,13 @@ class QuotationService implements QuotationServiceInterface
             $nofacturadasComentadas = $group->filter(fn($c) => $c->estado !== 'procesado' && !is_null($c->observacion))->count();
             return [
                 'usuario' => $usuario,
+                'sucursal' => $sucursal,
                 'cotizaciones' => $total,
                 'cotizaciones_facturadas' => $facturados,
                 'cotizaciones_facturadas_comentadas' => $facturadosComentados,
                 'cotizaciones_no_facturadas' => $nofacturadasSinComentario,
                 'cotizaciones_comentadas' => $nofacturadasComentadas,
-                'porcentaje_facturacion' => ($nofacturadasComentadas / $total * 100) . ' %',
+                'porcentaje_facturacion' => $total > 0 ? round( ($nofacturadasComentadas / $total ) * 100, 2) . '%' : 0 .'%',
             ];
         })->values()->toArray();
 
