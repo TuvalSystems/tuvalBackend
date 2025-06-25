@@ -465,15 +465,17 @@ class GuiasderemisionController extends Controller
                 }
                 $peso += (float) number_format($articulo->ART_PESO * $det->GUI_REM_CANTIDAD, 2, '.', '');
             }
+             $detTemp = GpPedidoDetalle::where('id', $det->detalle_id)
+                ->select('CHECK_ALTERNATIVO')
+                ->first();
+            $det['CHECK_ALTERNATIVO'] = $detTemp->CHECK_ALTERNATIVO;
         }
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $guia->GUI_REM_ESTABLECIMIENTO)->first()->toarray();
 
         $data = array();
 
-        //        echo '<pre>';
-//        print_r($guia);
-//        die();
+
 
         $transferencias = GpGuiaRemisionTransferencia::where('guia_remision_id', $guia->id)->get()->toArray();
 

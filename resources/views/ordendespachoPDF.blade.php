@@ -212,7 +212,11 @@
                         {{$value['ART_CODIGO']}}
                     </td>
                     <td>{{$value['ART_CODIGO_TRES_LETRAS']}}</td>
-                    <td class="text-left">{{$value['ART_DESCRIPCION']}}</td>
+                    <td class="text-left">{{$value['ART_DESCRIPCION']}}
+                        @if($value['CHECK_ALTERNATIVO'] === 1)
+                            <span class="text-danger" style="color: red;">(Alternativa)</span>
+                        @endif
+                    </td>
                     <td class="text-right">{{$value['ART_CANTIDAD']}}</td>
                     <td>{{ $BOD_BODEGA}}</td>
                     <td>
