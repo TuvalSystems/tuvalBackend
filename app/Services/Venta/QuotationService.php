@@ -397,7 +397,7 @@ class QuotationService implements QuotationServiceInterface
                 'cotizaciones_facturadas_comentadas' => $facturadosComentados,
                 'cotizaciones_no_facturadas' => $nofacturadasSinComentario,
                 'cotizaciones_comentadas' => $nofacturadasComentadas,
-                'porcentaje_facturacion' => $total > 0 ? round( ($nofacturadasComentadas / $total ) * 100, 2)  : 0,
+                'porcentaje_no_facturadas' => $total > 0 ? round( ($nofacturadasComentadas / $total ) * 100, 2)  : 0,
             ];
         })->values()->toArray();
 
