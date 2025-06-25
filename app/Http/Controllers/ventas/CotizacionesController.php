@@ -163,6 +163,7 @@ class CotizacionesController extends Controller
             'sucursal_id' => '',
             'serial' => '',
             'registro_copia' => '',
+            'test' => '', // copiarpedido se creo un  campo test para que no se sincronice el check alternativo cuando se copia un pedido, se creo en el frontend cuando se copia
         ]);
 
         $user = Auth::user();
@@ -176,7 +177,11 @@ class CotizacionesController extends Controller
 
         $consulta_precio = array();
         foreach ($articulos as $articulo) {
-            $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($articulo);
+            if (isset($data['test']) && $data['test'] === 'copiarpedido') {
+                $articulo->CHECK_ALTERNATIVO = 0;
+            } else {
+                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($articulo);
+            }
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
             );
@@ -1141,6 +1146,7 @@ class CotizacionesController extends Controller
             'cliente' => $cliente,
             'currentSucursal' => $data['sucursal_id'],
             'cotizacion_id' => $data['id'],
+            'test' => 'recuperarcotizacion',
         ]);
     }
 
@@ -1772,10 +1778,11 @@ class CotizacionesController extends Controller
      * API PARA LISTAR LAS NOVEDADES DE LAS COTIZACIONES
      *
      */
-     public function consultQuotationsNews(Request $request): JsonResponse{
+    public function consultQuotationsNews(Request $request): JsonResponse
+    {
 
         return $this->quotationService->consultQuotationsNews($request->all());
 
 
-     }
+    }
 }

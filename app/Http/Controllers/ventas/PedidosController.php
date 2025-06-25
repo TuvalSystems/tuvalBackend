@@ -1252,6 +1252,7 @@ class PedidosController extends Controller
             'cliente' => $cliente,
             'registro_copia' => $registroCopia->id,
             'currentSucursal' => $data['sucursal_id'],
+            'test' => 'copiarpedido'
         ]);
     }
 
