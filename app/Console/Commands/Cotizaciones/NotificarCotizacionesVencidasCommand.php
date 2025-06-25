@@ -2,7 +2,15 @@
 
 namespace App\Console\Commands\Cotizaciones;
 
+use App\Mail\Cotizacion\RecordatorioCotizacionNoVentaMail;
+use App\Models\GpCotizacion;
+use App\Models\GpPuntoVenta;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Venta\Contracts\QuotationServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class NotificarCotizacionesVencidasCommand extends Command
 {
@@ -11,14 +19,14 @@ class NotificarCotizacionesVencidasCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'command:name';
+    protected $signature = 'cotizaciones:notificar-noventa';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Comando para notificar cotizaciones no vendidas';
 
     /**
      * Create a new command instance.
@@ -35,8 +43,69 @@ class NotificarCotizacionesVencidasCommand extends Command
      *
      * @return int
      */
-    public function handle()
+    public function handle(QuotationServiceInterface $quotationService, NotificationServiceInterface $notificationService)
     {
+        $hoy = now()->startOfDay();
+        Log::info('✅ [CotizacionesNoVendidas] - Command executed at ' . now());
+        $this->info('🔄 Realizando escaneo de Cotizaciones para notificar ...');
+
+        $startTime = Carbon::now();
+
+        $cotizacionesSearch = $quotationService->getQuotationsWithReminderToday();
+
+        // Cotizaciones sin fecha, solo el 1er día del mes
+
+        $total = $cotizacionesSearch->count();
+        $this->info("🔎 Encontradas {$total} cotizaciones con recordatorio para hoy.");
+
+
+        if ($total === 0) {
+            $this->info('✅ No hay cotizaciones para notificar el dia de hoy.');
+            return 0;
+        }
+
+        $this->info("🔎 Total {$total} cotizaciones para notificar.");
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        try {
+
+            $ptoVentasEmail = GpPuntoVenta::where('PTO_VTA_ESTADO', 'ACTIVO')->select('id', 'PTO_VTA_ID','PTO_VTA_DESCRIPCION' ,'email')->get()->keyBy('PTO_VTA_ID');
+            $cotizacionesAgrupadas = collect($cotizacionesSearch)->groupBy('PTO_VTA_ID');
+            $resultado = [];
+            foreach ($cotizacionesAgrupadas as $ptoVentaId => $cotizacion) {
+                if (isset($ptoVentasEmail[$ptoVentaId])) {
+                    $resultado[] = [
+                        'ptoVentaId' => $ptoVentaId,
+                        'ptoVenta' => $ptoVentasEmail[$ptoVentaId]['PTO_VTA_DESCRIPCION'],
+                        'email' => $ptoVentasEmail[$ptoVentaId]['email'],
+                        'cotizaciones' => $cotizacion
+                    ];
+                }
+            }
+
+            foreach ($resultado as $value) {
+                $ptoVentaId = $value['ptoVentaId'];
+                $PtoVentaDescripcion = $value['ptoVenta'];
+                $email = $value['email'];
+                // $email = 'sistemas6@tuvalsa.com';
+                // $userId = 179;
+                $cotizaciones = $value['cotizaciones'];
+                Mail::to($email)->send(new RecordatorioCotizacionNoVentaMail($cotizaciones, $PtoVentaDescripcion));
+                foreach ($cotizaciones as $cot) {
+                    $notificationService->sendNotification(
+                        $cot->user_id,
+                        'Cotización No Vendida',
+                        'La cotización ' . $cot->cotizacion . ' no ha sido vendida y tiene un recordatorio programado para hoy.',
+
+                    );
+                }
+            }
+            $bar->advance();
+        } catch (\Throwable $th) {
+            Log::error("❌ Error al enviar correo las cotizaciones {$cotizacionesSearch->pluck('id')->toArray()}: {$th->getMessage()}");
+        }
+        $bar->finish();
         return 0;
     }
 }

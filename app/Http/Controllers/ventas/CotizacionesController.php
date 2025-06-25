@@ -24,13 +24,17 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
+use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 
 class CotizacionesController extends Controller
 {
     protected $quotationService;
+
     public function __construct(QuotationServiceInterface $quotationService)
     {
         $this->quotationService = $quotationService;
@@ -47,12 +51,12 @@ class CotizacionesController extends Controller
 
         $user = Auth::user();
 
-        if($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV'){
+        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
         }
 
-        if($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV-L')
-            $data['articulo']['ART_TIPO_COMPRA'] ='L';
+        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV-L')
+            $data['articulo']['ART_TIPO_COMPRA'] = 'L';
 
         $articulo = new GpTempCart;
         $articulo->sucursal_id = $data['sucursal_id'];
@@ -61,8 +65,9 @@ class CotizacionesController extends Controller
         $articulo->user_id = $user->id;
         $articulo->USERID = $user->USERID;
         $articulo->ART_CODIGO = $data['articulo']['ART_CODIGO'];
-        $articulo->ART_DESCRIPCION = trim(str_replace('  ', ' ',$data['articulo']['ART_DESCRIPCION']));
-        $articulo->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ',$data['articulo']['ART_DESCRIPCION_ORIGINAL']));
+        $articulo->ART_DESCRIPCION = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION']));
+        $articulo->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION_ORIGINAL']));
+        // $articulo->CHECK_ALTERNATIVO = $data['articulo']['CHECK_ALTERNATIVO'] ?? 0; // no va pero igual va comentado por si acaso
         $articulo->ART_CODIGO_TRES_LETRAS = $data['articulo']['ART_CODIGO_TRES_LETRAS'];
         $articulo->ART_DECIMAL_CANTIDAD = $data['articulo']['ART_DECIMAL_CANTIDAD'];
         $articulo->ART_PLAN_UMEDIDA = $data['articulo']['ART_PLAN_UMEDIDA'];
@@ -82,11 +87,11 @@ class CotizacionesController extends Controller
         $articulo->descuento_original = $data['articulo']['descuento_original'];
         $articulo->modificador = $data['articulo']['modificador'];
         $orden = GpTempCart::where('sucursal_id', $data['sucursal_id'])
-                ->where('cliente_id', $data['cliente_id'])
-                ->where('puntodeventa_id', $data['puntodeventa_id'])
-                ->orderBy('orden','DESC')
-                ->first();
-        if(!$orden){
+            ->where('cliente_id', $data['cliente_id'])
+            ->where('puntodeventa_id', $data['puntodeventa_id'])
+            ->orderBy('orden', 'DESC')
+            ->first();
+        if (!$orden) {
             $orden = new \stdClass();
             $orden->orden = 0;
         }
@@ -95,7 +100,7 @@ class CotizacionesController extends Controller
 
         $array_stock = array();
 
-        foreach($data['articulo']['stock'] as $stockbodega){
+        foreach ($data['articulo']['stock'] as $stockbodega) {
             $stock = new GpTempCartStock;
             $stock->id_tempcart = $articulo->id;
             $stock->STO_ART_BODEGA = $stockbodega['STO_ART_BODEGA'];
@@ -111,11 +116,11 @@ class CotizacionesController extends Controller
         $articulo->stock = $array_stock;
 
         $imagenes = array();
-        for($i = 1; $i <= 3; $i++){
-            $file = 'images/productos/'.$articulo->ART_CODIGO_TRES_LETRAS.'_'.$i.'.jpg';
+        for ($i = 1; $i <= 3; $i++) {
+            $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
 
             if (File::exists($file)) {
-                $imagenes[] = env('APP_URL').'/'.$file;
+                $imagenes[] = env('APP_URL') . '/' . $file;
             }
         }
 
@@ -137,7 +142,7 @@ class CotizacionesController extends Controller
 
         $user = Auth::user();
 
-        if($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV'){
+        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
         }
 
@@ -158,64 +163,69 @@ class CotizacionesController extends Controller
             'sucursal_id' => '',
             'serial' => '',
             'registro_copia' => '',
+            'test' => '', // copiarpedido se creo un  campo test para que no se sincronice el check alternativo cuando se copia un pedido, se creo en el frontend cuando se copia
         ]);
 
         $user = Auth::user();
 
-        $articulos = GpTempCart::where('sucursal_id',$data['sucursal_id'])
-                ->where('puntodeventa_id',$data['puntodeventa_id'])
-                ->where('cliente_id',$data['cliente_id'])
-                ->where('user_id',$user->id)
-                ->orderBy('orden','asc')
-                ->get();
+        $articulos = GpTempCart::where('sucursal_id', $data['sucursal_id'])
+            ->where('puntodeventa_id', $data['puntodeventa_id'])
+            ->where('cliente_id', $data['cliente_id'])
+            ->where('user_id', $user->id)
+            ->orderBy('orden', 'asc')
+            ->get();
 
         $consulta_precio = array();
-        foreach($articulos as $articulo){
-
+        foreach ($articulos as $articulo) {
+            if (isset($data['test']) && $data['test'] === 'copiarpedido') {
+                $articulo->CHECK_ALTERNATIVO = 0;
+            } else {
+                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($articulo);
+            }
             $consulta_precio[] = array(
-                'ART_CODIGO'=>$articulo->ART_CODIGO,
+                'ART_CODIGO' => $articulo->ART_CODIGO,
             );
 
-            if($articulo->ART_DECIMAL_CANTIDAD == 0){
-                $articulo->ART_STOCK = (int)$articulo->ART_STOCK;
-                $articulo->ART_CANTIDAD = (int)$articulo->ART_CANTIDAD;
+            if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
+                $articulo->ART_STOCK = (int) $articulo->ART_STOCK;
+                $articulo->ART_CANTIDAD = (int) $articulo->ART_CANTIDAD;
             }
 
             $proovedores = GpTempCartProveedores::where('id_tempcart', $articulo->id)->get();
-            foreach($proovedores as $proveedor){
-                if($articulo->ART_DECIMAL_CANTIDAD == 0){
-                    $proveedor->CANTIDAD = (int)$proveedor->CANTIDAD;
+            foreach ($proovedores as $proveedor) {
+                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
+                    $proveedor->CANTIDAD = (int) $proveedor->CANTIDAD;
                 }
             }
             $articulo->proveedores = $proovedores;
 
             $stock = GpTempCartStock::where('id_tempcart', $articulo->id)->get();
 
-            foreach($stock as $st){
-                if($articulo->ART_DECIMAL_CANTIDAD == 0){
-                    $st->STO_ART_STOCK_DISPONIBLE = (int)$st->STO_ART_STOCK_DISPONIBLE;
-                    $st->seleccionado = (int)$st->seleccionado;
+            foreach ($stock as $st) {
+                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
+                    $st->STO_ART_STOCK_DISPONIBLE = (int) $st->STO_ART_STOCK_DISPONIBLE;
+                    $st->seleccionado = (int) $st->seleccionado;
                 }
             }
             $articulo->stock = $stock;
             $imagenes = array();
-            for($i = 1; $i <= 3; $i++){
-                $file = 'images/productos/'.$articulo->ART_CODIGO_TRES_LETRAS.'_'.$i.'.jpg';
+            for ($i = 1; $i <= 3; $i++) {
+                $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
 
                 if (File::exists($file)) {
-                    $imagenes[] = env('APP_URL').'/'.$file;
+                    $imagenes[] = env('APP_URL') . '/' . $file;
                 }
             }
 
             $articulo->imagenes = $imagenes;
         }
 
-        if($data['serial'] == ''){
+        if ($data['serial'] == '') {
             $webservices = new WebserviceController;
-            if(!isset($data['registro_copia']) || $data['registro_copia'] == ''){
+            if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
                 $precios = $webservices->listaprecios($consulta_precio);
                 $lista_precios_general = array();
-                foreach($precios as $precio){
+                foreach ($precios as $precio) {
                     $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
                 }
             }
@@ -223,9 +233,9 @@ class CotizacionesController extends Controller
 
             $cliente = GpCliente::where('id', $data['cliente_id'])->first();
 
-            foreach($articulos as $articulo){
-                if(!isset($data['registro_copia']) || $data['registro_copia'] == ''){
-                    if($articulo->ART_VALOR_ORIGINAL != $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR']){
+            foreach ($articulos as $articulo) {
+                if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
+                    if ($articulo->ART_VALOR_ORIGINAL != $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR']) {
                         $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
                         $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
                         $articulo->modificador = 0;
@@ -249,8 +259,8 @@ class CotizacionesController extends Controller
         $data = $request->validate([
             'id' => 'required',
         ]);
-        GpTempCart::where('id',$data['id'])
-                ->delete();
+        GpTempCart::where('id', $data['id'])
+            ->delete();
         return response([
             'success' => true,
         ]);
@@ -263,8 +273,8 @@ class CotizacionesController extends Controller
             'articulo' => 'required',
             'cantidad' => '',
         ]);
-        GpTempCart::where('id',$data['articulo'])
-                ->update(['ART_CANTIDAD' => $data['cantidad']]);
+        GpTempCart::where('id', $data['articulo'])
+            ->update(['ART_CANTIDAD' => $data['cantidad']]);
 
         return response([
             'success' => true,
@@ -278,7 +288,7 @@ class CotizacionesController extends Controller
             'articulo' => 'required',
             'peso' => '',
         ]);
-        GpTempCart::where('id',$data['articulo'])
+        GpTempCart::where('id', $data['articulo'])
             ->update(['ART_PESO' => $data['peso']]);
 
         return response([
@@ -293,8 +303,8 @@ class CotizacionesController extends Controller
             'articulo' => 'required',
             'modificador' => '',
         ]);
-        GpTempCart::where('id',$data['articulo'])
-                ->update(['modificador' => $data['modificador']]);
+        GpTempCart::where('id', $data['articulo'])
+            ->update(['modificador' => $data['modificador']]);
 
         return response([
             'success' => true,
@@ -304,8 +314,8 @@ class CotizacionesController extends Controller
     public function updatestock(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        foreach($data as $stock){
-            GpTempCartStock::where('id',$stock['id'])
+        foreach ($data as $stock) {
+            GpTempCartStock::where('id', $stock['id'])
                 ->update(['seleccionado' => $stock['seleccionado']]);
         }
         return response([
@@ -320,8 +330,8 @@ class CotizacionesController extends Controller
             'articulo' => 'required',
             'ART_DESCRIPCION' => '',
         ]);
-        GpTempCart::where('id',$data['articulo'])
-                ->update(['ART_DESCRIPCION' => trim(str_replace('  ', ' ',$data['ART_DESCRIPCION']))]);
+        GpTempCart::where('id', $data['articulo'])
+            ->update(['ART_DESCRIPCION' => trim(str_replace('  ', ' ', $data['ART_DESCRIPCION']))]);
         return response([
             'success' => true,
         ]);
@@ -335,8 +345,8 @@ class CotizacionesController extends Controller
             'ART_VALOR' => '',
             'modificador' => '',
         ]);
-        GpTempCart::where('id',$data['articulo'])
-                ->update(['ART_VALOR' => $data['ART_VALOR'],'modificador' => $data['modificador']]);
+        GpTempCart::where('id', $data['articulo'])
+            ->update(['ART_VALOR' => $data['ART_VALOR'], 'modificador' => $data['modificador']]);
         return response([
             'success' => true,
         ]);
@@ -344,16 +354,26 @@ class CotizacionesController extends Controller
 
     public function updatedescuento(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-
         $data = $request->validate([
             'articulo' => 'required',
             'descuento' => '',
         ]);
-        GpTempCart::where('id',$data['articulo'])
-                ->update(['descuento' => $data['descuento']]);
+        GpTempCart::where('id', $data['articulo'])
+            ->update(['descuento' => $data['descuento']]);
         return response([
             'success' => true,
         ]);
+    }
+
+    public function updateCheckAlternativo(Request $request)
+    {
+        $data = $request->validate([
+            'articulo' => 'required',
+            'CHECK_ALTERNATIVO' => 'required|boolean',
+        ]);
+
+        return $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
+
     }
 
     public function saveproveedor(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -365,26 +385,26 @@ class CotizacionesController extends Controller
             'proveedores' => [],
         ]);
 
-        GpTempCartProveedores::where('id_tempcart',$data['id'])
-                ->delete();
+        GpTempCartProveedores::where('id_tempcart', $data['id'])
+            ->delete();
         $proveedores = $data['proveedores'];
-        foreach($proveedores as $pro){
+        foreach ($proveedores as $pro) {
             $proveedor = new GpTempCartProveedores;
             $proveedor->id_tempcart = $data['id'];
             $proveedor->ID_PROVEEDOR = $pro['ID_PROVEEDOR'];
-            $proveedor->DESCRIPCION_ARTICULO = trim(str_replace('  ', ' ',$pro['DESCRIPCION_ARTICULO']));
+            $proveedor->DESCRIPCION_ARTICULO = trim(str_replace('  ', ' ', $pro['DESCRIPCION_ARTICULO']));
             $proveedor->FECHA_ENTREGA = $pro['FECHA_ENTREGA'];
             $proveedor->CANTIDAD = $pro['CANTIDAD'];
-            $proveedor->COSTO_UNITARIO = (float)$pro['COSTO_UNITARIO'];
-            $proveedor->IMPUESTO = (float)$pro['IMPUESTO'];
-            $proveedor->TOTAL = (float)$pro['TOTAL'];
-            $proveedor->TOTALCONIMPUESTO = (float)$pro['TOTALCONIMPUESTO'];
+            $proveedor->COSTO_UNITARIO = (float) $pro['COSTO_UNITARIO'];
+            $proveedor->IMPUESTO = (float) $pro['IMPUESTO'];
+            $proveedor->TOTAL = (float) $pro['TOTAL'];
+            $proveedor->TOTALCONIMPUESTO = (float) $pro['TOTALCONIMPUESTO'];
             $proveedor->NOTA = $pro['NOTA'];
-            $proveedor->MARGEN = (float)$pro['MARGEN'];
+            $proveedor->MARGEN = (float) $pro['MARGEN'];
             $proveedor->save();
         }
 
-        GpTempCart::where('id',$data['id'])
+        GpTempCart::where('id', $data['id'])
             ->update(['ART_VALOR' => $data['ART_VALOR']]);
 
         return response([
@@ -401,29 +421,29 @@ class CotizacionesController extends Controller
         $aprobaciones = new AprobacionesController;
 
         $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);
-//        echo $requiere_aprobacion_comercial;
+        //        echo $requiere_aprobacion_comercial;
 //        die();
         $requiere_aprobacion_crediticia = 'no';//$aprobaciones->checkAprobacionesCrediticias($data);
 
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID',$data['PTO_VTA_ID'])->first();
+        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
-        if(isset($data['cotizacion_id']) && $data['cotizacion_id'] != ''){
-            $cotizacion = GpCotizacion::where('id',$data['cotizacion_id'])->first();
+        if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
+            $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->first();
 
-        }else{
+        } else {
             $cotizacion = new GpCotizacion;
 
-            $ultimaCotizacion = GpCotizacion::orderBy('id','DESC')->first();
+            $ultimaCotizacion = GpCotizacion::orderBy('id', 'DESC')->first();
 
-            if(!$ultimaCotizacion){
+            if (!$ultimaCotizacion) {
                 $ultimaCotizacion = new \stdClass();
                 $ultimaCotizacion->id = env('SECUENCIAL_COTIZACION');
                 $cotizacion->id = $ultimaCotizacion->id + 1;
             }
-            $cotizacion->cotizacion = 'COT'.str_pad($ultimaCotizacion->id + 1, 8, "0", STR_PAD_LEFT);
+            $cotizacion->cotizacion = 'COT' . str_pad($ultimaCotizacion->id + 1, 8, "0", STR_PAD_LEFT);
         }
         $estado = 'aprobado';
-        if($requiere_aprobacion_comercial['requiere'] == 'yes')
+        if ($requiere_aprobacion_comercial['requiere'] == 'yes')
             $estado = 'espera';
         $cotizacion->user_id = $user->id;
         $cotizacion->sucursal_id = $data['sucursal_id'];
@@ -448,17 +468,17 @@ class CotizacionesController extends Controller
         $cotizacion->VEND_APELLIDOS = $data['VEND_APELLIDOS'];
         $cotizacion->despacho = $data['despacho'];
         $cotizacion->orden_de_compra = $data['orden_de_compra'];
-        if($data['despacho'] == 'Despacho en ruta'){
+        if ($data['despacho'] == 'Despacho en ruta') {
             $cotizacion->fecha_entrega = $data['fecha_entrega'];
         }
         $cotizacion->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
         $cotizacion->porcentage_descuento = $data['porcentage_descuento'];
 
-        $cotizacion->subtotal = (float)$data['subtotal'] + (float)$data['descuento'];
-        $cotizacion->descuento = (float)$data['descuento'];
-        $cotizacion->subtotalmenosdescuento = (float)$data['subtotal'];
-        $cotizacion->iva = (float)$data['iva'];
-        $cotizacion->total = (float)$data['total'];
+        $cotizacion->subtotal = (float) $data['subtotal'] + (float) $data['descuento'];
+        $cotizacion->descuento = (float) $data['descuento'];
+        $cotizacion->subtotalmenosdescuento = (float) $data['subtotal'];
+        $cotizacion->iva = (float) $data['iva'];
+        $cotizacion->total = (float) $data['total'];
         $cotizacion->requiere_aprobacion_comercial = $requiere_aprobacion_comercial['requiere'];
         $cotizacion->motivo_aprobacion_comercial = $requiere_aprobacion_comercial['motivo'];
         $cotizacion->aprobado_comercial = 'no';
@@ -471,58 +491,59 @@ class CotizacionesController extends Controller
         $cotizacion->nota_cliente = $data['nota_cliente'];
         $cotizacion->impuesto = env('IVA_IMPUESTO');
 
-        if($cotizacion->save()){
+        if ($cotizacion->save()) {
 
-            if(isset($data['cotizacion_id']) && $data['cotizacion_id'] != ''){
-                GpCotizacionDetalle::where('cotizacion_id',$data['cotizacion_id'])->delete();
+            if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
+                GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
             }
 
-            foreach($data['cotizacion'] as $det){
+            foreach ($data['cotizacion'] as $det) {
                 $detalle = new GpCotizacionDetalle;
                 $detalle->cotizacion_id = $cotizacion->id;
                 $detalle->ART_CODIGO = $det['ART_CODIGO'];
-                $detalle->ART_DESCRIPCION = trim(str_replace('  ', ' ',$det['ART_DESCRIPCION']));
+                $detalle->ART_DESCRIPCION = trim(str_replace('  ', ' ', $det['ART_DESCRIPCION']));
                 $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
+                $detalle->CHECK_ALTERNATIVO = $det['CHECK_ALTERNATIVO'] ?? 0;
                 $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
-                $detalle->ART_DECIMAL_CANTIDAD = (int)$det['ART_DECIMAL_CANTIDAD'];
+                $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
                 $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
                 $detalle->ART_MARCA = $det['ART_MARCA'];
                 $detalle->ART_MATERIAL = $det['ART_MATERIAL'];
                 $detalle->ART_PESO = $det['ART_PESO'];
                 $detalle->ART_TIPO_COMPRA = $det['ART_TIPO_COMPRA'];
-                $detalle->ART_VALOR = (float)$det['ART_VALOR'];
-                $detalle->ART_VALOR_ORIGINAL = (float)$det['ART_VALOR_ORIGINAL'];
-                $detalle->ART_DESCUENTO = (float)$det['ART_DESCUENTO'];
-                $detalle->ART_IVA = (float)$det['ART_IVA'];
-                $detalle->ART_CANTIDAD = (float)$det['ART_CANTIDAD'];
-                $detalle->ART_STOCK = (float)$det['ART_STOCK'];
-                $detalle->ART_IMP_VTA = (float)$det['ART_IMP_VTA'];
-                $detalle->ART_COSTO_PROMEDIO = (float)$det['ART_COSTO_PROMEDIO'];
-                $detalle->descuento = (float)$det['descuento'];
-                $detalle->descuento_original = (float)$det['descuento_original'];
-                $detalle->modificador = (float)$det['modificador'];
+                $detalle->ART_VALOR = (float) $det['ART_VALOR'];
+                $detalle->ART_VALOR_ORIGINAL = (float) $det['ART_VALOR_ORIGINAL'];
+                $detalle->ART_DESCUENTO = (float) $det['ART_DESCUENTO'];
+                $detalle->ART_IVA = (float) $det['ART_IVA'];
+                $detalle->ART_CANTIDAD = (float) $det['ART_CANTIDAD'];
+                $detalle->ART_STOCK = (float) $det['ART_STOCK'];
+                $detalle->ART_IMP_VTA = (float) $det['ART_IMP_VTA'];
+                $detalle->ART_COSTO_PROMEDIO = (float) $det['ART_COSTO_PROMEDIO'];
+                $detalle->descuento = (float) $det['descuento'];
+                $detalle->descuento_original = (float) $det['descuento_original'];
+                $detalle->modificador = (float) $det['modificador'];
                 $detalle->save();
 
-                if(count($det['proveedores']) > 0){
-                    foreach($det['proveedores'] as $pro){
+                if (count($det['proveedores']) > 0) {
+                    foreach ($det['proveedores'] as $pro) {
                         $proveedor = new GpCotizacionDetalleProveedores;
                         $proveedor->cotizacion_id = $cotizacion->id;
                         $proveedor->detalle_id = $detalle->id;
                         $proveedor->ID_PROVEEDOR = $pro['ID_PROVEEDOR'];
-                        $proveedor->DESCRIPCION_ARTICULO = trim(str_replace('  ', ' ',$pro['DESCRIPCION_ARTICULO']));
+                        $proveedor->DESCRIPCION_ARTICULO = trim(str_replace('  ', ' ', $pro['DESCRIPCION_ARTICULO']));
                         $proveedor->FECHA_ENTREGA = $pro['FECHA_ENTREGA'];
-                        $proveedor->CANTIDAD = (float)$pro['CANTIDAD'];
-                        $proveedor->COSTO_UNITARIO = (float)$pro['COSTO_UNITARIO'];
-                        $proveedor->IMPUESTO = (float)$pro['IMPUESTO'];
-                        $proveedor->TOTAL = (float)$pro['TOTAL'];
-                        $proveedor->TOTALCONIMPUESTO = (float)$pro['TOTALCONIMPUESTO'];
+                        $proveedor->CANTIDAD = (float) $pro['CANTIDAD'];
+                        $proveedor->COSTO_UNITARIO = (float) $pro['COSTO_UNITARIO'];
+                        $proveedor->IMPUESTO = (float) $pro['IMPUESTO'];
+                        $proveedor->TOTAL = (float) $pro['TOTAL'];
+                        $proveedor->TOTALCONIMPUESTO = (float) $pro['TOTALCONIMPUESTO'];
                         $proveedor->NOTA = $pro['NOTA'];
                         $proveedor->MARGEN = $pro['MARGEN'];
                         $proveedor->save();
                     }
                 }
-                if(count($det['stock']) > 0){
-                    foreach($det['stock'] as $st){
+                if (count($det['stock']) > 0) {
+                    foreach ($det['stock'] as $st) {
                         $stock = new GpCotizacionDetalleStock();
                         $stock->cotizacion_id = $cotizacion->id;
                         $stock->detalle_id = $detalle->id;
@@ -534,23 +555,25 @@ class CotizacionesController extends Controller
                 }
             }
 
-            GpTempCart::where('sucursal_id',$data['sucursal_id'])
-                ->where('puntodeventa_id',$data['PTO_VTA_ID'])
-                ->where('cliente_id',$data['cliente_id'])
-                ->where('user_id',$user->id)
+            GpTempCart::where('sucursal_id', $data['sucursal_id'])
+                ->where('puntodeventa_id', $data['PTO_VTA_ID'])
+                ->where('cliente_id', $data['cliente_id'])
+                ->where('user_id', $user->id)
                 ->delete();
 
-            if(isset($data['registro_copia']) && $data['registro_copia'] != ''){
+            if (isset($data['registro_copia']) && $data['registro_copia'] != '' && $data['registro_copia'] != 'null' && $data['registro_copia'] != null) {
                 $registro_copia = GpRegistroCopia::where('id', $data['registro_copia'])->first();
-                $registro_copia->cotizacion_destino = $cotizacion->id;
-                $registro_copia->save();
+                if ($registro_copia) {
+                    $registro_copia->cotizacion_destino = $cotizacion->id;
+                    $registro_copia->save();
+                }
             }
 
             return response([
                 'success' => true,
-                'message' => 'La cotización ha sido guardada - '.$cotizacion->cotizacion
+                'message' => 'La cotización ha sido guardada - ' . $cotizacion->cotizacion
             ]);
-        }else{
+        } else {
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
@@ -562,9 +585,9 @@ class CotizacionesController extends Controller
         $data = $request->all();
         $user = Auth::user();
 
-        if(isset($data['prospecto']['id']) && $data['prospecto']['id'] != ''){
+        if (isset($data['prospecto']['id']) && $data['prospecto']['id'] != '') {
             $prospecto = GpProspecto::where('id', $data['prospecto']['id'])->first();
-        }else{
+        } else {
             $prospecto = new GpProspecto;
         }
         $prospecto->CLI_RUC = trim($data['prospecto']['CLI_RUC']);
@@ -574,18 +597,18 @@ class CotizacionesController extends Controller
         $prospecto->CLI_TELEFONO_1 = trim($data['prospecto']['CLI_TELEFONO_1']);
         $prospecto->save();
 
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID',$data['PTO_VTA_ID'])->first();
+        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
         $cotizacion = new GpCotizacion;
 
-        $ultimaCotizacion = GpCotizacion::orderBy('id','DESC')->first();
+        $ultimaCotizacion = GpCotizacion::orderBy('id', 'DESC')->first();
 
-        if(!$ultimaCotizacion){
+        if (!$ultimaCotizacion) {
             $ultimaCotizacion = new \stdClass();
             $ultimaCotizacion->id = 0;
             $cotizacion->id = $ultimaCotizacion->id + 1;
         }
-        $cotizacion->cotizacion = 'COT'.str_pad($ultimaCotizacion->id + 1, 8, "0", STR_PAD_LEFT);
+        $cotizacion->cotizacion = 'COT' . str_pad($ultimaCotizacion->id + 1, 8, "0", STR_PAD_LEFT);
 
         $cotizacion->user_id = $user->id;
         $cotizacion->sucursal_id = $data['sucursal_id'];
@@ -613,11 +636,11 @@ class CotizacionesController extends Controller
         $cotizacion->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
         $cotizacion->porcentage_descuento = $data['porcentage_descuento'];
 
-        $cotizacion->subtotal = (float)$data['subtotal'] + (float)$data['descuento'];
-        $cotizacion->descuento = (float)$data['descuento'];
-        $cotizacion->subtotalmenosdescuento = (float)$data['subtotal'];
-        $cotizacion->iva = (float)$data['iva'];
-        $cotizacion->total = (float)$data['total'];
+        $cotizacion->subtotal = (float) $data['subtotal'] + (float) $data['descuento'];
+        $cotizacion->descuento = (float) $data['descuento'];
+        $cotizacion->subtotalmenosdescuento = (float) $data['subtotal'];
+        $cotizacion->iva = (float) $data['iva'];
+        $cotizacion->total = (float) $data['total'];
         $cotizacion->requiere_aprobacion_comercial = 'no';
         $cotizacion->aprobado_comercial = 'no';
         $cotizacion->aprobador_comercial_id = null;
@@ -630,32 +653,32 @@ class CotizacionesController extends Controller
         $cotizacion->orden_de_compra = $data['orden_de_compra'];
         $cotizacion->impuesto = env('IVA_IMPUESTO');
 
-        if($cotizacion->save()){
+        if ($cotizacion->save()) {
 
-            foreach($data['cotizacion'] as $det){
+            foreach ($data['cotizacion'] as $det) {
                 $detalle = new GpCotizacionDetalle;
                 $detalle->cotizacion_id = $cotizacion->id;
                 $detalle->ART_CODIGO = $det['ART_CODIGO'];
                 $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
                 $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
                 $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
-                $detalle->ART_DECIMAL_CANTIDAD = (int)$det['ART_DECIMAL_CANTIDAD'];
+                $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
                 $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
                 $detalle->ART_MARCA = $det['ART_MARCA'];
                 $detalle->ART_MATERIAL = $det['ART_MATERIAL'];
                 $detalle->ART_PESO = $det['ART_PESO'];
                 $detalle->ART_TIPO_COMPRA = $det['ART_TIPO_COMPRA'];
-                $detalle->ART_VALOR = (float)$det['ART_VALOR'];
-                $detalle->ART_VALOR_ORIGINAL = (float)$det['ART_VALOR_ORIGINAL'];
-                $detalle->ART_DESCUENTO = (float)$det['ART_DESCUENTO'];
-                $detalle->ART_IVA = (float)$det['ART_IVA'];
-                $detalle->ART_CANTIDAD = (float)$det['ART_CANTIDAD'];
-                $detalle->ART_STOCK = (float)$det['ART_STOCK'];
-                $detalle->ART_IMP_VTA = (float)$det['ART_IMP_VTA'];
-                $detalle->ART_COSTO_PROMEDIO = (float)$det['ART_COSTO_PROMEDIO'];
-                $detalle->descuento = (float)$det['descuento'];
-                $detalle->descuento_original = (float)$det['descuento_original'];
-                $detalle->modificador = (float)$det['modificador'];
+                $detalle->ART_VALOR = (float) $det['ART_VALOR'];
+                $detalle->ART_VALOR_ORIGINAL = (float) $det['ART_VALOR_ORIGINAL'];
+                $detalle->ART_DESCUENTO = (float) $det['ART_DESCUENTO'];
+                $detalle->ART_IVA = (float) $det['ART_IVA'];
+                $detalle->ART_CANTIDAD = (float) $det['ART_CANTIDAD'];
+                $detalle->ART_STOCK = (float) $det['ART_STOCK'];
+                $detalle->ART_IMP_VTA = (float) $det['ART_IMP_VTA'];
+                $detalle->ART_COSTO_PROMEDIO = (float) $det['ART_COSTO_PROMEDIO'];
+                $detalle->descuento = (float) $det['descuento'];
+                $detalle->descuento_original = (float) $det['descuento_original'];
+                $detalle->modificador = (float) $det['modificador'];
                 $detalle->save();
             }
 
@@ -663,7 +686,7 @@ class CotizacionesController extends Controller
                 'success' => true,
                 'message' => 'La cotización ha sido guardada'
             ]);
-        }else{
+        } else {
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
@@ -679,65 +702,65 @@ class CotizacionesController extends Controller
             'fecha_hasta' => '',
         ]);
 
-        $cotizaciones = GpCotizacion::where('gp_cotizacions.PTO_VTA_ID', '=',$data['puntodeventa_id'])
-            ->join('gp_descuento_forma_pagos','gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO','gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
-            ->select('gp_cotizacions.*','gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
+        $cotizaciones = GpCotizacion::where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
+            ->join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
+            ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
 
-        if($data['estado'] == 'pendientes'){
+        if ($data['estado'] == 'pendientes') {
             $cotizaciones = $cotizaciones
-                ->where(function ($q){
+                ->where(function ($q) {
                     $q->where('estado', '!=', 'procesado');
                     $q->where('estado', '!=', 'caducado');
                     $q->where('estado', '!=', 'rechazado');
                 })
-                ->where(function ($q){
+                ->where(function ($q) {
                     $q->whereNull('prospecto_id');
-                    $q->orWhere(function ($q){
+                    $q->orWhere(function ($q) {
                         $q->whereNotNull('prospecto_id');
                         $q->whereNotNull('cliente_id');
                     });
                 });
-        }else if($data['estado'] == 'caducado'){
+        } else if ($data['estado'] == 'caducado') {
             $cotizaciones = $cotizaciones->where('estado', 'caducado')
                 ->whereNull('prospecto_id');
-        }else if($data['estado'] == 'prospectos'){
+        } else if ($data['estado'] == 'prospectos') {
             $cotizaciones = $cotizaciones
                 ->where(function ($q) {
                     $q->whereNotNull('prospecto_id');
                     $q->whereNull('cliente_id');
                 })
                 ->where('estado', '!=', 'procesado');
-        }else if($data['estado'] == 'procesadas'){
+        } else if ($data['estado'] == 'procesadas') {
             $cotizaciones = $cotizaciones->where('estado', 'procesado');
-        }else if($data['estado'] == 'rechazadas'){
+        } else if ($data['estado'] == 'rechazadas') {
             $cotizaciones = $cotizaciones->where('estado', 'rechazado');
         }
-        if(isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != ''){
-            $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'].' 00:00:00');
-            $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '<=', $data['fecha_hasta'].' 23:59:59');
+        if (isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != '') {
+            $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
+            $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '<=', $data['fecha_hasta'] . ' 23:59:59');
         }
-        $cotizaciones = $cotizaciones->orderBy('created_at','desc')->limit(1000)->get();
+        $cotizaciones = $cotizaciones->orderBy('created_at', 'desc')->limit(1000)->get();
 
 
 
-        foreach($cotizaciones as $cotizacion){
+        foreach ($cotizaciones as $cotizacion) {
 
-            $cotizacion->direccion_entrega = GpClienteSucursal::where('id',$cotizacion->sucursal_id)->first();
-
+            $cotizacion->direccion_entrega = GpClienteSucursal::where('id', $cotizacion->sucursal_id)->first();
+            $cotizacion->recordatorioventa = GpPedido::where('cotizacion_id', $cotizacion->id)->whereNotNull('factura')->exists() ? 1 : 0;
             $cotizacion->recuperar = 'yes';
             $cotizacion->imprimir = 'yes';
             $cotizacion->facturar = 'no';
-            if($cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial == 'no'){
+            if ($cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial == 'no') {
                 $cotizacion->imprimir = 'no';
-            }elseif($cotizacion->requiere_aprobacion_crediticia == 'yes' && $cotizacion->aprobado_crediticio == 'no'){
+            } elseif ($cotizacion->requiere_aprobacion_crediticia == 'yes' && $cotizacion->aprobado_crediticio == 'no') {
                 $cotizacion->imprimir = 'no';
                 $cotizacion->recuperar = 'no';
             }
-            if($cotizacion->impreso == 'yes'){
+            if ($cotizacion->impreso == 'yes') {
                 $cotizacion->recuperar = 'yes';
                 $cotizacion->facturar = 'yes';
             }
-            if($cotizacion->estado == 'rechazado'){
+            if ($cotizacion->estado == 'rechazado') {
                 $cotizacion->imprimir = 'no';
                 $cotizacion->recuperar = 'no';
             }
@@ -747,11 +770,12 @@ class CotizacionesController extends Controller
             'cotizaciones' => $cotizaciones,
         ]);
     }
-    public function guardarordenpedido(Request $request){
+    public function guardarordenpedido(Request $request)
+    {
         $data = $request->all();
 
-        foreach($data as $key => $item){
-            GpTempCart::where('id',$item['id'])
+        foreach ($data as $key => $item) {
+            GpTempCart::where('id', $item['id'])
                 ->update(['orden' => $key + 1]);
         }
     }
@@ -760,8 +784,8 @@ class CotizacionesController extends Controller
     {
         $data = $request->all();
 
-        foreach($data as $key => $direccion){
-            if($key != 'CLI_SUC_CORREO_ELECTRONICO_SRI')
+        foreach ($data as $key => $direccion) {
+            if ($key != 'CLI_SUC_CORREO_ELECTRONICO_SRI')
                 $data[$key] = mb_strtoupper($direccion);
             else
                 $data[$key] = strtolower($direccion);
@@ -771,7 +795,7 @@ class CotizacionesController extends Controller
 
         $dir = str_split($data['CLI_SUC_DIRECCION'], 61);
 
-        if(!isset($dir[1])){
+        if (!isset($dir[1])) {
             $dir[1] = '';
         }
 
@@ -798,23 +822,23 @@ class CotizacionesController extends Controller
 
         $webservices = new WebserviceController;
         $parameters = [
-                'Direccion_Cliente' => array($parameters)
-            ];
+            'Direccion_Cliente' => array($parameters)
+        ];
 
-        $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion',$parameters);
+        $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion', $parameters);
 
-        if(!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])){
+        if (!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])) {
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
         }
 
-//        echo '<pre>';
+        //        echo '<pre>';
 //        print_r($nuevaDireccion);
 
         $CLI_SUC_ID_DIRECCION = explode('-', $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']);
 
-        if(!isset($CLI_SUC_ID_DIRECCION[1])){
+        if (!isset($CLI_SUC_ID_DIRECCION[1])) {
             return response([
                 'error' => $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']
             ], 401);
@@ -838,9 +862,9 @@ class CotizacionesController extends Controller
         $direccion->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = $data['CLI_SUC_CORREO_ELECTRONICO_SRI'];
 
 
-        if($direccion->save()){
+        if ($direccion->save()) {
 
-            $cliente = GpCliente::where('CLI_RUC',$data['CLI_SUC_RUC'])->get()->first();
+            $cliente = GpCliente::where('CLI_RUC', $data['CLI_SUC_RUC'])->get()->first();
             $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
             $cliente->vendedor = $vendedor;
 
@@ -853,7 +877,7 @@ class CotizacionesController extends Controller
                 'message' => 'Dirección de cliente guardado',
                 'cliente' => $cliente,
             ]);
-        }else{
+        } else {
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
@@ -864,8 +888,8 @@ class CotizacionesController extends Controller
     {
         $data = $request->all();
 
-        foreach($data as $key => $direccion){
-            if($key != 'CLI_CORREO_ELECT_SRI' && $key != 'CLI_CORREO_ELECT_NOTIFICACION_INTERNA')
+        foreach ($data as $key => $direccion) {
+            if ($key != 'CLI_CORREO_ELECT_SRI' && $key != 'CLI_CORREO_ELECT_NOTIFICACION_INTERNA')
                 $data[$key] = mb_strtoupper($direccion);
             else
                 $data[$key] = strtolower($direccion);
@@ -879,7 +903,7 @@ class CotizacionesController extends Controller
 
         $dir = str_split($data['CLI_DIRECCION'], 61);
 
-        if(!isset($dir[1])){
+        if (!isset($dir[1])) {
             $dir[1] = '';
         }
 
@@ -912,7 +936,7 @@ class CotizacionesController extends Controller
             'CLI_PUNTO_VENTA' => $data['CLI_PUNTO_VENTA'],
         );
 
-//        echo '<pre>';
+        //        echo '<pre>';
 //        print_r($parameters);
 //        die();
 
@@ -922,7 +946,7 @@ class CotizacionesController extends Controller
         $webservices = new WebserviceController;
         $nuevoCliente = $webservices->transaccional('MST_Cliente_Creacion_Modificacion', $parameters);
 
-        if(!isset($nuevoCliente['MST_Cliente_Creacion_ModificacionResult'])){
+        if (!isset($nuevoCliente['MST_Cliente_Creacion_ModificacionResult'])) {
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
@@ -966,7 +990,7 @@ class CotizacionesController extends Controller
         $cliente->CLI_SUBGRUPO = $data['CLI_SUBGRUPO'];
         $cliente->CLI_DIA_MAXIMO_MES_FACTURACION = 0;
         $cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO = 'NO';
-        if($cliente->save()){
+        if ($cliente->save()) {
 
             $direccion = new GpClienteSucursal;
             $direccion->CLI_SUC_RUC = $data['CLI_RUC'];
@@ -985,7 +1009,7 @@ class CotizacionesController extends Controller
             $direccion->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = $data['CLI_CORREO_ELECT_SRI'];
             $direccion->save();
 
-            $cliente = GpCliente::where('CLI_RUC',$data['CLI_RUC'])->get()->first();
+            $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
             $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
             $cliente->vendedor = $vendedor;
 
@@ -998,7 +1022,7 @@ class CotizacionesController extends Controller
                 'message' => 'Cliente correctaente guardado',
                 'cliente' => $cliente,
             ]);
-        }else{
+        } else {
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
@@ -1023,24 +1047,24 @@ class CotizacionesController extends Controller
         $estadodecuenta['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE','VTA-BNS-L')->get()->first();
-        foreach($detalle as $item){
+        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->get()->first();
+        foreach ($detalle as $item) {
             $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $data['id'])
                 ->join('gp_proveedors', 'gp_proveedors.id', 'gp_cotizacion_detalle_proveedores.ID_PROVEEDOR')
                 ->where('detalle_id', $item->id)
                 ->select('gp_cotizacion_detalle_proveedores.*', 'gp_proveedors.PROV_RAZON_SOCIAL')
-                    ->where('detalle_id', $item->id)->get();
+                ->where('detalle_id', $item->id)->get();
 
-            if($item->ART_DECIMAL_CANTIDAD == 0){
-                $item->ART_STOCK = (int)$item->ART_STOCK;
-                $item->ART_CANTIDAD = (int)$item->ART_CANTIDAD;
+            if ($item->ART_DECIMAL_CANTIDAD == 0) {
+                $item->ART_STOCK = (int) $item->ART_STOCK;
+                $item->ART_CANTIDAD = (int) $item->ART_CANTIDAD;
             }
-            foreach($proveedores as $proveedor){
+            foreach ($proveedores as $proveedor) {
                 $margen = (($proveedor['COSTO_UNITARIO'] / (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $data['porcentage_descuento'] / 100));
 
-                $proveedor->margen = number_format($margen,4, '.', '');
-                if($item->ART_DECIMAL_CANTIDAD == 0){
-                    $proveedor->CANTIDAD = (int)$proveedor->CANTIDAD;
+                $proveedor->margen = number_format($margen, 4, '.', '');
+                if ($item->ART_DECIMAL_CANTIDAD == 0) {
+                    $proveedor->CANTIDAD = (int) $proveedor->CANTIDAD;
                 }
             }
             $item->proveedores = $proveedores;
@@ -1061,35 +1085,41 @@ class CotizacionesController extends Controller
         $funciones = new FuncionesController();
         $cliente = $funciones->getcliente($data);
         $arr_bodegas = $funciones->gebodegas($data, 1);
-        $consulta_bodega = array();
+        $arrArticulos = array();
         $stock_bodega_arr = array();
 
-        $detalle = GpCotizacionDetalle::where('cotizacion_id',$data['id'])->get();
+        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
 
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $proveedores = GpCotizacionDetalleProveedores::
-                    where('cotizacion_id',$data['id'])
-                    ->where('detalle_id',$articulo->id)
-                    ->get();
+                where('cotizacion_id', $data['id'])
+                ->where('detalle_id', $articulo->id)
+                ->get();
 
             $articulo->proveedores = $proveedores;
 
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id',$data['id'])
-                ->where('detalle_id',$articulo->id)
+            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
+                ->where('detalle_id', $articulo->id)
                 ->get()->toArray();
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
 
-            foreach($arr_bodegas as $bodega){
-                $consulta_bodega[] = array(
-                    'STOCK_ARTICULO'=>$articulo->ART_CODIGO.'@'.$bodega,
-                );
-            }
+            // foreach ($arr_bodegas as $bodega) {
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
+            );
+            // }
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
+        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-        foreach($stock_bodega_arr as $key => $bodegas) {
+        foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
                 $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
             }
@@ -1097,9 +1127,9 @@ class CotizacionesController extends Controller
 
         $articulos_array_l = array();
 
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $funciones->formatStock($articulo, $stock_general);
-            if(!$articulo->disponible){
+            if (!$articulo->disponible) {
                 $clase = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
                 $articulo->ART_CODIGO = $funciones->buscareledisponible($articulos_array_l, $clase->ART_CLASE_ARTICULO);
                 $articulos_array_l[] = $articulo->ART_CODIGO;
@@ -1116,6 +1146,7 @@ class CotizacionesController extends Controller
             'cliente' => $cliente,
             'currentSucursal' => $data['sucursal_id'],
             'cotizacion_id' => $data['id'],
+            'test' => 'recuperarcotizacion',
         ]);
     }
 
@@ -1123,12 +1154,12 @@ class CotizacionesController extends Controller
     public function recuperarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $cliente = GpProspecto::where('id',$data['prospecto_id'])->first();
+        $cliente = GpProspecto::where('id', $data['prospecto_id'])->first();
 
         $tipo = 'prospecto';
 
         $existente = GpCliente::where('CLI_RUC', $cliente->CLI_RUC)->first();
-        if($existente){
+        if ($existente) {
             $tipo = 'cliente';
             $cliente = $existente;
         }
@@ -1180,53 +1211,62 @@ class CotizacionesController extends Controller
         $consulta_precio = array();
         $stock_bodega_arr = array();
 
-        $detalle = GpCotizacionDetalle::where('cotizacion_id',$data['id'])->get();
-
-        foreach($detalle as $articulo){
+        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
+        $arrArticulos = array();
+        foreach ($detalle as $articulo) {
             $articulo->proveedores = array();
 
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id',$data['id'])
-                ->where('detalle_id',$articulo->id)
+            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
+                ->where('detalle_id', $articulo->id)
                 ->get()->toArray();
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
 
-            foreach($arr_bodegas as $bodega){
-                $consulta_bodega[] = array(
-                    'STOCK_ARTICULO'=>$articulo->ART_CODIGO.'@'.$bodega,
-                );
-            }
-            $consulta_precio[] = array(
-                'ART_CODIGO'=>$articulo->ART_CODIGO,
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
             );
 
-            if($encera){
+            $consulta_precio[] = array(
+                'ART_CODIGO' => $articulo->ART_CODIGO,
+            );
+
+            if ($encera) {
                 $articulo->descuento = $cliente->CLI_DSTO_COMERCIAL;
                 $articulo->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
                 $articulo->ART_DESCUENTO = 0;
                 $articulo->modificador = 0;
+                $articulo->ART_DESCRIPCION_ORIGINAL = $this->quotationService->restoreDescriptionItemQuotation($articulo->ART_CODIGO, $data['BOD_BODEGA']) ?? $articulo->ART_DESCRIPCION_ORIGINAL;
                 $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
+                $articulo->CHECK_ALTERNATIVO = 0;
             }
+
         }
 
         $webservices = new WebserviceController;
         $precios = $webservices->listaprecios($consulta_precio);
         $lista_precios_general = array();
-        foreach($precios as $precio){
+        foreach ($precios as $precio) {
             $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-        foreach($stock_bodega_arr as $key => $bodegas) {
+        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
+
+        foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
                 $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
             }
         }
 
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $funciones->formatStock($articulo, $stock_general);
-            if($articulo->ART_TIPO_COMPRA != 'L') {
+            if ($articulo->ART_TIPO_COMPRA != 'L') {
                 $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
                 $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
             }
@@ -1246,48 +1286,52 @@ class CotizacionesController extends Controller
         $consulta_bodega = array();
         $consulta_precio = array();
         $stock_bodega_arr = array();
-
+        $arrArticulos = array();
         $cotizacion = GpCotizacion::where('id', $data['id'])->first();
 
-        $detalle = GpCotizacionDetalle::where('cotizacion_id',$data['id'])->get();
+        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
 
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $articulo->proveedores = array();
 
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id',$data['id'])
-                ->where('detalle_id',$articulo->id)
+            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
+                ->where('detalle_id', $articulo->id)
                 ->get()->toArray();
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
 
-            foreach($arr_bodegas as $bodega){
-                $consulta_bodega[] = array(
-                    'STOCK_ARTICULO'=>$articulo->ART_CODIGO.'@'.$bodega,
-                );
-            }
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
+            );
             $consulta_precio[] = array(
-                'ART_CODIGO'=>$articulo->ART_CODIGO,
+                'ART_CODIGO' => $articulo->ART_CODIGO,
             );
         }
 
         $webservices = new WebserviceController;
         $precios = $webservices->listaprecios($consulta_precio);
         $lista_precios_general = array();
-        foreach($precios as $precio){
+        foreach ($precios as $precio) {
             $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
 
-        foreach($stock_bodega_arr as $key => $bodegas) {
+        foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
                 $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
             }
         }
 
-        foreach($detalle as $articulo){
+        foreach ($detalle as $articulo) {
             $funciones->formatStock($articulo, $stock_general);
-            if($articulo->ART_TIPO_COMPRA != 'L') {
+            if ($articulo->ART_TIPO_COMPRA != 'L') {
                 $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
                 $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
             }
@@ -1316,11 +1360,11 @@ class CotizacionesController extends Controller
 
         $user = Auth::user();
 
-        GpTempCart::where('sucursal_id',$data['sucursal_id'])
-                ->where('puntodeventa_id',$data['puntodeventa_id'])
-                ->where('cliente_id',$data['cliente_id'])
-                ->where('user_id',$user->id)
-                ->delete();
+        GpTempCart::where('sucursal_id', $data['sucursal_id'])
+            ->where('puntodeventa_id', $data['puntodeventa_id'])
+            ->where('cliente_id', $data['cliente_id'])
+            ->where('user_id', $user->id)
+            ->delete();
 
         return response([
             'success' => true,
@@ -1335,7 +1379,8 @@ class CotizacionesController extends Controller
      *
      */
 
-    public function checkvalidezcotizaciones(){
+    public function checkvalidezcotizaciones()
+    {
 
         ini_set('max_execution_time', -1);
         set_time_limit(-1);
@@ -1345,25 +1390,25 @@ class CotizacionesController extends Controller
 
         $puntosdeventa = GpPuntoVenta::get();
 
-        foreach($puntosdeventa as $puntodeventa){
+        foreach ($puntosdeventa as $puntodeventa) {
 
 
-            $cotizaciones = GpCotizacion::where('PTO_VTA_ID',$puntodeventa->PTO_VTA_ID )
+            $cotizaciones = GpCotizacion::where('PTO_VTA_ID', $puntodeventa->PTO_VTA_ID)
                 ->where('estado', '!=', 'caducado')
                 ->where('estado', '!=', 'procesado')
                 //->where('impreso', 'yes')
                 ->orderBy('created_at')
                 ->get();
 
-            if(count($cotizaciones)){
+            if (count($cotizaciones)) {
 
-//                echo '<pre>';
+                //                echo '<pre>';
 //                print_r($cotizaciones);
 //                die();
 
-                foreach($cotizaciones as $cotizacion) {
+                foreach ($cotizaciones as $cotizacion) {
                     $validez_real = $puntodeventa->PTO_VTA_DIA_VALIDEZ_COTIZACION;
-                    for($i = 1; $i <= $validez_real; $i++){
+                    for ($i = 1; $i <= $validez_real; $i++) {
                         $expira = date('Y-m-d', strtotime($i . ' day', strtotime($cotizacion->created_at)));
                         $parameters = array(
                             'IDCompania' => env('ID_COMPANIA'),
@@ -1371,8 +1416,8 @@ class CotizacionesController extends Controller
                         );
                         $webservices = new WebserviceController;
                         $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
-                        if($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0){
-                            $validez_real ++;
+                        if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
+                            $validez_real++;
                         }
                     }
                     $expira = date('Y-m-d', strtotime($validez_real . ' day', strtotime($cotizacion->created_at)));
@@ -1381,7 +1426,7 @@ class CotizacionesController extends Controller
                         $cotizacion->estado = 'caducado';
                         $cotizacion->save();
                     }
-//                    echo '<pre>';
+                    //                    echo '<pre>';
 //
 //                    echo $expira.'<br>';
 //                    echo $cotizacion->created_at.'<br>';
@@ -1397,15 +1442,21 @@ class CotizacionesController extends Controller
         $cronLog->save();
     }
 
-    public function imprimircotizacion($id): \Illuminate\Http\Response|string
+    public function imprimircotizacion($id)
     {
-        $cotizacion = GpCotizacion::where('id',$id)->first()->toarray();
+        $cotizacion = $this->quotationService->printQuotationPdf($id);
+        $pdf = Pdf::loadView('cotizacionPDF', $cotizacion);
+        return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
+    }
+    public function imprimircotizacion2($id): \Illuminate\Http\Response|string
+    {
+        $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
 
-        if($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no'){
+        if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
             return 'No permitido';
-        }elseif($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no'){
+        } elseif ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
             return 'No permitido';
-        }elseif($cotizacion['estado'] == 'caducado'){
+        } elseif ($cotizacion['estado'] == 'caducado') {
             return 'No permitido';
         }
 
@@ -1420,20 +1471,20 @@ class CotizacionesController extends Controller
 
 
 
-        foreach($detalle as $art){
+        foreach ($detalle as $art) {
             $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
             $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
         }
 
-        foreach($detalle as &$art) {
+        foreach ($detalle as &$art) {
             $peso += $art['ART_PESO'] * $art['ART_CANTIDAD'];
 
-            $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] += (float)number_format($art['ART_VALOR'] * $art['ART_CANTIDAD'],2,'.','');
-            $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] += (float)number_format($art['ART_IVA'],2,'.','');
+            $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_VALOR'] * $art['ART_CANTIDAD'], 2, '.', '');
+            $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_IVA'], 2, '.', '');
         }
         $cotizacion['peso'] = $peso;
         $cotizacion['detalle'] = $detalle;
-        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO',$cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
+        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
         $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'];
 
         $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toarray();
@@ -1443,22 +1494,22 @@ class CotizacionesController extends Controller
         $sucursal = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toarray();
 
         $cotizacion['sucursal'] = $sucursal;
-//
+        //
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toarray();
 
-        if($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0){
+        if ($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0) {
             $cotizacion['validez'] = '0 días';
-        }else{
-//            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
+        } else {
+            //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
 //            $cotizacion['validez'] = $horas.' horas';
-            $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' días hábiles';
+            $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
         $validez_real = 0;
         $webservices = new WebserviceController;
 
         $validez_real = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'];
-        for($i = 1; $i <= $validez_real; $i++){
+        for ($i = 1; $i <= $validez_real; $i++) {
             $expira = date('Y-m-d', strtotime($i . ' day', strtotime($cotizacion['created_at'])));
             $parameters = array(
                 'IDCompania' => env('ID_COMPANIA'),
@@ -1466,8 +1517,8 @@ class CotizacionesController extends Controller
             );
 
             $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
-            if($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0){
-                $validez_real ++;
+            if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
+                $validez_real++;
             }
         }
 
@@ -1475,22 +1526,22 @@ class CotizacionesController extends Controller
 
 
         $cotizacion['expira'] = $expira; //date('Y-m-d', strtotime($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' day', strtotime($cotizacion['updated_at'])));
-        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
+        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         $data = $cotizacion;
         //return view('cotizacionPDF', $data);
         $pdf = Pdf::loadView('cotizacionPDF', $data);
-        return $pdf->stream('cotizacion-'.$cotizacion['cotizacion'].'.pdf');
+        return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
     }
 
     public function imprimircotizacionimagenes($id): \Illuminate\Http\Response|string
     {
-        $cotizacion = GpCotizacion::where('id',$id)->first()->toarray();
+        $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
 
-        if($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no'){
+        if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
             return 'No permitido';
-        }elseif($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no'){
+        } elseif ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
             return 'No permitido';
-        }elseif($cotizacion['estado'] == 'caducado'){
+        } elseif ($cotizacion['estado'] == 'caducado') {
             return 'No permitido';
         }
 
@@ -1505,22 +1556,22 @@ class CotizacionesController extends Controller
 
 
 
-        foreach($detalle as $art){
+        foreach ($detalle as $art) {
             $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
             $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
 
 
         }
 
-        foreach($detalle as &$art) {
+        foreach ($detalle as &$art) {
             $peso += $art['ART_PESO'] * $art['ART_CANTIDAD'];
 
-            $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] += (float)number_format($art['ART_VALOR'] * $art['ART_CANTIDAD'],2,'.','');
-            $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] += (float)number_format($art['ART_IVA'],2,'.','');
+            $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_VALOR'] * $art['ART_CANTIDAD'], 2, '.', '');
+            $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_IVA'], 2, '.', '');
             $imagenes = array();
 
-            for($i = 1; $i <= 3; $i++){
-                $file = 'images/productos/'.$art['ART_CODIGO_TRES_LETRAS'].'_'.$i.'.jpg';
+            for ($i = 1; $i <= 3; $i++) {
+                $file = 'images/productos/' . $art['ART_CODIGO_TRES_LETRAS'] . '_' . $i . '.jpg';
 
                 if (File::exists($file)) {
                     $imagenes[] = $file;
@@ -1531,7 +1582,7 @@ class CotizacionesController extends Controller
         }
         $cotizacion['peso'] = $peso;
         $cotizacion['detalle'] = $detalle;
-        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO',$cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
+        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
         $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'];
 
         $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toarray();
@@ -1541,22 +1592,22 @@ class CotizacionesController extends Controller
         $sucursal = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toarray();
 
         $cotizacion['sucursal'] = $sucursal;
-//
+        //
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toarray();
 
-        if($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0){
+        if ($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0) {
             $cotizacion['validez'] = '0 días';
-        }else{
-//            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
+        } else {
+            //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
 //            $cotizacion['validez'] = $horas.' horas';
-            $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' días hábiles';
+            $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
         $validez_real = 0;
         $webservices = new WebserviceController;
 
         $validez_real = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'];
-        for($i = 1; $i <= $validez_real; $i++){
+        for ($i = 1; $i <= $validez_real; $i++) {
             $expira = date('Y-m-d', strtotime($i . ' day', strtotime($cotizacion['created_at'])));
             $parameters = array(
                 'IDCompania' => env('ID_COMPANIA'),
@@ -1564,8 +1615,8 @@ class CotizacionesController extends Controller
             );
 
             $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
-            if($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0){
-                $validez_real ++;
+            if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
+                $validez_real++;
             }
         }
 
@@ -1573,16 +1624,16 @@ class CotizacionesController extends Controller
 
 
         $cotizacion['expira'] = $expira; //date('Y-m-d', strtotime($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' day', strtotime($cotizacion['updated_at'])));
-        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
+        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         $data = $cotizacion;
         //return view('cotizacionPDF', $data);
         $pdf = Pdf::loadView('cotizacionImagenesPDF', $data);
-        return $pdf->stream('cotizacion-'.$cotizacion['cotizacion'].'.pdf');
+        return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
     }
 
     public function imprimircotizacionprospecto($id): \Illuminate\Http\Response|string
     {
-        $cotizacion = GpCotizacion::where('id',$id)->first()->toarray();
+        $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
 
 
         GpCotizacion::where('id', $id)->update(['impreso' => 'yes']);
@@ -1593,36 +1644,36 @@ class CotizacionesController extends Controller
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $cotizacion['id'])->get()->toarray();
         $peso = 0;
-        foreach($detalle as &$art) {
+        foreach ($detalle as &$art) {
             $peso += $art['ART_PESO'] * $art['ART_CANTIDAD'];
         }
         $cotizacion['peso'] = $peso;
         $cotizacion['detalle'] = $detalle;
-        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO',$cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
+        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
         $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'];
 
         $cliente = GpProspecto::where('id', $cotizacion['prospecto_id'])->first()->toarray();
 
         $cotizacion['cliente'] = $cliente;
-//
+        //
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toarray();
 
-        if($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0){
+        if ($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0) {
             $cotizacion['validez'] = '0 días';
-        }else{
-//            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
+        } else {
+            //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
 //            $cotizacion['validez'] = $horas.' horas';
-            $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' días hábiles';
+            $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
-        $cotizacion['expira'] = date('Y-m-d', strtotime($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' day', strtotime($cotizacion['updated_at'])));
+        $cotizacion['expira'] = date('Y-m-d', strtotime($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' day', strtotime($cotizacion['updated_at'])));
 
-        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'].' '.$puntodeventa['PTO_VTA_DIRECCION_2'];
+        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
 
         $data = $cotizacion;
         //return view('cotizacionPDF', $data);
         $pdf = Pdf::loadView('cotizacionProspectoPDF', $data);
-        return $pdf->stream('cotizacion-'.$cotizacion['cotizacion'].'.pdf');
+        return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
     }
 
     public function guardarordendecompra(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1657,12 +1708,12 @@ class CotizacionesController extends Controller
 
     public function checkrucprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $data =  $request->validate([
+        $data = $request->validate([
             'CLI_RUC' => '',
         ]);
 
         $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->first();
-        if($cliente){
+        if ($cliente) {
             $data['cliente_id'] = $cliente->id;
             $funciones = new FuncionesController();
             $cliente = $funciones->getcliente($data);
@@ -1674,7 +1725,7 @@ class CotizacionesController extends Controller
         }
 
         $prospecto = GpProspecto::where('CLI_RUC', $data['CLI_RUC'])->first();
-        if($prospecto){
+        if ($prospecto) {
             return response([
                 'success' => true,
                 'prospecto' => $prospecto
@@ -1687,13 +1738,51 @@ class CotizacionesController extends Controller
     }
 
 
-    public function getlistNonSaleReasons(){
+    public function getlistNonSaleReasons()
+    {
         return $this->quotationService->getNonSalesReasons();
     }
 
 
-    public function updateNonSaleAndReminderData(Request $request){
+    public function updateNonSaleAndReminderData(Request $request)
+    {
         $data = $request->all();
         return $this->quotationService->updateNonSaleAndReminderData($data);
+    }
+
+
+    /**
+     * Summary of sendAllQuotesRecorderSQLServer
+     *  Se enviar todas las cotizaciones pendientes de recordatorio de venta a SQL Server que tengan un motivo asignado
+     * @return void
+     */
+    public function sendAllQuotesRecorderSQLServer()
+    {
+        $cotizaciones = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->where('cotizacion_venta_motivo_id', '!=', null)->get();
+        foreach ($cotizaciones as $cotizacion) {
+            $this->quotationService->sendStoreReminderGp($cotizacion);
+        }
+    }
+
+
+    /** lista de items alterantivos traidos del apigp -cotizaciones sql server */
+
+    public function getItemsAlternatives(Request $request)
+    {
+        $item = $request['item'];
+        return $this->quotationService->getItemsAlternatives($item);
+    }
+
+
+    /**
+     * API PARA LISTAR LAS NOVEDADES DE LAS COTIZACIONES
+     *
+     */
+    public function consultQuotationsNews(Request $request): JsonResponse
+    {
+
+        return $this->quotationService->consultQuotationsNews($request->all());
+
+
     }
 }

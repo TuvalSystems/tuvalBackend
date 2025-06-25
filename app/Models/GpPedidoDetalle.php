@@ -72,6 +72,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalle whereDevuelto($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalle whereReservado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalle whereTrasladado($value)
+ * @property boolean  $CHECK_ALTERNATIVO
  */
 class GpPedidoDetalle extends Model
 {

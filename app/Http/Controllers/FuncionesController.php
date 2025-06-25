@@ -373,7 +373,7 @@ class FuncionesController extends Controller
 //        print_r($stock_general);
 //        die();
 
-        if(isset($stock_general[$articulo->ART_CODIGO])){
+        if(isset($stock_general[$articulo->ART_CODIGO]) ){
             foreach($stock_general[$articulo->ART_CODIGO] as $key => $st){
 
                 if($articulo->ART_DECIMAL_CANTIDAD == 0){

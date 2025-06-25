@@ -169,6 +169,11 @@ class ConsultasController extends Controller
             if (!$clave)
                 $articulos = $articulos->values();
 
+                // Filtrar artículos que no tienen valor y los quita y solo muestra los que si tienen valor
+            // $articulos = $articulos->filter(function ($articulo) {
+            //     return $articulo->ART_VALOR > 0;
+            // })->values();
+
             return response([
                 'success' => true,
                 'articulos' => $articulos
@@ -180,7 +185,7 @@ class ConsultasController extends Controller
         }
     }
 
-   
+
     public function consultarstock(Request $request)
     {
         $data = $request->all();

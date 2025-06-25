@@ -3,7 +3,6 @@
 namespace App\Services\Devoluciones;
 
 use App\Http\Controllers\ventas\PedidosController;
-use App\Http\Controllers\WebserviceController;
 use App\Models\devoluciones\GpDevolucionErroresJob;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -20,7 +19,6 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -330,15 +328,19 @@ class DevolucionJobService
         $pedido = GpPedido::find($devolucion->pedido_id);
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
             ->where('ART_TIPO_COMPRA', '!=', 'SERV') // Filtramos los servicios directamente en la consulta
-            ->where('despachado_parcial', 1) // Solo consideramos los que no están despachados parcialmente
+            ->where('despachado_parcial', 1)
+            ->where(function ($query) {
+                $query->where('devuelto', '>', 0)
+                    ->whereNotNull('devuelto')
+                    ->where('recibido', '>', 0)
+                    ->whereNotNull('recibido');
+            })
             ->get();
 
         // 🛠️ Preparación de los items para la devolución
         $itemsDevolucion = $detalles->map(function ($detalle) use ($devolucion, $pedido) {
-            $devuelto = ($devolucion->despachado && $devolucion->volver_a_facturar)
-                ? $detalle->recibido
-                : $detalle->devuelto;
-
+            // Obtenemos el valor devuelto del detalle
+            $devuelto = ($devolucion->despachado && $devolucion->volver_a_facturar) ? $detalle->recibido : $detalle->devuelto;
             if (!$devuelto) {
                 return null; // Si no hay devuelto, se ignora el item
             }
@@ -383,7 +385,7 @@ class DevolucionJobService
             $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
             $devolucion->devolucion_bodega = false;
             $devolucion->save();
-            throw new \Exception('Error en la al realizar el ajuste: ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
+            throw new \Exception('Ajuste : Codigo - ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
         }
         Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
         // 🟢 Actualización correcta
@@ -397,7 +399,7 @@ class DevolucionJobService
         $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
         $afectados = DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
-            ->where('despachado_parcial', 0)
+            // ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
@@ -417,6 +419,20 @@ class DevolucionJobService
         Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
         return $afectados;
     }
+
+    public function procesarDevolucionesRecibirParcialesSinRf($devolucion)
+    {
+        $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
+        $afectados = DB::table('gp_devoluciones_detalles')
+            ->where('devolucion_id', $devolucion->id)
+            ->where('despachado_parcial', 0)
+            ->update([
+                'devuelto' => DB::raw("`$origen`")
+            ]);
+        Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado recibido");
+        return $afectados;
+    }
+
 
 
 }

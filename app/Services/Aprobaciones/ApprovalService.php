@@ -99,14 +99,38 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         $pedidoConsulta = GpPedido::find($pedido['id']);
-        if (!empty($pedidoConsulta['factura_origen'])) {
-            $pedido_origen = GpPedido::where('factura', operator: $pedido['factura_origen'])->orderByDesc('id')->first();
-            return $pedido_origen['despachado'] ?? $pedido_origen->despachado;
+        $tieneFacturaOrigen = !empty($pedidoConsulta->factura_origen);
+        if ($tieneFacturaOrigen) {
+
+            //validador para casos donde el pedido tiene despachado null se verifica en caso de que tenga factura origen y si haya items despachados parciales
+            if ($pedidoConsulta->despachado === false || $pedidoConsulta->despachado === null) {
+                $pedido_origen = GpPedido::where('factura', $pedido['factura_origen'])->orderByDesc('id')->first();
+                if (is_null(optional($pedido_origen)->despachado) || $pedido_origen->despachado === false) {
+                    return $this->hasDetailDispatched($detallepedido);
+                }
+            }
+
+            //esta condicional valida que pedido tenga factura origen y despachado
+            if ($pedidoConsulta->despachado === true || $pedidoConsulta->despachado === 1) {
+                $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
+                return GpPedidoDetalle::where('pedido_id', $pedidoConsulta->id)
+                    ->whereIn('ART_CODIGO', $codigos)
+                    ->where('trasladado', '>', 0)
+                    ->exists();
+            }
         }
 
-        $countDetalle = collect(value: $detallepedido)->filter(function ($item) {
-            return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
-        })->count();
-        return $countDetalle > 0;
+        return $this->hasDetailDispatched($detallepedido);
+    }
+
+    public function hasDetailDispatched($detallepedido): bool
+    {
+        return collect($detallepedido)
+            ->contains(function ($item) {
+                return !empty($item['despachado'])
+                    && (float) $item['despachado'] > 0
+                    && isset($item['despacho'])
+                    && $item['despacho'] === true;
+            });
     }
 }

@@ -25,7 +25,6 @@ use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Support\Facades\Response;
 use App\Models\GpPedidoDetalleProveedores;
-use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Http\Controllers\FuncionesController;
@@ -34,13 +33,12 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Http\Controllers\bodegas\DespachosController;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Http\Controllers\bodegas\RecibosdecompraeleController;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 
 class PedidosController extends Controller
@@ -219,7 +217,8 @@ class PedidosController extends Controller
             $this->checktraslado($pedido);
         }
 
-        $ordendecompra = new OrdendecompraController();
+        $order = app(PurchaseOrderServiceInterface::class);
+        $ordendecompra = new OrdendecompraController($order);
 
         $ordendecompra->checkordendecompra($pedido);
 
@@ -557,135 +556,6 @@ class PedidosController extends Controller
         return $this->orderService->detailOrderById($data);
     }
 
-    public function detallepedido1(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-
-        $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
-
-        $estadodecuenta = array();
-
-        $webservices = new WebserviceController();
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $data['CLI_RUC'],
-        );
-
-        $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-
-        $estadodecuenta['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
-
-        $pendientes = false;
-        $existentes = false;
-        $funciones = new FuncionesController();
-        foreach ($detalle as $item) {
-            $proveedores = $funciones->getitemproveedores($data, $item, $pendientes, $existentes);
-            $item->proveedores = $proveedores['proveedores'];
-            $pendientes = $proveedores['pendientes'];
-            $existentes = $proveedores['existentes'];
-
-
-            $stock = GpPedidoDetalleStock::where('detalle_id', $item->id)
-                ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
-                ->first();
-            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
-                $existentes = true;
-            }
-        }
-
-        $ordendecompra = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
-            ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
-            ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
-            ->where('gp_pedidos.pedido', $data['pedido'])
-            ->select(
-                'gp_orden_de_compra_generados.*',
-                'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN',
-                'gp_proveedors.PROV_RAZON_SOCIAL',
-                'gp_proveedors.PROV_DIRECCION_1',
-                'gp_pedidos.CLI_RAZON_SOCIAL',
-                'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE'
-            )
-            ->get();
-        $recibosdecompral = new RecibosdecompraeleController();
-        $ordenes = array();
-        foreach ($ordendecompra as $orden) {
-            $recibodecompra = $recibosdecompral->setdetalleordendecompra($orden);
-            if (count($recibodecompra->detalle) > 0) {
-                $ordenes[] = $recibodecompra;
-            }
-        }
-
-        $traslados = array();
-
-        $trasladosVentas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
-            ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
-            //            ->join('gp_guia_remision_transferencias', 'gp_guia_remision_transferencias.pedido', 'gp_pedidos.pedido')
-            //            ->join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
-            //            ->where('gp_guia_remisions.estado', '!=', 'eliminada')
-            ->where('pedido_id', $data['id'])
-            ->select(
-                'gp_traslados_ventas.*',
-                'gp_pedidos.id AS pedido_id',
-                'gp_pedidos.pedido',
-                'gp_bodegas.BOD_DESCRIPCION',
-                'gp_bodegas.BOD_BODEGA',
-                'gp_pedidos.created_at AS fecha',
-                'gp_pedidos.USERID AS usuario',
-                //                'gp_guia_remisions.estado AS estado_guia'
-            )
-            ->get();
-
-        if ($trasladosVentas) {
-
-
-            foreach ($trasladosVentas as $traslado) {
-
-                $guias = GpGuiaRemisionTransferencia::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
-                    ->join('gp_guia_remision_detalles', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
-                    ->join('gp_traslados_ventas', 'gp_traslados_ventas.id', 'gp_guia_remision_detalles.detalle_id')
-                    ->where('gp_guia_remision_transferencias.pedido', $traslado->pedido)
-                    ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $traslado->ART_CODIGO)
-                    ->where('gp_guia_remision_detalles.detalle_id', $traslado->id)
-                    ->where('gp_guia_remisions.estado', '!=', 'eliminada')
-                    ->where('gp_traslados_ventas.pedido_id', $traslado->pedido_id)
-                    ->select('gp_guia_remisions.*', 'gp_guia_remision_detalles.GUI_REM_CANTIDAD', 'gp_guia_remision_detalles.recibido')
-                    ->get();
-
-                $traslado->guias = $guias;
-
-                foreach ($guias as $guia) {
-                    if ($guia->estado != 'recibida')
-                        $pendientes = true;
-                    else
-                        $existentes = true;
-                }
-                if (!$traslado->completado)
-                    $pendientes = true;
-            }
-        }
-
-        $pendientes = true;
-
-        $orden_despacho = GpOrdenDespacho::where('pedido_id', $data['id'])->first();
-        $guias_remision = GpGuiaRemision::where('pedido', $data['pedido'])->where('estado', '!=', 'eliminada')->get();
-
-        $devoluciones = GpDevoluciones::where('pedido_id', $data['id'])
-            ->orderBy('gp_devoluciones.created_at', 'desc')
-            ->get();
-
-        return response([
-            'success' => true,
-            'detalle' => $detalle,
-            'estadodecuenta' => $estadodecuenta,
-            'ordendecompra' => $ordenes,
-            'traslados' => $trasladosVentas,
-            'orden_despacho' => $orden_despacho,
-            'guias_remision' => $guias_remision,
-            'devoluciones' => $devoluciones,
-            'pendientes' => $pendientes,
-            'existentes' => $existentes,
-        ]);
-    }
 
     public function consultarexistente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1382,6 +1252,7 @@ class PedidosController extends Controller
             'cliente' => $cliente,
             'registro_copia' => $registroCopia->id,
             'currentSucursal' => $data['sucursal_id'],
+            'test' => 'copiarpedido'
         ]);
     }
 
@@ -1395,6 +1266,7 @@ class PedidosController extends Controller
         $consulta_bodega = array();
         $consulta_precio = array();
         $stock_bodega_arr = array();
+        $arrArticulos = array();
 
         $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
 
@@ -1407,11 +1279,9 @@ class PedidosController extends Controller
                 ->get()->toArray();
             $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
-            foreach ($arr_bodegas as $bodega) {
-                $consulta_bodega[] = array(
-                    'STOCK_ARTICULO' => $articulo->ART_CODIGO . '@' . $bodega,
-                );
-            }
+            $arrArticulos[] = array(
+                'articulo' => $articulo->ART_CODIGO,
+            );
 
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
@@ -1435,8 +1305,13 @@ class PedidosController extends Controller
             }
         }
 
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-
+        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+        $stock_general = $this->orderService->restoreOrders($arrArticulos, $arr_bodegas);
+        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+            ->map(function ($items) {
+                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+            })
+            ->toArray();
         foreach ($stock_bodega_arr as $key => $bodegas) {
             foreach ($bodegas as $bodega) {
                 $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
@@ -1468,7 +1343,8 @@ class PedidosController extends Controller
     public function sendfacturagp($pedido): void
     {
 
-        $ordendecompra = new OrdendecompraController();
+        $order = app(PurchaseOrderServiceInterface::class);
+        $ordendecompra = new OrdendecompraController($order);
 
         $flag = $ordendecompra->checkordendecomprarecibidos($pedido);
         if ($flag) {
@@ -1862,6 +1738,7 @@ class PedidosController extends Controller
         $detalle->ART_CODIGO = $det['ART_CODIGO'];
         $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
         $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
+        $detalle->CHECK_ALTERNATIVO = $det['CHECK_ALTERNATIVO'] ?? 0;
         $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
         $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
         $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
@@ -1935,10 +1812,10 @@ class PedidosController extends Controller
         }
     }
 
-    public function volverafacturar($devolucion, $despachada = false)
+    public function volverafacturar($devolucion)
     {
-        // $webservices = new WebserviceController();
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
+        $despachada = $this->orderService->checkOutValidateDispatchReInvoice($devolucion);
         $cliente = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
@@ -2185,5 +2062,10 @@ class PedidosController extends Controller
             $pedido->estado = 'espera';
             $pedido->save();
         }
+    }
+
+    public function getListPedidosSinCoordenadas()
+    {
+        return $this->orderService->getLisOrdersWithoutCoordinated();
     }
 }

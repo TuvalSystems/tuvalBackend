@@ -17,6 +17,7 @@ class GpDevolucionesDetalle extends Model
         'ART_CODIGO',
         'ART_DESCRIPCION',
         'ART_DESCRIPCION_ORIGINAL',
+        'CHECK_ALTERNATIVO',
         'ART_CODIGO_TRES_LETRAS',
         'ART_DECIMAL_CANTIDAD',
         'ART_PLAN_UMEDIDA',

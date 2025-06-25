@@ -3,172 +3,41 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notificaciones;
-use App\Models\GpUsuario;
-use App\Models\GpPuntoVenta;
-use App\Models\GpDescuentoFormaPago;
-use App\Models\GpCondicionPago;
-use App\Models\GpProveedor;
-use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Services\Api\ApiGpService;
+use App\Services\User\UserService;
 use App\Traits\JsonResponseTrait;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\SectionsController;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
     use JsonResponseTrait;
-    protected $apiGp ;
+    protected $userService;
 
-    public function __construct(ApiGpService $apiGp)
+    public function __construct(UserService $userService)
     {
-        $this->apiGp = $apiGp;
+        $this->userService = $userService;
     }
 
     public function login(Request $request)
     {
-        $credentials = $this->validateCredentials($request);
-        $validationResponse = $this->validateuserCredentials($credentials);
+        $credentials = $this->userService->validateCredentials($request);
+        $validationResponse = $this->userService->validateuserCredentials($credentials);
 
-        if (!$this->isValidUser($validationResponse)) {
+        if (!$this->userService->isValidUser($validationResponse)) {
             return $this->buildErrorResponse($validationResponse['msj'] ?? 'Usuario no encontrado', 404);
         }
-        $user = $this->getActiveUser($credentials['username']);
+        if (!$this->userService->isValidUserWeb($credentials)) {
+            return $this->buildErrorResponse('Las credenciales no son validas', 401);
+        }
+        if (!$this->userService->validateStatusGpUser($credentials)) {
+            return $this->buildErrorResponse('El usuario ingresado se encuentra inactivo', 404);
+        }
+        $user = $this->userService->getActiveUser($credentials['username']);
         if (!$user) {
             return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
         }
-        return $this->buildSuccessResponse($user);
+        return $this->userService->buildSuccessResponseUser($user);
     }
-
-    public function getActiveUser($username): ?Model
-    {
-        return  GpUsuario::join('perfiles', 'perfiles.id', 'gp_usuarios.perfil_id')
-            ->where('USERID', trim($username))
-            ->where('perfiles.state', 'active')
-            ->select('gp_usuarios.id', 'gp_usuarios.perfil_id', 'gp_usuarios.USERID', 'gp_usuarios.USERNAME')
-            ->first();
-    }
-
-    public function validateCredentials(Request $request): array
-    {
-        return $request->validate([
-            'username' => 'required|string',
-            'password' => 'required'
-        ]);
-    }
-
-    public function validateUserCredentials(array $credentials): array
-    {
-        $params = array(
-            'idCompany' => config('services.api_gp.company'),
-            'username' => $credentials['username'],
-        );
-        return  $this->apiGp->validateUser($params);
-    }
-
-    private function isValidUser(array $validationResponse): bool
-    {
-        return isset($validationResponse['codret']) && $validationResponse['codret'] == '0';
-    }
-
-
-
-    public function buildSuccessResponse($user): JsonResponse
-    {
-
-        return  response()->json([
-            'user' => $this->formatuserData($user),
-            'token' => $this->generateAuthToken($user),
-            'menu' =>  $this->getUserMenu($user->perfil_id)['arbol'],
-            'home' =>  $this->getUserMenu($user->perfil_id)['home'],
-            'puntosdeventa' => $this->getUserSalesPoints($user->USERID),
-            'puntodeventaselect' => $this->getDefaultSalesPoint($user->USERID),
-            'formadepago' =>  $this->getPaymentMethods(),
-            'condiciondepago' => $this->getPaymentConditions(),
-            'proveedores' => $this->getSuppliers(),
-
-        ]);
-    }
-
-    public function formatUserData($user): array
-    {
-        return [
-            'USERID' => $user->USERID,
-            'USERNAME' => $user->USERNAME,
-            'perfil_id' => $user->perfil_id
-        ];
-    }
-
-    public function generateAuthToken($user): string
-    {
-        return $user->createToken($user->USERID)->plainTextToken;
-    }
-
-    public function getUserMenu(int $profileId)
-    {
-        return (new SectionsController())->listadeseccionesmenu($profileId);
-    }
-
-    public function getUserSalesPoints($userID)
-    {
-        $puntosdeventa = DB::table('gp_punto_ventas')
-            ->join('gp_relacion_usuario_punto_ventas', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA', '=', 'gp_punto_ventas.PTO_VTA_ID')
-            ->select('gp_punto_ventas.*')
-            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', '=', $userID)
-            ->orderBy('gp_punto_ventas.PTO_VTA_ID')
-            ->get();
-
-        $nuevo_arr = [];
-        foreach ($puntosdeventa as $puntodeventa) {
-            $this->getBodegas($puntodeventa);
-            $nuevo_arr[$puntodeventa->PTO_VTA_ID] = $puntodeventa;
-        }
-
-        return  array_values($nuevo_arr);
-    }
-
-
-    public function getDefaultSalesPoint($userID): mixed
-    {
-        $puntodeventaselect = DB::table('gp_punto_ventas')
-            ->join('gp_relacion_usuario_punto_ventas', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA', '=', 'gp_punto_ventas.PTO_VTA_ID')
-            ->select('gp_punto_ventas.*')
-            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', '=', $userID)
-            ->first();
-
-        $this->getBodegas($puntodeventaselect);
-
-        if (!$puntodeventaselect) {
-            $puntodeventaselect = GpPuntoVenta::get()->first();
-        }
-        return $puntodeventaselect;
-    }
-
-    public function getPaymentMethods(): Collection
-    {
-        return  GpDescuentoFormaPago::orderBy('DESC_FORMA_PAGO_CODIGO')->get();
-    }
-
-    public function getPaymentConditions(): Collection
-    {
-        return GpCondicionPago::all();
-    }
-
-    public function getSuppliers(): Collection
-    {
-        return GpProveedor::select('id', 'PROV_RAZON_SOCIAL')
-            ->where('PROV_CLASE', '!=', 'PR-EXT')
-            ->orderBy('PROV_RAZON_SOCIAL')->get();
-    }
-
-
-
-    
 
 
     /**
@@ -177,12 +46,12 @@ class AuthController extends Controller
 
     public function logout(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $user = Auth::user();
-
+        $user = Auth::guard('sanctum')->user();
+        if (!$user) {
+            return response(['success' => false, 'message' => 'Not authenticated'], 401);
+        }
         $user->currentAccessToken()->delete();
-        return response([
-            'success' => true
-        ]);
+        return response(['success' => true]);
     }
 
     public function notificaciones(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -192,7 +61,7 @@ class AuthController extends Controller
         $notificacion = Notificaciones::where('user_id', $user->id)
             ->where('estado', 'nuevo')->first();
 
-        if($notificacion){
+        if ($notificacion) {
 
             $notificacion->estado = 'enviado';
             $notificacion->save();
@@ -209,30 +78,36 @@ class AuthController extends Controller
             'notificacion' => false,
         ]);
     }
-    /**
-     * @param mixed $puntodeventa
-     * @return void
-     */
-    public function getBodegas(mixed $puntodeventa): void
+
+
+
+    public function changePassword(Request $request)
     {
-        $arr_bodegas = array();
-//        $bodega = GpRelacionPuntoVentaBodega::join('gp_bodegas','gp_bodegas.BOD_BODEGA','gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_BODEGA')
-//            ->where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa->PTO_VTA_ID)
-//            ->select('gp_relacion_punto_venta_bodegas.*', 'gp_bodegas.PERMITE_DESPACHO')
-//            ->get()->first()->toArray();
-//        if ($bodega)
-//            $arr_bodegas[$bodega['PTO_VTA_BOD_BODEGA']] = $bodega;
+        $request->validate(
+            [
+                'password' => 'required|min:8',
+            ],
+            [
+                'password.min' => 'La contraseña debe tener al menos 8 caracteres',
+                'password.required' => 'La contraseña es requerida',
+            ]
+        );
+
+        $data = $request->all();
+        return $this->userService->changePassword($data);
+
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->all();
+        return $this->userService->resetPassword($data);
+    }
 
 
-        $masbodegas = GpRelacionPuntoVentaBodegaRelacionada::join('gp_bodegas','gp_bodegas.BOD_BODEGA','gp_relacion_punto_venta_bodega_relacionadas.PTO_VTA_BOD_REL_BODEGA')
-            ->where('PTO_VTA_BOD_REL_PUNTO_VENTA', $puntodeventa->PTO_VTA_ID)
-            ->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA')
-            ->select('gp_relacion_punto_venta_bodega_relacionadas.*', 'gp_bodegas.PERMITE_DESPACHO')
-            ->get()->toArray();
-
-        foreach ($masbodegas as $bodega) {
-            $arr_bodegas[$bodega['PTO_VTA_BOD_REL_BODEGA']] = $bodega;
-        }
-        $puntodeventa->bodegas = array_values($arr_bodegas);
+    public function changeStatusGpUser (Request $request)
+    {
+        $userId = $request->all();
+        return $this->userService->changeStatusGpUser($userId);
     }
 }

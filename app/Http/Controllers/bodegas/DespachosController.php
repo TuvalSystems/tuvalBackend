@@ -197,7 +197,7 @@ class DespachosController extends Controller
             }
 
             foreach ($fac_retenciones as $ret) {
-                $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv']  + $ret['ret_renta_srv'];
+                $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv'] + $ret['ret_renta_srv'];
             }
 
             if ($pedido['total'] <= $retencion) {
@@ -224,7 +224,7 @@ class DespachosController extends Controller
 
             $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro_id)->get()->toArray();
             foreach ($retenciones as $ret) {
-                $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv']  + $ret['ret_renta_srv'];
+                $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv'] + $ret['ret_renta_srv'];
             }
 
             $efectivo = GpCobrosEfectivoMonto::where('cobro_id', $cobro_id)->get()->toArray();
@@ -257,7 +257,7 @@ class DespachosController extends Controller
 
         $fac_retenciones = GpCobrosRetenciones::where('ret_factura', $pedido['factura'])->get()->toArray();
         foreach ($fac_retenciones as $ret) {
-            $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv']  + $ret['ret_renta_srv'];
+            $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv'] + $ret['ret_renta_srv'];
         }
 
         $fac_aplicacion = GpCobrosAplicacionFactura::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
@@ -332,7 +332,7 @@ class DespachosController extends Controller
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $ordenes =  GpOrdenDespacho::where('BOD_BODEGA', $bodega)
+        $ordenes = GpOrdenDespacho::where('BOD_BODEGA', $bodega)
             ->where('estado', $estado);
         if ($estado == 'despachada') {
             $ordenes = $ordenes->orWhere('estado', 'cancelada');
@@ -432,7 +432,7 @@ class DespachosController extends Controller
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $ordenes =  GpOrdenDespacho::where('BOD_BODEGA', $bodega)
+        $ordenes = GpOrdenDespacho::where('BOD_BODEGA', $bodega)
             ->where('estado', $estado);
         if ($estado == 'despachada') {
             $ordenes = $ordenes->orWhere('estado', 'cancelada');
@@ -523,7 +523,7 @@ class DespachosController extends Controller
 
     public function detalleordenliberada($id): Response|Application|ResponseFactory
     {
-        $orden =  GpOrdenDespacho::where('id', $id)->first();
+        $orden = GpOrdenDespacho::where('id', $id)->first();
 
         $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
@@ -614,25 +614,34 @@ class DespachosController extends Controller
             if (!$det->devuelto)
                 $det->devuelto = 0;
 
-            $det->devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.despachado', 0);
-                    $q->orWhereNull('gp_devoluciones.despachado');
-                })
+            $detTDevuelto = 0;
+            $detTNoDevuelto = 0;
+
+            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
+                ->where('gp_devoluciones_detalles.detalle_id', $det->id)
+                ->sum('gp_devoluciones_detalles.devuelto');
+            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
                 ->where('gp_devoluciones_detalles.detalle_id', $det->id)
                 ->sum('gp_devoluciones_detalles.devuelto');
 
-            $det->pendiente = number_format($det->ART_CANTIDAD - $det->reservado - $det->trasladado - $det->devuelto, 2, '.', '');
+
+            $detTDevuelto = $det->trasladado - $det->reservado - $devueltoDesp;
+            $detTNoDevuelto = ($det->ART_CANTIDAD - $det->trasladado) - $det->reservado - $devueltoNoDesp;
+
+            $det->pendiente = number_format( $detTNoDevuelto, 2, '.', '');
+
             $det->seleccionado = 0;
             if ($det->pendiente <= 0) {
                 unset($detalle[$key]);
             }
 
             if ($det->ART_DECIMAL_CANTIDAD == 0) {
-                $det->ART_CANTIDAD = (int)$det->ART_CANTIDAD;
-                $det->pendiente = (int)$det->pendiente;
-                $det->reservado = (int)$det->reservado;
-                $det->trasladado = (int)$det->trasladado;
+                $det->ART_CANTIDAD = (int) $det->ART_CANTIDAD;
+                $det->pendiente = (int) $det->pendiente;
+                $det->reservado = (int) $det->reservado;
+                $det->trasladado = (int) $det->trasladado;
             }
         }
 
@@ -649,7 +658,7 @@ class DespachosController extends Controller
 
     public function ordenespendientes($puntodeventa_id): Response|Application|ResponseFactory
     {
-        $ordenes =  GpOrdenDespacho::join('gp_pedidos', 'gp_pedidos.id', 'gp_orden_despachos.pedido_id')
+        $ordenes = GpOrdenDespacho::join('gp_pedidos', 'gp_pedidos.id', 'gp_orden_despachos.pedido_id')
             ->where('gp_orden_despachos.PTO_VTA_ID', $puntodeventa_id)
             ->where('gp_orden_despachos.estado', 'pendiente')
             ->select('gp_orden_despachos.*', 'gp_pedidos.fecha_entrega')
@@ -778,17 +787,23 @@ class DespachosController extends Controller
             if (!$art['devuelto'])
                 $art['devuelto'] = 0;
 
-            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.despachado', 0);
-                    $q->orWhereNull('gp_devoluciones.despachado');
-                })
+            $detTDevuelto = 0;
+            $detTNoDevuelto = 0;
+
+            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
+                ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
+                ->sum('gp_devoluciones_detalles.devuelto');
+            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
                 ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
                 ->sum('gp_devoluciones_detalles.devuelto');
 
-            $art['devuelto'] = $devuelto;
 
-            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
+            $detTDevuelto = $art['trasladado'] - $art['reservado'] - $devueltoDesp;
+            $detTNoDevuelto = ($art['ART_CANTIDAD'] - $art['trasladado']) - $art['reservado'] - $devueltoNoDesp;
+
+            $art['pendiente'] = number_format( $detTNoDevuelto, 2, '.', '');
 
             if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
@@ -813,7 +828,7 @@ class DespachosController extends Controller
                 $cantidad = $art['ART_CANTIDAD'];
                 $arr_comp = array();
                 foreach ($compartimento as $comp) {
-                    $arr_comp[] =  $comp;
+                    $arr_comp[] = $comp;
                     $cantidad -= $comp['STO_ART_COMPART_STOCK_DISPONIBLE'];
                     if ($cantidad <= 0)
                         break;
@@ -853,17 +868,24 @@ class DespachosController extends Controller
             if (!$art['devuelto'])
                 $art['devuelto'] = 0;
 
-            $devuelto = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where(function ($q) {
-                    $q->where('gp_devoluciones.despachado', 0);
-                    $q->orWhereNull('gp_devoluciones.despachado');
-                })
+            $detTDevuelto = 0;
+            $detTNoDevuelto = 0;
+
+            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
+                ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
+                ->sum('gp_devoluciones_detalles.devuelto');
+            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
+                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
                 ->where('gp_devoluciones_detalles.detalle_id', $art['id'])
                 ->sum('gp_devoluciones_detalles.devuelto');
 
-            $art['devuelto'] = $devuelto;
 
-            $art['pendiente'] = number_format($art['ART_CANTIDAD'] - $art['reservado'] - $art['trasladado'] - $art['devuelto'], 2, '.', '');
+            $detTDevuelto = $art['trasladado'] - $art['reservado'] - $devueltoDesp;
+            $detTNoDevuelto = ($art['ART_CANTIDAD'] - $art['trasladado']) - $art['reservado'] - $devueltoNoDesp;
+
+            $art['pendiente'] = number_format($detTNoDevuelto, 2, '.', '');
+
 
             if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
@@ -881,15 +903,22 @@ class DespachosController extends Controller
         $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
 
         foreach ($detallepedido as $item) {
-            if ($item->ART_TIPO_COMPRA != 'SERV') {
-                if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
-                    $listo = false;
-                }
+            // if ($item->ART_TIPO_COMPRA != 'SERV') {
+            if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
+                $listo = false;
             }
+            // }
+            // if ($item->ART_TIPO_COMPRA = 'SERV') {
+            //     if ($item->trasladado < $item->ART_CANTIDAD) {
+            //         $listo = false;
+            //     }
+            // }
+
         }
 
         if ($listo) {
             $pedido->despachado = 1;
+            $pedido->despacho_en_proceso = null;
             $pedido->save();
 
             $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
@@ -910,12 +939,17 @@ class DespachosController extends Controller
 
             foreach ($detallepedido as $item) {
 
-                if ($item->ART_TIPO_COMPRA != 'SERV') {
+                // if ($item->ART_TIPO_COMPRA != 'SERV') {
 
-                    if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
-                        $listo = false;
-                    }
+                if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
+                    $listo = false;
                 }
+                // if ($item->ART_TIPO_COMPRA = 'SERV') {
+                //     if ($item->trasladado < $item->ART_CANTIDAD) {
+                //         $listo = false;
+                //     }
+                // }
+                // }
             }
 
             if ($listo) {
@@ -935,7 +969,7 @@ class DespachosController extends Controller
                 $query->whereNull('gp_pedidos.despachado');
                 $query->orWhere('gp_pedidos.despachado', 0);
             })
-            ->where('gp_pedido_detalles.ART_TIPO_COMPRA', '!=', 'SERV')
+            //->where('gp_pedido_detalles.ART_TIPO_COMPRA', '!=', 'SERV')
             ->where('gp_pedido_detalles.reservado', '>', 0)
             ->where('gp_guia_remisions.tipo', 'despacho')
             ->where('gp_guia_remisions.estado', 'enviada')
@@ -1015,15 +1049,13 @@ class DespachosController extends Controller
 
     public function detalleordendespacho($id)
     {
-        $orden_despacho =  GpOrdenDespacho::where('id', $id)->first();
+        $orden_despacho = GpOrdenDespacho::where('id', $id)->first();
 
         $pedido = GpPedido::leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
             ->join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $orden_despacho->pedido_id)->first()->toarray();
-        $apigp = app(ApiGpService::class);
-        $order = app(OrderServiceInterface::class);
-        // $pedidos = new PedidosController($apigp, $order);
+       
         $pedido = $this->orderService->getOrderInfo($pedido['id']);
         $pedido['orden_despacho'] = $orden_despacho;
 
@@ -1035,7 +1067,7 @@ class DespachosController extends Controller
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $guias_despachadas =  GpGuiaRemision::join('gp_pedidos', 'gp_pedidos.pedido', 'gp_guia_remisions.pedido')
+        $guias_despachadas = GpGuiaRemision::join('gp_pedidos', 'gp_pedidos.pedido', 'gp_guia_remisions.pedido')
             ->join('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
             ->where('gp_guia_remisions.bodega_origen', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
@@ -1045,28 +1077,28 @@ class DespachosController extends Controller
             ->limit(1500)
             ->get();
 
-        $transferencias_enviadas =  GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
+        $transferencias_enviadas = GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'transferencia')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1000)
             ->get();
 
-        $transferencias_recibidas =  GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
+        $transferencias_recibidas = GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'transferencia')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1000)
             ->get();
 
-        $reposiciones_enviadas =  GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
+        $reposiciones_enviadas = GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'reposicion')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
             ->limit(1000)
             ->get();
 
-        $reposiciones_recibidas =  GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
+        $reposiciones_recibidas = GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'reposicion')
             ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
@@ -1135,7 +1167,7 @@ class DespachosController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->reposicionesEnviadas($bodega, $perPage, $search,$sortBy, $sortOrder),
+            'data' => $this->dispatchService->reposicionesEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder),
         ]);
     }
 
@@ -1149,7 +1181,7 @@ class DespachosController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->reposicionesRecibidas($bodega, $perPage, $search,$sortBy, $sortOrder),
+            'data' => $this->dispatchService->reposicionesRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder),
         ]);
     }
 }

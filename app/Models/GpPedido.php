@@ -145,5 +145,9 @@ class GpPedido extends Model
         return $date->format('Y-m-d H:i:s');
     }
 
-   
+    public function direccion_entrega(){
+        return $this->belongsTo(GpClienteSucursal::class, 'sucursal_id');
+    }
+
+
 }

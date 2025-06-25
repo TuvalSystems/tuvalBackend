@@ -46,6 +46,11 @@ class ApiSalesService
     }
 
 
+    public function getCheckoutPaymentInvoiceGp(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["validar_pago_factura"], 'GET', $params);
+    }
+
 
 
 }
