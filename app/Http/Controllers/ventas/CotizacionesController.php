@@ -8,7 +8,6 @@ use App\Models\GpCronLog;
 use App\Models\GpDatosItemsL;
 use App\Models\GpProspecto;
 use App\Models\GpRegistroCopia;
-use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartProveedores;
