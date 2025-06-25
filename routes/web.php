@@ -95,3 +95,6 @@ Route::get('/devolucion/generar-ajuste-devolucion/{id}', [DevolucionesController
 
 Route::get('/enviar-cotizaciones-recordatorio-sql', [CotizacionesController::class, 'sendAllQuotesRecorderSQLServer']);
 Route::get('/cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
+
+
+Route::get('/cotizaciones/listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);

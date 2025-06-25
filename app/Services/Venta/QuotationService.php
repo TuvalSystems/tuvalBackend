@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 use App\Http\Controllers\WebserviceController;
+use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
@@ -11,11 +12,13 @@ use App\Models\GpCotizacionVentaMotivo;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPuntoVenta;
 use App\Models\GpTempCart;
+use App\Models\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\ApiGpService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 class QuotationService implements QuotationServiceInterface
@@ -180,7 +183,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function syncAndGetCheckAlternativo($articulo)
     {
-        $item = GpTempCart::find( $articulo->id);
+        $item = GpTempCart::find($articulo->id);
 
         if (!$item || !$item->detalle_id) {
             return 0;
@@ -310,5 +313,79 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
+    /**
+     *  consulta de cotizaciones con novedades
+     * @param array $data
+     * @return JsonResponse
+     */
+
+    public function consultQuotationsNews($data)
+    {
+        $periodo = $data['periodo'] ?? null;
+        $sucursal = $data['sucursal'] ?? null;
+        $vendedor = $data['vendedor'] ?? null;
+        $motivo = $data['motivo'] ?? null;
+
+        if (!$periodo) {
+            return $this->buildErrorResponse('Debe ingresar un periodo', 400);
+        }
+        $fechaInit = date('Y-m-01', strtotime($periodo));
+        $fechaEnd = date('Y-m-t', strtotime($periodo));
+
+        if (!is_null($sucursal)) {
+            $formattedSucursal = strtoupper(trim($sucursal));
+            $sucursal = GpBodega::where('BOD_BODEGA', $formattedSucursal)->first();
+            if (!$sucursal) {
+                return $this->buildErrorResponse('Sucursal no encontrada', 404);
+            }
+        }
+
+        if (!is_null($motivo)) {
+            $motivo = GpCotizacionVentaMotivo::where('descripcion', [strtolower(trim($motivo))])->first();
+            if (!$motivo) {
+                return $this->buildErrorResponse('Motivo de no venta no encontrado', 404);
+            }
+        }
+
+        if (!is_null($vendedor)) {
+            $vendedor = GpUsuario::where('USERID', trim($vendedor))->first();
+            if (!$vendedor) {
+                return $this->buildErrorResponse('Vendedor no encontrado', 404);
+            }
+        }
+
+        $cotizaciones = GpCotizacion::with(['usuario', 'motivosNoVenta'])
+            ->when($periodo, function ($query) use ($fechaInit, $fechaEnd) {
+                $query->whereDate('created_at', '>=', $fechaInit)
+                    ->whereDate('created_at', '<=', $fechaEnd);
+            })->when($sucursal, function ($query) use ($sucursal) {
+                $query->where('BOD_BODEGA', $sucursal->BOD_BODEGA);
+            })->when($vendedor, function ($query) use ($vendedor) {
+                $query->where('user_id', $vendedor->id);
+            })->when($motivo, function ($query) use ($motivo) {
+                $query->where('cotizacion_venta_motivo_id', $motivo->id);
+            })
+            ->get();
+
+        $resumen = $cotizaciones->groupBy('user_id')->map(function ( $group) {
+            $usuario = $group->first()->USERID;
+            $total = collect($group)->count();
+            $facturados =  collect($group)->filter(fn($c) => $c->estado === 'procesado' && is_null($c->observacion))->count();
+            $facturadosComentados = $group->filter(fn($c) => $c->estado === 'procesado' && !is_null($c->observacion))->count();
+            $nofacturadasSinComentario =  $group->filter(fn($c) => $c->estado !== 'procesado' && is_null($c->observacion))->count();
+            $nofacturadasComentadas = $group->filter(fn($c) => $c->estado !== 'procesado' && !is_null($c->observacion))->count();
+            return [
+                'usuario' => $usuario,
+                'cotizaciones' =>  $total,
+                'cotizaciones_facturadas' => $facturados,
+                'cotizaciones_facturadas_comentadas' => $facturadosComentados,
+                'cotizaciones_no_facturadas' => $nofacturadasSinComentario,
+                'cotizaciones_comentadas' =>  $nofacturadasComentadas,
+                'porcentaje_facturacion' => ($nofacturadasComentadas /  $total * 100) . ' %',
+            ];
+        })->values()->toArray();
+
+        return $this->successResponse('Datos Obtenidos Correctamente', $resumen, 200);
+    }
 
 }

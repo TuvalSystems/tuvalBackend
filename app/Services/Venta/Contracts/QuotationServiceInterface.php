@@ -37,4 +37,9 @@ interface QuotationServiceInterface
       */
 
       public function printQuotationPdf($id);
+
+      /***
+       * API para obtener listado de cotizaciones con novedades
+       */
+      public function consultQuotationsNews($data);
 }

@@ -8,6 +8,7 @@ use App\Models\GpCronLog;
 use App\Models\GpDatosItemsL;
 use App\Models\GpProspecto;
 use App\Models\GpRegistroCopia;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartProveedores;
@@ -28,10 +29,12 @@ use App\Models\GpPedido;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 
 class CotizacionesController extends Controller
 {
     protected $quotationService;
+
     public function __construct(QuotationServiceInterface $quotationService)
     {
         $this->quotationService = $quotationService;
@@ -1760,4 +1763,16 @@ class CotizacionesController extends Controller
         $item = $request['item'];
         return $this->quotationService->getItemsAlternatives($item);
     }
+
+
+    /**
+     * API PARA LISTAR LAS NOVEDADES DE LAS COTIZACIONES
+     *
+     */
+     public function consultQuotationsNews(Request $request): JsonResponse{
+
+        return $this->quotationService->consultQuotationsNews($request->all());
+
+
+     }
 }
