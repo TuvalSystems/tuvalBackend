@@ -1737,6 +1737,7 @@ class PedidosController extends Controller
         $detalle->ART_CODIGO = $det['ART_CODIGO'];
         $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
         $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
+        $detalle->CHECK_ALTERNATIVO = $det['CHECK_ALTERNATIVO'] ?? 0;
         $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
         $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
         $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];

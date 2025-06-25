@@ -94,3 +94,4 @@ Route::get('/devolucion/generar-nota-credito-errores/{id}', [DevolucionesControl
 Route::get('/devolucion/generar-ajuste-devolucion/{id}', [DevolucionesController::class, 'generarAjusteDevolucionesFallidas']);
 
 Route::get('/enviar-cotizaciones-recordatorio-sql', [CotizacionesController::class, 'sendAllQuotesRecorderSQLServer']);
+Route::get('/cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);

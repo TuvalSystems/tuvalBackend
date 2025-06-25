@@ -74,6 +74,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCart whereUserId($value)
  * @mixin \Eloquent
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCart whereARTPESO($value)
+ * @property  boolean|null  $CHECK_ALTERNATIVO
  */
 class GpTempCart extends Model
 {

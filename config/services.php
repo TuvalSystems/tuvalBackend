@@ -57,6 +57,7 @@ return [
 
             //cotizaciones
             'guardar_cotizacion_recordatorio'           => 'api/cotizaciones/guardar-cotizacion-recordatorio',
+            'lista_items_alternativos'                  => 'api/cotizaciones/lista-items-alternativos',
         ],
     ],
     'api_sales' => [

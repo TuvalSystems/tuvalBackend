@@ -461,6 +461,7 @@ class DevolucionService implements DevolucionServiceInterface
             $detail->ART_CODIGO = Arr::get($item, 'ART_CODIGO');
             $detail->ART_DESCRIPCION = Arr::get($item, 'ART_DESCRIPCION');
             $detail->ART_DESCRIPCION_ORIGINAL = Arr::get($item, 'ART_DESCRIPCION_ORIGINAL');
+            $detail->CHECK_ALTERNATIVO = Arr::get($item, 'CHECK_ALTERNATIVO', 0);
             $detail->ART_CODIGO_TRES_LETRAS = Arr::get($item, 'ART_CODIGO_TRES_LETRAS');
             $detail->ART_DECIMAL_CANTIDAD = (int) Arr::get($item, 'ART_DECIMAL_CANTIDAD');
             $detail->ART_PLAN_UMEDIDA = Arr::get($item, 'ART_PLAN_UMEDIDA');

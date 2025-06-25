@@ -64,6 +64,7 @@ class CotizacionesController extends Controller
         $articulo->ART_CODIGO = $data['articulo']['ART_CODIGO'];
         $articulo->ART_DESCRIPCION = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION']));
         $articulo->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION_ORIGINAL']));
+        // $articulo->CHECK_ALTERNATIVO = $data['articulo']['CHECK_ALTERNATIVO'] ?? 0; // no va pero igual va comentado por si acaso
         $articulo->ART_CODIGO_TRES_LETRAS = $data['articulo']['ART_CODIGO_TRES_LETRAS'];
         $articulo->ART_DECIMAL_CANTIDAD = $data['articulo']['ART_DECIMAL_CANTIDAD'];
         $articulo->ART_PLAN_UMEDIDA = $data['articulo']['ART_PLAN_UMEDIDA'];
@@ -172,7 +173,7 @@ class CotizacionesController extends Controller
 
         $consulta_precio = array();
         foreach ($articulos as $articulo) {
-
+            $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($articulo);
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
             );
@@ -345,7 +346,6 @@ class CotizacionesController extends Controller
 
     public function updatedescuento(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-
         $data = $request->validate([
             'articulo' => 'required',
             'descuento' => '',
@@ -355,6 +355,17 @@ class CotizacionesController extends Controller
         return response([
             'success' => true,
         ]);
+    }
+
+    public function updateCheckAlternativo(Request $request)
+    {
+        $data = $request->validate([
+            'articulo' => 'required',
+            'CHECK_ALTERNATIVO' => 'required|boolean',
+        ]);
+
+        return $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
+
     }
 
     public function saveproveedor(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -484,6 +495,7 @@ class CotizacionesController extends Controller
                 $detalle->ART_CODIGO = $det['ART_CODIGO'];
                 $detalle->ART_DESCRIPCION = trim(str_replace('  ', ' ', $det['ART_DESCRIPCION']));
                 $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
+                $detalle->CHECK_ALTERNATIVO = $det['CHECK_ALTERNATIVO'] ?? 0;
                 $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
                 $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
                 $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
@@ -541,10 +553,12 @@ class CotizacionesController extends Controller
                 ->where('user_id', $user->id)
                 ->delete();
 
-            if (isset($data['registro_copia']) && $data['registro_copia'] != '') {
+            if (isset($data['registro_copia']) && $data['registro_copia'] != '' && $data['registro_copia'] != 'null' && $data['registro_copia'] != null) {
                 $registro_copia = GpRegistroCopia::where('id', $data['registro_copia'])->first();
-                $registro_copia->cotizacion_destino = $cotizacion->id;
-                $registro_copia->save();
+                if ($registro_copia) {
+                    $registro_copia->cotizacion_destino = $cotizacion->id;
+                    $registro_copia->save();
+                }
             }
 
             return response([
@@ -1225,7 +1239,7 @@ class CotizacionesController extends Controller
 
         // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-         $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
         $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
             ->map(function ($items) {
                 return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
@@ -1290,7 +1304,7 @@ class CotizacionesController extends Controller
         }
 
         // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-           $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
         $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
             ->map(function ($items) {
                 return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
@@ -1416,7 +1430,13 @@ class CotizacionesController extends Controller
         $cronLog->save();
     }
 
-    public function imprimircotizacion($id): \Illuminate\Http\Response|string
+    public function imprimircotizacion($id)
+    {
+        $cotizacion = $this->quotationService->printQuotationPdf($id);
+        $pdf = Pdf::loadView('cotizacionPDF', $cotizacion);
+        return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
+    }
+    public function imprimircotizacion2($id): \Illuminate\Http\Response|string
     {
         $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
 
@@ -1724,10 +1744,20 @@ class CotizacionesController extends Controller
      *  Se enviar todas las cotizaciones pendientes de recordatorio de venta a SQL Server que tengan un motivo asignado
      * @return void
      */
-    public function sendAllQuotesRecorderSQLServer(){
-        $cotizaciones =  GpCotizacion::with(['usuario', 'usuariorecordatorio','motivosNoVenta'])->where('cotizacion_venta_motivo_id', '!=', null)->get();
-        foreach ($cotizaciones as  $cotizacion) {
-             $this->quotationService->sendStoreReminderGp($cotizacion);
+    public function sendAllQuotesRecorderSQLServer()
+    {
+        $cotizaciones = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->where('cotizacion_venta_motivo_id', '!=', null)->get();
+        foreach ($cotizaciones as $cotizacion) {
+            $this->quotationService->sendStoreReminderGp($cotizacion);
         }
+    }
+
+
+    /** lista de items alterantivos traidos del apigp -cotizaciones sql server */
+
+    public function getItemsAlternatives(Request $request)
+    {
+        $item = $request['item'];
+        return $this->quotationService->getItemsAlternatives($item);
     }
 }

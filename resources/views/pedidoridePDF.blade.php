@@ -153,10 +153,10 @@
             <table border="0" width="100%">
                 <tr>
                     <div class="bordered" style="text-align: justify;">
-                         <div><strong>RAZÓN SOCIAL/NOMBRES :</strong>{{  $cliente['CLI_RAZON_SOCIAL'] }}</div>
+                        <div><strong>RAZÓN SOCIAL/NOMBRES :</strong>{{  $cliente['CLI_RAZON_SOCIAL'] }}</div>
                         <div><strong>RUC :</strong> {{ $cliente['CLI_RUC'] }} </div>
                         <div><strong>FECHA EMISIÓN :</strong>
-                        {{ $fecha_factura }}
+                            {{ $fecha_factura }}
                         </div>
                         <div><strong>DIRECCIÓN :</strong> {{ $sucursal['CLI_SUC_DIRECCION'] }} </div>
                         <div><strong>EMAIL :</strong> {{ $cliente['CLI_CORREO_ELECT_SRI'] }} </div>
@@ -184,35 +184,42 @@
             </thead>
             <tbody>
                 @foreach ($detalle as $key => $value)
-                <tr>
-                    <td class="nowrap">
-                        @if($value['ART_TIPO_COMPRA'] == 'SERV')
-                        +
-                        @endif
-                        @if($value['ART_IMP_VTA'] == 5)
-                        *
-                        @endif
-                        {{$value['ART_CODIGO']}}
-                    </td>
-                    <td>{{$value['ART_CODIGO_TRES_LETRAS']}}</td>
-                    <td class="text-left">{{$value['ART_DESCRIPCION']}}</td>
-                    <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
-                    <td class="text-right">{{$value['ART_CANTIDAD']}}</td>
-                    <td class="text-right">${{$value['ART_VALOR']}}</td>
-                    <td class="text-right">{{$value['descuento']}}%</td>
-                    <td class="text-right">${{ number_format($value['ART_DESCUENTO'] * $value['ART_CANTIDAD'], 4 , '.','')}}</td>
-                    <td class="text-right">${{ number_format(($value['ART_VALOR'] - $value['ART_DESCUENTO']) * $value['ART_CANTIDAD'],2,'.','')}}</td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td class="text-center">
-                        @foreach($value['imagenes'] as $imagen)
-                        <img src="{{$imagen}}" style="max-width: 150px;margin-top: 20px;" alt="">
-                        @endforeach
-                    </td>
-                    <td colspan="6"></td>
-                </tr>
+                    <tr>
+                        <td class="nowrap">
+                            @if($value['ART_TIPO_COMPRA'] == 'SERV')
+                                +
+                            @endif
+                            @if($value['ART_IMP_VTA'] == 5)
+                                *
+                            @endif
+                            {{$value['ART_CODIGO']}}
+                        </td>
+                        <td>{{$value['ART_CODIGO_TRES_LETRAS']}}</td>
+                        <td class="text-left">{{$value['ART_DESCRIPCION']}}
+                            @if($value['CHECK_ALTERNATIVO'] === 1)
+                                <span class="text-danger" style="color: red;">(Alternativa)</span>
+                            @endif
+                        </td>
+                        <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
+                        <td class="text-right">{{$value['ART_CANTIDAD']}}</td>
+                        <td class="text-right">${{$value['ART_VALOR']}}</td>
+                        <td class="text-right">{{$value['descuento']}}%</td>
+                        <td class="text-right">
+                            ${{ number_format($value['ART_DESCUENTO'] * $value['ART_CANTIDAD'], 4, '.', '')}}</td>
+                        <td class="text-right">
+                            ${{ number_format(($value['ART_VALOR'] - $value['ART_DESCUENTO']) * $value['ART_CANTIDAD'], 2, '.', '')}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td class="text-center">
+                            @foreach($value['imagenes'] as $imagen)
+                                <img src="{{$imagen}}" style="max-width: 150px;margin-top: 20px;" alt="">
+                            @endforeach
+                        </td>
+                        <td colspan="6"></td>
+                    </tr>
                 @endforeach
             </tbody>
         </table>
@@ -227,7 +234,7 @@
                         </tr>
                         <tr>
                             <td>Vendedor:</td>
-                            <td>{{$vendedor['VEND_NOMBRES'].' '.$vendedor['VEND_APELLIDOS']}}</td>
+                            <td>{{$vendedor['VEND_NOMBRES'] . ' ' . $vendedor['VEND_APELLIDOS']}}</td>
                         </tr>
                         <tr>
                             <td>Forma de pago:</td>
@@ -249,18 +256,18 @@
                         <tr>
                             <td>
                                 @if($despacho == 'Retiro en bodega')
-                                Bodega Retiro:
+                                    Bodega Retiro:
                                 @else
-                                Bodega:
+                                    Bodega:
                                 @endif
                             </td>
                             <td>{{ $BOD_BODEGA }}</td>
                         </tr>
                         @if($orden_de_compra != '')
-                        <tr>
-                            <td>Orden de compra:</td>
-                            <td>{{ $orden_de_compra }}</td>
-                        </tr>
+                            <tr>
+                                <td>Orden de compra:</td>
+                                <td>{{ $orden_de_compra }}</td>
+                            </tr>
                         @endif
                         <tr>
                             <td>Forma de pago SRI:</td>
@@ -291,10 +298,10 @@
 
                     <table class="table2 " align="right" style="margin-right: 10px;">
                         @foreach($tipoimpuesto as $key => $tipo)
-                        <tr>
-                            <td><b>SUBTOTAL {{ (int)$key}}%: </b></td>
-                            <td style="text-align: right;">${{ number_format($tipo ,2,'.','')}}</td>
-                        </tr>
+                            <tr>
+                                <td><b>SUBTOTAL {{ (int) $key}}%: </b></td>
+                                <td style="text-align: right;">${{ number_format($tipo, 2, '.', '')}}</td>
+                            </tr>
                         @endforeach
                         <tr>
                             <td><b>SUBTOTAL 0%: </b></td>
@@ -326,10 +333,10 @@
                         </tr>
 
                         @foreach($sumaimpuesto as $key => $impuesto)
-                        <tr>
-                            <td><b>IVA {{ (int)$key}}%: </b></td>
-                            <td style="text-align: right;">${{ number_format($impuesto ,2,'.','')}}</td>
-                        </tr>
+                            <tr>
+                                <td><b>IVA {{ (int) $key}}%: </b></td>
+                                <td style="text-align: right;">${{ number_format($impuesto, 2, '.', '')}}</td>
+                            </tr>
                         @endforeach
                         <tr>
                             <td><b>TOTAL: </b></td>
@@ -349,20 +356,26 @@
             <p>Nota: No se aceptan reclamos, ni devoluciones una vez recibido la mercadería.</p>
             <ol>
                 <li>Nota: Los items marcados con (*) tienen el 5% de IVA.</li>
-                <li>Nota: Favor entregar comprobante de retención dentro de los 5 días caso contrario cliente asumirá valor total de Factura.</li>
+                <li>Nota: Favor entregar comprobante de retención dentro de los 5 días caso contrario cliente asumirá
+                    valor total de Factura.</li>
                 <li>Nota: La mercadería amparada en esta factura viajan por cuenta y riesgo del comprador.</li>
                 <li>Nota: Los items marcados con (+) son items de servicio. Por favor retener el 2.75%.</li>
             </ol>
             <div class="bordered" style="font-size: 7px;">
-                *DECLARO HABER RECIBIDO A ENTERA SATISFACCIÓN Y SIN LUGAR A RECLAMO POSTERIOR TODA LA MERCADERÍA Y/O SERVICIO DETALLADO
-                EN ESTA FACTURA, LA MISMA QUE COMO COMPRADOR O DEPENDIENTE AUTORIZADO DEL COMPRADOR RECONOZCO EXPRESAMENTE,
-                SUJETÁNDOME YO, O MI EMPLEADOR, SEGÚN EL CASO, A LAS CONDICIONES Y PLAZOS QUE CONSTA EN LA MISMA, ACEPTANDO DE IGUAL
-                MANERA PAGAR EL MÁXIMO DEL INTERÉS CORRESPONDIENTE EN CASO DE RETRASO POR LA MORA, LA QUE PRINCIPIARÁ AUTOMÁTICAMENTE
+                *DECLARO HABER RECIBIDO A ENTERA SATISFACCIÓN Y SIN LUGAR A RECLAMO POSTERIOR TODA LA MERCADERÍA Y/O
+                SERVICIO DETALLADO
+                EN ESTA FACTURA, LA MISMA QUE COMO COMPRADOR O DEPENDIENTE AUTORIZADO DEL COMPRADOR RECONOZCO
+                EXPRESAMENTE,
+                SUJETÁNDOME YO, O MI EMPLEADOR, SEGÚN EL CASO, A LAS CONDICIONES Y PLAZOS QUE CONSTA EN LA MISMA,
+                ACEPTANDO DE IGUAL
+                MANERA PAGAR EL MÁXIMO DEL INTERÉS CORRESPONDIENTE EN CASO DE RETRASO POR LA MORA, LA QUE PRINCIPIARÁ
+                AUTOMÁTICAMENTE
                 AL VENCERSE EL PLAZO ANTEDICHO, SIN NECESIDAD DE REQUERIMIENTO ALGUNO.
             </div>
             <div class="bordered" style="font-size: 10px;">
                 Si desea ver su comprobante electrónico, visite nuestro portal web: https://tuval.seedbilling.ec<br>
-                Nota: Para poder ingresar al portal por favor ingrese el ruc o cédula y su contraseña por defecto es el ruc o cédula
+                Nota: Para poder ingresar al portal por favor ingrese el ruc o cédula y su contraseña por defecto es el
+                ruc o cédula
             </div>
         </div>
     </div>

@@ -83,6 +83,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::post('/updatedescripcion', [CotizacionesController::class, 'updatedescripcion']);
     Route::post('/cotizaciones/updatevalor', [CotizacionesController::class, 'updatevalor']);
     Route::post('/cotizaciones/updatedescuento', [CotizacionesController::class, 'updatedescuento']);
+    Route::post('/cotizaciones/actualizar-check-item-alternativo', [CotizacionesController::class, 'updateCheckAlternativo']);
     Route::post('/saveproveedor', [CotizacionesController::class, 'saveproveedor']);
     Route::post('/cotizaciones/guardarcotizacion', [CotizacionesController::class, 'guardarcotizacion']);
     Route::post('/cotizaciones/guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
@@ -115,7 +116,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::post('/pedidos/consultardespachado', [PedidosController::class, 'consultardespachado']);
     Route::post('/pedidos/facturarexistente', [PedidosController::class, 'facturarexistente']);
     Route::post('/pedidos/facturardespachado', [PedidosController::class, 'facturardespachado']);
-    Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
+    // Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
     Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
     Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);
     Route::post('/cotizaciones/recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
@@ -246,6 +247,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     //new routes
     Route::get('cotizaciones/lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
     Route::put('cotizaciones/guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
+
+    /** cotizaciones new routes */
+    Route::get('cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
 });
 Route::post('/login', [AuthController::class, 'login']);
 
