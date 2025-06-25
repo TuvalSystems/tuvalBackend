@@ -152,6 +152,19 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
+    public function restoreDescriptionItemQuotation($articulo, $bodega)
+    {
+        $params = ['articulo' => $articulo, 'bodega' => $bodega];
+        $articulo = $this->apiGpService->getStockWarehouse($params);
+
+        if (empty($articulo) || !is_array($articulo) || !isset($articulo[0])) {
+            return null;
+        }
+        $art = $articulo[0] ?? null;
+        return $art['DESCRIPCION_ARTICULO'] ?? null;
+    }
+
+
 
     /**
      * LISTA DE ALTERNATIVAS
@@ -367,21 +380,21 @@ class QuotationService implements QuotationServiceInterface
             })
             ->get();
 
-        $resumen = $cotizaciones->groupBy('user_id')->map(function ( $group) {
+        $resumen = $cotizaciones->groupBy('user_id')->map(function ($group) {
             $usuario = $group->first()->USERID;
             $total = collect($group)->count();
-            $facturados =  collect($group)->filter(fn($c) => $c->estado === 'procesado' && is_null($c->observacion))->count();
+            $facturados = collect($group)->filter(fn($c) => $c->estado === 'procesado' && is_null($c->observacion))->count();
             $facturadosComentados = $group->filter(fn($c) => $c->estado === 'procesado' && !is_null($c->observacion))->count();
-            $nofacturadasSinComentario =  $group->filter(fn($c) => $c->estado !== 'procesado' && is_null($c->observacion))->count();
+            $nofacturadasSinComentario = $group->filter(fn($c) => $c->estado !== 'procesado' && is_null($c->observacion))->count();
             $nofacturadasComentadas = $group->filter(fn($c) => $c->estado !== 'procesado' && !is_null($c->observacion))->count();
             return [
                 'usuario' => $usuario,
-                'cotizaciones' =>  $total,
+                'cotizaciones' => $total,
                 'cotizaciones_facturadas' => $facturados,
                 'cotizaciones_facturadas_comentadas' => $facturadosComentados,
                 'cotizaciones_no_facturadas' => $nofacturadasSinComentario,
-                'cotizaciones_comentadas' =>  $nofacturadasComentadas,
-                'porcentaje_facturacion' => ($nofacturadasComentadas /  $total * 100) . ' %',
+                'cotizaciones_comentadas' => $nofacturadasComentadas,
+                'porcentaje_facturacion' => ($nofacturadasComentadas / $total * 100) . ' %',
             ];
         })->values()->toArray();
 

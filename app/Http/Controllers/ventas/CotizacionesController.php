@@ -25,6 +25,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
 use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -1228,8 +1229,11 @@ class CotizacionesController extends Controller
                 $articulo->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
                 $articulo->ART_DESCUENTO = 0;
                 $articulo->modificador = 0;
+                $articulo->ART_DESCRIPCION_ORIGINAL = $this->quotationService->restoreDescriptionItemQuotation($articulo->ART_CODIGO, $data['BOD_BODEGA']) ?? $articulo->ART_DESCRIPCION_ORIGINAL;
                 $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
+                $articulo->CHECK_ALTERNATIVO = 0;
             }
+
         }
 
         $webservices = new WebserviceController;
