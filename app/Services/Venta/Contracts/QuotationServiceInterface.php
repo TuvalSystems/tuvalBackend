@@ -15,7 +15,7 @@ interface QuotationServiceInterface
      */
 
     public function restoreQuotation($articulos, $bodegas);
-
+    public function restoreDescriptionItemQuotation($articulos, $bodegas);
 
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);
@@ -37,4 +37,9 @@ interface QuotationServiceInterface
       */
 
       public function printQuotationPdf($id);
+
+      /***
+       * API para obtener listado de cotizaciones con novedades
+       */
+      public function consultQuotationsNews($data);
 }

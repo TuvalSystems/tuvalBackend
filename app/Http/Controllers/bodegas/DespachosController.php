@@ -1055,9 +1055,7 @@ class DespachosController extends Controller
             ->join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $orden_despacho->pedido_id)->first()->toarray();
-        $apigp = app(ApiGpService::class);
-        $order = app(OrderServiceInterface::class);
-        // $pedidos = new PedidosController($apigp, $order);
+       
         $pedido = $this->orderService->getOrderInfo($pedido['id']);
         $pedido['orden_despacho'] = $orden_despacho;
 
