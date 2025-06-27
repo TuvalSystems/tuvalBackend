@@ -277,19 +277,24 @@ class OrderService implements OrderServiceInterface
 
         // 🔍 5. Procesar traslados
         $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
-        $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
-            $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
-            $trasladoVenta->guias = $guias;
-            $guias->each(function ($guia) use (&$pendientes, &$existentes) {
-                if ($guia->estado != 'recibida')
+        if ($trasladosVentas->isEmpty()) {
+            $pendientes = true; // Si no hay traslados, marcamos como pendientes
+            $trasladosVentas = collect(); // Inicializamos como colección vacía
+            // $existentes = false; // No hay traslados existentes
+        }else{
+            $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
+                $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
+                $trasladoVenta->guias = $guias;
+                $guias->each(function ($guia) use (&$pendientes, &$existentes) {
+                    if ($guia->estado != 'recibida')
+                        $pendientes = true;
+                    else
+                        $existentes = true;
+                });
+                if (!$trasladoVenta->completado)
                     $pendientes = true;
-                else
-                    $existentes = true;
             });
-            if (!$trasladoVenta->completado)
-                $pendientes = true;
-        });
-
+        }
         // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
