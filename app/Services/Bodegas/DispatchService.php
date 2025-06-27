@@ -49,7 +49,6 @@ class DispatchService implements DispatchServiceInterface
 
     public function transferenciasEnviadas($bodega, $perpage, $search, $sortBy = null, $sortOrder = 'asc')
     {
-
         $query = GpGuiaRemision::fromSub(function ($sub) use ($bodega) {
             $sub->select([
                 'gp_guia_remisions.id',
