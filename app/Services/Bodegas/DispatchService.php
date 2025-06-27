@@ -104,9 +104,8 @@ class DispatchService implements DispatchServiceInterface
 
         if ($search) {
             $query->whereRaw("
-            gp_guia_remisions.pedido LIKE ?
-            or gp_guia_remisions.GUI_REM_GUIA_REMISION LIKE ?
-            ", ['%' . $search . '%', '%' . $search . '%']);
+            gp_guia_remisions.GUI_REM_GUIA_REMISION LIKE ?
+            ", [ '%' . $search . '%']);
         }
 
         if ($sortBy) {
