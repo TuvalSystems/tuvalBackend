@@ -275,7 +275,7 @@ class OrderService implements OrderServiceInterface
             ->filter()
             ->values();
 
-        // 🔍 5. Procesar traslados
+         // 🔍 5. Procesar traslados
         $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
         if ($trasladosVentas->isEmpty()) {
             $pendientes = true; // Si no hay traslados, marcamos como pendientes
@@ -295,6 +295,7 @@ class OrderService implements OrderServiceInterface
                     $pendientes = true;
             });
         }
+
         // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
