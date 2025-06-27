@@ -803,7 +803,7 @@ class DespachosController extends Controller
             $detTDevuelto = $art['trasladado'] - $art['reservado'] - $devueltoDesp;
             $detTNoDevuelto = ($art['ART_CANTIDAD'] - $art['trasladado']) - $art['reservado'] - $devueltoNoDesp;
 
-            $art['pendiente'] = number_format( $detTNoDevuelto, 2, '.', '');
+            $art['pendiente'] = number_format($detTNoDevuelto, 2, '.', '');
 
             if ($art['pendiente'] <= 0) {
                 unset($detalle[$key]);
@@ -1055,7 +1055,7 @@ class DespachosController extends Controller
             ->join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $orden_despacho->pedido_id)->first()->toarray();
-       
+
         $pedido = $this->orderService->getOrderInfo($pedido['id']);
         $pedido['orden_despacho'] = $orden_despacho;
 
@@ -1122,10 +1122,13 @@ class DespachosController extends Controller
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
         $sortOrder = $request->input('sortOrder', 'asc');
+        $fecha_desde = $request->input('fecha_desde', null);
+        $fecha_hasta = $request->input('fecha_hasta', null);
+         $clienteRuc = $request->input('cliente', null);
 
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->guiasDespachadas($bodega, $perPage, $search, $sortBy, $sortOrder),
+            'data' => $this->dispatchService->guiasDespachadas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta,  $clienteRuc),
         ]);
     }
 
@@ -1136,10 +1139,12 @@ class DespachosController extends Controller
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
         $sortOrder = $request->input('sortOrder', 'asc');
-
+        $fecha_desde = $request->input('fecha_desde', null);
+        $fecha_hasta = $request->input('fecha_hasta', null);
+        $clienteRuc = $request->input('cliente', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->transferenciasEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder),
+            'data' => $this->dispatchService->transferenciasEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
         ]);
     }
 
@@ -1150,10 +1155,12 @@ class DespachosController extends Controller
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
         $sortOrder = $request->input('sortOrder', 'asc');
-
+        $fecha_desde = $request->input('fecha_desde', null);
+        $fecha_hasta = $request->input('fecha_hasta', null);
+        $clienteRuc = $request->input('cliente', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->transferenciasRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder),
+            'data' => $this->dispatchService->transferenciasRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
         ]);
     }
 
@@ -1164,10 +1171,12 @@ class DespachosController extends Controller
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
         $sortOrder = $request->input('sortOrder', 'asc');
-
+        $fecha_desde = $request->input('fecha_desde', null);
+        $fecha_hasta = $request->input('fecha_hasta', null);
+        $clienteRuc = $request->input('cliente', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->reposicionesEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder),
+            'data' => $this->dispatchService->reposicionesEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
         ]);
     }
 
@@ -1178,10 +1187,12 @@ class DespachosController extends Controller
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
         $sortOrder = $request->input('sortOrder', 'asc');
-
+        $fecha_desde = $request->input('fecha_desde', null);
+        $fecha_hasta = $request->input('fecha_hasta', null);
+        $clienteRuc = $request->input('cliente', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->reposicionesRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder),
+            'data' => $this->dispatchService->reposicionesRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
         ]);
     }
 }
