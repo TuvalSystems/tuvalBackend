@@ -6,14 +6,13 @@ use DateTime;
 use App\Models\GpPedido;
 use Illuminate\Support\Arr;
 use App\Models\GpPedidoDetalle;
-use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class ApprovalService implements ApprovalServiceInterface
 {
 
 
-    // aprobacion comercial del pedido en caso de que tenga U cotizacion 
+    // aprobacion comercial del pedido en caso de que tenga U cotizacion
 
     public function checkoutApprovalComercial($data, $order = false)
     {
