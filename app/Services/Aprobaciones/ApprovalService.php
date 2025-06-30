@@ -12,11 +12,12 @@ class ApprovalService implements ApprovalServiceInterface
 {
 
 
-    // aprobacion comercial del pedido en caso de que tenga U cotizacion
+    // aprobacion comercial tanto de pedido como de cotizaciones
 
     public function checkoutApprovalComercial($data, $order = false)
     {
         // TODO: Implement checkoutApprovalComercial() method.
+        $return = ['requiere' => 'no', 'motivo' =>  null];
 
 
 
