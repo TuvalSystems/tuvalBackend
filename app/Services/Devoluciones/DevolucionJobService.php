@@ -15,6 +15,7 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
@@ -58,7 +59,8 @@ class DevolucionJobService
         $criterios = $this->listReturnCriteria();
         $apiGp = app(ApiGpService::class);
         $order = app(OrderServiceInterface::class);
-        $pedidosController = new PedidosController($apiGp, $order);
+        $aproval = app(ApprovalServiceInterface::class);
+        $pedidosController = new PedidosController($apiGp, $order, $aproval);
 
         try {
 

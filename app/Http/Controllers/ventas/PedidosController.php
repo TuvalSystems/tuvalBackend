@@ -8,6 +8,7 @@ use App\Models\GpArticulo;
 use App\Models\GpTempCart;
 use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\GpOrdenDespacho;
@@ -46,10 +47,12 @@ class PedidosController extends Controller
     use JsonResponseTrait;
     protected $apiGp;
     protected $orderService;
-    public function __construct(ApiGpService $apiGp, OrderServiceInterface $orderService)
+    protected $approvalService;
+    public function __construct(ApiGpService $apiGp, OrderServiceInterface $orderService, ApprovalServiceInterface $approvalService)
     {
         $this->orderService = $orderService;
         $this->apiGp = $apiGp;
+        $this->approvalService = $approvalService;
     }
 
 
@@ -78,7 +81,8 @@ class PedidosController extends Controller
             }
         }
 
-        $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data, true);
+        $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data, true);
+        // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data, true);
         //        echo '<pre>';
         //        print_r($requiere_aprobacion_comercial);
         //        die();
@@ -1236,7 +1240,8 @@ class PedidosController extends Controller
 
         if ($data['tipo'] == 'cotizacion') {
             $quotationService = app(QuotationServiceInterface::class);
-            $cotizaciones = new CotizacionesController($quotationService);
+            $aproval = app(ApprovalServiceInterface::class);
+            $cotizaciones = new CotizacionesController($quotationService, $aproval);
             $detalle = $cotizaciones->getdetallecotizacion($data['pedido'], true);
             $registroCopia->cotizacion_origen = $data['pedido']['id'];
         } else {

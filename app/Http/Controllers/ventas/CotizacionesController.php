@@ -25,7 +25,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -34,10 +34,12 @@ use Illuminate\Http\JsonResponse;
 class CotizacionesController extends Controller
 {
     protected $quotationService;
+    protected $approvalService;
 
-    public function __construct(QuotationServiceInterface $quotationService)
+    public function __construct(QuotationServiceInterface $quotationService, ApprovalServiceInterface $approvalService)
     {
         $this->quotationService = $quotationService;
+        $this->approvalService = $approvalService;
     }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -420,7 +422,8 @@ class CotizacionesController extends Controller
 
         $aprobaciones = new AprobacionesController;
 
-        $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);
+        $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data);
+        // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);
         //        echo $requiere_aprobacion_comercial;
 //        die();
         $requiere_aprobacion_crediticia = 'no';//$aprobaciones->checkAprobacionesCrediticias($data);
