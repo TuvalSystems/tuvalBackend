@@ -13,7 +13,7 @@ class ApprovalService implements ApprovalServiceInterface
 {
 
 
-    // aprobacion comercial del pedido en caso de que tenga
+    // aprobacion comercial del pedido en caso de que tenga U cotizacion 
 
     public function checkoutApprovalComercial($data, $order = false)
     {
