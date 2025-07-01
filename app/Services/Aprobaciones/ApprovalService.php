@@ -31,7 +31,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$nivelFormaPagoCliente) {
             return [
                 'requiere' => 'no',
-                'motivo' => 'Forma de pago no encontrada en la base de datos'
+                'motivo' => "Forma de pago no encontrada en la base de datos."
             ];
         }
         $nivelCliente = $nivelFormaPagoCliente->nivel;
@@ -42,7 +42,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$nivelFormaPagoCotizacion) {
             return [
                 'requiere' => 'no',
-                'motivo' => 'Forma de pago de cotizacion no encontrada en la base de datos'
+                'motivo' => "Forma de pago de cotizacion no encontrada en la base de datos."
             ];
         }
         $nivelCotizacion = $nivelFormaPagoCotizacion->nivel;
@@ -52,7 +52,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$porcentajeMargen) {
             return [
                 'requiere' => 'yes',
-                'motivo' => 'Porcentaje de margen no encontrado en la base de datos'
+                'motivo' => "Porcentaje de margen no encontrado en la base de datos."
             ];
         }
 
@@ -62,7 +62,7 @@ class ApprovalService implements ApprovalServiceInterface
             if (!$cotizacion) {
                 return [
                     'requiere' => 'no',
-                    'motivo' => 'Cotizacion no encontrada en la base de datos'
+                    'motivo' => "Cotizacion no encontrada en la base de datos."
                 ];
             }
 
@@ -85,7 +85,7 @@ class ApprovalService implements ApprovalServiceInterface
                 $cotizacion->save();
                 return [
                     'requiere' => 'yes',
-                    'motivo' => 'Forma de pago de cotizacion mayor que la del cliente modificando cotizacion: ' . $nivelCotizacion . ' - ' . $nivelCliente
+                    'motivo' => "Forma de pago de cotizacion mayor que la del cliente modificando cotizacion: " . $nivelCotizacion . ' - ' . $nivelCliente
                 ];
             }
 
@@ -102,7 +102,7 @@ class ApprovalService implements ApprovalServiceInterface
                         if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $detOriginal->descuento) {
                             return [
                                 'requiere' => 'yes',
-                                'motivo' => 'Descuento del detalle diferente al descuento original -' . $detalle['detalle_id']
+                                'motivo' => "Descuento del detalle diferente al descuento original -" . $detalle['detalle_id']
                             ];
                         }
 
@@ -110,7 +110,7 @@ class ApprovalService implements ApprovalServiceInterface
                         if ($detalle['ART_VALOR'] < $detOriginal->ART_VALOR) {
                             return [
                                 'requiere' => 'yes',
-                                'motivo' => 'Valor menor que el detalle Original -' . $detalle['detalle_id'] . ' - ' . $detalle['ART_VALOR']
+                                'motivo' => "Valor menor que el detalle Original -" . $detalle['detalle_id'] . ' - ' . $detalle['ART_VALOR']
                             ];
                         }
                     }
@@ -122,7 +122,7 @@ class ApprovalService implements ApprovalServiceInterface
                             if ($proveedor['MARGEN'] < $proveedorOriginal->MARGEN) {
                                 return [
                                     'requiere' => 'yes',
-                                    'motivo' => 'Margen del producto L es menor al margen aprobado en la cotización'
+                                    'motivo' => "Margen del producto L es menor al margen aprobado en la cotización."
                                 ];
                             }
                         }
@@ -137,7 +137,8 @@ class ApprovalService implements ApprovalServiceInterface
                         if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] > $detOriginal->descuento) {
                             return [
                                 'requiere' => 'yes',
-                                'motivo' => 'Descuento del detalle diferente al descuento original -' . $detalle['detalle_id']
+                                'motivo' => "Descuento del detalle diferente al descuento original - {$detalle['detalle_id']}."
+
                             ];
                         }
                     }
@@ -153,7 +154,7 @@ class ApprovalService implements ApprovalServiceInterface
             ) {
                 return [
                     'requiere' => 'no',
-                    'motivo' => 'Total dentro del rango  permitido'
+                    'motivo' => "Total dentro del rango  permitido"
                 ];
             }
         }
@@ -205,7 +206,7 @@ class ApprovalService implements ApprovalServiceInterface
         if ($nivelCotizacion > $nivelCliente) {
             return [
                 'requiere' => 'yes',
-                'motivo' => 'Forma de pago de cotizacion mayor que la del cliente: ' . $nivelCotizacion . ' > ' . $nivelCliente
+                'motivo' => "Forma de pago de cotizacion mayor que la del cliente: ' . $nivelCotizacion . ' > ' . $nivelCliente"
             ];
         }
 
@@ -213,7 +214,7 @@ class ApprovalService implements ApprovalServiceInterface
         if ($data['porcentage_descuento'] != $data['porcentage_descuentooriginal']) {
             return [
                 'requiere' => 'yes',
-                'motivo' => 'Porcentaje de descuento general diferente a la original'
+                'motivo' => "Porcentaje de descuento general diferente a la original"
             ];
         }
 
@@ -224,7 +225,7 @@ class ApprovalService implements ApprovalServiceInterface
             if ($detalle['descuento'] != $detalle['descuento_original']) {
                 return [
                     'requiere' => 'yes',
-                    'motivo' => 'Porcentaje de descuento general diferenye a la original'
+                    'motivo' => "Porcentaje de descuento general diferenye a la original"
                 ];
             }
 
@@ -236,7 +237,7 @@ class ApprovalService implements ApprovalServiceInterface
                     if ($margen > $detalle['ART_VALOR']) {
                         return [
                             'requiere' => 'yes',
-                            'motivo' => 'Margen del producto L es mayor al valor del producto'
+                            'motivo' => "Margen del producto L es mayor al valor del producto"
                         ];
                     }
                 }
@@ -244,21 +245,21 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($detalle['ART_VALOR'] < $detalle['ART_VALOR_ORIGINAL']) {
                     return [
                         'requiere' => 'yes',
-                        'motivo' => 'El valor del producto es meor que el valor original'
+                        'motivo' => "El valor del producto es meor que el valor original"
                     ];
                 }
 
                 if ($detalle['ART_VALOR'] > ($detalle['ART_VALOR_ORIGINAL'] * (1 + ($ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO) / 100))) {
                     return [
                         'requiere' => 'yes',
-                        'motivo' => 'El valor del producto es mayor que el valor original y supera el margen permitido -' . '' . $porcentajeMargen->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO
+                        'motivo' => "El valor del producto es mayor que el valor original y supera el margen permitido - {$porcentajeMargen->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO}"
                     ];
                 }
 
                 if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
                     return [
                         'requiere' => 'yes',
-                        'motivo' => 'La descripcion del producto es diferente a la original'
+                        'motivo' => "La descripcion del producto es diferente a la original"
                     ];
                 }
             }
