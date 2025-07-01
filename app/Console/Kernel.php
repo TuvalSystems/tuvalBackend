@@ -17,6 +17,11 @@ class Kernel extends ConsoleKernel
 
         //se ejecuta una vez al dia a las 08:00
         $schedule->command('cotizaciones:notificar-noventa')->dailyAt('08:00');
+
+        //se ejecuta el 1 de cada mez
+        $schedule->command('pedidos:enviar-facturas-mes-siguiente')->monthlyOn(3, '02:00')->
+        timezone('America/Guayaquil')->withoutOverlapping(60)
+        ->runInBackground();// hace que no bloquee otros jobs
     }
 
 

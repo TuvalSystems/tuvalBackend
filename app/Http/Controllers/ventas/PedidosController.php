@@ -393,61 +393,61 @@ class PedidosController extends Controller
         }
     }
 
-    public function sendfacturasgp()
-    {
+    // public function sendfacturasgp()
+    // {
 
-        $webservices = new WebserviceController();
+    //     $webservices = new WebserviceController();
 
-        $pedidos = GpPedido::where('estado', 'espera')
-            //->where('factura_siguiente_mes', 0)
-            //where('id',69)
-            ->get();
+    //     $pedidos = GpPedido::where('estado', 'espera')
+    //         //->where('factura_siguiente_mes', 0)
+    //         //where('id',69)
+    //         ->get();
 
-        foreach ($pedidos as $pedido) {
+    //     foreach ($pedidos as $pedido) {
 
-            $this->checkenviarfactura($pedido);
-        }
-        $traslados = GpPedido::where('estado', 'orden_de_compra')->get();
-        foreach ($traslados as $pedido) {
-            $listo = 'yes';
-            $detalleProveedores = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
-                ->where('pedido_id', $pedido->id)
-                ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
-                ->get();
+    //         $this->checkenviarfactura($pedido);
+    //     }
+    //     $traslados = GpPedido::where('estado', 'orden_de_compra')->get();
+    //     foreach ($traslados as $pedido) {
+    //         $listo = 'yes';
+    //         $detalleProveedores = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
+    //             ->where('pedido_id', $pedido->id)
+    //             ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
+    //             ->get();
 
-            if (!count($detalleProveedores)) {
-                $listo = 'no';
-            }
+    //         if (!count($detalleProveedores)) {
+    //             $listo = 'no';
+    //         }
 
-            foreach ($detalleProveedores as $prov) {
-                if ($prov->recibido == 'no') {
-                    $listo = 'no';
-                }
+    //         foreach ($detalleProveedores as $prov) {
+    //             if ($prov->recibido == 'no') {
+    //                 $listo = 'no';
+    //             }
 
-                $parameters = array(
-                    'documento_origen' => $prov->ORDEN_COMPRA_RECIBO,
-                    'tipo_documento' => 1,
-                );
+    //             $parameters = array(
+    //                 'documento_origen' => $prov->ORDEN_COMPRA_RECIBO,
+    //                 'tipo_documento' => 1,
+    //             );
 
-                $result = $webservices->transaccional('MST_Estado_Recibo_Compra', $parameters);
+    //             $result = $webservices->transaccional('MST_Estado_Recibo_Compra', $parameters);
 
-                if (isset($result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION']) && $result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION'] != 'PROCESADO') {
-                    $listo = 'no';
-                }
-            }
-            $order = app(OrderServiceInterface::class);
-            $dispatch = app(DispatchServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch);
-            // $despachos = new DespachosController();
-            if ($listo == 'yes') {
-                $pedido->estado = 'espera';
-                $pedido->save();
-                $despachos->generarordendespacho($pedido);
+    //             if (isset($result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION']) && $result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION'] != 'PROCESADO') {
+    //                 $listo = 'no';
+    //             }
+    //         }
+    //         $order = app(OrderServiceInterface::class);
+    //         $dispatch = app(DispatchServiceInterface::class);
+    //         $despachos = new DespachosController($order, $dispatch);
+    //         // $despachos = new DespachosController();
+    //         if ($listo == 'yes') {
+    //             $pedido->estado = 'espera';
+    //             $pedido->save();
+    //             $despachos->generarordendespacho($pedido);
 
-                $this->sendfacturagp($pedido);
-            }
-        }
-    }
+    //             $this->sendfacturagp($pedido);
+    //         }
+    //     }
+    // }
 
     public function checktraslado(GpPedido $pedido)
     {

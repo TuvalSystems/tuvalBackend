@@ -18,7 +18,8 @@ class LimpiarLog extends Command
     {
         $logFiles = [
             'laravel.log',
-            'laravel-queue.log'
+            'laravel-queue.log',
+            'cron-process.log'
         ];
 
         // Obtener propietario real del directorio storage
