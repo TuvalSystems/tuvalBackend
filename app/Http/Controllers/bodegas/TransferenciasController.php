@@ -9,17 +9,15 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Notificaciones;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Api\ApiGpService;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -397,9 +395,10 @@ class TransferenciasController extends Controller
         $pedidos = GpPedido::where('estado', 'traslado')
             ->get();
 
-            $order = app(OrderServiceInterface::class);
+        $order = app(OrderServiceInterface::class);
         $apigp = app(ApiGpService::class);
-        $pedidosControl = new PedidosController($apigp, $order);
+        $aproval = app(ApprovalServiceInterface::class);
+        $pedidosControl = new PedidosController($apigp, $order, $aproval);
         foreach ($pedidos as $pedido) {
             $pedidosControl->checkenviarfactura($pedido, true);
         }

@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOSRI($value)
  * @property string|null $DESC_FORMA_PAGO_TIPO_COBRO
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOTIPOCOBRO($value)
+ * property integer $nivel
  */
 class GpDescuentoFormaPago extends Model
 {

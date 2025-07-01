@@ -25,6 +25,7 @@ use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Http\Controllers\ventas\PedidosController;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 
 class AprobacionesController extends Controller
@@ -340,7 +341,8 @@ class AprobacionesController extends Controller
         if ($pedido->save()) {
             $order = app(OrderServiceInterface::class);
             $apiGp = app(ApiGpService::class);
-            $pedidos = new PedidosController($apiGp, $order);
+            $aproval = app(ApprovalServiceInterface::class);
+            $pedidos = new PedidosController($apiGp, $order, $aproval);
             $pedidos->checkenviarfactura($pedido);
 
             return response([
@@ -473,7 +475,8 @@ class AprobacionesController extends Controller
         if ($pedido->save()) {
             $order = app(OrderServiceInterface::class);
             $apiGp = app(ApiGpService::class); // Replace with the actual service or dependency
-            $pedidos = new PedidosController($apiGp, $order);
+            $aproval = app(ApprovalServiceInterface::class);
+            $pedidos = new PedidosController($apiGp, $order, $aproval);
             $pedidos->checkenviarfactura($pedido);
 
             return response([
