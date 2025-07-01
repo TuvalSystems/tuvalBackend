@@ -7,6 +7,7 @@ use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\FunctionsService;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Pedidos\OrderJobService;
 use App\Services\Pedidos\OrderService;
 use App\Services\Venta\QuotationService;
 use Illuminate\Support\ServiceProvider;
@@ -86,6 +87,9 @@ class DevolucionServiceProvider extends ServiceProvider
         $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
 
         $this->app->bind(PurchaseOrderServiceInterface::class, PurchaseOrderService::class);
+
+        //aqui va el servicio de Job de Pedidos
+         $this->app->bind(OrderJobService::class);
     }
 
 
