@@ -162,7 +162,8 @@ class ApprovalService implements ApprovalServiceInterface
             if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
                 return [
                     'requiere' => 'yes',
-                    'motivo' => 'Requiere aprobacion comercial, no se aprobo la cotizacion : ' .''.  $cotizacion->cotizacion . ''. 'sobre el cual se genero el pedido'
+                    'motivo' => "Requiere aprobacion comercial, no se aprobo la cotizacion: {$cotizacion->cotizacion} sobre el cual se genero el pedido."
+
                 ];
             }
         }
