@@ -188,14 +188,14 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial == 'yes' && $origenEntidad->aprobado_comercial != 'yes') {
                     return [
                         'requiere' => 'yes',
-                        'motivo' => "Origen en estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10)
+                        'motivo' => "Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10)
                     ];
                 }
 
                 // Motivo normal por ser copia
                 return [
                     'requiere' => 'yes',
-                    'motivo' => "Cotización generada desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")"
+                    'motivo' => "Cotización desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")"
                 ];
             }
 
