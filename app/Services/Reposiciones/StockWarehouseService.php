@@ -182,7 +182,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         }
         $formattedStocks = [];
         foreach ($stockResults as $value) {
-            if (!is_array($value)) {
+            if (!is_array($value) || empty($value)) {
                 continue;
             }
             $formattedStocks = array_merge(
