@@ -339,7 +339,7 @@ class AprobacionesController extends Controller
     public function rechazarpedidoporstock(Request $request)
     {
         $data = $request->all();
-        return $this->approvalService->denyComercialApprovalForInsufficientStock($data);
+        return $this->approvalService->denyApproveComercialOrderForInsufficientStock($data);
     }
 
     public function aprobardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -456,23 +456,10 @@ class AprobacionesController extends Controller
         }
     }
 
-    public function rechazarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function rechazarpedido(Request $request)
     {
-
         $data = $request->all();
-        $user = Auth::user();
-
-        if (GpPedido::where('id', $data['id'])->update(['aprobado_comercial' => 'yes', 'aprobador_comercial_id' => $user->id, 'estado' => 'rechazado'])) {
-            GpTrasladosVentas::where('pedido_id', $data['id'])->delete();
-            return response([
-                'success' => true,
-                'message' => 'Pedido ' . $data['pedido'] . ' rechazado'
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
-        }
+        return $this->approvalService->denyApproveComercialOrder($data);
     }
 
     public function checkAprobacionesDevoluciones($data): string

@@ -511,7 +511,7 @@ class ApprovalService implements ApprovalServiceInterface
         }
     }
 
-    public function denyComercialApprovalForInsufficientStock($data)
+    public function denyApproveComercialOrderForInsufficientStock($data)
     {
         $user = Auth::user();
         $pedido = GpPedido::where('id', $data['id'])->first();
@@ -527,6 +527,25 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->cleanDetailOrderStock($pedido);
         $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock',  $data['alert']);
+        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+    }
+
+
+    public function denyApproveComercialOrder($data)
+    {
+        $user = Auth::user();
+        $pedido = GpPedido::where('id', $data['id'])->first();
+        if (!$pedido) {
+            return $this->buildErrorResponse("Pedido no encontrado", 404);
+        }
+        $pedido->estado = 'rechazado';
+        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        $pedido->rechazado = 1;
+        $pedido->save();
+        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
 }

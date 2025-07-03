@@ -27,6 +27,7 @@ interface ApprovalServiceInterface
     /** funciones para aprobacion comercial  */
 
     public function approveComercialOrder($data);
-    public function denyComercialApprovalForInsufficientStock($data);
+    public function denyApproveComercialOrderForInsufficientStock($data);
+    public function denyApproveComercialOrder($data);
 
 }
