@@ -16,10 +16,11 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 
+
 class InvoiceService implements InvoiceServiceInterface
 {
-  const STATUS_PENDING = 'pendiente';
-  const STATUS_RELEASED = 'liberada';
+    const STATUS_PENDING = 'pendiente';
+    const STATUS_RELEASED = 'liberada';
     use JsonResponseTrait;
     protected $purchaseOrderService;
     protected $functionService;
@@ -49,7 +50,7 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         }
 
-        if ($checkDemanda &&  $this->checkInvoiceOnDemand($pedido)) {
+        if ($checkDemanda && $this->checkInvoiceOnDemand($pedido)) {
             return;
         }
 
@@ -88,7 +89,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTrasladado(GpPedido $pedido)
     {
-        $tieneTraslado = GpPedidoDetalle::where('pedido_id', $pedido->id)
+        $tieneTraslado = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
             ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
             ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
             ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)->exists();

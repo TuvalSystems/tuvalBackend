@@ -20,6 +20,8 @@ use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -408,17 +410,27 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function approveCreditOrder($data)
     {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'rechazado', 'anulada'])->first();
-        if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+        try {
+            DB::beginTransaction();
+            $user = Auth::user();
+            $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'rechazado', 'anulada'])->first();
+            if (!$pedido) {
+                DB::rollBack();
+                return $this->buildErrorResponse("Pedido no encontrado", 404);
+            }
+            $pedido->aprobado_crediticio = 'yes';
+            $pedido->aprobador_crediticio_id = $user->id;
+            $pedido->save();
+
+            $this->invoiceService->checkSendInvoice($pedido);
+            DB::commit();
+            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e->getMessage());
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
-        $pedido->aprobado_crediticio = 'yes';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->save();
-    
-        $this->invoiceService->checkSendInvoice($pedido);
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
+
     }
 
     public function denyCreditApproval($data)
