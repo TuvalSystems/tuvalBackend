@@ -9,30 +9,25 @@ use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use Illuminate\Http\Request;
 use App\Models\GpDatosItemsL;
-use App\Models\Notificaciones;
 use App\Models\GpOrdenDespacho;
-use App\Models\GpPedidoDetalle;
 use App\Models\GpRegistroCopia;
 use App\Models\GpClienteSucursal;
-use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Http\Controllers\Controller;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
-use App\Http\Controllers\ventas\PedidosController;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class AprobacionesController extends Controller
 {
     protected $approvalService;
-    public function __construct(ApprovalServiceInterface $approvalService){
+    public function __construct(ApprovalServiceInterface $approvalService)
+    {
         $this->approvalService = $approvalService;
     }
     public function checkAprobacionesComerciales($data, $pedido = false): array
@@ -334,65 +329,17 @@ class AprobacionesController extends Controller
         ]);
     }
 
-    public function aprobarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function aprobarpedido(Request $request)
     {
-
         $data = $request->all();
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->first();
-
-        $pedido->aprobado_comercial = 'yes';
-        $pedido->aprobador_comercial_id = $user->id;
-        if ($pedido->save()) {
-            $order = app(OrderServiceInterface::class);
-            $apiGp = app(ApiGpService::class);
-            $aproval = app(ApprovalServiceInterface::class);
-            $pedidos = new PedidosController($apiGp, $order, $aproval);
-            $pedidos->checkenviarfactura($pedido);
-
-            return response([
-                'success' => true,
-                'message' => 'Pedido ' . $data['pedido'] . ' aprobado'
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
-        }
+        return $this->approvalService->approveComercialOrder($data);
     }
 
 
-    public function rechazarpedidoporstock(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function rechazarpedidoporstock(Request $request)
     {
-
         $data = $request->all();
-        $user = Auth::user();
-
-        $pedido = GpPedido::where('id', $data['id'])->first();
-
-        $pedido->estado = 'rechazado';
-        $pedido->aprobado_comercial = 'yes';
-        $pedido->aprobador_comercial_id = $user->id;
-        $pedido->aprobado_comercial_mensaje = $data['alert'];
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
-        $pedido->save();
-
-        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
-
-        $notificacion = new Notificaciones();
-        $notificacion->titulo = 'Pedido rechazado por falta de stock';
-        $notificacion->user_id = $pedido->user_id;
-        $notificacion->mensaje = 'Para el pedido ' . $pedido->pedido . ' de la cotización ' . $pedido->cotizacion_id . ': ' . $data['alert'];
-        $notificacion->estado = 'nuevo';
-        $notificacion->save();
-
-        //$pedido->delete();
-
-        return response([
-            'success' => true,
-            'message' => $data['alert'],
-        ]);
+        return $this->approvalService->denyComercialApprovalForInsufficientStock($data);
     }
 
     public function aprobardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -448,13 +395,13 @@ class AprobacionesController extends Controller
         }
     }
 
-    public function consultaparaaprobarpedido(Request $request) : JsonResponse
+    public function consultaparaaprobarpedido(Request $request): JsonResponse
     {
         $data = $request->all();
-        return  $this->approvalService->getOrderApprovalData($data);
+        return $this->approvalService->getOrderApprovalData($data);
     }
 
-    public function aprobarpedidocrediticio(Request $request)
+    public function aprobarpedidocrediticio(Request $request):
     {
         $data = $request->all();
         return $this->approvalService->approveCreditOrder($data);
@@ -463,15 +410,15 @@ class AprobacionesController extends Controller
     public function rechazarpedidocrediticio(Request $request)
     {
 
-         $data = $request->all();
-         return $this->approvalService->denyCreditApproval($data);
+        $data = $request->all();
+        return $this->approvalService->denyCreditApproval($data);
 
     }
 
     public function rechazarpedidocrediticioporstock(Request $request)
     {
-         $data = $request->all();
-         return $this->approvalService->rejectCreditOrderForInsufficientStock($data);
+        $data = $request->all();
+        return $this->approvalService->rejectCreditOrderForInsufficientStock($data);
     }
 
     public function aprobarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

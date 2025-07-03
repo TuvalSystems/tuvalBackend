@@ -475,6 +475,53 @@ class ApprovalService implements ApprovalServiceInterface
         $bodega = $pedido->BOD_BODEGA;
         $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->pluck('id')->toArray();
         GpPedidoDetalleStock::whereIn('detalle_id', $detalles)
-        ->where('STO_ART_BODEGA', $bodega)->update(['reservado' => 0]);
+            ->where('STO_ART_BODEGA', $bodega)->update(['reservado' => 0]);
+    }
+
+
+
+    /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
+
+    public function approveComercialOrder($data)
+    {
+        try {
+            DB::beginTransaction();
+            $user = Auth::user();
+            $pedido = GpPedido::where('id', $data['id'])->first();
+            if (!$pedido) {
+                DB::rollBack();
+                return $this->buildErrorResponse("Pedido no encontrado", 404);
+            }
+            $pedido->aprobado_comercial = 'yes';
+            $pedido->aprobador_comercial_id = $user->id;
+            $pedido->save();
+
+            $this->invoiceService->checkSendInvoice($pedido);
+            DB::commit();
+            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e->getMessage());
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function denyComercialApprovalForInsufficientStock($data)
+    {
+        $user = Auth::user();
+        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        if (!$pedido) {
+            return $this->buildErrorResponse("Pedido no encontrado", 404);
+        }
+        $pedido->estado = 'rechazado';
+        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        $pedido->rechazado = 1;
+        $pedido->save();
+        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->cleanDetailOrderStock($pedido);
+        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', 'Para el pedido ' . $pedido->pedido . ' de la cotización ' . $pedido->cotizacion_id . ': ' . $data['alert']);
+        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
 }

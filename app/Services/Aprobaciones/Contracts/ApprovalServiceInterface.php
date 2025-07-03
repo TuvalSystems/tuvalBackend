@@ -24,4 +24,9 @@ interface ApprovalServiceInterface
     // cuando se rechaza de forma automatica en caso de que el stock sea insuficiente
     public function rejectCreditOrderForInsufficientStock ($data);
 
+    /** funciones para aprobacion comercial  */
+
+    public function approveComercialOrder($data);
+    public function denyComercialApprovalForInsufficientStock($data);
+
 }
