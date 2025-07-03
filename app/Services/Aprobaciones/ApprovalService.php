@@ -399,12 +399,17 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getOrderApprovalData($data)
     {
-        $detallePedido = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
-        $alert = $this->functionService->consultStockDetail($data, $detallePedido, $data['id']);
-        if ($alert) {
-            return $this->buildErrorResponse("Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert, 422);
+        try {
+            $detallePedido = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
+            $alert = $this->functionService->consultStockDetail($data, $detallePedido, $data['id']);
+            if ($alert) {
+                 return response()->json(['success' => false,  'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
+            }
+            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 402);
         }
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} puede ser aprobado", 200);
+
     }
 
 
@@ -466,8 +471,8 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', 'Para el pedido ' . $pedido->pedido . ' de la cotización ' . $pedido->cotizacion_id . ': ' . $data['alert']);
-        return $this->buildErrorResponse("Pedido {$data['pedido']} rechazado por falta de Stock :" . $data['alert'], 422);
+        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock',  $data['alert']);
+        return $this->buildErrorResponse( $data['alert'], 422);
     }
 
     public function cleanDetailOrderStock($pedido)
@@ -509,7 +514,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function denyComercialApprovalForInsufficientStock($data)
     {
         $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        $pedido = GpPedido::where('id', $data['id'])->first();
         if (!$pedido) {
             return $this->buildErrorResponse("Pedido no encontrado", 404);
         }
@@ -521,7 +526,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', 'Para el pedido ' . $pedido->pedido . ' de la cotización ' . $pedido->cotizacion_id . ': ' . $data['alert']);
+        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock',  $data['alert']);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
 }
