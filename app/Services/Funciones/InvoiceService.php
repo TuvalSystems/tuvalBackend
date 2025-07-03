@@ -365,13 +365,14 @@ class InvoiceService implements InvoiceServiceInterface
 
         $params = [
             'Cabecera' => $cabecera,
-            'Detalles' => $detallePedido
+            'Detalle' => $detallePedido
         ];
 
         if ($pedido->rechazado) {
             $pedido->estado = 'rechazado';
             $pedido->save();
-            return $this->buildErrorResponse("Pedido {$pedido->pedido} rechazado", 422);
+             throw new \Exception("Pedido {$pedido->pedido} rechazado", 422) ;
+
         }
 
         if ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {

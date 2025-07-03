@@ -15,6 +15,7 @@ use DateTime;
 use App\Models\GpPedido;
 use Illuminate\Support\Arr;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRegistroCopia;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -446,8 +447,8 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
         $pedido->save();
-
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
 
     }
@@ -464,8 +465,16 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
-
+        $this->cleanDetailOrderStock($pedido);
         $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', 'Para el pedido ' . $pedido->pedido . ' de la cotización ' . $pedido->cotizacion_id . ': ' . $data['alert']);
         return $this->buildErrorResponse("Pedido {$data['pedido']} rechazado por falta de Stock :" . $data['alert'], 422);
+    }
+
+    public function cleanDetailOrderStock($pedido)
+    {
+        $bodega = $pedido->BOD_BODEGA;
+        $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->pluck('id')->toArray();
+        GpPedidoDetalleStock::whereIn('detalle_id', $detalles)
+        ->where('STO_ART_BODEGA', $bodega)->update(['reservado' => 0]);
     }
 }

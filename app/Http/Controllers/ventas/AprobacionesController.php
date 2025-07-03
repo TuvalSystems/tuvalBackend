@@ -452,7 +452,6 @@ class AprobacionesController extends Controller
     {
         $data = $request->all();
         return  $this->approvalService->getOrderApprovalData($data);
-
     }
 
     public function aprobarpedidocrediticio(Request $request)
