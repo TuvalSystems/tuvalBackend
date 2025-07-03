@@ -18,7 +18,8 @@ use App\Traits\JsonResponseTrait;
 
 class InvoiceService implements InvoiceServiceInterface
 {
-
+  const STATUS_PENDING = 'pendiente';
+  const STATUS_RELEASED = 'liberada';
     use JsonResponseTrait;
     protected $purchaseOrderService;
     protected $functionService;
@@ -38,43 +39,52 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        if ($pedido->estado == 'rechazado' || $pedido->estado == 'anulada') {
-            return;
-        }
-        if ($pedido->requiere_aprobacion_comercial == 'yes' && $pedido->aprobado_comercial == 'no') {
-            return;
-        }
-        if ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
+        if ($this->shouldSkipProcessing($pedido)) {
             return;
         }
 
+        $this->checkTransferStatus($pedido, $trasladado);
+
+        if ($this->processPurchaseOrders($pedido)) {
+            return;
+        }
+
+        if ($checkDemanda &&  $this->checkInvoiceOnDemand($pedido)) {
+            return;
+        }
+
+        $this->generateDisptachOrder($pedido);
+        $this->functionService->recalculateOrder($pedido);
+        $this->sendInvoiceGp($pedido);
+        return;
+    }
+
+    /** funciones anidadas a  checkSendInvoice*/
+    public function shouldSkipProcessing($order)
+    {
+        return in_array($order->estado, ['rechazado', 'anulada'], true) ||
+            ($order->requiere_aprobacion_comercial == 'yes' && $order->aprobado_comercial == 'no') ||
+            ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
+    }
+
+    public function checkTransferStatus(GpPedido $pedido, $trasladado)
+    {
         if ($trasladado) {
             $this->checkTrasladado($pedido);
         } else {
             $this->checkTraslado($pedido);
         }
+    }
 
+    public function processPurchaseOrders(GpPedido $pedido)
+    {
         $this->purchaseOrderService->checkPurchaseOrder($pedido);
         $this->purchaseOrderService->sendPurchaseOrders();
         $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
-
-        if ($pedido->estado == 'orden_de_compra') {
-            return;
-        }
-        if ($pedido->estado == 'traslado') {
-            return;
-        }
-        if ($checkDemanda) {
-            $demanda = $this->checkInvoiceOnDemand($pedido);
-            if ($demanda) {
-                return;
-            }
-        }
-        $this->generateDisptachOrder($pedido);
-        $this->functionService->recalculateOrder($pedido);
-        $this->sendInvoice($pedido);
-        return;
+        return in_array($pedido->estado, ['orden_de_compra', 'traslado'], true);
     }
+
+
 
     public function checkTrasladado(GpPedido $pedido)
     {
@@ -243,23 +253,23 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function determineDispatchStatusAndDate($pedido)
     {
-        $estado = 'pendiente';
+        $estado = self::STATUS_PENDING;
         $fechaLiberacion = null;
 
         if ($pedido->COND_ID != 'CONTADO') {
             $fechaLiberacion = date('Y-m-d H:i:s');
-            $estado = 'liberada';
+            $estado = self::STATUS_RELEASED;
         }
 
         $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $pedido->COND_ID)->first();
         if ($formaPago?->DESC_FORMA_PAGO_TIPO_COBRO === 'CHEQUE') {
             $cliente = GpCliente::find($pedido->cliente_id);
             if ($cliente && $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0) {
-                $estado = 'pendiente';
+                $estado = self::STATUS_PENDING;
             }
         }
         if ($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
-            $estado = 'pendiente';
+            $estado = self::STATUS_PENDING;
         }
         return [$estado, $fechaLiberacion];
     }
@@ -270,13 +280,13 @@ class InvoiceService implements InvoiceServiceInterface
         return 'ODD' . str_pad($lastId + 1, 8, '0', STR_PAD_LEFT);
     }
 
-    public function sendInvoice($pedido)
+    public function sendInvoiceGp($pedido)
     {
         $recib = $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
         if ($recib) {
             return;
         }
-        $this->checkSendInvoice($pedido);
+        $this->checkTrasladado($pedido);
         if ($pedido->estado == 'orden_de_compra') {
             return;
         }

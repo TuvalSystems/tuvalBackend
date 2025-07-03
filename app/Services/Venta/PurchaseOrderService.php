@@ -127,7 +127,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 
         // finalmente procesar las generadas
         foreach ($ordersByProvider as $providerOrders) {
-            $this->generatePurchaseOrders($providerOrders);
+            $this->generarOrdenCompra($providerOrders);
         }
     }
 
@@ -189,7 +189,6 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         } else {
             $this->updateOrdersWithError($orders, $result);
         }
-
     }
 
     public function updateOrdersAsSent($orders, $docGenerated)
@@ -208,72 +207,20 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         }
     }
 
-    public function generatePurchaseOrders($providerOrders)
-    {
-        foreach ($providerOrders as $order) {
-            $this->generarOrdenCompra($order);
-        }
-    }
+
 
     /**
      * Summary of generarOrdenCompra
      * @param mixed $orden
      * @return void
      */
-    public function generarOrdenCompra1($orden)
-    {
-        $params = array(
-            'documento_origen' => $orden[0]->DOC_GENERADO,
-        );
-        $result = $this->mswService->transaccional('MST_Generacion_Orden_Compra', $params);
-        if (isset($result['MST_Generacion_Orden_CompraResult']['CS_GENERACION_ORDEN_COMPRA'][0])) {
-            $generado = $result['MST_Generacion_Orden_CompraResult']['CS_GENERACION_ORDEN_COMPRA'][0];
 
-            $orden_save = new GpOrdenDeCompraGenerado();
-            $orden_save->orden_id = $orden[0]->id;
-            $orden_save->detalle_id = $orden[0]->detalle_id;
-            $orden_save->detalle_proveedores_id = $orden[0]->detalle_proveedores_id;
-            $orden_save->estado = 'generado';
-            $orden_save->ORDEN_COMPRA_DOCUMENTO = $generado['ORDEN_COMPRA_DOCUMENTO'];
-            $orden_save->ORDEN_COMPRA_FECHA_DOCUMENTO = $generado['ORDEN_COMPRA_FECHA_DOCUMENTO']['date'];
-            $orden_save->ORDEN_COMPRA_FECHA_ENTREGA = $generado['ORDEN_COMPRA_FECHA_ENTREGA']['date'];
-            $orden_save->ORDEN_COMPRA_ID_PROVEEDOR = $generado['ORDEN_COMPRA_ID_PROVEEDOR'];
-            $orden_save->ORDEN_COMPRA_DIRECCION = $generado['ORDEN_COMPRA_DIRECCION'];
-            $orden_save->ORDEN_COMPRA_NOTA_DOCU = $generado['ORDEN_COMPRA_NOTA_DOCU'];
-            $orden_save->recibidos = 1;
-            $orden_save->save();
-
-            foreach ($generado['ORDEN_COMPRA_DETALLE']['CS_GENERACION_ORDEN_COMPRA_DETALLE'] as $keyGen => $det) {
-                $det_save = new GpOrdenDeCompraGeneradoDetalle;
-                $det_save->orden_generada_id = $orden_save->id;
-
-                $detalle_proveedores_id = null;
-                foreach ($orden as $item) {
-                    if ($item->ORDEN_COMPRA_ARTICULO == trim($det['ORDEN_COMPRA_DETALLE_ARTICULO'])) {
-                        $detalle_proveedores_id = $item->detalle_proveedores_id;
-                        $item->estado = 'generado';
-                        $item->save();
-                    }
-                }
-                $det_save->detalle_proveedores_id = $detalle_proveedores_id;
-                $det_save->ORDEN_COMPRA_DETALLE_BODEGA = $det['ORDEN_COMPRA_DETALLE_BODEGA'];
-                $det_save->ORDEN_COMPRA_DETALLE_ARTICULO = $det['ORDEN_COMPRA_DETALLE_ARTICULO'];
-                $det_save->ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO = $det['ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO'];
-                $det_save->ORDEN_COMPRA_DETALLE_UMEDIDA = $det['ORDEN_COMPRA_DETALLE_UMEDIDA'];
-                $det_save->ORDEN_COMPRA_DETALLE_CANTIDAD = $det['ORDEN_COMPRA_DETALLE_CANTIDAD'];
-                $det_save->ORDEN_COMPRA_DETALLE_COSTO_UNITARIO = $det['ORDEN_COMPRA_DETALLE_COSTO_UNITARIO'];
-                $det_save->ORDEN_COMPRA_DETALLE_TOTAL = $det['ORDEN_COMPRA_DETALLE_TOTAL'];
-                $det_save->ORDEN_COMPRA_DETALLE_IMPUESTO = $det['ORDEN_COMPRA_DETALLE_IMPUESTO'];
-                $det_save->save();
-            }
-        }
-    }
     public function generarOrdenCompra($order)
     {
-        if (empty($order) || empty($order['DOC_GENERADO'])) {
+        if (empty($order) || empty($order[0]['DOC_GENERADO'])) {
 
         }
-        $documentoOrtigen = $order['DOC_GENERADO'];
+        $documentoOrtigen = $order[0]['DOC_GENERADO'];
         $result = $this->callSoapGeneratePurchaseOrder($documentoOrtigen);
         if (!$result) {
             return;
@@ -292,9 +239,9 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     public function saveGeneratedOrderheader($order, $generated)
     {
         return GpOrdenDeCompraGenerado::create([
-            'orden_id' => $order['id'],
-            'detalle_id' => $order['detalle_id'],
-            'detalle_proveedores_id' => $order['detalle_proveedores_id'],
+            'orden_id' => $order[0]['id'],
+            'detalle_id' => $order[0]['detalle_id'],
+            'detalle_proveedores_id' => $order[0]['detalle_proveedores_id'],
             'estado' => self::GENERATED_STATUS,
             'ORDEN_COMPRA_DOCUMENTO' => $generated['ORDEN_COMPRA_DOCUMENTO'] ?? '',
             'ORDEN_COMPRA_FECHA_DOCUMENTO' => $this->parseSoapDate($generated['ORDEN_COMPRA_FECHA_DOCUMENTO']),
