@@ -50,4 +50,12 @@ use Illuminate\Database\Eloquent\Model;
 class GpPedidoDetalleProveedores extends Model
 {
     use HasFactory;
+
+
+
+    public function pedidodetalle(){
+        return $this->belongsTo(GpPedidoDetalle::class, 'detalle_id');
+    }
+
 }
+

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\Api\ApiGpService;
 use App\Services\Api\ApiSalesService;
+use App\Services\Api\MswService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Api\ApiSeedBellingService;
 
@@ -28,6 +29,7 @@ class ApiServiceProvider extends ServiceProvider
             return new ApiSeedBellingService();
         });
 
+        $this->app->singleton(MswService::class);
     }
 
     public function boot()

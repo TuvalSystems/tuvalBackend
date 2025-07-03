@@ -72,7 +72,8 @@ class PedidosController extends Controller
     {
         $data = $request->all();
         $user = Auth::user();
-        $aprobaciones = new AprobacionesController;
+        $approval = app(ApprovalServiceInterface::class);
+        $aprobaciones = new AprobacionesController($approval);
         foreach ($data['cotizacion'] as $det) {
             if ($det['ART_CANTIDAD'] <= 0) {
                 return response([
@@ -1591,7 +1592,8 @@ class PedidosController extends Controller
 
         $data['cotizacion'] = $detalle;
 
-        $aprobaciones = new AprobacionesController;
+        $approval = app(ApprovalServiceInterface::class);
+        $aprobaciones = new AprobacionesController($approval);
 
         $requiere_aprobacion_comercial = 'no';
 

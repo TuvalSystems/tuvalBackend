@@ -27,9 +27,14 @@ use App\Models\GpCotizacionDetalleProveedores;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use Illuminate\Http\JsonResponse;
 
 class AprobacionesController extends Controller
 {
+    protected $approvalService;
+    public function __construct(ApprovalServiceInterface $approvalService){
+        $this->approvalService = $approvalService;
+    }
     public function checkAprobacionesComerciales($data, $pedido = false): array
     {
         $return = array('requiere' => 'no', 'motivo' => '');
@@ -443,108 +448,118 @@ class AprobacionesController extends Controller
         }
     }
 
-    public function consultaparaaprobarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function consultaparaaprobarpedido(Request $request) : JsonResponse
     {
         $data = $request->all();
-
-        $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
-        $funciones = new FuncionesController();
-
-        $alert = $funciones->consultastockdetalle($data, $detalle, $data['id']);
-        if ($alert) {
-            return response([
-                'success' => false,
-                'message' => $alert,
-            ]);
-        }
-        return response([
-            'success' => true,
-        ]);
-    }
-    public function aprobarpedidocrediticio(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->all();
-        $user = Auth::user();
-
-        $pedido = GpPedido::where('id', $data['id'])->first();
-
-
-        $pedido->aprobado_crediticio = 'yes';
-        $pedido->aprobador_crediticio_id = $user->id;
-        if ($pedido->save()) {
-            $order = app(OrderServiceInterface::class);
-            $apiGp = app(ApiGpService::class); // Replace with the actual service or dependency
-            $aproval = app(ApprovalServiceInterface::class);
-            $pedidos = new PedidosController($apiGp, $order, $aproval);
-            $pedidos->checkenviarfactura($pedido);
-
-            return response([
-                'success' => true,
-                'message' => 'Pedido ' . $data['pedido'] . ' aprobado'
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
-        }
+        return  $this->approvalService->getOrderApprovalData($data);
 
     }
+    //  public function consultaparaaprobarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // {
+    //     $data = $request->all();
 
-    public function rechazarpedidocrediticio(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    //     $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
+    //     $funciones = new FuncionesController();
+
+    //     $alert = $funciones->consultastockdetalle($data, $detalle, $data['id']);
+    //     if ($alert) {
+    //         return response([
+    //             'success' => false,
+    //             'message' => $alert,
+    //         ]);
+    //     }
+    //     return response([
+    //         'success' => true,
+    //     ]);
+    // }
+    public function aprobarpedidocrediticio(Request $request)
     {
-
         $data = $request->all();
-        $user = Auth::user();
+        return $this->approvalService->approveCreditOrder($data);
+
+        // $data = $request->all();
+        // $user = Auth::user();
+
+        // $pedido = GpPedido::where('id', $data['id'])->first();
 
 
-        $pedido = GpPedido::where('id', $data['id'])->first();
-        $pedido->estado = 'rechazado';
-        $pedido->aprobado_crediticio = 'yes';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
-        $pedido->save();
+        // $pedido->aprobado_crediticio = 'yes';
+        // $pedido->aprobador_crediticio_id = $user->id;
+        // if ($pedido->save()) {
+        //     $order = app(OrderServiceInterface::class);
+        //     $apiGp = app(ApiGpService::class); // Replace with the actual service or dependency
+        //     $aproval = app(ApprovalServiceInterface::class);
+        //     $pedidos = new PedidosController($apiGp, $order, $aproval);
+        //     $pedidos->checkenviarfactura($pedido);
 
-        GpTrasladosVentas::where('pedido_id', $data['id'])->delete();
-
-        return response([
-            'success' => true,
-            'message' => 'Pedido ' . $data['pedido'] . ' rechazado'
-        ]);
+        //     return response([
+        //         'success' => true,
+        //         'message' => 'Pedido ' . $data['pedido'] . ' aprobado'
+        //     ]);
+        // } else {
+        //     return response([
+        //         'error' => 'Hubo un error al guardar'
+        //     ], 401);
+        // }
 
     }
 
-    public function rechazarpedidocrediticioporstock(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function rechazarpedidocrediticio(Request $request)
     {
 
-        $data = $request->all();
-        $user = Auth::user();
+         $data = $request->all();
+         return $this->approvalService->denyCreditApproval($data);
+        // $user = Auth::user();
 
-        $pedido = GpPedido::where('id', $data['id'])->first();
-        $pedido->estado = 'rechazado';
-        $pedido->aprobado_crediticio = 'yes';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->aprobado_crediticio_mensaje = $data['alert'];
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
-        $pedido->save();
 
-        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        // $pedido = GpPedido::where('id', $data['id'])->first();
+        // $pedido->estado = 'rechazado';
+        // $pedido->aprobado_crediticio = 'yes';
+        // $pedido->aprobador_crediticio_id = $user->id;
+        // $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        // $pedido->rechazado = 1;
+        // $pedido->save();
 
-        $notificacion = new Notificaciones();
-        $notificacion->titulo = 'Pedido rechazado por falta de stock';
-        $notificacion->user_id = $pedido->user_id;
-        $notificacion->mensaje = 'Para el pedido ' . $pedido->pedido . ' de la cotización ' . $pedido->cotizacion_id . ': ' . $data['alert'];
-        $notificacion->estado = 'nuevo';
-        $notificacion->save();
+        // GpTrasladosVentas::where('pedido_id', $data['id'])->delete();
 
-        //$pedido->delete();
+        // return response([
+        //     'success' => true,
+        //     'message' => 'Pedido ' . $data['pedido'] . ' rechazado'
+        // ]);
 
-        return response([
-            'success' => true,
-            'message' => $data['alert'],
-        ]);
+    }
+
+    public function rechazarpedidocrediticioporstock(Request $request)
+    {
+
+         $data = $request->all();
+         return $this->approvalService->rejectCreditOrderForInsufficientStock($data);
+        // $user = Auth::user();
+
+        // $pedido = GpPedido::where('id', $data['id'])->first();
+        // $pedido->estado = 'rechazado';
+        // $pedido->aprobado_crediticio = 'yes';
+        // $pedido->aprobador_crediticio_id = $user->id;
+        // $pedido->aprobado_crediticio_mensaje = $data['alert'];
+        // $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        // $pedido->rechazado = 1;
+        // $pedido->save();
+
+        // GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+
+        // $notificacion = new Notificaciones();
+        // $notificacion->titulo = 'Pedido rechazado por falta de stock';
+        // $notificacion->user_id = $pedido->user_id;
+        // $notificacion->mensaje = 'Para el pedido ' . $pedido->pedido . ' de la cotización ' . $pedido->cotizacion_id . ': ' . $data['alert'];
+        // $notificacion->estado = 'nuevo';
+        // $notificacion->save();
+
+        // //$pedido->delete();
+
+        // return response([
+        //     'success' => true,
+        //     'message' => $data['alert'],
+        // ]);
     }
 
     public function aprobarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

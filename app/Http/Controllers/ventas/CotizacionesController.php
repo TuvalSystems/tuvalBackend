@@ -420,7 +420,7 @@ class CotizacionesController extends Controller
         $data = $request->all();
         $user = Auth::user();
 
-        $aprobaciones = new AprobacionesController;
+        // $aprobaciones = new AprobacionesController;
 
         $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data);
         // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);

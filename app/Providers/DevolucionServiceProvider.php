@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\FunctionsService;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\OrderJobService;
@@ -23,6 +24,7 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\DispatchService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Funciones\InvoiceService;
 use App\Services\Notificacion\NotificationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
@@ -90,6 +92,12 @@ class DevolucionServiceProvider extends ServiceProvider
 
         //aqui va el servicio de Job de Pedidos
          $this->app->bind(OrderJobService::class);
+
+         //aqui va el servicio facturas de Pedidos
+         $this->app->singleton(
+            InvoiceServiceInterface::class,
+            InvoiceService::class
+        );
     }
 
 
