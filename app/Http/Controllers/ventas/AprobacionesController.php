@@ -462,51 +462,7 @@ class AprobacionesController extends Controller
         return $this->approvalService->denyApproveComercialOrder($data);
     }
 
-    public function checkAprobacionesDevoluciones($data): string
-    {
-
-        if ($data['devolucion']['tipo_devolucion'] == 'parcial') {
-            if (!$data['devolucion']['volver_a_facturar']) {
-                if (!$data['pedido']['despachado']) {
-                    $tiene_L = false;
-                    foreach ($data['detallepedido'] as $detalle) {
-                        if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                            $tiene_L = true;
-                        }
-                    }
-                    if (!$tiene_L) {
-                        return 'no';
-                    }
-                }
-            }
-        }
-
-        if ($data['devolucion']['tipo_devolucion'] == 'total') {
-
-            if (!$data['devolucion']['volver_a_facturar']) {
-                $tiene_L = false;
-                foreach ($data['detallepedido'] as $detalle) {
-                    if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                        $tiene_L = true;
-                    }
-                }
-                if (!$data['pedido']['despachado']) {
-                    if (!$tiene_L) {
-                        return 'no';
-                    }
-                } else {
-                    if (!$tiene_L) {
-                        $origin = new DateTime($data['pedido']['fecha_factura']);
-                        $target = new DateTime('now');
-                        if ($origin->diff($target)->days <= 7) {
-                            return 'no';
-                        }
-                    }
-                }
-            }
-        }
-        return 'yes';
-    }
+   
     public function verdevolucionesporaprobar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $devoluciones = GpDevoluciones::join('gp_clientes', 'gp_clientes.id', 'gp_devoluciones.cliente_id')
