@@ -2,24 +2,16 @@
 
 namespace App\Http\Controllers\ventas;
 
-use DateTime;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
-use App\Models\GpPuntoVenta;
 use Illuminate\Http\Request;
-use App\Models\GpDatosItemsL;
 use App\Models\GpOrdenDespacho;
-use App\Models\GpRegistroCopia;
 use App\Models\GpClienteSucursal;
-use App\Models\GpCotizacionDetalle;
 use App\Http\Controllers\Controller;
-use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
-use App\Models\traslados\GpTrasladosVentas;
 use App\Http\Controllers\WebserviceController;
-use App\Models\GpCotizacionDetalleProveedores;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Http\JsonResponse;
 
@@ -29,178 +21,6 @@ class AprobacionesController extends Controller
     public function __construct(ApprovalServiceInterface $approvalService)
     {
         $this->approvalService = $approvalService;
-    }
-    public function checkAprobacionesComerciales($data, $pedido = false): array
-    {
-        $return = array('requiere' => 'no', 'motivo' => '');
-        $nivel_forma_de_pago_cliente = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL'])
-            ->orderBy('DESC_FORMA_PAGO_CODIGO')->first()->nivel;
-
-        $nivel_forma_de_pago_cotizacion = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO'])
-            ->orderBy('DESC_FORMA_PAGO_CODIGO')->first()->nivel;
-
-        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->get()->first();
-
-        if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
-
-            $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->get()->first();
-
-            $nivel_forma_de_pago_cotizacion_anterior = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion->DESC_FORMA_PAGO_CODIGO)
-                ->orderBy('DESC_FORMA_PAGO_CODIGO')->first()->nivel;
-
-            if ($nivel_forma_de_pago_cotizacion > $nivel_forma_de_pago_cotizacion_anterior) {
-                if ($nivel_forma_de_pago_cotizacion > $nivel_forma_de_pago_cliente) {
-                    $cotizacion->aprobado_comercial = 'no';
-                    $cotizacion->save();
-                    $return['requiere'] = 'yes';
-                    $return['motivo'] = 'Forma de pago de cotización mayor que la del cliente modificando cotización: ' . $nivel_forma_de_pago_cotizacion . ' - ' . $nivel_forma_de_pago_cliente;
-                    return $return;
-                }
-            }
-
-            foreach ($data['cotizacion'] as $detalle) {
-
-                if (isset($detalle['detalle_id']) && $detalle['detalle_id'] != '') {
-                    $det_original = GpCotizacionDetalle::where('id', $detalle['detalle_id'])->first();
-
-                    if ($det_original) {
-                        $det_original->toArray();
-                        if ($pedido) {
-                            if (($detalle['descuento'] != $detalle['descuento_original']) && $detalle['descuento'] != $det_original['descuento']) {
-                                $return['requiere'] = 'yes';
-                                $return['motivo'] = 'Descuento del detalle diferente al descuento original - ' . $detalle['detalle_id'];
-                                return $return;
-                            }
-                        }
-
-
-                        if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-
-                            foreach ($detalle['proveedores'] as $proveedor) {
-                                $proveedor_original = GpCotizacionDetalleProveedores::where('detalle_id', $det_original['id'])->first();
-
-                                if ($proveedor['MARGEN'] < $proveedor_original['MARGEN']) {
-                                    $return['requiere'] = 'yes';
-                                    $return['motivo'] = 'El margen del producto L es menor al margen aprobado en la cotización';
-                                    return $return;
-                                }
-                            }
-                        } else {
-                            if ($pedido) {
-                                if ($detalle['ART_VALOR'] < $det_original['ART_VALOR']) {
-                                    $return['requiere'] = 'yes';
-                                    $return['motivo'] = 'Valor menor que el detalle original - ' . $detalle['detalle_id'] . ': ' . $detalle['ART_VALOR'] . ' - ' . $det_original['ART_VALOR'];
-                                    return $return;
-                                }
-                            }
-
-                            if ($detalle['ART_DESCRIPCION'] != $det_original['ART_DESCRIPCION']) {
-                                $return['requiere'] = 'yes';
-                                $return['motivo'] = 'Descripción diferente a la descripción original - ' . $detalle['detalle_id'];
-                                return $return;
-                            }
-
-                            if (($detalle['descuento'] != $detalle['descuento_original']) && $detalle['descuento'] > $det_original['descuento']) {
-                                $return['requiere'] = 'yes';
-                                $return['motivo'] = 'Descuento mayor que el detalle original - ' . $detalle['detalle_id'];
-                                return $return;
-                            }
-
-                        }
-                    }
-                }
-            }
-
-            if (
-                $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial == 'yes'
-                && (($data['total'] < ($cotizacion->total + 0.10)) || ($data['total'] > ($cotizacion->total - 0.10)))
-            ) {
-                $return['requiere'] = 'no';
-                $return['motivo'] = 'Total correcto - ';
-                return $return;
-            }
-        }
-
-        if (!$pedido) {
-            $registro_copia = GpRegistroCopia::where('id', $data['registro_copia'])
-                ->where('tipo', 'volver_a_pedir')->first();
-            if ($registro_copia) {
-                $desde = 'cotización';
-                $origen = 'COT' . str_pad($registro_copia->cotizacion_origen, 8, "0", STR_PAD_LEFT);
-                if ($registro_copia->pedido_origen) {
-                    $desde = 'pedido';
-                    $origen = 'PED' . str_pad($registro_copia->pedido_origen, 8, "0", STR_PAD_LEFT);
-                    $fecha_origen = GpPedido::where('id', $registro_copia->pedido_origen)->first();
-                } else {
-                    $fecha_origen = GpCotizacion::where('id', $registro_copia->cotizacion_origen)->first();
-                }
-                $return['requiere'] = 'yes';
-                $return['motivo'] = 'Cotización desde VOLVER A PEDIR desde ' . $desde . ' original: ' . $origen . ', fecha: ' . substr($fecha_origen->created_at, 0, 10);
-                return $return;
-            }
-        }
-
-        if ($nivel_forma_de_pago_cotizacion > $nivel_forma_de_pago_cliente) {
-            $return['requiere'] = 'yes';
-            $return['motivo'] = 'Nivel de forma de pago de la cotización es mayor que la del cliente: ' . $nivel_forma_de_pago_cotizacion . ' - ' . $nivel_forma_de_pago_cliente;
-            return $return;
-        }
-
-        if ($data['porcentage_descuento'] != $data['porcentage_descuentooriginal']) {
-            $return['requiere'] = 'yes';
-            $return['motivo'] = 'Porcentaje de descuento general diferente a la original';
-            return $return;
-        }
-
-        $porcentajeMaximoPuntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->get()->first()->toArray();
-        foreach ($data['cotizacion'] as $detalle) {
-
-            if ($detalle['descuento'] != $detalle['descuento_original']) {
-                $return['requiere'] = 'yes';
-                $return['motivo'] = 'Porcentaje de descuento general diferente a la original';
-                return $return;
-            }
-
-
-            if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-
-                foreach ($detalle['proveedores'] as $proveedor) {
-                    $margen = number_format((($proveedor['COSTO_UNITARIO'] / (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100)), 4, '.', '');
-                    if ($margen > $detalle['ART_VALOR']) {
-                        $return['requiere'] = 'yes';
-                        $return['motivo'] = 'El margen del producto L es mayor que el valor del producto';
-                        return $return;
-                    }
-                }
-
-            } else {
-                if ($detalle['ART_VALOR'] < $detalle['ART_VALOR_ORIGINAL']) {
-                    $return['requiere'] = 'yes';
-                    $return['motivo'] = 'El valor del producto es menor que el valor original';
-                    return $return;
-                }
-
-
-                if ($detalle['ART_VALOR'] > ($detalle['ART_VALOR_ORIGINAL'] * (1 + ($porcentajeMaximoPuntoVenta['PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO'] / 100)))) {
-                    $return['requiere'] = 'yes';
-                    $return['motivo'] = 'El valor del producto es mayor que el valor original y supera el PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO';
-                    return $return;
-                }
-
-
-                if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
-                    $return['requiere'] = 'yes';
-                    $return['motivo'] = 'Descripción del producto diferente a la original';
-                    return $return;
-                }
-
-            }
-
-        }
-
-        $return['requiere'] = 'no';
-        $return['motivo'] = null;
-        return $return;
     }
 
     public function checkAprobacionesCrediticias($data): string
@@ -462,7 +282,7 @@ class AprobacionesController extends Controller
         return $this->approvalService->denyApproveComercialOrder($data);
     }
 
-   
+
     public function verdevolucionesporaprobar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $devoluciones = GpDevoluciones::join('gp_clientes', 'gp_clientes.id', 'gp_devoluciones.cliente_id')
