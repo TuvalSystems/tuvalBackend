@@ -419,7 +419,7 @@ class ApprovalService implements ApprovalServiceInterface
         try {
             DB::beginTransaction();
             $user = Auth::user();
-            $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'rechazado', 'anulada'])->first();
+            $pedido = GpPedido::where('id', $data['id'])->first();
             if (!$pedido) {
                 DB::rollBack();
                 return $this->buildErrorResponse("Pedido no encontrado", 404);
