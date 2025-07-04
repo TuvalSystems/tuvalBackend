@@ -175,7 +175,7 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.created_at',
             'gp_guia_remisions.GUI_REM_IDENTIFICACION_DESTINATARIO',
         ])
-            ->where('gp_guia_remisions.bodega_destino', $bodega)
+            ->where('gp_guia_remisions.bodega_origen', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'reposicion');
 
