@@ -18,7 +18,6 @@ use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\GpPedidoDetalleStock;
-use App\Traits\StockWarehouseTraits;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use App\Models\GpProvinciaCiudadParroquia;
