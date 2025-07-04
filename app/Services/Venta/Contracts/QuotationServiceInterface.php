@@ -42,4 +42,10 @@ interface QuotationServiceInterface
        * API para obtener listado de cotizaciones con novedades
        */
       public function consultQuotationsNews($data);
+
+
+      /** funcion para obtener el detalle de la cotizacion  */
+
+    public function detailQuotation($data);
+
 }
