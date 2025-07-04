@@ -68,7 +68,7 @@ class QuotationService implements QuotationServiceInterface
         ]);
         $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
         $this->sendStoreReminderGp($sendQuote);
-        return $cotizacion;
+        return null;
     }
 
 
