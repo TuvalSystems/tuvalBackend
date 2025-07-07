@@ -15,7 +15,7 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\JsonResponseTrait;
-
+use Illuminate\Support\Facades\Log;
 
 class InvoiceService implements InvoiceServiceInterface
 {
@@ -220,26 +220,34 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function generateDisptachOrder($pedido)
     {
-        $this->checkTrasladado($pedido);
-        if ($this->shouldSkipOrderGeneration($pedido)) {
-            return;
+        try {
+
+            $this->checkTrasladado($pedido);
+            if ($this->shouldSkipOrderGeneration($pedido)) {
+                return false;
+            }
+
+            if ($this->checkForExistingDispatchOrder($pedido)) {
+                return false;
+            }
+
+            [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
+            $orderNumber = $this->generateDispatchOrderNumber($pedido);
+
+            GpOrdenDespacho::create([
+                'orden' => $orderNumber,
+                'pedido_id' => $pedido->id,
+                'estado' => $estado,
+                'fecha_hora_liberacion' => $fechaLiberacion,
+                'PTO_VTA_ID' => $pedido->PTO_VTA_ID,
+                'BOD_BODEGA' => $pedido->BOD_BODEGA
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Error generating dispatch order: " . $e->getMessage());
+            return false;
         }
 
-        if ($this->checkForExistingDispatchOrder($pedido)) {
-            return;
-        }
-
-        [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
-        $orderNumber = $this->generateDispatchOrderNumber($pedido);
-
-        GpOrdenDespacho::create([
-            'orden' => $orderNumber,
-            'pedido_id' => $pedido->id,
-            'estado' => $estado,
-            'fecha_hora_liberacion' => $fechaLiberacion,
-            'PTO_VTA_ID' => $pedido->PTO_VTA_ID,
-            'BOD_BODEGA' => $pedido->BOD_BODEGA
-        ]);
     }
 
     public function shouldSkipOrderGeneration($pedido)
@@ -371,7 +379,7 @@ class InvoiceService implements InvoiceServiceInterface
         if ($pedido->rechazado) {
             $pedido->estado = 'rechazado';
             $pedido->save();
-             throw new \Exception("Pedido {$pedido->pedido} rechazado", 422) ;
+            throw new \Exception("Pedido {$pedido->pedido} rechazado", 422);
 
         }
 
