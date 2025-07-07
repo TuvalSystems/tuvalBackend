@@ -50,7 +50,24 @@ use Illuminate\Database\Eloquent\Model;
 class GpPedidoDetalleProveedores extends Model
 {
     use HasFactory;
+    protected $fillable = [
+        'pedido_id',
+        'detalle_id',
+        'ID_PROVEEDOR',
+        'DESCRIPCION_ARTICULO',
+        'FECHA_ENTREGA',
+        'CANTIDAD',
+        'COSTO_UNITARIO',
+        'IMPUESTO',
+        'TOTAL',
+        'TOTALCONIMPUESTO',
+        'ingresado',
+        'ejecutado',
+        'NOTA',
+        'recibido',
+        'MARGEN',
 
+    ];
 
 
     public function pedidodetalle(){
