@@ -15,7 +15,7 @@ use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 
 class PurchaseOrderService implements PurchaseOrderServiceInterface
 {
-    const ORDER_STATE = 'orde_de_compra';
+    const ORDER_STATE = 'orden_de_compra';
     const ORDER_STATUS = 'iniciado';
     const SENT_STATUS = 'enviado';
     const GENERATED_STATUS = 'generado';
