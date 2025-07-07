@@ -52,7 +52,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         $lineNumber = 0;
 
         foreach ($detalles as $detalle) {
-            $proveedores = GpPedidoDetalleProveedores::where('detalle_id', $detalle->id)
+            $proveedores = GpPedidoDetalleProveedores::where('gp_pedido_detalle_proveedores.detalle_id', $detalle->id)
                 ->leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.detalle_proveedores_id', 'gp_pedido_detalle_proveedores.id')
                 ->where('recibido', 'no')
                 ->whereNotExists(function ($query) {
