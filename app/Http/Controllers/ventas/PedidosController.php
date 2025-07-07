@@ -39,6 +39,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 
@@ -48,11 +49,13 @@ class PedidosController extends Controller
     protected $apiGp;
     protected $orderService;
     protected $approvalService;
-    public function __construct(ApiGpService $apiGp, OrderServiceInterface $orderService, ApprovalServiceInterface $approvalService)
+    protected $invoiceService;
+    public function __construct(ApiGpService $apiGp, OrderServiceInterface $orderService, ApprovalServiceInterface $approvalService, InvoiceServiceInterface $invoiceService)
     {
         $this->orderService = $orderService;
         $this->apiGp = $apiGp;
         $this->approvalService = $approvalService;
+        $this->invoiceService = $invoiceService;
     }
 
 
@@ -150,7 +153,7 @@ class PedidosController extends Controller
                 GpCotizacion::where('id', $data['cotizacion_id'])->update(['estado' => 'procesado', 'facturado' => 1]);
             }
 
-            $this->checkenviarfactura($pedido);
+            $this->invoiceService->checkSendInvoice($pedido);
 
             return response([
                 'success' => true,

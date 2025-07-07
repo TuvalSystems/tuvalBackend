@@ -31,6 +31,7 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 
 class GuiasderemisionController extends Controller
 {
@@ -1117,7 +1118,8 @@ class GuiasderemisionController extends Controller
         $order = app(OrderServiceInterface::class);
         $apigp = app(ApiGpService::class);
         $aproval = app(ApprovalServiceInterface::class);
-        $pedidosControl = new PedidosController($apigp, $order, $aproval);
+          $invoice = app(InvoiceServiceInterface::class);
+        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
 
         $ingresos = new IngresosController();
         $ingresos->ingreso('traslado_venta', $data, $data['detalle']);
@@ -1209,7 +1211,8 @@ class GuiasderemisionController extends Controller
                     $order = app(OrderServiceInterface::class);
                     $apigp = app(ApiGpService::class);
                     $aproval = app(ApprovalServiceInterface::class);
-                    $pedidosControl = new PedidosController($apigp, $order, $aproval);
+                      $invoice = app(InvoiceServiceInterface::class);
+                    $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
                     $pedidosControl->checkenviarfactura($pedido, true);
                 }
                 //aqui la notifiacion

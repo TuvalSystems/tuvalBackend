@@ -16,6 +16,7 @@ use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
@@ -60,7 +61,8 @@ class DevolucionJobService
         $apiGp = app(ApiGpService::class);
         $order = app(OrderServiceInterface::class);
         $aproval = app(ApprovalServiceInterface::class);
-        $pedidosController = new PedidosController($apiGp, $order, $aproval);
+        $invoice = app(InvoiceServiceInterface::class);
+        $pedidosController = new PedidosController($apiGp, $order, $aproval, $invoice);
 
         try {
 

@@ -210,7 +210,7 @@ class InvoiceService implements InvoiceServiceInterface
         }
 
         //caso factura al siguiente mes
-        if ($pedido->factura_siguiente_mes) {
+        if (!$pedido->factura_a_demanda && $pedido->factura_siguiente_mes) {
             $this->generateDisptachOrder($pedido);
             return true;
         }
@@ -224,11 +224,11 @@ class InvoiceService implements InvoiceServiceInterface
 
             $this->checkTrasladado($pedido);
             if ($this->shouldSkipOrderGeneration($pedido)) {
-                return false;
+                return ;
             }
 
             if ($this->checkForExistingDispatchOrder($pedido)) {
-                return false;
+                return;
             }
 
             [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
@@ -242,10 +242,10 @@ class InvoiceService implements InvoiceServiceInterface
                 'PTO_VTA_ID' => $pedido->PTO_VTA_ID,
                 'BOD_BODEGA' => $pedido->BOD_BODEGA
             ]);
-            return true;
+            return;
         } catch (\Exception $e) {
             Log::error("Error generating dispatch order: " . $e->getMessage());
-            return false;
+            return ;
         }
 
     }

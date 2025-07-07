@@ -143,8 +143,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     public function sendOrdersForProvider($providerOrders)
     {
         $header = array_map(fn($order) => $this->buildHeaderForOrder($order), $providerOrders);
-        $parmas = $header[0];
-        $this->mswService->transaccional('MST_Orden_Compra', array('Cabecera' => $parmas));
+        $this->mswService->transaccional('MST_Orden_Compra', array('Cabecera' => $header));
         $firstOrder = $providerOrders[0];
 
         $response = $this->mswService->transaccional('MST_Respuesta_Orden_Compra', array('documento_origen' => $firstOrder['ORDEN_COMPRA_DOCU_ORIGEN'], 'linea' => $firstOrder['ORDEN_COMPRA_LINEA']));

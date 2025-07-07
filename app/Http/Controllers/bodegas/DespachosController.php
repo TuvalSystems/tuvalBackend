@@ -32,6 +32,7 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -58,7 +59,9 @@ class DespachosController extends Controller
         $apiGp = app(ApiGpService::class);
         $order = app(OrderServiceInterface::class);
         $aproval = app(ApprovalServiceInterface::class);
-        $pedidos = new PedidosController($apiGp, $order, $aproval);
+        $invoice = app(InvoiceServiceInterface::class);
+
+        $pedidos = new PedidosController($apiGp, $order, $aproval, $invoice);
         $pedidos->checktrasladado($pedido);
 
         if ($pedido->estado == 'orden_de_compra') {
@@ -1026,7 +1029,8 @@ class DespachosController extends Controller
         $order = app(OrderServiceInterface::class);
         $apigp = app(ApiGpService::class);
         $aproval = app(ApprovalServiceInterface::class);
-        $pedidosControl = new PedidosController($apigp, $order, $aproval);
+          $invoice = app(InvoiceServiceInterface::class);
+        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
 
         foreach ($pedidos as $pedido) {
 
