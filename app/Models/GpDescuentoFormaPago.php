@@ -39,4 +39,16 @@ use Illuminate\Database\Eloquent\Model;
 class GpDescuentoFormaPago extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'DESC_FORMA_PAGO_CODIGO',
+        'DESC_FORMA_PAGO_CONDICION_PAGO',
+        'DESC_FORMA_PAGO_DIAS_CREDITO',
+        'DESC_FORMA_PAGO_EMISOR',
+        'DESC_FORMA_PAGO_TIPO_CREDITO',
+        'DESC_FORMA_PAGO_PORCENTAJE_REBAJAR',
+        'DESC_FORMA_PAGO_SRI',
+        'DESC_FORMA_PAGO_TIPO_COBRO'
+
+    ];
 }
