@@ -18,4 +18,8 @@ interface OrderRepositoryInterface
      public function getDispatchOrder (int $orderId);
      public function getShipmentGuides(string $orderCode );
      public function getReturnsByOrder(int $orderId);
+
+     /** facturacion de siguiente mes */
+
+     public function getOrdersToInvoiceNextMonth($mes);
 }
