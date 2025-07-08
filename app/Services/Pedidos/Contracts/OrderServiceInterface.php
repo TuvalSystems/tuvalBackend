@@ -20,8 +20,6 @@ interface OrderServiceInterface
 
         public function restoreOrders($articulos, $bodegas);
 
-        /** generar factura siguiente mes */
-        public function generateNextMonthInvoice();
 
      /** facturar pedido */
         public function generateInvoiceOrder($orderId);

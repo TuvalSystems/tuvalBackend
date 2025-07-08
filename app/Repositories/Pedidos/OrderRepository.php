@@ -140,7 +140,7 @@ class OrderRepository implements OrderRepositoryInterface
                 ->orWhere('factura_a_demanda', 0);
             })
             ->where('factura_siguiente_mes', 1)
-            ->whereMonth('created_at', '=', $mes)
+            ->whereMonth('created_at', '=',  $mes)
             ->get();
     }
 }

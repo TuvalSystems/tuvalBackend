@@ -389,42 +389,6 @@ class OrderService implements OrderServiceInterface
 
 
 
-    /** funciones para el facturar siguiente mes */
-
-    public function generateNextMonthInvoice()
-    {
-        try {
-            DB::beginTransaction();
-            $mes = $this->getPreviousMonth();
-
-            if ($this->shouldAbortBilling($mes)) {
-                return $this->buildErrorResponse("Aún no llega el mes", 500);
-            }
-
-            $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
-
-            foreach ($pedidos as $pd) {
-                $this->invoiceService->checkSendInvoice($pd, true, false);
-            }
-            DB::commit();
-            return $this->buildSuccessResponse("Pedidos facturados", 200);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
-
-
-    }
-
-    public function getPreviousMonth()
-    {
-        return date("m", strtotime("-1 month"));
-    }
-
-    public function shouldAbortBilling($mes)
-    {
-        return $mes === date("m");
-    }
 
     /** facturar pedido  */
 
