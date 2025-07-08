@@ -23,39 +23,39 @@ class AprobacionesController extends Controller
         $this->approvalService = $approvalService;
     }
 
-    public function checkAprobacionesCrediticias($data): string
-    {
+    // public function checkAprobacionesCrediticias($data): string
+    // {
 
-        if ($data['COND_ID'] == 'CONTADO') {
-            return 'no';
-        }
+    //     if ($data['COND_ID'] == 'CONTADO') {
+    //         return 'no';
+    //     }
 
-        $webservices = new WebserviceController();
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $data['CLI_RUC'],
-        );
+    //     $webservices = new WebserviceController();
+    //     $parameters = array(
+    //         'IDCompania' => env('ID_COMPANIA'),
+    //         'Ruc' => $data['CLI_RUC'],
+    //     );
 
-        $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
+    //     $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
 
-        if ($data['total'] > $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
-            return 'Cupo';
-        }
+    //     if ($data['total'] > $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
+    //         return 'Cupo';
+    //     }
 
-        $documentosVencidos = $webservices->cobranzas('ConsultaDocumentosVencidosCliente', $parameters);
+    //     $documentosVencidos = $webservices->cobranzas('ConsultaDocumentosVencidosCliente', $parameters);
 
-        if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
-            return 'Documentos Vencidos';
-        }
+    //     if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
+    //         return 'Documentos Vencidos';
+    //     }
 
-        $documentosSinSoporte = $webservices->cobranzas('ConsultaDocumentosSinSoporteCliente', $parameters);
+    //     $documentosSinSoporte = $webservices->cobranzas('ConsultaDocumentosSinSoporteCliente', $parameters);
 
-        if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
-            return 'Saldo Pendiente';
-        }
+    //     if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
+    //         return 'Saldo Pendiente';
+    //     }
 
-        return 'no';
-    }
+    //     return 'no';
+    // }
 
     public function estadodecuenta(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {

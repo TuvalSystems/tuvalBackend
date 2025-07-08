@@ -17,4 +17,13 @@ class MswService
         return $response->json();
     }
 
+
+    public function cobranzas(string $method, array $params){
+
+        $response = Soap::baseWsdl(env('WEBSERVICES_COBRANZAS_URL'))
+        ->$method($params);
+        $response->throw();
+        return $response->json();
+    }
+
 }

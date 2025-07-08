@@ -187,8 +187,8 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->factura_posterior_despacho = ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') ? 1 : 0;
         if ($pedido->factura_posterior_despacho) {
             $hoy = (int) date('d');
-            $diaMax = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
-
+             $diaMax = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
+            //  $diaMax = 9;
             if ($diaMax === 1) {
                 $pedido->factura_a_demanda = 1;
             } elseif ($hoy > $diaMax) {
@@ -209,7 +209,7 @@ class InvoiceService implements InvoiceServiceInterface
             return true;
         }
 
-        //caso factura al siguiente mes
+        //Facturar al siguiente mes
         if (!$pedido->factura_a_demanda && $pedido->factura_siguiente_mes) {
             $this->generateDisptachOrder($pedido);
             return true;

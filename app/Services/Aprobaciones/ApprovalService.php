@@ -8,6 +8,7 @@ use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpDatosItemsL;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPuntoVenta;
+use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -30,11 +31,17 @@ class ApprovalService implements ApprovalServiceInterface
     protected $functionService;
     protected $notificationService;
     protected $invoiceService;
-    public function __construct(FunctionsServiceInterface $functionService, NotificationServiceInterface $notificationService, InvoiceServiceInterface $invoiceService)
-    {
+    protected $mswService;
+    public function __construct(
+        FunctionsServiceInterface $functionService,
+        NotificationServiceInterface $notificationService,
+        InvoiceServiceInterface $invoiceService,
+        MswService $mswService
+    ) {
         $this->functionService = $functionService;
         $this->notificationService = $notificationService;
         $this->invoiceService = $invoiceService;
+        $this->mswService = $mswService;
 
     }
 
@@ -278,6 +285,35 @@ class ApprovalService implements ApprovalServiceInterface
         }
         return $return;
     }
+    /*** aprovacion crediciticia *** */
+
+    public function checkoutApprovalCredit($data)
+    {
+        if ($data['COND_ID'] == 'CONTADO') {
+            return 'no';
+        }
+
+        $params = [
+            'IDCompania' => env('ID_COMPANIA'),
+            'Ruc' => Arr::get($data, 'CLI_RUC'),
+        ];
+        $cupoDisponible = $this->mswService->cobranzas('ConsultaCupoDisponibleCliente', $params);
+        if ($data['total'] >  $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
+            return 'Cupo';
+        }
+
+        $documentosVencidos = $this->mswService->cobranzas('ConsultaDocumentosVencidosCliente', $params);
+        if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
+            return 'Documentos Vencidos';
+        }
+
+        $documentosSinSoporte = $this->mswService->cobranzas('ConsultaDocumentosSinSoporteCliente', $params);
+        if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
+            return 'Saldo Pendiente';
+        }
+
+        return 'no';
+    }
 
     public function checkoutApprovalDevoluciones($data)
     {
@@ -403,7 +439,7 @@ class ApprovalService implements ApprovalServiceInterface
             $detallePedido = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
             $alert = $this->functionService->consultStockDetail($data, $detallePedido, $data['id']);
             if ($alert) {
-                 return response()->json(['success' => false,  'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
+                return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
             }
             return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
         } catch (\Throwable $th) {
@@ -471,8 +507,8 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock',  $data['alert']);
-        return $this->buildErrorResponse( $data['alert'], 422);
+        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+        return $this->buildErrorResponse($data['alert'], 422);
     }
 
     public function cleanDetailOrderStock($pedido)
@@ -526,7 +562,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock',  $data['alert']);
+        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
 

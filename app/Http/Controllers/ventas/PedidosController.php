@@ -75,8 +75,6 @@ class PedidosController extends Controller
     {
         $data = $request->all();
         $user = Auth::user();
-        $approval = app(ApprovalServiceInterface::class);
-        $aprobaciones = new AprobacionesController($approval);
         foreach ($data['cotizacion'] as $det) {
             if ($det['ART_CANTIDAD'] <= 0) {
                 return response([
@@ -87,7 +85,8 @@ class PedidosController extends Controller
 
         $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data, true);
 
-        $requiere_aprobacion_crediticia = $aprobaciones->checkAprobacionesCrediticias($data);
+
+        $requiere_aprobacion_crediticia =  $this->approvalService->checkoutApprovalCredit($data);
         $data['motivo_crediticio'] = null;
         if ($requiere_aprobacion_crediticia != 'no') {
             $data['motivo_crediticio'] = $requiere_aprobacion_crediticia;
@@ -1536,12 +1535,10 @@ class PedidosController extends Controller
 
         $data['cotizacion'] = $detalle;
 
-        $approval = app(ApprovalServiceInterface::class);
-        $aprobaciones = new AprobacionesController($approval);
 
         $requiere_aprobacion_comercial = 'no';
 
-        $requiere_aprobacion_crediticia = $aprobaciones->checkAprobacionesCrediticias($data);
+        $requiere_aprobacion_crediticia = $this->approvalService->checkoutApprovalCredit($data);
 
         $pedido = new GpPedido;
 
@@ -1954,7 +1951,7 @@ class PedidosController extends Controller
         $pedido->save();
     }
 
-   
+
     /**
      * @param mixed $pedido
      * @param WebserviceController $webservices
