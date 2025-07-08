@@ -187,9 +187,8 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->factura_posterior_despacho = ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') ? 1 : 0;
         if ($pedido->factura_posterior_despacho) {
             $hoy = (int) date('d');
-             $diaMax = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
-            //  $diaMax = 9;
-            if ($diaMax === 1) {
+            $diaMax = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
+            if ($diaMax == 1) {
                 $pedido->factura_a_demanda = 1;
             } elseif ($hoy > $diaMax) {
                 $pedido->factura_siguiente_mes = 1;
@@ -200,6 +199,11 @@ class InvoiceService implements InvoiceServiceInterface
     public function processInvoiceDecision($pedido)
     {
         if (!$pedido->factura_posterior_despacho) {
+            return false;
+        }
+
+        // facturr al dia menor al limite
+        if (!$pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
             return false;
         }
 
@@ -224,7 +228,7 @@ class InvoiceService implements InvoiceServiceInterface
 
             $this->checkTrasladado($pedido);
             if ($this->shouldSkipOrderGeneration($pedido)) {
-                return ;
+                return;
             }
 
             if ($this->checkForExistingDispatchOrder($pedido)) {
@@ -245,7 +249,7 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         } catch (\Exception $e) {
             Log::error("Error generating dispatch order: " . $e->getMessage());
-            return ;
+            return;
         }
 
     }
