@@ -40,4 +40,16 @@ use Illuminate\Database\Eloquent\Model;
 class GpOrdenDespacho extends Model
 {
     use HasFactory;
+    protected $fillable = [
+        'pedido_id',
+        'orden',
+        'estado',
+        'PTO_VTA_ID',
+        'BOD_BODEGA',
+        'autorizacion_fecha',
+        'autorizacion_user_id',
+        'autorizacion_USERID',
+        'autorizacion_comentario',
+        'fecha_hora_liberacion'
+    ];
 }

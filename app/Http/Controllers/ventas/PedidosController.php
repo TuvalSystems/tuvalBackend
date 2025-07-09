@@ -8,7 +8,6 @@ use App\Models\GpArticulo;
 use App\Models\GpTempCart;
 use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\GpOrdenDespacho;
@@ -37,22 +36,27 @@ use App\Http\Controllers\bodegas\DespachosController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
-use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class PedidosController extends Controller
 {
+    /** hola esto es para prueba de deploy jenkins */
     use JsonResponseTrait;
     protected $apiGp;
     protected $orderService;
     protected $approvalService;
-    public function __construct(ApiGpService $apiGp, OrderServiceInterface $orderService, ApprovalServiceInterface $approvalService)
+    protected $invoiceService;
+    public function __construct(ApiGpService $apiGp, OrderServiceInterface $orderService, ApprovalServiceInterface $approvalService, InvoiceServiceInterface $invoiceService)
     {
         $this->orderService = $orderService;
         $this->apiGp = $apiGp;
         $this->approvalService = $approvalService;
+        $this->invoiceService = $invoiceService;
     }
 
 
@@ -72,7 +76,6 @@ class PedidosController extends Controller
     {
         $data = $request->all();
         $user = Auth::user();
-        $aprobaciones = new AprobacionesController;
         foreach ($data['cotizacion'] as $det) {
             if ($det['ART_CANTIDAD'] <= 0) {
                 return response([
@@ -82,11 +85,9 @@ class PedidosController extends Controller
         }
 
         $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data, true);
-        // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data, true);
-        //        echo '<pre>';
-        //        print_r($requiere_aprobacion_comercial);
-        //        die();
-        $requiere_aprobacion_crediticia = $aprobaciones->checkAprobacionesCrediticias($data);
+
+
+        $requiere_aprobacion_crediticia =  $this->approvalService->checkoutApprovalCredit($data);
         $data['motivo_crediticio'] = null;
         if ($requiere_aprobacion_crediticia != 'no') {
             $data['motivo_crediticio'] = $requiere_aprobacion_crediticia;
@@ -149,7 +150,7 @@ class PedidosController extends Controller
                 GpCotizacion::where('id', $data['cotizacion_id'])->update(['estado' => 'procesado', 'facturado' => 1]);
             }
 
-            $this->checkenviarfactura($pedido);
+            $this->invoiceService->checkSendInvoice($pedido);
 
             return response([
                 'success' => true,
@@ -164,38 +165,14 @@ class PedidosController extends Controller
 
 
 
-    public function facturarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function facturarpedido(Request $request)
     {
         $data = $request->validate([
             'id' => 'required',
         ]);
-
-        $pedido = GpPedido::where('id', $data['id'])->get()->first();
-
-        $funciones = new FuncionesController();
-        $funciones->recalcularpedido($pedido);
-
-        $this->sendfacturagp($pedido);
-
-        return response([
-            'success' => true,
-            'message' => 'Pedido ' . $pedido->pedido . ' facturado',
-        ]);
+        return $this->orderService->generateInvoiceOrder($data['id']);
     }
 
-    public function facturarpedidourl(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-
-        $pedido = GpPedido::where('id', 802)->get()->first();
-
-        $this->sendfacturagp($pedido);
-
-        return response([
-            'success' => true,
-            'message' => 'Pedido ' . $pedido->pedido . ' facturado',
-        ]);
-    }
 
     /*
      *
@@ -308,75 +285,43 @@ class PedidosController extends Controller
         return false;
     }
 
-    public function facturarsiguientemes(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $mes = date("m", strtotime("-1 month"));
-
-        if ($mes == date("m")) {
-            return response([
-                'success' => true,
-                'message' => 'Aun no llega el mes',
-            ]);
-        }
-
-        $pedidos = GpPedido::where('estado', 'espera')
-            ->where('factura_posterior_despacho', 1)
-            ->where(function ($query) {
-                $query->whereNull('factura_a_demanda');
-                $query->orWhere('factura_a_demanda', 0);
-            })
-            ->where('factura_siguiente_mes', 1)
-            ->whereMonth('created_at', '=', $mes)
-            ->get();
-
-        foreach ($pedidos as $pedido) {
-            $this->checkenviarfactura($pedido, true, false);
-        }
-
-        return response([
-            'success' => true,
-            'message' => 'Pedidos facturados',
-        ]);
-    }
-
-    public function facturarfaltante()
-    {
-        $pedido = GpPedido::where('id', 1370)->first();
-
-        $this->checkenviarfactura($pedido, true, false);
-    }
-
-    public function facturarsiguientemescron(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $date = date('Y-m-d h:i:s');
-        if (date('N', strtotime($date)) >= 6) {
-            return response([
-                'success' => true,
-                'message' => 'Fin de semana',
-            ]);
-        }
-
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Fecha' => date('Y-m-d'),
-        );
-        $webservices = new WebserviceController;
-        $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
-
-        if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
-            return response([
-                'success' => true,
-                'message' => 'Día no habil',
-            ]);
-        }
-        //ejemplo
+    // public function facturarsiguientemes()
+    // {
+    //     return $this->orderService->generateNextMonthInvoice();
+    // }
 
 
 
-        return $this->facturarsiguientemes();
-    }
+    // public function facturarsiguientemescron(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // {
+
+    //     $date = date('Y-m-d h:i:s');
+    //     if (date('N', strtotime($date)) >= 6) {
+    //         return response([
+    //             'success' => true,
+    //             'message' => 'Fin de semana',
+    //         ]);
+    //     }
+
+    //     $parameters = array(
+    //         'IDCompania' => env('ID_COMPANIA'),
+    //         'Fecha' => date('Y-m-d'),
+    //     );
+    //     $webservices = new WebserviceController;
+    //     $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
+
+    //     if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
+    //         return response([
+    //             'success' => true,
+    //             'message' => 'Día no habil',
+    //         ]);
+    //     }
+    //     //ejemplo
+
+
+
+    //     return $this->facturarsiguientemes();
+    // }
 
     public function corregirenviando(): void
     {
@@ -393,61 +338,61 @@ class PedidosController extends Controller
         }
     }
 
-    // public function sendfacturasgp()
-    // {
+    public function sendfacturasgp()
+    {
 
-    //     $webservices = new WebserviceController();
+        $webservices = new WebserviceController();
 
-    //     $pedidos = GpPedido::where('estado', 'espera')
-    //         //->where('factura_siguiente_mes', 0)
-    //         //where('id',69)
-    //         ->get();
+        $pedidos = GpPedido::where('estado', 'espera')
+            //->where('factura_siguiente_mes', 0)
+            //where('id',69)
+            ->get();
 
-    //     foreach ($pedidos as $pedido) {
+        foreach ($pedidos as $pedido) {
 
-    //         $this->checkenviarfactura($pedido);
-    //     }
-    //     $traslados = GpPedido::where('estado', 'orden_de_compra')->get();
-    //     foreach ($traslados as $pedido) {
-    //         $listo = 'yes';
-    //         $detalleProveedores = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
-    //             ->where('pedido_id', $pedido->id)
-    //             ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
-    //             ->get();
+            $this->checkenviarfactura($pedido);
+        }
+        $traslados = GpPedido::where('estado', 'orden_de_compra')->get();
+        foreach ($traslados as $pedido) {
+            $listo = 'yes';
+            $detalleProveedores = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
+                ->where('pedido_id', $pedido->id)
+                ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
+                ->get();
 
-    //         if (!count($detalleProveedores)) {
-    //             $listo = 'no';
-    //         }
+            if (!count($detalleProveedores)) {
+                $listo = 'no';
+            }
 
-    //         foreach ($detalleProveedores as $prov) {
-    //             if ($prov->recibido == 'no') {
-    //                 $listo = 'no';
-    //             }
+            foreach ($detalleProveedores as $prov) {
+                if ($prov->recibido == 'no') {
+                    $listo = 'no';
+                }
 
-    //             $parameters = array(
-    //                 'documento_origen' => $prov->ORDEN_COMPRA_RECIBO,
-    //                 'tipo_documento' => 1,
-    //             );
+                $parameters = array(
+                    'documento_origen' => $prov->ORDEN_COMPRA_RECIBO,
+                    'tipo_documento' => 1,
+                );
 
-    //             $result = $webservices->transaccional('MST_Estado_Recibo_Compra', $parameters);
+                $result = $webservices->transaccional('MST_Estado_Recibo_Compra', $parameters);
 
-    //             if (isset($result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION']) && $result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION'] != 'PROCESADO') {
-    //                 $listo = 'no';
-    //             }
-    //         }
-    //         $order = app(OrderServiceInterface::class);
-    //         $dispatch = app(DispatchServiceInterface::class);
-    //         $despachos = new DespachosController($order, $dispatch);
-    //         // $despachos = new DespachosController();
-    //         if ($listo == 'yes') {
-    //             $pedido->estado = 'espera';
-    //             $pedido->save();
-    //             $despachos->generarordendespacho($pedido);
+                if (isset($result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION']) && $result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION'] != 'PROCESADO') {
+                    $listo = 'no';
+                }
+            }
+            $order = app(OrderServiceInterface::class);
+            $dispatch = app(DispatchServiceInterface::class);
+            $despachos = new DespachosController($order, $dispatch);
+            // $despachos = new DespachosController();
+            if ($listo == 'yes') {
+                $pedido->estado = 'espera';
+                $pedido->save();
+                $despachos->generarordendespacho($pedido);
 
-    //             $this->sendfacturagp($pedido);
-    //         }
-    //     }
-    // }
+                $this->sendfacturagp($pedido);
+            }
+        }
+    }
 
     public function checktraslado(GpPedido $pedido)
     {
@@ -1219,6 +1164,7 @@ class PedidosController extends Controller
             'cliente' => $cliente,
             'registro_copia' => $registroCopia->id,
             'currentSucursal' => $data['sucursal_id'],
+            'test' => 'volver_a_pedir'
         ]);
     }
 
@@ -1591,11 +1537,10 @@ class PedidosController extends Controller
 
         $data['cotizacion'] = $detalle;
 
-        $aprobaciones = new AprobacionesController;
 
         $requiere_aprobacion_comercial = 'no';
 
-        $requiere_aprobacion_crediticia = $aprobaciones->checkAprobacionesCrediticias($data);
+        $requiere_aprobacion_crediticia = $this->approvalService->checkoutApprovalCredit($data);
 
         $pedido = new GpPedido;
 
@@ -1817,6 +1762,7 @@ class PedidosController extends Controller
         }
     }
 
+    /** migrar mas adelante */
     public function volverafacturar($devolucion)
     {
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
@@ -2008,31 +1954,7 @@ class PedidosController extends Controller
         $pedido->save();
     }
 
-    //    public function transferirtonglin(){
-    //
-    //        $webservices = new WebserviceController();
-    //        $parameters = array(
-    //            'IDCompania' => env('ID_COMPANIA'),
-    //            'Fecha' => date('Y/m/d'),
-    //            'Item' => '000-001060-L',
-    //            'Bodega' => 'INMACONSA',
-    //            'Cantidad' => 50,
-    //            'BinOrigen' => 'PED00117106',
-    //            'BinDestino' => 'PED00117030',
-    //        );
-    //        $webservices->inventario('TransferenciaCompartimento', $parameters);
-    //
-    //        $parameters = array(
-    //            'IDCompania' => env('ID_COMPANIA'),
-    //            'Fecha' => date('Y/m/d'),
-    //            'Item' => '000-001061-L',
-    //            'Bodega' => 'INMACONSA',
-    //            'Cantidad' => 10,
-    //            'BinOrigen' => 'PED00117106',
-    //            'BinDestino' => 'PED00117030',
-    //        );
-    //        $webservices->inventario('TransferenciaCompartimento', $parameters);
-    //    }
+
     /**
      * @param mixed $pedido
      * @param WebserviceController $webservices

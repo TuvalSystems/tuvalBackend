@@ -20,6 +20,7 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 
 class RecibosdecompraeleController extends Controller
 {
@@ -250,7 +251,8 @@ class RecibosdecompraeleController extends Controller
             $order = app(OrderServiceInterface::class);
             $apigp = app(ApiGpService::class);
             $aproval = app(ApprovalServiceInterface::class);
-            $pedidosControl = new PedidosController($apigp, $order, $aproval);
+              $invoice = app(InvoiceServiceInterface::class);
+            $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
 
             $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
             if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI') {

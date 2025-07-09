@@ -21,6 +21,7 @@ use App\Services\Api\ApiSalesService;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Support\Facades\DB;
 
 class OrderService implements OrderServiceInterface
@@ -34,6 +35,8 @@ class OrderService implements OrderServiceInterface
     protected ApiBillingService $apiBillingService;
     protected FunctionsServiceInterface $functionsService;
     protected PurchaseReceiptServiceInterface $purchaseReceiptService;
+
+    protected $invoiceService;
     public function __construct(
         ApiSalesService $apiSalesService,
         ApiGpService $apiGpService,
@@ -41,7 +44,8 @@ class OrderService implements OrderServiceInterface
         OrderRepositoryInterface $orderRepository,
         ApiBillingService $apiBillingService,
         FunctionsServiceInterface $functionsService,
-        PurchaseReceiptServiceInterface $purchaseReceiptService
+        PurchaseReceiptServiceInterface $purchaseReceiptService,
+        InvoiceServiceInterface $invoiceService
     ) {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
@@ -50,6 +54,7 @@ class OrderService implements OrderServiceInterface
         $this->apiBillingService = $apiBillingService;
         $this->functionsService = $functionsService;
         $this->purchaseReceiptService = $purchaseReceiptService;
+        $this->invoiceService = $invoiceService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -275,13 +280,13 @@ class OrderService implements OrderServiceInterface
             ->filter()
             ->values();
 
-         // 🔍 5. Procesar traslados
+        // 🔍 5. Procesar traslados
         $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
         if ($trasladosVentas->isEmpty()) {
             $pendientes = true; // Si no hay traslados, marcamos como pendientes
             $trasladosVentas = collect(); // Inicializamos como colección vacía
             // $existentes = false; // No hay traslados existentes
-        }else{
+        } else {
             $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
                 $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
                 $trasladoVenta->guias = $guias;
@@ -379,4 +384,41 @@ class OrderService implements OrderServiceInterface
         }
         return $formattedStocks;
     }
+
+
+
+
+
+
+    /** facturar pedido  */
+
+    public function generateInvoiceOrder($orderId)
+    {
+        try {
+            DB::beginTransaction();
+            $order = $this->getOrderOrFail($orderId);
+            $this->recalculateAndSendInvoice($order);
+            DB::commit();
+            return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+    public function getOrderOrFail($orderId)
+    {
+        $order = GpPedido::find($orderId);
+        if (!$order) {
+            return $this->buildErrorResponse("Pedido no encontrado", 404);
+        }
+        return $order;
+    }
+
+    public function recalculateAndSendInvoice($order)
+    {
+        $this->functionsService->recalculateOrder($order);
+        $this->invoiceService->sendInvoiceGp($order);
+    }
+
 }

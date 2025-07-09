@@ -19,4 +19,8 @@ interface OrderServiceInterface
         //recuperar pedidos
 
         public function restoreOrders($articulos, $bodegas);
-}
+
+
+     /** facturar pedido */
+        public function generateInvoiceOrder($orderId);
+    }

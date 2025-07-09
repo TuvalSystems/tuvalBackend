@@ -14,20 +14,20 @@ use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpVendedor;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
-use Illuminate\Http\Request;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 
 class FuncionesController extends Controller
 {
-    public function setTempCartFrom($detalle, $data, $user){
+    public function setTempCartFrom($detalle, $data, $user)
+    {
         GpTempCart::where('sucursal_id', $data['sucursal_id'])
-                ->where('cliente_id', $data['cliente_id'])
-                ->where('puntodeventa_id', $data['PTO_VTA_ID'])
-                ->delete();
+            ->where('cliente_id', $data['cliente_id'])
+            ->where('puntodeventa_id', $data['PTO_VTA_ID'])
+            ->delete();
 
-        foreach($detalle as $key => $articulo){
+        foreach ($detalle as $key => $articulo) {
             $tempcart = new GpTempCart;
             $tempcart->detalle_id = $articulo->id;
             $tempcart->sucursal_id = $data['sucursal_id'];
@@ -60,7 +60,7 @@ class FuncionesController extends Controller
             $tempcart->save();
 
             $proveedores = $articulo->proveedores;
-            foreach($proveedores as $pro){
+            foreach ($proveedores as $pro) {
                 $proveedor = new GpTempCartProveedores;
                 $proveedor->id_tempcart = $tempcart->id;
                 $proveedor->ID_PROVEEDOR = $pro->ID_PROVEEDOR;
@@ -76,14 +76,14 @@ class FuncionesController extends Controller
                 $proveedor->save();
             }
 
-            foreach($articulo->stock as $stockbodega){
+            foreach ($articulo->stock as $stockbodega) {
                 $stock = new GpTempCartStock;
                 $stock->id_tempcart = $tempcart->id;
                 $stock->STO_ART_BODEGA = $stockbodega['STO_ART_BODEGA'];
                 $stock->STO_ART_STOCK_DISPONIBLE = $stockbodega['STO_ART_STOCK_DISPONIBLE'];
-                if(!isset($stockbodega['seleccionado'])) {
+                if (!isset($stockbodega['seleccionado'])) {
                     $stockbodega['seleccionado'] = 0;
-                }elseif($stockbodega['seleccionado'] > $stock->STO_ART_STOCK_DISPONIBLE){
+                } elseif ($stockbodega['seleccionado'] > $stock->STO_ART_STOCK_DISPONIBLE) {
                     $stockbodega['seleccionado'] = $stock->STO_ART_STOCK_DISPONIBLE;
                 }
                 $stock->seleccionado = $stockbodega['seleccionado'];
@@ -98,8 +98,8 @@ class FuncionesController extends Controller
         $stock = $webservices->stockarticulobodega($consulta_bodega);
         $stock_general = array();
 
-        if(isset($stock['MST_Stock_Articulo_BodegaResult']['CS_STOCK_ARTICULO_BODEGA'])){
-            foreach($stock['MST_Stock_Articulo_BodegaResult']['CS_STOCK_ARTICULO_BODEGA'] as $st){
+        if (isset($stock['MST_Stock_Articulo_BodegaResult']['CS_STOCK_ARTICULO_BODEGA'])) {
+            foreach ($stock['MST_Stock_Articulo_BodegaResult']['CS_STOCK_ARTICULO_BODEGA'] as $st) {
                 unset($st['STO_ART_AUTENTIFICACION']);
                 unset($st['STO_ART_DESCRIPCION']);
                 unset($st['STO_ART_STOCK_DANADO']);
@@ -111,9 +111,9 @@ class FuncionesController extends Controller
             }
         }
         $return = array();
-        foreach($stock_general as $key => $articulo){
-            foreach($arr_bodegas as $keybod => $bodega){
-                if(isset($articulo[$keybod]))
+        foreach ($stock_general as $key => $articulo) {
+            foreach ($arr_bodegas as $keybod => $bodega) {
+                if (isset($articulo[$keybod]))
                     $return[$key][$keybod] = $articulo[$keybod];
             }
         }
@@ -124,34 +124,35 @@ class FuncionesController extends Controller
     public function gebodegas($data, $consulta = null): array
     {
         $arr_bodegas = array();
-//        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $data['PTO_VTA_ID'])->first()->toArray();
+        //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $data['PTO_VTA_ID'])->first()->toArray();
 //        $arr_bodegas[$bodega['PTO_VTA_BOD_BODEGA']] = $bodega['PTO_VTA_BOD_BODEGA'];
 
         $masbodegas = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $data['PTO_VTA_ID']);
-        if($consulta){
-            $masbodegas =  $masbodegas->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA');
+        if ($consulta) {
+            $masbodegas = $masbodegas->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA');
         }
-        $masbodegas =  $masbodegas->orderBy('orden', 'ASC');
-            $masbodegas =  $masbodegas->get()->toArray();
+        $masbodegas = $masbodegas->orderBy('orden', 'ASC');
+        $masbodegas = $masbodegas->get()->toArray();
 
 
 
-        foreach($masbodegas as $bodega){
+        foreach ($masbodegas as $bodega) {
             $arr_bodegas[$bodega['PTO_VTA_BOD_REL_BODEGA']] = $bodega['PTO_VTA_BOD_REL_BODEGA'];
         }
 
         return $arr_bodegas;
     }
 
-    public function getcliente($data){
+    public function getcliente($data)
+    {
         $cliente = GpCliente::where('id', $data['cliente_id'])->get()->first();
         $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
         $cliente->vendedor = $vendedor;
 
-        $sucursales = GpClienteSucursal::join('gp_vendedors','gp_vendedors.VEND_ID','gp_cliente_sucursals.CLI_SUC_VENDEDOR')
+        $sucursales = GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
             ->where('CLI_SUC_RUC', $cliente->CLI_RUC)
-            ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS' )
-            ->orderby('CLI_SUC_ID_DIRECCION','DESC')
+            ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
+            ->orderby('CLI_SUC_ID_DIRECCION', 'DESC')
             ->get();
         $cliente->sucursales = $sucursales;
         $cliente->sucursalesfacturacion = $sucursales;
@@ -165,8 +166,8 @@ class FuncionesController extends Controller
 
         $suspendido = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['SUSPENDIDO'] ?? 0;
         $cliente->suspendido = $suspendido;
-        $cliente->cupo_disponible = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP'],2,'.', ',');
-        $cliente->cupo_asignado = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_ASIGNADO'],2,'.', ',');
+        $cliente->cupo_disponible = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP'], 2, '.', ',');
+        $cliente->cupo_asignado = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_ASIGNADO'], 2, '.', ',');
 
         return $cliente;
     }
@@ -174,52 +175,52 @@ class FuncionesController extends Controller
     public function stockreservado($articulo, $bodega, $pedido_id = null): int
     {
 
-        $stockReservado = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalle_stocks.detalle_id','=','gp_pedido_detalles.id')
-        ->join('gp_pedidos','gp_pedidos.id','=','gp_pedido_detalle_stocks.pedido_id')
-        ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-        ->where(function($q){
-            $q->where(function($query){
-                $query->where('gp_pedidos.requiere_aprobacion_comercial','no');
+        $stockReservado = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalle_stocks.detalle_id', '=', 'gp_pedido_detalles.id')
+            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
+            ->whereNotNull('gp_pedido_detalle_stocks.reservado')
+            ->where(function ($q) {
+                $q->where(function ($query) {
+                    $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no');
+                })
+                    ->orWhere(function ($query) {
+                        $query->where('gp_pedidos.requiere_aprobacion_comercial', 'yes');
+                        $query->where('gp_pedidos.aprobado_comercial', 'yes');
+                    });
             })
-            ->orWhere(function($query){
-                $query->where('gp_pedidos.requiere_aprobacion_comercial','yes');
-                $query->where('gp_pedidos.aprobado_comercial','yes');
-            });
-        })
-        ->where(function($q){
-            $q->where(function($query){
-                $query->where('gp_pedidos.requiere_aprobacion_crediticia','no');
+            ->where(function ($q) {
+                $q->where(function ($query) {
+                    $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no');
+                })
+                    ->orWhere(function ($query) {
+                        $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes');
+                        $query->where('gp_pedidos.aprobado_crediticio', 'yes');
+                    });
             })
-            ->orWhere(function($query){
-                $query->where('gp_pedidos.requiere_aprobacion_crediticia','yes');
-                $query->where('gp_pedidos.aprobado_crediticio','yes');
-            });
-        })
-        ->where('gp_pedido_detalle_stocks.reservado','>',0)
-        ->where('gp_pedidos.estado', '!=', 'eliminado')
-        ->where('gp_pedidos.estado', '!=', 'rechazado');
-        if($pedido_id){
-            $stockReservado = $stockReservado->where('gp_pedidos.id','!=', $pedido_id);
+            ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
+            ->where('gp_pedidos.estado', '!=', 'eliminado')
+            ->where('gp_pedidos.estado', '!=', 'rechazado');
+        if ($pedido_id) {
+            $stockReservado = $stockReservado->where('gp_pedidos.id', '!=', $pedido_id);
         }
-        $stockReservado = $stockReservado->where('gp_pedido_detalles.ART_CODIGO',$articulo)
-        ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA',$bodega)
-        ->where(function($query){
-            $query->whereNull('gp_pedidos.despachado');
-            $query->orWhere('gp_pedidos.despachado', 0);
-        })
-        ->select('gp_pedido_detalle_stocks.reservado')
-        ->get()->toarray();
+        $stockReservado = $stockReservado->where('gp_pedido_detalles.ART_CODIGO', $articulo)
+            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', $bodega)
+            ->where(function ($query) {
+                $query->whereNull('gp_pedidos.despachado');
+                $query->orWhere('gp_pedidos.despachado', 0);
+            })
+            ->select('gp_pedido_detalle_stocks.reservado')
+            ->get()->toarray();
         $reservado = 0;
-        foreach($stockReservado as $res){
+        foreach ($stockReservado as $res) {
             $reservado += $res['reservado'];
         }
 
         $trasladosreposicion = GpTrasladosReposicion::where('bodega_origen', $bodega)
-            ->where('ART_CODIGO',$articulo)
+            ->where('ART_CODIGO', $articulo)
             ->whereNull('gp_traslados_reposicions.completado')
             ->get()->toarray();
 
-        foreach($trasladosreposicion as $res){
+        foreach ($trasladosreposicion as $res) {
             $reservado += $res['cantidad'] - $res['trasladado'];
         }
 
@@ -228,12 +229,12 @@ class FuncionesController extends Controller
 
     public function checkarticulodisponible($articulo): bool
     {
-        if($articulo->ART_TIPO_COMPRA != 'L')
+        if ($articulo->ART_TIPO_COMPRA != 'L')
             return true;
 
         $busqueda = GpPedidoDetalle::
-        join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-            ->where( function ($query){
+            join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+            ->where(function ($query) {
                 $query->where('gp_pedidos.estado', 'espera');
                 $query->orWhere('gp_pedidos.estado', 'traslado');
                 $query->orWhere('gp_pedidos.estado', 'orden_de_compra');
@@ -243,14 +244,14 @@ class FuncionesController extends Controller
             ->select(
                 'gp_pedido_detalles.id',
             )->get()->first();
-        if($busqueda)
+        if ($busqueda)
             return false;
 
         $busqueda = GpPedidoDetalle::
-        join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+            join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
             ->where('gp_pedidos.estado', 'facturado')
             ->where('ART_CODIGO', $articulo->ART_CODIGO)
-            ->where(function($query){
+            ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado');
                 $query->orWhere('gp_pedidos.despachado', 0);
             })
@@ -258,15 +259,15 @@ class FuncionesController extends Controller
             ->select(
                 'gp_pedido_detalles.id',
             )->get()->first();
-        if($busqueda)
+        if ($busqueda)
             return false;
 
-        if(isset($articulo->ART_CLASE_ARTICULO)){
+        if (isset($articulo->ART_CLASE_ARTICULO)) {
 
             $datos_l = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $articulo->ART_CLASE_ARTICULO)->first();
 
             $busqueda = GpPedidoDetalle::
-            join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+                join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
                 ->where('gp_pedidos.estado', 'facturado')
                 ->where('ART_CODIGO', $articulo->ART_CODIGO)
                 ->where('gp_pedidos.despachado', 1)
@@ -277,15 +278,15 @@ class FuncionesController extends Controller
                 )
                 ->get()->first();
 
-            if($busqueda)
+            if ($busqueda)
                 return false;
-        }else{
+        } else {
             return false;
         }
 
         $busqueda = GpTempCart::where('ART_CODIGO', $articulo->ART_CODIGO)
             ->get()->first();
-        if($busqueda)
+        if ($busqueda)
             return false;
 
         // SI HAY UNA DEVOLUCIÓN VOLVER A COLOCAR LOS DÍAS MÁXIMOS
@@ -300,50 +301,50 @@ class FuncionesController extends Controller
     public function consultastockdetalle($data, $detalle, $pedido_id = null): ?string
     {
         $consulta_bodega = array();
-        foreach($detalle as &$linea){
-            if($linea['ART_TIPO_COMPRA'] == 'L'){
+        foreach ($detalle as &$linea) {
+            if ($linea['ART_TIPO_COMPRA'] == 'L') {
                 continue;
             }
-            if(!isset($linea['stock'])){
+            if (!isset($linea['stock'])) {
                 $stock = GpPedidoDetalleStock::where('detalle_id', $linea['id'])->get()->toArray();
                 $linea['stock'] = $stock;
             }
-            foreach($linea['stock'] as $articulo){
-                if($articulo['seleccionado'] > 0){
+            foreach ($linea['stock'] as $articulo) {
+                if ($articulo['seleccionado'] > 0) {
                     $consulta_bodega[] = array(
-                        'STOCK_ARTICULO'=>$linea['ART_CODIGO'].'@'.$articulo['STO_ART_BODEGA'],
+                        'STOCK_ARTICULO' => $linea['ART_CODIGO'] . '@' . $articulo['STO_ART_BODEGA'],
                     );
                 }
             }
         }
 
 
-        if(count($consulta_bodega)>0){
+        if (count($consulta_bodega) > 0) {
 
             $arr_bodegas = $this->gebodegas($data, 1);
             $stock_general = $this->stockarticulobodega($consulta_bodega, $arr_bodegas);
         }
         $alert = null;
 
-        foreach($detalle as &$articulo){
+        foreach ($detalle as &$articulo) {
 
-            if($articulo['ART_TIPO_COMPRA'] == 'L' || $articulo['ART_TIPO_COMPRA'] == 'SERV'){
+            if ($articulo['ART_TIPO_COMPRA'] == 'L' || $articulo['ART_TIPO_COMPRA'] == 'SERV') {
                 continue;
             }
             $stocktotal = 0;
-            if(isset($stock_general[$articulo['ART_CODIGO']])){
-                foreach($stock_general[$articulo['ART_CODIGO']] as $key => $st){
-                    if($articulo['ART_DECIMAL_CANTIDAD'] == 0){
-                        $st['STO_ART_STOCK_DISPONIBLE'] = (int)$st['STO_ART_STOCK_DISPONIBLE'];
-                    }else{
-                        $st['STO_ART_STOCK_DISPONIBLE'] = number_format((float)$st['STO_ART_STOCK_DISPONIBLE'], 2, '.', '');
+            if (isset($stock_general[$articulo['ART_CODIGO']])) {
+                foreach ($stock_general[$articulo['ART_CODIGO']] as $key => $st) {
+                    if ($articulo['ART_DECIMAL_CANTIDAD'] == 0) {
+                        $st['STO_ART_STOCK_DISPONIBLE'] = (int) $st['STO_ART_STOCK_DISPONIBLE'];
+                    } else {
+                        $st['STO_ART_STOCK_DISPONIBLE'] = number_format((float) $st['STO_ART_STOCK_DISPONIBLE'], 2, '.', '');
                     }
 
                     $reservado = $this->stockreservado($articulo['ART_CODIGO'], $st['STO_ART_BODEGA'], $pedido_id);
 
                     $stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'] -= $reservado;
 
-                    if($stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'] < 0)
+                    if ($stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'] < 0)
                         $stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'] = 0;
 
                     $stocktotal += $stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'];
@@ -352,66 +353,68 @@ class FuncionesController extends Controller
 
                 $articulo['stock'] = array_values($articulo['stock']);
 
-            }else{
+            } else {
                 $articulo['stock'] = array();
             }
             //if($articulo['ART_CODIGO'] != '881-000044-I') {
-                if ($stocktotal - $articulo['ART_CANTIDAD'] < 0) {
-                    $alert .= 'El artículo ' . $articulo['ART_CODIGO'] . ' disminuyó su stock en este tiempo, solo existen ' . $stocktotal . ' disponibles<br>';
-                }
+            if ($stocktotal - $articulo['ART_CANTIDAD'] < 0) {
+                $alert .= 'El artículo ' . $articulo['ART_CODIGO'] . ' disminuyó su stock en este tiempo, solo existen ' . $stocktotal . ' disponibles<br>';
+            }
             //}
         }
 
         return $alert;
     }
 
-    public function formatStock($articulo, $stock_general){
+    public function formatStock($articulo, $stock_general)
+    {
         $stocktotal = 0;
         $articulo->disponible = $this->checkarticulodisponible($articulo);
 
-//        echo '<pre>';
+        //        echo '<pre>';
 //        print_r($stock_general);
 //        die();
 
-        if(isset($stock_general[$articulo->ART_CODIGO]) ){
-            foreach($stock_general[$articulo->ART_CODIGO] as $key => $st){
+        if (isset($stock_general[$articulo->ART_CODIGO])) {
+            foreach ($stock_general[$articulo->ART_CODIGO] as $key => $st) {
 
-                if($articulo->ART_DECIMAL_CANTIDAD == 0){
-                    $st['STO_ART_STOCK_DISPONIBLE'] = (int)$st['STO_ART_STOCK_DISPONIBLE'];
-                }else{
-                    $st['STO_ART_STOCK_DISPONIBLE'] = number_format((float)$st['STO_ART_STOCK_DISPONIBLE'], 2, '.', '');
+                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
+                    $st['STO_ART_STOCK_DISPONIBLE'] = (int) $st['STO_ART_STOCK_DISPONIBLE'];
+                } else {
+                    $st['STO_ART_STOCK_DISPONIBLE'] = number_format((float) $st['STO_ART_STOCK_DISPONIBLE'], 2, '.', '');
                 }
 
                 $reservado = $this->stockreservado($articulo->ART_CODIGO, $st['STO_ART_BODEGA']);
                 $stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'] -= $reservado;
 
-                if($stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'] < 0)
+                if ($stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'] < 0)
                     $stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'] = 0;
 
                 $stocktotal += $stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'];
             }
             $articulo->stock = $stock_general[$articulo->ART_CODIGO];
-        }else{
+        } else {
             $articulo->stock = array();
         }
 
         $articulo->ART_STOCK = $stocktotal;
     }
 
-    public function buscareledisponible($articulos_array_l, $clase = 'VTA-BNS-L'){
+    public function buscareledisponible($articulos_array_l, $clase = 'VTA-BNS-L')
+    {
         $articulos = GpArticulo::where('ART_TIPO_COMPRA', 'L')
             ->where('ART_CLASE_ARTICULO', $clase)
             ->inRandomOrder()
             ->limit(300)->get();
-        foreach($articulos as $articulo){
-            foreach($articulos_array_l as $artL){
+        foreach ($articulos as $articulo) {
+            foreach ($articulos_array_l as $artL) {
                 //print_r($articulos_array_l);
-                if($articulo->ART_CODIGO == $artL){
+                if ($articulo->ART_CODIGO == $artL) {
                     continue 2;
                 }
             }
             $disponible = $this->checkarticulodisponible($articulo);
-            if($disponible){
+            if ($disponible) {
                 return $articulo->ART_CODIGO;
             }
         }
@@ -429,34 +432,34 @@ class FuncionesController extends Controller
 
     public function getitemproveedores($data, $item, $pendientes = false, $existentes = false): array
     {
-        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE','VTA-BNS-L')->get()->first();
+        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->get()->first();
         $proveedores = GpPedidoDetalleProveedores::where('pedido_id', $data['id'])
             ->join('gp_proveedors', 'gp_proveedors.id', 'gp_pedido_detalle_proveedores.ID_PROVEEDOR')
             ->where('detalle_id', $item->id)
             ->select('gp_pedido_detalle_proveedores.*', 'gp_proveedors.PROV_RAZON_SOCIAL')
             ->get();
-        if($item->ART_DECIMAL_CANTIDAD == 0){
-            $item->ART_STOCK = (int)$item->ART_STOCK;
-            $item->ART_CANTIDAD = (int)$item->ART_CANTIDAD;
+        if ($item->ART_DECIMAL_CANTIDAD == 0) {
+            $item->ART_STOCK = (int) $item->ART_STOCK;
+            $item->ART_CANTIDAD = (int) $item->ART_CANTIDAD;
         }
-        foreach($proveedores as $proveedor){
+        foreach ($proveedores as $proveedor) {
 
-            if(!$proveedor->ingresado)
+            if (!$proveedor->ingresado)
                 $pendientes = true;
             else
                 $existentes = true;
 
-            $orden_detalle = GpOrdenDeCompraGeneradoDetalle::join('gp_orden_de_compra_generados','gp_orden_de_compra_generados.id','gp_orden_de_compra_generado_detalles.orden_generada_id')
+            $orden_detalle = GpOrdenDeCompraGeneradoDetalle::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.id', 'gp_orden_de_compra_generado_detalles.orden_generada_id')
                 ->where('gp_orden_de_compra_generado_detalles.detalle_proveedores_id', $proveedor->id)
                 ->select('gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO', 'gp_orden_de_compra_generados.ORDEN_COMPRA_DOCUMENTO')
                 ->get();
 
             $margen = (($proveedor['COSTO_UNITARIO'] / (1 - ($proveedor['MARGEN'] / 100))) / (1 - $item['descuento'] / 100));
 
-            $proveedor->margen = number_format($margen,4, '.', '');
-            if($item->ART_DECIMAL_CANTIDAD == 0){
-                $proveedor->CANTIDAD = (int)$proveedor->CANTIDAD;
-                $proveedor->ingresado = (int)$proveedor->ingresado;
+            $proveedor->margen = number_format($margen, 4, '.', '');
+            if ($item->ART_DECIMAL_CANTIDAD == 0) {
+                $proveedor->CANTIDAD = (int) $proveedor->CANTIDAD;
+                $proveedor->ingresado = (int) $proveedor->ingresado;
             }
             $proveedor->orden_detalle = $orden_detalle;
         }
@@ -471,22 +474,22 @@ class FuncionesController extends Controller
         $descuento = 0;
         $subtotalmenosdescuento = 0;
         $iva = 0;
-        foreach($detalle as $articulo){
-            $subtotal += (float)number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD,2,'.','');
-            $descuento += (float)number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD,2,'.','');
-            $subtotalmenosdescuento += (float)number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.','');
+        foreach ($detalle as $articulo) {
+            $subtotal += (float) number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD, 2, '.', '');
+            $descuento += (float) number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD, 2, '.', '');
+            $subtotalmenosdescuento += (float) number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.', '');
 
             $articulo->ART_IMP_VTA = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first()->ART_IMP_VTA;
-            $articulo->ART_IVA = number_format(number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD), 2, '.','') * ($articulo->ART_IMP_VTA / 100), 2, '.','');
+            $articulo->ART_IVA = number_format(number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD), 2, '.', '') * ($articulo->ART_IMP_VTA / 100), 2, '.', '');
             //(float)number_format((float)number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 4, '.','') * ($articulo->ART_IMP_VTA / 100), 2, '.','');
             $articulo->save();
             $iva += $articulo->ART_IVA;
             //(float)number_format((($articulo->ART_VALOR - ($articulo->ART_DESCUENTO)) * $articulo->ART_CANTIDAD) * ($articulo->ART_IMP_VTA / 100), 2, '.','');
         }
 
-        $subtotalmenosdescuento = number_format($subtotalmenosdescuento, 2, '.','');
-        $iva = number_format($iva, 2, '.','');
-        $total =  (float)$subtotalmenosdescuento + (float)$iva;
+        $subtotalmenosdescuento = number_format($subtotalmenosdescuento, 2, '.', '');
+        $iva = number_format($iva, 2, '.', '');
+        $total = (float) $subtotalmenosdescuento + (float) $iva;
 
         $pedido->subtotal = $subtotal;
         $pedido->descuento = $descuento;

@@ -38,11 +38,14 @@ class DispatchService implements DispatchServiceInterface
 
 
         if ($search) {
-            $query->whereRaw("
-            gp_guia_remisions.pedido LIKE ?
-            or gp_orden_despachos.orden LIKE ?
-            or gp_guia_remisions.GUI_REM_GUIA_REMISION LIKE ?
-            ", ['%' . $search . '%', '%' . $search . '%', '%' . $search . '%']);
+            $query->where(function ($q) use ($search) {
+                $q->where('gp_guia_remisions.pedido', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
+                    ->orWhere('gp_orden_despachos.orden', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_PLACA', 'like', '%' . $search . '%');
+            });
         }
         if ($fecha_desde && $fecha_hasta) {
             $query->where('gp_guia_remisions.created_at', '>=', $fecha_desde)
@@ -93,12 +96,13 @@ class DispatchService implements DispatchServiceInterface
         }
 
         if ($search) {
-            $query->whereRaw(
-                "
-            subquery.GUI_REM_GUIA_REMISION LIKE ?
-            or subquery.GUI_REM_RAZON_SOCIAL_DESTINATARIO LIKE ?",
-                ['%' . $search . '%', '%' . $search . '%']
-            );
+            $query->where(function ($q) use ($search) {
+                $q->where('gp_guia_remisions.pedido', 'like', '%' . $search . '%')
+                    ->orWhere('subquery.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
+                    ->orWhere('subquery.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
+                    ->orWhere('subquery.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA', 'like', '%' . $search . '%')
+                    ->orWhere('subquery.GUI_REM_PLACA', 'like', '%' . $search . '%');
+            });
         }
         if ($sortBy) {
             $query->orderBy($sortBy, $sortOrder);
@@ -130,9 +134,12 @@ class DispatchService implements DispatchServiceInterface
             ->Where('gp_guia_remisions.tipo', 'transferencia');
 
         if ($search) {
-            $query->whereRaw("
-            gp_guia_remisions.GUI_REM_GUIA_REMISION LIKE ?
-            ", ['%' . $search . '%']);
+             $query->where(function ($q) use ($search) {
+                $q->where('gp_guia_remisions.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_PLACA', 'like', '%' . $search . '%');
+            });
         }
 
         if ($fecha_desde && $fecha_hasta) {
@@ -168,16 +175,19 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.created_at',
             'gp_guia_remisions.GUI_REM_IDENTIFICACION_DESTINATARIO',
         ])
-            ->where('gp_guia_remisions.bodega_destino', $bodega)
+            ->where('gp_guia_remisions.bodega_origen', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'reposicion');
 
 
         if ($search) {
-            $query->whereRaw("
-            gp_guia_remisions.pedido LIKE ?
-            or gp_guia_remisions.GUI_REM_GUIA_REMISION LIKE ?
-            ", ['%' . $search . '%', '%' . $search . '%']);
+             $query->where(function ($q) use ($search) {
+                $q->where('gp_guia_remisions.pedido', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_PLACA', 'like', '%' . $search . '%');
+            });
         }
 
         if ($fecha_desde && $fecha_hasta) {
@@ -214,12 +224,15 @@ class DispatchService implements DispatchServiceInterface
         ])
             ->where('gp_guia_remisions.bodega_destino', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'reposicion');
+            ->Where('gp_guia_remisions.tipo', '=', 'reposicion');
         if ($search) {
-            $query->whereRaw("
-            gp_guia_remisions.pedido LIKE ?
-            or gp_guia_remisions.GUI_REM_GUIA_REMISION LIKE ?
-            ", ['%' . $search . '%', '%' . $search . '%']);
+            $query->where(function ($q) use ($search) {
+                $q->where('gp_guia_remisions.pedido', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA', 'like', '%' . $search . '%')
+                    ->orWhere('gp_guia_remisions.GUI_REM_PLACA', 'like', '%' . $search . '%');
+            });
         }
         if ($fecha_desde && $fecha_hasta) {
             $query->where('gp_guia_remisions.created_at', '>=', $fecha_desde)
@@ -236,4 +249,7 @@ class DispatchService implements DispatchServiceInterface
         }
         return $query->paginate($perpage);
     }
+
+
+
 }

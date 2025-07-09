@@ -8,16 +8,42 @@ use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpDatosItemsL;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPuntoVenta;
+use App\Services\Api\MswService;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Traits\JsonResponseTrait;
 use DateTime;
 use App\Models\GpPedido;
 use Illuminate\Support\Arr;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRegistroCopia;
+use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ApprovalService implements ApprovalServiceInterface
 {
+    use JsonResponseTrait;
+    protected $functionService;
+    protected $notificationService;
+    protected $invoiceService;
+    protected $mswService;
+    public function __construct(
+        FunctionsServiceInterface $functionService,
+        NotificationServiceInterface $notificationService,
+        InvoiceServiceInterface $invoiceService,
+        MswService $mswService
+    ) {
+        $this->functionService = $functionService;
+        $this->notificationService = $notificationService;
+        $this->invoiceService = $invoiceService;
+        $this->mswService = $mswService;
 
+    }
 
     // aprobacion comercial tanto de pedido como de cotizaciones
 
@@ -66,13 +92,6 @@ class ApprovalService implements ApprovalServiceInterface
                 ];
             }
 
-            // // ESTA VALICACION ES PARA VALIDAR QUE PIDA AUTORIZACIÓN SI LA COTIZACIÓN SOBRE LA CUAL SE REALIZA LA COPIA O EL VOLVER A PEDIR PIDA AUTORIZACION SI O SI
-            // if ($cotizacion->estado == 'espera') {
-            //     return [
-            //         'requiere' => 'yes',
-            //         'motivo' => 'Cotizacion pendiente de aprobacion comercial'
-            //     ];
-            // }
 
 
             $nivelFormPagoCotizacionAnterior = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion->DESC_FORMA_PAGO_CODIGO)
@@ -266,6 +285,35 @@ class ApprovalService implements ApprovalServiceInterface
         }
         return $return;
     }
+    /*** aprovacion crediciticia *** */
+
+    public function checkoutApprovalCredit($data)
+    {
+        if ($data['COND_ID'] == 'CONTADO') {
+            return 'no';
+        }
+
+        $params = [
+            'IDCompania' => env('ID_COMPANIA'),
+            'Ruc' => Arr::get($data, 'CLI_RUC'),
+        ];
+        $cupoDisponible = $this->mswService->cobranzas('ConsultaCupoDisponibleCliente', $params);
+        if ($data['total'] >  $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
+            return 'Cupo';
+        }
+
+        $documentosVencidos = $this->mswService->cobranzas('ConsultaDocumentosVencidosCliente', $params);
+        if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
+            return 'Documentos Vencidos';
+        }
+
+        $documentosSinSoporte = $this->mswService->cobranzas('ConsultaDocumentosSinSoporteCliente', $params);
+        if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
+            return 'Saldo Pendiente';
+        }
+
+        return 'no';
+    }
 
     public function checkoutApprovalDevoluciones($data)
     {
@@ -376,5 +424,164 @@ class ApprovalService implements ApprovalServiceInterface
                     && isset($item['despacho'])
                     && $item['despacho'] === true;
             });
+    }
+
+
+
+
+    /**
+     *  FUNCIONES PARA LA APROBACIÓN CREDITICIA DE PEDIDOS
+     */
+
+    public function getOrderApprovalData($data)
+    {
+        try {
+            $detallePedido = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
+            $alert = $this->functionService->consultStockDetail($data, $detallePedido, $data['id']);
+            if ($alert) {
+                return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
+            }
+            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 402);
+        }
+
+    }
+
+
+
+    public function approveCreditOrder($data)
+    {
+        try {
+            DB::beginTransaction();
+            $user = Auth::user();
+            $pedido = GpPedido::where('id', $data['id'])->first();
+            if (!$pedido) {
+                DB::rollBack();
+                return $this->buildErrorResponse("Pedido no encontrado", 404);
+            }
+            $pedido->aprobado_crediticio = 'yes';
+            $pedido->aprobador_crediticio_id = $user->id;
+            $pedido->save();
+
+            $this->invoiceService->checkSendInvoice($pedido);
+            DB::commit();
+            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e->getMessage());
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+
+    }
+
+    public function denyCreditApproval($data)
+    {
+        $user = Auth::user();
+        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        if (!$pedido) {
+            return $this->buildErrorResponse("Pedido no encontrado", 404);
+        }
+        $pedido->estado = 'rechazado';
+        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobador_crediticio_id = $user->id;
+        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        $pedido->rechazado = 1;
+        $pedido->save();
+        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->cleanDetailOrderStock($pedido);
+        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+
+    }
+
+
+    public function rejectCreditOrderForInsufficientStock($data)
+    {
+        $user = Auth::user();
+        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        $pedido->estado = 'rechazado';
+        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobador_crediticio_id = $user->id;
+        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        $pedido->rechazado = 1;
+        $pedido->save();
+        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->cleanDetailOrderStock($pedido);
+        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+        return $this->buildErrorResponse($data['alert'], 422);
+    }
+
+    public function cleanDetailOrderStock($pedido)
+    {
+        $bodega = $pedido->BOD_BODEGA;
+        $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->pluck('id')->toArray();
+        GpPedidoDetalleStock::whereIn('detalle_id', $detalles)
+            ->where('STO_ART_BODEGA', $bodega)->update(['reservado' => 0]);
+    }
+
+
+
+    /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
+
+    public function approveComercialOrder($data)
+    {
+        try {
+            DB::beginTransaction();
+            $user = Auth::user();
+            $pedido = GpPedido::where('id', $data['id'])->first();
+            if (!$pedido) {
+                DB::rollBack();
+                return $this->buildErrorResponse("Pedido no encontrado", 404);
+            }
+            $pedido->aprobado_comercial = 'yes';
+            $pedido->aprobador_comercial_id = $user->id;
+            $pedido->save();
+
+            $this->invoiceService->checkSendInvoice($pedido);
+            DB::commit();
+            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e->getMessage());
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function denyApproveComercialOrderForInsufficientStock($data)
+    {
+        $user = Auth::user();
+        $pedido = GpPedido::where('id', $data['id'])->first();
+        if (!$pedido) {
+            return $this->buildErrorResponse("Pedido no encontrado", 404);
+        }
+        $pedido->estado = 'rechazado';
+        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        $pedido->rechazado = 1;
+        $pedido->save();
+        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->cleanDetailOrderStock($pedido);
+        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+    }
+
+
+    public function denyApproveComercialOrder($data)
+    {
+        $user = Auth::user();
+        $pedido = GpPedido::where('id', $data['id'])->first();
+        if (!$pedido) {
+            return $this->buildErrorResponse("Pedido no encontrado", 404);
+        }
+        $pedido->estado = 'rechazado';
+        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
+        $pedido->rechazado = 1;
+        $pedido->save();
+        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->cleanDetailOrderStock($pedido);
+        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
 }

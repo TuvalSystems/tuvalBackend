@@ -182,7 +182,7 @@ class CotizacionesController extends Controller
             if (isset($data['test']) && $data['test'] === 'copiarpedido') {
                 $articulo->CHECK_ALTERNATIVO = 0;
             } else {
-                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($articulo);
+                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($data, $articulo);
             }
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
@@ -420,7 +420,7 @@ class CotizacionesController extends Controller
         $data = $request->all();
         $user = Auth::user();
 
-        $aprobaciones = new AprobacionesController;
+        // $aprobaciones = new AprobacionesController;
 
         $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data);
         // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);
@@ -1032,52 +1032,10 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function detallecotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function detallecotizacion(Request $request)
     {
         $data = $request->all();
-        $user = Auth::user();
-
-        $estadodecuenta = array();
-
-        $webservices = new WebserviceController();
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $data['CLI_RUC'],
-        );
-
-        $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-
-        $estadodecuenta['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
-
-        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->get()->first();
-        foreach ($detalle as $item) {
-            $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $data['id'])
-                ->join('gp_proveedors', 'gp_proveedors.id', 'gp_cotizacion_detalle_proveedores.ID_PROVEEDOR')
-                ->where('detalle_id', $item->id)
-                ->select('gp_cotizacion_detalle_proveedores.*', 'gp_proveedors.PROV_RAZON_SOCIAL')
-                ->where('detalle_id', $item->id)->get();
-
-            if ($item->ART_DECIMAL_CANTIDAD == 0) {
-                $item->ART_STOCK = (int) $item->ART_STOCK;
-                $item->ART_CANTIDAD = (int) $item->ART_CANTIDAD;
-            }
-            foreach ($proveedores as $proveedor) {
-                $margen = (($proveedor['COSTO_UNITARIO'] / (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $data['porcentage_descuento'] / 100));
-
-                $proveedor->margen = number_format($margen, 4, '.', '');
-                if ($item->ART_DECIMAL_CANTIDAD == 0) {
-                    $proveedor->CANTIDAD = (int) $proveedor->CANTIDAD;
-                }
-            }
-            $item->proveedores = $proveedores;
-        }
-
-        return response([
-            'success' => true,
-            'detalle' => $detalle,
-            'estadodecuenta' => $estadodecuenta,
-        ]);
+        return $this->quotationService->detailQuotation($data);
     }
 
     public function recuperarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1200,6 +1158,7 @@ class CotizacionesController extends Controller
             'cliente' => $cliente,
             'registro_copia' => $registroCopia->id,
             'currentSucursal' => $data['sucursal_id'],
+            'test' => 'volver_a_pedir'
         ]);
     }
 

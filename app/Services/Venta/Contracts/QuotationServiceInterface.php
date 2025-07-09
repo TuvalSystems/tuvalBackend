@@ -28,7 +28,7 @@ interface QuotationServiceInterface
     /**
      * actualizaciones de campos de gp_temp_cart
      */
-     public function syncAndGetCheckAlternativo($articulo);
+     public function syncAndGetCheckAlternativo($data, $articulo);
      public function updateCheckAlternativeItem($id, $checkAlternative);
 
 
@@ -42,4 +42,10 @@ interface QuotationServiceInterface
        * API para obtener listado de cotizaciones con novedades
        */
       public function consultQuotationsNews($data);
+
+
+      /** funcion para obtener el detalle de la cotizacion  */
+
+    public function detailQuotation($data);
+
 }

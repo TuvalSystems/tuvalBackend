@@ -46,7 +46,7 @@ class SendInvoiceNextMonth extends Command
 
         $startTime = Carbon::now();
         try {
-            $orderJobService->sendInvoiceNextMonth();
+            $orderJobService->sendInvoiceNextMonthCron();
             $endTime = Carbon::now();
             $duration = $startTime->diffInSeconds($endTime);
             Log::channel('cron_process')->info("✅ [SendInvoiceNextMonthJob] - Command finished at {$endTime} (Duration: {$duration} seconds)");
