@@ -1761,6 +1761,7 @@ class PedidosController extends Controller
         }
     }
 
+    /** migrar mas adelante */
     public function volverafacturar($devolucion)
     {
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
