@@ -182,7 +182,7 @@ class CotizacionesController extends Controller
             if (isset($data['test']) && $data['test'] === 'copiarpedido') {
                 $articulo->CHECK_ALTERNATIVO = 0;
             } else {
-                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($articulo);
+                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($data, $articulo);
             }
             $consulta_precio[] = array(
                 'ART_CODIGO' => $articulo->ART_CODIGO,
@@ -1158,6 +1158,7 @@ class CotizacionesController extends Controller
             'cliente' => $cliente,
             'registro_copia' => $registroCopia->id,
             'currentSucursal' => $data['sucursal_id'],
+            'test' => 'volver_a_pedir'
         ]);
     }
 

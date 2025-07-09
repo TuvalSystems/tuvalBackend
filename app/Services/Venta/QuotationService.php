@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
 use App\Http\Controllers\WebserviceController;
+use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
+use App\Models\GpRegistroCopia;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
@@ -199,20 +202,100 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function syncAndGetCheckAlternativo($articulo)
+    public function syncAndGetCheckAlternativo($data, $articulo)
     {
-        $item = GpTempCart::find($articulo->id);
-
-        if (!$item || !$item->detalle_id) {
+        if (empty($data['test'])) {
             return 0;
         }
+
+        $item = GpTempCart::find($articulo->id);
+        if (!$item) {
+            return 0;
+        }
+
+        $checkAlternativo = 0;
+
+        switch ($data['test']) {
+            case 'recuperarcotizacion':
+                $checkAlternativo = $this->handleRecuperarCotizacion($item, $articulo);
+                break;
+            case 'volver_a_pedir':
+                $checkAlternativo = $this->handleVolverAPedir($data, $item, $articulo);
+                break;
+        }
+
+        return $checkAlternativo ?: 0;
+    }
+
+    public function handleRecuperarCotizacion($item, $articulo)
+    {
+        if (!$item->detalle_id) {
+            return 0;
+        }
+
         $detalle = GpCotizacionDetalle::find($articulo->detalle_id);
         if (!$detalle) {
             return 0;
         }
-        $item->CHECK_ALTERNATIVO = $detalle->CHECK_ALTERNATIVO;
+
+        return $this->updateCheckAlternativeItemType($item, $detalle->CHECK_ALTERNATIVO);
+
+    }
+
+    public function handleVolverAPedir($data, $item, $articulo){
+
+        if (empty($data['registro_copia'])) {
+            return 0;
+        }
+
+        $registroCopia = GpRegistroCopia::find($data['registro_copia']);
+        if (!$registroCopia) {
+            return 0;
+        }
+
+        if ($registroCopia->cotizacion_origen) {
+            return $this->processCotizacionOrigen($registroCopia, $item,$articulo);
+        }
+
+        if ($registroCopia->pedido_origen) {
+            return $this->processPedidoOrigen($registroCopia, $item,$articulo);
+        }
+
+        return 0;
+    }
+
+    public function processCotizacionOrigen($registroCopia, $item, $articulo){
+        $cotizacion = GpCotizacion::find($registroCopia->cotizacion_origen);
+        if (!$cotizacion) {
+            return 0;
+        }
+        $detalle = GpCotizacionDetalle::where('id', $articulo->detalle_id)->where('cotizacion_id', $cotizacion->id)->first();
+        if (!$detalle) {
+            return 0;
+        }
+        return $this->updateCheckAlternativeItemType($item, $detalle->CHECK_ALTERNATIVO);
+    }
+
+    public function processPedidoOrigen($registroCopia, $item, $articulo){
+        $pedido = GpPedido::find($registroCopia->pedido_origen);
+        if (!$pedido) {
+            return 0;
+        }
+
+        $detalle = GpPedidoDetalle::where('ART_CODIGO', $articulo->ART_CODIGO)->where('orden', $articulo->orden)->where('pedido_id', $pedido->id)->first();
+        if (!$detalle) {
+            return 0;
+        }
+
+        return $this->updateCheckAlternativeItemType($item, $detalle->CHECK_ALTERNATIVO);
+    }
+
+    public function updateCheckAlternativeItemType($item, $checkAlternative)
+    {
+        $item->CHECK_ALTERNATIVO  = $checkAlternative;
         $item->save();
-        return $detalle->CHECK_ALTERNATIVO;
+        return $checkAlternative;
+
     }
 
 
@@ -460,16 +543,17 @@ class QuotationService implements QuotationServiceInterface
         }
     }
 
-    public function getAallProvidersQuotation($cotizacionId, $cotizacionDetalleId){
+    public function getAallProvidersQuotation($cotizacionId, $cotizacionDetalleId)
+    {
         return GpCotizacionDetalleProveedores::query()
-                    ->join('gp_proveedors', 'gp_proveedors.id', 'gp_cotizacion_detalle_proveedores.ID_PROVEEDOR')
-                    ->where('gp_cotizacion_detalle_proveedores.cotizacion_id', $cotizacionId)
-                    ->where('gp_cotizacion_detalle_proveedores.detalle_id',$cotizacionDetalleId)
-                    ->select([
-                        'gp_cotizacion_detalle_proveedores.*',
-                        'gp_proveedors.PROV_RAZON_SOCIAL'
-                    ])
-                    ->get();
+            ->join('gp_proveedors', 'gp_proveedors.id', 'gp_cotizacion_detalle_proveedores.ID_PROVEEDOR')
+            ->where('gp_cotizacion_detalle_proveedores.cotizacion_id', $cotizacionId)
+            ->where('gp_cotizacion_detalle_proveedores.detalle_id', $cotizacionDetalleId)
+            ->select([
+                'gp_cotizacion_detalle_proveedores.*',
+                'gp_proveedors.PROV_RAZON_SOCIAL'
+            ])
+            ->get();
     }
 
     public function calculateMargen($margenBruto, $descuentoGeneral, $costo)
