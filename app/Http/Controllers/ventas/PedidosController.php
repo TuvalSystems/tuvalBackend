@@ -45,7 +45,6 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class PedidosController extends Controller
 {
-    /** hola esto es para prueba de deploy jenkins */
     use JsonResponseTrait;
     protected $apiGp;
     protected $orderService;
