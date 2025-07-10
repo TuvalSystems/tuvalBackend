@@ -284,43 +284,7 @@ class PedidosController extends Controller
         return false;
     }
 
-    // public function facturarsiguientemes()
-    // {
-    //     return $this->orderService->generateNextMonthInvoice();
-    // }
 
-
-
-    // public function facturarsiguientemescron(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    // {
-
-    //     $date = date('Y-m-d h:i:s');
-    //     if (date('N', strtotime($date)) >= 6) {
-    //         return response([
-    //             'success' => true,
-    //             'message' => 'Fin de semana',
-    //         ]);
-    //     }
-
-    //     $parameters = array(
-    //         'IDCompania' => env('ID_COMPANIA'),
-    //         'Fecha' => date('Y-m-d'),
-    //     );
-    //     $webservices = new WebserviceController;
-    //     $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
-
-    //     if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
-    //         return response([
-    //             'success' => true,
-    //             'message' => 'Día no habil',
-    //         ]);
-    //     }
-    //     //ejemplo
-
-
-
-    //     return $this->facturarsiguientemes();
-    // }
 
     public function corregirenviando(): void
     {
@@ -1994,4 +1958,7 @@ class PedidosController extends Controller
     {
         return $this->orderService->getLisOrdersWithoutCoordinated();
     }
+
+
+
 }

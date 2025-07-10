@@ -121,7 +121,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
             return;
         }
         $ordersByProvider = $this->groupOrdersByProviders($orders);
-        foreach ($ordersByProvider as $providerId => $providerOrders) {
+        foreach ($ordersByProvider as $providerOrders) {
             $this->sendOrdersForProvider($providerOrders);
         }
 
@@ -144,7 +144,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     {
         $header = array_map(fn($order) => $this->buildHeaderForOrder($order), $providerOrders);
         $this->mswService->transaccional('MST_Orden_Compra', array('Cabecera' => $header));
-        $firstOrder = $providerOrders[0];
+        $firstOrder = reset($providerOrders);
 
         $response = $this->mswService->transaccional('MST_Respuesta_Orden_Compra', array('documento_origen' => $firstOrder['ORDEN_COMPRA_DOCU_ORIGEN'], 'linea' => $firstOrder['ORDEN_COMPRA_LINEA']));
         $this->processResponse($providerOrders, $response);
@@ -217,10 +217,12 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 
     public function generarOrdenCompra($order)
     {
-        if (empty($order) || empty($order[0]['DOC_GENERADO'])) {
-
+        $ordReset = reset($order);
+        $orderCheck = GpOrdenDeCompra::find($ordReset['id']);
+        if (!$orderCheck || $orderCheck->DOC_GENERADO === null || $orderCheck->DOC_GENERADO === '') {
+            return;
         }
-        $documentoOrtigen = $order[0]['DOC_GENERADO'];
+        $documentoOrtigen = $orderCheck->DOC_GENERADO;
         $result = $this->callSoapGeneratePurchaseOrder($documentoOrtigen);
         if (!$result) {
             return;
@@ -289,7 +291,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     public function findMatchingDetailId($order, $articulo)
     {
         foreach ($order as $ord) {
-            if ($ord['ORDE_COMPRA_ARTICULO'] == $articulo) {
+            if ($ord['ORDEN_COMPRA_ARTICULO'] == $articulo) {
                 return $ord['detalle_proveedores_id'];
             }
         }
@@ -298,7 +300,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     public function markOrderAsGenerated($order, $articulo)
     {
         foreach ($order as $ord) {
-            if ($ord['ORDE_COMPRA_ARTICULO'] == $articulo) {
+            if ($ord['ORDEN_COMPRA_ARTICULO'] == $articulo) {
                 GpOrdenDeCompra::where('id', $ord['id'])->update(['estado' => self::GENERATED_STATUS]);
             }
         }
