@@ -14,7 +14,6 @@ use App\Models\Notificaciones;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpSubGrupoCliente;
-use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\GpPedidoDetalleStock;
@@ -26,17 +25,16 @@ use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 
 class ConsultasController extends Controller
 {
-    protected $stockWarehouseService;
-    protected $apiGp;
+    protected $InventoryQueryService;
 
-    public function __construct(ApiGpService $apiGp, StockWarehouseServiceInterface $stockWarehouseService)
+
+    public function __construct(InventoryQueryServiceInterface $InventoryQueryService)
     {
-        $this->apiGp = $apiGp;
-        $this->stockWarehouseService = $stockWarehouseService;
+        $this->InventoryQueryService = $InventoryQueryService;
     }
 
     public function buscararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -130,8 +128,8 @@ class ConsultasController extends Controller
                 if (isset($busqueda['nivel_precio'])) {
 
                     if (isset($lista_precios_general[$articulo->ART_CODIGO])) {
-                        $articulo->ART_VALOR = (float)number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
-                        $articulo->ART_VALOR_ORIGINAL = (float)number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
+                        $articulo->ART_VALOR = (float) number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
+                        $articulo->ART_VALOR_ORIGINAL = (float) number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
                     } else {
                         $articulo->ART_VALOR = 0;
                         $articulo->ART_VALOR_ORIGINAL = 0;
@@ -168,7 +166,7 @@ class ConsultasController extends Controller
             if (!$clave)
                 $articulos = $articulos->values();
 
-                // Filtrar artículos que no tienen valor y los quita y solo muestra los que si tienen valor
+            // Filtrar artículos que no tienen valor y los quita y solo muestra los que si tienen valor
             // $articulos = $articulos->filter(function ($articulo) {
             //     return $articulo->ART_VALOR > 0;
             // })->values();
@@ -188,41 +186,13 @@ class ConsultasController extends Controller
     public function consultarstock(Request $request)
     {
         $data = $request->all();
-        $articulo = $data['articulo'];
-        $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
-        if (empty($warehouses)) {
-            return [];
-        }
-
-        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-        $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-        $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
-        $art = $this->stockWarehouseService->newFormatStock($formatStock, $articulo); //nose porque hace pero va
-        return response([
-            'success' => true,
-            'stock' => $art['stock'],
-            'ART_STOCK' => $art['ART_STOCK'],
-        ]);
+        return $this->InventoryQueryService->getConsultStock($data);
     }
 
     public function consultaStockOthers(Request $request)
     {
         $data = $request->all();
-        $articulo = $data['articulo'];
-        $warehouses = $this->stockWarehouseService->getWarehouse($data);
-        if (empty($warehouses)) {
-            return [];
-        }
-
-        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-        $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-        $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
-        $art =$this->stockWarehouseService->newFormatStock($formatStock, $articulo); //nose porque hace pero va
-        return response([
-            'success' => true,
-            'stock' => $art['stock'],
-            'ART_STOCK' => $art['ART_STOCK'],
-        ]);
+        return $this->InventoryQueryService->getConsultStockOthers($data);
     }
 
 
@@ -233,30 +203,10 @@ class ConsultasController extends Controller
 
 
 
-    public function consultastockpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function consultastockpedido(Request $request)
     {
         $data = $request->all();
-        $funciones = new FuncionesController();
-
-        $alert = $funciones->consultastockdetalle($data, $data['cotizacion']);
-
-        if ($alert) {
-            return response([
-                'success' => false,
-                'message' => $alert,
-                'cotizacion' => $data['cotizacion'],
-            ]);
-        }
-
-        //        return response([
-        //            'success' => false,
-        //            'message' => 'Sin motivo',
-        //            'cotizacion' => $data['cotizacion'],
-        //        ]);
-        return response([
-            'success' => true,
-            'message' => 'si hay stock'
-        ]);
+        return $this->InventoryQueryService->getConsultStockOrder($data);
     }
 
     public function consultastockarticulopuntodeventa($articulo, $puntodeventa): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -476,7 +426,7 @@ class ConsultasController extends Controller
             ->get();
 
         foreach ($trasladosreposicion as $traslado) {
-            $traslado->reservado = ( $traslado->cantidad ?? 0) - ($traslado->trasladado ?? 0);
+            $traslado->reservado = ($traslado->cantidad ?? 0) - ($traslado->trasladado ?? 0);
             unset($traslado->cantidad);
             unset($traslado->trasladado);
 

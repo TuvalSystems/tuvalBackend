@@ -62,7 +62,7 @@ class FunctionsService implements FunctionsServiceInterface
 
 
 
-    /** para aprobacion crediticia de pedidos */
+    /** para aprobacion crediticia de pedidos y para validar stock antes de guardar pedido en InventoryQueryService */
 
     public function consultStockDetail($data, $detalle, $pedidoId = null)
     {
@@ -123,7 +123,7 @@ class FunctionsService implements FunctionsServiceInterface
             $articulo['stock'] = array_values($stockGeneral[$articuloCodigo]);
 
             if (($stockTotal - $articuloCantidad) < 0) {
-                $alert .= "El articulo " . $articulo['ART_DESCRIPCION'] . " tiene stock insuficiente. Stock disponible: " . $stockTotal . " - Cantidad pedido: " . $articulo['ART_CANTIDAD'] . "<br>";
+                $alert .= "El articulo " . $articulo['ART_CODIGO'] . " tiene stock insuficiente. Stock disponible: " . $stockTotal . " - Cantidad pedido: " . $articulo['ART_CANTIDAD'] . "<br>";
             }
         }
 
