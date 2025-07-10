@@ -14,7 +14,6 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
-use Illuminate\Support\Facades\Cache;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -50,9 +49,7 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function getPurchaseOrdersByOrderNumber(string $orderNumber)
     {
-        // $cacheKey = "pruchase_orders_by_order_number_{$orderNumber}";
-        //  return Cache::remember($cacheKey, 60, function () use ($orderNumber) {
-        return GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
+       return  GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
             ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
             ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
             ->where('gp_pedidos.pedido', $orderNumber)
@@ -65,14 +62,12 @@ class OrderRepository implements OrderRepositoryInterface
                 'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE'
             )
             ->get();
-        // });
 
     }
 
     public function getTransferOrdersBySale(int $orderId)
     {
-        // $cacheKey = "transfer_orders_byId_{$orderId}";
-        // return Cache::remember($cacheKey, 60, function () use ($orderId) {
+
         return GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
             ->where('gp_traslados_ventas.pedido_id', $orderId)
@@ -86,13 +81,12 @@ class OrderRepository implements OrderRepositoryInterface
                 'gp_pedidos.USERID AS usuario',
             )
             ->get();
-        // });
+
     }
 
     public function getShipmentGuidesByTransfer(object $transfer)
     {
-        // $cacheKey = "shipment_guides_{$transfer->pedido}_{$transfer->ART_CODIGO}_{$transfer->id}";
-        // return Cache::remember($cacheKey, 60, function () use ($transfer) {
+
         return GpGuiaRemisionTransferencia::join('gp_guia_remisions', 'gp_guia_remisions.id', '=', 'gp_guia_remision_transferencias.guia_remision_id')
             ->join('gp_guia_remision_detalles', 'gp_guia_remisions.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
             ->join('gp_traslados_ventas', 'gp_traslados_ventas.id', '=', 'gp_guia_remision_detalles.detalle_id')
@@ -107,7 +101,7 @@ class OrderRepository implements OrderRepositoryInterface
                 'gp_guia_remision_detalles.recibido'
             )
             ->get();
-        // });
+
     }
 
 
@@ -137,10 +131,10 @@ class OrderRepository implements OrderRepositoryInterface
             ->where('factura_posterior_despacho', 1)
             ->where(function ($q) {
                 $q->whereNull('factura_a_demanda')
-                ->orWhere('factura_a_demanda', 0);
+                    ->orWhere('factura_a_demanda', 0);
             })
             ->where('factura_siguiente_mes', 1)
-            ->whereMonth('created_at', '=',  $mes)
+            ->whereMonth('created_at', '=', $mes)
             ->get();
     }
 }
