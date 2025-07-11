@@ -13,7 +13,7 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
-    public function newFormatStock($stockResults,  $articulo)
+    public function newFormatStock($stockResults, $articulo)
     {
         $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
         $articulo['stock'] = [];
@@ -30,8 +30,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             // Formateo de cantidad según configuración de decimales
             $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
             $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
-                ? (int)$stockValue
-                : round((float)$stockValue, 2);
+                ? (int) $stockValue
+                : round((float) $stockValue, 2);
 
             // Cálculo de stock disponible (considerando reservas)
             $reservado = $this->stockReservado(
@@ -39,10 +39,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 $stockItem['STO_ART_BODEGA']
             );
 
-            $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(
-                0,
-                $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado
-            );
+            $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
             $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
         }
 
@@ -93,11 +90,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
         // Stock en traslados de reposición
         $reservado += GpTrasladosReposicion::query()
-        ->where('bodega_origen', $bodega)
-        ->where('ART_CODIGO', $articulo)
-        ->whereNull('completado')
-        ->get()
-        ->sum(fn ($item) => ($item->cantidad ?? 0) - ($item->trasladado ?? 0));
+            ->where('bodega_origen', $bodega)
+            ->where('ART_CODIGO', $articulo)
+            ->whereNull('completado')
+            ->get()
+            ->sum(fn($item) => ($item->cantidad ?? 0) - ($item->trasladado ?? 0));
 
         return $reservado;
     }
@@ -191,7 +188,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                     fn($item) => [
                         'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
                         'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                        'STO_ART_STOCK_DISPONIBLE' => number_format((float)$item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
+                        'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
                     ],
                     array_values($value)
                 )

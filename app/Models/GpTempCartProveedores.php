@@ -44,4 +44,18 @@ use Illuminate\Database\Eloquent\Model;
 class GpTempCartProveedores extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'id_tempcart',
+        'ID_PROVEEDOR',
+        'DESCRIPCION_ARTICULO',
+        'FECHA_ENTREGA',
+        'CANTIDAD',
+        'COSTO_UNITARIO',
+        'IMPUESTO',
+        'TOTAL',
+        'TOTALCONIMPUESTO',
+        'NOTA',
+        'MARGEN'
+    ];
 }

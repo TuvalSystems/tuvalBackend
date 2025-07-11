@@ -13,4 +13,6 @@ interface StockWarehouseServiceInterface
 
     public function getWarehouse($data);
 
+    public function checkArticuloDisponible($articulo);
+
 }

@@ -1038,77 +1038,11 @@ class CotizacionesController extends Controller
         return $this->quotationService->detailQuotation($data);
     }
 
-    public function recuperarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recuperarcotizacion(Request $request)
     {
         $data = $request->all();
         $user = Auth::user();
-
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
-        $arr_bodegas = $funciones->gebodegas($data, 1);
-        $arrArticulos = array();
-        $stock_bodega_arr = array();
-
-        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-
-        foreach ($detalle as $articulo) {
-            $proveedores = GpCotizacionDetalleProveedores::
-                where('cotizacion_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get();
-
-            $articulo->proveedores = $proveedores;
-
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get()->toArray();
-            $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
-
-
-            // foreach ($arr_bodegas as $bodega) {
-            $arrArticulos[] = array(
-                'articulo' => $articulo->ART_CODIGO,
-            );
-            // }
-        }
-
-        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
-        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
-            ->map(function ($items) {
-                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
-            })
-            ->toArray();
-        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-
-        foreach ($stock_bodega_arr as $key => $bodegas) {
-            foreach ($bodegas as $bodega) {
-                $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
-            }
-        }
-
-        $articulos_array_l = array();
-
-        foreach ($detalle as $articulo) {
-            $funciones->formatStock($articulo, $stock_general);
-            if (!$articulo->disponible) {
-                $clase = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
-                $articulo->ART_CODIGO = $funciones->buscareledisponible($articulos_array_l, $clase->ART_CLASE_ARTICULO);
-                $articulos_array_l[] = $articulo->ART_CODIGO;
-            }
-
-        }
-
-        $funciones->recalculariva($detalle);
-
-        $funciones->setTempCartFrom($detalle, $data, $user);
-
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'currentSucursal' => $data['sucursal_id'],
-            'cotizacion_id' => $data['id'],
-            'test' => 'recuperarcotizacion',
-        ]);
+       return $this->quotationService->restoreQuotation($data, $user);
     }
 
 
@@ -1213,7 +1147,7 @@ class CotizacionesController extends Controller
 
         // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
         $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
             ->map(function ($items) {
                 return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
@@ -1278,7 +1212,7 @@ class CotizacionesController extends Controller
         }
 
         // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
         $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
             ->map(function ($items) {
                 return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
