@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpArticulo;
 use App\Models\GpCronLog;
-use App\Models\GpDatosItemsL;
 use App\Models\GpProspecto;
 use App\Models\GpRegistroCopia;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartProveedores;
@@ -33,6 +32,7 @@ use Illuminate\Http\JsonResponse;
 
 class CotizacionesController extends Controller
 {
+    use JsonResponseTrait;
     protected $quotationService;
     protected $approvalService;
 
@@ -156,7 +156,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function llenarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenarcotizacion(Request $request)
     {
 
         $data = $request->validate([
@@ -167,92 +167,8 @@ class CotizacionesController extends Controller
             'registro_copia' => '',
             'test' => '', // copiarpedido se creo un  campo test para que no se sincronice el check alternativo cuando se copia un pedido, se creo en el frontend cuando se copia
         ]);
-
         $user = Auth::user();
-
-        $articulos = GpTempCart::where('sucursal_id', $data['sucursal_id'])
-            ->where('puntodeventa_id', $data['puntodeventa_id'])
-            ->where('cliente_id', $data['cliente_id'])
-            ->where('user_id', $user->id)
-            ->orderBy('orden', 'asc')
-            ->get();
-
-        $consulta_precio = array();
-        foreach ($articulos as $articulo) {
-            if (isset($data['test']) && $data['test'] === 'copiarpedido') {
-                $articulo->CHECK_ALTERNATIVO = 0;
-            } else {
-                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($data, $articulo);
-            }
-            $consulta_precio[] = array(
-                'ART_CODIGO' => $articulo->ART_CODIGO,
-            );
-
-            if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
-                $articulo->ART_STOCK = (int) $articulo->ART_STOCK;
-                $articulo->ART_CANTIDAD = (int) $articulo->ART_CANTIDAD;
-            }
-
-            $proovedores = GpTempCartProveedores::where('id_tempcart', $articulo->id)->get();
-            foreach ($proovedores as $proveedor) {
-                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
-                    $proveedor->CANTIDAD = (int) $proveedor->CANTIDAD;
-                }
-            }
-            $articulo->proveedores = $proovedores;
-
-            $stock = GpTempCartStock::where('id_tempcart', $articulo->id)->get();
-
-            foreach ($stock as $st) {
-                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
-                    $st->STO_ART_STOCK_DISPONIBLE = (int) $st->STO_ART_STOCK_DISPONIBLE;
-                    $st->seleccionado = (int) $st->seleccionado;
-                }
-            }
-            $articulo->stock = $stock;
-            $imagenes = array();
-            for ($i = 1; $i <= 3; $i++) {
-                $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-
-                if (File::exists($file)) {
-                    $imagenes[] = env('APP_URL') . '/' . $file;
-                }
-            }
-
-            $articulo->imagenes = $imagenes;
-        }
-
-        if ($data['serial'] == '') {
-            $webservices = new WebserviceController;
-            if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
-                $precios = $webservices->listaprecios($consulta_precio);
-                $lista_precios_general = array();
-                foreach ($precios as $precio) {
-                    $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
-                }
-            }
-
-
-            $cliente = GpCliente::where('id', $data['cliente_id'])->first();
-
-            foreach ($articulos as $articulo) {
-                if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
-                    if ($articulo->ART_VALOR_ORIGINAL != $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR']) {
-                        $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                        $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                        $articulo->modificador = 0;
-                    }
-                }
-            }
-        }
-
-        $funciones = new FuncionesController();
-        $funciones->recalculariva($articulos);
-
-        return response([
-            'success' => true,
-            'articulos' => $articulos,
-        ]);
+        return $this->quotationService->fillQuotation($data, $user);
     }
 
     public function eliminararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -375,7 +291,6 @@ class CotizacionesController extends Controller
         ]);
 
         return $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
-
     }
 
     public function saveproveedor(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -425,14 +340,13 @@ class CotizacionesController extends Controller
         $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data);
         // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);
         //        echo $requiere_aprobacion_comercial;
-//        die();
-        $requiere_aprobacion_crediticia = 'no';//$aprobaciones->checkAprobacionesCrediticias($data);
+        //        die();
+        $requiere_aprobacion_crediticia = 'no'; //$aprobaciones->checkAprobacionesCrediticias($data);
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
         if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
             $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->first();
-
         } else {
             $cotizacion = new GpCotizacion;
 
@@ -837,7 +751,7 @@ class CotizacionesController extends Controller
         }
 
         //        echo '<pre>';
-//        print_r($nuevaDireccion);
+        //        print_r($nuevaDireccion);
 
         $CLI_SUC_ID_DIRECCION = explode('-', $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']);
 
@@ -940,8 +854,8 @@ class CotizacionesController extends Controller
         );
 
         //        echo '<pre>';
-//        print_r($parameters);
-//        die();
+        //        print_r($parameters);
+        //        die();
 
         $parameters = [
             'Cliente' => array($parameters)
@@ -1038,77 +952,12 @@ class CotizacionesController extends Controller
         return $this->quotationService->detailQuotation($data);
     }
 
-    public function recuperarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recuperarcotizacion(Request $request)
     {
+        ini_set('max_execution_time', -1);
         $data = $request->all();
         $user = Auth::user();
-
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
-        $arr_bodegas = $funciones->gebodegas($data, 1);
-        $arrArticulos = array();
-        $stock_bodega_arr = array();
-
-        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-
-        foreach ($detalle as $articulo) {
-            $proveedores = GpCotizacionDetalleProveedores::
-                where('cotizacion_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get();
-
-            $articulo->proveedores = $proveedores;
-
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get()->toArray();
-            $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
-
-
-            // foreach ($arr_bodegas as $bodega) {
-            $arrArticulos[] = array(
-                'articulo' => $articulo->ART_CODIGO,
-            );
-            // }
-        }
-
-        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
-        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
-            ->map(function ($items) {
-                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
-            })
-            ->toArray();
-        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-
-        foreach ($stock_bodega_arr as $key => $bodegas) {
-            foreach ($bodegas as $bodega) {
-                $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
-            }
-        }
-
-        $articulos_array_l = array();
-
-        foreach ($detalle as $articulo) {
-            $funciones->formatStock($articulo, $stock_general);
-            if (!$articulo->disponible) {
-                $clase = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
-                $articulo->ART_CODIGO = $funciones->buscareledisponible($articulos_array_l, $clase->ART_CLASE_ARTICULO);
-                $articulos_array_l[] = $articulo->ART_CODIGO;
-            }
-
-        }
-
-        $funciones->recalculariva($detalle);
-
-        $funciones->setTempCartFrom($detalle, $data, $user);
-
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'currentSucursal' => $data['sucursal_id'],
-            'cotizacion_id' => $data['id'],
-            'test' => 'recuperarcotizacion',
-        ]);
+        return $this->quotationService->restoreQuotation($data, $user);
     }
 
 
@@ -1201,7 +1050,6 @@ class CotizacionesController extends Controller
                 $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
                 $articulo->CHECK_ALTERNATIVO = 0;
             }
-
         }
 
         $webservices = new WebserviceController;
@@ -1213,7 +1061,7 @@ class CotizacionesController extends Controller
 
         // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
         $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
             ->map(function ($items) {
                 return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
@@ -1278,7 +1126,7 @@ class CotizacionesController extends Controller
         }
 
         // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-        $stock_general = $this->quotationService->restoreQuotation($arrArticulos, $arr_bodegas);
+        $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
         $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
             ->map(function ($items) {
                 return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
@@ -1365,8 +1213,8 @@ class CotizacionesController extends Controller
             if (count($cotizaciones)) {
 
                 //                echo '<pre>';
-//                print_r($cotizaciones);
-//                die();
+                //                print_r($cotizaciones);
+                //                die();
 
                 foreach ($cotizaciones as $cotizacion) {
                     $validez_real = $puntodeventa->PTO_VTA_DIA_VALIDEZ_COTIZACION;
@@ -1389,14 +1237,13 @@ class CotizacionesController extends Controller
                         $cotizacion->save();
                     }
                     //                    echo '<pre>';
-//
-//                    echo $expira.'<br>';
-//                    echo $cotizacion->created_at.'<br>';
-//                    print_r($cotizacion);
-//                    die();
+                    //
+                    //                    echo $expira.'<br>';
+                    //                    echo $cotizacion->created_at.'<br>';
+                    //                    print_r($cotizacion);
+                    //                    die();
                 }
             }
-
         }
         $cronLog = new GpCronLog();
         $cronLog->metodo = 'checkvalidezcotizaciones';
@@ -1463,7 +1310,7 @@ class CotizacionesController extends Controller
             $cotizacion['validez'] = '0 días';
         } else {
             //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-//            $cotizacion['validez'] = $horas.' horas';
+            //            $cotizacion['validez'] = $horas.' horas';
             $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
@@ -1521,8 +1368,6 @@ class CotizacionesController extends Controller
         foreach ($detalle as $art) {
             $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
             $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
-
-
         }
 
         foreach ($detalle as &$art) {
@@ -1561,7 +1406,7 @@ class CotizacionesController extends Controller
             $cotizacion['validez'] = '0 días';
         } else {
             //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-//            $cotizacion['validez'] = $horas.' horas';
+            //            $cotizacion['validez'] = $horas.' horas';
             $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
@@ -1624,7 +1469,7 @@ class CotizacionesController extends Controller
             $cotizacion['validez'] = '0 días';
         } else {
             //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-//            $cotizacion['validez'] = $horas.' horas';
+            //            $cotizacion['validez'] = $horas.' horas';
             $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
@@ -1744,7 +1589,5 @@ class CotizacionesController extends Controller
     {
 
         return $this->quotationService->consultQuotationsNews($request->all());
-
-
     }
 }

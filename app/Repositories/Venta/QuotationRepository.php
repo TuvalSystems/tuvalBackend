@@ -3,6 +3,7 @@
 namespace App\Repositories\Venta;
 
 use App\Models\GpCotizacion;
+use App\Models\GpTempCart;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 
 class QuotationRepository implements QuotationRepositoryInterface
@@ -14,8 +15,24 @@ class QuotationRepository implements QuotationRepositoryInterface
             ->whereDate('fecha_recordatorio', $hoy)
             ->where('recordar', 1)
             ->get();
-
-
     }
 
+
+    /**
+     *
+     * funciones para llenar cotizacion
+     *
+     *
+     *   */
+
+
+    public function getGpTempCartFillQuotation($sucursalId, $puntoVentaId, $clienteId, $userId)
+    {
+        return GpTempCart::where('sucursal_id', $sucursalId)
+            ->where('puntodeventa_id', $puntoVentaId)
+            ->where('cliente_id', $clienteId)
+            ->where('user_id', $userId)
+            ->orderBy('orden', 'asc')
+            ->get();
+    }
 }

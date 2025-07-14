@@ -13,8 +13,8 @@ interface QuotationServiceInterface
     /**
      *  recuperar cotizacion
      */
-
-    public function restoreQuotation($articulos, $bodegas);
+     public function restoreQuotation($data, $user);
+    public function getStockGeneralRestoreQuotation($articulos, $bodegas);
     public function restoreDescriptionItemQuotation($articulos, $bodegas);
 
     //  enviar cotizaciones sql server
@@ -47,5 +47,8 @@ interface QuotationServiceInterface
       /** funcion para obtener el detalle de la cotizacion  */
 
     public function detailQuotation($data);
+
+    /** funcion para llenar la cotizacion  */
+    public function fillQuotation($data, $user);
 
 }

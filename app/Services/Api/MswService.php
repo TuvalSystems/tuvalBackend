@@ -26,4 +26,14 @@ class MswService
         return $response->json();
     }
 
+
+    public function listaprecios(array $params){
+
+        $response = Soap::baseWsdl(env('WEBSERVICES_URL'))
+        ->MST_Lista_Precio([
+            'Lista_Precio_Articulo' => $params,
+        ]);
+        return $response->json()['MST_Lista_PrecioResult']['CS_LISTA_PRECIO'];
+    }
+
 }
