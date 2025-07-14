@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpArticulo;
 use App\Models\GpCronLog;
-use App\Models\GpDatosItemsL;
 use App\Models\GpProspecto;
 use App\Models\GpRegistroCopia;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartProveedores;
@@ -33,6 +32,7 @@ use Illuminate\Http\JsonResponse;
 
 class CotizacionesController extends Controller
 {
+    use JsonResponseTrait;
     protected $quotationService;
     protected $approvalService;
 
@@ -375,7 +375,6 @@ class CotizacionesController extends Controller
         ]);
 
         return $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
-
     }
 
     public function saveproveedor(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -425,14 +424,13 @@ class CotizacionesController extends Controller
         $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data);
         // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);
         //        echo $requiere_aprobacion_comercial;
-//        die();
-        $requiere_aprobacion_crediticia = 'no';//$aprobaciones->checkAprobacionesCrediticias($data);
+        //        die();
+        $requiere_aprobacion_crediticia = 'no'; //$aprobaciones->checkAprobacionesCrediticias($data);
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
         if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
             $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->first();
-
         } else {
             $cotizacion = new GpCotizacion;
 
@@ -837,7 +835,7 @@ class CotizacionesController extends Controller
         }
 
         //        echo '<pre>';
-//        print_r($nuevaDireccion);
+        //        print_r($nuevaDireccion);
 
         $CLI_SUC_ID_DIRECCION = explode('-', $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']);
 
@@ -940,8 +938,8 @@ class CotizacionesController extends Controller
         );
 
         //        echo '<pre>';
-//        print_r($parameters);
-//        die();
+        //        print_r($parameters);
+        //        die();
 
         $parameters = [
             'Cliente' => array($parameters)
@@ -1040,9 +1038,10 @@ class CotizacionesController extends Controller
 
     public function recuperarcotizacion(Request $request)
     {
-        $data = $request->all();
-        $user = Auth::user();
-       return $this->quotationService->restoreQuotation($data, $user);
+        ini_set('max_execution_time', -1);
+            $data = $request->all();
+            $user = Auth::user();
+            return $this->quotationService->restoreQuotation($data, $user);
     }
 
 
@@ -1135,7 +1134,6 @@ class CotizacionesController extends Controller
                 $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
                 $articulo->CHECK_ALTERNATIVO = 0;
             }
-
         }
 
         $webservices = new WebserviceController;
@@ -1299,8 +1297,8 @@ class CotizacionesController extends Controller
             if (count($cotizaciones)) {
 
                 //                echo '<pre>';
-//                print_r($cotizaciones);
-//                die();
+                //                print_r($cotizaciones);
+                //                die();
 
                 foreach ($cotizaciones as $cotizacion) {
                     $validez_real = $puntodeventa->PTO_VTA_DIA_VALIDEZ_COTIZACION;
@@ -1323,14 +1321,13 @@ class CotizacionesController extends Controller
                         $cotizacion->save();
                     }
                     //                    echo '<pre>';
-//
-//                    echo $expira.'<br>';
-//                    echo $cotizacion->created_at.'<br>';
-//                    print_r($cotizacion);
-//                    die();
+                    //
+                    //                    echo $expira.'<br>';
+                    //                    echo $cotizacion->created_at.'<br>';
+                    //                    print_r($cotizacion);
+                    //                    die();
                 }
             }
-
         }
         $cronLog = new GpCronLog();
         $cronLog->metodo = 'checkvalidezcotizaciones';
@@ -1397,7 +1394,7 @@ class CotizacionesController extends Controller
             $cotizacion['validez'] = '0 días';
         } else {
             //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-//            $cotizacion['validez'] = $horas.' horas';
+            //            $cotizacion['validez'] = $horas.' horas';
             $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
@@ -1455,8 +1452,6 @@ class CotizacionesController extends Controller
         foreach ($detalle as $art) {
             $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
             $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
-
-
         }
 
         foreach ($detalle as &$art) {
@@ -1495,7 +1490,7 @@ class CotizacionesController extends Controller
             $cotizacion['validez'] = '0 días';
         } else {
             //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-//            $cotizacion['validez'] = $horas.' horas';
+            //            $cotizacion['validez'] = $horas.' horas';
             $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
@@ -1558,7 +1553,7 @@ class CotizacionesController extends Controller
             $cotizacion['validez'] = '0 días';
         } else {
             //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-//            $cotizacion['validez'] = $horas.' horas';
+            //            $cotizacion['validez'] = $horas.' horas';
             $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
@@ -1678,7 +1673,5 @@ class CotizacionesController extends Controller
     {
 
         return $this->quotationService->consultQuotationsNews($request->all());
-
-
     }
 }

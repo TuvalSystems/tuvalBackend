@@ -30,6 +30,8 @@ use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class QuotationService implements QuotationServiceInterface
 {
@@ -132,102 +134,107 @@ class QuotationService implements QuotationServiceInterface
 
     public function restoreQuotation($data, $user)
     {
-        $clientes = $this->functionService->getClient($data);
-        $bodegas = $this->functionService->getBodegas($data, 1);
-        $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
-        $arrArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['articulo' => $artCode]);
-        $seleccionStockPorArticulo = $this->getSelectedStockByArticle($data['id'], $detalles);
-        $stockGeneral =  $this->getStockGeneralRestoreQuotation($arrArticulos, $bodegas);  //obtiene los items formateados
-        // $globalStock = $this->getGlobalStockGroupByWarehouse($stockGeneral);  // agrupo por articulo y por bodega
-        $this->mergeSelectedStock($stockGeneral, $seleccionStockPorArticulo);
-        $availableArticulos = [];
-        foreach ($detalles as $item) {
-            $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $item->toArray()); // me lo devuelve en array
-            if (!$artFormat['disponible']) {
-                $clase = GpArticulo::where('ART_CODIGO', $item->ART_CODIGO)->first();
-                $item->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
-                $availableArticulos[] = $item->ART_CODIGO;
+        try {
+            DB::beginTransaction();
+            $clientes = $this->functionService->getClient($data);
+            $bodegas = $this->functionService->getBodegas($data, 1);
+            $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
+            $arrArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['articulo' => $artCode]);
+            $seleccionStockPorArticulo = $this->getSelectedStockByArticle($data['id'], $detalles);
+            $stockGeneral = $this->getStockGeneralRestoreQuotation($arrArticulos, $bodegas);  //obtiene los items formateados
+
+            $this->mergeSelectedStock($stockGeneral, $seleccionStockPorArticulo);
+            $availableArticulos = [];
+            foreach ($detalles as $item) {
+                $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $item->toArray()); // me lo devuelve en array
+                if (!$artFormat['disponible']) {
+                    $clase = GpArticulo::where('ART_CODIGO', $item->ART_CODIGO)->first();
+                    $item->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+                    $availableArticulos[] = $item->ART_CODIGO;
+                }
+                $item->stock = $artFormat['stock'];
+                $item->ART_STOCK = $artFormat['ART_STOCK'];
             }
-            $item->stock = $artFormat['stock'];
-            $item->ART_STOCK = $artFormat['ART_STOCK'];
+            $this->functionService->recalculateIva($detalles);
+            $this->functionService->setCartFormQuotation($detalles, $data, $user);
+            DB::commit();
+            return response([
+                'success' => true,
+                'cliente' => $clientes,
+                'currentSucursal' => $data['sucursal_id'],
+                'cotizacion' => $data['id'],
+                'test' => 'recuperarcotizacion',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error in restoreQuotation', [
+                'error' => $e->getMessage(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
-        $this->functionService->recalculateIva($detalles);
-        $this->functionService->setCartFormQuotation($detalles, $data, $user);
-        return response([
-            'success' => true,
-            'cliente' => $clientes,
-            'currentSucursal' => $data['sucursal_id'],
-            'cotizacion' => $data['id'],
-            'test' => 'recuperarcotizacion',
-        ]);
     }
 
     public function getQuotationDetailWithSuppliers($quotationId)
     {
         $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
-        $details->each(function ($item) use ($quotationId) {
-            $item->proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)
-                ->where('detalle_id', $item->id)->get()->toArray();
+        $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
+            ->groupBy('detalle_id')->toArray();
+        $details->each(function ($item) use ($proveedores) {
+            $item->proveedores = collect($proveedores[$item->id] ?? [])
+                ->map(fn($prov) => (object) $prov);
         });
+
         return $details;
     }
     public function getSelectedStockByArticle($quotationId, $quotationDetails)
     {
+        $detailsIds = collect($quotationDetails)->pluck('id');
+        $allStocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
+            ->whereIn('detalle_id', $detailsIds)
+            ->get()
+            ->groupBy('detalle_id');
+
         $selectedStock = [];
+
         foreach ($quotationDetails as $item) {
-            $stock = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->where('detalle_id', $item->id)->get()->toArray();
-            foreach ($stock as $st) {
-                $st['ART_CODIGO'] = $item->ART_CODIGO;
-                $selectedStock[] = $st;
+            $stockForItem = collect($allStocks)->get($item->id, collect());
+            foreach ($stockForItem as $st) {
+                $stArray = $st->toArray();
+                $stArray['ART_CODIGO'] = $item->ART_CODIGO;
+                $selectedStock[] = $stArray;
             }
         }
         return $selectedStock;
     }
 
-
-    public function getGlobalStockGroupByWarehouse($globalStock)
-    {
-        return collect($globalStock)->groupBy('STO_ART_ARTICULO')
-            ->map(fn($items) => $items->keyBy('STO_ART_BODEGA'))->toArray();
-    }
-
     public function getStockGeneralRestoreQuotation($articulos, $bodegas)
     {
-        $formatStock = [];
-        foreach ($articulos as $value) {
-            $stockRequests = array_map(fn($whr) => ['articulo' => $value['articulo'], 'bodega' => $whr,], $bodegas);
-            $stockResults = array_map(fn($params) => $this->apiGpService->getStockWarehouse($params), $stockRequests);
-            $formatted = $this->formatResultStocksQuotation($stockResults);
-            $formatStock = array_merge($formatStock, $formatted);
+        $stockRequests = [];
+        foreach ($articulos as $art) {
+            foreach ($bodegas as $bod) {
+                $stockRequests[] = ['articulo' => $art['articulo'], 'bodega' => $bod];
+            }
         }
+        $stockResults =  $this->apiGpService->getStockWarehouseAsync($stockRequests);
 
-        return $formatStock;
+        return $this->formatResultStocksQuotation($stockResults);
     }
 
 
     public function formatResultStocksQuotation($stockResults)
     {
-        if (empty($stockResults)) {
+        if (!is_array($stockResults)) {
             return [];
         }
-        $formattedStocks = [];
-        foreach ($stockResults as $value) {
-            if (!is_array($value)) {
-                continue;
-            }
-            $formattedStocks = array_merge(
-                $formattedStocks,
-                array_map(
-                    fn($item) => [
-                        'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                        'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                        'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-                    ],
-                    array_values($value)
-                )
-            );
-        }
-        return $formattedStocks;
+        return collect($stockResults)
+            ->filter(fn($item) => is_array($item))
+            ->map(fn($item) => [
+                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
+                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
+                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
+            ])
+            ->values()
+            ->toArray();
     }
 
 

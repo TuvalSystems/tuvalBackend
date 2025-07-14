@@ -66,7 +66,6 @@ class ApiGpService
     public function storeQuoteReminderGp(array $params = [])
     {
         return $this->httpClient->makeRequest($this->endpoints["guardar_cotizacion_recordatorio"], 'POST', $params, 'json');
-
     }
 
 
@@ -78,5 +77,17 @@ class ApiGpService
 
 
 
+    /** getStockWarehouse Asyncrono aplicando llamadas en paralelismo  */
 
+    public function getStockWarehouseAsync(array $params = [])
+    {
+        $request =  collect($params)->map(function ($item) {
+            return [
+                'articulo' => $item['articulo'],
+                'bodega' => $item['bodega']
+            ];
+        })->toArray();
+
+        return $this->httpClient->makeBatchRequest($this->endpoints["consultar_stock_bodega_async"],  $request);
+    }
 }

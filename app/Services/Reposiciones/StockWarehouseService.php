@@ -18,11 +18,18 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
         $articulo['stock'] = [];
         $articulo['ART_STOCK'] = 0;
-        if (!in_array($articulo['ART_CODIGO'], array_column($stockResults, 'STO_ART_ARTICULO'))) {
+
+        $filteredStock = array_values(array_filter(
+            $stockResults,
+            fn($item) =>
+            isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'])
+        ));
+
+        if (empty($filteredStock)) {
             return $articulo;
         }
         $stockTotal = 0;
-        foreach ($stockResults as &$stockItem) {
+        foreach ($filteredStock as &$stockItem) {
 
             if (!isset($stockItem['STO_ART_STOCK_DISPONIBLE'], $stockItem['STO_ART_BODEGA'])) {
                 continue;
@@ -43,7 +50,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
         }
 
-        $articulo['stock'] = $stockResults;
+        $articulo['stock'] = $filteredStock;
         $articulo['ART_STOCK'] = $stockTotal;
 
         return $articulo;
@@ -174,27 +181,19 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     }
     public function formatResultStocks($stockResults)
     {
-        if (empty($stockResults)) {
+         if (!is_array($stockResults)) {
             return [];
         }
-        $formattedStocks = [];
-        foreach ($stockResults as $value) {
-            if (!is_array($value) || empty($value)) {
-                continue;
-            }
-            $formattedStocks = array_merge(
-                $formattedStocks,
-                array_map(
-                    fn($item) => [
-                        'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                        'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                        'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-                    ],
-                    array_values($value)
-                )
-            );
-        }
-        return $formattedStocks;
+        return collect($stockResults)
+            ->filter(fn($item) => is_array($item))
+            ->flatten(1)
+            ->map(fn($item) => [
+                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
+                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
+                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
+            ])
+            ->values()
+            ->toArray();
     }
 
     public function getWarehouse($data)

@@ -364,6 +364,10 @@ class FunctionsService implements FunctionsServiceInterface
 
     public function storeCartProviders($cartId, $providers)
     {
+        if (empty($providers)) {
+            return;
+        }
+
         foreach ($providers as  $prov) {
             GpTempCartProveedores::create([
                 'id_tempcart' => $cartId,
@@ -383,6 +387,9 @@ class FunctionsService implements FunctionsServiceInterface
 
     public function storeCartStock($cartId, $stock)
     {
+        if (empty($stock)) {
+            return;
+        }
         foreach ($stock as $stockData) {
             $selected = $stockData['seleccionado'] ?? 0;
             if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {

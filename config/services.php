@@ -36,28 +36,29 @@ return [
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'company' => env('ID_COMPANIA'),
         'endpoints' => [
-            'validar_usuario'                           => 'api/validar-usuario',
-            'consultar_transferencia_cabecera'          => 'api/consultar-cabecera-transferencia',
-            'consultar_transferencia_detalle'           => 'api/consultar-detalle-transferencia',
-            'consultar_sucursales_cliente'              => 'api/consultar-sucursales-clientes',
-            'consultar_coordenadas'                     => 'api/consultar-listado-coordenadas',
-            'consultar_stock_bodega'                    => 'api/consultar-stock-bodega',
-            'consultar_articulo_bodega_compartimento'   => 'api/consultar-stock-articulo-bodega-compartimento',
+            'validar_usuario'                            => 'api/validar-usuario',
+            'consultar_transferencia_cabecera'           => 'api/consultar-cabecera-transferencia',
+            'consultar_transferencia_detalle'            => 'api/consultar-detalle-transferencia',
+            'consultar_sucursales_cliente'               => 'api/consultar-sucursales-clientes',
+            'consultar_coordenadas'                      => 'api/consultar-listado-coordenadas',
+            'consultar_stock_bodega'                     => 'api/consultar-stock-bodega',
+            'consultar_stock_bodega_async'               => 'api/consultar-stock-bodega-lotes',
+            'consultar_articulo_bodega_compartimento'    => 'api/consultar-stock-articulo-bodega-compartimento',
             'transferencia_compartimento'                => 'api/transferencia-compartimento',
 
             //devoluciones - recibir devolucion
-            'generar_nota_credito'                      => 'api/devoluciones/generar-nota-credito',
-            'respuesta_nota_credito'                    => 'api/devoluciones/respuesta-nota-credito',
-            'generar_devolucion_venta'                  => 'api/devoluciones/generar-devolucion-venta',
-            'consultar_item_compartimento'              => 'api/devoluciones/consulta-item-compartimento-bin',
-            'consultar_grupo_economico_cliente'         => 'api/devoluciones/consultar-grupo-economico-cliente',
+            'generar_nota_credito'                       => 'api/devoluciones/generar-nota-credito',
+            'respuesta_nota_credito'                     => 'api/devoluciones/respuesta-nota-credito',
+            'generar_devolucion_venta'                   => 'api/devoluciones/generar-devolucion-venta',
+            'consultar_item_compartimento'               => 'api/devoluciones/consulta-item-compartimento-bin',
+            'consultar_grupo_economico_cliente'          => 'api/devoluciones/consultar-grupo-economico-cliente',
 
             //cobros
-            'consultar_cupo_disponible_cliente'         => 'api/cobros/consultar-cupo-disponible-cliente',
+            'consultar_cupo_disponible_cliente'          => 'api/cobros/consultar-cupo-disponible-cliente',
 
             //cotizaciones
-            'guardar_cotizacion_recordatorio'           => 'api/cotizaciones/guardar-cotizacion-recordatorio',
-            'lista_items_alternativos'                  => 'api/cotizaciones/lista-items-alternativos',
+            'guardar_cotizacion_recordatorio'            => 'api/cotizaciones/guardar-cotizacion-recordatorio',
+            'lista_items_alternativos'                   => 'api/cotizaciones/lista-items-alternativos',
         ],
     ],
     'api_sales' => [
@@ -69,7 +70,7 @@ return [
             'obtener_clave_acceso'            => 'api/obtener-clave-acceso',
             'anular_comprobante_gp'           => 'api/anularfactura',
             'actualizar_estado_factura'       => 'api/actualizar-estado-factura',
-            'obtener_datos_factura'          => 'api/obtener-datos-factura',
+            'obtener_datos_factura'           => 'api/obtener-datos-factura',
 
             //validar si tiene pago o no la factura para anular
             'validar_pago_factura'            => 'api/validar-pago-factura',

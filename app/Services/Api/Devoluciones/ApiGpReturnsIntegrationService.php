@@ -42,8 +42,8 @@ class ApiGpReturnsIntegrationService extends ApiGpService
         // 🔄 Hacer las llamadas en paralelo usando makeAsyncRequest
         return $this->httpClient->makeAsyncRequest(
             $this->endpoints["consultar_item_compartimento"],
-            $requests,
-            'GET'
+            'POST',
+            $requests
         );
     }
 
