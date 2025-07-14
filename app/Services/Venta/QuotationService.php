@@ -25,13 +25,18 @@ use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpRegistroCopia;
+use App\Models\GpTempCartProveedores;
+use App\Models\GpTempCartStock;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
+use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+
 
 class QuotationService implements QuotationServiceInterface
 {
@@ -41,18 +46,21 @@ class QuotationService implements QuotationServiceInterface
     protected $apiBillingService;
     protected $functionService;
     protected $stockWarehouseService;
+    protected $MsWebservice;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
         ApiBillingService $apiBillingService,
         FunctionsServiceInterface $functionService,
-        StockWarehouseServiceInterface $stockWarehouseService
+        StockWarehouseServiceInterface $stockWarehouseService,
+        MswService $MsWebservice
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
         $this->apiBillingService = $apiBillingService;
         $this->functionService = $functionService;
         $this->stockWarehouseService = $stockWarehouseService;
+        $this->MsWebservice = $MsWebservice;
     }
 
 
@@ -137,24 +145,24 @@ class QuotationService implements QuotationServiceInterface
         try {
             DB::beginTransaction();
             $clientes = $this->functionService->getClient($data);
-            $bodegas = $this->functionService->getBodegas($data, 1);
+            // $bodegas = $this->functionService->getBodegas($data, 1);
             $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
-            $arrArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['articulo' => $artCode]);
-            $seleccionStockPorArticulo = $this->getSelectedStockByArticle($data['id'], $detalles);
-            $stockGeneral = $this->getStockGeneralRestoreQuotation($arrArticulos, $bodegas);  //obtiene los items formateados
+            // $arrArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['articulo' => $artCode]);
+            // $seleccionStockPorArticulo = $this->getSelectedStockByArticle($data['id'], $detalles);
+            // $stockGeneral = $this->getStockGeneralRestoreQuotation($arrArticulos, $bodegas);  //obtiene los items formateados
 
-            $this->mergeSelectedStock($stockGeneral, $seleccionStockPorArticulo);
-            $availableArticulos = [];
-            foreach ($detalles as $item) {
-                $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $item->toArray()); // me lo devuelve en array
-                if (!$artFormat['disponible']) {
-                    $clase = GpArticulo::where('ART_CODIGO', $item->ART_CODIGO)->first();
-                    $item->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
-                    $availableArticulos[] = $item->ART_CODIGO;
-                }
-                $item->stock = $artFormat['stock'];
-                $item->ART_STOCK = $artFormat['ART_STOCK'];
-            }
+            // $this->mergeSelectedStock($stockGeneral, $seleccionStockPorArticulo);
+            // $availableArticulos = [];
+            // foreach ($detalles as $item) {
+            //     $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $item->toArray()); // me lo devuelve en array
+            //     if (!$artFormat['disponible']) {
+            //         $clase = GpArticulo::where('ART_CODIGO', $item->ART_CODIGO)->first();
+            //         $item->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+            //         $availableArticulos[] = $item->ART_CODIGO;
+            //     }
+            //     $item->stock = $artFormat['stock'];
+            //     $item->ART_STOCK = $artFormat['ART_STOCK'];
+            // }
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
             DB::commit();
@@ -650,5 +658,86 @@ class QuotationService implements QuotationServiceInterface
     public function calculateMargen($margenBruto, $descuentoGeneral, $costo)
     {
         return ($costo / (1 - ($margenBruto / 100))) / (1 - ($descuentoGeneral / 100));
+    }
+
+
+    /***
+     *  FUNCION PARA llenar el detalle de la cotizacion - llenarcotizacion
+     */
+
+    public function fillQuotation($data, $user)
+    {
+        $artPrecios = [];
+        $articulosTemp = $this->quotationRepository->getGpTempCartFillQuotation($data['sucursal_id'], $data['puntodeventa_id'], $data['cliente_id'], $user->id);
+
+        foreach ($articulosTemp as $artTemp) {
+            if (isset($data['test']) && $data['test'] === 'copiarpedido') {
+                $artTemp->CHECK_ALTERNATIVO = 0;
+            } else {
+                $artTemp->CHECK_ALTERNATIVO = $this->syncAndGetCheckAlternativo($data, $artTemp);
+            }
+
+            $artPrecios[] = array(
+                'ART_CODIGO' => $artTemp->ART_CODIGO,
+            );
+
+            if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
+                $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
+                $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
+            }
+
+            $proveedores = GpTempCartProveedores::where('id_tempcart', $artTemp->id)->get();
+            foreach ($proveedores as $prov) {
+                if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
+                    $prov->CANTIDAD = (int) $prov->CANTIDAD;
+                }
+            }
+
+            $artTemp->proveedores = $proveedores;
+            $stock = GpTempCartStock::where('id_tempcart', $artTemp->id)->get();
+
+            foreach ($stock as $st) {
+                if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
+                    $st->STO_ART_STOCK_DISPONIBLE = (int) $st->STO_ART_STOCK_DISPONIBLE;
+                    $st->seleccionado = (int) $st->seleccionado;
+                }
+            }
+            $artTemp->stock = $stock;
+            $imagenes = [];
+            for ($i = 1; $i <= 3; $i++) {
+                $file = 'images/productos/' . $artTemp->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
+
+                if (File::exists($file)) {
+                    $imagenes[] = env('APP_URL') . '/' . $file;
+                }
+            }
+            $artTemp->imagenes = $imagenes;
+        }
+        $listaPreciosAll = [];
+        if ($data['serial'] == '') {
+            if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
+                $precios =  $this->MsWebservice->listaprecios($artPrecios);
+                foreach ($precios as $pr) {
+                    $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
+                }
+            }
+
+            $cliente = GpCliente::find($data['cliente_id']);
+            foreach ($articulosTemp as $artTemp) {
+                if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
+                    if ($artTemp->ART_VALOR_ORIGINAL != $listaPreciosAll[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_PRECIO']) {
+                        $artTemp->ART_VALOR_ORIGINAL = $listaPreciosAll[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_PRECIO'];
+                        $artTemp->ART_VALOR = $listaPreciosAll[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
+                        $artTemp->modificador = 0;
+                    }
+                }
+            }
+        }
+
+        $this->functionService->recalculateIva($articulosTemp);
+        return response([
+            'success' => true,
+            'articulos' => $articulosTemp
+        ]);
     }
 }

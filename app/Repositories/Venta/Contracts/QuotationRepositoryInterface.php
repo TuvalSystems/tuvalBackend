@@ -7,4 +7,6 @@ interface QuotationRepositoryInterface
 
     public function getScheduledReminders();
 
+    public function getGpTempCartFillQuotation($sucursalId, $puntoVentaId, $clienteId, $userId);
+
 }

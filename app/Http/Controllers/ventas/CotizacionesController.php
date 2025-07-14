@@ -156,7 +156,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function llenarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenarcotizacion(Request $request)
     {
 
         $data = $request->validate([
@@ -167,92 +167,8 @@ class CotizacionesController extends Controller
             'registro_copia' => '',
             'test' => '', // copiarpedido se creo un  campo test para que no se sincronice el check alternativo cuando se copia un pedido, se creo en el frontend cuando se copia
         ]);
-
         $user = Auth::user();
-
-        $articulos = GpTempCart::where('sucursal_id', $data['sucursal_id'])
-            ->where('puntodeventa_id', $data['puntodeventa_id'])
-            ->where('cliente_id', $data['cliente_id'])
-            ->where('user_id', $user->id)
-            ->orderBy('orden', 'asc')
-            ->get();
-
-        $consulta_precio = array();
-        foreach ($articulos as $articulo) {
-            if (isset($data['test']) && $data['test'] === 'copiarpedido') {
-                $articulo->CHECK_ALTERNATIVO = 0;
-            } else {
-                $articulo->CHECK_ALTERNATIVO = $this->quotationService->syncAndGetCheckAlternativo($data, $articulo);
-            }
-            $consulta_precio[] = array(
-                'ART_CODIGO' => $articulo->ART_CODIGO,
-            );
-
-            if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
-                $articulo->ART_STOCK = (int) $articulo->ART_STOCK;
-                $articulo->ART_CANTIDAD = (int) $articulo->ART_CANTIDAD;
-            }
-
-            $proovedores = GpTempCartProveedores::where('id_tempcart', $articulo->id)->get();
-            foreach ($proovedores as $proveedor) {
-                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
-                    $proveedor->CANTIDAD = (int) $proveedor->CANTIDAD;
-                }
-            }
-            $articulo->proveedores = $proovedores;
-
-            $stock = GpTempCartStock::where('id_tempcart', $articulo->id)->get();
-
-            foreach ($stock as $st) {
-                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
-                    $st->STO_ART_STOCK_DISPONIBLE = (int) $st->STO_ART_STOCK_DISPONIBLE;
-                    $st->seleccionado = (int) $st->seleccionado;
-                }
-            }
-            $articulo->stock = $stock;
-            $imagenes = array();
-            for ($i = 1; $i <= 3; $i++) {
-                $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-
-                if (File::exists($file)) {
-                    $imagenes[] = env('APP_URL') . '/' . $file;
-                }
-            }
-
-            $articulo->imagenes = $imagenes;
-        }
-
-        if ($data['serial'] == '') {
-            $webservices = new WebserviceController;
-            if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
-                $precios = $webservices->listaprecios($consulta_precio);
-                $lista_precios_general = array();
-                foreach ($precios as $precio) {
-                    $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
-                }
-            }
-
-
-            $cliente = GpCliente::where('id', $data['cliente_id'])->first();
-
-            foreach ($articulos as $articulo) {
-                if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
-                    if ($articulo->ART_VALOR_ORIGINAL != $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR']) {
-                        $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                        $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                        $articulo->modificador = 0;
-                    }
-                }
-            }
-        }
-
-        $funciones = new FuncionesController();
-        $funciones->recalculariva($articulos);
-
-        return response([
-            'success' => true,
-            'articulos' => $articulos,
-        ]);
+        return $this->quotationService->fillQuotation($data, $user);
     }
 
     public function eliminararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1039,9 +955,9 @@ class CotizacionesController extends Controller
     public function recuperarcotizacion(Request $request)
     {
         ini_set('max_execution_time', -1);
-            $data = $request->all();
-            $user = Auth::user();
-            return $this->quotationService->restoreQuotation($data, $user);
+        $data = $request->all();
+        $user = Auth::user();
+        return $this->quotationService->restoreQuotation($data, $user);
     }
 
 

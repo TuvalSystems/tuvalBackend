@@ -22,7 +22,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         $filteredStock = array_values(array_filter(
             $stockResults,
             fn($item) =>
-            isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'])
+            isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+            $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
         ));
 
         if (empty($filteredStock)) {

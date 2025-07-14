@@ -48,4 +48,7 @@ interface QuotationServiceInterface
 
     public function detailQuotation($data);
 
+    /** funcion para llenar la cotizacion  */
+    public function fillQuotation($data, $user);
+
 }
