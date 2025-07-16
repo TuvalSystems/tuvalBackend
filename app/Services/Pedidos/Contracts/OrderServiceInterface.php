@@ -23,4 +23,8 @@ interface OrderServiceInterface
 
      /** facturar pedido */
         public function generateInvoiceOrder($orderId);
+
+        /** funcion de copiar pedido  */
+
+        public function copyOrder($data, $user);
     }

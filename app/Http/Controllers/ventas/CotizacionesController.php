@@ -233,6 +233,7 @@ class CotizacionesController extends Controller
     {
         $data = $request->all();
         foreach ($data as $stock) {
+
             GpTempCartStock::where('id', $stock['id'])
                 ->update(['seleccionado' => $stock['seleccionado']]);
         }
@@ -981,34 +982,35 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function volverapedircotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function volverapedircotizacion(Request $request)
     {
         $data = $request->all();
         $user = Auth::user();
+        return $this->quotationService->requestQuotationAgain($data, $user);
 
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
+        // $funciones = new FuncionesController();
+        // $cliente = $funciones->getcliente($data);
 
-        $detalle = $this->getdetallecotizacion($data);
+        // $detalle = $this->getdetallecotizacion($data);
 
-        $funciones = new FuncionesController();
-        $funciones->recalculariva($detalle);
-        $funciones->setTempCartFrom($detalle, $data, $user);
+        // $funciones = new FuncionesController();
+        // $funciones->recalculariva($detalle);
+        // $funciones->setTempCartFrom($detalle, $data, $user);
 
-        $registroCopia = new GpRegistroCopia();
-        $registroCopia->user_id = $user->id;
-        $registroCopia->USERID = $user->USERID;
-        $registroCopia->tipo = 'volver_a_pedir';
-        $registroCopia->cotizacion_origen = $data['id'];
-        $registroCopia->save();
+        // $registroCopia = new GpRegistroCopia();
+        // $registroCopia->user_id = $user->id;
+        // $registroCopia->USERID = $user->USERID;
+        // $registroCopia->tipo = 'volver_a_pedir';
+        // $registroCopia->cotizacion_origen = $data['id'];
+        // $registroCopia->save();
 
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'registro_copia' => $registroCopia->id,
-            'currentSucursal' => $data['sucursal_id'],
-            'test' => 'volver_a_pedir'
-        ]);
+        // return response([
+        //     'success' => true,
+        //     'cliente' => $cliente,
+        //     'registro_copia' => $registroCopia->id,
+        //     'currentSucursal' => $data['sucursal_id'],
+        //     'test' => 'volver_a_pedir'
+        // ]);
     }
 
     public function getdetallecotizacion($data, $encera = false): array|\Illuminate\Database\Eloquent\Collection
@@ -1589,5 +1591,21 @@ class CotizacionesController extends Controller
     {
 
         return $this->quotationService->consultQuotationsNews($request->all());
+    }
+
+    /**
+     *  para obtener el stock del item en tiempo real de la bodega seleccionada
+     *  en cotizaciones al abrir el modal, allí obtiene el stock en tiempo real del item
+     */
+
+    public function obtenerStockItemPorBodega(Request $request)
+    {
+        $request->validate([
+            'articulo' => 'required',
+            'bodega' => 'required',
+        ]);
+        $articulo = $request['articulo'];
+        $bodega = $request['bodega'];
+        return $this->quotationService->getStockItemForWarehouse($articulo, $bodega);
     }
 }

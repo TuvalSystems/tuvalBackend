@@ -36,12 +36,14 @@ use App\Http\Controllers\bodegas\DespachosController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Models\devoluciones\GpDevoluciones;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use Illuminate\Support\Facades\DB;
 
 class PedidosController extends Controller
 {
@@ -1131,43 +1133,11 @@ class PedidosController extends Controller
         ]);
     }
 
-    public function copiarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function copiarpedido(Request $request)
     {
         $data = $request->all();
         $user = Auth::user();
-
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
-
-        $data['pedido']['sucursal_id'] = $data['sucursal_id'];
-        $data['pedido']['cliente_id'] = $data['cliente_id'];
-
-        $registroCopia = new GpRegistroCopia();
-        $registroCopia->user_id = $user->id;
-        $registroCopia->USERID = $user->USERID;
-        $registroCopia->tipo = 'copia';
-
-        if ($data['tipo'] == 'cotizacion') {
-            $quotationService = app(QuotationServiceInterface::class);
-            $aproval = app(ApprovalServiceInterface::class);
-            $cotizaciones = new CotizacionesController($quotationService, $aproval);
-            $detalle = $cotizaciones->getdetallecotizacion($data['pedido'], true);
-            $registroCopia->cotizacion_origen = $data['pedido']['id'];
-        } else {
-            $detalle = $this->getDetallePedido($data['pedido'], true);
-            $registroCopia->pedido_origen = $data['pedido']['id'];
-        }
-        $registroCopia->save();
-        $funciones->recalculariva($detalle);
-        $funciones->setTempCartFrom($detalle, $data['pedido'], $user);
-
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'registro_copia' => $registroCopia->id,
-            'currentSucursal' => $data['sucursal_id'],
-            'test' => 'copiarpedido'
-        ]);
+        return $this->orderService->copyOrder($data, $user);
     }
 
     public function getDetallePedido($data, $encera = false): \Illuminate\Database\Eloquent\Collection|array
@@ -1726,6 +1696,21 @@ class PedidosController extends Controller
     }
 
     /** migrar mas adelante */
+
+    public function volveraFacuturarTest($devolucionId)
+    {
+        try {
+            DB::beginTransaction();
+            $devolucion = GpDevoluciones::where('id', $devolucionId)->first();
+            $this->volverafacturar($devolucion);
+            DB::commit();
+            return response()->json(['status' => 'success']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
     public function volverafacturar($devolucion)
     {
         $pedido = GpPedido::where('id', $devolucion->pedido_id)->first();
@@ -1958,7 +1943,4 @@ class PedidosController extends Controller
     {
         return $this->orderService->getLisOrdersWithoutCoordinated();
     }
-
-
-
 }

@@ -3,8 +3,10 @@
 namespace App\Services\Pedidos;
 
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpRegistroCopia;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
@@ -22,6 +24,7 @@ use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Venta\Utils\OrderAndQuotationService;
 use Illuminate\Support\Facades\DB;
 
 class OrderService implements OrderServiceInterface
@@ -35,8 +38,8 @@ class OrderService implements OrderServiceInterface
     protected ApiBillingService $apiBillingService;
     protected FunctionsServiceInterface $functionsService;
     protected PurchaseReceiptServiceInterface $purchaseReceiptService;
-
     protected $invoiceService;
+    protected $orderAndQuotationService;
     public function __construct(
         ApiSalesService $apiSalesService,
         ApiGpService $apiGpService,
@@ -45,7 +48,8 @@ class OrderService implements OrderServiceInterface
         ApiBillingService $apiBillingService,
         FunctionsServiceInterface $functionsService,
         PurchaseReceiptServiceInterface $purchaseReceiptService,
-        InvoiceServiceInterface $invoiceService
+        InvoiceServiceInterface $invoiceService,
+        OrderAndQuotationServiceInterface $orderAndQuotationService
     ) {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
@@ -55,6 +59,7 @@ class OrderService implements OrderServiceInterface
         $this->functionsService = $functionsService;
         $this->purchaseReceiptService = $purchaseReceiptService;
         $this->invoiceService = $invoiceService;
+        $this->orderAndQuotationService = $orderAndQuotationService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -86,7 +91,7 @@ class OrderService implements OrderServiceInterface
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $id)
             ->first()
-                ?->toArray();
+            ?->toArray();
     }
     public function isPedidoBlocked(array $pedido): bool
     {
@@ -339,7 +344,6 @@ class OrderService implements OrderServiceInterface
         $orders = DB::table('tuvalapi.vw_pedidos_sin_coordenadas')->get();
 
         return $this->successResponse('Información Obtenida Correctamente', $orders, 200);
-
     }
 
 
@@ -356,7 +360,6 @@ class OrderService implements OrderServiceInterface
         }
 
         return $formatStock;
-
     }
 
 
@@ -421,4 +424,45 @@ class OrderService implements OrderServiceInterface
         $this->invoiceService->sendInvoiceGp($order);
     }
 
+
+    /*** funcion para copiar pedido  */
+
+    public function copyOrder($data, $user)
+    {
+        $cliente = $this->functionsService->getClient($data);
+        $data['pedido']['sucursal_id'] = $data['sucursal_id'];
+        $data['pedido']['cliente_id'] = $data['cliente_id'];
+        $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
+        $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data['pedido'], true, true);
+        $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy);
+        $this->functionsService->recalculateIva($detalle);
+        $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
+
+        return response([
+            'success' => true,
+            'cliente' => $cliente,
+            'registro_copia' => $registerCopyId,
+            'currentSucursal' => $data['sucursal_id'],
+            'test' => 'copiarpedido'
+        ]);
+    }
+
+    public function createRegisterCopy($dataId, $user, $typeCopy)
+    {
+        $registroCopia = new GpRegistroCopia([
+            'user_id' => $user->id,
+            'USERID' => $user->USERID,
+            'tipo' => 'copia',
+
+        ]);
+        if ($typeCopy == 'pedido') {
+            $registroCopia->pedido_origen = $dataId;
+        } else {
+            $registroCopia->cotizacion_origen = $dataId;
+        }
+        $registroCopia->save();
+        return $registroCopia->id;
+
+       
+    }
 }

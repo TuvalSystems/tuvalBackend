@@ -12,6 +12,7 @@ use App\Services\Pedidos\OrderJobService;
 use App\Services\Pedidos\OrderService;
 use App\Services\Venta\InventoryQueryService;
 use App\Services\Venta\QuotationService;
+use App\Services\Venta\Utils\OrderAndQuotationService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Aprobaciones\ApprovalService;
@@ -33,6 +34,7 @@ use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Services\Venta\PurchaseOrderService;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
 class DevolucionServiceProvider extends ServiceProvider
 {
@@ -106,6 +108,11 @@ class DevolucionServiceProvider extends ServiceProvider
 
         /** aqui va el servicio de consultas controller  */
         $this->app->bind(InventoryQueryServiceInterface::class, InventoryQueryService::class);
+
+        /** Servicios de utilidad para cotizacion y para pedidos  */
+
+        $this->app->singleton(OrderAndQuotationServiceInterface::class, OrderAndQuotationService::class);
+
     }
 
 

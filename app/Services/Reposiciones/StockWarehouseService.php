@@ -223,4 +223,10 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->pluck('PTO_VTA_BOD_REL_BODEGA', 'PTO_VTA_BOD_REL_BODEGA')
             ->toArray();
     }
+
+
+
+   
+
+
 }

@@ -103,7 +103,7 @@ class FunctionsService implements FunctionsServiceInterface
         }
 
         if (count($arArticulos) > 0) {
-            $arBodegas = $this->getBodegas($data, 1);
+            $arBodegas = $this->getBodegas($data['PTO_VTA_ID'], 1);
             $stockGeneral = $this->consultStockWarehouse($arArticulos, $arBodegas);
             $stockGeneral = collect($stockGeneral)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
                 ->map(function ($items) {
@@ -146,9 +146,9 @@ class FunctionsService implements FunctionsServiceInterface
 
 
 
-    public function getBodegas($data, $consulta = null)
+    public function getBodegas($bodega, $consulta = null)
     {
-        $query = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $data['PTO_VTA_ID']);
+        $query = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $bodega);
         if ($consulta) {
             $query->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA');
         }
@@ -220,7 +220,7 @@ class FunctionsService implements FunctionsServiceInterface
         }
 
         //obtiene todos los codigos de atriculos únicos
-        $articulosCodigo = collect($detalle)->filter( function ($item): bool {
+        $articulosCodigo = collect($detalle)->filter(function ($item): bool {
             return isset($item->ART_CODIGO);
         })->pluck('ART_CODIGO')->unique()->values();
         $impuesto = GpArticulo::whereIn('ART_CODIGO', $articulosCodigo)->pluck('ART_IMP_VTA', 'ART_CODIGO');
@@ -228,7 +228,7 @@ class FunctionsService implements FunctionsServiceInterface
         foreach ($detalle as $item) {
             if ($impuesto->has($item->ART_CODIGO)) {
                 GpCotizacionDetalle::where('id', $item->id)
-                ->update(['ART_IMP_VTA' => $impuesto[$item->ART_CODIGO]]);
+                    ->update(['ART_IMP_VTA' => $impuesto[$item->ART_CODIGO]]);
             }
         }
     }
@@ -257,7 +257,6 @@ class FunctionsService implements FunctionsServiceInterface
         $cliente->cupo_asignado = $this->formatCurrency($cupoDisponible['CUPO_ASIGNADO'] ?? 0);
 
         return $cliente;
-
     }
 
 
@@ -294,7 +293,7 @@ class FunctionsService implements FunctionsServiceInterface
             ->get();
         foreach ($candidates as $article) {
             if (in_array($article->ART_CODIGO, $artArrm, true)) {
-                continue ;
+                continue;
             }
 
             if ($this->stockWarehouseService->checkArticuloDisponible($article)) {
@@ -393,16 +392,17 @@ class FunctionsService implements FunctionsServiceInterface
         foreach ($stock as $stockData) {
             $selected = $stockData['seleccionado'] ?? 0;
             if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {
-                 $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
+                $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
             }
-
-            GpTempCartStock::create([
-                'id_tempcart' => $cartId,
-                'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA'],
-                'STO_ART_STOCK_DISPONIBLE' => $stockData['STO_ART_STOCK_DISPONIBLE'],
-                'seleccionado' => $selected
-
-            ]);
+            GpTempCartStock::updateOrCreate(
+                ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
+                [
+                    'STO_ART_STOCK_DISPONIBLE' => $stockData['STO_ART_STOCK_DISPONIBLE'],
+                    'seleccionado' => $selected
+                ]
+            );
         }
     }
+
+    
 }

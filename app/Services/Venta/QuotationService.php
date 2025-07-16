@@ -33,6 +33,7 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -47,13 +48,15 @@ class QuotationService implements QuotationServiceInterface
     protected $functionService;
     protected $stockWarehouseService;
     protected $MsWebservice;
+    protected $OrderQuotationService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
         ApiBillingService $apiBillingService,
         FunctionsServiceInterface $functionService,
         StockWarehouseServiceInterface $stockWarehouseService,
-        MswService $MsWebservice
+        MswService $MsWebservice,
+        OrderAndQuotationServiceInterface $OrderQuotationService
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -61,6 +64,7 @@ class QuotationService implements QuotationServiceInterface
         $this->functionService = $functionService;
         $this->stockWarehouseService = $stockWarehouseService;
         $this->MsWebservice = $MsWebservice;
+        $this->OrderQuotationService = $OrderQuotationService;
     }
 
 
@@ -223,8 +227,8 @@ class QuotationService implements QuotationServiceInterface
                 $stockRequests[] = ['articulo' => $art['articulo'], 'bodega' => $bod];
             }
         }
-        $stockResults =  $this->apiGpService->getStockWarehouseAsync($stockRequests);
 
+        $stockResults =  $this->apiGpService->getStockWarehouseAsync($stockRequests);
         return $this->formatResultStocksQuotation($stockResults);
     }
 
@@ -739,5 +743,135 @@ class QuotationService implements QuotationServiceInterface
             'success' => true,
             'articulos' => $articulosTemp
         ]);
+    }
+
+
+    /***
+     *  Funciones para obtener el stock en tiempo real de los articulos
+     */
+
+    public function getStockItemForWarehouse($article, $warehouse)
+    {
+        $warehouses = $this->functionService->getBodegas($warehouse, 1);
+        $arrArticulos = ['articulo' => $article['ART_CODIGO']];
+        $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
+        $stockGeneral = $this->getStocItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+        $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
+        $artFormat =  $this->stockWarehouseService->newFormatStock($stockGeneral, $article);
+        $availableArticulos = [];
+        if (!$artFormat['disponible']) {
+            $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
+            $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+            $availableArticulos[] = $article['ART_CODIGO'];
+        }
+        $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
+        $newStock = $this->reassignStockIds($article, $artFormat['stock']);
+        $article['stock'] = $newStock;
+        return $this->successResponse('Stock obtenido correctamente',   $article, 200);
+    }
+
+
+    /** este me tiene el seleccionado del stock pero solo por item hay otra función pero lo hacer por lotes */
+    public function resolveAndFormatArticleStock($article)
+    {
+        $result = [];
+
+        // ✅ Caso 1: Si $article['stock'] ya tiene datos, úsalo directamente
+        if (!empty($article['stock'])) {
+            foreach ($article['stock'] as $st) {
+                $artSt = is_array($st) ? $st : $st->toArray();
+                $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
+                $result[] = $artSt;
+            }
+            return $result;
+        }
+
+        // ✅ Caso 2: Si está vacío, intentar cargar de GpCotizacionDetalleStock
+        $stockDetalle = GpCotizacionDetalleStock::where('detalle_id', $article['detalle_id'])
+            ->get()
+            ->map(function ($item) use ($article) {
+                return array_merge($item->toArray(), ['ART_CODIGO' => $article['ART_CODIGO']]);
+            })
+            ->toArray();
+
+        // ✅ Caso 2a: Si lo de la BD trajo datos, úsalo
+        if (!empty($stockDetalle)) {
+            return $stockDetalle;
+        }
+
+        // ✅ Caso 3: Si la BD tampoco tiene → fallback al stock original (aunque esté vacío)
+        foreach ($article['stock'] as $st) {
+            $artSt = is_array($st) ? $st : $st->toArray();
+            $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
+            $result[] = $artSt;
+        }
+
+        return $result;
+    }
+
+    public function getStocItemByWarehouseRestoreQuotation($arrArticulos, $warehouses)
+    {
+        $stockRequests = [];
+        foreach ($warehouses as $warehouse) {
+            $stockRequests[] = array_merge($arrArticulos, ['bodega' => $warehouse]);
+        }
+        $stockResults =  $this->apiGpService->getStockWarehouseAsync($stockRequests);
+        return $this->formatResultStocksQuotation($stockResults);
+    }
+
+    public function reassignStockIds($article, $stockArticle)
+    {
+        $result = [];
+        foreach ($stockArticle as $item) {
+            $tempStock = GpTempCartStock::where('id_tempcart', $article['id'])
+                ->where('STO_ART_BODEGA', $item['STO_ART_BODEGA'])->first();
+            $item['id'] = $tempStock->id;
+            $result[] = $item;
+        }
+        return $result;
+    }
+
+
+    /***
+     *
+     * PROCESO DE VOLVER A PEDIR COTIZACION TAMBIEN PEDIDO
+     *
+     */
+
+    public function requestQuotationAgain($data, $user)
+    {
+        try {
+            DB::beginTransaction();
+            $cliente = $this->functionService->getClient($data);
+            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($data);
+            $this->functionService->recalculateIva($detalles);
+            $this->functionService->setCartFormQuotation($detalles, $data, $user);
+            $registroCopiaId = $this->registerCopyQuotation($data, $user);
+            DB::commit();
+            return response([
+                'success' => true,
+                'cliente' => $cliente,
+                'registro_copia' => $registroCopiaId,
+                'currentSucursal' => $data['sucursal_id'],
+            ]);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Log::error('Error in requestQuotationAgain (Volver a pedir cotización)', [
+                'error' => $th->getMessage(),
+            ]);
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+
+    public function registerCopyQuotation($data, $user)
+    {
+        $registerCopy = new GpRegistroCopia();
+        $registerCopy->user_id = $user->id;
+        $registerCopy->USERID = $user->USERID;
+        $registerCopy->tipo = 'volver_a_pedir';
+        $registerCopy->cotizacion_origen = $data['id'];
+        $registerCopy->save();
+        return $registerCopy->id;
     }
 }

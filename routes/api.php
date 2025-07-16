@@ -250,6 +250,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
 
     /** cotizaciones new routes */
     Route::get('cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
+    Route::post('cotizaciones/articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
 });
 Route::post('/login', [AuthController::class, 'login']);
 
