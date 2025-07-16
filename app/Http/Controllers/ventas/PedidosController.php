@@ -37,7 +37,6 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Models\devoluciones\GpDevoluciones;
-use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
