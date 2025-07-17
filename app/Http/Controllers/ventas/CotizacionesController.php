@@ -828,30 +828,6 @@ class CotizacionesController extends Controller
         $data = $request->all();
         $user = Auth::user();
         return $this->quotationService->requestQuotationAgain($data, $user);
-
-        // $funciones = new FuncionesController();
-        // $cliente = $funciones->getcliente($data);
-
-        // $detalle = $this->getdetallecotizacion($data);
-
-        // $funciones = new FuncionesController();
-        // $funciones->recalculariva($detalle);
-        // $funciones->setTempCartFrom($detalle, $data, $user);
-
-        // $registroCopia = new GpRegistroCopia();
-        // $registroCopia->user_id = $user->id;
-        // $registroCopia->USERID = $user->USERID;
-        // $registroCopia->tipo = 'volver_a_pedir';
-        // $registroCopia->cotizacion_origen = $data['id'];
-        // $registroCopia->save();
-
-        // return response([
-        //     'success' => true,
-        //     'cliente' => $cliente,
-        //     'registro_copia' => $registroCopia->id,
-        //     'currentSucursal' => $data['sucursal_id'],
-        //     'test' => 'volver_a_pedir'
-        // ]);
     }
 
     public function getdetallecotizacion($data, $encera = false): array|\Illuminate\Database\Eloquent\Collection

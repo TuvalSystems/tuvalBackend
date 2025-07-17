@@ -24,8 +24,8 @@ use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Venta\Utils\OrderAndQuotationService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderService implements OrderServiceInterface
 {
@@ -384,23 +384,33 @@ class OrderService implements OrderServiceInterface
 
 
 
-    /** function para recuperar el pedido */
+    /** function para recuperar el pedido - volver a pedir  */
 
     public function recoverOrder($data, $user)
     {
-        $cliente = $this->functionsService->getClient($data);
-        $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data);
-        $typeCopy = 'pedido';
-        $registerCopyId = $this->createRegisterCopy($data['id'], $user, $typeCopy);
-        $this->functionsService->recalculateIva($detalle);
-        $this->functionsService->setCartFormQuotation($detalle, $data, $user);
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'registro_copia' => $registerCopyId,
-            'currentSucursal' => $data['sucursal_id'],
-            'test' => 'volver_a_pedir'
-        ]);
+        try {
+            DB::beginTransaction();
+            $cliente = $this->functionsService->getClient($data);
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data);
+            $typeCopy = 'pedido';
+            $registerCopyId = $this->createRegisterCopy($data['id'], $user, $typeCopy);
+            $this->functionsService->recalculateIva($detalle);
+            $this->functionsService->setCartFormQuotation($detalle, $data, $user);
+            DB::commit();
+            return response([
+                'success' => true,
+                'cliente' => $cliente,
+                'registro_copia' => $registerCopyId,
+                'currentSucursal' => $data['sucursal_id'],
+                'test' => 'volver_a_pedir'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error in recoverOrder (recuperar pedido - volver a pedir)', [
+                'error' => $e->getMessage(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
 
@@ -408,22 +418,31 @@ class OrderService implements OrderServiceInterface
 
     public function copyOrder($data, $user)
     {
-        $cliente = $this->functionsService->getClient($data);
-        $data['pedido']['sucursal_id'] = $data['sucursal_id'];
-        $data['pedido']['cliente_id'] = $data['cliente_id'];
-        $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
-        $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data['pedido'], true, true);
-        $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy);
-        $this->functionsService->recalculateIva($detalle);
-        $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
-
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'registro_copia' => $registerCopyId,
-            'currentSucursal' => $data['sucursal_id'],
-            'test' => 'copiarpedido'
-        ]);
+        try {
+            DB::beginTransaction();
+            $cliente = $this->functionsService->getClient($data);
+            $data['pedido']['sucursal_id'] = $data['sucursal_id'];
+            $data['pedido']['cliente_id'] = $data['cliente_id'];
+            $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data['pedido'], true, true);
+            $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy);
+            $this->functionsService->recalculateIva($detalle);
+            $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
+            DB::commit();
+            return response([
+                'success' => true,
+                'cliente' => $cliente,
+                'registro_copia' => $registerCopyId,
+                'currentSucursal' => $data['sucursal_id'],
+                'test' => 'copiarpedido'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error in copyOrder (copiar pedido)', [
+                'error' => $e->getMessage(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function createRegisterCopy($dataId, $user, $typeCopy)

@@ -821,7 +821,7 @@ class QuotationService implements QuotationServiceInterface
 
     /***
      *
-     * PROCESO DE VOLVER A PEDIR COTIZACION TAMBIEN PEDIDO
+     * PROCESO DE VOLVER A PEDIR COTIZACION 
      *
      */
 
