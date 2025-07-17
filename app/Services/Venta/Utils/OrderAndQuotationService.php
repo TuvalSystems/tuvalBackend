@@ -5,6 +5,8 @@ namespace App\Services\Venta\Utils;
 use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
+use App\Models\GpPedidoDetalle;
+use App\Models\GpTempCart;
 use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
@@ -32,10 +34,10 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
 
 
-    public function getDetailQuotationOrOrder($data, $encera = false, $copy = false)
+    public function getDetailQuotationOrOrder($data, $encera = false, $copy = false, $type)
     {
         $clientes = $this->functionService->getClient($data);
-        $detalles = $this->getQuotationDetailWithSuppliers($data['id'], $copy);
+        $detalles = $this->getQuotationDetailWithSuppliersType($data['id'], $copy, $type);
         $this->resetQuotationDiscount($detalles, $clientes, $encera);
         $arrayArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['ART_CODIGO' => $artCode])->toArray();
         $listaPreciosWs = $this->getPriceListByItems($arrayArticulos);
@@ -53,16 +55,29 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         return $detalles;
     }
 
-    public function getQuotationDetailWithSuppliers($quotationId, $copy)
+    public function getQuotationDetailWithSuppliersType($quotationId, $copy, $type)
     {
-        $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
-        $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
-            ->groupBy('detalle_id')->toArray();
-        $details->each(function ($item) use ($proveedores, $copy) {
-            $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
-                ->map(fn($prov) => (object) $prov);
-        });
+       return $type == 'cotizacion' ? $this->getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy) : $this->getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy);
+    }
 
+
+    public function getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy) {
+          $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
+            $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
+                ->groupBy('detalle_id')->toArray();
+            $details->each(function ($item) use ($proveedores, $copy) {
+                $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
+                    ->map(fn($prov) => (object) $prov);
+            });
+            return $details;
+    }
+
+    public function getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy)
+    {
+        $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
+        $details->each(function ($item) use ($copy) {
+            $item->proveedores = collect();
+        });
         return $details;
     }
 
@@ -90,5 +105,15 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             $indexedPrices[$articleCode][$priceId] = $price;
         }
         return $indexedPrices;
+    }
+
+
+    public function clearTempDataQuotation($sucursalId, $PTO_VTA_ID, $clienteId, $userId)
+    {
+        GpTempCart::where('sucursal_id', $sucursalId)
+            ->where('puntodeventa_id', $PTO_VTA_ID)
+            ->where('cliente_id', $clienteId)
+            ->where('user_id', $userId)
+            ->delete();
     }
 }

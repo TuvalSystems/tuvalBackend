@@ -821,7 +821,7 @@ class QuotationService implements QuotationServiceInterface
 
     /***
      *
-     * PROCESO DE VOLVER A PEDIR COTIZACION 
+     * PROCESO DE VOLVER A PEDIR COTIZACION
      *
      */
 
@@ -830,7 +830,7 @@ class QuotationService implements QuotationServiceInterface
         try {
             DB::beginTransaction();
             $cliente = $this->functionService->getClient($data);
-            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($data);
+            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($data, false, false, 'cotizacion');
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
             $registroCopiaId = $this->registerCopyQuotation($data, $user);
@@ -874,16 +874,16 @@ class QuotationService implements QuotationServiceInterface
         try {
             DB::beginTransaction();
             $cotizacion = $this->prepareQuotationStoreFill($data, $user);
-            $cotizacion->save();
+
             if (!empty($data['cotizacion_id'])) {
                 GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
             }
             $this->saveQuotationDetail($data['cotizacion'], $cotizacion->id);
-            $this->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
+            $this->OrderQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
             $this->updateRegisterCopyQuotation($data['registro_copia'], $cotizacion->id);
             DB::commit();
             return $this->buildSuccessResponse(
-                 "Cotización {$cotizacion->cotizacion} guardada correctamente",
+                "Cotización {$cotizacion->cotizacion} guardada correctamente",
                 200
             );
         } catch (\Throwable $th) {
@@ -899,14 +899,8 @@ class QuotationService implements QuotationServiceInterface
     public function prepareQuotationStoreFill($data, $user)
     {
         $cotizacion = isset($data['cotizacion_id']) ? GpCotizacion::find($data['cotizacion_id']) : new GpCotizacion();
-        if (!$cotizacion->exists) {
-            $cotizacion = $this->getLastQuotationIdAndCode($cotizacion);
-        }
-
         $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
-
         $puntoVenta = GpPuntoVenta::find($data['PTO_VTA_ID']);
-
         $cotizacion->fill([
             'estado' => $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado',
             'user_id' => $user->id,
@@ -916,7 +910,7 @@ class QuotationService implements QuotationServiceInterface
             'factura_posterior_despacho' => $data['factura_posterior_despacho'],
             'factura_a_demanda' => $data['factura_a_demanda'],
             'factura_siguiente_mes' => $data['factura_siguiente_mes'],
-            'bodega_facturacion' => $data['bodega_facturacion'],
+            'BOD_BODEGA' => $data['bodega_facturacion'],
             'PTO_VTA_ID' => $data['PTO_VTA_ID'],
             'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION ?? '',
             'USERID' => $user->USERID,
@@ -953,17 +947,12 @@ class QuotationService implements QuotationServiceInterface
         if ($data['despacho'] === 'Despacho en ruta') {
             $cotizacion->fecha_entrega = $data['fecha_entrega'];
         }
+        $cotizacion->save();
+        $cotizacion->cotizacion = 'COT' . str_pad($cotizacion->id, 8, "0", STR_PAD_LEFT);
+        $cotizacion->save();
         return $cotizacion;
     }
 
-    public function getLastQuotationIdAndCode($cotizacion)
-    {
-        $last = GpCotizacion::orderBy('id', 'desc')->first();
-        $newId =  $last ? $last->id : env('SECUENCIAL_COTIZACION', 1);
-        $cotizacion->id = $newId;
-        $cotizacion->cotizacion = 'COT' . str_pad($newId, 8, "0", STR_PAD_LEFT);
-        return $cotizacion;
-    }
 
 
     public function saveQuotationDetail($items, $cotizacionId)
@@ -1038,14 +1027,7 @@ class QuotationService implements QuotationServiceInterface
         }
     }
 
-    public function clearTempDataQuotation($sucursalId, $PTO_VTA_ID, $clienteId, $userId)
-    {
-        GpTempCart::where('sucursal_id', $sucursalId)
-            ->where('puntodeventa_id', $PTO_VTA_ID)
-            ->where('cliente_id', $clienteId)
-            ->where('user_id', $userId)
-            ->delete();
-    }
+
 
 
     public function updateRegisterCopyQuotation($registerCopyId, $cotizacionId)

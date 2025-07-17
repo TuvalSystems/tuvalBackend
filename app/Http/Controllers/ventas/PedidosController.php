@@ -61,109 +61,12 @@ class PedidosController extends Controller
 
 
     //en proceso de mejora
-    public function guardarpedido2(Request $request)
+    public function guardarpedido(Request $request)
     {
-
-        try {
-            $orderData = $request->all();
-            return $this->orderService->storeOrder($orderData);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        $orderData = $request->all();
+           $user = Auth::user();
+        return $this->orderService->storeOrder($orderData, $user);
     }
-
-    public function guardarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-        $user = Auth::user();
-        foreach ($data['cotizacion'] as $det) {
-            if ($det['ART_CANTIDAD'] <= 0) {
-                return response([
-                    'error' => 'Artículo con cantidad menor o igual a cero, no es posible guardar pedido'
-                ], 401);
-            }
-        }
-
-        $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data, true);
-
-
-        $requiere_aprobacion_crediticia =  $this->approvalService->checkoutApprovalCredit($data);
-        $data['motivo_crediticio'] = null;
-        if ($requiere_aprobacion_crediticia != 'no') {
-            $data['motivo_crediticio'] = $requiere_aprobacion_crediticia;
-            $requiere_aprobacion_crediticia = 'yes';
-        }
-        $pedido = new GpPedido;
-
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-
-        $ultimoPedido = GpPedido::orderBy('id', 'DESC')->first();
-
-        if (!$ultimoPedido) {
-            $ultimoPedido = new \stdClass();
-            $ultimoPedido->id = env('SECUENCIAL_PEDIDO');
-            $pedido->id = $ultimoPedido->id + 1;
-        }
-
-        $pedido->pedido = 'PED' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
-        $pedido->user_id = $user->id;
-        $pedido->sucursal_id = $data['sucursal_id'];
-        $pedido->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
-        $pedido->cliente_id = $data['cliente_id'];
-        $pedido->factura_posterior_despacho = $data['factura_posterior_despacho'];
-        $pedido->factura_a_demanda = $data['factura_a_demanda'];
-        $pedido->factura_siguiente_mes = $data['factura_siguiente_mes'];
-        $pedido->impuesto = env('IVA_IMPUESTO');
-
-        if ($data['despacho'] == 'Despacho en ruta') {
-            $pedido->fecha_entrega = $data['fecha_entrega'];
-        }
-        if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
-            $pedido->cotizacion_id = $data['cotizacion_id'];
-        }
-        $pedido->BOD_BODEGA = $data['bodega_facturacion'];
-        $this->setguardarpedido($data, $pedido, $puntodeventa['PTO_VTA_DESCRIPCION'], $user, $requiere_aprobacion_comercial, $requiere_aprobacion_crediticia);
-
-        if ($pedido->save()) {
-            $i = 0;
-            foreach ($data['cotizacion'] as $det) {
-                $i++;
-                $detalle = $this->savePedidoDetalle($i, $pedido, $det);
-
-                if (count($det['proveedores']) > 0) {
-                    foreach ($det['proveedores'] as $pro) {
-                        $proveedor = $this->savePedidoDetalleProveedores($pedido, $detalle, $pro);
-                        $proveedor->MARGEN = $pro['MARGEN'];
-                        $proveedor->save();
-                    }
-                }
-                $this->savePedidoDetalleStock($det['stock'], $pedido, $detalle);
-            }
-
-            GpTempCart::where('sucursal_id', $data['sucursal_id'])
-                ->where('puntodeventa_id', $data['PTO_VTA_ID'])
-                ->where('cliente_id', $data['cliente_id'])
-                ->where('user_id', $user->id)
-                ->delete();
-
-            if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
-                GpCotizacion::where('id', $data['cotizacion_id'])->update(['estado' => 'procesado', 'facturado' => 1]);
-            }
-
-            $this->invoiceService->checkSendInvoice($pedido);
-
-            return response([
-                'success' => true,
-                'message' => 'El pedido ha sido guardado - ' . $pedido->pedido
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
-        }
-    }
-
-
 
     public function facturarpedido(Request $request)
     {

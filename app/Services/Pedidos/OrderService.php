@@ -3,6 +3,8 @@
 namespace App\Services\Pedidos;
 
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpPedidoDetalleProveedores;
+use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRegistroCopia;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -14,6 +16,7 @@ use App\Models\GpVendedor;
 use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
+use App\Models\GpCotizacion;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
@@ -40,6 +43,7 @@ class OrderService implements OrderServiceInterface
     protected PurchaseReceiptServiceInterface $purchaseReceiptService;
     protected $invoiceService;
     protected $orderAndQuotationService;
+
     public function __construct(
         ApiSalesService $apiSalesService,
         ApiGpService $apiGpService,
@@ -218,25 +222,183 @@ class OrderService implements OrderServiceInterface
 
 
 
-    // PROCESO DE GUARDADO DE PEDIDOS
+    // PROCESO DE GUARDADO DE PEDIDO
 
-    public function storeOrder($order)
+    public function storeOrder($order, $user)
     {
-        $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
-        return $order;
+        try {
+            DB::beginTransaction();
+            $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
+            $newOrder = $this->prepareOrderStoreFill($order, $user);
+            $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
+            $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
+            if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
+                $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
+            }
+            $this->invoiceService->checkSendInvoice($newOrder);
+            DB::commit();
+            return $this->buildSuccessResponse("Pedido {$newOrder->pedido} guardado", 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error in storeOrder (guardar pedido )', [
+                'error' => $e->getMessage(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
 
     public function ensureAllItemsHaveValidQuantity($order)
     {
-        foreach ($order['cotizacion'] as $item) {
+        foreach ($order as $item) {
             if (empty($item['ART_CANTIDAD']) || $item['ART_CANTIDAD'] <= 0) {
                 throw new \InvalidArgumentException("La cantidad del artículo '{$item['ART_CODIGO']}' debe ser mayor a cero.");
             }
         }
     }
 
+    public function prepareOrderStoreFill($order, $user)
+    {
+        $newOrder = new GpPedido();
+        $approvalComercial = $this->approvalService->checkoutApprovalComercial($order, true);
+        $approvalCredit = $this->approvalService->checkoutApprovalCredit($order);
+        $puntoVenta = GpPuntoVenta::find($order['PTO_VTA_ID']);
+        $requieresApproval = $approvalCredit != 'no';
+        $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
+        $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
 
+        $newOrder->fill([
+            'user_id' => $user->id,
+            'surcursal_id' => $order['sucursal_id'],
+            'sucursal_facturacion_id' => $order['sucursal_facturacion_id'],
+            'cliente_id' => $order['cliente_id'],
+            'factura_posterior_despacho' => $order['factura_posterior_despacho'],
+            'factura_a_demanda' => $order['factura_a_demanda'],
+            'factura_siguiente_mes' => $order['factura_siguiente_mes'],
+            'impuesto' => env('IVA_IMPUESTO'),
+            'BOD_BODEGA' => $order['bodega_facturacion'],
+            'PTO_VTA_ID' => $order['PTO_VTA_ID'],
+            'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION,
+            'USERID' => $order['USERID'],
+            'DESC_FORMA_PAGO_CODIGO' => $order['DESC_FORMA_PAGO_CODIGO'],
+            'CLI_RUC' => $order['CLI_RUC'],
+            'CLI_RAZON_SOCIAL' => $order['CLI_RAZON_SOCIAL'],
+            'CLI_CORREO_ELECT_SRI' => $order['CLI_CORREO_ELECT_SRI'],
+            'COND_ID' => $order['COND_ID'],
+            'COND_ID_ORIGINAL' => $order['COND_ID_ORIGINAL'],
+            'VEND_ID' => $order['VEND_ID'],
+            'VEND_NOMBRES' => $order['VEND_NOMBRES'],
+            'VEND_APELLIDOS' => $order['VEND_APELLIDOS'],
+            'despacho' => $order['despacho'],
+            'porcentage_descuentooriginal' => $order['porcentage_descuentooriginal'],
+            'porcentage_descuento' => $order['porcentage_descuento'],
+            'subtotal' => number_format((float) $order['subtotal'] + (float) $order['descuento'], 2, '.', ''),
+            'descuento' => number_format((float) $order['descuento'], 2, '.', ''),
+            'subtotalmenosdescuento' => number_format((float) $order['subtotal'], 2, '.', ''),
+            'iva' => number_format((float) $order['iva'], 2, '.', ''),
+            'total' => number_format((float) $order['total'], 2, '.', ''),
+            'requiere_aprobacion_comercial' => $approvalComercial['requiere'],
+            'motivo_aprobacion_comercial' => $approvalComercial['motivo'],
+            'aprobado_comercial' => 'no',
+            'aprobador_comercial_id' => null,
+            'requiere_aprobacion_crediticia' => $requiereAprobacionCrediticia,
+            'aprobado_crediticio' => 'no',
+            'aprobador_crediticio_id' => null,
+            'motivo_crediticio' => $motivoCrediticio,
+            'nota_interna' => $order['nota_interna'],
+            'nota_cliente' => $order['nota_cliente'],
+            'orden_de_compra' => $order['orden_de_compra'],
+        ]);
+        if ($order['despacho'] == 'Despacho en ruta') {
+            $newOrder->fecha_entrega = $order['fecha_entrega'];
+        }
+        $newOrder->save();
+        $newOrder->pedido = 'PED' . str_pad($newOrder->id, 8, "0", STR_PAD_LEFT);
+        $newOrder->save();
+        return $newOrder;
+    }
+
+
+
+    public function prepareOrderDetailStoreFill($detailOrder, $newOrder,)
+    {
+        foreach ($detailOrder as $i => $item) {
+            $newOrderDetail = new GpPedidoDetalle([
+                'pedido_id' => $newOrder->id,
+                'orden' => $i + 1,
+                'ART_CODIGO' => $item['ART_CODIGO'],
+                'ART_DESCRIPCION' => $item['ART_DESCRIPCION'],
+                'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
+                'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
+                'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
+                'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
+                'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
+                'ART_MARCA' => $item['ART_MARCA'],
+                'ART_MATERIAL' => $item['ART_MATERIAL'],
+                'ART_PESO' => $item['ART_PESO'],
+                'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
+                'ART_VALOR' => (float) $item['ART_VALOR'],
+                'ART_VALOR_ORIGINAL' => (float)$item['ART_VALOR_ORIGINAL'],
+                'ART_DESCUENTO' => (float)$item['ART_DESCUENTO'],
+                'ART_IVA' => (float)$item['ART_IVA'],
+                'ART_CANTIDAD' => (float)$item['ART_CANTIDAD'],
+                'ART_STOCK' => (float)$item['ART_STOCK'],
+                'ART_IMP_VTA' => (float)$item['ART_IMP_VTA'],
+                'ART_COSTO_PROMEDIO' => (float)$item['ART_COSTO_PROMEDIO'],
+                'descuento' => (float)$item['descuento'],
+                'descuento_original' => (float)$item['descuento_original'],
+                'modificador' => (float)$item['modificador'],
+            ]);
+            $newOrderDetail->save();
+            if ($item['proveedores']) {
+                $this->storeDetailProviders($item['proveedores'], $newOrderDetail, $newOrder);
+            }
+            if ($item['stock']) {
+                $this->storeDetailStock($item['stock'], $newOrderDetail, $newOrder);
+            }
+        }
+    }
+
+    public function storeDetailProviders($providers, $detailOrder, $newOrder)
+    {
+        foreach ($providers as $provider) {
+            $recibido = isset($provider['recibido']) ? $provider['recibido'] : null;
+            $margen = isset($provider['MARGEN']) ? $provider['MARGEN'] : null;
+            GpPedidoDetalleProveedores::create([
+                'pedido_id' => $newOrder->id,
+                'detalle_id' => $detailOrder->id,
+                'ID_PROVEEDOR' => $provider['ID_PROVEEDOR'],
+                'DESCRIPCION_ARTICULO' => $provider['DESCRIPCION_ARTICULO'],
+                'FECHA_ENTREGA' => $provider['FECHA_ENTREGA'],
+                'CANTIDAD' => $provider['CANTIDAD'],
+                'COSTO_UNITARIO' => $provider['COSTO_UNITARIO'],
+                'IMPUESTO' => $provider['IMPUESTO'],
+                'TOTAL' => $provider['TOTAL'],
+                'TOTALCONIMPUESTO' => $provider['TOTALCONIMPUESTO'],
+                'NOTA' => $provider['NOTA'],
+                'recibido' => $recibido,
+                'MARGEN' => $margen
+            ]);
+        }
+    }
+    public function storeDetailStock($stock, $detailOrder, $newOrder)
+    {
+        foreach ($stock as $item) {
+            GpPedidoDetalleStock::create([
+                'pedido_id' => $newOrder->id,
+                'detalle_id' => $detailOrder->id,
+                'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
+                'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
+                'seleccionado' => $item['seleccionado'],
+                'reservado' => $item['seleccionado'],
+            ]);
+        }
+    }
+
+    public function updateValueInvoiceQuotation($orderId)
+    {
+        GpCotizacion::where('id', $orderId)->update(['estado' => 'procesado', 'facturado' => 1]);
+    }
 
 
     /**
@@ -391,7 +553,7 @@ class OrderService implements OrderServiceInterface
         try {
             DB::beginTransaction();
             $cliente = $this->functionsService->getClient($data);
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data);
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, false, false, 'pedido');
             $typeCopy = 'pedido';
             $registerCopyId = $this->createRegisterCopy($data['id'], $user, $typeCopy);
             $this->functionsService->recalculateIva($detalle);
@@ -424,7 +586,7 @@ class OrderService implements OrderServiceInterface
             $data['pedido']['sucursal_id'] = $data['sucursal_id'];
             $data['pedido']['cliente_id'] = $data['cliente_id'];
             $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data['pedido'], true, true);
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data['pedido'], true, true, $typeCopy);
             $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
