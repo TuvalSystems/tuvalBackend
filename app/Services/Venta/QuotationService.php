@@ -149,24 +149,7 @@ class QuotationService implements QuotationServiceInterface
         try {
             DB::beginTransaction();
             $clientes = $this->functionService->getClient($data);
-            // $bodegas = $this->functionService->getBodegas($data, 1);
             $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
-            // $arrArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['articulo' => $artCode]);
-            // $seleccionStockPorArticulo = $this->getSelectedStockByArticle($data['id'], $detalles);
-            // $stockGeneral = $this->getStockGeneralRestoreQuotation($arrArticulos, $bodegas);  //obtiene los items formateados
-
-            // $this->mergeSelectedStock($stockGeneral, $seleccionStockPorArticulo);
-            // $availableArticulos = [];
-            // foreach ($detalles as $item) {
-            //     $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $item->toArray()); // me lo devuelve en array
-            //     if (!$artFormat['disponible']) {
-            //         $clase = GpArticulo::where('ART_CODIGO', $item->ART_CODIGO)->first();
-            //         $item->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
-            //         $availableArticulos[] = $item->ART_CODIGO;
-            //     }
-            //     $item->stock = $artFormat['stock'];
-            //     $item->ART_STOCK = $artFormat['ART_STOCK'];
-            // }
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
             DB::commit();
@@ -174,7 +157,7 @@ class QuotationService implements QuotationServiceInterface
                 'success' => true,
                 'cliente' => $clientes,
                 'currentSucursal' => $data['sucursal_id'],
-                'cotizacion' => $data['id'],
+                'cotizacion_id' => $data['id'],
                 'test' => 'recuperarcotizacion',
             ]);
         } catch (\Throwable $e) {
