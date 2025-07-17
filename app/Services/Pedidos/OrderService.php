@@ -347,48 +347,6 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    /** RECUPERAR PEDIDOS Y COPIAR PEDIDOS */
-
-    public function restoreOrders($articulos, $bodegas)
-    {
-        $formatStock = [];
-        foreach ($articulos as $value) {
-            $stockRequests = array_map(fn($whr) => ['articulo' => $value['articulo'], 'bodega' => $whr,], $bodegas);
-            $stockResults = array_map(fn($params) => $this->apiGpService->getStockWarehouse($params), $stockRequests);
-            $formatted = $this->formatResultStocksOrders($stockResults);
-            $formatStock = array_merge($formatStock, $formatted);
-        }
-
-        return $formatStock;
-    }
-
-
-    public function formatResultStocksOrders($stockResults)
-    {
-        if (empty($stockResults)) {
-            return [];
-        }
-        $formattedStocks = [];
-        foreach ($stockResults as $value) {
-            if (!is_array($value)) {
-                continue;
-            }
-            $formattedStocks = array_merge(
-                $formattedStocks,
-                array_map(
-                    fn($item) => [
-                        'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                        'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                        'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-                    ],
-                    array_values($value)
-                )
-            );
-        }
-        return $formattedStocks;
-    }
-
-
 
 
 
@@ -422,6 +380,27 @@ class OrderService implements OrderServiceInterface
     {
         $this->functionsService->recalculateOrder($order);
         $this->invoiceService->sendInvoiceGp($order);
+    }
+
+
+
+    /** function para recuperar el pedido */
+
+    public function recoverOrder($data, $user)
+    {
+        $cliente = $this->functionsService->getClient($data);
+        $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data);
+        $typeCopy = 'pedido';
+        $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy);
+        $this->functionsService->recalculateIva($detalle);
+        $this->functionsService->setCartFormQuotation($detalle, $data, $user);
+        return response([
+            'success' => true,
+            'cliente' => $cliente,
+            'registro_copia' => $registerCopyId,
+            'currentSucursal' => $data['sucursal_id'],
+            'test' => 'volver_a_pedir'
+        ]);
     }
 
 
@@ -462,7 +441,5 @@ class OrderService implements OrderServiceInterface
         }
         $registroCopia->save();
         return $registroCopia->id;
-
-       
     }
 }

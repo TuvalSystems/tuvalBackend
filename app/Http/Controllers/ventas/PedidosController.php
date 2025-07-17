@@ -1102,34 +1102,11 @@ class PedidosController extends Controller
         }
     }
 
-    public function recuperarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recuperarpedido(Request $request)
     {
         $data = $request->all();
         $user = Auth::user();
-
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
-
-        $detalle = $this->getDetallePedido($data);
-
-        $funciones->recalculariva($detalle);
-
-        $funciones->setTempCartFrom($detalle, $data, $user);
-
-        $registroCopia = new GpRegistroCopia();
-        $registroCopia->user_id = $user->id;
-        $registroCopia->USERID = $user->USERID;
-        $registroCopia->tipo = 'volver_a_pedir';
-        $registroCopia->pedido_origen = $data['id'];
-        $registroCopia->save();
-
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'registro_copia' => $registroCopia->id,
-            'currentSucursal' => $data['sucursal_id'],
-            'test' => 'volver_a_pedir'
-        ]);
+        return $this->orderService->recoverOrder($data, $user);
     }
 
     public function copiarpedido(Request $request)
@@ -1137,88 +1114,6 @@ class PedidosController extends Controller
         $data = $request->all();
         $user = Auth::user();
         return $this->orderService->copyOrder($data, $user);
-    }
-
-    public function getDetallePedido($data, $encera = false): \Illuminate\Database\Eloquent\Collection|array
-    {
-
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
-        $arr_bodegas = $funciones->gebodegas($data, 1);
-
-        $consulta_bodega = array();
-        $consulta_precio = array();
-        $stock_bodega_arr = array();
-        $arrArticulos = array();
-
-        $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
-
-
-        foreach ($detalle as $articulo) {
-            $articulo->proveedores = array();
-
-            $stockbodega = GpPedidoDetalleStock::where('pedido_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get()->toArray();
-            $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
-
-            $arrArticulos[] = array(
-                'articulo' => $articulo->ART_CODIGO,
-            );
-
-            $consulta_precio[] = array(
-                'ART_CODIGO' => $articulo->ART_CODIGO,
-            );
-
-            if ($encera) {
-                $articulo->descuento = $cliente->CLI_DSTO_COMERCIAL;
-                $articulo->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
-                $articulo->ART_DESCUENTO = 0;
-                $articulo->modificador = 0;
-                $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
-            }
-        }
-
-        $webservices = new WebserviceController;
-        if ($encera) {
-            $precios = $webservices->listaprecios($consulta_precio);
-            $lista_precios_general = array();
-            foreach ($precios as $precio) {
-                $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
-            }
-        }
-
-        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-        $stock_general = $this->orderService->restoreOrders($arrArticulos, $arr_bodegas);
-        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
-            ->map(function ($items) {
-                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
-            })
-            ->toArray();
-        foreach ($stock_bodega_arr as $key => $bodegas) {
-            foreach ($bodegas as $bodega) {
-                $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
-            }
-        }
-
-        $articulos_array_l = array();
-
-        foreach ($detalle as $articulo) {
-            $funciones->formatStock($articulo, $stock_general);
-            if ($articulo->ART_TIPO_COMPRA != 'L') {
-                if ($encera) {
-                    $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                    $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                }
-            }
-            if (!$articulo->disponible) {
-                $clase = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
-                $articulo->ART_CODIGO = $funciones->buscareledisponible($articulos_array_l, $clase->ART_CLASE_ARTICULO);
-                $articulos_array_l[] = $articulo->ART_CODIGO;
-            }
-        }
-
-        return $detalle;
     }
 
 
