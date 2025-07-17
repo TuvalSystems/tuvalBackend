@@ -391,7 +391,7 @@ class OrderService implements OrderServiceInterface
         $cliente = $this->functionsService->getClient($data);
         $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data);
         $typeCopy = 'pedido';
-        $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy);
+        $registerCopyId = $this->createRegisterCopy($data['id'], $user, $typeCopy);
         $this->functionsService->recalculateIva($detalle);
         $this->functionsService->setCartFormQuotation($detalle, $data, $user);
         return response([
