@@ -279,7 +279,7 @@ class OrderService implements OrderServiceInterface
             'BOD_BODEGA' => $order['bodega_facturacion'],
             'PTO_VTA_ID' => $order['PTO_VTA_ID'],
             'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION,
-            'USERID' => $order['USERID'],
+            'USERID' => $user->USERID,
             'DESC_FORMA_PAGO_CODIGO' => $order['DESC_FORMA_PAGO_CODIGO'],
             'CLI_RUC' => $order['CLI_RUC'],
             'CLI_RAZON_SOCIAL' => $order['CLI_RAZON_SOCIAL'],
