@@ -67,7 +67,31 @@ use Illuminate\Database\Eloquent\Model;
 class GpCotizacionDetalle extends Model
 {
     use HasFactory;
-
+ protected $fillable = [
+     'cotizacion_id',
+     'ART_CODIGO',
+     'ART_DESCRIPCION',
+     'ART_DESCRIPCION_ORIGINAL',
+     'ART_CODIGO_TRES_LETRAS',
+     'ART_DECIMAL_CANTIDAD',
+     'ART_PLAN_UMEDIDA',
+     'ART_MARCA',
+     'ART_MATERIAL',
+     'ART_PESO',
+     'ART_TIPO_COMPRA',
+     'ART_VALOR',
+     'ART_IVA',
+     'ART_VALOR_ORIGINAL',
+     'ART_DESCUENTO',
+     'ART_CANTIDAD',
+     'ART_STOCK',
+     'ART_IMP_VTA',
+     'ART_COSTO_PROMEDIO',
+     'descuento',
+     'descuento_original',
+     'modificador',
+     'CHECK_ALTERNATIVO',
+ ];
 
 
     public function cotizacion()

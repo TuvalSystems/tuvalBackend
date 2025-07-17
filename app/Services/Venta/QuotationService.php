@@ -31,6 +31,7 @@ use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\MswService;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -49,6 +50,7 @@ class QuotationService implements QuotationServiceInterface
     protected $stockWarehouseService;
     protected $MsWebservice;
     protected $OrderQuotationService;
+    protected $approvalService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -56,7 +58,8 @@ class QuotationService implements QuotationServiceInterface
         FunctionsServiceInterface $functionService,
         StockWarehouseServiceInterface $stockWarehouseService,
         MswService $MsWebservice,
-        OrderAndQuotationServiceInterface $OrderQuotationService
+        OrderAndQuotationServiceInterface $OrderQuotationService,
+        ApprovalServiceInterface $approvalService
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -65,6 +68,7 @@ class QuotationService implements QuotationServiceInterface
         $this->stockWarehouseService = $stockWarehouseService;
         $this->MsWebservice = $MsWebservice;
         $this->OrderQuotationService = $OrderQuotationService;
+        $this->approvalService = $approvalService;
     }
 
 
@@ -211,7 +215,7 @@ class QuotationService implements QuotationServiceInterface
             }
         }
 
-        $stockResults =  $this->apiGpService->getStockWarehouseAsync($stockRequests);
+        $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
         return $this->formatResultStocksQuotation($stockResults);
     }
 
@@ -703,7 +707,7 @@ class QuotationService implements QuotationServiceInterface
         $listaPreciosAll = [];
         if ($data['serial'] == '') {
             if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
-                $precios =  $this->MsWebservice->listaprecios($artPrecios);
+                $precios = $this->MsWebservice->listaprecios($artPrecios);
                 foreach ($precios as $pr) {
                     $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
                 }
@@ -740,7 +744,7 @@ class QuotationService implements QuotationServiceInterface
         $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
         $stockGeneral = $this->getStocItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
         $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
-        $artFormat =  $this->stockWarehouseService->newFormatStock($stockGeneral, $article);
+        $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $article);
         $availableArticulos = [];
         if (!$artFormat['disponible']) {
             $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
@@ -750,7 +754,7 @@ class QuotationService implements QuotationServiceInterface
         $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
         $newStock = $this->reassignStockIds($article, $artFormat['stock']);
         $article['stock'] = $newStock;
-        return $this->successResponse('Stock obtenido correctamente',   $article, 200);
+        return $this->successResponse('Stock obtenido correctamente', $article, 200);
     }
 
 
@@ -798,7 +802,7 @@ class QuotationService implements QuotationServiceInterface
         foreach ($warehouses as $warehouse) {
             $stockRequests[] = array_merge($arrArticulos, ['bodega' => $warehouse]);
         }
-        $stockResults =  $this->apiGpService->getStockWarehouseAsync($stockRequests);
+        $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
         return $this->formatResultStocksQuotation($stockResults);
     }
 
@@ -856,5 +860,203 @@ class QuotationService implements QuotationServiceInterface
         $registerCopy->cotizacion_origen = $data['id'];
         $registerCopy->save();
         return $registerCopy->id;
+    }
+
+
+
+    /***
+     *  funciones para el guardado de la cotizacion
+     *
+     */
+
+    public function storeQuotation($data, $user)
+    {
+        try {
+            DB::beginTransaction();
+            $cotizacion = $this->prepareQuotationStoreFill($data, $user);
+            $cotizacion->save();
+            if (!empty($data['cotizacion_id'])) {
+                GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
+            }
+            $this->saveQuotationDetail($data['cotizacion'], $cotizacion->id);
+            $this->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
+            $this->updateRegisterCopyQuotation($data['registro_copia'], $cotizacion->id);
+            DB::commit();
+            return $this->buildSuccessResponse(
+                 "Cotización {$cotizacion->cotizacion} guardada correctamente",
+                200
+            );
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Log::error('Error in storeQuotation (Guardar cotización)', [
+                'error' => $th->getMessage(),
+            ]);
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+
+    public function prepareQuotationStoreFill($data, $user)
+    {
+        $cotizacion = isset($data['cotizacion_id']) ? GpCotizacion::find($data['cotizacion_id']) : new GpCotizacion();
+        if (!$cotizacion->exists) {
+            $cotizacion = $this->getLastQuotationIdAndCode($cotizacion);
+        }
+
+        $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
+
+        $puntoVenta = GpPuntoVenta::find($data['PTO_VTA_ID']);
+
+        $cotizacion->fill([
+            'estado' => $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado',
+            'user_id' => $user->id,
+            'sucursal_id' => $data['sucursal_id'],
+            'sucursal_facturacion_id' => $data['sucursal_facturacion_id'],
+            'cliente_id' => $data['cliente_id'],
+            'factura_posterior_despacho' => $data['factura_posterior_despacho'],
+            'factura_a_demanda' => $data['factura_a_demanda'],
+            'factura_siguiente_mes' => $data['factura_siguiente_mes'],
+            'bodega_facturacion' => $data['bodega_facturacion'],
+            'PTO_VTA_ID' => $data['PTO_VTA_ID'],
+            'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION ?? '',
+            'USERID' => $user->USERID,
+            'DESC_FORMA_PAGO_CODIGO' => $data['DESC_FORMA_PAGO_CODIGO'],
+            'CLI_RUC' => $data['CLI_RUC'],
+            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
+            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
+            'COND_ID' => $data['COND_ID'],
+            'COND_ID_ORIGINAL' => $data['COND_ID_ORIGINAL'],
+            'VEND_ID' => $data['VEND_ID'],
+            'VEND_NOMBRES' => $data['VEND_NOMBRES'],
+            'VEND_APELLIDOS' => $data['VEND_APELLIDOS'],
+            'despacho' => $data['despacho'],
+            'orden_de_compra' => $data['orden_de_compra'],
+            'porcentage_descuentooriginal' => $data['porcentage_descuentooriginal'],
+            'porcentage_descuento' => $data['porcentage_descuento'],
+            'subtotal' => (float) $data['subtotal'] + (float) $data['descuento'],
+            'descuento' => (float) $data['descuento'],
+            'subtotalmenosdescuento' => (float) $data['subtotal'],
+            'iva' => (float) $data['iva'],
+            'total' => (float) $data['total'],
+            'requiere_aprobacion_comercial' => $requiereAprobacionComercial['requiere'],
+            'motivo_aprobacion_comercial' => $requiereAprobacionComercial['motivo'],
+            'aprobado_comercial' => 'no',
+            'aprobador_comercial_id' => null,
+            'requiere_aprobacion_crediticia' => 'no',
+            'aprobado_crediticio' => 'no',
+            'aprobador_crediticio_id' => null,
+            'impreso' => 'no',
+            'nota_interna' => $data['nota_interna'],
+            'nota_cliente' => $data['nota_cliente'],
+            'impuesto' => env('IVA_IMPUESTO'),
+        ]);
+        if ($data['despacho'] === 'Despacho en ruta') {
+            $cotizacion->fecha_entrega = $data['fecha_entrega'];
+        }
+        return $cotizacion;
+    }
+
+    public function getLastQuotationIdAndCode($cotizacion)
+    {
+        $last = GpCotizacion::orderBy('id', 'desc')->first();
+        $newId =  $last ? $last->id : env('SECUENCIAL_COTIZACION', 1);
+        $cotizacion->id = $newId;
+        $cotizacion->cotizacion = 'COT' . str_pad($newId, 8, "0", STR_PAD_LEFT);
+        return $cotizacion;
+    }
+
+
+    public function saveQuotationDetail($items, $cotizacionId)
+    {
+        foreach ($items as  $item) {
+            $detalle = new GpCotizacionDetalle([
+                'cotizacion_id' => $cotizacionId,
+                'ART_CODIGO' => $item['ART_CODIGO'],
+                'ART_DESCRIPCION' => trim(str_replace('  ', ' ', $item['ART_DESCRIPCION'])),
+                'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
+                'ART_CHECK_ALTERNATIVO' => $item['ART_CHECK_ALTERNATIVO'] ?? 0,
+                'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
+                'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
+                'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
+                'ART_MARCA' => $item['ART_MARCA'],
+                'ART_MATERIAL' => $item['ART_MATERIAL'],
+                'ART_PESO' => $item['ART_PESO'],
+                'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
+                'ART_VALOR' => (float) $item['ART_VALOR'],
+                'ART_VALOR_ORIGINAL' => (float)$item['ART_VALOR_ORIGINAL'],
+                'ART_DESCUENTO' => (float)$item['ART_DESCUENTO'],
+                'ART_IVA' => (float)$item['ART_IVA'],
+                'ART_CANTIDAD' => (float)$item['ART_CANTIDAD'],
+                'ART_STOCK' => (float)$item['ART_STOCK'],
+                'ART_IMP_VTA' => (float)$item['ART_IMP_VTA'],
+                'ART_COSTO_PROMEDIO' => (float)$item['ART_COSTO_PROMEDIO'],
+                'descuento' => (float)$item['descuento'],
+                'descuento_original' => (float)$item['descuento_original'],
+                'modificador' => (float)$item['modificador'],
+            ]);
+            $detalle->save();
+            if ($item['proveedores']) {
+                $this->saveQuotationDetailProviders($item['proveedores'], $detalle->id, $cotizacionId);
+            }
+            if ($item['stock']) {
+                $this->saveQuotationDetailStocks($item['stock'], $detalle->id, $cotizacionId);
+            }
+        }
+    }
+
+
+    public function saveQuotationDetailProviders($providers, $detalleId, $cotizacionId)
+    {
+        foreach ($providers as $prov) {
+            GpCotizacionDetalleProveedores::create([
+                'cotizacion_id' => $cotizacionId,
+                'detalle_id' => $detalleId,
+                'ID_PROVEEDOR' => $prov['ID_PROVEEDOR'],
+                'DESCRIPCION_ARTICULO' => $prov['DESCRIPCION_ARTICULO'],
+                'FECHA_ENTREGA' => $prov['FECHA_ENTREGA'],
+                'CANTIDAD' => (float) $prov['CANTIDAD'],
+                'COSTO_UNITARIO' => (float) $prov['COSTO_UNITARIO'],
+                'IMPUESTO' => (float)$prov['IMPUESTO'],
+                'TOTAL' => (float)$prov['TOTAL'],
+                'TOTALCONIMPUESTO' => (float)$prov['TOTALCONIMPUESTO'],
+                'NOTA' => $prov['NOTA'],
+                'MARGEN' => $prov['MARGEN']
+            ]);
+        }
+    }
+
+    public function saveQuotationDetailStocks($stocks, $detalleId, $cotizacionId)
+    {
+        foreach ($stocks as $stock) {
+            GpCotizacionDetalleStock::create([
+                'cotizacion_id' => $cotizacionId,
+                'detalle_id' => $detalleId,
+                'STO_ART_BODEGA' => $stock['STO_ART_BODEGA'],
+                'STO_ART_STOCK_DISPONIBLE' => $stock['STO_ART_STOCK_DISPONIBLE'],
+                'seleccionado' => $stock['seleccionado']
+            ]);
+        }
+    }
+
+    public function clearTempDataQuotation($sucursalId, $PTO_VTA_ID, $clienteId, $userId)
+    {
+        GpTempCart::where('sucursal_id', $sucursalId)
+            ->where('puntodeventa_id', $PTO_VTA_ID)
+            ->where('cliente_id', $clienteId)
+            ->where('user_id', $userId)
+            ->delete();
+    }
+
+
+    public function updateRegisterCopyQuotation($registerCopyId, $cotizacionId)
+    {
+        if (!$registerCopyId || $registerCopyId == null || $registerCopyId == '' || $registerCopyId == 'null') {
+            return;
+        }
+        $registerCopy = GpRegistroCopia::find($registerCopyId);
+        if ($registerCopy) {
+            $registerCopy->cotizacion_destino = $cotizacionId;
+            $registerCopy->save();
+        }
     }
 }

@@ -57,4 +57,7 @@ interface QuotationServiceInterface
     /** funcion para volver a pedir cotizacion  */
     public function requestQuotationAgain($data, $user);
 
+    /** funcion para guardado de cotización  */
+     public function storeQuotation($data, $user);
+
 }

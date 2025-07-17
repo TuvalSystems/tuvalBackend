@@ -331,171 +331,12 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function guardarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function guardarcotizacion(Request $request)
     {
         $data = $request->all();
         $user = Auth::user();
+        return $this->quotationService->storeQuotation($data, $user);
 
-        // $aprobaciones = new AprobacionesController;
-
-        $requiere_aprobacion_comercial = $this->approvalService->checkoutApprovalComercial($data);
-        // $requiere_aprobacion_comercial = $aprobaciones->checkAprobacionesComerciales($data);
-        //        echo $requiere_aprobacion_comercial;
-        //        die();
-        $requiere_aprobacion_crediticia = 'no'; //$aprobaciones->checkAprobacionesCrediticias($data);
-
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-
-        if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
-            $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->first();
-        } else {
-            $cotizacion = new GpCotizacion;
-
-            $ultimaCotizacion = GpCotizacion::orderBy('id', 'DESC')->first();
-
-            if (!$ultimaCotizacion) {
-                $ultimaCotizacion = new \stdClass();
-                $ultimaCotizacion->id = env('SECUENCIAL_COTIZACION');
-                $cotizacion->id = $ultimaCotizacion->id + 1;
-            }
-            $cotizacion->cotizacion = 'COT' . str_pad($ultimaCotizacion->id + 1, 8, "0", STR_PAD_LEFT);
-        }
-        $estado = 'aprobado';
-        if ($requiere_aprobacion_comercial['requiere'] == 'yes')
-            $estado = 'espera';
-        $cotizacion->user_id = $user->id;
-        $cotizacion->sucursal_id = $data['sucursal_id'];
-        $cotizacion->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
-        $cotizacion->cliente_id = $data['cliente_id'];
-        $cotizacion->estado = $estado;
-        $cotizacion->factura_posterior_despacho = $data['factura_posterior_despacho'];
-        $cotizacion->factura_a_demanda = $data['factura_a_demanda'];
-        $cotizacion->factura_siguiente_mes = $data['factura_siguiente_mes'];
-        $cotizacion->BOD_BODEGA = $data['bodega_facturacion'];
-        $cotizacion->PTO_VTA_ID = $data['PTO_VTA_ID'];
-        $cotizacion->PTO_VTA_DESCRIPCION = $puntodeventa['PTO_VTA_DESCRIPCION'];
-        $cotizacion->USERID = $user->USERID;
-        $cotizacion->DESC_FORMA_PAGO_CODIGO = $data['DESC_FORMA_PAGO_CODIGO'];
-        $cotizacion->CLI_RUC = $data['CLI_RUC'];
-        $cotizacion->CLI_RAZON_SOCIAL = $data['CLI_RAZON_SOCIAL'];
-        $cotizacion->CLI_CORREO_ELECT_SRI = $data['CLI_CORREO_ELECT_SRI'];
-        $cotizacion->COND_ID = $data['COND_ID'];
-        $cotizacion->COND_ID_ORIGINAL = $data['COND_ID_ORIGINAL'];
-        $cotizacion->VEND_ID = $data['VEND_ID'];
-        $cotizacion->VEND_NOMBRES = $data['VEND_NOMBRES'];
-        $cotizacion->VEND_APELLIDOS = $data['VEND_APELLIDOS'];
-        $cotizacion->despacho = $data['despacho'];
-        $cotizacion->orden_de_compra = $data['orden_de_compra'];
-        if ($data['despacho'] == 'Despacho en ruta') {
-            $cotizacion->fecha_entrega = $data['fecha_entrega'];
-        }
-        $cotizacion->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
-        $cotizacion->porcentage_descuento = $data['porcentage_descuento'];
-
-        $cotizacion->subtotal = (float) $data['subtotal'] + (float) $data['descuento'];
-        $cotizacion->descuento = (float) $data['descuento'];
-        $cotizacion->subtotalmenosdescuento = (float) $data['subtotal'];
-        $cotizacion->iva = (float) $data['iva'];
-        $cotizacion->total = (float) $data['total'];
-        $cotizacion->requiere_aprobacion_comercial = $requiere_aprobacion_comercial['requiere'];
-        $cotizacion->motivo_aprobacion_comercial = $requiere_aprobacion_comercial['motivo'];
-        $cotizacion->aprobado_comercial = 'no';
-        $cotizacion->aprobador_comercial_id = null;
-        $cotizacion->requiere_aprobacion_crediticia = $requiere_aprobacion_crediticia;
-        $cotizacion->aprobado_crediticio = 'no';
-        $cotizacion->aprobador_crediticio_id = null;
-        $cotizacion->impreso = 'no';
-        $cotizacion->nota_interna = $data['nota_interna'];
-        $cotizacion->nota_cliente = $data['nota_cliente'];
-        $cotizacion->impuesto = env('IVA_IMPUESTO');
-
-        if ($cotizacion->save()) {
-
-            if (isset($data['cotizacion_id']) && $data['cotizacion_id'] != '') {
-                GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
-            }
-
-            foreach ($data['cotizacion'] as $det) {
-                $detalle = new GpCotizacionDetalle;
-                $detalle->cotizacion_id = $cotizacion->id;
-                $detalle->ART_CODIGO = $det['ART_CODIGO'];
-                $detalle->ART_DESCRIPCION = trim(str_replace('  ', ' ', $det['ART_DESCRIPCION']));
-                $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
-                $detalle->CHECK_ALTERNATIVO = $det['CHECK_ALTERNATIVO'] ?? 0;
-                $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
-                $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
-                $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
-                $detalle->ART_MARCA = $det['ART_MARCA'];
-                $detalle->ART_MATERIAL = $det['ART_MATERIAL'];
-                $detalle->ART_PESO = $det['ART_PESO'];
-                $detalle->ART_TIPO_COMPRA = $det['ART_TIPO_COMPRA'];
-                $detalle->ART_VALOR = (float) $det['ART_VALOR'];
-                $detalle->ART_VALOR_ORIGINAL = (float) $det['ART_VALOR_ORIGINAL'];
-                $detalle->ART_DESCUENTO = (float) $det['ART_DESCUENTO'];
-                $detalle->ART_IVA = (float) $det['ART_IVA'];
-                $detalle->ART_CANTIDAD = (float) $det['ART_CANTIDAD'];
-                $detalle->ART_STOCK = (float) $det['ART_STOCK'];
-                $detalle->ART_IMP_VTA = (float) $det['ART_IMP_VTA'];
-                $detalle->ART_COSTO_PROMEDIO = (float) $det['ART_COSTO_PROMEDIO'];
-                $detalle->descuento = (float) $det['descuento'];
-                $detalle->descuento_original = (float) $det['descuento_original'];
-                $detalle->modificador = (float) $det['modificador'];
-                $detalle->save();
-
-                if (count($det['proveedores']) > 0) {
-                    foreach ($det['proveedores'] as $pro) {
-                        $proveedor = new GpCotizacionDetalleProveedores;
-                        $proveedor->cotizacion_id = $cotizacion->id;
-                        $proveedor->detalle_id = $detalle->id;
-                        $proveedor->ID_PROVEEDOR = $pro['ID_PROVEEDOR'];
-                        $proveedor->DESCRIPCION_ARTICULO = trim(str_replace('  ', ' ', $pro['DESCRIPCION_ARTICULO']));
-                        $proveedor->FECHA_ENTREGA = $pro['FECHA_ENTREGA'];
-                        $proveedor->CANTIDAD = (float) $pro['CANTIDAD'];
-                        $proveedor->COSTO_UNITARIO = (float) $pro['COSTO_UNITARIO'];
-                        $proveedor->IMPUESTO = (float) $pro['IMPUESTO'];
-                        $proveedor->TOTAL = (float) $pro['TOTAL'];
-                        $proveedor->TOTALCONIMPUESTO = (float) $pro['TOTALCONIMPUESTO'];
-                        $proveedor->NOTA = $pro['NOTA'];
-                        $proveedor->MARGEN = $pro['MARGEN'];
-                        $proveedor->save();
-                    }
-                }
-                if (count($det['stock']) > 0) {
-                    foreach ($det['stock'] as $st) {
-                        $stock = new GpCotizacionDetalleStock();
-                        $stock->cotizacion_id = $cotizacion->id;
-                        $stock->detalle_id = $detalle->id;
-                        $stock->STO_ART_BODEGA = $st['STO_ART_BODEGA'];
-                        $stock->STO_ART_STOCK_DISPONIBLE = $st['STO_ART_STOCK_DISPONIBLE'];
-                        $stock->seleccionado = $st['seleccionado'];
-                        $stock->save();
-                    }
-                }
-            }
-
-            GpTempCart::where('sucursal_id', $data['sucursal_id'])
-                ->where('puntodeventa_id', $data['PTO_VTA_ID'])
-                ->where('cliente_id', $data['cliente_id'])
-                ->where('user_id', $user->id)
-                ->delete();
-
-            if (isset($data['registro_copia']) && $data['registro_copia'] != '' && $data['registro_copia'] != 'null' && $data['registro_copia'] != null) {
-                $registro_copia = GpRegistroCopia::where('id', $data['registro_copia'])->first();
-                if ($registro_copia) {
-                    $registro_copia->cotizacion_destino = $cotizacion->id;
-                    $registro_copia->save();
-                }
-            }
-
-            return response([
-                'success' => true,
-                'message' => 'La cotización ha sido guardada - ' . $cotizacion->cotizacion
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
-        }
     }
 
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1594,8 +1435,7 @@ class CotizacionesController extends Controller
     }
 
     /**
-     *  para obtener el stock del item en tiempo real de la bodega seleccionada
-     *  en cotizaciones al abrir el modal, allí obtiene el stock en tiempo real del item
+     *  para obtener el stock del articulo en tiempo real por item y no por cotización
      */
 
     public function obtenerStockItemPorBodega(Request $request)
