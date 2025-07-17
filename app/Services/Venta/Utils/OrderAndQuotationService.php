@@ -40,10 +40,12 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $arrayArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['ART_CODIGO' => $artCode])->toArray();
         $listaPreciosWs = $this->getPriceListByItems($arrayArticulos);
 
-        $detalles->each(function ($item) use ($listaPreciosWs, $clientes) {
+        $detalles->each(function ($item) use ($listaPreciosWs, $clientes, $encera) {
             if ($item->ART_TIPO_COMPRA != 'L') {
-                $item->ART_VALOR = $listaPreciosWs[$item->ART_CODIGO][$clientes->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'] ?? 0;
-                $item->ART_VALOR_ORIGINAL =  $item->ART_VALOR;
+                if ($encera) {
+                    $item->ART_VALOR = $listaPreciosWs[$item->ART_CODIGO][$clientes->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'] ?? 0;
+                    $item->ART_VALOR_ORIGINAL =  $item->ART_VALOR;
+                }
             }
             return $item;
         });
