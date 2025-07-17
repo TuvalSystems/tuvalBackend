@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\devoluciones\GpDevoluciones;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -159,6 +158,7 @@ class GpPedido extends Model
         'VEND_NOMBRES',
         'VEND_APELLIDOS',
         'despacho',
+        'descuento',
         'porcentage_descuentooriginal',
         'porcentage_descuento',
         'subtotal',

@@ -268,8 +268,9 @@ class OrderService implements OrderServiceInterface
         $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
 
         $newOrder->fill([
+            'cotizacion_id' => $order['cotizacion_id'],
             'user_id' => $user->id,
-            'surcursal_id' => $order['sucursal_id'],
+            'sucursal_id' => $order['sucursal_id'],
             'sucursal_facturacion_id' => $order['sucursal_facturacion_id'],
             'cliente_id' => $order['cliente_id'],
             'factura_posterior_despacho' => $order['factura_posterior_despacho'],
@@ -293,7 +294,7 @@ class OrderService implements OrderServiceInterface
             'porcentage_descuentooriginal' => $order['porcentage_descuentooriginal'],
             'porcentage_descuento' => $order['porcentage_descuento'],
             'subtotal' => number_format((float) $order['subtotal'] + (float) $order['descuento'], 2, '.', ''),
-            'descuento' => number_format((float) $order['descuento'], 2, '.', ''),
+            'descuento' => number_format((float) $order['descuento'],2,'.',''),
             'subtotalmenosdescuento' => number_format((float) $order['subtotal'], 2, '.', ''),
             'iva' => number_format((float) $order['iva'], 2, '.', ''),
             'total' => number_format((float) $order['total'], 2, '.', ''),
