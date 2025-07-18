@@ -1740,4 +1740,11 @@ class PedidosController extends Controller
     {
         return $this->orderService->getLisOrdersWithoutCoordinated();
     }
+
+
+    public function buscarIteml($artCode)
+    {
+        $item = GpArticulo::where('ART_CODIGO', $artCode)->first()->toArray();
+        return $this->orderService->buscarItemlTest($item);
+    }
 }

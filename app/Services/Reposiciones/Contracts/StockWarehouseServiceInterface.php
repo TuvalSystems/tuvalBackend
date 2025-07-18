@@ -15,4 +15,5 @@ interface StockWarehouseServiceInterface
 
     public function checkArticuloDisponible($articulo);
 
+    public function getFirstAvailablePurchaseArticle($articulo);
 }

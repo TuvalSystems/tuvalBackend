@@ -249,7 +249,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::put('cotizaciones/guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 
     /** cotizaciones new routes */
-    Route::get('cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
+    Route::post('cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
     Route::post('cotizaciones/articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
 });
 Route::post('/login', [AuthController::class, 'login']);

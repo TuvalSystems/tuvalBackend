@@ -27,4 +27,7 @@ interface OrderServiceInterface
         /** funcion de copiar pedido  */
 
         public function copyOrder($data, $user);
+
+        /** pruebas */
+        public function buscarItemlTest($item);
     }

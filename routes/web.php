@@ -98,3 +98,5 @@ Route::get('/cotizaciones/lista-items-alternativos', [CotizacionesController::cl
 
 
 Route::get('/cotizaciones/listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
+
+Route::get('/consultas/buscarcode/{artCode}', [PedidosController::class, 'buscarIteml']);

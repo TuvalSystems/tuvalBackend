@@ -27,6 +27,7 @@ use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -43,6 +44,7 @@ class OrderService implements OrderServiceInterface
     protected PurchaseReceiptServiceInterface $purchaseReceiptService;
     protected $invoiceService;
     protected $orderAndQuotationService;
+    protected $stockWarehouseService;
 
     public function __construct(
         ApiSalesService $apiSalesService,
@@ -53,7 +55,8 @@ class OrderService implements OrderServiceInterface
         FunctionsServiceInterface $functionsService,
         PurchaseReceiptServiceInterface $purchaseReceiptService,
         InvoiceServiceInterface $invoiceService,
-        OrderAndQuotationServiceInterface $orderAndQuotationService
+        OrderAndQuotationServiceInterface $orderAndQuotationService,
+        StockWarehouseServiceInterface $stockWarehouseService
     ) {
         $this->apiGpService = $apiGpService;
         $this->apiSalesService = $apiSalesService;
@@ -64,6 +67,7 @@ class OrderService implements OrderServiceInterface
         $this->purchaseReceiptService = $purchaseReceiptService;
         $this->invoiceService = $invoiceService;
         $this->orderAndQuotationService = $orderAndQuotationService;
+        $this->stockWarehouseService = $stockWarehouseService;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -260,9 +264,10 @@ class OrderService implements OrderServiceInterface
     public function prepareOrderStoreFill($order, $user)
     {
         $newOrder = new GpPedido();
+        $puntoVenta = GpPuntoVenta::find($order['PTO_VTA_ID']);
         $approvalComercial = $this->approvalService->checkoutApprovalComercial($order, true);
         $approvalCredit = $this->approvalService->checkoutApprovalCredit($order);
-        $puntoVenta = GpPuntoVenta::find($order['PTO_VTA_ID']);
+
         $requieresApproval = $approvalCredit != 'no';
         $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
         $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
@@ -294,7 +299,7 @@ class OrderService implements OrderServiceInterface
             'porcentage_descuentooriginal' => $order['porcentage_descuentooriginal'],
             'porcentage_descuento' => $order['porcentage_descuento'],
             'subtotal' => number_format((float) $order['subtotal'] + (float) $order['descuento'], 2, '.', ''),
-            'descuento' => number_format((float) $order['descuento'],2,'.',''),
+            'descuento' => number_format((float) $order['descuento'], 2, '.', ''),
             'subtotalmenosdescuento' => number_format((float) $order['subtotal'], 2, '.', ''),
             'iva' => number_format((float) $order['iva'], 2, '.', ''),
             'total' => number_format((float) $order['total'], 2, '.', ''),
@@ -324,6 +329,24 @@ class OrderService implements OrderServiceInterface
     public function prepareOrderDetailStoreFill($detailOrder, $newOrder,)
     {
         foreach ($detailOrder as $i => $item) {
+
+            /** antes de almacenar el detalle del pedido, verificamos los items L
+             *  si tienen stock y sino se asigna un item que este disponible
+             * considerando la clase y el tipo de impuesto
+             */
+            $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
+            $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
+            if ($isTypeL && !$hasStock) {
+                $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item);
+                if (!$replacementCodeL) {
+                    Log::warning('No se encontró un item L disponible para el pedido ', [
+                        'pedido_id' => $newOrder->id,
+                        'articulo' => $item['ART_CODIGO'] ?? null
+                    ]);
+                    throw new \Exception("No se encontró un artículo tipo L disponible para el código {$item['ART_CODIGO']}");
+                }
+                $item['ART_CODIGO'] = $replacementCodeL;
+            }
             $newOrderDetail = new GpPedidoDetalle([
                 'pedido_id' => $newOrder->id,
                 'orden' => $i + 1,
@@ -623,5 +646,11 @@ class OrderService implements OrderServiceInterface
         }
         $registroCopia->save();
         return $registroCopia->id;
+    }
+
+    public function buscarItemlTest($item)
+    {
+
+        return $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item);
     }
 }
