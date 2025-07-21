@@ -386,7 +386,7 @@ class OrderService implements OrderServiceInterface
     {
         foreach ($providers as $provider) {
             $recibido = isset($provider['recibido']) ? $provider['recibido'] : 'no';
-            $margen = isset($provider['MARGEN']) ?? $provider['MARGEN'] ;
+            $margen = isset($provider['MARGEN']) ?? $provider['MARGEN'];
             GpPedidoDetalleProveedores::create([
                 'pedido_id' => $newOrder->id,
                 'detalle_id' => $detailOrder->id,
@@ -579,7 +579,7 @@ class OrderService implements OrderServiceInterface
 
             DB::beginTransaction();
             $cliente = $this->functionsService->getClient($data);
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente,$data, false, false, 'pedido');
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'pedido');
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data, $user);
@@ -613,7 +613,7 @@ class OrderService implements OrderServiceInterface
             $cliente = $this->functionsService->getClient($data);
             $data['pedido']['sucursal_id'] = $data['sucursal_id'];
             $data['pedido']['cliente_id'] = $data['cliente_id'];
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder( $cliente,$data['pedido'], true, true, $typeCopy);
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);

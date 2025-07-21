@@ -212,7 +212,7 @@ class FunctionsService implements FunctionsServiceInterface
         $order->save();
     }
 
-    /** funcion para recalcular iva */
+    /** funcion para recalcular iva devuelve en memoria el detalle actualizado con el iva */
     public function recalculateIva($detalle)
     {
         if ($detalle->isEmpty()) {
@@ -225,12 +225,11 @@ class FunctionsService implements FunctionsServiceInterface
         })->pluck('ART_CODIGO')->unique()->values();
         $impuesto = GpArticulo::whereIn('ART_CODIGO', $articulosCodigo)->pluck('ART_IMP_VTA', 'ART_CODIGO');
 
-        foreach ($detalle as $item) {
-            if ($impuesto->has($item->ART_CODIGO)) {
-                GpCotizacionDetalle::where('id', $item->id)
-                    ->update(['ART_IMP_VTA' => $impuesto[$item->ART_CODIGO]]);
+        return $detalle->each(function ($item) use ($impuesto) {
+            if (isset($item->ART_CODIGO) && $impuesto->has($item->ART_CODIGO)) {
+                $item->ART_IMP_VTA = $impuesto[$item->ART_CODIGO]; // solo actualiza en memoria
             }
-        }
+        });
     }
 
 
@@ -408,7 +407,7 @@ class FunctionsService implements FunctionsServiceInterface
      *  utilizo este store temporal porque necesito almacecenar el stock
      *  cuando recupero el pedido de la cotizacion o pedido ya que
      * el stock se encuentra en el detalle del pedido
-    */
+     */
     public function storeCartStockTemp($cartId, $stock)
     {
         if (empty($stock)) {
@@ -425,6 +424,4 @@ class FunctionsService implements FunctionsServiceInterface
             );
         }
     }
-
-
 }
