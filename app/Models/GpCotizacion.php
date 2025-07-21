@@ -137,6 +137,7 @@ class GpCotizacion extends Model
         'VEND_NOMBRES',
         'VEND_APELLIDOS',
         'despacho',
+        'descuento',
         'porcentage_descuentooriginal',
         'porcentage_descuento',
         'subtotal',
