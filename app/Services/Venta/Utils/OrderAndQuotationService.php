@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Utils;
 
+use App\Models\GpRegistroCopia;
 use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -140,5 +141,26 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             ->where('cliente_id', $clienteId)
             ->where('user_id', $userId)
             ->delete();
+    }
+
+
+    /** funcion general para el registro de copia para cotizacion y pedido
+     * @return int
+     */
+    public function createRegisterCopy($dataId, $user, $typeCopy, $typeRegisterCopy)
+    {
+        $registroCopia = new GpRegistroCopia([
+            'user_id' => $user->id,
+            'USERID' => $user->USERID,
+            'tipo' => $typeRegisterCopy,
+
+        ]);
+        if ($typeCopy == 'pedido') {
+            $registroCopia->pedido_origen = $dataId;
+        } else {
+            $registroCopia->cotizacion_origen = $dataId;
+        }
+        $registroCopia->save();
+        return $registroCopia->id;
     }
 }

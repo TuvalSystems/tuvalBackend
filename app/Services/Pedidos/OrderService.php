@@ -581,7 +581,7 @@ class OrderService implements OrderServiceInterface
             DB::beginTransaction();
             $cliente = $this->functionsService->getClient($data);
             $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente,$data, false, false, 'pedido');
-            $registerCopyId = $this->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
+            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data, $user);
             DB::commit();
@@ -609,12 +609,13 @@ class OrderService implements OrderServiceInterface
         try {
             $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
             $typeRegisterCopy = 'copia';
+
             DB::beginTransaction();
             $cliente = $this->functionsService->getClient($data);
             $data['pedido']['sucursal_id'] = $data['sucursal_id'];
             $data['pedido']['cliente_id'] = $data['cliente_id'];
             $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder( $cliente,$data['pedido'], true, true, $typeCopy);
-            $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
+            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
             DB::commit();
@@ -634,26 +635,9 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function createRegisterCopy($dataId, $user, $typeCopy, $typeRegisterCopy)
-    {
-        $registroCopia = new GpRegistroCopia([
-            'user_id' => $user->id,
-            'USERID' => $user->USERID,
-            'tipo' => $typeRegisterCopy,
-
-        ]);
-        if ($typeCopy == 'pedido') {
-            $registroCopia->pedido_origen = $dataId;
-        } else {
-            $registroCopia->cotizacion_origen = $dataId;
-        }
-        $registroCopia->save();
-        return $registroCopia->id;
-    }
 
     public function buscarItemlTest($item)
     {
-
         return $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item);
     }
 }

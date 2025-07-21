@@ -60,4 +60,7 @@ interface QuotationServiceInterface
     /** funcion para guardado de cotización  */
      public function storeQuotation($data, $user);
 
+     /** funcion para obtener el margen del item l en cotizaciónes */
+     public function getMarginItem($artArticulo);
+
 }

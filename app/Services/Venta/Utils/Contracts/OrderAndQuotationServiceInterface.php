@@ -8,4 +8,6 @@ interface OrderAndQuotationServiceInterface
 
     public function clearTempDataQuotation($sucursalId, $PTO_VTA_ID, $clienteId, $userId);
 
+    public function createRegisterCopy($dataId, $user, $typeCopy, $typeRegisterCopy);
+
 }

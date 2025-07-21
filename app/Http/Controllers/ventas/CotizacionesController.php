@@ -1423,4 +1423,14 @@ class CotizacionesController extends Controller
         $bodega = $request->get('bodega', null);
         return $this->quotationService->getStockItemForWarehouse($articulo, $bodega);
     }
+
+    public function obteneMargenItemlL(Request $request)
+    {
+        $request->validate([
+            'articulo' => 'required',
+        ]);
+        $articulo =  $request->get('articulo', null);
+
+        return $this->quotationService->getMarginItem($articulo['ART_CODIGO']);
+    }
 }

@@ -51,6 +51,7 @@ class QuotationService implements QuotationServiceInterface
     protected $MsWebservice;
     protected $OrderQuotationService;
     protected $approvalService;
+       protected $orderAndQuotationService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -59,7 +60,8 @@ class QuotationService implements QuotationServiceInterface
         StockWarehouseServiceInterface $stockWarehouseService,
         MswService $MsWebservice,
         OrderAndQuotationServiceInterface $OrderQuotationService,
-        ApprovalServiceInterface $approvalService
+        ApprovalServiceInterface $approvalService,
+        OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -69,6 +71,7 @@ class QuotationService implements QuotationServiceInterface
         $this->MsWebservice = $MsWebservice;
         $this->OrderQuotationService = $OrderQuotationService;
         $this->approvalService = $approvalService;
+        $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
     }
 
 
@@ -849,7 +852,7 @@ class QuotationService implements QuotationServiceInterface
             $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder( $cliente,$data, false, false, 'cotizacion');
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
-            $registroCopiaId = $this->registerCopyQuotation($data, $user);
+            $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user,'cotizacion' ,'volver_a_pedir');
             DB::commit();
             return response([
                 'success' => true,
@@ -866,19 +869,6 @@ class QuotationService implements QuotationServiceInterface
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
-
-
-    public function registerCopyQuotation($data, $user)
-    {
-        $registerCopy = new GpRegistroCopia();
-        $registerCopy->user_id = $user->id;
-        $registerCopy->USERID = $user->USERID;
-        $registerCopy->tipo = 'volver_a_pedir';
-        $registerCopy->cotizacion_origen = $data['id'];
-        $registerCopy->save();
-        return $registerCopy->id;
-    }
-
 
 
     /***
@@ -1056,6 +1046,30 @@ class QuotationService implements QuotationServiceInterface
         if ($registerCopy) {
             $registerCopy->cotizacion_destino = $cotizacionId;
             $registerCopy->save();
+        }
+    }
+
+
+     /**
+      *  funcion para obtener el margen de un item L
+      * @param mixed $artArticulo
+      * @return JsonResponse
+      */
+     public function getMarginItem($artArticulo)
+    {
+        try {
+            $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
+            if (!$itemL) {
+                return $this->buildErrorResponse('Item no encontrado', 404);
+            }
+            $datosL = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $itemL->ART_CLASE_ARTICULO)->first();
+            if (!$datosL) {
+                return $this->buildErrorResponse('Datos L no encontrados', 404);
+            }
+
+            return $this->successResponse('Información obtenida correctamente', $datosL, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 }
