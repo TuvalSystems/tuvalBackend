@@ -25,4 +25,6 @@ interface DevolucionServiceInterface
     public function generarNotaCreditoDevolucionesFallidas($id);
     public function generarAjusteDevolucionesVentaFallidas($id);
 
+    public function  responseCreditNoteDevolution($devolucionId);
+
 }

@@ -52,7 +52,7 @@ interface QuotationServiceInterface
     public function fillQuotation($data, $user);
 
     /** funcion para obtener el stock del articulo en la cotizacion  */
-    public function getStockItemForWarehouse($articulo, $bodega);
+    public function getStockItemForWarehouse($article, $warehouse);
 
     /** funcion para volver a pedir cotizacion  */
     public function requestQuotationAgain($data, $user);

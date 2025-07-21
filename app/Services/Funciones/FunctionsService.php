@@ -312,7 +312,7 @@ class FunctionsService implements FunctionsServiceInterface
         foreach ($quotationDetails as $i => $item) {
             $cart = $this->storeCartItem($item, $data, $user, $i + 1);
             $this->storeCartProviders($cart->id, $item->proveedores ?? []);
-            $this->storeCartStock($cart->id, $item->stock ?? []);
+            $this->storeCartStockTemp($cart->id, $item->stock ?? []);
         }
     }
 
@@ -404,5 +404,30 @@ class FunctionsService implements FunctionsServiceInterface
         }
     }
 
-    
+    /**
+     *  utilizo este store temporal porque necesito almacecenar el stock
+     *  cuando recupero el pedido de la cotizacion o pedido ya que
+     * el stock se encuentra en el detalle del pedido
+    */
+    public function storeCartStockTemp($cartId, $stock)
+    {
+        if (empty($stock)) {
+            return;
+        }
+        foreach ($stock as $stockData) {
+            $selected = $stockData['seleccionado'] ?? 0;
+            // if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {
+            //     $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
+            // }
+            GpTempCartStock::updateOrCreate(
+                ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
+                [
+                    'STO_ART_STOCK_DISPONIBLE' => $stockData['STO_ART_STOCK_DISPONIBLE'],
+                    'seleccionado' => $selected
+                ]
+            );
+        }
+    }
+
+
 }

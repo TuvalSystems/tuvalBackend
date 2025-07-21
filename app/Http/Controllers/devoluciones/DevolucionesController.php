@@ -300,6 +300,8 @@ class DevolucionesController extends Controller
         return $this->devolucionService->generarAjusteDevolucionesVentaFallidas($id);
     }
 
-
+    public function restaurarNotaCreditoDevolucion($id){
+        return $this->devolucionService->responseCreditNoteDevolution($id);
+    }
 
 }

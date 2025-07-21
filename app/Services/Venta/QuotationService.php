@@ -176,15 +176,28 @@ class QuotationService implements QuotationServiceInterface
     public function getQuotationDetailWithSuppliers($quotationId)
     {
         $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
-        $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
-            ->groupBy('detalle_id')->toArray();
-        $details->each(function ($item) use ($proveedores) {
+        $proveedores = $this->getQuotatioDetailProviders($quotationId, $details);
+        $detalleStock = $this->getQuotationDetailStock($quotationId, $details);
+        $details->each(function ($item) use ($proveedores, $detalleStock) {
             $item->proveedores = collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
+            $item->stock = collect($detalleStock[$item->id] ?? []);
         });
-
         return $details;
     }
+
+    public function getQuotatioDetailProviders($quotationId, $details)
+    {
+        return GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
+            ->groupBy('detalle_id')->toArray();
+    }
+    public function getQuotationDetailStock($quotationId, $details)
+    {
+        return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
+            ->groupBy('detalle_id')->toArray();
+    }
+
+
     public function getSelectedStockByArticle($quotationId, $quotationDetails)
     {
         $detailsIds = collect($quotationDetails)->pluck('id');
@@ -768,6 +781,7 @@ class QuotationService implements QuotationServiceInterface
             foreach ($article['stock'] as $st) {
                 $artSt = is_array($st) ? $st : $st->toArray();
                 $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
+                $artSt['seleccionado'] =  (int) $artSt['seleccionado'];
                 $result[] = $artSt;
             }
             return $result;
@@ -790,6 +804,7 @@ class QuotationService implements QuotationServiceInterface
         foreach ($article['stock'] as $st) {
             $artSt = is_array($st) ? $st : $st->toArray();
             $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
+            $artSt['seleccionado'] = (int) $artSt['seleccionado'];
             $result[] = $artSt;
         }
 
@@ -813,6 +828,7 @@ class QuotationService implements QuotationServiceInterface
             $tempStock = GpTempCartStock::where('id_tempcart', $article['id'])
                 ->where('STO_ART_BODEGA', $item['STO_ART_BODEGA'])->first();
             $item['id'] = $tempStock->id;
+            $item['seleccionado'] =  (int) $tempStock->seleccionado;
             $result[] = $item;
         }
         return $result;
@@ -830,7 +846,7 @@ class QuotationService implements QuotationServiceInterface
         try {
             DB::beginTransaction();
             $cliente = $this->functionService->getClient($data);
-            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($data, false, false, 'cotizacion');
+            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder( $cliente,$data, false, false, 'cotizacion');
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
             $registroCopiaId = $this->registerCopyQuotation($data, $user);
@@ -840,6 +856,7 @@ class QuotationService implements QuotationServiceInterface
                 'cliente' => $cliente,
                 'registro_copia' => $registroCopiaId,
                 'currentSucursal' => $data['sucursal_id'],
+                'test' => 'volver_a_pedir'
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();

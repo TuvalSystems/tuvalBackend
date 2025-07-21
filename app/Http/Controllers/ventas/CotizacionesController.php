@@ -336,7 +336,6 @@ class CotizacionesController extends Controller
         $data = $request->all();
         $user = Auth::user();
         return $this->quotationService->storeQuotation($data, $user);
-
     }
 
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1420,8 +1419,8 @@ class CotizacionesController extends Controller
             'articulo' => 'required',
             'bodega' => 'required',
         ]);
-        $articulo = $request['articulo'];
-        $bodega = $request['bodega'];
+        $articulo =  $request->get('articulo', null);
+        $bodega = $request->get('bodega', null);
         return $this->quotationService->getStockItemForWarehouse($articulo, $bodega);
     }
 }

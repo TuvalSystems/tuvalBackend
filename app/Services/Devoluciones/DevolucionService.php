@@ -111,7 +111,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function validateItemLDetailInvoice($devolucion)
     {
-        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion, );
+        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion,);
     }
 
     public function validateItemPartialDispatch($devolucion)
@@ -443,8 +443,6 @@ class DevolucionService implements DevolucionServiceInterface
             return false;
         }
         return true;
-
-
     }
 
     public function generateReturnCode(int $id): string
@@ -697,7 +695,6 @@ class DevolucionService implements DevolucionServiceInterface
                             $result[] = $itemNoDespachado;
                         }
                     }
-
                 }
             } else {
                 $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
@@ -726,7 +723,6 @@ class DevolucionService implements DevolucionServiceInterface
                         $result[] = $itemNoDespachado;
                     }
                 }
-
             }
         }
         return collect($result)->sortBy('ART_CODIGO')->values()->all();
@@ -925,11 +921,9 @@ class DevolucionService implements DevolucionServiceInterface
             $devolucion->save();
             $this->totalDevoluciones($devolucion, $detalles);
             return $resultado ?? $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito', 500);
-
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
-
     }
 
     public function bajarDevolucionAPedido($devolucion, $detalles, $pedido)
@@ -1082,11 +1076,42 @@ class DevolucionService implements DevolucionServiceInterface
             $devolucion->save();
 
             return $this->buildSuccessResponse($mensaje, 200);
-
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
-
     }
 
+
+    public function responseCreditNoteDevolution($devolucionId)
+    {
+        try {
+            DB::beginTransaction();
+            $devolucion = GpDevoluciones::find($devolucionId);
+            $pedido = GpPedido::find($devolucion->pedido_id);
+            $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+            $consultaParams = [
+                'document' => $devolucion->devolucion,
+                'tipo' => 4,
+            ];
+            $responseCreditNote = $this->apiGpReturnsIntegrationService->responseCreditNote($consultaParams);
+            if (!empty(trim($responseCreditNote['respuesta'][0]['documentoGenerado']))) {
+                $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
+                $devolucion->estado = 'procesado';
+                $devolucion->fecha_NC = now()->format('Y-m-d');
+                $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
+                $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
+            } else {
+                $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
+                $resultado = $this->buildErrorResponse('Error al generar la nota de crédito: ' . $devolucion->NC_VTA_MENSAJE, 500);
+            }
+            $devolucion->save();
+            $this->totalDevoluciones($devolucion, $detalles);
+            DB::commit();
+             return $resultado;
+        } catch (\Throwable $e) {
+            Log::error('Error al generar la nota de crédito: ' . $e->getMessage());
+            return  $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito de la devolucion' . $e->getMessage(), 500);
+        }
+
+    }
 }

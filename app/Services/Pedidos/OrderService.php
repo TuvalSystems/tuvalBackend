@@ -575,11 +575,13 @@ class OrderService implements OrderServiceInterface
     public function recoverOrder($data, $user)
     {
         try {
+            $typeCopy = 'pedido';
+            $typeRegisterCopy = 'volver_a_pedir';
+
             DB::beginTransaction();
             $cliente = $this->functionsService->getClient($data);
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, false, false, 'pedido');
-            $typeCopy = 'pedido';
-            $registerCopyId = $this->createRegisterCopy($data['id'], $user, $typeCopy);
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente,$data, false, false, 'pedido');
+            $registerCopyId = $this->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data, $user);
             DB::commit();
@@ -605,13 +607,14 @@ class OrderService implements OrderServiceInterface
     public function copyOrder($data, $user)
     {
         try {
+            $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
+            $typeRegisterCopy = 'copia';
             DB::beginTransaction();
             $cliente = $this->functionsService->getClient($data);
             $data['pedido']['sucursal_id'] = $data['sucursal_id'];
             $data['pedido']['cliente_id'] = $data['cliente_id'];
-            $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($data['pedido'], true, true, $typeCopy);
-            $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy);
+            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder( $cliente,$data['pedido'], true, true, $typeCopy);
+            $registerCopyId = $this->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
             DB::commit();
@@ -631,12 +634,12 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function createRegisterCopy($dataId, $user, $typeCopy)
+    public function createRegisterCopy($dataId, $user, $typeCopy, $typeRegisterCopy)
     {
         $registroCopia = new GpRegistroCopia([
             'user_id' => $user->id,
             'USERID' => $user->USERID,
-            'tipo' => 'copia',
+            'tipo' => $typeRegisterCopy,
 
         ]);
         if ($typeCopy == 'pedido') {

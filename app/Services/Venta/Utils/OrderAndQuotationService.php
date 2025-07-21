@@ -34,18 +34,19 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
 
 
-    public function getDetailQuotationOrOrder($data, $encera = false, $copy = false, $type)
+    public function getDetailQuotationOrOrder($cliente, $data, $encera = false, $copy = false, $type)
     {
-        $clientes = $this->functionService->getClient($data);
-        $detalles = $this->getQuotationDetailWithSuppliersType($data['id'], $copy, $type);
-        $this->resetQuotationDiscount($detalles, $clientes, $encera);
+
+        $warehouse = $this->functionService->getBodegas($data['PTO_VTA_ID'], 1);
+        $detalles = $this->getQuotationDetailWithSuppliersType($data['id'], $copy, $type, $warehouse);
+        $this->resetQuotationDiscount($detalles, $cliente, $encera);
         $arrayArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['ART_CODIGO' => $artCode])->toArray();
         $listaPreciosWs = $this->getPriceListByItems($arrayArticulos);
 
-        $detalles->each(function ($item) use ($listaPreciosWs, $clientes, $encera) {
+        $detalles->each(function ($item) use ($listaPreciosWs, $cliente, $encera) {
             if ($item->ART_TIPO_COMPRA != 'L') {
                 if ($encera) {
-                    $item->ART_VALOR = $listaPreciosWs[$item->ART_CODIGO][$clientes->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'] ?? 0;
+                    $item->ART_VALOR = $listaPreciosWs[$item->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'] ?? 0;
                     $item->ART_VALOR_ORIGINAL =  $item->ART_VALOR;
                 }
             }
@@ -55,30 +56,54 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         return $detalles;
     }
 
-    public function getQuotationDetailWithSuppliersType($quotationId, $copy, $type)
+    public function getQuotationDetailWithSuppliersType($quotationId, $copy, $type, $warehouse)
     {
-       return $type == 'cotizacion' ? $this->getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy) : $this->getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy);
+        return $type == 'cotizacion' ? $this->getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy, $warehouse)
+            : $this->getQuotationDetailWithSuppliersTypeOrder($quotationId, $warehouse);
     }
 
 
-    public function getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy) {
-          $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
-            $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
-                ->groupBy('detalle_id')->toArray();
-            $details->each(function ($item) use ($proveedores, $copy) {
-                $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
-                    ->map(fn($prov) => (object) $prov);
-            });
-            return $details;
-    }
-
-    public function getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy)
+    public function getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy, $warehouse)
     {
-        $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
-        $details->each(function ($item) use ($copy) {
-            $item->proveedores = collect();
+        $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
+        $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
+            ->groupBy('detalle_id')->toArray();
+        $details->each(function ($item) use ($proveedores, $copy, $warehouse) {
+            $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
+                ->map(fn($prov) => (object) $prov);
+            $item->stock = $this->getFormattedStocksQuotation($item, $warehouse);
         });
         return $details;
+    }
+
+    public function getQuotationDetailWithSuppliersTypeOrder($quotationId, $warehouse)
+    {
+        $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
+        $details->each(function ($item) use ($warehouse) {
+            $item->proveedores = collect();
+            $item->stock = $this->getFormattedStocksQuotation($item, $warehouse);
+        });
+        return $details;
+    }
+
+
+    /**
+     * @return array
+     * Retorna una array de stock formateado para volver a facturar
+     * o copiar pedido de forma termporal ya que en al consultar el stock
+     *  recibe el stock real, pero con el seleccionado en 0
+     */
+    public function getFormattedStocksQuotation($article, $warehouse)
+    {
+        $stocks = [];
+        foreach ($warehouse as $wrh) {
+            $stocks[] = [
+                'STO_ART_BODEGA' => $wrh,  //ya viene el nombre de la bodega INMACONSA o x Bodega
+                'seleccionado' => 0,
+                'STO_ART_STOCK_DISPONIBLE' => $article->ART_STOCK ?? 0, // stock del articulo cuando se copia o volver a facturar
+            ];
+        }
+        return $stocks;
     }
 
     public function resetQuotationDiscount(&$detalles, $cliente, $encera)
