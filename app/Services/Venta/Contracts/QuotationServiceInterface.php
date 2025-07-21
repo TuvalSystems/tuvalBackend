@@ -63,4 +63,7 @@ interface QuotationServiceInterface
      /** funcion para obtener el margen del item l en cotizaciónes */
      public function getMarginItem($artArticulo);
 
+     /** función dedicada para guardar proveedores */
+     public function saveProviderQuotationTemp(array $data);
+
 }

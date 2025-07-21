@@ -51,7 +51,7 @@ class QuotationService implements QuotationServiceInterface
     protected $MsWebservice;
     protected $OrderQuotationService;
     protected $approvalService;
-       protected $orderAndQuotationService;
+    protected $orderAndQuotationService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -849,10 +849,10 @@ class QuotationService implements QuotationServiceInterface
         try {
             DB::beginTransaction();
             $cliente = $this->functionService->getClient($data);
-            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder( $cliente,$data, false, false, 'cotizacion');
+            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
-            $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user,'cotizacion' ,'volver_a_pedir');
+            $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
             DB::commit();
             return response([
                 'success' => true,
@@ -1050,12 +1050,12 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-     /**
-      *  funcion para obtener el margen de un item L
-      * @param mixed $artArticulo
-      * @return JsonResponse
-      */
-     public function getMarginItem($artArticulo)
+    /**
+     *  funcion para obtener el margen de un item L
+     * @param mixed $artArticulo
+     * @return JsonResponse
+     */
+    public function getMarginItem($artArticulo)
     {
         try {
             $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
@@ -1071,5 +1071,66 @@ class QuotationService implements QuotationServiceInterface
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
+    }
+
+
+
+    /**
+     *  FUNCION PARA GUARDAR PROVEEDOR EN TABLA TEMPORAL AL MOMENTO
+     *  DE RELIZAR LA COTIZACION
+     */
+
+
+    public function saveProviderQuotationTemp(array $data)
+    {
+        try {
+            DB::beginTransaction();
+            if (empty($data['proveedores']) || !is_array($data['proveedores'])) {
+                return $this->buildSuccessResponse('No se han encontrado proveedores para guardar', 200);
+            }
+            $this->deleteProviderQuotationTemp($data['id']);
+            $this->saveProviderQuotationItemTemp($data['proveedores'], $data['id']);
+            $this->updateTempCartArtValor($data['id'], $data['ART_VALOR']);
+            DB::commit();
+            return $this->buildSuccessResponse('Proveedores guardados correctamente', 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al guardar proveedores en la cotización temporal', [
+                'error' => $e->getMessage(),
+                'data' => $data,
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function deleteProviderQuotationTemp($idTempCart)
+    {
+        GpTempCartProveedores::where('id_tempcart', $idTempCart)
+            ->delete();
+    }
+
+    public function saveProviderQuotationItemTemp($providers, $idTempCart)
+    {
+        foreach ($providers as  $provider) {
+            GpTempCartProveedores::create([
+                'id_tempcart' => $idTempCart,
+                'ID_PROVEEDOR' => $provider['ID_PROVEEDOR'],
+                'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', $provider['DESCRIPCION_ARTICULO'])),
+                'FECHA_ENTREGA' => $provider['FECHA_ENTREGA'],
+                'CANTIDAD' =>  $provider['CANTIDAD'],
+                'COSTO_UNITARIO' => (float) $provider['COSTO_UNITARIO'],
+                'IMPUESTO' => (float) $provider['IMPUESTO'],
+                'TOTAL' => (float) $provider['TOTAL'],
+                'TOTALCONIMPUESTO' => (float) $provider['TOTALCONIMPUESTO'],
+                'NOTA' => $provider['NOTA'],
+                'MARGEN' => (float) $provider['MARGEN'] ?? 0,
+            ]);
+        }
+    }
+
+    public function updateTempCartArtValor($idTempCart, $artValor)
+    {
+        GpTempCart::where('id', $idTempCart)
+            ->update(['ART_VALOR' => $artValor]);
     }
 }

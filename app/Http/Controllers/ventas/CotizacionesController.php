@@ -294,41 +294,10 @@ class CotizacionesController extends Controller
         return $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
     }
 
-    public function saveproveedor(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function saveproveedor(Request $request)
     {
-
-        $data = $request->validate([
-            'id' => 'required',
-            'ART_VALOR' => '',
-            'proveedores' => [],
-        ]);
-
-        GpTempCartProveedores::where('id_tempcart', $data['id'])
-            ->delete();
-        $proveedores = $data['proveedores'];
-        foreach ($proveedores as $pro) {
-            $proveedor = new GpTempCartProveedores;
-            $proveedor->id_tempcart = $data['id'];
-            $proveedor->ID_PROVEEDOR = $pro['ID_PROVEEDOR'];
-            $proveedor->DESCRIPCION_ARTICULO = trim(str_replace('  ', ' ', $pro['DESCRIPCION_ARTICULO']));
-            $proveedor->FECHA_ENTREGA = $pro['FECHA_ENTREGA'];
-            $proveedor->CANTIDAD = $pro['CANTIDAD'];
-            $proveedor->COSTO_UNITARIO = (float) $pro['COSTO_UNITARIO'];
-            $proveedor->IMPUESTO = (float) $pro['IMPUESTO'];
-            $proveedor->TOTAL = (float) $pro['TOTAL'];
-            $proveedor->TOTALCONIMPUESTO = (float) $pro['TOTALCONIMPUESTO'];
-            $proveedor->NOTA = $pro['NOTA'];
-            $proveedor->MARGEN = (float) $pro['MARGEN'];
-            $proveedor->save();
-        }
-
-        GpTempCart::where('id', $data['id'])
-            ->update(['ART_VALOR' => $data['ART_VALOR']]);
-
-        return response([
-            'success' => true,
-            'message' => 'Proveedores guardados correctamente',
-        ]);
+        $data = $request->all();
+        return $this->quotationService->saveProviderQuotationTemp($data);
     }
 
     public function guardarcotizacion(Request $request)
