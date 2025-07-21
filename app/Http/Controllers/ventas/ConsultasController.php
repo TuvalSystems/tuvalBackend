@@ -64,15 +64,15 @@ class ConsultasController extends Controller
                 $articulosL = GpArticulo::busquedaitemsl($busqueda);
                 $articulos = array();
                 foreach ($articulosL as $key => $articulo) {
-                    $articulo->disponible = $funciones->checkarticulodisponible($articulo);
-                    if (!$articulo->disponible) {
-                        unset($articulosL[$key]);
-                        continue;
-                    }
+                    // $articulo->disponible = $funciones->checkarticulodisponible($articulo);
+                    // if (!$articulo->disponible) {
+                    //     unset($articulosL[$key]);
+                    //     continue;
+                    // }
                     $articulos[] = $articulo;
 
-                    if (count($articulos) == 10)
-                        break;
+                    // if (count($articulos) == 10)
+                    //     break;
                 }
 
                 $clave = true;
