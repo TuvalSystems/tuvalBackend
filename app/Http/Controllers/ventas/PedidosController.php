@@ -1009,7 +1009,7 @@ class PedidosController extends Controller
     {
         $data = $request->all();
         $user = Auth::user();
-        return $this->orderService->recoverOrder($data, $user);
+        return $this->orderService->restoreOrder($data, $user);
     }
 
     public function copiarpedido(Request $request)

@@ -244,7 +244,7 @@ class OrderService implements OrderServiceInterface
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error in storeOrder (guardar pedido )', [
-                'error' => $e->getMessage(),
+                'error' => $e,
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -571,7 +571,7 @@ class OrderService implements OrderServiceInterface
 
     /** function para recuperar el pedido - volver a pedir  */
 
-    public function recoverOrder($data, $user)
+    public function restoreOrder($data, $user)
     {
         try {
             $typeCopy = 'pedido';

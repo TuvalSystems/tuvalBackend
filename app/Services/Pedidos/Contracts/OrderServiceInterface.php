@@ -18,7 +18,7 @@ interface OrderServiceInterface
 
         //recuperar pedidos
 
-        public function recoverOrder($data, $user);
+        public function restoreOrder($data, $user);
 
 
      /** facturar pedido */
