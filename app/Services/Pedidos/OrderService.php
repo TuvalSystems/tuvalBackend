@@ -5,7 +5,6 @@ namespace App\Services\Pedidos;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\GpRegistroCopia;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -386,8 +385,8 @@ class OrderService implements OrderServiceInterface
     public function storeDetailProviders($providers, $detailOrder, $newOrder)
     {
         foreach ($providers as $provider) {
-            $recibido = isset($provider['recibido']) ? $provider['recibido'] : null;
-            $margen = isset($provider['MARGEN']) ? $provider['MARGEN'] : null;
+            $recibido = isset($provider['recibido']) ? $provider['recibido'] : 'no';
+            $margen = isset($provider['MARGEN']) ?? $provider['MARGEN'] ;
             GpPedidoDetalleProveedores::create([
                 'pedido_id' => $newOrder->id,
                 'detalle_id' => $detailOrder->id,

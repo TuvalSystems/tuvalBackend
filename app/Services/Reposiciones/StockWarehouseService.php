@@ -259,11 +259,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function getListArticlesOfTypeLWithLimit($articulo)
     {
+        $itemL = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])->first()->toArray();
         return GpArticulo::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
             ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_CLASE_ARTICULO', '=',  $articulo['ART_CLASE_ARTICULO'])
+            ->where('gp_articulos.ART_CLASE_ARTICULO', '=',  $itemL['ART_CLASE_ARTICULO'])
             ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
-            ->where('gp_articulos.ART_IMP_COMPRA', '=',  $articulo['ART_IMP_COMPRA'])->orderBy('ART_DESCRIPCION', 'desc')
+            ->where('gp_articulos.ART_IMP_COMPRA', '=',  $itemL['ART_IMP_COMPRA'])->orderBy('ART_DESCRIPCION', 'desc')
             ->orderBy('ART_DESCRIPCION', 'desc')
             ->limit(500)->get()->toArray();
     }
