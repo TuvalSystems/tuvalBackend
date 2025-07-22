@@ -112,4 +112,10 @@ class GpPedidoDetalle extends Model
         'traslado',
 
     ];
+
+
+    public function pedidoDetalleStocks()
+    {
+        return $this->hasMany(GpPedidoDetalleStock::class, 'detalle_id', 'id');
+    }
 }

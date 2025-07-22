@@ -5,7 +5,6 @@ namespace App\Services\Funciones;
 use App\Models\GpCliente;
 use App\Models\GpArticulo;
 use App\Models\GpClienteSucursal;
-use App\Models\GpCotizacionDetalle;
 use App\Models\GpVendedor;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;

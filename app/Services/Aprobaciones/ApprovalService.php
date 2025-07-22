@@ -19,8 +19,10 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRegistroCopia;
 use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,17 +34,22 @@ class ApprovalService implements ApprovalServiceInterface
     protected $notificationService;
     protected $invoiceService;
     protected $mswService;
+    protected $apiGpService;
+    protected $stockWarehouseService;
     public function __construct(
         FunctionsServiceInterface $functionService,
         NotificationServiceInterface $notificationService,
         InvoiceServiceInterface $invoiceService,
-        MswService $mswService
+        MswService $mswService,
+        ApiGpService $apiGpService,
+        StockWarehouseServiceInterface $stockWarehouseServiceInterface
     ) {
         $this->functionService = $functionService;
         $this->notificationService = $notificationService;
         $this->invoiceService = $invoiceService;
         $this->mswService = $mswService;
-
+        $this->apiGpService = $apiGpService;
+        $this->stockWarehouseService = $stockWarehouseServiceInterface;
     }
 
     // aprobacion comercial tanto de pedido como de cotizaciones
@@ -52,8 +59,7 @@ class ApprovalService implements ApprovalServiceInterface
         // TODO: Implement checkoutApprovalComercial() method.
         $return = ['requiere' => 'no', 'motivo' => null];
 
-        $nivelFormaPagoCliente = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL'])->
-            orderBy('DESC_FORMA_PAGO_CODIGO')->first();
+        $nivelFormaPagoCliente = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL'])->orderBy('DESC_FORMA_PAGO_CODIGO')->first();
         if (!$nivelFormaPagoCliente) {
             return [
                 'requiere' => 'no',
@@ -63,8 +69,7 @@ class ApprovalService implements ApprovalServiceInterface
         $nivelCliente = $nivelFormaPagoCliente->nivel;
 
 
-        $nivelFormaPagoCotizacion = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO'])->
-            orderBy('DESC_FORMA_PAGO_CODIGO')->first();
+        $nivelFormaPagoCotizacion = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO'])->orderBy('DESC_FORMA_PAGO_CODIGO')->first();
         if (!$nivelFormaPagoCotizacion) {
             return [
                 'requiere' => 'no',
@@ -217,7 +222,6 @@ class ApprovalService implements ApprovalServiceInterface
                     'motivo' => "Cotización desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")"
                 ];
             }
-
         }
 
         //validar nivel de forma de pago Mayor que del cliente
@@ -445,7 +449,6 @@ class ApprovalService implements ApprovalServiceInterface
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 402);
         }
-
     }
 
 
@@ -465,14 +468,14 @@ class ApprovalService implements ApprovalServiceInterface
             $pedido->save();
 
             $this->invoiceService->checkSendInvoice($pedido);
+            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
             DB::commit();
             return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e->getMessage());
+            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
     public function denyCreditApproval($data)
@@ -491,7 +494,6 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
-
     }
 
 
@@ -538,11 +540,12 @@ class ApprovalService implements ApprovalServiceInterface
             $pedido->save();
 
             $this->invoiceService->checkSendInvoice($pedido);
+            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
             DB::commit();
             return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e->getMessage());
+            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
@@ -583,5 +586,140 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+    }
+
+
+    public function updateOrderStockOnCreditOrCommercialApproval($order, $typeApproval)
+    {
+        $requiresComercialApproval = $order->requiere_aprobacion_comercial === 'yes';
+        $requiresCreditApproval = $order->requiere_aprobacion_crediticia === 'yes';
+        $isComercialApproved = $order->aprobado_comercial === 'yes';
+        $isCreditApproved = $order->aprobado_crediticia === 'yes';
+
+        // solo requiere aprobacion comercial
+        if ($requiresComercialApproval  && !$requiresCreditApproval) {
+            if ($isComercialApproved  && !$isCreditApproved && $typeApproval == 'comercial') {
+                $this->updateStockOnOrderApproval($order);
+            }
+        }
+
+        // solo requiere aprobacion crediticia
+        if (!$requiresComercialApproval && $requiresCreditApproval) {
+            if (!$isComercialApproved && $isCreditApproved && $typeApproval == 'crediticia') {
+                $this->updateStockOnOrderApproval($order);
+            }
+        }
+        // requiere ambas aprobaciones
+        if ($requiresComercialApproval && $requiresCreditApproval) {
+            if ($isComercialApproved && $isCreditApproved && $typeApproval == 'crediticia') {
+                $this->updateStockOnOrderApproval($order);
+            }
+        }
+    }
+
+
+    public function updateStockOnOrderApproval($order)
+    {
+        $detalles = GpPedidoDetalle::with('pedidoDetalleStocks')
+            ->where('pedido_id', $order->id)
+            ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
+        if ($detalles->isEmpty()) {
+            return;
+        }
+        $flatDetails  = $this->stockFormatterForUpdateApproval($detalles);
+        $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
+        $stocksResult =  $this->getStockWarehouseAsyncAndFormantter($parmas);
+        $this->mergePushSelectedStock($stocksResult, $flatDetails);
+        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $flatDetails, $stocksResult);
+    }
+
+
+    public function stockFormatterForUpdateApproval($detalles)
+    {
+        return $detalles->pluck('pedidoDetalleStocks')
+            ->flatten()
+            ->map(function ($stock) use ($detalles) {
+                $detalle = $detalles->firstWhere('id', $stock->detalle_id);
+                return [
+                    'stock_id'                 => $stock->id,
+                    'pedido_id'                => $stock->pedido_id,
+                    'detalle_id'               => $stock->detalle_id,
+                    'STO_ART_ARTICULO'         => $detalle->ART_CODIGO,
+                    'STO_ART_BODEGA'           => $stock->STO_ART_BODEGA,
+                    'STO_ART_STOCK_DISPONIBLE' => $stock->STO_ART_STOCK_DISPONIBLE,
+                    'seleccionado'             => $stock->seleccionado
+                ];
+            })->toArray();
+    }
+
+    public function stockFormatterParametersUpdateApproval($newDetails)
+    {
+        return collect($newDetails)
+            ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    public function getStockWarehouseAsyncAndFormantter($parmas)
+    {
+        $stocksResult =  $this->apiGpService->getStockWarehouseAsync($parmas);
+        return $this->formatResultStocksApproval($stocksResult);
+    }
+
+    public function formatResultStocksApproval($stockResults)
+    {
+        if (!is_array($stockResults)) {
+            return [];
+        }
+        return collect($stockResults)
+            ->filter(fn($item) => is_array($item))
+            ->map(fn($item) => [
+                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
+                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
+                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    public function mergePushSelectedStock(&$stockGeneral, $newDetails)
+    {
+        $detailsIndexed = collect($newDetails)->keyBy(function ($detail) {
+            return $detail['STO_ART_ARTICULO'] . '|' . $detail['STO_ART_BODEGA'];
+        });
+
+        foreach ($stockGeneral as &$stock) {
+            $key = $stock['STO_ART_ARTICULO'] . '|' . $stock['STO_ART_BODEGA'];
+            $stock['seleccionado'] = $detailsIndexed->has($key) ? $detailsIndexed->get($key)['seleccionado'] : false;
+        }
+    }
+
+    public function updateOrderDetailStockAndGetStockDisponible($detalles, $flatDetails, $stocksResult)
+    {
+        $allFormattedStock = collect();
+        foreach ($detalles as $detail) {
+            $artFormat = $this->stockWarehouseService->newFormatStock($stocksResult, $detail);
+            $allFormattedStock = $allFormattedStock->merge($artFormat['stock'] ?? []);
+        }
+
+        $flatDetailsByKey = collect($flatDetails)->keyBy(function ($item) {
+            return $item['STO_ART_ARTICULO'] . '|' . $item['STO_ART_BODEGA'];
+        });
+
+        $stockIds = $flatDetailsByKey->pluck('stock_id')->unique()->values();
+        $stockModels = GpPedidoDetalleStock::whereIn('id', $stockIds)->get()->keyBy('id');
+        foreach ($allFormattedStock as $stock) {
+            $key = $stock['STO_ART_ARTICULO'] . '|' . $stock['STO_ART_BODEGA'];
+            $detail = $flatDetailsByKey->get($key);
+            if (!$detail) {
+                Log::warning("❗ Stock sin detalle encontrado. Clave: {$key}");
+                continue;
+            }
+
+            $stockModel = $stockModels->get($detail['stock_id']);
+            $stockModel->STO_ART_STOCK_DISPONIBLE = $stock['STO_ART_STOCK_DISPONIBLE'];
+            $stockModel->save();
+        }
     }
 }
