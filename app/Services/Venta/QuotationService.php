@@ -130,7 +130,8 @@ class QuotationService implements QuotationServiceInterface
             'feIng' => date('Y-m-d'),
             'txUsrIng' => $cotizacion->user_ing_recordatorio,
             'feUltmod' => date('Y-m-d'),
-            'txUsrMod' => $cotizacion->user_ing_recordatorio
+            'txUsrMod' => $cotizacion->user_ing_recordatorio,
+            'ndCotTot' => $cotizacion->total,
         ];
         $this->apiGpService->storeQuoteReminderGp($parmas);
     }
