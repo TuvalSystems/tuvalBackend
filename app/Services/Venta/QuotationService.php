@@ -971,7 +971,7 @@ class QuotationService implements QuotationServiceInterface
                 'ART_CODIGO' => $item['ART_CODIGO'],
                 'ART_DESCRIPCION' => trim(str_replace('  ', ' ', $item['ART_DESCRIPCION'])),
                 'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
-                'ART_CHECK_ALTERNATIVO' => $item['ART_CHECK_ALTERNATIVO'] ?? 0,
+                'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
                 'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
                 'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
                 'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
