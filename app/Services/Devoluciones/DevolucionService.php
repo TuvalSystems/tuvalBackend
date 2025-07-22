@@ -20,6 +20,7 @@ use App\Models\devoluciones\GpFacturaAnulada;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpPuntoVenta;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\ApiSeedBellingService;
@@ -27,6 +28,7 @@ use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -98,9 +100,9 @@ class DevolucionService implements DevolucionServiceInterface
     {
         return $this->devolucionRepository->isInvoiceAlreadyVoided($pedido, $devolucion);
     }
-    public function validateInvoiceAnulation($pedido)
+    public function validateInvoiceNotDispatchOrInProcess($pedido)
     {
-        return $this->devolucionRepository->validateInvoiceAnulation($pedido);
+        return $this->devolucionRepository->validateInvoiceNotDispatchOrInProcess($pedido);
     }
 
     public function countsReturnsByOrders($pedido, $devolucion)
@@ -117,6 +119,28 @@ class DevolucionService implements DevolucionServiceInterface
     public function validateItemPartialDispatch($devolucion)
     {
         return $this->devolucionRepository->validateItemsPartialDispatch($devolucion);
+    }
+
+    public function canBeAnulledByLimitDate($pedido)
+    {
+        $fechaFactura = $pedido['fecha_factura'] ?? null;
+        $ptoVtaId = $pedido['PTO_VTA_ID'] ?? null;
+
+        if (!$fechaFactura || !$ptoVtaId) {
+            return false;
+        }
+
+        $ptoVta = GpPuntoVenta::where('PTO_VTA_ID', $ptoVtaId)->first();
+        if (!$ptoVta || !$ptoVta->PTO_VTA_DIAS_MAXIMO_PARA_ANULACION) {
+            return false;
+        }
+        $diaLimite = $ptoVta->PTO_VTA_DIAS_MAXIMO_PARA_ANULACION;
+
+        $fechaLimite  =  Carbon::parse($fechaFactura)
+            ->addMonth()
+            ->startOfMonth()
+            ->day($diaLimite);
+        return now()->lte($fechaLimite);
     }
 
     public function processCancellation($order, $devolucion)
@@ -1107,11 +1131,10 @@ class DevolucionService implements DevolucionServiceInterface
             $devolucion->save();
             $this->totalDevoluciones($devolucion, $detalles);
             DB::commit();
-             return $resultado;
+            return $resultado;
         } catch (\Throwable $e) {
             Log::error('Error al generar la nota de crédito: ' . $e->getMessage());
             return  $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito de la devolucion' . $e->getMessage(), 500);
         }
-
     }
 }

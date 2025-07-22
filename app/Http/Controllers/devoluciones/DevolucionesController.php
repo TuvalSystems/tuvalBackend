@@ -10,8 +10,6 @@ use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
@@ -145,12 +143,13 @@ class DevolucionesController extends Controller
             $despachos->checkeliminardespacho($pedido);
 
             // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
-            $validateAnulationInvoice = $this->devolucionService->validateInvoiceAnulation($data['pedido']);
+            $validateAnulationInvoiceDispatch = $this->devolucionService->validateInvoiceNotDispatchOrInProcess($data['pedido']);
             $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'], $devolucion);
             $validateItemsL = $this->devolucionService->validateItemLDetailInvoice($devolucion);
             $validateItemsPartialDispatch = $this->devolucionService->validateItemPartialDispatch($devolucion);
+            $validateBeAnulationInvoiceByLimitDate = $this->devolucionService->canBeAnulledByLimitDate($data['pedido']);
             if (
-                $validateAnulationInvoice &&
+                $validateAnulationInvoiceDispatch &&
                 isset($data['devolucion']['tipo_devolucion']) &&
                 $data['devolucion']['tipo_devolucion'] === "total" &&
                 $countsReturnsByOrders === 0 &&
@@ -158,6 +157,7 @@ class DevolucionesController extends Controller
                 $validateItemsPartialDispatch === 0 &&
                 $data['devolucion']['volver_a_facturar'] === false &&
                 ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
+                && $validateBeAnulationInvoiceByLimitDate
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {

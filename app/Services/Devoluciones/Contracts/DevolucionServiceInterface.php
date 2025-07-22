@@ -4,10 +4,12 @@ namespace App\Services\Devoluciones\Contracts;
 
 interface DevolucionServiceInterface
 {
-    public function validateInvoiceAnulation($pedido);
+    public function validateInvoiceNotDispatchOrInProcess($pedido);
     public function countsReturnsByOrders($pedido, $devolucion);
 
     public function anularDevolucion($pedido, $devolucion);
+
+    public function canBeAnulledByLimitDate($pedido);
 
     public function executeReturn($data);
 
