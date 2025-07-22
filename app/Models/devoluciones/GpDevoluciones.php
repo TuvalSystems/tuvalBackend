@@ -80,6 +80,7 @@ use Illuminate\Support\Facades\DB;
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereFechaNC($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereNCVTAMENSAJE($value)
  * @property boolean $permite_anulacion
+ * @property boolean $anulacion_habilitada
  */
 class GpDevoluciones extends Model
 {
@@ -114,6 +115,8 @@ class GpDevoluciones extends Model
         "iva",
         "total",
         "observacion",
+        "permite_anulacion",
+        "anulacion_habilitada",
     ];
     /**
      * Prepare a date for array / JSON serialization.
@@ -168,7 +171,8 @@ class GpDevoluciones extends Model
                             ->where('dp.pedido_id', '=', DB::raw('gp_devoluciones.pedido_id'))
                             ->where('dp.tipo_devolucion', 'parcial');
                     })
-                     ->orWhere('gp_devoluciones.permite_anulacion', 0);
+                     ->orWhere('gp_devoluciones.permite_anulacion', 0)
+                     ->orWhere('gp_devoluciones.anulacion_habilitada', 0);
                 });
         }
 

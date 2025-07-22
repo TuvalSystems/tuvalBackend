@@ -383,6 +383,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->impuesto = Arr::get($data, 'pedido.impuesto');
         $return->observacion = Arr::get($data, 'devolucion.observacion');
         $return->permite_anulacion = $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status);
+        $return->anulacion_habilitada = $this->canBeAnulledByLimitDate(Arr::get($data, 'pedido', []));
         $return->save();
 
         $this->storeReturnDetail($return->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
