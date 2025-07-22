@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $PTO_VTA_DIAS_DEVOL_SIN_AUT
  * @property int|null $PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO
  * @property int|null $PTO_VTA_DIA_VALIDEZ_COTIZACION
+ * @property int|null $PTO_VTA_DIAS_MAXIMO_PARA_ANULACION
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta newModelQuery()
@@ -50,4 +51,22 @@ use Illuminate\Database\Eloquent\Model;
 class GpPuntoVenta extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'PTO_VTA_ID',
+        'PTO_VTA_DESCRIPCION',
+        'PTO_VTA_DIRECCION_1',
+        'PTO_VTA_DIRECCION_2',
+        'PTO_VTA_ESTADO',
+        'PTO_VTA_CIUDAD',
+        'PTO_VTA_PROVINCIA',
+        'PTO_VTA_PAIS',
+        'PTO_VTA_FONO_1',
+        'PTO_VTA_FONO_2',
+        'PTO_VTA_FONO_4',
+        'PTO_VTA_DIAS_DEVOL_SIN_AUT',
+        'PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO',
+        'PTO_VTA_DIA_VALIDEZ_COTIZACION',
+        'PTO_VTA_DIAS_MAXIMO_PARA_ANULACION', // New column added
+    ];
 }
