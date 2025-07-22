@@ -7,7 +7,7 @@ interface DevolucionRepositoryInterface
 {
 
     public function isInvoiceAlreadyVoided($pedido, $devolucion);
-    public function validateInvoiceAnulation($pedido);
+    public function validateInvoiceNotDispatchOrInProcess($pedido);
     public function countsReturnsByOrders($pedido, $devolucion);
     public function validateItemLDetailInvoice($devolucion);
 

@@ -23,7 +23,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->first();
     }
 
-    public function validateInvoiceAnulation($pedido)
+    public function validateInvoiceNotDispatchOrInProcess($pedido)
     {
         return GpPedido::where(function ($q) {
             $q->where('despachado', 0)->orWhereNull('despachado');
