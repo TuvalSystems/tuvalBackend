@@ -278,12 +278,13 @@ class ApprovalService implements ApprovalServiceInterface
                         'motivo' => "El valor del producto es mayor que el valor original y supera el margen permitido - {$porcentajeMargen->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO}"
                     ];
                 }
-
-                if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
-                    return [
-                        'requiere' => 'yes',
-                        'motivo' => "La descripcion del producto es diferente a la original"
-                    ];
+                if ($detalle['ART_TIPO_COMPRA']  != 'L') {
+                    if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
+                        return [
+                            'requiere' => 'yes',
+                            'motivo' => "La descripcion del producto es diferente a la original"
+                        ];
+                    }
                 }
             }
         }
