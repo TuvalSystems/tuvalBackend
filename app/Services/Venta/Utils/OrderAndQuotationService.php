@@ -6,7 +6,9 @@ use App\Models\GpRegistroCopia;
 use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
+use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpPedidoDetalleStock;
 use App\Models\GpTempCart;
 use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -60,29 +62,39 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     public function getQuotationDetailWithSuppliersType($quotationId, $copy, $type, $warehouse)
     {
         return $type == 'cotizacion' ? $this->getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy, $warehouse)
-            : $this->getQuotationDetailWithSuppliersTypeOrder($quotationId, $warehouse);
+            : $this->getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy, $warehouse);
     }
 
 
+
+    /** cotizacion */
     public function getQuotationDetailWithSuppliersTypeQuotation($quotationId, $copy, $warehouse)
     {
         $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
         $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
-        $details->each(function ($item) use ($proveedores, $copy, $warehouse) {
+        $details->each(function ($item) use ($proveedores, $copy, $warehouse, $quotationId) {
             $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
-            $item->stock = $this->getFormattedStocksQuotation($item, $warehouse);
+            $item->stock = $copy ? $this->getFormattedStocksQuotation($item, $warehouse) : $this->getStocksRequestQuotation($quotationId, $item->id, 'cotizacion');
         });
         return $details;
     }
+    public function getStocksRequestQuotation($quotationId, $detailId, $typeDetailStock)
+    {
+        if ($typeDetailStock == 'pedido') {
+            return GpPedidoDetalleStock::where('pedido_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
+        }
+        return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
+    }
 
-    public function getQuotationDetailWithSuppliersTypeOrder($quotationId, $warehouse)
+    /**pedido */
+    public function getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy,  $warehouse)
     {
         $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
-        $details->each(function ($item) use ($warehouse) {
+        $details->each(function ($item) use ($warehouse, $quotationId, $copy) {
             $item->proveedores = collect();
-            $item->stock = $this->getFormattedStocksQuotation($item, $warehouse);
+            $item->stock = $copy ? $this->getFormattedStocksQuotation($item, $warehouse) : $this->getStocksRequestQuotation($quotationId, $item->id, 'pedido');
         });
         return $details;
     }
