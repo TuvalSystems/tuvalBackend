@@ -127,7 +127,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
                 'detalle_id' => $item['detalle_id'],
                 'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
                 'STO_ART_STOCK_DISPONIBLE' => 0,
-                'seleccionado' => $item['seleccionado'],
+                'seleccionado' =>  0 //$item['seleccionado'],
             ];
         })->toArray();
     }
