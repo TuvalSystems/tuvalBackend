@@ -910,6 +910,9 @@ class QuotationService implements QuotationServiceInterface
         $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
         if ($data['cotizacion_id'] && $cotizacion->id) {
             $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
+        }else{
+            $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
+            $requiereAprobacionComercial['aprobado'] = 'no';
         }
         $puntoVenta = GpPuntoVenta::find($data['PTO_VTA_ID']);
         $cotizacion->fill([
