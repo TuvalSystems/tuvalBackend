@@ -908,9 +908,12 @@ class QuotationService implements QuotationServiceInterface
     {
         $cotizacion = isset($data['cotizacion_id']) ? GpCotizacion::find($data['cotizacion_id']) : new GpCotizacion();
         $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
+        if ($data['cotizacion_id'] && $cotizacion->id) {
+            $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
+        }
         $puntoVenta = GpPuntoVenta::find($data['PTO_VTA_ID']);
         $cotizacion->fill([
-            'estado' => $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado',
+            'estado' => $requiereAprobacionComercial['estado'],
             'user_id' => $user->id,
             'sucursal_id' => $data['sucursal_id'],
             'sucursal_facturacion_id' => $data['sucursal_facturacion_id'],
@@ -942,7 +945,7 @@ class QuotationService implements QuotationServiceInterface
             'total' => (float) $data['total'],
             'requiere_aprobacion_comercial' => $requiereAprobacionComercial['requiere'],
             'motivo_aprobacion_comercial' => $requiereAprobacionComercial['motivo'],
-            'aprobado_comercial' => 'no',
+            'aprobado_comercial' => $requiereAprobacionComercial['aprobado'],
             'aprobador_comercial_id' => null,
             'requiere_aprobacion_crediticia' => 'no',
             'aprobado_crediticio' => 'no',
@@ -959,6 +962,23 @@ class QuotationService implements QuotationServiceInterface
         $cotizacion->cotizacion = 'COT' . str_pad($cotizacion->id, 8, "0", STR_PAD_LEFT);
         $cotizacion->save();
         return $cotizacion;
+    }
+
+    private function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
+    {
+        $aprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
+        $mismoMensaje = $requiereAprobacionComercial['requiere'] === 'no' &&
+            $requiereAprobacionComercial['motivo'] === 'Total dentro del rango permitido';
+
+        if ($aprobada && $mismoMensaje) {
+            $requiereAprobacionComercial['requiere'] = $cotizacion->requiere_aprobacion_comercial;
+            $requiereAprobacionComercial['motivo'] = $cotizacion->motivo_aprobacion_comercial;
+            $requiereAprobacionComercial['estado'] = $cotizacion->estado;
+            $requiereAprobacionComercial['aprobado'] = $cotizacion->aprobado_comercial;
+        } else {
+            $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
+            $requiereAprobacionComercial['aprobado'] = 'no';
+        }
     }
 
 

@@ -178,7 +178,7 @@ class ApprovalService implements ApprovalServiceInterface
             ) {
                 return [
                     'requiere' => 'no',
-                    'motivo' => "Total dentro del rango  permitido"
+                    'motivo' => "Total dentro del rango permitido"
                 ];
             }
         }
