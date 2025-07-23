@@ -263,7 +263,7 @@ class OrderService implements OrderServiceInterface
     public function prepareOrderStoreFill($order, $user)
     {
         $newOrder = new GpPedido();
-        $puntoVenta = GpPuntoVenta::find($order['PTO_VTA_ID']);
+        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $order['PTO_VTA_ID'])->first();
         $approvalComercial = $this->approvalService->checkoutApprovalComercial($order, true);
         $approvalCredit = $this->approvalService->checkoutApprovalCredit($order);
 
