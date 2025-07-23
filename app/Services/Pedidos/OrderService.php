@@ -406,6 +406,9 @@ class OrderService implements OrderServiceInterface
     }
     public function storeDetailStock($stock, $detailOrder, $newOrder)
     {
+        $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes'
+                       || $newOrder->requiere_aprobacion_comercial === 'yes';
+
         foreach ($stock as $item) {
             GpPedidoDetalleStock::create([
                 'pedido_id' => $newOrder->id,
@@ -413,7 +416,7 @@ class OrderService implements OrderServiceInterface
                 'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
                 'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
                 'seleccionado' => $item['seleccionado'],
-                'reservado' => $item['seleccionado'],
+                'reservado' => $requiereAprobacion ? 0 : $item['seleccionado'],
             ]);
         }
     }

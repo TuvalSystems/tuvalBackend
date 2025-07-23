@@ -268,4 +268,35 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->orderBy('ART_DESCRIPCION', 'desc')
             ->limit(500)->get()->toArray();
     }
+
+
+    /** funcion para formatear y consultar reservado para
+     *  actualizar el stock en pedido detalle stock
+     */
+
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId)
+    {
+        return collect($stockFormatted)
+            ->filter(function ($item) use ($articulo) {
+                return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+                    $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
+            })
+            ->map(function ($stockItem) use ($articulo, $orderId) {
+                $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
+
+                $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
+                    ? (int) $stockValue
+                    : round((float) $stockValue, 2);
+
+                $reservado = $this->stockReservado(
+                    $articulo['ART_CODIGO'],
+                    $stockItem['STO_ART_BODEGA'],
+                    $orderId
+                );
+                $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+                return $stockItem;
+            })
+            ->values()
+            ->toArray();
+    }
 }

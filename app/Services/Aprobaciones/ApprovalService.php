@@ -595,7 +595,7 @@ class ApprovalService implements ApprovalServiceInterface
         $requiresComercialApproval = $order->requiere_aprobacion_comercial === 'yes';
         $requiresCreditApproval = $order->requiere_aprobacion_crediticia === 'yes';
         $isComercialApproved = $order->aprobado_comercial === 'yes';
-        $isCreditApproved = $order->aprobado_crediticia === 'yes';
+        $isCreditApproved = $order->aprobado_crediticio === 'yes';
 
         // solo requiere aprobacion comercial
         if ($requiresComercialApproval  && !$requiresCreditApproval) {
@@ -630,8 +630,9 @@ class ApprovalService implements ApprovalServiceInterface
         $flatDetails  = $this->stockFormatterForUpdateApproval($detalles);
         $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
         $stocksResult =  $this->getStockWarehouseAsyncAndFormantter($parmas);
-        $this->mergePushSelectedStock($stocksResult, $flatDetails);
-        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $flatDetails, $stocksResult);
+        $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+
+        $this->updateOrderDetailStockAndGetStockDisponible($detalles,  $newFormatStock, $order->id);
     }
 
 
@@ -684,43 +685,47 @@ class ApprovalService implements ApprovalServiceInterface
             ->toArray();
     }
 
-    public function mergePushSelectedStock(&$stockGeneral, $newDetails)
+    public function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
     {
-        $detailsIndexed = collect($newDetails)->keyBy(function ($detail) {
-            return $detail['STO_ART_ARTICULO'] . '|' . $detail['STO_ART_BODEGA'];
+        $stockMap = collect($stocksResult)->keyBy(function ($stock) {
+            return $stock['STO_ART_ARTICULO'] . '|' . $stock['STO_ART_BODEGA'];
         });
-
-        foreach ($stockGeneral as &$stock) {
-            $key = $stock['STO_ART_ARTICULO'] . '|' . $stock['STO_ART_BODEGA'];
-            $stock['seleccionado'] = $detailsIndexed->has($key) ? $detailsIndexed->get($key)['seleccionado'] : false;
-        }
+        return collect($flatDetails)->map(function ($detail) use ($stockMap) {
+            $key = $detail['STO_ART_ARTICULO'] . '|' . $detail['STO_ART_BODEGA'];
+            $stockDisponible = $stockMap->get($key)['STO_ART_STOCK_DISPONIBLE'] ?? 0;
+            return  [
+                'stock_id' => $detail['stock_id'],
+                'pedido_id' => $detail['pedido_id'],
+                'detalle_id' => $detail['detalle_id'],
+                'STO_ART_ARTICULO' => $detail['STO_ART_ARTICULO'],
+                'STO_ART_BODEGA' => $detail['STO_ART_BODEGA'],
+                'STO_ART_STOCK_DISPONIBLE' => $stockDisponible,
+                'seleccionado' => $detail['seleccionado']
+            ];
+        });
     }
 
-    public function updateOrderDetailStockAndGetStockDisponible($detalles, $flatDetails, $stocksResult)
+
+
+
+    public function updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $orderId)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $artFormat = $this->stockWarehouseService->newFormatStock($stocksResult, $detail);
-            $allFormattedStock = $allFormattedStock->merge($artFormat['stock'] ?? []);
-        }
-
-        $flatDetailsByKey = collect($flatDetails)->keyBy(function ($item) {
-            return $item['STO_ART_ARTICULO'] . '|' . $item['STO_ART_BODEGA'];
-        });
-
-        $stockIds = $flatDetailsByKey->pluck('stock_id')->unique()->values();
-        $stockModels = GpPedidoDetalleStock::whereIn('id', $stockIds)->get()->keyBy('id');
-        foreach ($allFormattedStock as $stock) {
-            $key = $stock['STO_ART_ARTICULO'] . '|' . $stock['STO_ART_BODEGA'];
-            $detail = $flatDetailsByKey->get($key);
-            if (!$detail) {
-                Log::warning("❗ Stock sin detalle encontrado. Clave: {$key}");
-                continue;
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId);
+            if (!empty($stockList)) {
+                $allFormattedStock = $allFormattedStock->merge($stockList);
             }
-
-            $stockModel = $stockModels->get($detail['stock_id']);
-            $stockModel->STO_ART_STOCK_DISPONIBLE = $stock['STO_ART_STOCK_DISPONIBLE'];
-            $stockModel->save();
+        }
+        if ($allFormattedStock->isEmpty()) {
+            return;
+        }
+        foreach ($allFormattedStock as $stock) {
+            if (isset($stock['stock_id']) && ($st = GpPedidoDetalleStock::find($stock['stock_id']))) {
+                $st->STO_ART_STOCK_DISPONIBLE = $stock['STO_ART_STOCK_DISPONIBLE'];
+                $st->reservado = $stock['seleccionado'];
+                $st->save();
+            }
         }
     }
 }
