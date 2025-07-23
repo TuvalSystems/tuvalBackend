@@ -401,8 +401,6 @@ class ConsultasController extends Controller
                 'gp_pedido_detalles.ART_CODIGO as codigo',
                 'gp_pedido_detalle_stocks.STO_ART_BODEGA as bodega',
                 'gp_pedido_detalle_stocks.reservado',
-                'gp_pedidos.pedido'
-
             )
             ->get();
 
