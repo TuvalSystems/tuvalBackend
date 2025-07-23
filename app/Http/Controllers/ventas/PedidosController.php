@@ -76,6 +76,13 @@ class PedidosController extends Controller
         return $this->orderService->generateInvoiceOrder($data['id']);
     }
 
+    public function facturarpedidoTest($codPedido)
+    {
+        $pedido = GpPedido::where('pedido', $codPedido)->first();
+
+        return $this->orderService->generateInvoiceOrder($pedido->id);
+    }
+
 
     /*
      *

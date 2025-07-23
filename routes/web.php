@@ -104,3 +104,4 @@ Route::get('/consultas/buscarcode/{artCode}', [PedidosController::class, 'buscar
 /** asignar la nota de credito devolucion  */
 Route::get('/devolucion/obtener-nota-credito-devolucion/{id}', [DevolucionesController::class, 'restaurarNotaCreditoDevolucion']);
 
+Route::get('/pedidos/facturar-pedido-test/{codPedido}', [PedidosController::class, 'facturarpedidoTest']);

@@ -76,7 +76,8 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $details->each(function ($item) use ($proveedores, $copy, $warehouse, $quotationId) {
             $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
-            $item->stock = $copy ? $this->getFormattedStocksQuotation($item, $warehouse) : $this->getStocksRequestQuotation($quotationId, $item->id, 'cotizacion');
+            // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion') : $this->getStocksRequestQuotation($quotationId, $item->id, 'cotizacion');
+            $item->stock =  $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion');
         });
         return $details;
     }
@@ -94,7 +95,8 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
         $details->each(function ($item) use ($warehouse, $quotationId, $copy) {
             $item->proveedores = collect();
-            $item->stock = $copy ? $this->getFormattedStocksQuotation($item, $warehouse) : $this->getStocksRequestQuotation($quotationId, $item->id, 'pedido');
+            // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido') : $this->getStocksRequestQuotation($quotationId, $item->id, 'pedido');
+            $item->stock =  $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido');
         });
         return $details;
     }
@@ -106,17 +108,28 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
      * o copiar pedido de forma termporal ya que en al consultar el stock
      *  recibe el stock real, pero con el seleccionado en 0
      */
-    public function getFormattedStocksQuotation($article, $warehouse)
+    public function getFormattedStocksQuotation($quotationId, $detailId, $typeDetailStock)
     {
-        $stocks = [];
-        foreach ($warehouse as $wrh) {
-            $stocks[] = [
-                'STO_ART_BODEGA' => $wrh,  //ya viene el nombre de la bodega INMACONSA o x Bodega
-                'seleccionado' => 0,
-                'STO_ART_STOCK_DISPONIBLE' => $article->ART_STOCK ?? 0, // stock del articulo cuando se copia o volver a facturar
-            ];
+        if ($typeDetailStock == 'pedido') {
+            $stock  = GpPedidoDetalleStock::where('pedido_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
+            return $this->formatStockCollection($stock, 'pedido_id');
         }
-        return $stocks;
+        $stock  = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
+        return $this->formatStockCollection($stock, 'cotizacion_id');
+    }
+
+    public function formatStockCollection(array $items, string $relationKey): array
+    {
+        return collect($items)->map(function ($item) use ($relationKey) {
+            return [
+                'id' => $item['id'],
+                $relationKey => $item[$relationKey],
+                'detalle_id' => $item['detalle_id'],
+                'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
+                'STO_ART_STOCK_DISPONIBLE' => 0,
+                'seleccionado' => $item['seleccionado'],
+            ];
+        })->toArray();
     }
 
     public function resetQuotationDiscount(&$detalles, $cliente, $encera)
