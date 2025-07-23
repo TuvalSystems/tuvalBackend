@@ -914,7 +914,7 @@ class QuotationService implements QuotationServiceInterface
             $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
             $requiereAprobacionComercial['aprobado'] = 'no';
         }
-        $puntoVenta = GpPuntoVenta::find($data['PTO_VTA_ID']);
+        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
         $cotizacion->fill([
             'estado' => $requiereAprobacionComercial['estado'],
             'user_id' => $user->id,
