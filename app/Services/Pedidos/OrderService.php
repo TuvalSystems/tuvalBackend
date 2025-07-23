@@ -181,7 +181,7 @@ class OrderService implements OrderServiceInterface
         $sucursal = GpClienteSucursal::find($pedido['sucursal_facturacion_id'])?->toArray();
         $pedido['sucursal'] = $sucursal;
         $pedido['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
-        $ptoVenta = GpPuntoVenta::find($pedido['PTO_VTA_ID'])?->toArray();
+        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $pedido['PTO_VTA_ID'])->first()->toArray();
         $pedido['direccion'] = trim(($ptoVenta['PTO_VTA_DIRECCION_1'] ?? '') . ' ' . ($ptoVenta['PTO_VTA_DIRECCION_2'] ?? ''));
         $pedido['telefono'] = $ptoVenta['PTO_VTA_FONO_1'] ?? '';
     }
