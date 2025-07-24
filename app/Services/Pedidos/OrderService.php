@@ -386,7 +386,6 @@ class OrderService implements OrderServiceInterface
     {
         foreach ($providers as $provider) {
             $recibido = isset($provider['recibido']) ? $provider['recibido'] : 'no';
-            $margen = isset($provider['MARGEN']) ?? $provider['MARGEN'];
             GpPedidoDetalleProveedores::create([
                 'pedido_id' => $newOrder->id,
                 'detalle_id' => $detailOrder->id,
@@ -400,7 +399,7 @@ class OrderService implements OrderServiceInterface
                 'TOTALCONIMPUESTO' => $provider['TOTALCONIMPUESTO'],
                 'NOTA' => $provider['NOTA'],
                 'recibido' => $recibido,
-                'MARGEN' => $margen
+                'MARGEN' => $provider['MARGEN']
             ]);
         }
     }
