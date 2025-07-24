@@ -624,20 +624,8 @@ class QuotationService implements QuotationServiceInterface
             $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
 
             foreach ($detalle as $det) {
-                if ($det->ART_DECIMAL_CANTIDAD == 0) {
-                    $det->ART_STOCK = (int) $det->ART_STOCK;
-                    $det->ART_CANTIDAD = (int) $det->ART_CANTIDAD;
-                }
-
-                $proveedores = $this->getAllProvidersQuotation($data['id'], $det->id);
-                foreach ($proveedores as $prov) {
-                    $margen = $this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO);
-                    $prov->margen = number_format($margen, 4, '.', '');
-                    if ($det->ART_DECIMAL_CANTIDAD == 0) {
-                        $prov->CANTIDAD = (int) $prov->CANTIDAD;
-                    }
-                }
-                $det->proveedores = $proveedores;
+                $this->castDecimalValuesTemp($det);
+                $this->loadProviderDetailQuotation($data['id'], $det, $margenBruto, $descuentoGeneral);
             }
 
             return response([
@@ -648,6 +636,16 @@ class QuotationService implements QuotationServiceInterface
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
+    }
+
+    public function loadProviderDetailQuotation($quotationId, &$detalle, $margenBruto, $descuentoGeneral)
+    {
+        $proveedores = $this->getAllProvidersQuotation($quotationId, $detalle->id);
+        $detalle->proveedores = $proveedores->map(function ($prov) use ($detalle, $margenBruto, $descuentoGeneral) {
+            $prov->margen =  number_format($this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO), 4, '.', '');
+            $prov->CANTIDAD = $detalle->ART_DECIMAL_CANTIDAD == 0 ? (int) $prov->CANTIDAD : $prov->CANTIDAD;
+            return $prov;
+        })->toArray();
     }
 
     public function getAllProvidersQuotation($cotizacionId, $cotizacionDetalleId)
