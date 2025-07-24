@@ -1169,4 +1169,16 @@ class QuotationService implements QuotationServiceInterface
         GpTempCart::where('id', $idTempCart)
             ->update(['ART_VALOR' => $artValor]);
     }
+
+
+
+    /***
+     *
+     * FUNCION PARA ACTUALIZAR EL DISPONIBLE DE ARTICULSO EN GPTEMCARTSTOCK
+     * POR LOTE
+     */
+     public function updateStocksByBatch($articles){
+        //   $warehouses = $this->functionService->getBodegas($warehouse, 1);
+
+     }
 }

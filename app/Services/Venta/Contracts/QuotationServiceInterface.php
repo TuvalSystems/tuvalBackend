@@ -66,4 +66,7 @@ interface QuotationServiceInterface
      /** función dedicada para guardar proveedores */
      public function saveProviderQuotationTemp(array $data);
 
+     /*** function para actualizar el stock de articulos de la cotizacion (disponible) */
+     public function updateStocksByBatch($articulos);
+
 }

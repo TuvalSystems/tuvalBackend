@@ -1402,4 +1402,14 @@ class CotizacionesController extends Controller
 
         return $this->quotationService->getMarginItem($articulo['ART_CODIGO']);
     }
+
+
+    public function actualizarStocksPorLote(Request $request) {
+
+         $request->validate([
+            'articulos' => 'required',
+        ]);
+         $data = $request->all(); //articulos
+        return $this->quotationService->updateStocksByBatch($data['articulos']);
+    }
 }
