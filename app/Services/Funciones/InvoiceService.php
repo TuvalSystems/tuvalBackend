@@ -236,21 +236,28 @@ class InvoiceService implements InvoiceServiceInterface
             }
 
             [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
-            $orderNumber = $this->generateDispatchOrderNumber($pedido);
-
-            GpOrdenDespacho::create([
-                'orden' => $orderNumber,
-                'pedido_id' => $pedido->id,
-                'estado' => $estado,
-                'fecha_hora_liberacion' => $fechaLiberacion,
-                'PTO_VTA_ID' => $pedido->PTO_VTA_ID,
-                'BOD_BODEGA' => $pedido->BOD_BODEGA
-            ]);
+             $this->storeNewDispatchOrder($pedido,  $estado, $fechaLiberacion);
             return;
         } catch (\Exception $e) {
             Log::error("Error generating dispatch order: " . $e->getMessage());
             return;
         }
+
+    }
+
+    public function storeNewDispatchOrder($pedido,  $estado, $fechaLiberacion)
+    {
+        $newDispatchOrder = new GpOrdenDespacho();
+        $newDispatchOrder->pedido_id = $pedido->id;
+        $newDispatchOrder->estado = $estado;
+        $newDispatchOrder->fecha_hora_liberacion = $fechaLiberacion;
+        $newDispatchOrder->PTO_VTA_ID = $pedido->PTO_VTA_ID;
+        $newDispatchOrder->BOD_BODEGA = $pedido->BOD_BODEGA;
+        $newDispatchOrder->save();
+
+        $newDispatchOrder->orden = $this->generateDispatchOrderNumber($newDispatchOrder);
+        $newDispatchOrder->save();
+        return $newDispatchOrder;
 
     }
 
@@ -287,10 +294,9 @@ class InvoiceService implements InvoiceServiceInterface
         return [$estado, $fechaLiberacion];
     }
 
-    public function generateDispatchOrderNumber($pedido)
+    public function generateDispatchOrderNumber($dipatchOrder)
     {
-        $lastId = GpOrdenDespacho::max('id') ?? 0;
-        return 'ODD' . str_pad($lastId + 1, 8, '0', STR_PAD_LEFT);
+        return 'ODD' . str_pad($dipatchOrder->id, 8, '0', STR_PAD_LEFT);
     }
 
     public function sendInvoiceGp($pedido)

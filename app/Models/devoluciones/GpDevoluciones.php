@@ -172,7 +172,7 @@ class GpDevoluciones extends Model
                             ->where('dp.tipo_devolucion', 'parcial');
                     })
                      ->orWhere('gp_devoluciones.permite_anulacion', 0);
-                    //  ->orWhere('gp_devoluciones.anulacion_habilitada', 0); // por ahora no se usa
+                    //   ->orWhere('gp_devoluciones.anulacion_habilitada', 0); // por ahora no se usa
                 });
         }
 
