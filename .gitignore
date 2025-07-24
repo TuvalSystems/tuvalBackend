@@ -23,3 +23,8 @@ _ide_helper_models.php
 /.vscode
 /public/images/productos/
 /public/images/ventas/
+<<<<<<< Updated upstream
+=======
+/vue
+/public/images/fotos
+>>>>>>> Stashed changes
