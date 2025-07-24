@@ -83,7 +83,6 @@ class GpHttpClient
             }
 
             return $responseData;
-
         } catch (\InvalidArgumentException $e) {
             $errorResponse = [
                 'success' => false,
@@ -112,7 +111,7 @@ class GpHttpClient
     }
 
 
-    public function makeAsyncRequest(string $urlKey, array $requests, string $method = 'POST', $format = 'form')
+    public function makeAsyncRequest(string $urlKey,  string $method = 'POST', array $requests, $format = 'form')
     {
         $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
         $promises = [];
@@ -154,4 +153,31 @@ class GpHttpClient
             }
         })->filter()->toArray();
     }
+
+
+    /** para procesos en lotes para consulta de stock para recuperar cotizaciones
+     * Adicional, siempre seran en POST ya que GET no admite json por eso en este caso siempre post
+     */
+
+   public function makeBatchRequest(string $urlKey, array $data)
+{
+    $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
+
+    try {
+        $response = $this->client->post($url, [
+            'json' => $data
+        ]);
+
+        return json_decode($response->getBody()->getContents(), true);
+    } catch (\Exception $e) {
+        Log::error('Error in makeBatchRequest', [
+            'url' => $url,
+            'error' => $e->getMessage(),
+            'data' => $data
+        ]);
+
+        return [];
+    }
+}
+
 }

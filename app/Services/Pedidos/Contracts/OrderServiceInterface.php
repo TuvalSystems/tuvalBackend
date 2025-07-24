@@ -7,7 +7,7 @@ interface OrderServiceInterface
         public function getOrderInfo($id);
         public function generateInvoiceRide($id);
         public function generateInvoiceXml($id);
-        public function storeOrder($order);
+        public function storeOrder($order, $user);
 
         public function detailOrderById($data);
 
@@ -18,5 +18,16 @@ interface OrderServiceInterface
 
         //recuperar pedidos
 
-        public function restoreOrders($articulos, $bodegas);
-}
+        public function restoreOrder($data, $user);
+
+
+     /** facturar pedido */
+        public function generateInvoiceOrder($orderId);
+
+        /** funcion de copiar pedido  */
+
+        public function copyOrder($data, $user);
+
+        /** pruebas */
+        public function buscarItemlTest($item);
+    }

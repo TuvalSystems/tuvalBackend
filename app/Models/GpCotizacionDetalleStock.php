@@ -32,4 +32,13 @@ use Illuminate\Database\Eloquent\Model;
 class GpCotizacionDetalleStock extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'cotizacion_id',
+        'detalle_id',
+        'STO_ART_BODEGA',
+        'STO_ART_STOCK_DISPONIBLE',
+        'seleccionado'
+    ];
+
 }

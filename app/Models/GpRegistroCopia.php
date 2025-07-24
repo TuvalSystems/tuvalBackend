@@ -33,4 +33,12 @@ use Illuminate\Database\Eloquent\Model;
 class GpRegistroCopia extends Model
 {
     use HasFactory;
+    protected $fillable= [
+        'pedido_origen',
+        'cotizacion_origen',
+        'cotizacion_destino',
+        'user_id',
+        'USERID',
+        'tipo',
+    ];
 }

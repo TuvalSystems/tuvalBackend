@@ -34,4 +34,13 @@ use Illuminate\Database\Eloquent\Model;
 class GpPedidoDetalleStock extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'pedido_id',
+        'detalle_id',
+        'STO_ART_BODEGA',
+        'STO_ART_STOCK_DISPONIBLE',
+        'seleccionado',
+        'reservado',
+    ];
 }

@@ -113,6 +113,11 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+        'cron_process' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/cron-process.log'),
+            'level' => 'info',
+        ],
     ],
 
 ];

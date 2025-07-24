@@ -28,8 +28,10 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 
 class GuiasderemisionController extends Controller
 {
@@ -465,7 +467,7 @@ class GuiasderemisionController extends Controller
                 }
                 $peso += (float) number_format($articulo->ART_PESO * $det->GUI_REM_CANTIDAD, 2, '.', '');
             }
-             $detTemp = GpPedidoDetalle::where('id', $det->detalle_id)
+            $detTemp = GpPedidoDetalle::where('id', $det->detalle_id)
                 ->select('CHECK_ALTERNATIVO')
                 ->first();
             $det['CHECK_ALTERNATIVO'] = $detTemp->CHECK_ALTERNATIVO;
@@ -1115,7 +1117,9 @@ class GuiasderemisionController extends Controller
         $listo = $this->checkguiacompleta($guia);
         $order = app(OrderServiceInterface::class);
         $apigp = app(ApiGpService::class);
-        $pedidosControl = new PedidosController($apigp, $order);
+        $aproval = app(ApprovalServiceInterface::class);
+          $invoice = app(InvoiceServiceInterface::class);
+        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
 
         $ingresos = new IngresosController();
         $ingresos->ingreso('traslado_venta', $data, $data['detalle']);
@@ -1206,7 +1210,9 @@ class GuiasderemisionController extends Controller
                 if ($pedido->estado != 'facturado') {
                     $order = app(OrderServiceInterface::class);
                     $apigp = app(ApiGpService::class);
-                    $pedidosControl = new PedidosController($apigp, $order);
+                    $aproval = app(ApprovalServiceInterface::class);
+                      $invoice = app(InvoiceServiceInterface::class);
+                    $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
                     $pedidosControl->checkenviarfactura($pedido, true);
                 }
                 //aqui la notifiacion

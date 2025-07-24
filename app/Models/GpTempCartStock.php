@@ -30,4 +30,11 @@ use Illuminate\Database\Eloquent\Model;
 class GpTempCartStock extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'id_tempcart',
+        'STO_ART_BODEGA',
+        'STO_ART_STOCK_DISPONIBLE',
+        'seleccionado',
+    ];
 }

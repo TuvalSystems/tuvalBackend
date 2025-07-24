@@ -53,6 +53,24 @@ class GpTrasladosVentas extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'pedido_id',
+        'detalle_id',
+        'detalle_stocks_id',
+        'ART_CODIGO',
+        'ART_DESCRIPCION',
+        'ART_CODIGO_TRES_LETRAS',
+        'ART_PLAN_UMEDIDA',
+        'ART_PESO',
+        'cantidad',
+        'bodega_origen',
+        'bodega_destino',
+        'picking',
+        'reservado',
+        'trasladado',
+        'completado',
+    ];
+
     /**
      * Prepare a date for array / JSON serialization.
      *

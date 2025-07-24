@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\devoluciones\GpDevoluciones;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -134,18 +133,86 @@ class GpPedido extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'pedido',
+        'factura',
+        'factura_origen',
+        'estado',
+        'user_id',
+        'sucursal_id',
+        'sucursal_facturacion_id',
+        'cliente_id',
+        'cotizacion_id',
+        'BOD_BODEGA',
+        'PTO_VTA_ID',
+        'PTO_VTA_DESCRIPCION',
+        'USERID',
+        'USERID_cancelado',
+        'DESC_FORMA_PAGO_CODIGO',
+        'CLI_RUC',
+        'CLI_RAZON_SOCIAL',
+        'CLI_CORREO_ELECT_SRI',
+        'COND_ID',
+        'COND_ID_ORIGINAL',
+        'VEND_ID',
+        'VEND_NOMBRES',
+        'VEND_APELLIDOS',
+        'despacho',
+        'porcentage_descuentooriginal',
+        'porcentage_descuento',
+        'subtotal',
+        'descuento',
+        'subtotalmenosdescuento',
+        'iva',
+        'total',
+        'requiere_aprobacion_comercial',
+        'motivo_aprobacion_comercial',
+        'aprobado_comercial',
+        'aprobador_comercial_id',
+        'requiere_aprobacion_crediticia',
+        'aprobado_crediticio',
+        'aprobador_crediticio_id',
+        'motivo_crediticio',
+        'nota_interna',
+        'nota_cliente',
+        'MST_FAC_VTAResult',
+        'pedido_origen',
+        'fecha_factura',
+        'fecha_hora_factura',
+        'fecha_hora_rechazado',
+        'fecha_entrega',
+        'fecha_hora_cancelado',
+        'FAC_VTA_MENSAJE',
+        'factura_posterior_despacho',
+        'factura_a_demanda',
+        'factura_siguiente_mes',
+        'despachado',
+        'despacho_en_proceso',
+        'transferencia_en_proceso',
+        'rechazado',
+        'impuesto',
+        'orden_de_compra',
+        'aprobado_comercial_mensaje',
+        'aprobado_crediticio_mensaje',
+
+
+
+
+    ];
+
     /**
-    * Prepare a date for array / JSON serialization.
-    *
-    * @param  \DateTimeInterface  $date
-    * @return string
-    */
+     * Prepare a date for array / JSON serialization.
+     *
+     * @param  \DateTimeInterface  $date
+     * @return string
+     */
     protected function serializeDate(DateTimeInterface $date)
     {
         return $date->format('Y-m-d H:i:s');
     }
 
-    public function direccion_entrega(){
+    public function direccion_entrega()
+    {
         return $this->belongsTo(GpClienteSucursal::class, 'sucursal_id');
     }
 

@@ -115,6 +115,56 @@ class GpCotizacion extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'cotizacion',
+        'user_id',
+        'sucursal_id',
+        'sucursal_facturacion_id',
+        'cliente_id',
+        'prospecto_id',
+        'estado',
+        'BOD_BODEGA',
+        'PTO_VTA_ID',
+        'PTO_VTA_DESCRIPCION',
+        'USERID',
+        'DESC_FORMA_PAGO_CODIGO',
+        'CLI_RUC',
+        'CLI_RAZON_SOCIAL',
+        'CLI_CORREO_ELECT_SRI',
+        'COND_ID',
+        'COND_ID_ORIGINAL',
+        'VEND_ID',
+        'VEND_NOMBRES',
+        'VEND_APELLIDOS',
+        'despacho',
+        'descuento',
+        'porcentage_descuentooriginal',
+        'porcentage_descuento',
+        'subtotal',
+        'subtotalmenosdescuento',
+        'iva',
+        'total',
+        'requiere_aprobacion_comercial',
+        'motivo_aprobacion_comercial',
+        'aprobado_comercial',
+        'aprobacion_comercial_id',
+        'requiere_aprobacion_crediticia',
+        'aprobado_crediticia',
+        'impreso',
+        'nota_interna',
+        'nota_cliente',
+        'impuesto',
+        'factura_posterior_despacho',
+        'factura_a_demanda',
+        'factura_siguiente_mes',
+        'orden_de_compra',
+        'fecha_impreso',
+        'aprobado_comercial_mensaje',
+        'fecha_entrega',
+        'facturado',
+        'user_ing_recordatorio'
+    ];
+
     /**
     * Prepare a date for array / JSON serialization.
     *

@@ -237,21 +237,21 @@ class OrdendecompraController extends Controller
         }
     }
 
-    public function enviarordenesdecompraurl(){
+    // public function enviarordenesdecompraurl(){
 
-        $ordenes_de_compra = GpOrdenDeCompra::where('estado','enviado')
-            ->where('DOC_GENERADO', 'OCL0001001')
-            ->get();
+    //     $ordenes_de_compra = GpOrdenDeCompra::where('estado','enviado')
+    //         ->where('DOC_GENERADO', 'OCL0001001')
+    //         ->get();
 
-        $ordenes_arr = array();
-        foreach($ordenes_de_compra as $orden){
-            $ordenes_arr[$orden->ORDEN_COMPRA_ID_PROVEEDOR][] = $orden;
-        }
+    //     $ordenes_arr = array();
+    //     foreach($ordenes_de_compra as $orden){
+    //         $ordenes_arr[$orden->ORDEN_COMPRA_ID_PROVEEDOR][] = $orden;
+    //     }
 
-        foreach($ordenes_arr as $orden){
-            $this->generarordendecompra($orden);
-        }
-    }
+    //     foreach($ordenes_arr as $orden){
+    //         $this->generarordendecompra($orden);
+    //     }
+    // }
 
 
     public function getViewPurchaseOrder(){

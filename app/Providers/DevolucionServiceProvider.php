@@ -5,10 +5,14 @@ namespace App\Providers;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\FunctionsService;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Pedidos\OrderJobService;
 use App\Services\Pedidos\OrderService;
+use App\Services\Venta\InventoryQueryService;
 use App\Services\Venta\QuotationService;
+use App\Services\Venta\Utils\OrderAndQuotationService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Aprobaciones\ApprovalService;
@@ -22,12 +26,15 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\DispatchService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Funciones\InvoiceService;
 use App\Services\Notificacion\NotificationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Services\Venta\PurchaseOrderService;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
 class DevolucionServiceProvider extends ServiceProvider
 {
@@ -64,28 +71,48 @@ class DevolucionServiceProvider extends ServiceProvider
             ApprovalService::class
         );
 
-        //aqui agrego las funciones para no crear otro provider
+        //aqui va el sercvicio de function service de Fucionescontroller
         $this->app->singleton(
             FunctionsServiceInterface::class,
             FunctionsService::class
         );
 
-        //aqui agrego las RecibidosdeCompraL para no crear otro provider
+        //aqui agrego las ordenes de compra recibidas para no crear otro provider
 
         $this->app->singleton(
             PurchaseReceiptServiceInterface::class,
             PurchaseReceiptService::class
         );
 
+        /** servicio dedicado a las ordenes de despacho */
         $this->app->singleton(DispatchServiceInterface::class, DispatchService::class);
 
         //aqui agrego las Cotizaciones para no crear otro provider
         $this->app->bind(QuotationServiceInterface::class, QuotationService::class);
 
-
+        /** servicio dedicado a las notificciones */
         $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
 
+
+        /** servicio dedicdo a las ordenes de compra */
         $this->app->bind(PurchaseOrderServiceInterface::class, PurchaseOrderService::class);
+
+        //aqui va el servicio de Job de Pedidos
+         $this->app->bind(OrderJobService::class);
+
+         //aqui va el servicio facturas de Pedidos
+         $this->app->singleton(
+            InvoiceServiceInterface::class,
+            InvoiceService::class
+        );
+
+        /** aqui va el servicio de consultas controller  */
+        $this->app->bind(InventoryQueryServiceInterface::class, InventoryQueryService::class);
+
+        /** Servicios de utilidad para cotizacion y para pedidos  */
+
+        $this->app->singleton(OrderAndQuotationServiceInterface::class, OrderAndQuotationService::class);
+
     }
 
 

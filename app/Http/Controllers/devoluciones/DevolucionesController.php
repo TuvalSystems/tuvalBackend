@@ -10,8 +10,6 @@ use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
@@ -87,7 +85,6 @@ class DevolucionesController extends Controller
     {
         $data = request()->all();
         return $this->devolucionService->getDetailOrderReturnById($data);
-
     }
 
 
@@ -145,12 +142,12 @@ class DevolucionesController extends Controller
             $despachos->checkeliminardespacho($pedido);
 
             // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
-            $validateAnulationInvoice = $this->devolucionService->validateInvoiceAnulation($data['pedido']);
+            $validateAnulationInvoiceDispatch = $this->devolucionService->validateInvoiceNotDispatchOrInProcess($data['pedido']);
             $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'], $devolucion);
             $validateItemsL = $this->devolucionService->validateItemLDetailInvoice($devolucion);
             $validateItemsPartialDispatch = $this->devolucionService->validateItemPartialDispatch($devolucion);
             if (
-                $validateAnulationInvoice &&
+                $validateAnulationInvoiceDispatch &&
                 isset($data['devolucion']['tipo_devolucion']) &&
                 $data['devolucion']['tipo_devolucion'] === "total" &&
                 $countsReturnsByOrders === 0 &&
@@ -158,6 +155,7 @@ class DevolucionesController extends Controller
                 $validateItemsPartialDispatch === 0 &&
                 $data['devolucion']['volver_a_facturar'] === false &&
                 ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
+               // &&  ($devolucion->anulacion_habilitada === true || $devolucion->anulacion_habilitada === 1)
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
@@ -169,8 +167,21 @@ class DevolucionesController extends Controller
                 }
             }
             DB::commit();
-            if ($devolucion->estado === 'solicitado' && ($devolucion->permite_anulacion === false || $devolucion->permite_anulacion === 0) && $devolucion->tipo_devolucion === 'total') {
-                return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. Pero se procesara la devolución sin anular la factura porque tiene pagos aplicados', 200);
+            $esSolicitada = $devolucion->estado === 'solicitado';
+            $esTotal = $devolucion->tipo_devolucion === 'total';
+            $devolucionCodigo = is_object($devolucion) ? $devolucion->devolucion : '';
+            if ($esSolicitada && !$devolucion->permite_anulacion && $esTotal) {
+                return $this->buildSuccessResponse(
+                    "La devolución {$devolucionCodigo} ha sido solicitada. no se podrá anular la factura ya que tiene pagos registrados. La devolución será procesada normalmente.",
+                    200
+                );
+            }
+
+            if ($esSolicitada && !$devolucion->anulacion_habilitada && $esTotal) {
+                return $this->buildSuccessResponse(
+                    "La devolución {$devolucionCodigo} ha sido solicitada, pero no se procesará porque excede el límite de días permitido para realizar anulaciones. La devolución sera procesada normalmente.",
+                    200
+                );
             }
             return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
         } catch (\Throwable $th) {
@@ -300,6 +311,8 @@ class DevolucionesController extends Controller
         return $this->devolucionService->generarAjusteDevolucionesVentaFallidas($id);
     }
 
-
-
+    public function restaurarNotaCreditoDevolucion($id)
+    {
+        return $this->devolucionService->responseCreditNoteDevolution($id);
+    }
 }

@@ -46,4 +46,18 @@ use Illuminate\Database\Eloquent\Model;
 class GpCotizacionDetalleProveedores extends Model
 {
     use HasFactory;
+    protected $fillable = [
+        'cotizacion_id',
+        'detalle_id',
+        'ID_PROVEEDOR',
+        'DESCRIPCION_ARTICULO',
+        'FECHA_ENTREGA',
+        'CANTIDAD',
+        'COSTO_UNITARIO',
+        'IMPUESTO',
+        'TOTAL',
+        'TOTALCONIMPUESTO',
+        'NOTA',
+        'MARGEN',
+    ];
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Reposiciones;
 
+use App\Models\GpArticulo;
 use App\Models\GpTempCart;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
@@ -9,20 +10,29 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use Carbon\Carbon;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
-    public function newFormatStock($stockResults,  $articulo)
+    public function newFormatStock($stockResults, $articulo)
     {
         $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
         $articulo['stock'] = [];
         $articulo['ART_STOCK'] = 0;
-        if (!in_array($articulo['ART_CODIGO'], array_column($stockResults, 'STO_ART_ARTICULO'))) {
+
+        $filteredStock = array_values(array_filter(
+            $stockResults,
+            fn($item) =>
+            isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+                $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
+        ));
+
+        if (empty($filteredStock)) {
             return $articulo;
         }
         $stockTotal = 0;
-        foreach ($stockResults as &$stockItem) {
+        foreach ($filteredStock as &$stockItem) {
 
             if (!isset($stockItem['STO_ART_STOCK_DISPONIBLE'], $stockItem['STO_ART_BODEGA'])) {
                 continue;
@@ -30,8 +40,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             // Formateo de cantidad según configuración de decimales
             $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
             $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
-                ? (int)$stockValue
-                : round((float)$stockValue, 2);
+                ? (int) $stockValue
+                : round((float) $stockValue, 2);
 
             // Cálculo de stock disponible (considerando reservas)
             $reservado = $this->stockReservado(
@@ -39,14 +49,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 $stockItem['STO_ART_BODEGA']
             );
 
-            $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(
-                0,
-                $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado
-            );
+            $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
             $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
         }
 
-        $articulo['stock'] = $stockResults;
+        $articulo['stock'] = $filteredStock;
         $articulo['ART_STOCK'] = $stockTotal;
 
         return $articulo;
@@ -93,11 +100,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
         // Stock en traslados de reposición
         $reservado += GpTrasladosReposicion::query()
-        ->where('bodega_origen', $bodega)
-        ->where('ART_CODIGO', $articulo)
-        ->whereNull('completado')
-        ->get()
-        ->sum(fn ($item) => ($item->cantidad ?? 0) - ($item->trasladado ?? 0));
+            ->where('bodega_origen', $bodega)
+            ->where('ART_CODIGO', $articulo)
+            ->whereNull('completado')
+            ->get()
+            ->sum(fn($item) => ($item->cantidad ?? 0) - ($item->trasladado ?? 0));
 
         return $reservado;
     }
@@ -109,16 +116,16 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             return true;
         }
         // Verificar pedidos en estados específicos
-        if ($this->hasActiveOrders($articulo)) {
+        if ($this->hasActiveOrders($articulo['ART_CODIGO'])) {
             return false;
         }
         // Verificar pedidos facturados no despachados
-        if ($this->hasPendingInvoicedOrders($articulo)) {
+        if ($this->hasPendingInvoicedOrders($articulo['ART_CODIGO'])) {
             return false;
         }
         // Verificar artículos de clase especial
         if (isset($articulo['ART_CLASE_ARTICULO'])) {
-            if ($this->hasRecentDispatchedOrders($articulo)) {
+            if ($this->hasRecentDispatchedOrders($articulo['ART_CLASE_ARTICULO'], $articulo['ART_CODIGO'])) {
                 return false;
             }
         } else {
@@ -128,6 +135,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         if ($this->isTemporalCart($articulo)) {
             return false;
         }
+        // si hay una devolución volver a colocar los dias maximos
         return true;
     }
 
@@ -136,8 +144,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return GpPedidoDetalle::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
             ->whereIn('gp_pedidos.estado', ['espera', 'traslado', 'orden_de_compra'])
-            ->where('ART_CODIGO', $articulo['ART_CODIGO'])
-            ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
+            ->where('gp_pedido_detalles.ART_CODIGO', $articulo)
+            // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
+            ->whereBetween('gp_pedidos.fecha_factura', [
+                Carbon::now()->subMonths(6)->startOfDay(),
+                Carbon::now()->endOfDay()
+            ])
             ->exists();
     }
 
@@ -146,12 +158,16 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return GpPedidoDetalle::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
             ->where('gp_pedidos.estado', 'facturado')
-            ->where('ART_CODIGO', $articulo['ART_CODIGO'])
+            ->where('gp_pedido_detalles.ART_CODIGO', $articulo)
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado')
                     ->orWhere('gp_pedidos.despachado', 0);
             })
-            ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
+            // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
+            ->whereBetween('gp_pedidos.fecha_factura', [
+                Carbon::now()->subMonths(6)->startOfDay(),
+                Carbon::now()->endOfDay()
+            ])
             ->exists();
     }
 
@@ -160,44 +176,40 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return GpTempCart::where('ART_CODIGO', $articulo['ART_CODIGO'])->exists();
     }
 
-    public function hasRecentDispatchedOrders($articulo)
+    public function hasRecentDispatchedOrders($artClaseArticulo, $artCodigo)
     {
-        $datosL = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $articulo['ART_CLASE_ARTICULO'])->first();
+        $datosL = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $artClaseArticulo)->first();
         if (!$datosL) {
             return false;
         }
         return GpPedidoDetalle::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
             ->where('gp_pedidos.estado', 'facturado')
-            ->where('ART_CODIGO', $articulo['ART_CODIGO'])
+            ->where('gp_pedido_detalles.ART_CODIGO', $artCodigo)
             ->where('gp_pedidos.despachado', 1)
-            ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
-            ->whereDate('fecha_factura', '>', now()->subDays($datosL['DATOS_ITEMS_L_DIA_MAXIMO'])->startOfDay())
+            // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
+            ->whereDate('gp_pedidos.fecha_factura', '>', now()->subDays($datosL['DATOS_ITEMS_L_DIA_MAXIMO'])->startOfDay())
+            ->whereBetween('gp_pedidos.fecha_factura', [
+                Carbon::now()->subMonths(6)->startOfDay(),
+                Carbon::now()->endOfDay()
+            ])
             ->exists();
     }
     public function formatResultStocks($stockResults)
     {
-        if (empty($stockResults)) {
+        if (!is_array($stockResults)) {
             return [];
         }
-        $formattedStocks = [];
-        foreach ($stockResults as $value) {
-            if (!is_array($value)) {
-                continue;
-            }
-            $formattedStocks = array_merge(
-                $formattedStocks,
-                array_map(
-                    fn($item) => [
-                        'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                        'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                        'STO_ART_STOCK_DISPONIBLE' => number_format((float)$item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-                    ],
-                    array_values($value)
-                )
-            );
-        }
-        return $formattedStocks;
+        return collect($stockResults)
+            ->filter(fn($item) => is_array($item))
+            ->flatten(1)
+            ->map(fn($item) => [
+                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
+                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
+                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
+            ])
+            ->values()
+            ->toArray();
     }
 
     public function getWarehouse($data)
@@ -224,6 +236,67 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
         return $query->get()
             ->pluck('PTO_VTA_BOD_REL_BODEGA', 'PTO_VTA_BOD_REL_BODEGA')
+            ->toArray();
+    }
+
+
+
+    /**
+     * Busca el item L disponible para guardar en el detalle de pedido
+     * ya que asigna el ART_CODIGO de este item L
+     */
+    public function getFirstAvailablePurchaseArticle($article)
+    {
+        $itemsL = $this->getListArticlesOfTypeLWithLimit($article);
+        foreach ($itemsL as $artL) {
+            $disponible = $this->checkArticuloDisponible($artL);
+            if ($disponible) {
+                return $artL['ART_CODIGO'];
+            }
+        }
+        return null;
+    }
+
+    public function getListArticlesOfTypeLWithLimit($articulo)
+    {
+        $itemL = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])->first()->toArray();
+        return GpArticulo::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
+            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
+            ->where('gp_articulos.ART_CLASE_ARTICULO', '=',  $itemL['ART_CLASE_ARTICULO'])
+            ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
+            ->where('gp_articulos.ART_IMP_COMPRA', '=',  $itemL['ART_IMP_COMPRA'])->orderBy('ART_DESCRIPCION', 'desc')
+            ->orderBy('ART_DESCRIPCION', 'desc')
+            ->limit(500)->get()->toArray();
+    }
+
+
+    /** funcion para formatear y consultar reservado para
+     *  actualizar el stock en pedido detalle stock
+     */
+
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId)
+    {
+        return collect($stockFormatted)
+            ->filter(function ($item) use ($articulo) {
+                return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+                    $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
+            })
+            ->map(function ($stockItem) use ($articulo, $orderId) {
+                $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
+
+                $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
+                    ? (int) $stockValue
+                    : round((float) $stockValue, 2);
+
+                $reservado = $this->stockReservado(
+                    $articulo['ART_CODIGO'],
+                    $stockItem['STO_ART_BODEGA'],
+                    $orderId
+                );
+                $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+                return $stockItem;
+            })
+            ->values()
             ->toArray();
     }
 }

@@ -67,7 +67,7 @@ Route::get('/generadevolucionventaurlalt', [DevolucionesController::class, 'gene
 //Route::get('/checkfacturasdespachos/{id}', [DespachosController::class, 'checkfacturasdespachos']);
 //Route::get('/checkcobrosenviados/', [CobranzasController::class, 'checkcobrosenviados']);
 //Route::get('/checkeliminardespachourl', [DevolucionesController::class, 'checkeliminardespachourl']);
-
+Route::get('pedidos/volver-facturar-test/{id}', [PedidosController::class, 'volveraFacuturarTest']);
 Route::get('/procesardevolucionestest', [DevolucionesController::class, 'procesardevolucionestest']);
 Route::get('/checkdespachadoscompletos', [DespachosController::class, 'checkdespachadoscompletos']);
 Route::get('/sincronizacion/testcliente', [SincronizacionController::class, 'testcliente']);
@@ -98,3 +98,10 @@ Route::get('/cotizaciones/lista-items-alternativos', [CotizacionesController::cl
 
 
 Route::get('/cotizaciones/listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
+
+Route::get('/consultas/buscarcode/{artCode}', [PedidosController::class, 'buscarIteml']);
+
+/** asignar la nota de credito devolucion  */
+Route::get('/devolucion/obtener-nota-credito-devolucion/{id}', [DevolucionesController::class, 'restaurarNotaCreditoDevolucion']);
+
+Route::get('/pedidos/facturar-pedido-test/{codPedido}', [PedidosController::class, 'facturarpedidoTest']);

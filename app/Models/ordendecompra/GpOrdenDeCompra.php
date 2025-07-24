@@ -65,4 +65,29 @@ use Illuminate\Database\Eloquent\Model;
 class GpOrdenDeCompra extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'detalle_id',
+        'detalle_proveedores_id',
+        'estado',
+        'ORDEN_COMPRA_DOCU_ORIGEN',
+        'ORDEN_COMPRA_LINEA',
+        'DOC_GENERADO',
+        'ORDEN_COMPRA_FECHA_DOCUMENTO',
+        'ORDEN_COMPRA_FECHA_ENTREGA',
+        'ORDEN_COMPRA_ID_CLIENTE',
+        'ORDEN_COMPRA_ID_PROVEEDOR',
+        'ORDEN_COMPRA_ID_DIRECCION',
+        'ORDEN_COMPRA_NOTA_DOCU',
+        'ORDEN_COMPRA_BODEGA',
+        'ORDEN_COMPRA_ARTICULO',
+        'ORDEN_COMPRA_DESCRIPCION_ARTICULO',
+        'ORDEN_COMPRA_UMEDIDA',
+        'ORDEN_COMPRA_CANTIDAD',
+        'ORDEN_COMPRA_COSTO_UNITARIO',
+        'ORDEN_COMPRA_TOTAL',
+        'ORDEN_COMPRA_IMPUESTO',
+        'ORDEN_COMPRA_ID_USUARIO',
+        'ORDEN_COMPRA_MENSAJE',
+    ];
 }
