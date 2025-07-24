@@ -155,7 +155,7 @@ class DevolucionesController extends Controller
                 $validateItemsPartialDispatch === 0 &&
                 $data['devolucion']['volver_a_facturar'] === false &&
                 ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
-                // &&  ($devolucion->anulacion_habilitada === true || $devolucion->anulacion_habilitada === 1)
+                &&  ($devolucion->anulacion_habilitada === true || $devolucion->anulacion_habilitada === 1)
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
