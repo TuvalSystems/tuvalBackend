@@ -30,4 +30,7 @@ interface OrderServiceInterface
 
         /** pruebas */
         public function buscarItemlTest($item);
+
+
+        public function generateOrderDispatch($id);
     }
