@@ -677,67 +677,26 @@ class QuotationService implements QuotationServiceInterface
     {
         $artPrecios = [];
         $articulosTemp = $this->quotationRepository->getGpTempCartFillQuotation($data['sucursal_id'], $data['puntodeventa_id'], $data['cliente_id'], $user->id);
-
+        $isCopy = ($data['test'] ?? '') === 'copiarpedido';
         foreach ($articulosTemp as $artTemp) {
-            if (isset($data['test']) && $data['test'] === 'copiarpedido') {
-                $artTemp->CHECK_ALTERNATIVO = 0;
-            } else {
-                $artTemp->CHECK_ALTERNATIVO = $this->syncAndGetCheckAlternativo($data, $artTemp);
-            }
+            $artTemp->CHECK_ALTERNATIVO = $isCopy ? 0 : $this->syncAndGetCheckAlternativo($data, $artTemp);
 
-            $artPrecios[] = array(
-                'ART_CODIGO' => $artTemp->ART_CODIGO,
-            );
-
-            if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
-                $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
-                $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
-            }
-
-            $proveedores = GpTempCartProveedores::where('id_tempcart', $artTemp->id)->get();
-            foreach ($proveedores as $prov) {
-                if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
-                    $prov->CANTIDAD = (int) $prov->CANTIDAD;
-                }
-            }
-
-            $artTemp->proveedores = $proveedores;
-            $stock = GpTempCartStock::where('id_tempcart', $artTemp->id)->get();
-
-            foreach ($stock as $st) {
-                if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
-                    $st->STO_ART_STOCK_DISPONIBLE = (int) $st->STO_ART_STOCK_DISPONIBLE;
-                    $st->seleccionado = (int) $st->seleccionado;
-                }
-            }
-            $artTemp->stock = $stock;
-            $imagenes = [];
-            for ($i = 1; $i <= 3; $i++) {
-                $file = 'images/productos/' . $artTemp->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-
-                if (File::exists($file)) {
-                    $imagenes[] = env('APP_URL') . '/' . $file;
-                }
-            }
-            $artTemp->imagenes = $imagenes;
+            $artPrecios[] = ['ART_CODIGO' => $artTemp->ART_CODIGO];
+            $this->castDecimalValuesTemp($artTemp);
+            $this->loadProvidersTemp($artTemp);
+            $this->loadStockTemp($artTemp);
+            $this->loadImagesTemp($artTemp);
         }
-        $listaPreciosAll = [];
-        if ($data['serial'] == '') {
-            if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
-                $precios = $this->MsWebservice->listaprecios($artPrecios);
-                foreach ($precios as $pr) {
-                    $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
-                }
-            }
 
+        if (($data['serial'] ?? '') === '' && empty($data['registro_copia'])) {
+            $listaPrecios = $this->getPricesByClient($artPrecios);
             $cliente = GpCliente::find($data['cliente_id']);
             foreach ($articulosTemp as $artTemp) {
-                if (!isset($data['registro_copia']) || $data['registro_copia'] == '') {
-                    if ($artTemp->ART_VALOR_ORIGINAL != $listaPreciosAll[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_PRECIO']) {
-                        $artTemp->ART_VALOR_ORIGINAL = $listaPreciosAll[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_PRECIO'];
-                        $artTemp->ART_VALOR = $listaPreciosAll[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                        $artTemp->modificador = 0;
-                    }
+                $precio = $listaPrecios[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO] ?? null;
+                if ($precio && $artTemp->ART_VALOR_ORIGINAL != $precio['LST_PRC_PRECIO']) {
+                    $artTemp->ART_VALOR_ORIGINAL = $precio['LST_PRC_PRECIO'];
+                    $artTemp->ART_VALOR = $precio['LST_PRC_VALOR'];
+                    $artTemp->modificador = 0;
                 }
             }
         }
@@ -747,6 +706,61 @@ class QuotationService implements QuotationServiceInterface
             'success' => true,
             'articulos' => $articulosTemp
         ]);
+    }
+
+
+    public function castDecimalValuesTemp($artTemp)
+    {
+        if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
+            $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
+            $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
+        }
+    }
+
+    public function loadProvidersTemp(&$artTemp)
+    {
+        $artTemp->proveedores = GpTempCartProveedores::where('id_tempcart', $artTemp->id)
+            ->get()
+            ->map(function ($prov) use ($artTemp) {
+                $prov->CANTIDAD = $artTemp->ART_DECIMAL_CANTIDAD == 0 ? (int) $prov->CANTIDAD : $prov->CANTIDAD;
+                return $prov;
+            })->toArray();
+    }
+
+    public function loadStockTemp(&$artTemp)
+    {
+        $artTemp->stock = GpTempCartStock::where('id_tempcart', $artTemp->id)
+            ->get()
+            ->map(function ($st) use ($artTemp) {
+                $st->STO_ART_STOCK_DISPONIBLE = $artTemp->ART_DECIMAL_CANTIDAD == 0 ? (int) $st->STO_ART_STOCK_DISPONIBLE : $st->STO_ART_STOCK_DISPONIBLE;
+                $st->seleccionado = (int) $st->seleccionado;
+                return $st;
+            })->toArray();
+    }
+
+    public function loadImagesTemp(&$artTemp)
+    {
+        $imagenes = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $file = 'images/productos/' . $artTemp->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
+
+            if (File::exists($file)) {
+                $imagenes[] = env('APP_URL') . '/' . $file;
+            }
+        }
+        $artTemp->imagenes = $imagenes;
+    }
+
+    public function getPricesByClient($articulos)
+    {
+        $listaPreciosAll = [];
+        $precios = $this->MsWebservice->listaprecios($articulos);
+
+        foreach ($precios as $pr) {
+            $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
+        }
+
+        return $listaPreciosAll;
     }
 
 
@@ -910,7 +924,7 @@ class QuotationService implements QuotationServiceInterface
         $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
         if ($data['cotizacion_id'] && $cotizacion->id) {
             $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
-        }else{
+        } else {
             $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
             $requiereAprobacionComercial['aprobado'] = 'no';
         }
