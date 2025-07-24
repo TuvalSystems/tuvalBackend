@@ -1754,4 +1754,8 @@ class PedidosController extends Controller
         $item = GpArticulo::where('ART_CODIGO', $artCode)->first()->toArray();
         return $this->orderService->buscarItemlTest($item);
     }
+
+    public function generarOrdenDeDespacho($id){
+        return $this->orderService->generateOrderDispatch($id);
+    }
 }

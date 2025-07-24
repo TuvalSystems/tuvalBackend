@@ -407,7 +407,7 @@ class OrderService implements OrderServiceInterface
     public function storeDetailStock($stock, $detailOrder, $newOrder)
     {
         $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes'
-                       || $newOrder->requiere_aprobacion_comercial === 'yes';
+            || $newOrder->requiere_aprobacion_comercial === 'yes';
 
         foreach ($stock as $item) {
             GpPedidoDetalleStock::create([
@@ -641,5 +641,22 @@ class OrderService implements OrderServiceInterface
     public function buscarItemlTest($item)
     {
         return $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item);
+    }
+
+
+    public function generateOrderDispatch($id)
+    {
+        try {
+            DB::beginTransaction();
+            $order = GpPedido::find($id);
+            $this->invoiceService->generateDisptachOrder($order);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error generating order dispatch', [
+                'error' => $e->getMessage(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 }
