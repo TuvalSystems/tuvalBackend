@@ -666,6 +666,10 @@ class ApprovalService implements ApprovalServiceInterface
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
         $stocksResult =  $this->apiGpService->getStockWarehouseAsync($parmas);
+        Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
+        if (is_null($stocksResult) || !is_array($stocksResult)) {
+            throw new \Exception("No se pudo obtener el stock de los articulos");
+        }
         return $this->formatResultStocksApproval($stocksResult);
     }
 

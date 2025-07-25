@@ -409,22 +409,63 @@ class OrderService implements OrderServiceInterface
             || $newOrder->requiere_aprobacion_comercial === 'yes';
 
         foreach ($stock as $item) {
+            /** aplicar validacion de stock y actualizar el stock disponible en el pedidodetalles+tock
+             *  si no tiene stock almacenarl en un array y retornar como mensaje de error
+             */
+            $newFormatStock = [
+                'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
+            ];
+            if ($item['seleccionado'] > 0) {
+                $newFormatStock = $this->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
+                if (!$newFormatStock) {
+                    throw new \Exception("No se pudo obtener el stock del artículo {$item['STO_ART_ARTICULO']} en la bodega {$item['STO_ART_BODEGA']}");
+                }
+                if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $item['seleccionado']) {
+                    throw new \Exception("El stock disponible del artículo {$item['STO_ART_ARTICULO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
+                }
+            }
             GpPedidoDetalleStock::create([
                 'pedido_id' => $newOrder->id,
                 'detalle_id' => $detailOrder->id,
                 'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
-                'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
+                'STO_ART_STOCK_DISPONIBLE' => $newFormatStock['STO_ART_STOCK_DISPONIBLE'], // me devuelve el stock disponile
                 'seleccionado' => $item['seleccionado'],
                 'reservado' => $requiereAprobacion ? 0 : $item['seleccionado'],
             ]);
         }
     }
 
+
+
     public function updateValueInvoiceQuotation($orderId)
     {
         GpCotizacion::where('id', $orderId)->update(['estado' => 'procesado', 'facturado' => 1]);
     }
 
+    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId)
+    {
+        $params = [
+            'articulo' => $detailOrder->ART_CODIGO,
+            'bodega' => $stock['STO_ART_BODEGA'],
+        ];
+        $stocksResult = $this->apiGpService->getStockWarehouse($params);
+        Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
+        if (is_null($stocksResult) || !is_array($stocksResult)) {
+            throw new \Exception("No se pudo obtener el stock de los articulos");
+        }
+        // $stockResponseFormated = $this->stockWarehouseService->formatResultStocks($stocksResult);
+
+        $this->assignmentDisponibleStock($stock, $stocksResult[0], $detailOrder);
+        $this->stockWarehouseService->formatResultStockStoreOrder($stock, $detailOrder, $orderId);
+        return $stock;
+    }
+
+
+    public function assignmentDisponibleStock(&$stock, $stockResponseFormatted, $detailOrder)
+    {
+        $stock['STO_ART_STOCK_DISPONIBLE'] = $stockResponseFormatted['STOCK_DISPONIBLE'] ?? 0;
+        $stock['STO_ART_ARTICULO'] = $detailOrder->ART_CODIGO;
+    }
 
     /**
      * ✅ Obtiene el detalle de un pedido especifico.
