@@ -499,6 +499,8 @@ class FuncionesController extends Controller
         $pedido->save();
     }
 
+
+
     public function recalculariva($detalle)
     {
         foreach ($detalle as $key => $articulo) {

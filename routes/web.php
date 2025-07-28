@@ -107,3 +107,5 @@ Route::get('/devolucion/obtener-nota-credito-devolucion/{id}', [DevolucionesCont
 Route::get('/pedidos/facturar-pedido-test/{codPedido}', [PedidosController::class, 'facturarpedidoTest']);
 
 Route::get('/pedidos/generar-orden-despacho/{id}', [PedidosController::class, 'generarOrdenDeDespacho']);
+
+Route::get('/pedidos/recalcular-pedido', [PedidosController::class, 'recalcularPedidoTest']);

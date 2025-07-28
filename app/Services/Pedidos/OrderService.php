@@ -610,6 +610,10 @@ class OrderService implements OrderServiceInterface
         $this->invoiceService->sendInvoiceGp($order);
     }
 
+    public function recalculateOrder($order){
+        $this->functionsService->recalculateOrder($order);
+    }
+
 
 
     /** function para recuperar el pedido - volver a pedir  */

@@ -1758,4 +1758,11 @@ class PedidosController extends Controller
     public function generarOrdenDeDespacho($id){
         return $this->orderService->generateOrderDispatch($id);
     }
+
+
+     public function recalcularPedidoTest(Request $request){
+        $data = $request->all();
+        $pedido = GpPedido::where('id', $data['id'])->get()->first();
+        $this->orderService->recalculateOrder($pedido);
+    }
 }
