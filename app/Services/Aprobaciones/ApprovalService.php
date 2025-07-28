@@ -472,7 +472,7 @@ class ApprovalService implements ApprovalServiceInterface
         $alert = null;
         foreach ($allFormattedStock as $stock) {
             if ($stock['STO_ART_STOCK_DISPONIBLE'] < $stock['seleccionado']) {
-                $alert .= "El artículo {$stock['ART_CODIGO']} tiene stock insuficiente. " .
+                $alert .= "El artículo {$stock['STO_ART_ARTICULO']} tiene stock insuficiente. " .
                     "Stock disponible: {$stock['STO_ART_STOCK_DISPONIBLE']} - " .
                     "Cantidad pedido: {$stock['seleccionado']}<br>";
             }
