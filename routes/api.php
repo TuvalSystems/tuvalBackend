@@ -90,7 +90,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
     Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
     Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
-    Route::post('/consultas/consultastockpedido', [ConsultasController::class, 'consultastockpedido']);
     Route::post('/consultas/consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
     Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
     Route::post('/verpedidosycotizacionesporaprobar', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
@@ -244,7 +243,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/consultas/notificaciones', [ConsultasController::class, 'notificaciones']);
 
     //new routes
-    
+
     Route::group(['prefix' => 'cotizaciones'], function () {
         Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
         Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
@@ -253,7 +252,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
 
         Route::post('obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
-        Route::post('actualizar-stocks-por-lote', [CotizacionesController::class, 'actualizarStocksPorLote']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

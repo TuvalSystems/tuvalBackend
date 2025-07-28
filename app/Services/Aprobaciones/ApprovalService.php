@@ -433,16 +433,19 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-
     /**
-     *  FUNCIONES PARA LA APROBACIÓN CREDITICIA DE PEDIDOS
+     * FUNCION PARA LA VERIFICACION DE STOCK DE LOS ARTICULOS DEL PEEDIDO ANTES DE APROBAR
      */
 
     public function getOrderApprovalData($data)
     {
         try {
-            $detallePedido = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
-            $alert = $this->functionService->consultStockDetail($data, $detallePedido, $data['id']);
+            $detalles = $this->getDetailArticlesWithStock($data['id']);
+            $flatDetails  = $this->stockFormatterForUpdateApproval($detalles);
+            $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
+            $stocksResult =  $this->getStockWarehouseAsyncAndFormantter($parmas);
+            $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id']);
             if ($alert) {
                 return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
             }
@@ -452,6 +455,37 @@ class ApprovalService implements ApprovalServiceInterface
         }
     }
 
+
+    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId)
+    {
+        $allFormattedStock = collect();
+        foreach ($detalles as $detail) {
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId);
+            if (!empty($stockList)) {
+                $allFormattedStock = $allFormattedStock->merge($stockList);
+            }
+        }
+
+        if ($allFormattedStock->isEmpty()) {
+            return;
+        }
+        $alert = null;
+        foreach ($allFormattedStock as $stock) {
+            if ($stock['STO_ART_STOCK_DISPONIBLE'] < $stock['seleccionado']) {
+                $alert .= "El artículo {$stock['ART_CODIGO']} tiene stock insuficiente. " .
+                    "Stock disponible: {$stock['STO_ART_STOCK_DISPONIBLE']} - " .
+                    "Cantidad pedido: {$stock['seleccionado']}<br>";
+            }
+        }
+        return $alert;
+    }
+
+
+
+
+    /**
+     *  FUNCIONES PARA LA APROBACIÓN CREDITICIA DE PEDIDOS
+     */
 
 
     public function approveCreditOrder($data)
@@ -621,21 +655,25 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function updateStockOnOrderApproval($order)
     {
-        $detalles = GpPedidoDetalle::with('pedidoDetalleStocks')
-            ->where('pedido_id', $order->id)
-            ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
+        $detalles = $this->getDetailArticlesWithStock($order->id);
         if ($detalles->isEmpty()) {
             return;
         }
         $flatDetails  = $this->stockFormatterForUpdateApproval($detalles);
         $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
+
         $stocksResult =  $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
 
         $this->updateOrderDetailStockAndGetStockDisponible($detalles,  $newFormatStock, $order->id);
     }
 
-
+    public function getDetailArticlesWithStock($orderId)
+    {
+        return GpPedidoDetalle::with('pedidoDetalleStocks')
+            ->where('pedido_id', $orderId)
+            ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
+    }
     public function stockFormatterForUpdateApproval($detalles)
     {
         return $detalles->pluck('pedidoDetalleStocks')

@@ -1404,12 +1404,5 @@ class CotizacionesController extends Controller
     }
 
 
-    public function actualizarStocksPorLote(Request $request) {
 
-         $request->validate([
-            'articulos' => 'required',
-        ]);
-         $data = $request->all(); //articulos
-        return $this->quotationService->updateStocksByBatch($data['articulos']);
-    }
 }

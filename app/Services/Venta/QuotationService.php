@@ -783,6 +783,7 @@ class QuotationService implements QuotationServiceInterface
         $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
         $newStock = $this->reassignStockIds($article, $artFormat['stock']);
         $article['stock'] = $newStock;
+        $article['ART_STOCK'] = $artFormat['ART_STOCK'];
         return $this->successResponse('Stock obtenido correctamente', $article, 200);
     }
 
@@ -1170,15 +1171,4 @@ class QuotationService implements QuotationServiceInterface
             ->update(['ART_VALOR' => $artValor]);
     }
 
-
-
-    /***
-     *
-     * FUNCION PARA ACTUALIZAR EL DISPONIBLE DE ARTICULSO EN GPTEMCARTSTOCK
-     * POR LOTE
-     */
-     public function updateStocksByBatch($articles){
-        //   $warehouses = $this->functionService->getBodegas($warehouse, 1);
-
-     }
 }

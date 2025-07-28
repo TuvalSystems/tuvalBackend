@@ -11,7 +11,6 @@ interface InventoryQueryServiceInterface
 
 
     /** consultar stock del pedido antes de guardar */
-    public function getConsultStockOrder ($data);
-
+   
 
 }
