@@ -527,6 +527,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
@@ -543,6 +544,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
         return $this->buildErrorResponse($data['alert'], 422);
@@ -599,6 +601,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
@@ -619,6 +622,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
