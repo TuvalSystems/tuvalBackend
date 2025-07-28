@@ -1760,9 +1760,9 @@ class PedidosController extends Controller
     }
 
 
-     public function recalcularPedidoTest(Request $request){
-        $data = $request->all();
-        $pedido = GpPedido::where('id', $data['id'])->get()->first();
+     public function recalcularPedidoTest($id){
+
+        $pedido = GpPedido::where('id', $id)->get()->first();
         $this->orderService->recalculateOrder($pedido);
     }
 }

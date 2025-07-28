@@ -108,4 +108,4 @@ Route::get('/pedidos/facturar-pedido-test/{codPedido}', [PedidosController::clas
 
 Route::get('/pedidos/generar-orden-despacho/{id}', [PedidosController::class, 'generarOrdenDeDespacho']);
 
-Route::get('/pedidos/recalcular-pedido', [PedidosController::class, 'recalcularPedidoTest']);
+Route::get('/pedidos/recalcular-pedido/{id}', [PedidosController::class, 'recalcularPedidoTest']);
