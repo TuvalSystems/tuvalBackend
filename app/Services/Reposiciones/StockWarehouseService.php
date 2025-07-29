@@ -146,7 +146,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->whereIn('gp_pedidos.estado', ['espera', 'traslado', 'orden_de_compra'])
             ->where('gp_pedido_detalles.ART_CODIGO', $articulo)
             // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
-            ->whereBetween('gp_pedidos.created_at', [
+            ->whereBetween('gp_pedidos.fecha_factura', [
                 Carbon::now()->subMonths(6)->startOfDay(),
                 Carbon::now()->endOfDay()
             ])
@@ -164,7 +164,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                     ->orWhere('gp_pedidos.despachado', 0);
             })
             // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
-            ->whereBetween('gp_pedidos.created_at', [
+            ->whereBetween('gp_pedidos.fecha_factura', [
                 Carbon::now()->subMonths(6)->startOfDay(),
                 Carbon::now()->endOfDay()
             ])
@@ -188,8 +188,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('gp_pedido_detalles.ART_CODIGO', $artCodigo)
             ->where('gp_pedidos.despachado', 1)
             // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
-            ->whereDate('gp_pedidos.created_at', '>', now()->subDays($datosL['DATOS_ITEMS_L_DIA_MAXIMO'])->startOfDay())
-            ->whereBetween('gp_pedidos.created_at', [
+            ->whereDate('gp_pedidos.fecha_factura', '>', now()->subDays($datosL['DATOS_ITEMS_L_DIA_MAXIMO'])->startOfDay())
+            ->whereBetween('gp_pedidos.fecha_factura', [
                 Carbon::now()->subMonths(6)->startOfDay(),
                 Carbon::now()->endOfDay()
             ])
@@ -298,5 +298,29 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             })
             ->values()
             ->toArray();
+    }
+
+
+
+    /*** function para formatear y consultar el stock para guardado de pedido  */
+
+    public function formatResultStockStoreOrder(&$stock, $article, $orderId)
+    {
+        if (
+            isset($stock['STO_ART_STOCK_DISPONIBLE'], $stock['STO_ART_BODEGA'], $stock['STO_ART_ARTICULO']) &&
+            $stock['STO_ART_ARTICULO'] === $article['ART_CODIGO']
+        ) {
+            $stockValue = $stock['STO_ART_STOCK_DISPONIBLE'];
+            $stock['STO_ART_STOCK_DISPONIBLE'] = $article['ART_DECIMAL_CANTIDAD'] == 0
+                ? (int) $stockValue
+                : round((float) $stockValue, 2);
+
+            $reservado = $this->stockReservado(
+                $article['ART_CODIGO'],
+                $stock['STO_ART_BODEGA'],
+                $orderId
+            );
+            $stock['STO_ART_STOCK_DISPONIBLE'] = max(0, $stock['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+        }
     }
 }

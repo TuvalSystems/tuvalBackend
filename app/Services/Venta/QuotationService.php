@@ -690,9 +690,6 @@ class QuotationService implements QuotationServiceInterface
             );
 
             if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
-                if (isset($data['test']) && $data['test'] === 'recuperarcotizacion') {
-                    $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
-                }
                 $artTemp->ART_STOCK = 0;
                 $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
             }
