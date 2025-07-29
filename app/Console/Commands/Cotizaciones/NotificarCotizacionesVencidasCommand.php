@@ -3,7 +3,6 @@
 namespace App\Console\Commands\Cotizaciones;
 
 use App\Mail\Cotizacion\RecordatorioCotizacionNoVentaMail;
-use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
