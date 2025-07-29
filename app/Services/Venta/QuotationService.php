@@ -690,7 +690,10 @@ class QuotationService implements QuotationServiceInterface
             );
 
             if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
-                $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
+                if (isset($data['test']) && $data['test'] === 'recuperarcotizacion') {
+                    $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
+                }
+                $artTemp->ART_STOCK = 0;
                 $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
             }
 
@@ -910,7 +913,7 @@ class QuotationService implements QuotationServiceInterface
         $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
         if ($data['cotizacion_id'] && $cotizacion->id) {
             $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
-        }else{
+        } else {
             $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
             $requiereAprobacionComercial['aprobado'] = 'no';
         }
