@@ -245,9 +245,9 @@ class StockWarehouseService implements StockWarehouseServiceInterface
      * Busca el item L disponible para guardar en el detalle de pedido
      * ya que asigna el ART_CODIGO de este item L
      */
-    public function getFirstAvailablePurchaseArticle($article)
+    public function getFirstAvailablePurchaseArticle($article, $excludeItemsL)
     {
-        $itemsL = $this->getListArticlesOfTypeLWithLimit($article);
+        $itemsL = $this->getListArticlesOfTypeLWithLimit($article, $excludeItemsL);
         foreach ($itemsL as $artL) {
             $disponible = $this->checkArticuloDisponible($artL);
             if ($disponible) {
@@ -257,7 +257,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return null;
     }
 
-    public function getListArticlesOfTypeLWithLimit($articulo)
+    public function getListArticlesOfTypeLWithLimit($articulo, $excludeItemsL)
     {
         $itemL = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])->first()->toArray();
         return GpArticulo::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
@@ -265,6 +265,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('gp_articulos.ART_CLASE_ARTICULO', '=',  $itemL['ART_CLASE_ARTICULO'])
             ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
             ->where('gp_articulos.ART_IMP_COMPRA', '=',  $itemL['ART_IMP_COMPRA'])->orderBy('ART_DESCRIPCION', 'desc')
+            ->whereNotIn('ART_CODIGO', $excludeItemsL)
             ->orderBy('ART_DESCRIPCION', 'desc')
             ->limit(500)->get()->toArray();
     }

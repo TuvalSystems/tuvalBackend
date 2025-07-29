@@ -142,8 +142,9 @@ class ApprovalService implements ApprovalServiceInterface
                     //VALIDACIONES POR EL TIO DE ARTICULO
                     if ($detalle['ART_TIPO_COMPRA'] == 'L') {
                         foreach ($detalle['proveedores'] as $proveedor) {
-                            $proveedorOriginal = GpCotizacionDetalleProveedores::where('detalle_id', $detOriginal->id)->first();
-                            if ($proveedor['MARGEN'] < $proveedorOriginal->MARGEN) {
+                            // $provider = GpCotizacionDetalleProveedores::where('detalle_id', $detOriginal->id)->first();
+                            //  $margin = ($provider->COSTO_UNITARIO / (1 - ($provider->MARGEN / 100))) / (1 - $detalle['descuento'] / 100);
+                            if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
                                 return [
                                     'requiere' => 'yes',
                                     'motivo' => "Margen del producto L es menor al margen aprobado en la cotización."
@@ -254,13 +255,19 @@ class ApprovalService implements ApprovalServiceInterface
 
             if ($detalle['ART_TIPO_COMPRA'] == 'L') {
                 foreach ($detalle['proveedores'] as $proveedor) {
-                    $margen = number_format(($proveedor['COSTO_UNITARIO'] /
-                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
 
-                    if ($margen > $detalle['ART_VALOR']) {
+                    $valor = number_format(($proveedor['COSTO_UNITARIO'] /
+                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
+                    if ($valor > $detalle['ART_VALOR']) {
                         return [
                             'requiere' => 'yes',
-                            'motivo' => "Margen del producto L es mayor al valor del producto"
+                            'motivo' => "Valor del producto L es mayor al valor del precio minimo"
+                        ];
+                    }
+                    if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
+                        return [
+                            'requiere' => 'yes',
+                            'motivo' => "Margen del producto L es menor al margen aprobado en la cotización."
                         ];
                     }
                 }
@@ -527,7 +534,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
-         $this->updateStockOnOrderApproval($pedido);
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }

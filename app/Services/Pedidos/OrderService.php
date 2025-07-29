@@ -327,6 +327,7 @@ class OrderService implements OrderServiceInterface
 
     public function prepareOrderDetailStoreFill($detailOrder, $newOrder,)
     {
+        $usedItemLExcluded = [];
         foreach ($detailOrder as $i => $item) {
 
             /** antes de almacenar el detalle del pedido, verificamos los items L
@@ -336,7 +337,7 @@ class OrderService implements OrderServiceInterface
             $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
             $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
             if ($isTypeL && !$hasStock) {
-                $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item);
+                $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item,  $usedItemLExcluded);
                 if (!$replacementCodeL) {
                     Log::warning('No se encontró un item L disponible para el pedido ', [
                         'pedido_id' => $newOrder->id,
@@ -345,6 +346,7 @@ class OrderService implements OrderServiceInterface
                     throw new \Exception("No se encontró un artículo tipo L disponible para el código {$item['ART_CODIGO']}");
                 }
                 $item['ART_CODIGO'] = $replacementCodeL;
+                $usedItemLExcluded[] = $replacementCodeL;
             }
             $newOrderDetail = new GpPedidoDetalle([
                 'pedido_id' => $newOrder->id,
@@ -684,7 +686,7 @@ class OrderService implements OrderServiceInterface
 
     public function buscarItemlTest($item)
     {
-        return $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item);
+        return $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $excludeItemsL = null);
     }
 
 

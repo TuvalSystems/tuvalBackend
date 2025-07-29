@@ -15,7 +15,7 @@ interface StockWarehouseServiceInterface
 
     public function checkArticuloDisponible($articulo);
 
-    public function getFirstAvailablePurchaseArticle($articulo);
+    public function getFirstAvailablePurchaseArticle($articulo, $excludeItemsL);
 
     public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId);
 
