@@ -146,7 +146,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->whereIn('gp_pedidos.estado', ['espera', 'traslado', 'orden_de_compra'])
             ->where('gp_pedido_detalles.ART_CODIGO', $articulo)
             // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
-            ->whereBetween('gp_pedidos.fecha_factura', [
+            ->whereBetween('gp_pedidos.created_at', [
                 Carbon::now()->subMonths(6)->startOfDay(),
                 Carbon::now()->endOfDay()
             ])
@@ -164,7 +164,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                     ->orWhere('gp_pedidos.despachado', 0);
             })
             // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
-            ->whereBetween('gp_pedidos.fecha_factura', [
+            ->whereBetween('gp_pedidos.created_at', [
                 Carbon::now()->subMonths(6)->startOfDay(),
                 Carbon::now()->endOfDay()
             ])
@@ -188,8 +188,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('gp_pedido_detalles.ART_CODIGO', $artCodigo)
             ->where('gp_pedidos.despachado', 1)
             // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
-            ->whereDate('gp_pedidos.fecha_factura', '>', now()->subDays($datosL['DATOS_ITEMS_L_DIA_MAXIMO'])->startOfDay())
-            ->whereBetween('gp_pedidos.fecha_factura', [
+            ->whereDate('gp_pedidos.created_at', '>', now()->subDays($datosL['DATOS_ITEMS_L_DIA_MAXIMO'])->startOfDay())
+            ->whereBetween('gp_pedidos.created_at', [
                 Carbon::now()->subMonths(6)->startOfDay(),
                 Carbon::now()->endOfDay()
             ])
