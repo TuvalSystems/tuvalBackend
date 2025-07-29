@@ -680,7 +680,7 @@ class QuotationService implements QuotationServiceInterface
             $artTemp->CHECK_ALTERNATIVO = $isCopy ? 0 : $this->syncAndGetCheckAlternativo($data, $artTemp);
 
             $artPrecios[] = ['ART_CODIGO' => $artTemp->ART_CODIGO];
-            $this->castDecimalValuesTemp($artTemp);
+            $this->castDecimalValuesTemp($artTemp, $data);
             $this->loadProvidersTemp($artTemp);
             $this->loadStockTemp($artTemp);
             $this->loadImagesTemp($artTemp);
@@ -707,9 +707,12 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function castDecimalValuesTemp($artTemp)
+    public function castDecimalValuesTemp($artTemp, $data = null)
     {
         if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
+            if (isset($data['test']) && $data['test'] !== 'recuperarcotizacion') {
+                $artTemp->ART_STOCK = 0;
+            }
             $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
             $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
         }
