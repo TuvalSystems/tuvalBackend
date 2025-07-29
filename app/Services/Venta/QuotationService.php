@@ -764,6 +764,7 @@ class QuotationService implements QuotationServiceInterface
 
     /***
      *  Funciones para obtener el stock en tiempo real de los articulos
+     *  Ya se manda filtrado los items L desde el Front End
      */
 
     public function getStockItemForWarehouse($article, $warehouse)
@@ -784,6 +785,7 @@ class QuotationService implements QuotationServiceInterface
         $newStock = $this->reassignStockIds($article, $artFormat['stock']);
         $article['stock'] = $newStock;
         $article['ART_STOCK'] = $artFormat['ART_STOCK'];
+        $article['stockListo'] = true;
         return $this->successResponse('Stock obtenido correctamente', $article, 200);
     }
 
@@ -1170,5 +1172,4 @@ class QuotationService implements QuotationServiceInterface
         GpTempCart::where('id', $idTempCart)
             ->update(['ART_VALOR' => $artValor]);
     }
-
 }
