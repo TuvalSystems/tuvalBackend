@@ -177,7 +177,7 @@ class DevolucionesController extends Controller
                 );
             }
 
-            if ($esSolicitada && !$devolucion->anulacion_habilitada && $esTotal) {
+            if ($esSolicitada && !$devolucion->anulacion_habilitada && $esTotal && !$devolucion->permite_anulacion) {
                 return $this->buildSuccessResponse(
                     "La devolución {$devolucionCodigo} ha sido solicitada, pero no se procesará porque excede el límite de días permitido para realizar anulaciones. La devolución sera procesada normalmente.",
                     200
