@@ -86,7 +86,7 @@ class DevolucionJobService
                 'proceso' => 'procesamiento',
                 'mensaje' => $e->getMessage(),
             ]);
-            Log::error('Error procesando devolución ID: ' . $devolucion->id . ' - ' . $e->getMessage());
+            Log::channel('devolucion')->error('Error procesando devolución ID: ' . $devolucion->id . ' - ' . $e->getMessage());
         }
     }
 
@@ -391,7 +391,7 @@ class DevolucionJobService
             $devolucion->save();
             throw new \Exception('Ajuste : Codigo - ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
         }
-        Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
+        Log::channel('devolucion')->info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
         $devolucion->save();
@@ -407,7 +407,7 @@ class DevolucionJobService
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
+        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
         return $afectados;
     }
 
@@ -420,7 +420,7 @@ class DevolucionJobService
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
+        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
         return $afectados;
     }
 
@@ -433,7 +433,7 @@ class DevolucionJobService
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado recibido");
+        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado recibido");
         return $afectados;
     }
 

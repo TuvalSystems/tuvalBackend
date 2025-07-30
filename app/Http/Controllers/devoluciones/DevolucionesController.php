@@ -194,6 +194,7 @@ class DevolucionesController extends Controller
                 'Error al anular la factura',
                 $th->getMessage()
             );
+            Log::channel('devolucion')->info("Error en la funcion enviardevolucion: {$th->getMessage()} - Devolución ID: {$devolucion->id}");
             return $this->buildErrorResponse($th->getMessage(), 401);
         }
     }
@@ -284,7 +285,7 @@ class DevolucionesController extends Controller
 
             return $this->buildSuccessResponse('Devolución recibida', 200);
         } catch (\Throwable $th) {
-            Log::error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
+            Log::channel('devolucion')->error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
             return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
         }
     }

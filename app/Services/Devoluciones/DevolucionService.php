@@ -338,7 +338,7 @@ class DevolucionService implements DevolucionServiceInterface
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        Log::info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado anulada");
+        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado anulada");
         return $afectados;
     }
 
@@ -1089,13 +1089,13 @@ class DevolucionService implements DevolucionServiceInterface
             $mensaje = Arr::get($res1, '0.mensaje', 'Error desconocido');
 
             if (!$success) {
-                Log::error("Error en procesar la devolución: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
+                Log::channel('devolucion')->error("Error en procesar la devolución: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
                 $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
                 $devolucion->devolucion_bodega = false;
                 $devolucion->save();
                 throw new \Exception('Ajuste : Codigo - ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
             }
-            Log::info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1[0]));
+            Log::channel('devolucion')->info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1[0]));
             // 🟢 Actualización correcta
             $devolucion->devolucion_bodega = true;
             $devolucion->save();

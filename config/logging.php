@@ -114,9 +114,24 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
         'cron_process' => [
-            'driver' => 'daily',
+            'driver' => 'single',
             'path' => storage_path('logs/cron-process.log'),
             'level' => 'info',
+        ],
+        'soap_errors' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/soap_errors.log'),
+            'level' => 'warning',
+        ],
+        'apiservice' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/apiservice.log'),
+            'level' => 'warning',
+        ],
+         'devolucion' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/devolucion.log'),
+            'level' => 'warning',
         ],
     ],
 
