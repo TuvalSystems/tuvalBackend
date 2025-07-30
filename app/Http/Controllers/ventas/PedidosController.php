@@ -1195,9 +1195,9 @@ class PedidosController extends Controller
             }
             $pdf = PDF::loadView('pedidoridePDF', $pedido);
             return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
-        } catch (\Exception $e) {
-            report($e);
-            return $this->buildErrorResponse($e->getMessage(), 500);
+        } catch (\Throwable $e) {
+            // report($e);
+            return $this->buildErrorResponse($e->getMessage(), 404);
         }
     }
 
@@ -1211,8 +1211,8 @@ class PedidosController extends Controller
                 'Content-Disposition' => 'attachment; filename="' . $nombreArchivo . '"',
             ]);
         } catch (\Throwable $th) {
-            report($th);
-            return $this->buildErrorResponse($th->getMessage(), 500);
+            // report($th);
+            return $this->buildErrorResponse($th->getMessage(), 404);
         }
     }
     public function despachoenproceso($id)
