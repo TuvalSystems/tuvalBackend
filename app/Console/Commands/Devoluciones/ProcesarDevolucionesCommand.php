@@ -50,7 +50,7 @@ class ProcesarDevolucionesCommand extends Command
             return 0;
         }
 
-        $this->channel('devolucion')->info("🔎 Found {$total} devoluciones to process.");
+        $this->info("🔎 Found {$total} devoluciones to process.");
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
