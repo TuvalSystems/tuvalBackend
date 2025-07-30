@@ -8,7 +8,6 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpVendedor;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
-use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartProveedores;
@@ -77,73 +76,6 @@ class FunctionsService implements FunctionsServiceInterface
 
     /** para aprobacion crediticia de pedidos y para validar stock antes de guardar pedido en InventoryQueryService */
 
-    public function consultStockDetail($data, $detalle, $pedidoId = null)
-    {
-        $arBodegas = [];
-        $arArticulos = [];
-
-        foreach ($detalle as &$linea) {
-            if ($linea['ART_TIPO_COMPRA'] == 'L') {
-                continue;
-            }
-            if (!isset($linea['stock'])) {
-                $stock = GpPedidoDetalleStock::where('detalle_id', $linea['id'])->get()->toArray();
-                $linea['stock'] = $stock;
-            }
-
-            foreach ($linea['stock'] as $articulo) {
-                if ($articulo['seleccionado'] > 0) {
-                    $arArticulos[] = array(
-                        'articulo' => $linea['ART_CODIGO']
-                    );
-                    break;
-                }
-            }
-        }
-
-        if (count($arArticulos) > 0) {
-            $arBodegas = $this->getBodegas($data['PTO_VTA_ID'], 1);
-            $stockGeneral = $this->consultStockWarehouse($arArticulos, $arBodegas);
-            $stockGeneral = collect($stockGeneral)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
-                ->map(function ($items) {
-                    return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
-                })
-                ->toArray();
-        }
-        $alert = null;
-
-        foreach ($detalle as &$articulo) {
-            if (in_array($articulo['ART_TIPO_COMPRA'], ['L', 'SERV'])) {
-                continue;
-            }
-            $articuloCodigo = $articulo['ART_CODIGO'];
-            $articuloCantidad = $articulo['ART_CANTIDAD'];
-            $isDecimal = $articulo['ART_DECIMAL_CANTIDAD'] != 0;
-            $stockTotal = 0;
-
-            if (!isset($stockGeneral[$articuloCodigo])) {
-                $articulo['stock'] = [];
-                continue;
-            }
-
-            foreach ($stockGeneral[$articuloCodigo] as $key => $st) {
-                $disponible = $isDecimal ? number_format((float) $st['STO_ART_STOCK_DISPONIBLE'], 2, '.', '') : (int) $st['STO_ART_STOCK_DISPONIBLE'];
-                $reservado = $this->stockWarehouseService->stockReservado($articuloCodigo, $st['STO_ART_BODEGA'], $pedidoId);
-                $ajustado = max(0, $disponible - $reservado);
-                $stockGeneral[$articuloCodigo][$key]['STO_ART_STOCK_DISPONIBLE'] = $ajustado;
-                $stockTotal += $ajustado;
-            }
-            $articulo['stock'] = array_values($stockGeneral[$articuloCodigo]);
-
-            if (($stockTotal - $articuloCantidad) < 0) {
-                $alert .= "El articulo " . $articulo['ART_CODIGO'] . " tiene stock insuficiente. Stock disponible: " . $stockTotal . " - Cantidad pedido: " . $articulo['ART_CANTIDAD'] . "<br>";
-            }
-        }
-
-        return $alert;
-    }
-
-
 
     public function getBodegas($bodega, $consulta = null)
     {
@@ -188,9 +120,9 @@ class FunctionsService implements FunctionsServiceInterface
 
             $lineaSubtotal = $valorUnitario * $cantidad;
             $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineNet = ($valorUnitario - $descuentoUnitario) * $cantidad;
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+            $lineaIva = round( $lineNet * ($impuestoPorcentaje / 100), 2);
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;

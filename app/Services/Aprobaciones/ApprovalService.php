@@ -142,8 +142,9 @@ class ApprovalService implements ApprovalServiceInterface
                     //VALIDACIONES POR EL TIO DE ARTICULO
                     if ($detalle['ART_TIPO_COMPRA'] == 'L') {
                         foreach ($detalle['proveedores'] as $proveedor) {
-                            $proveedorOriginal = GpCotizacionDetalleProveedores::where('detalle_id', $detOriginal->id)->first();
-                            if ($proveedor['MARGEN'] < $proveedorOriginal->MARGEN) {
+                            // $provider = GpCotizacionDetalleProveedores::where('detalle_id', $detOriginal->id)->first();
+                            //  $margin = ($provider->COSTO_UNITARIO / (1 - ($provider->MARGEN / 100))) / (1 - $detalle['descuento'] / 100);
+                            if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
                                 return [
                                     'requiere' => 'yes',
                                     'motivo' => "Margen del producto L es menor al margen aprobado en la cotización."
@@ -254,13 +255,19 @@ class ApprovalService implements ApprovalServiceInterface
 
             if ($detalle['ART_TIPO_COMPRA'] == 'L') {
                 foreach ($detalle['proveedores'] as $proveedor) {
-                    $margen = number_format(($proveedor['COSTO_UNITARIO'] /
-                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
 
-                    if ($margen > $detalle['ART_VALOR']) {
+                    $valor = number_format(($proveedor['COSTO_UNITARIO'] /
+                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
+                    if ($valor > $detalle['ART_VALOR']) {
                         return [
                             'requiere' => 'yes',
-                            'motivo' => "Margen del producto L es mayor al valor del producto"
+                            'motivo' => "Valor del producto L es mayor al valor del precio minimo"
+                        ];
+                    }
+                    if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
+                        return [
+                            'requiere' => 'yes',
+                            'motivo' => "Margen del producto L es menor al margen aprobado en la cotización."
                         ];
                     }
                 }
@@ -433,16 +440,19 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-
     /**
-     *  FUNCIONES PARA LA APROBACIÓN CREDITICIA DE PEDIDOS
+     * FUNCION PARA LA VERIFICACION DE STOCK DE LOS ARTICULOS DEL PEEDIDO ANTES DE APROBAR
      */
 
     public function getOrderApprovalData($data)
     {
         try {
-            $detallePedido = GpPedidoDetalle::where('pedido_id', $data['id'])->get()->toArray();
-            $alert = $this->functionService->consultStockDetail($data, $detallePedido, $data['id']);
+            $detalles = $this->getDetailArticlesWithStock($data['id']);
+            $flatDetails  = $this->stockFormatterForUpdateApproval($detalles);
+            $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
+            $stocksResult =  $this->getStockWarehouseAsyncAndFormantter($parmas);
+            $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id']);
             if ($alert) {
                 return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
             }
@@ -452,6 +462,37 @@ class ApprovalService implements ApprovalServiceInterface
         }
     }
 
+
+    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId)
+    {
+        $allFormattedStock = collect();
+        foreach ($detalles as $detail) {
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId);
+            if (!empty($stockList)) {
+                $allFormattedStock = $allFormattedStock->merge($stockList);
+            }
+        }
+
+        if ($allFormattedStock->isEmpty()) {
+            return;
+        }
+        $alert = null;
+        foreach ($allFormattedStock as $stock) {
+            if ($stock['STO_ART_STOCK_DISPONIBLE'] < $stock['seleccionado']) {
+                $alert .= "El artículo {$stock['STO_ART_ARTICULO']} tiene stock insuficiente. " .
+                    "Stock disponible: {$stock['STO_ART_STOCK_DISPONIBLE']} - " .
+                    "Cantidad pedido: {$stock['seleccionado']}<br>";
+            }
+        }
+        return $alert;
+    }
+
+
+
+
+    /**
+     *  FUNCIONES PARA LA APROBACIÓN CREDITICIA DE PEDIDOS
+     */
 
 
     public function approveCreditOrder($data)
@@ -493,6 +534,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
@@ -509,6 +551,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
         return $this->buildErrorResponse($data['alert'], 422);
@@ -565,6 +608,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
@@ -585,6 +629,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido->rechazado = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
     }
@@ -621,21 +666,25 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function updateStockOnOrderApproval($order)
     {
-        $detalles = GpPedidoDetalle::with('pedidoDetalleStocks')
-            ->where('pedido_id', $order->id)
-            ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
+        $detalles = $this->getDetailArticlesWithStock($order->id);
         if ($detalles->isEmpty()) {
             return;
         }
         $flatDetails  = $this->stockFormatterForUpdateApproval($detalles);
         $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
+
         $stocksResult =  $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
 
         $this->updateOrderDetailStockAndGetStockDisponible($detalles,  $newFormatStock, $order->id);
     }
 
-
+    public function getDetailArticlesWithStock($orderId)
+    {
+        return GpPedidoDetalle::with('pedidoDetalleStocks')
+            ->where('pedido_id', $orderId)
+            ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
+    }
     public function stockFormatterForUpdateApproval($detalles)
     {
         return $detalles->pluck('pedidoDetalleStocks')
@@ -666,6 +715,10 @@ class ApprovalService implements ApprovalServiceInterface
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
         $stocksResult =  $this->apiGpService->getStockWarehouseAsync($parmas);
+        Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
+        if (is_null($stocksResult) || !is_array($stocksResult)) {
+            throw new \Exception("No se pudo obtener el stock de los articulos");
+        }
         return $this->formatResultStocksApproval($stocksResult);
     }
 

@@ -202,13 +202,6 @@ class ConsultasController extends Controller
 
 
 
-
-    public function consultastockpedido(Request $request)
-    {
-        $data = $request->all();
-        return $this->InventoryQueryService->getConsultStockOrder($data);
-    }
-
     public function consultastockarticulopuntodeventa($articulo, $puntodeventa): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 

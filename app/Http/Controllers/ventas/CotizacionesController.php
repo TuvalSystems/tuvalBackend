@@ -1402,4 +1402,7 @@ class CotizacionesController extends Controller
 
         return $this->quotationService->getMarginItem($articulo['ART_CODIGO']);
     }
+
+
+
 }

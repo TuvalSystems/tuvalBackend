@@ -33,4 +33,7 @@ interface OrderServiceInterface
 
 
         public function generateOrderDispatch($id);
+
+
+        public function recalculateOrder($order);
     }

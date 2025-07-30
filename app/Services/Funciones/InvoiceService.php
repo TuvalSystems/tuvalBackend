@@ -100,32 +100,29 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTraslado(GpPedido $pedido)
     {
-        $hayTraslado = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
+        $detalles = $this->getDetailForTraslate($pedido);
+        $nuevoEstado = $detalles->isNotEmpty() ? 'traslado' : 'espera';
+        $pedido->estado = $nuevoEstado;
+
+        if ($nuevoEstado == 'traslado') {
+            $this->saveTransferenciasVentas($pedido, $detalles);
+        }
+        $pedido->save();
+    }
+
+    public function getDetailForTraslate(GpPedido $pedido)
+    {
+        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
             ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
             ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
             ->whereNull('traslado')
             ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)
-            ->exists();
-        if ($hayTraslado) {
-            $pedido->estado = 'traslado';
-            $pedido->save();
-
-            // solo traemos los detalles que necesitamos
-            $detalles = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
-                ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-                ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-                ->whereNull('traslado')
-                ->select([
-                    'gp_pedido_detalles.*',
-                    'gp_pedido_detalle_stocks.STO_ART_BODEGA',
-                    'gp_pedido_detalle_stocks.seleccionado',
-                    'gp_pedido_detalle_stocks.id AS detalle_stocks_id'
-                ])->get();
-            $this->saveTransferenciasVentas($pedido, $detalles);
-        } else {
-            $pedido->estado = 'espera';
-            $pedido->save();
-        }
+            ->select([
+                'gp_pedido_detalles.*',
+                'gp_pedido_detalle_stocks.STO_ART_BODEGA',
+                'gp_pedido_detalle_stocks.seleccionado',
+                'gp_pedido_detalle_stocks.id AS detalle_stocks_id'
+            ])->get();
     }
 
     /**
@@ -236,13 +233,12 @@ class InvoiceService implements InvoiceServiceInterface
             }
 
             [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
-             $this->storeNewDispatchOrder($pedido,  $estado, $fechaLiberacion);
+            $this->storeNewDispatchOrder($pedido,  $estado, $fechaLiberacion);
             return;
         } catch (\Exception $e) {
             Log::error("Error generating dispatch order: " . $e->getMessage());
             return;
         }
-
     }
 
     public function storeNewDispatchOrder($pedido,  $estado, $fechaLiberacion)
@@ -258,7 +254,6 @@ class InvoiceService implements InvoiceServiceInterface
         $newDispatchOrder->orden = $this->generateDispatchOrderNumber($newDispatchOrder);
         $newDispatchOrder->save();
         return $newDispatchOrder;
-
     }
 
     public function shouldSkipOrderGeneration($pedido)
@@ -390,7 +385,6 @@ class InvoiceService implements InvoiceServiceInterface
             $pedido->estado = 'rechazado';
             $pedido->save();
             throw new \Exception("Pedido {$pedido->pedido} rechazado", 422);
-
         }
 
         if ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
@@ -405,33 +399,33 @@ class InvoiceService implements InvoiceServiceInterface
         }
     }
 
-    public function respuestaFacturaVenta($pedido)
+    public function respuestaFacturaVenta($order)
     {
+        $pedido = GpPedido::where('pedido', $order->pedido)->first();
         $params = [
             'documento_origen' => $pedido->pedido,
             'tipo_documento' => 3,
         ];
         $result = $this->mswService->transaccional('MST_Respuesta_Factura_Vta', $params);
-        if (
-            isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'])
-            && $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'] != ''
-        ) {
-            $pedido->factura = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'];
-            $pedido->FAC_VTA_MENSAJE = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'];
+        $respuesta = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0] ?? null;
+
+        if ($respuesta && !empty($respuesta['DOC_GENERADO'])) {
+            $pedido->factura = $respuesta['DOC_GENERADO'];
+            $pedido->FAC_VTA_MENSAJE = $respuesta['FAC_VTA_MENSAJE'] ?? null;
             $pedido->estado = 'facturado';
-            $pedido->fecha_factura = date('Y-m-d');
-            $pedido->fecha_hora_factura = date('Y-m-d H:i:s');
-            $pedido->save();
+            $pedido->fecha_factura = now()->toDateString();
+            $pedido->fecha_hora_factura = now();
         } else {
-            if (
-                isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'])
-                && $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'] != ''
-            )
-                $pedido->FAC_VTA_MENSAJE = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'];
-            else
-                $pedido->FAC_VTA_MENSAJE = 'Error no definido por GP';
+            $pedido->FAC_VTA_MENSAJE = $respuesta['FAC_VTA_MENSAJE'] ?? 'Error no definido por GP';
             $pedido->estado = 'espera';
+        }
+
+        try {
             $pedido->save();
+        } catch (\Throwable $e) {
+            logger()->error("Error guardando pedido en repuesta de factura {$pedido->id}: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 }

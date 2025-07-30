@@ -2,39 +2,41 @@
 
 namespace App\Providers;
 
-use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
-use App\Services\Bodegas\PurchaseReceiptService;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Funciones\FunctionsService;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
-use App\Services\Pedidos\OrderJobService;
 use App\Services\Pedidos\OrderService;
-use App\Services\Venta\InventoryQueryService;
-use App\Services\Venta\QuotationService;
-use App\Services\Venta\Utils\OrderAndQuotationService;
 use Illuminate\Support\ServiceProvider;
+use App\Services\Venta\QuotationService;
+use App\Services\Bodegas\DispatchService;
+use App\Services\Pedidos\OrderJobService;
+use App\Services\Funciones\InvoiceService;
 use App\Services\Devoluciones\EntryService;
+use App\Services\Funciones\FunctionsService;
+use App\Services\Venta\PurchaseOrderService;
+use App\Services\Venta\InventoryQueryService;
 use App\Services\Aprobaciones\ApprovalService;
+use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Devoluciones\DevolucionService;
+use App\Services\Notificacion\NotificationService;
 use App\Services\Devoluciones\DevolucionJobService;
 use App\Services\Reposiciones\StockWarehouseService;
+use App\Services\Bodegas\PurchaseReceiptLItemService;
+use App\Services\Venta\Utils\OrderAndQuotationService;
 use App\Services\Reposiciones\TransferRepositionService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
-use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Bodegas\DispatchService;
-use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
-use App\Services\Funciones\InvoiceService;
-use App\Services\Notificacion\NotificationService;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
-use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
-use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
-use App\Services\Venta\PurchaseOrderService;
+use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
+use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 
 class DevolucionServiceProvider extends ServiceProvider
 {
@@ -113,6 +115,8 @@ class DevolucionServiceProvider extends ServiceProvider
 
         $this->app->singleton(OrderAndQuotationServiceInterface::class, OrderAndQuotationService::class);
 
+        /**Servicio para utilizar para los recibidos de Item L  */
+        $this->app->bind(PurchaseReceiptLItemServiceInterface::class, PurchaseReceiptLItemService::class);
     }
 
 

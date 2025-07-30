@@ -65,19 +65,4 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
 
 
-    public function getConsultStockOrder($data)
-    {
-
-        $alert = $this->functionsService->consultStockDetail($data, $data['cotizacion']);
-
-        if (!$alert) {
-            return response(['success' => true, 'message' => "Si hay stock disponible para generar el Pedido"]);
-        }
-        return response([
-            'success' => false,
-            'message' => $alert,
-            'cotizacion' => $data['cotizacion'],
-        ]);
-
-    }
 }

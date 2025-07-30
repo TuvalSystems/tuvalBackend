@@ -30,11 +30,10 @@ use App\Http\Controllers\bodegas\ReposicionController;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function(){
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
-
 });
-Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
+Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -91,7 +90,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
     Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
     Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
-    Route::post('/consultas/consultastockpedido', [ConsultasController::class, 'consultastockpedido']);
     Route::post('/consultas/consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
     Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
     Route::post('/verpedidosycotizacionesporaprobar', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
@@ -245,15 +243,15 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function(){
     Route::post('/consultas/notificaciones', [ConsultasController::class, 'notificaciones']);
 
     //new routes
-    Route::get('cotizaciones/lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
-    Route::put('cotizaciones/guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 
-    /** cotizaciones new routes */
-    Route::post('cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
-    Route::post('cotizaciones/articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
+    Route::group(['prefix' => 'cotizaciones'], function () {
+        Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
+        Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 
-    Route::post('cotizaciones/obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
+        Route::post('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
+        Route::post('articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
+
+        Route::post('obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
+    });
 });
 Route::post('/login', [AuthController::class, 'login']);
-
-
