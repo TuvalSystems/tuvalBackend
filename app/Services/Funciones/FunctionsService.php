@@ -5,6 +5,7 @@ namespace App\Services\Funciones;
 use App\Models\GpCliente;
 use App\Models\GpArticulo;
 use App\Models\GpClienteSucursal;
+use App\Models\GpPedido;
 use App\Models\GpVendedor;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
@@ -100,9 +101,10 @@ class FunctionsService implements FunctionsServiceInterface
 
 
     /** funcion de recalcular pedido  */
-    public function recalculateOrder($order)
+    public function recalculateOrder($orderId)
     {
-        $detalle = GpPedidoDetalle::where('pedido_id', $order->id)->get();
+        $order = GpPedido::find($orderId);
+        $detalle = GpPedidoDetalle::where('pedido_id', $orderId)->get();
         if ($detalle->isEmpty()) {
             return;
         }

@@ -31,8 +31,11 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -60,8 +63,9 @@ class DespachosController extends Controller
         $order = app(OrderServiceInterface::class);
         $aproval = app(ApprovalServiceInterface::class);
         $invoice = app(InvoiceServiceInterface::class);
+        $function = app(FunctionsServiceInterface::class);
 
-        $pedidos = new PedidosController($apiGp, $order, $aproval, $invoice);
+        $pedidos = new PedidosController($apiGp, $order, $aproval, $invoice, $function);
         $pedidos->checktrasladado($pedido);
 
         if ($pedido->estado == 'orden_de_compra') {
@@ -420,7 +424,10 @@ class DespachosController extends Controller
             ->orderBy('created_at', 'DESC')
             ->first();
 
-        $guias = new GuiasderemisionController();
+        $invoice = app(InvoiceServiceInterface::class);
+        $notify = app(NotificationServiceInterface::class);
+        $deliveryNote = app(DeliveryNoteServiceInterface::class);
+        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
         $guias->checkguiaremision();
 
         $ordenes = array_values($ordenes->toArray());
@@ -496,7 +503,11 @@ class DespachosController extends Controller
             ->orderBy('created_at', 'DESC')
             ->first();
 
-        $guias = new GuiasderemisionController();
+        $invoice = app(InvoiceServiceInterface::class);
+        $notify = app(NotificationServiceInterface::class);
+        $deliveryNote = app(DeliveryNoteServiceInterface::class);
+        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
+
         $guias->checkguiaremision();
 
         $ordenes = array_values($ordenes->toArray());
@@ -1021,22 +1032,7 @@ class DespachosController extends Controller
         ]);
     }
 
-    public function checktrasladados()
-    {
-        $pedidos = GpPedido::where('estado', 'traslado')
-            ->where('id', 29)
-            ->get();
-        $order = app(OrderServiceInterface::class);
-        $apigp = app(ApiGpService::class);
-        $aproval = app(ApprovalServiceInterface::class);
-          $invoice = app(InvoiceServiceInterface::class);
-        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
 
-        foreach ($pedidos as $pedido) {
-
-            $pedidosControl->checkenviarfactura($pedido, true);
-        }
-    }
 
     public function imprimirordendespacho($id): Response
     {

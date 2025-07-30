@@ -44,7 +44,9 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         }
 
-        $this->checkTransferStatus($pedido, $trasladado);
+        if ($this->shouldSkipDueToTransferStatus($pedido, $trasladado)) {
+            return;
+        }
 
         if ($this->processPurchaseOrders($pedido)) {
             return;
@@ -55,7 +57,7 @@ class InvoiceService implements InvoiceServiceInterface
         }
 
         $this->generateDisptachOrder($pedido);
-        $this->functionService->recalculateOrder($pedido);
+        $this->functionService->recalculateOrder($pedido->id);
         $this->sendInvoiceGp($pedido);
         return;
     }
@@ -68,13 +70,11 @@ class InvoiceService implements InvoiceServiceInterface
             ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
     }
 
-    public function checkTransferStatus(GpPedido $pedido, $trasladado)
+    public function shouldSkipDueToTransferStatus(GpPedido $pedido, $trasladado) : bool
     {
-        if ($trasladado) {
-            $this->checkTrasladado($pedido);
-        } else {
-            $this->checkTraslado($pedido);
-        }
+        return $trasladado
+            ? $this->checkTrasladado($pedido)
+            : $this->checkTraslado($pedido);
     }
 
     public function processPurchaseOrders(GpPedido $pedido)
@@ -89,25 +89,34 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTrasladado(GpPedido $pedido)
     {
-        $tieneTraslado = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
-            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)->exists();
+        $tieneTraslado = $this->getDataCheckTraslado($pedido);
 
         $pedido->estado = $tieneTraslado ? 'traslado' : 'espera';
         $pedido->save();
+        return $tieneTraslado;
+    }
+
+
+    public function getDataCheckTraslado(GpPedido $pedido): bool
+    {
+        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
+            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
+            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
+            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)->exists();
     }
 
     public function checkTraslado(GpPedido $pedido)
     {
+        $hayTraslado = $this->getDataCheckTraslado($pedido);
         $detalles = $this->getDetailForTraslate($pedido);
-        $nuevoEstado = $detalles->isNotEmpty() ? 'traslado' : 'espera';
+        $nuevoEstado = $hayTraslado ? 'traslado' : 'espera';
         $pedido->estado = $nuevoEstado;
 
         if ($nuevoEstado == 'traslado') {
             $this->saveTransferenciasVentas($pedido, $detalles);
         }
         $pedido->save();
+        return $hayTraslado;
     }
 
     public function getDetailForTraslate(GpPedido $pedido)
@@ -222,8 +231,9 @@ class InvoiceService implements InvoiceServiceInterface
     public function generateDisptachOrder($pedido)
     {
         try {
-
-            $this->checkTrasladado($pedido);
+            if($this->checkTrasladado($pedido)){
+                return ;
+            }
             if ($this->shouldSkipOrderGeneration($pedido)) {
                 return;
             }
@@ -296,19 +306,39 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function sendInvoiceGp($pedido)
     {
-        $recib = $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
-        if ($recib) {
-            return;
-        }
-        $this->checkTrasladado($pedido);
-        if ($pedido->estado == 'orden_de_compra') {
+        // verifica si tiene ya ha recibido todos los item L del pedido
+        if ($this->purchaseOrderService->checkPurchaseOrderRecib($pedido)) {
             return;
         }
 
+        // verifica si el pedido tiene un item de traslado pendiente, si tiene no se facturara
+        if ($this->checkOrderHaveItemTransferPending($pedido)) {
+            Log::warning("Pedido {$pedido->pedido} tiene traslado pendiente. No se facturará.");
+            return;
+        }
+
+        // verifica si el pedido esta en estado 'orden_de_compra'
+        if ($pedido->estado == 'orden_de_compra') {
+            return;
+        }
+        // cuando el pedido esta en estado espera realiza otras validaciones adicionales
         if ($pedido->estado == 'espera') {
+            Log::info("Pedido {$pedido->pedido} en estado 'espera', verificando si puede cambiar a 'enviando'...");
+            if (!$this->orderReadyToShip($pedido)) {
+                Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera').");
+                return;
+            }
             $pedido->estado = 'enviando';
             $pedido->save();
         }
+
+        // 🚫 Validación final antes de facturar
+
+        if (!$this->checkFinalInvoiceValidation($pedido)) {
+            Log::warning("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual: {$pedido->estado}");
+            return;
+        }
+
         $sucursalEnvio = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
         $sucursalFacturacion = GpClienteSucursal::where('id', $pedido->sucursal_facturacion_id)->first();
         $docId = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)
@@ -317,64 +347,21 @@ class InvoiceService implements InvoiceServiceInterface
         if (!$docId) {
             return;
         }
-
-        $FAC_VTA_ID_DIRECCION_ENVIO = $sucursalEnvio->CLI_SUC_ID_DIRECCION;
-        if ($pedido->despacho == 'Retiro en bodega') {
-            $FAC_VTA_ID_DIRECCION_ENVIO = $sucursalFacturacion->CLI_SUC_ID_DIRECCION;
-        }
+        $FAC_VTA_ID_DIRECCION_ENVIO = ($pedido->despacho == 'Retiro en bodega') ?
+            $sucursalFacturacion->CLI_SUC_ID_DIRECCION : $sucursalEnvio->CLI_SUC_ID_DIRECCION;
 
         if (!$pedido->factura_origen) {
             $pedido->factura_origen = '';
         }
 
-        $cabecera = array(
-            array(
-                'FAC_VTA_DOCU_ORIGEN' => $pedido->pedido,
-                'FAC_VTA_DOC_COMPRA' => $pedido->orden_de_compra,
-                'FAC_VTA_ID_TIPO' => 3,
-                'FAC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
-                'FAC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
-                'FAC_VTA_ID_CLIENTE' => $pedido->CLI_RUC,
-                'FAC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
-                'FAC_VTA_ID_DIRECCION' => $sucursalFacturacion->CLI_SUC_ID_DIRECCION,
-                'FAC_VTA_ID_DIRECCION_ENVIO' => $FAC_VTA_ID_DIRECCION_ENVIO,
-                'FAC_VTA_COND_PAGO' => $pedido->COND_ID,
-                'FAC_VTA_NOTA_DOCU' => $pedido->factura_origen,
-                'FAC_VTA_DATE_DOCU' => date('Y-m-d H:i:s'),
-                'FAC_VTA_FORMA_PAGO' => $pedido->DESC_FORMA_PAGO_CODIGO,
-                'FAC_VTA_BODEGA' => $pedido->BOD_BODEGA,
-                'FAC_VTA_SUBTOTAL' => number_format($pedido->subtotal - $pedido->descuento, 2, '.', ''),
-                'FAC_VTA_DESCUENTO_COMERCIAL' => 0,
-                'FAC_VTA_IMPUESTO' => $pedido->iva,
-                'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
-                'FAC_VTA_TIPO_DESPACHO' => $pedido->despacho,
-            )
-        );
+        $cabecera = $this->mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO);
 
         $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
         if ($detalles->isEmpty()) {
+            Log::error("Pedido {$pedido->pedido} sin detalles");
             return;
         }
-        $detallePedido = [];
-        $linea = 0;
-        foreach ($detalles as $key => $detalle) {
-            $linea++;
-            $detallePedido[] = array(
-                'FAC_VTA_DET_LINEA' => $linea,
-                'FAC_VTA_DET_DOCU_ORIGEN' => $pedido->pedido,
-                'FAC_VTA_DET_ID_TIPO' => 3,
-                'FAC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
-                'FAC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
-                'FAC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
-                'FAC_VTA_DET_BODEGA' => $pedido->BOD_BODEGA,
-                'FAC_VTA_DET_CANTIDAD' => $detalle->ART_CANTIDAD,
-                'FAC_VTA_DET_COSTO_UNITARIO' => $detalle->ART_VALOR,
-                'FAC_VTA_DET_PRECIO_UNITARIO' => $detalle->ART_VALOR,
-                'FAC_VTA_DET_DESCUENTO' => $detalle->ART_DESCUENTO,
-                'FAC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
-                'FAC_VTA_DET_TOTAL' => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD, 2, '.', ''),
-            );
-        }
+        $detallePedido = $this->mapFormatDetailInvoice($detalles, $pedido);
 
         $params = [
             'Cabecera' => $cabecera,
@@ -384,10 +371,7 @@ class InvoiceService implements InvoiceServiceInterface
         if ($pedido->rechazado) {
             $pedido->estado = 'rechazado';
             $pedido->save();
-            throw new \Exception("Pedido {$pedido->pedido} rechazado", 422);
-        }
-
-        if ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
+            Log::error("Pedido {$pedido->pedido} rechazado");
             return;
         }
 
@@ -398,6 +382,120 @@ class InvoiceService implements InvoiceServiceInterface
             $this->respuestaFacturaVenta($pedido);
         }
     }
+
+
+    public function checkOrderHaveItemTransferPending(GpPedido $order): bool
+    {
+        $tieneTraslado = $this->getDataCheckTraslado($order);
+        if ($tieneTraslado) {
+            $order->estado = 'traslado';
+            $order->save();
+            Log::info("Pedido {$order->pedido} actualizado a estado 'traslado' por traslado pendiente. No se Factura");
+        }
+        return $tieneTraslado;
+    }
+
+
+    public function orderReadyToShip(GpPedido $order): bool
+    {
+        // no debe estar en estado traslado o orden de compra
+        if (in_array($order->estado, ['traslado', 'orden_de_compra'])) {
+            return false;
+        }
+        // Validar aprobación comercial
+        if ($order->requiere_aprobacion_comercial === 'yes' && $order->aprobado_comercial !== 'yes') {
+            return false;
+        }
+
+        // Validar aprobación crediticia
+        if ($order->requiere_aprobacion_crediticia === 'yes' && $order->aprobado_crediticio !== 'yes') {
+            return false;
+        }
+
+        // Validar que no esté rechazado
+        if ($order->rechazado) {
+            return false;
+        }
+
+        // Validar que tenga detalles
+        $tieneDetalles = GpPedidoDetalle::where('pedido_id', $order->id)
+            ->exists();
+        if (!$tieneDetalles) {
+            return false;
+        }
+        return true;
+    }
+
+
+    public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO)
+    {
+        return [[
+            'FAC_VTA_DOCU_ORIGEN' => $pedido->pedido,
+            'FAC_VTA_DOC_COMPRA' => $pedido->orden_de_compra,
+            'FAC_VTA_ID_TIPO' => 3,
+            'FAC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
+            'FAC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
+            'FAC_VTA_ID_CLIENTE' => $pedido->CLI_RUC,
+            'FAC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
+            'FAC_VTA_ID_DIRECCION' => $sucursalFacturacion->CLI_SUC_ID_DIRECCION,
+            'FAC_VTA_ID_DIRECCION_ENVIO' => $FAC_VTA_ID_DIRECCION_ENVIO,
+            'FAC_VTA_COND_PAGO' => $pedido->COND_ID,
+            'FAC_VTA_NOTA_DOCU' => $pedido->factura_origen,
+            'FAC_VTA_DATE_DOCU' => date('Y-m-d H:i:s'),
+            'FAC_VTA_FORMA_PAGO' => $pedido->DESC_FORMA_PAGO_CODIGO,
+            'FAC_VTA_BODEGA' => $pedido->BOD_BODEGA,
+            'FAC_VTA_SUBTOTAL' => number_format($pedido->subtotal - $pedido->descuento, 2, '.', ''),
+            'FAC_VTA_DESCUENTO_COMERCIAL' => 0,
+            'FAC_VTA_IMPUESTO' => $pedido->iva,
+            'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
+            'FAC_VTA_TIPO_DESPACHO' => $pedido->despacho,
+        ]];
+    }
+
+    public function mapFormatDetailInvoice($detalles, $pedido)
+    {
+        return $detalles->values()->map(function ($detalle, $index) use ($pedido) {
+            return [
+                'FAC_VTA_DET_LINEA'           => $index + 1,
+                'FAC_VTA_DET_DOCU_ORIGEN'     => $pedido->pedido,
+                'FAC_VTA_DET_ID_TIPO'         => 3,
+                'FAC_VTA_DET_ARTICULO'        => $detalle->ART_CODIGO,
+                'FAC_VTA_DET_DESC_ARTICULO'   => $detalle->ART_DESCRIPCION,
+                'FAC_VTA_DET_UNIDAD_MEDIDA'   => $detalle->ART_PLAN_UMEDIDA,
+                'FAC_VTA_DET_BODEGA'          => $pedido->BOD_BODEGA,
+                'FAC_VTA_DET_CANTIDAD'        => $detalle->ART_CANTIDAD,
+                'FAC_VTA_DET_COSTO_UNITARIO'  => $detalle->ART_VALOR,
+                'FAC_VTA_DET_PRECIO_UNITARIO' => $detalle->ART_VALOR,
+                'FAC_VTA_DET_DESCUENTO'       => $detalle->ART_DESCUENTO,
+                'FAC_VTA_DET_IMPUESTO_IVA'    => $detalle->ART_IVA,
+                'FAC_VTA_DET_TOTAL'           => number_format(
+                    ($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD,
+                    2,
+                    '.',
+                    ''
+                ),
+            ];
+        })->toArray();
+    }
+
+
+    public function checkFinalInvoiceValidation(GpPedido $pedido): bool
+    {
+        if ($pedido->estado != 'enviando') {
+            return false;
+        }
+
+        if ($pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio !== 'yes') {
+            return false;
+        }
+
+        if ($pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial !== 'yes') {
+            return false;
+        }
+        return true;
+    }
+
+
 
     public function respuestaFacturaVenta($order)
     {

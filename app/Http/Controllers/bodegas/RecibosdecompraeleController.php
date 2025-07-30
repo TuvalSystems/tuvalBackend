@@ -2,26 +2,18 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use App\Models\GpPedido;
-use App\Models\GpCliente;
+
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use Illuminate\Http\Request;
-use App\Models\Notificaciones;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
-use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Http\Controllers\WebserviceController;
-use App\Http\Controllers\ventas\PedidosController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+
 
 class RecibosdecompraeleController extends Controller
 {
@@ -217,7 +209,7 @@ class RecibosdecompraeleController extends Controller
         ]);
     }
 
-    
+
 
     public function setdetalleordendecompra($ordendecompra)
     {

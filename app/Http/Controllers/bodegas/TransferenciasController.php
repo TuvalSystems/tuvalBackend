@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use App\Models\Notificaciones;
 use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\despachos\GpGuiaRemision;
@@ -18,14 +17,20 @@ use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
-use App\Http\Controllers\ventas\PedidosController;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+
 
 class TransferenciasController extends Controller
 {
+    protected $invoiceService;
+    public function __construct(InvoiceServiceInterface $invoiceService)
+    {
+        $this->invoiceService = $invoiceService;
+    }
     public function savetransferenciasventas(GpPedido $pedido, $detalles)
     {
 
@@ -176,7 +181,10 @@ class TransferenciasController extends Controller
 
         $bodegas = array_values($bodegas);
 
-        $guias = new GuiasderemisionController();
+        $invoice = app(InvoiceServiceInterface::class);
+        $notify = app(NotificationServiceInterface::class);
+        $deliveryNote = app(DeliveryNoteServiceInterface::class);
+        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
         $guias->checkguiaremision();
 
         if (!isset($bodegas[0])) {
@@ -395,14 +403,9 @@ class TransferenciasController extends Controller
     {
         $pedidos = GpPedido::where('estado', 'traslado')
             ->get();
-
-        $order = app(OrderServiceInterface::class);
-        $apigp = app(ApiGpService::class);
-        $aproval = app(ApprovalServiceInterface::class);
-          $invoice = app(InvoiceServiceInterface::class);
-        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
         foreach ($pedidos as $pedido) {
-            $pedidosControl->checkenviarfactura($pedido, true);
+            // $pedidosControl->checkenviarfactura($pedido, true);
+            $this->invoiceService->checkSendInvoice($pedido, true);
         }
     }
 }

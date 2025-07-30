@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\OrderService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Venta\QuotationService;
@@ -35,6 +36,7 @@ use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Services\Bodegas\DeliveryNoteService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 
@@ -100,10 +102,10 @@ class DevolucionServiceProvider extends ServiceProvider
         $this->app->bind(PurchaseOrderServiceInterface::class, PurchaseOrderService::class);
 
         //aqui va el servicio de Job de Pedidos
-         $this->app->bind(OrderJobService::class);
+        $this->app->bind(OrderJobService::class);
 
-         //aqui va el servicio facturas de Pedidos
-         $this->app->singleton(
+        //aqui va el servicio facturas de Pedidos
+        $this->app->singleton(
             InvoiceServiceInterface::class,
             InvoiceService::class
         );
@@ -117,6 +119,9 @@ class DevolucionServiceProvider extends ServiceProvider
 
         /**Servicio para utilizar para los recibidos de Item L  */
         $this->app->bind(PurchaseReceiptLItemServiceInterface::class, PurchaseReceiptLItemService::class);
+
+        /** servicio dedicadoa las guias de remision  */
+        $this->app->bind(DeliveryNoteServiceInterface::class, DeliveryNoteService::class);
     }
 
 

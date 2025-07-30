@@ -608,12 +608,12 @@ class OrderService implements OrderServiceInterface
 
     public function recalculateAndSendInvoice($order)
     {
-        $this->functionsService->recalculateOrder($order);
+        $this->functionsService->recalculateOrder($order->id);
         $this->invoiceService->sendInvoiceGp($order);
     }
 
     public function recalculateOrder($order){
-        $this->functionsService->recalculateOrder($order);
+        $this->functionsService->recalculateOrder($order->id);
     }
 
 

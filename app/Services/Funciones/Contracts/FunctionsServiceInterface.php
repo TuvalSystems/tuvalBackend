@@ -6,7 +6,7 @@ interface FunctionsServiceInterface
 {
     public function getItemProviders($data, $item, $pendientes = false, $existentes = false);
 
-    public function recalculateOrder($order);
+    public function recalculateOrder($orderId);
 
     public function recalculateIva($detalle);
 

@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers\bodegas;
 
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use stdClass;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
-use App\Models\GpCronLog;
 use App\Models\GpPuntoVenta;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use App\Models\Notificaciones;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
-use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpClienteSucursal;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
@@ -29,12 +27,26 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-
+use PDF;
 class GuiasderemisionController extends Controller
 {
+    protected $deliveryNoteService;
+    protected $invoiceService;
+    protected $notifyService;
+    public function __construct(
+        DeliveryNoteServiceInterface $deliveryNoteService,
+        InvoiceServiceInterface $invoiceServiceInterface,
+        NotificationServiceInterface $notificacionService
+    ) {
+        $this->deliveryNoteService = $deliveryNoteService;
+        $this->invoiceService = $invoiceServiceInterface;
+        $this->notifyService = $notificacionService;
+    }
     public function generarguiaventa(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
@@ -156,8 +168,8 @@ class GuiasderemisionController extends Controller
         }
 
         //        return response([
-//            'error' => 'por si acaso',
-//        ], 401);
+        //            'error' => 'por si acaso',
+        //        ], 401);
 
         return response([
             'success' => true,
@@ -169,8 +181,7 @@ class GuiasderemisionController extends Controller
         $data = $request->all();
         $datosguia = array();
 
-        $GUI_REM_DIRECCION_DESTINATARIO = GpRelacionPuntoVentaBodega::
-            join('gp_punto_ventas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
+        $GUI_REM_DIRECCION_DESTINATARIO = GpRelacionPuntoVentaBodega::join('gp_punto_ventas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
             ->select('gp_punto_ventas.PTO_VTA_DIRECCION_1', 'gp_punto_ventas.PTO_VTA_DIRECCION_2')
             ->where('PTO_VTA_BOD_BODEGA', $data['items'][0]['bodega_destino'])->first()->toArray();
 
@@ -240,8 +251,7 @@ class GuiasderemisionController extends Controller
     public function saveguia($datosguia): GpGuiaRemision
     {
         $user = Auth::user();
-        $bodega = GpRelacionPuntoVentaBodega::
-            join('gp_punto_ventas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
+        $bodega = GpRelacionPuntoVentaBodega::join('gp_punto_ventas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
             ->join('gp_bodegas', 'gp_bodegas.BOD_BODEGA', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_BODEGA')
             ->select('gp_punto_ventas.PTO_VTA_ID', 'gp_punto_ventas.PTO_VTA_DIRECCION_1', 'gp_punto_ventas.PTO_VTA_DIRECCION_2', 'gp_bodegas.BOD_DESCRIPCION')
             ->where('PTO_VTA_BOD_BODEGA', $datosguia['bodega_origen'])->first()->toArray();
@@ -291,7 +301,6 @@ class GuiasderemisionController extends Controller
                 $detalle->GUI_REM_UNIDAD_MEDIDA = $item['ART_PLAN_UMEDIDA'];
                 $detalle->save();
             }
-
         }
         return $guiaderemision;
     }
@@ -359,8 +368,8 @@ class GuiasderemisionController extends Controller
                 'GUI_REM_DIRECCION_DESTINATARIO' => $guiaderemision->GUI_REM_DIRECCION_DESTINATARIO,
                 'GUI_REM_MOTIVO_TRASLADO' => $guiaderemision->GUI_REM_MOTIVO_TRASLADO,
                 'GUI_REM_DOCU_ADUANERO' => '',
-                'GUI_REM_CODI_ESTABLECIMIENTO_DESTINO' => '',//
-                'GUI_REM_DESC_ESTABLECIMIENTO_DESTINO' => '',//'',
+                'GUI_REM_CODI_ESTABLECIMIENTO_DESTINO' => '', //
+                'GUI_REM_DESC_ESTABLECIMIENTO_DESTINO' => '', //'',
                 'GUI_REM_RUTA' => $guiaderemision->GUI_REM_RUTA,
                 'GUI_REM_CODI_DOCU_SUSTENTO' => $guiaderemision->GUI_REM_CODI_DOCU_SUSTENTO,
                 'GUI_REM_NUME_DOCU_SUSTENTO' => $guiaderemision->GUI_REM_NUME_DOCU_SUSTENTO,
@@ -428,8 +437,6 @@ class GuiasderemisionController extends Controller
                 $guiaderemision->save();
             }
         }
-
-
     }
 
     public function imprimirguia($id): Response
@@ -597,7 +604,6 @@ class GuiasderemisionController extends Controller
                 $documentos[$traslado->Documento]['Documento'] = $traslado->Documento;
                 $documentos[$traslado->Documento]['items'][] = $item;
             }
-
         }
 
         $documentos = array_values($documentos);
@@ -967,7 +973,6 @@ class GuiasderemisionController extends Controller
                             $recibido->save();
                         }
                     }
-
                 } else {
                     return response([
                         'success' => false,
@@ -1040,8 +1045,8 @@ class GuiasderemisionController extends Controller
         $documentos = array_values($documentos);
 
         //        echo '<pre>';
-//        print_r($documentos);
-//        die();
+        //        print_r($documentos);
+        //        die();
 
         $webservices = new WebserviceController();
 
@@ -1118,8 +1123,9 @@ class GuiasderemisionController extends Controller
         $order = app(OrderServiceInterface::class);
         $apigp = app(ApiGpService::class);
         $aproval = app(ApprovalServiceInterface::class);
-          $invoice = app(InvoiceServiceInterface::class);
-        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
+        $invoice = app(InvoiceServiceInterface::class);
+        $function = app(FunctionsServiceInterface::class);
+        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice,  $function);
 
         $ingresos = new IngresosController();
         $ingresos->ingreso('traslado_venta', $data, $data['detalle']);
@@ -1146,13 +1152,13 @@ class GuiasderemisionController extends Controller
                         $pedido->save();
                     }
 
-                    $pedidosControl->checkenviarfactura($pedido, true);
-                    $notificacion = new Notificaciones();
-                    $notificacion->titulo = 'Artículo/s recibidos';
-                    $notificacion->user_id = $pedido->user_id;
-                    $notificacion->mensaje = 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA;
-                    $notificacion->estado = 'nuevo';
-                    $notificacion->save();
+                    // $pedidosControl->checkenviarfactura($pedido, true);
+                    $this->invoiceService->checkSendInvoice($pedido, true);
+                     $this->notifyService->sendNotification(
+                        $pedido->user_id,
+                        'Artículo/s recibidos',
+                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
+                     );
                 }
                 //aqui la notifiacion
 
@@ -1169,20 +1175,21 @@ class GuiasderemisionController extends Controller
                     ->first();
 
                 if ($pedido) {
-                    $pedidosControl->checktrasladado($pedido);
+                    //  $pedidosControl->checktrasladado($pedido);
+                    $this->invoiceService->checkTrasladado($pedido);
 
                     if ($pedido->estado == 'espera') {
-                        $pedidosControl->checkenviarfactura($pedido, true);
+                        // $pedidosControl->checkenviarfactura($pedido, true);
+                        $this->invoiceService->checkSendInvoice($pedido, true);
                         //aqui la notifiacion
-                        $notificacion = new Notificaciones();
-                        $notificacion->titulo = 'Artículo/s recibidos';
-                        $notificacion->user_id = $pedido->user_id;
-                        $notificacion->mensaje = 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA;
-                        $notificacion->estado = 'nuevo';
-                        $notificacion->save();
+
+                        $this->notifyService->sendNotification(
+                        $pedido->user_id,
+                        'Artículo/s recibidos',
+                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
+                     );
                     }
                 }
-
             }
 
             return response([
@@ -1208,20 +1215,15 @@ class GuiasderemisionController extends Controller
 
                 $pedido = GpPedido::where('pedido', $guia->pedido)->first();
                 if ($pedido->estado != 'facturado') {
-                    $order = app(OrderServiceInterface::class);
-                    $apigp = app(ApiGpService::class);
-                    $aproval = app(ApprovalServiceInterface::class);
-                      $invoice = app(InvoiceServiceInterface::class);
-                    $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
-                    $pedidosControl->checkenviarfactura($pedido, true);
+                    // $pedidosControl->checkenviarfactura($pedido, true);
+                    $this->invoiceService->checkSendInvoice($pedido, true);
                 }
                 //aqui la notifiacion
-                $notificacion = new Notificaciones();
-                $notificacion->titulo = 'Artículo/s recibidos';
-                $notificacion->user_id = $pedido->user_id;
-                $notificacion->mensaje = 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA;
-                $notificacion->estado = 'nuevo';
-                $notificacion->save();
+                 $this->notifyService->sendNotification(
+                        $pedido->user_id,
+                        'Artículo/s recibidos',
+                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
+                     );
 
                 return response([
                     'success' => true,
@@ -1230,12 +1232,11 @@ class GuiasderemisionController extends Controller
             } else {
                 $pedido = GpPedido::where('pedido', $guia->pedido)->first();
                 //aqui la notifiacion
-                $notificacion = new Notificaciones();
-                $notificacion->titulo = 'Artículo/s recibidos';
-                $notificacion->user_id = $pedido->user_id;
-                $notificacion->mensaje = 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA;
-                $notificacion->estado = 'nuevo';
-                $notificacion->save();
+                 $this->notifyService->sendNotification(
+                        $pedido->user_id,
+                        'Artículo/s recibidos',
+                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
+                     );
 
                 return response([
                     'success' => true,
@@ -1280,8 +1281,8 @@ class GuiasderemisionController extends Controller
                 'GUI_REM_DIRECCION_DESTINATARIO' => $guiaderemision->GUI_REM_DIRECCION_DESTINATARIO,
                 'GUI_REM_MOTIVO_TRASLADO' => $guiaderemision->GUI_REM_MOTIVO_TRASLADO,
                 'GUI_REM_DOCU_ADUANERO' => '',
-                'GUI_REM_CODI_ESTABLECIMIENTO_DESTINO' => '',//
-                'GUI_REM_DESC_ESTABLECIMIENTO_DESTINO' => '',//'',
+                'GUI_REM_CODI_ESTABLECIMIENTO_DESTINO' => '', //
+                'GUI_REM_DESC_ESTABLECIMIENTO_DESTINO' => '', //'',
                 'GUI_REM_RUTA' => $guiaderemision->GUI_REM_RUTA,
                 'GUI_REM_CODI_DOCU_SUSTENTO' => $guiaderemision->GUI_REM_CODI_DOCU_SUSTENTO,
                 'GUI_REM_NUME_DOCU_SUSTENTO' => $guiaderemision->GUI_REM_NUME_DOCU_SUSTENTO,
