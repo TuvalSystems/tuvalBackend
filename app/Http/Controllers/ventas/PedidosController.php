@@ -1202,19 +1202,24 @@ class PedidosController extends Controller
     }
 
     public function imprimirpedidoxml($id)
-    {
-        try {
-            $xmlContent = $this->orderService->generateInvoiceXml($id);
-            $nombreArchivo = 'factura_' . $xmlContent['factura'] . '.xml';
-            return Response::make($xmlContent['xml'], 200, [
-                'Content-Type' => 'application/xml',
-                'Content-Disposition' => 'attachment; filename="' . $nombreArchivo . '"',
-            ]);
-        } catch (\Throwable $th) {
-            // report($th);
-            return $this->buildErrorResponse($th->getMessage(), 404);
+{
+    try {
+        $xmlContent = $this->orderService->generateInvoiceXml($id);
+
+        if (empty($xmlContent['xml']) || empty($xmlContent['factura'])) {
+            return $this->buildErrorResponse('No se pudo generar el XML.', 422);
         }
+
+        $nombreArchivo = 'factura_' . $xmlContent['factura'] . '.xml';
+
+        return response($xmlContent['xml'], 200)
+            ->header('Content-Type', 'application/xml')
+            ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
+
+    } catch (\Throwable $th) {
+        return $this->buildErrorResponse($th->getMessage(), 500);
     }
+}
     public function despachoenproceso($id)
     {
         $pedido = gpPedido::where('id', $id)->first();
