@@ -85,7 +85,7 @@ class MswService
         do {
             try {
                 $attempt++;
-                $response = Soap::baseWsdl(env('WEBSERVICES_COBRANZAS_URL'))
+                $response = Soap::baseWsdl(env('WEBSERVICES_URL'))
                     ->MST_Lista_Precio([
                         'Lista_Precio_Articulo' => $params,
                     ]);
