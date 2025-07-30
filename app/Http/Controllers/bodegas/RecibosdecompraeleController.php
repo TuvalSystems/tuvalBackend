@@ -4,6 +4,7 @@ namespace App\Http\Controllers\bodegas;
 
 use App\Models\GpPedido;
 use App\Models\GpCliente;
+use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use Illuminate\Http\Request;
 use App\Models\Notificaciones;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,6 +25,13 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 
 class RecibosdecompraeleController extends Controller
 {
+
+    protected $purchaseReceiptLItemService;
+
+    public function __construct(PurchaseReceiptLItemServiceInterface $purchaseReceiptLItemService)
+    {
+        $this->purchaseReceiptLItemService = $purchaseReceiptLItemService;
+    }
     public function bandeja(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
@@ -34,8 +42,7 @@ class RecibosdecompraeleController extends Controller
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $request->puntodeventa_id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $ordendecompra = GpOrdenDeCompraGenerado::
-            leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
+        $ordendecompra = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
             ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
             ->leftJoin('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
 
@@ -56,8 +63,7 @@ class RecibosdecompraeleController extends Controller
             ->get();
 
 
-        $recibidos = GpOrdenDeCompraGenerado::
-            leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
+        $recibidos = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
             ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
             ->where('gp_orden_de_compras.ORDEN_COMPRA_BODEGA', $bodega)
             ->where('gp_orden_de_compra_generados.estado', 'recibido')
@@ -65,8 +71,7 @@ class RecibosdecompraeleController extends Controller
             ->orderBy('gp_orden_de_compra_generados.ORDEN_COMPRA_FECHA_ENTREGA', 'DESC')
             ->get();
 
-        $eliminados = GpOrdenDeCompraGenerado::
-            leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
+        $eliminados = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
             ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
             ->where('gp_orden_de_compras.ORDEN_COMPRA_BODEGA', $bodega)
             ->where('gp_orden_de_compra_generados.estado', 'eliminado')
@@ -108,84 +113,86 @@ class RecibosdecompraeleController extends Controller
     public function recibir(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
+        $user = Auth::user();
+        try {
+            DB::beginTransaction();
+            $orden = GpOrdenDeCompraGenerado::where('id', $data['id'])->get()->first();
 
-        $orden = GpOrdenDeCompraGenerado::where('id', $data['id'])->get()->first();
-
-        $cabecera = array(
-            array(
-                'REC_COM_DOCU_ORIGEN' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
-                'REC_COM_ID_TIPO' => 1,
-                'REC_COM_ID_PROVEEDOR' => $orden->ORDEN_COMPRA_ID_PROVEEDOR,
-                'REC_COM_FECHA' => date('Y-m-d'),
-            )
-        );
-
-        $DetalleOrden = array();
-
-        foreach ($data['detalle'] as $detalle) {
-
-            if ($detalle['seleccionado'] > 0) {
-                $DetalleOrden[] = array(
+            $cabecera = array(
+                array(
                     'REC_COM_DOCU_ORIGEN' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
                     'REC_COM_ID_TIPO' => 1,
-                    'REC_COM_ID_ARTICULO' => $detalle['ORDEN_COMPRA_DETALLE_ARTICULO'],
-                    'REC_COM_DESCRIPCION_ARTICULO' => $detalle['ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO'],
-                    'REC_COM_UNIDAD_MEDIDA' => $detalle['ORDEN_COMPRA_DETALLE_UMEDIDA'],
-                    'REC_COM_BODEGA' => $detalle['ORDEN_COMPRA_DETALLE_BODEGA'],
-                    'REC_COM_CANTIDAD' => $detalle['seleccionado'],
-                );
+                    'REC_COM_ID_PROVEEDOR' => $orden->ORDEN_COMPRA_ID_PROVEEDOR,
+                    'REC_COM_FECHA' => date('Y-m-d'),
+                )
+            );
+
+            $DetalleOrden = array();
+
+            foreach ($data['detalle'] as $detalle) {
+
+                if ($detalle['seleccionado'] > 0) {
+                    $DetalleOrden[] = array(
+                        'REC_COM_DOCU_ORIGEN' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
+                        'REC_COM_ID_TIPO' => 1,
+                        'REC_COM_ID_ARTICULO' => $detalle['ORDEN_COMPRA_DETALLE_ARTICULO'],
+                        'REC_COM_DESCRIPCION_ARTICULO' => $detalle['ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO'],
+                        'REC_COM_UNIDAD_MEDIDA' => $detalle['ORDEN_COMPRA_DETALLE_UMEDIDA'],
+                        'REC_COM_BODEGA' => $detalle['ORDEN_COMPRA_DETALLE_BODEGA'],
+                        'REC_COM_CANTIDAD' => $detalle['seleccionado'],
+                    );
+                }
             }
 
-
-        }
-
-        $DetalleOrden = array_values($DetalleOrden);
-
-        $parameters = array(
-            'Cabecera' => $cabecera,
-            'Detalle' => $DetalleOrden,
-        );
-
-        $webservices = new WebserviceController();
-        $result = $webservices->transaccional('MST_RECIBO_COMPRA', $parameters);
-        //        echo '<pre>';
-//        print_r($parameters);
-//        print_r($result);
-        $listo = false;
-
-        if (isset($result['MST_RECIBO_COMPRAResult'])) {
+            $DetalleOrden = array_values($DetalleOrden);
 
             $parameters = array(
-                'documento_origen' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
-                'tipo_documento' => 1,
+                'Cabecera' => $cabecera,
+                'Detalle' => $DetalleOrden,
             );
-            $result = $webservices->transaccional('MST_Respuesta_Recibo_Compra', $parameters);
 
-            if (
-                isset($result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'])
-                && $result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'] != ''
-            ) {
-                $orden->ORDEN_COMPRA_RECIBO .= '_' . $result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'];
-                $orden->recibidos += 1;
-                $orden->save();
-                $this->checkordenrecibida($orden, $data['detalle']);
-                $listo = true;
+            $webservices = new WebserviceController();
+            $result = $webservices->transaccional('MST_RECIBO_COMPRA', $parameters);
+
+            $listo = false;
+
+            if (isset($result['MST_RECIBO_COMPRAResult'])) {
+
+                $parameters = array(
+                    'documento_origen' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
+                    'tipo_documento' => 1,
+                );
+                $result = $webservices->transaccional('MST_Respuesta_Recibo_Compra', $parameters);
+
+                if (
+                    isset($result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'])
+                    && $result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'] != ''
+                ) {
+                    $orden->ORDEN_COMPRA_RECIBO .= '_' . $result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'];
+                    $orden->recibidos += 1;
+                    $orden->save();
+                    //$this->checkordenrecibida($orden, $data['detalle']);
+                    $this->purchaseReceiptLItemService->checkOrderReception($orden, $data['detalle'],  $user);
+                    $listo = true;
+                }
             }
-        }
 
-        if ($listo) {
-
-            $ingresos = new IngresosController();
-            $ingresos->ingreso('compra', $data, $data['detalle']);
-
-            return response([
-                'success' => true,
-                'message' => 'Orden de compra recibida',
-            ]);
-        } else {
-            return response([
-                'error' => 'El recibo de orden de compra aun no ha sido contabilizado<br>Recibir la orden de compra en un minuto'
-            ], 401);
+            DB::commit();
+            if ($listo) {
+                $ingresos = new IngresosController();
+                $ingresos->ingreso('compra', $data, $data['detalle']);
+                return response([
+                    'success' => true,
+                    'message' => 'Orden de compra recibida',
+                ]);
+            } else {
+                return response([
+                    'error' => 'El recibo de orden de compra aun no ha sido contabilizado<br>Recibir la orden de compra en un minuto'
+                ], 401);
+            }
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response(['status' => 'error', 'message' => $th->getMessage()]);
         }
     }
 
@@ -210,71 +217,7 @@ class RecibosdecompraeleController extends Controller
         ]);
     }
 
-    public function checkordenrecibida($orden, $detalle)
-    {
-
-        $user = Auth::user();
-
-        $recibida = true;
-
-        foreach ($detalle as $det) {
-            $det_proveedor = GpPedidoDetalleProveedores::where('id', $det['detalle_proveedores_id'])->get()->first();
-
-            if (!$det_proveedor->ingresado)
-                $det_proveedor->ingresado = 0;
-
-            $det_proveedor->ingresado += $det['seleccionado'];
-
-            if ($det_proveedor->CANTIDAD == $det_proveedor->ingresado) {
-                $det_proveedor->recibido = 'yes';
-            } else {
-                $recibida = false;
-            }
-            $det_proveedor->save();
-
-            $orden_detalle = GpOrdenDeCompraGeneradoDetalle::where('id', $det['id'])->get()->first();
-
-            if (!$orden_detalle->recibido)
-                $orden_detalle->recibido = 0;
-
-            $orden_detalle->recibido += $det['seleccionado'];
-            $orden_detalle->save();
-        }
-
-        $orden_compra = GpOrdenDeCompra::where('id', $orden->orden_id)->first();
-        $pedido = GpPedido::where('pedido', $orden_compra->ORDEN_COMPRA_DOCU_ORIGEN)->first();
-
-        if ($recibida) {
-            $orden->estado = 'recibido';
-            $orden->USERID = $user->USERID;
-            $orden->save();
-            $order = app(OrderServiceInterface::class);
-            $apigp = app(ApiGpService::class);
-            $aproval = app(ApprovalServiceInterface::class);
-              $invoice = app(InvoiceServiceInterface::class);
-            $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice);
-
-            $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
-            if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI') {
-                $pedido->factura_posterior_despacho = 1;
-                if ($cliente->CLI_DIA_MAXIMO_MES_FACTURACION == 1) {
-                    $pedido->factura_a_demanda = 1;
-                } elseif (date('d') > $cliente->CLI_DIA_MAXIMO_MES_FACTURACION) {
-                    $pedido->factura_siguiente_mes = 1;
-                }
-                $pedido->save();
-            }
-
-            $pedidosControl->checkenviarfactura($pedido, true);
-        }
-
-        $notificacion = new Notificaciones();
-        $notificacion->titulo = 'Artículo/s L recibidos';
-        $notificacion->user_id = $pedido->user_id;
-        $notificacion->mensaje = 'Artículo/s L del pedido ' . $pedido->pedido . ' han sido recibidos en la bodega ' . $pedido->BOD_BODEGA;
-        $notificacion->estado = 'nuevo';
-        $notificacion->save();
-    }
+    
 
     public function setdetalleordendecompra($ordendecompra)
     {
@@ -323,9 +266,9 @@ class RecibosdecompraeleController extends Controller
         }
 
         //        echo '<pre>';
-//        print_r($ordendecompra);
-//        echo '</pre>';
-//        die();
+        //        print_r($ordendecompra);
+        //        echo '</pre>';
+        //        die();
 
         //return view('ordendecompraPDF', $ordendecompra);
         $pdf = PDF::loadView('ordendecompraPDF', $ordendecompra->toArray());

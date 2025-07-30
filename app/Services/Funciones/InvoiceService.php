@@ -399,33 +399,33 @@ class InvoiceService implements InvoiceServiceInterface
         }
     }
 
-    public function respuestaFacturaVenta($pedido)
+    public function respuestaFacturaVenta($order)
     {
+        $pedido = GpPedido::where('pedido', $order->pedido)->first();
         $params = [
             'documento_origen' => $pedido->pedido,
             'tipo_documento' => 3,
         ];
         $result = $this->mswService->transaccional('MST_Respuesta_Factura_Vta', $params);
-        if (
-            isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'])
-            && $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'] != ''
-        ) {
-            $pedido->factura = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['DOC_GENERADO'];
-            $pedido->FAC_VTA_MENSAJE = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'];
+        $respuesta = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0] ?? null;
+
+        if ($respuesta && !empty($respuesta['DOC_GENERADO'])) {
+            $pedido->factura = $respuesta['DOC_GENERADO'];
+            $pedido->FAC_VTA_MENSAJE = $respuesta['FAC_VTA_MENSAJE'] ?? null;
             $pedido->estado = 'facturado';
-            $pedido->fecha_factura = date('Y-m-d');
-            $pedido->fecha_hora_factura = date('Y-m-d H:i:s');
-            $pedido->save();
+            $pedido->fecha_factura = now()->toDateString();
+            $pedido->fecha_hora_factura = now();
         } else {
-            if (
-                isset($result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'])
-                && $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'] != ''
-            )
-                $pedido->FAC_VTA_MENSAJE = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0]['FAC_VTA_MENSAJE'];
-            else
-                $pedido->FAC_VTA_MENSAJE = 'Error no definido por GP';
+            $pedido->FAC_VTA_MENSAJE = $respuesta['FAC_VTA_MENSAJE'] ?? 'Error no definido por GP';
             $pedido->estado = 'espera';
+        }
+
+        try {
             $pedido->save();
+        } catch (\Throwable $e) {
+            logger()->error("Error guardando pedido en repuesta de factura {$pedido->id}: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 }
