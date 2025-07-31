@@ -90,6 +90,31 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
         ],
+        'sqlsrvdyn' => [
+            'driver' => 'sqlsrv',
+            'host' => env('DB_SQLSRV_HOST_DYN', 'localhost'),
+            'port' => env('DB_SQLSRV_PORT_DYN', '1433'),
+            'database' => env('DB_SQLSRV_DATABASE_DYN', 'nombre_db'),
+            'username' => env('DB_SQLSRV_USERNAME_DYN', 'usuario'),
+            'password' => env('DB_SQLSRV_PASSWORD_DYN', 'clave'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'encrypt' => 'no',
+            'trust_server_certificate' => true,
+        ],
+        'sqlsrvtuv' => [
+            'driver' => 'sqlsrv',
+            'host' => env('DB_SQLSRV_HOST_TUV', 'localhost'),
+            'port' => env('DB_SQLSRV_PORT_TUV', '1433'),
+            'database' => env('DB_SQLSRV_DATABASE_TUV', 'nombre_db'),
+            'username' => env('DB_SQLSRV_USERNAME_TUV', 'usuario'),
+            'password' => env('DB_SQLSRV_PASSWORD_TUV', 'clave'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'encrypt' => 'no',
+            'trust_server_certificate' => true,
+        ],
+
 
     ],
 
@@ -123,7 +148,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_database_'),
+            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_') . '_database_'),
         ],
 
         'default' => [
