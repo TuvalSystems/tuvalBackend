@@ -181,7 +181,13 @@ return [
 
         //Providers DDD
          App\Providers\ApiServiceProvider::class,
-         App\Providers\DevolucionServiceProvider::class,
+         App\Providers\Service\DevolucionServiceProvider::class,
+         App\Providers\Service\AprobacionServiceProvider::class,
+         App\Providers\Service\BodegasServiceProvider::class,
+         App\Providers\Service\FuncionServiceProvider::class,
+         App\Providers\Service\NotificacionServiceProvider::class,
+         App\Providers\Service\ReposicionesServiceProvider::class,
+         App\Providers\Service\VentaServiceProvider::class,
          App\Providers\RepositoryServiceProvider::class,
     ],
 

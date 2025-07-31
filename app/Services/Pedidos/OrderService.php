@@ -420,10 +420,10 @@ class OrderService implements OrderServiceInterface
             if ($item['seleccionado'] > 0) {
                 $newFormatStock = $this->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
                 if (!$newFormatStock) {
-                    throw new \Exception("No se pudo obtener el stock del artículo {$item['STO_ART_ARTICULO']} en la bodega {$item['STO_ART_BODEGA']}");
+                    throw new \Exception("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
                 }
                 if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $item['seleccionado']) {
-                    throw new \Exception("El stock disponible del artículo {$item['STO_ART_ARTICULO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
+                    throw new \Exception("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
                 }
             }
             GpPedidoDetalleStock::create([
