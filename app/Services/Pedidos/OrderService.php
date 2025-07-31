@@ -590,6 +590,7 @@ class OrderService implements OrderServiceInterface
             $order = $this->getOrderOrFail($orderId);
             $this->recalculateAndSendInvoice($order);
             DB::commit();
+            Log::info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
             return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
         } catch (\Throwable $th) {
             DB::rollBack();
