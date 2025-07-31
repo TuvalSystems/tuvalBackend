@@ -283,24 +283,7 @@ class ConsultasController extends Controller
 
     public function cupodisponible($ruc)
     {
-
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $ruc,
-        );
-
-        $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
-        $webservices = new WebserviceController();
-        $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-
-        $suspendido = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['SUSPENDIDO'] ?? 0;
-        $cliente->suspendido = $suspendido;
-        $cliente->cupo_disponible = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP'], 2, '.', ',');
-        $cliente->cupo_asignado = number_format($cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_ASIGNADO'], 2, '.', ',');
-        return response([
-            'success' => true,
-            'cliente' => $cliente
-        ]);
+        return $this->InventoryQueryService->getAvailableSpace($ruc);
     }
 
     public function territorios(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

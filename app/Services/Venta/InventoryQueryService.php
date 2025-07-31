@@ -2,9 +2,11 @@
 
 namespace App\Services\Venta;
 
+use App\Models\GpCliente;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\SqlServer\Cobranza\Contracts\CreditValidationServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
 
@@ -15,11 +17,13 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     protected $stockWarehouseService;
     protected $apiGp;
     protected $functionsService;
-    public function __construct(StockWarehouseServiceInterface $stockWarehouseService, ApiGpService $apiGp, FunctionsServiceInterface $functionsService)
+    protected $sqlCreditValidtionService;
+    public function __construct(StockWarehouseServiceInterface $stockWarehouseService, ApiGpService $apiGp, FunctionsServiceInterface $functionsService, CreditValidationServiceInterface $sqlCreditValidtionService)
     {
         $this->stockWarehouseService = $stockWarehouseService;
         $this->apiGp = $apiGp;
         $this->functionsService = $functionsService;
+        $this->sqlCreditValidtionService = $sqlCreditValidtionService;
     }
 
 
@@ -63,6 +67,22 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         ]);
     }
 
+    public function getAvailableSpace($ruc)
+    {
 
-
+        try {
+            $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
+            $cupoDisponible =  $this->sqlCreditValidtionService->consultCreditValidate($ruc, 3);
+            $cupo = $cupoDisponible->first();
+            $cliente->suspendido = (float)$cupo->SUSPENDIDO ?? 0;
+            $cliente->cupo_disponible = number_format($cupo->CUPO_PERMITIDO, 2, '.', ',');
+            $cliente->cupo_asignado = number_format($cupo->CUPO, 2, '.', ',');
+            return response([
+                'success' => true,
+                'cliente' => $cliente
+            ]);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }
