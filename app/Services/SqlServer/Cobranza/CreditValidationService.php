@@ -26,31 +26,39 @@ class CreditValidationService implements CreditValidationServiceInterface
     {
 
         try {
-            $results = DB::connection('sqlsrvtuv')->select(
-                '
-                DECLARE @codret INT, @msj VARCHAR(200);
-                EXEC sp_mc_validacion_creditica
-                  @idcliente = :idcliente,
-                  @userid = :userid,
-                  @modo = :modo,
-                  @equipo = :equipo,
-                  @codret = @codret OUTPUT,
-                  @msj = @msj OUTPUT;
-                 SELECT @codret AS codret, @msj AS msj;
-                ',
-                [
-                    'idcliente' => $idCliente,
-                    'userid'    => $this->usuario,
-                    'modo'      => $modo,
-                    'equipo'    => $this->equipo,
-                ]
-            );
-            $data = collect($results)->filter(fn($row) => !isset($row->codret))->values();
+            $sql = <<<SQL
+            DECLARE @codret INT, @msj VARCHAR(200);
+            EXEC sp_mc_validacion_creditica
+                @idcliente = :idcliente,
+                @userid    = :userid,
+                @modo      = :modo,
+                @equipo    = :equipo,
+                @codret    = @codret OUTPUT,
+                @msj       = @msj OUTPUT;
+            SELECT @codret AS codret, @msj AS msj;
+        SQL;
 
-            return $data;
+            $bindings = [
+                'idcliente' => $idCliente,
+                'userid'    => $this->usuario,
+                'modo'      => $modo,
+                'equipo'    => $this->equipo,
+            ];
+
+            $results = DB::connection('sqlsrvtuv')->select($sql, $bindings);
+
+            // return collect($results)->reject(fn($row) => isset($row->codret))->values();
+            return collect($results)
+                ->flatten()
+                ->reject(fn($row) => property_exists($row, 'codret'))
+                ->values();
         } catch (\Throwable $th) {
-            Log::channel('sql_errors')->error('Error al consultar el crédito en el sp (sp_mc_validation_crediticia) : ' . $th->getMessage());
-            return $this->buildErrorResponse('Error al consultar el crédito en el sp (sp_mc_validation_crediticia) :' . $th->getMessage(), 500);
+            Log::channel('sql_errors')->error('Error en consultCreditValidate (sp_mc_validacion_creditica):', [
+                'error' => $th->getMessage(),
+                'trace' => $th->getTraceAsString()
+            ]);
+
+            return collect(); // o return $this->buildErrorResponse($message, 500);
         }
     }
 }
