@@ -70,7 +70,7 @@ class InvoiceService implements InvoiceServiceInterface
             ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
     }
 
-    public function shouldSkipDueToTransferStatus(GpPedido $pedido, $trasladado) : bool
+    public function shouldSkipDueToTransferStatus(GpPedido $pedido, $trasladado): bool
     {
         return $trasladado
             ? $this->checkTrasladado($pedido)
@@ -231,8 +231,8 @@ class InvoiceService implements InvoiceServiceInterface
     public function generateDisptachOrder($pedido)
     {
         try {
-            if($this->checkTrasladado($pedido)){
-                return ;
+            if ($this->checkTrasladado($pedido)) {
+                return;
             }
             if ($this->shouldSkipOrderGeneration($pedido)) {
                 return;
@@ -417,6 +417,16 @@ class InvoiceService implements InvoiceServiceInterface
             return false;
         }
 
+        // verifica que no tenga factura posterior despacho
+        if ($order->factura_posterior_despacho == 1 && $order->factura_a_demanda == 1) {
+            return false;
+        }
+
+        // verifica que no tenga factura posterior despacho y factura siguiente mes
+        if ($order->factura_posterior_despacho == 1 && $order->factura_siguiente_mes == 1) {
+            return false;
+        }
+
         // Validar que tenga detalles
         $tieneDetalles = GpPedidoDetalle::where('pedido_id', $order->id)
             ->exists();
@@ -492,6 +502,18 @@ class InvoiceService implements InvoiceServiceInterface
         if ($pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial !== 'yes') {
             return false;
         }
+
+
+        // verifica que no tenga factura posterior despacho
+        if ($pedido->factura_posterior_despacho == 1 && $pedido->factura_a_demanda == 1) {
+            return false;
+        }
+
+        // verifica que no tenga factura posterior despacho y factura siguiente mes
+        if ($pedido->factura_posterior_despacho == 1 && $pedido->factura_siguiente_mes == 1) {
+            return false;
+        }
+
         return true;
     }
 
