@@ -128,7 +128,7 @@ class PedidosController extends Controller
         foreach ($pedidos as $pedido) {
 
             // $this->checkenviarfactura($pedido);
-            $this->invoiceService->checkSendInvoice($pedido, false, false);
+            $this->invoiceService->checkSendInvoice($pedido);
         }
         $traslados = GpPedido::where('estado', 'orden_de_compra')->get();
         foreach ($traslados as $pedido) {
@@ -521,7 +521,7 @@ class PedidosController extends Controller
             $this->functionService->recalculateOrder($data['id']);
             $this->functionService->recalculateOrder($pedido->id);
             $pedido = GpPedido::where('id', $pedido->id)->first();
-            $this->invoiceService->checkSendInvoice($pedido, true, false);
+            $this->invoiceService->checkSendInvoice($pedido, true);
         }
         return response([
             'success' => true,
@@ -1083,7 +1083,7 @@ class PedidosController extends Controller
             GpCotizacion::where('id', $data['id'])->update(['estado' => 'procesado']);
 
             // $this->checkenviarfactura($pedido);
-            $this->invoiceService->checkSendInvoice($pedido, false, false);
+            $this->invoiceService->checkSendInvoice($pedido);
         }
         return response([
             'success' => true,
@@ -1384,7 +1384,7 @@ class PedidosController extends Controller
 
 
         // $this->checkenviarfactura($nuevo_pedido);
-        $this->invoiceService->checkSendInvoice($nuevo_pedido, false, false);
+        $this->invoiceService->checkSendInvoice($nuevo_pedido);
     }
 
     function cancelarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
