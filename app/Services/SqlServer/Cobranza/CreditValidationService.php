@@ -47,14 +47,17 @@ class CreditValidationService implements CreditValidationServiceInterface
 
             $results = DB::connection('sqlsrvtuv')->select($sql, $bindings);
 
-            // Filtra los resultados sin codret (i.e. resultado principal del SP)
-            return collect($results)->reject(fn($row) => isset($row->codret))->values();
+            // return collect($results)->reject(fn($row) => isset($row->codret))->values();
+            return collect($results)
+                ->flatten()
+                ->reject(fn($row) => property_exists($row, 'codret'))
+                ->values();
         } catch (\Throwable $th) {
-            $message = 'Error al consultar el crédito en el SP (sp_mc_validacion_creditica): ' . $th->getMessage();
+            Log::channel('sql_errors')->error('Error en consultCreditValidate (sp_mc_validacion_creditica):', [
+                'error' => $th->getMessage(),
+                'trace' => $th->getTraceAsString()
+            ]);
 
-            Log::channel('sql_errors')->error($message);
-
-            // Puedes lanzar excepción o retornar vacío, según tu arquitectura
             return collect(); // o return $this->buildErrorResponse($message, 500);
         }
     }
