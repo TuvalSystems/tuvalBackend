@@ -101,6 +101,12 @@ return [
             'prefix' => '',
             'encrypt' => 'no',
             'trust_server_certificate' => true,
+            'options' => array_filter([
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+                // Descomentar solo si está definido en tu entorno
+                // defined('PDO::SQLSRV_ATTR_QUERY_TIMEOUT') ? PDO::SQLSRV_ATTR_QUERY_TIMEOUT : null => 60,
+            ]),
         ],
         'sqlsrvtuv' => [
             'driver' => 'sqlsrv',
@@ -113,6 +119,12 @@ return [
             'prefix' => '',
             'encrypt' => 'no',
             'trust_server_certificate' => true,
+            'options' => array_filter([
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+                // Descomentar solo si está definido en tu entorno
+                // defined('PDO::SQLSRV_ATTR_QUERY_TIMEOUT') ? PDO::SQLSRV_ATTR_QUERY_TIMEOUT : null => 60,
+            ]),
         ],
 
 
