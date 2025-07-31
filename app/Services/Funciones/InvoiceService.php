@@ -417,13 +417,13 @@ class InvoiceService implements InvoiceServiceInterface
             return false;
         }
 
-        // verifica que no tenga factura posterior despacho
-        if ($order->factura_posterior_despacho == 1 && $order->factura_a_demanda == 1) {
+        // verifica que no tenga factura posterior despacho y factura siguiente mes
+        if ($order->factura_a_demanda && !$order->factura_siguiente_mes) {
             return false;
         }
 
         // verifica que no tenga factura posterior despacho y factura siguiente mes
-        if ($order->factura_posterior_despacho == 1 && $order->factura_siguiente_mes == 1) {
+        if (!$order->factura_a_demanda && $order->factura_siguiente_mes) {
             return false;
         }
 
@@ -503,14 +503,13 @@ class InvoiceService implements InvoiceServiceInterface
             return false;
         }
 
-
-        // verifica que no tenga factura posterior despacho
-        if ($pedido->factura_posterior_despacho == 1 && $pedido->factura_a_demanda == 1) {
+        // verifica que no tenga factura posterior despacho y factura siguiente mes
+        if ($pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
             return false;
         }
 
         // verifica que no tenga factura posterior despacho y factura siguiente mes
-        if ($pedido->factura_posterior_despacho == 1 && $pedido->factura_siguiente_mes == 1) {
+        if (!$pedido->factura_a_demanda && $pedido->factura_siguiente_mes) {
             return false;
         }
 
