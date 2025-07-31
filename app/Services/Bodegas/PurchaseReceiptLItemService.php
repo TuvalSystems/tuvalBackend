@@ -35,7 +35,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
         if ($recibida) {
             $this->markOrderAsReceived($orden, $user->USERID);
             $this->proccessClientInvoice($orderModel);
-            $this->invoiceService->checkSendInvoice($orderModel, true, false);
+            $this->invoiceService->checkSendInvoice($orderModel, true);
         }
         $message = 'Artículo/s L del pedido ' . $orderModel->pedido . ' han sido recibidos en la bodega ' . $orderModel->BOD_BODEGA;
         $this->notificacionService->sendNotification($user->user_id, 'Artículo/s L recibidos', $message);
