@@ -3,9 +3,6 @@
 namespace App\Services\Pedidos;
 
 use App\Http\Controllers\bodegas\DespachosController;
-use App\Http\Controllers\ventas\PedidosController;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalleProveedores;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -13,7 +10,6 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -21,7 +17,6 @@ class OrderJobService
 {
     use JsonResponseTrait;
     protected $webService;
-    protected $pedidoController;
     protected $despachoController;
     protected $invoiceService;
     protected $orderService;
@@ -29,19 +24,16 @@ class OrderJobService
 
     public function __construct(
         MswService $webService,
-        PedidosController $pedidoController,
         DespachosController $despachoController,
         InvoiceServiceInterface $invoiceService,
         OrderServiceInterface $orderServiceInterface,
         OrderRepositoryInterface $orderRepository
     ) {
         $this->webService = $webService;
-        $this->pedidoController = $pedidoController;
         $this->despachoController = $despachoController;
         $this->invoiceService = $invoiceService;
         $this->orderService = $orderServiceInterface;
         $this->orderRepository = $orderRepository;
-
     }
 
     /** funcion para enviar las facturas del siguiente mes a gp cada 1 de cad mes
@@ -203,7 +195,6 @@ class OrderJobService
             return false;
         }
         return true;
-
     }
 
 
@@ -245,22 +236,15 @@ class OrderJobService
         }
         DB::commit();
         Log::channel('cron_process')->info('✅ Todos los pedidos facturados exitosamente.');
-
-
     }
 
     public function getPreviousMonth()
     {
-
         return date("m", strtotime("-1 month"));
-        //pro prueba se colocara las de este mes
-        // return date("m");
-
     }
 
     public function shouldAbortBilling($mes)
     {
         return $mes === date("m");
     }
-
 }

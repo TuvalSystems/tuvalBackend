@@ -16,6 +16,7 @@ use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
@@ -62,7 +63,8 @@ class DevolucionJobService
         $order = app(OrderServiceInterface::class);
         $aproval = app(ApprovalServiceInterface::class);
         $invoice = app(InvoiceServiceInterface::class);
-        $pedidosController = new PedidosController($apiGp, $order, $aproval, $invoice);
+        $function = app(FunctionsServiceInterface::class);
+        $pedidosController = new PedidosController($apiGp, $order, $aproval, $invoice, $function);
 
         try {
 

@@ -12,7 +12,6 @@ use Illuminate\Http\Response;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
-use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
 use App\Models\GpPedidoDetalleStock;
 use Illuminate\Support\Facades\Auth;
@@ -24,13 +23,10 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
-use App\Http\Controllers\ventas\PedidosController;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use PDF;
 class GuiasderemisionController extends Controller
@@ -1120,12 +1116,6 @@ class GuiasderemisionController extends Controller
 
         $guia = GpGuiaRemision::where('id', $data['id'])->first();
         $listo = $this->checkguiacompleta($guia);
-        $order = app(OrderServiceInterface::class);
-        $apigp = app(ApiGpService::class);
-        $aproval = app(ApprovalServiceInterface::class);
-        $invoice = app(InvoiceServiceInterface::class);
-        $function = app(FunctionsServiceInterface::class);
-        $pedidosControl = new PedidosController($apigp, $order, $aproval, $invoice,  $function);
 
         $ingresos = new IngresosController();
         $ingresos->ingreso('traslado_venta', $data, $data['detalle']);

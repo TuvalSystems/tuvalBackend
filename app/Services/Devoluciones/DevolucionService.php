@@ -17,7 +17,6 @@ use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpFacturaAnulada;
-use App\Http\Controllers\ventas\PedidosController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpPuntoVenta;
@@ -37,7 +36,7 @@ class DevolucionService implements DevolucionServiceInterface
     use DevolucionesCriteriosTrait,
         JsonResponseTrait;
 
-    protected PedidosController $pedidosController;
+
     protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
     protected ApiSalesService $apiSales;
     protected ApiSeedBellingService $apiSeedBelling;
@@ -48,7 +47,6 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function __construct(
 
-        PedidosController $pedidosController,
         ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
         ApiSalesService $apiSales,
         ApiSeedBellingService $apiSeedBelling,
@@ -56,8 +54,6 @@ class DevolucionService implements DevolucionServiceInterface
         DevolucionRepositoryInterface $devolucionRepository,
         OrderRepositoryInterface $orderRepository,
     ) {
-
-        $this->pedidosController = $pedidosController;
         $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
         $this->apiSales = $apiSales;
         $this->apiSeedBelling = $apiSeedBelling;
