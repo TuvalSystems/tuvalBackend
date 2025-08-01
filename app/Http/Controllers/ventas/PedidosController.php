@@ -1469,4 +1469,10 @@ class PedidosController extends Controller
         $pedido = GpPedido::where('id', $id)->get()->first();
         $this->functionService->recalculateOrder($pedido->id);
     }
+
+
+    public function facturarsiguientemes()
+    {
+        return $this->orderService->generateNextMonthInvoice();
+    }
 }
