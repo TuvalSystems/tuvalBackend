@@ -252,6 +252,11 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
 
         Route::post('obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
+
+
+        /** Proceso Clientes */
+        Route::post('obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
+        Route::post('obtener-subsegmentos', [CotizacionesController::class, 'ontenerListaSubSegmentos']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);
