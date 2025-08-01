@@ -64,7 +64,7 @@ class PedidosController extends Controller
     public function guardarpedido(Request $request)
     {
         $orderData = $request->all();
-           $user = Auth::user();
+        $user = Auth::user();
         return $this->orderService->storeOrder($orderData, $user);
     }
 
@@ -1755,14 +1755,22 @@ class PedidosController extends Controller
         return $this->orderService->buscarItemlTest($item);
     }
 
-    public function generarOrdenDeDespacho($id){
+    public function generarOrdenDeDespacho($id)
+    {
         return $this->orderService->generateOrderDispatch($id);
     }
 
 
-     public function recalcularPedidoTest($id){
+    public function recalcularPedidoTest($id)
+    {
 
         $pedido = GpPedido::where('id', $id)->get()->first();
         $this->orderService->recalculateOrder($pedido);
+    }
+
+
+    public function facturarsiguientemes()
+    {
+        return $this->orderService->generateNextMonthInvoice();
     }
 }

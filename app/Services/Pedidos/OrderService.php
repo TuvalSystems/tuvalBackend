@@ -612,7 +612,8 @@ class OrderService implements OrderServiceInterface
         $this->invoiceService->sendInvoiceGp($order);
     }
 
-    public function recalculateOrder($order){
+    public function recalculateOrder($order)
+    {
         $this->functionsService->recalculateOrder($order);
     }
 
@@ -704,5 +705,41 @@ class OrderService implements OrderServiceInterface
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
+    }
+
+
+    public function generateNextMonthInvoice()
+    {
+        try {
+            DB::beginTransaction();
+            $mes = $this->getPreviousMonth();
+
+            if ($this->shouldAbortBilling($mes)) {
+                DB::rollBack();
+                Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
+                return;
+            }
+            $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
+            foreach ($pedidos as $pedido) {
+                $this->invoiceService->checkSendInvoice($pedido, true, false);
+                Log::channel('cron_process')->info("✅ Pedido {$pedido->id} facturado correctamente de generateNextMonthInvoice - orderService");
+            }
+            DB::commit();
+            return $this->buildSuccessResponse("Pedidos facturados", 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::channel('cron_process')->error("❌ Error facturando pedido: {$e->getMessage()}");
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function getPreviousMonth()
+    {
+        return date("m", strtotime("-1 month"));
+    }
+
+    public function shouldAbortBilling($mes)
+    {
+        return $mes === date("m");
     }
 }
