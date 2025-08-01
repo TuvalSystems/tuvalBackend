@@ -126,17 +126,14 @@ return [
         'apiservice' => [
             'driver' => 'single',
             'path' => storage_path('logs/apiservice.log'),
-            'level' => 'warning',
         ],
          'devolucion' => [
             'driver' => 'single',
             'path' => storage_path('logs/devolucion.log'),
-            'level' => 'warning',
         ],
         'sql_errors' => [
             'driver' => 'single',
             'path' => storage_path('logs/sql_errors.log'),
-            'level' => 'warning',
         ],
     ],
 

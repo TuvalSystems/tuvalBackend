@@ -417,15 +417,15 @@ class InvoiceService implements InvoiceServiceInterface
             return false;
         }
 
-        // verifica que no tenga factura posterior despacho y factura siguiente mes
-        if ($order->factura_a_demanda && !$order->factura_siguiente_mes) {
-            return false;
-        }
+        // // verifica que no tenga factura posterior despacho y factura siguiente mes
+        // if ($order->factura_a_demanda && !$order->factura_siguiente_mes) {
+        //     return false;
+        // }
 
-        // verifica que no tenga factura posterior despacho y factura siguiente mes
-        if (!$order->factura_a_demanda && $order->factura_siguiente_mes) {
-            return false;
-        }
+        // // verifica que no tenga factura posterior despacho y factura siguiente mes
+        // if (!$order->factura_a_demanda && $order->factura_siguiente_mes) {
+        //     return false;
+        // }
 
         // Validar que tenga detalles
         $tieneDetalles = GpPedidoDetalle::where('pedido_id', $order->id)
@@ -503,15 +503,15 @@ class InvoiceService implements InvoiceServiceInterface
             return false;
         }
 
-        // verifica que no tenga factura posterior despacho y factura siguiente mes
-        if ($pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
-            return false;
-        }
+        // // verifica que no tenga factura posterior despacho y factura siguiente mes
+        // if ($pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
+        //     return false;
+        // }
 
-        // verifica que no tenga factura posterior despacho y factura siguiente mes
-        if (!$pedido->factura_a_demanda && $pedido->factura_siguiente_mes) {
-            return false;
-        }
+        // // verifica que no tenga factura posterior despacho y factura siguiente mes
+        // if (!$pedido->factura_a_demanda && $pedido->factura_siguiente_mes) {
+        //     return false;
+        // }
 
         return true;
     }

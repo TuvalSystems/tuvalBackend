@@ -800,4 +800,11 @@ class ConsultasController extends Controller
             'notificaciones' => $notificaciones,
         ]);
     }
+
+
+    public function consultarClienteSegmento (Request $request){
+        $data = $request->all();
+        return $this->InventoryQueryService->getConsultClientSegment($data);
+
+    }
 }

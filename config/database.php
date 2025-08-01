@@ -101,11 +101,16 @@ return [
             'prefix' => '',
             'encrypt' => 'no',
             'trust_server_certificate' => true,
+
+            'appname' => env('APP_NAME', 'Laravel') . '_App',
             'options' => array_filter([
+
+                // Manejo de errores
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
-                // Descomentar solo si está definido en tu entorno
-                // defined('PDO::SQLSRV_ATTR_QUERY_TIMEOUT') ? PDO::SQLSRV_ATTR_QUERY_TIMEOUT : null => 60,
+                // Para stored procedures
+                PDO::SQLSRV_ATTR_DIRECT_QUERY => true,
+
             ]),
         ],
         'sqlsrvtuv' => [
@@ -119,11 +124,13 @@ return [
             'prefix' => '',
             'encrypt' => 'no',
             'trust_server_certificate' => true,
+            'appname' => env('APP_NAME', 'Laravel') . '_App',
             'options' => array_filter([
+                // Manejo de errores
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
-                // Descomentar solo si está definido en tu entorno
-                // defined('PDO::SQLSRV_ATTR_QUERY_TIMEOUT') ? PDO::SQLSRV_ATTR_QUERY_TIMEOUT : null => 60,
+                // Para stored procedures
+                PDO::SQLSRV_ATTR_DIRECT_QUERY => true,
             ]),
         ],
 

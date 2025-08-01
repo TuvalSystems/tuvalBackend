@@ -7,6 +7,7 @@ use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\SqlServer\Cobranza\Contracts\CreditValidationServiceInterface;
+use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
 
@@ -18,12 +19,19 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     protected $apiGp;
     protected $functionsService;
     protected $sqlCreditValidtionService;
-    public function __construct(StockWarehouseServiceInterface $stockWarehouseService, ApiGpService $apiGp, FunctionsServiceInterface $functionsService, CreditValidationServiceInterface $sqlCreditValidtionService)
-    {
+    protected $clientSqlService;
+    public function __construct(
+        StockWarehouseServiceInterface $stockWarehouseService,
+        ApiGpService $apiGp,
+        FunctionsServiceInterface $functionsService,
+        CreditValidationServiceInterface $sqlCreditValidtionService,
+        ClientServiceInterface $clientSqlService
+    ) {
         $this->stockWarehouseService = $stockWarehouseService;
         $this->apiGp = $apiGp;
         $this->functionsService = $functionsService;
         $this->sqlCreditValidtionService = $sqlCreditValidtionService;
+        $this->clientSqlService = $clientSqlService;
     }
 
 
@@ -83,6 +91,17 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ]);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function getConsultClientSegment($ruc)
+    {
+        $segmento = $this->clientSqlService->validateClientforRucSegment($ruc);
+
+        if (is_array($segmento)) {
+            return $this->buildSuccessResponse('Segmento encontrado', 200);
+        } else {
+            return $this->buildErrorResponse('Segmento no encontrado', 500);
         }
     }
 }

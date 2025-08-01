@@ -15,4 +15,9 @@ interface InventoryQueryServiceInterface
     public function getAvailableSpace($ruc);
 
 
+    /** funcion para consulta de segmento de cliente */
+
+    public function getConsultClientSegment($data);
+
+
 }

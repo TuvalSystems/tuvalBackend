@@ -10,7 +10,6 @@ class ClientService implements ClientServiceInterface
 
     public function __construct()
     {
-
     }
 
 
