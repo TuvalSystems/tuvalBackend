@@ -218,11 +218,11 @@ class OrderJobService
 
 
         /** se comento para pruebas  */
-        // if ($this->shouldAbortBilling($mes)) {
-        //     DB::rollBack();
-        //     Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes.');
-        //     return;
-        // }
+        if ($this->shouldAbortBilling($mes)) {
+            DB::rollBack();
+            Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
+            return;
+        }
 
         $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
         foreach ($pedidos as $pedido) {
@@ -234,6 +234,7 @@ class OrderJobService
                     'pedido_id' => $pedido->id,
                     'error' => $e->getMessage(),
                 ];
+
                 Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->id}: {$e->getMessage()}");
             }
         }
@@ -251,9 +252,9 @@ class OrderJobService
     public function getPreviousMonth()
     {
 
-        // return date("m", strtotime("-1 month"));
+        return date("m", strtotime("-1 month"));
         //pro prueba se colocara las de este mes
-        return date("m");
+        // return date("m");
 
     }
 
