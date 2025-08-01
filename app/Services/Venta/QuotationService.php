@@ -929,7 +929,8 @@ class QuotationService implements QuotationServiceInterface
     public function prepareQuotationStoreFill($data, $user)
     {
         $cotizacion = isset($data['cotizacion_id']) ? GpCotizacion::find($data['cotizacion_id']) : new GpCotizacion();
-        $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
+        // $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
+        $requiereAprobacionComercial = $this->approvalService->checkOutApprovalCommercial($data, 'cotizacion');
         if ($data['cotizacion_id'] && $cotizacion->id) {
             $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
         } else {
@@ -992,10 +993,12 @@ class QuotationService implements QuotationServiceInterface
     private function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
     {
         $aprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
-        $mismoMensaje = $requiereAprobacionComercial['requiere'] === 'no' &&
-            $requiereAprobacionComercial['motivo'] === 'Total dentro del rango permitido';
+        $mismoMensaje = $requiereAprobacionComercial['requiere'] === 'yes' &&
+            $requiereAprobacionComercial['motivo'];
+        $mensajecotizacion = $cotizacion->motivo_aprobacion_comercial;
+        $mensajeActual = $requiereAprobacionComercial['motivo'];
 
-        if ($aprobada && $mismoMensaje) {
+        if ($aprobada && $mismoMensaje && $mensajecotizacion === $mensajeActual) {
             $requiereAprobacionComercial['requiere'] = $cotizacion->requiere_aprobacion_comercial;
             $requiereAprobacionComercial['motivo'] = $cotizacion->motivo_aprobacion_comercial;
             $requiereAprobacionComercial['estado'] = $cotizacion->estado;

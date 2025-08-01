@@ -2,30 +2,30 @@
 
 namespace App\Services\Aprobaciones;
 
-use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
-use App\Models\GpDatosItemsL;
-use App\Models\GpDescuentoFormaPago;
-use App\Models\GpPuntoVenta;
-use App\Services\Api\MswService;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
-use App\Traits\JsonResponseTrait;
 use DateTime;
 use App\Models\GpPedido;
+use App\Models\GpArticulo;
 use Illuminate\Support\Arr;
+use App\Models\GpCotizacion;
+use App\Models\GpPuntoVenta;
+use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRegistroCopia;
-use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Api\MswService;
+use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\GpCotizacionDetalle;
 use Illuminate\Support\Facades\Log;
+use App\Models\GpDescuentoFormaPago;
+use App\Models\GpPedidoDetalleStock;
+use Illuminate\Support\Facades\Auth;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -54,7 +54,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     // aprobacion comercial tanto de pedido como de cotizaciones
 
-    public function checkoutApprovalComercial($data, $order = false)
+    public function checkoutApprovalComercial($data, $order = null)
     {
         // TODO: Implement checkoutApprovalComercial() method.
         $return = ['requiere' => 'no', 'motivo' => null];
@@ -77,16 +77,6 @@ class ApprovalService implements ApprovalServiceInterface
             ];
         }
         $nivelCotizacion = $nivelFormaPagoCotizacion->nivel;
-
-
-        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->get()->first();
-        if (!$porcentajeMargen) {
-            return [
-                'requiere' => 'yes',
-                'motivo' => "Porcentaje de margen no encontrado en la base de datos."
-            ];
-        }
-
 
         if (!empty($data['cotizacion_id']) && isset($data['cotizacion']) && $data['cotizacion_id'] != '') {
             $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->first();
@@ -141,9 +131,14 @@ class ApprovalService implements ApprovalServiceInterface
 
                     //VALIDACIONES POR EL TIO DE ARTICULO
                     if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+                        $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+                        if (!$porcentajeMargen) {
+                            return [
+                                'requiere' => 'yes',
+                                'motivo' => "Porcentaje de margen no encontrado en la base de datos."
+                            ];
+                        }
                         foreach ($detalle['proveedores'] as $proveedor) {
-                            // $provider = GpCotizacionDetalleProveedores::where('detalle_id', $detOriginal->id)->first();
-                            //  $margin = ($provider->COSTO_UNITARIO / (1 - ($provider->MARGEN / 100))) / (1 - $detalle['descuento'] / 100);
                             if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
                                 return [
                                     'requiere' => 'yes',
@@ -255,6 +250,13 @@ class ApprovalService implements ApprovalServiceInterface
 
             if ($detalle['ART_TIPO_COMPRA'] == 'L') {
                 foreach ($detalle['proveedores'] as $proveedor) {
+                    $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+                    if (!$porcentajeMargen) {
+                        return [
+                            'requiere' => 'yes',
+                            'motivo' => "Porcentaje de margen no encontrado en la base de datos."
+                        ];
+                    }
 
                     $valor = number_format(($proveedor['COSTO_UNITARIO'] /
                         (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
@@ -297,6 +299,185 @@ class ApprovalService implements ApprovalServiceInterface
         }
         return $return;
     }
+
+    public function checkOutApprovalCommercial($data, $type)
+    {
+        $return = ['requiere' => 'no', 'motivo' => null];
+        $nivelCliente = $this->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
+        if (!$nivelCliente) {
+            return $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
+        }
+
+        $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO'],);
+        if (!$nivelCotizacion) {
+            return $this->requiredApprovalResponse("Forma de pago de cotizacion no encontrada en la base de datos.");
+        }
+
+        if ($nivelCotizacion > $nivelCliente) {
+            return $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
+        }
+
+        if ($data['porcentage_descuento'] > $data['porcentage_descuentooriginal']) {
+            return $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
+        }
+
+        // validacion de detalle de cotizaciony pedido e items L
+        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
+        $validarDetalles = $this->validateDetailQuotationType($data['cotizacion'], $type,   $ptoVenta);
+        if ($validarDetalles) return $validarDetalles;
+
+        //validacion de cotizacion forma de pago
+        if ($type == 'cotizacion') {
+            if (!empty($data['cotizacion_id']) && !empty($data['cotizacion'])) {
+                $cotizacion = GpCotizacion::find($data['cotizacion_id']);
+                if ($this->validarCambioFormaPago($nivelCliente, $nivelCotizacion, $cotizacion)) {
+                    $cotizacion->aprobado_comercial = 'no';
+                    $cotizacion->save();
+                    return $this->requiredApprovalResponse("Forma de pago de cotización mayor que la del cliente modificando cotización: $nivelCotizacion - $nivelCliente");
+                }
+
+                if ($cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes' && abs($data['total'] - $cotizacion->total) <= 0.10) {
+                    return $this->requiredNotApprovalResponse("Total dentro del rango permitido");
+                }
+            }
+        }
+
+
+
+        if ($type == 'pedido') {
+            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
+            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
+                return $this->requiredApprovalResponse("Requiere aprobación comercial. El pedido generado desde 'Volver a pedir' no cuenta con la aprobación de la cotización {$cotizacion->cotizacion}.");
+            }
+        }
+        // validacion para "volver a pedir"
+        if ($type == 'cotizacion') {
+            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
+            if ($registroVolverAPedir) {
+                $desde = $registroVolverAPedir->pedido_origen ? 'pedido' : 'cotizacion';
+                $origen = $registroVolverAPedir->pedido_origen
+                    ? 'PED' . str_pad($registroVolverAPedir->pedido_origen, 8, "0", STR_PAD_LEFT)
+                    : 'COT' . str_pad($registroVolverAPedir->cotizacion_origen, 8, "0", STR_PAD_LEFT);
+                $fechaOrigen = $registroVolverAPedir->pedido_origen
+                    ? optional(GpPedido::find($registroVolverAPedir->pedido_origen))->created_at
+                    : optional(GpCotizacion::find($registroVolverAPedir->cotizacion_origen))->created_at;
+
+                $origenEntidad = $registroVolverAPedir->pedido_origen
+                    ? GpPedido::find($registroVolverAPedir->pedido_origen)
+                    : GpCotizacion::find($registroVolverAPedir->cotizacion_origen);
+
+                // para validar si el origen esta en espera y no ha sido aprobado
+                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial == 'yes' && $origenEntidad->aprobado_comercial != 'yes') {
+                    return $this->requiredApprovalResponse("Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10));
+                }
+
+                // Motivo normal por ser copia
+                return $this->requiredApprovalResponse("Cotización desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")");
+            }
+        }
+        return $return;
+    }
+
+    public function requiredApprovalResponse(string $motivo)
+    {
+        return ['requiere' => 'yes', 'motivo' => $motivo];
+    }
+
+    public function requiredNotApprovalResponse(string $motivo)
+    {
+        return ['requiere' => 'no', 'motivo' => $motivo ];
+    }
+
+
+    public function validarCambioFormaPago($nivelCliente, $nivelCotizacion, $cotizacion)
+    {
+        $nivelAnterior = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $cotizacion->DESC_FORMA_PAGO_CODIGO);
+        return ($nivelCotizacion > $nivelAnterior && $nivelCotizacion > $nivelCliente);
+    }
+    public function getNivelFormaPago( $columna,$codigo)
+    {
+        $formaPago = GpDescuentoFormaPago::where($columna, $codigo)
+            ->orderBy('DESC_FORMA_PAGO_CODIGO')
+            ->first();
+
+        return $formaPago?->nivel;
+    }
+
+    public function validateDetailQuotationType(array $detalles, string $type = 'cotizacion', $ptoVenta)
+    {
+
+        foreach ($detalles as  $detalle) {
+            if (empty($detalle['detalle_id'])) continue;
+            $detOriginal = GpCotizacionDetalle::find($detalle['detalle_id']);
+            if (!$detOriginal) continue;
+
+
+            /// validaciones tipo pedido
+            if ($type == 'pedido') {
+                //validaciones del descuento en caso de que sea pedido
+                if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $detOriginal->descuento) {
+                    return $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - {$detalle['detalle_id']}");
+                }
+                //validaciones para el valor en caso de que sea pedido
+                if ($detalle['ART_VALOR'] < $detOriginal->ART_VALOR) {
+                    return $this->requiredApprovalResponse("Valor menor que el detalle Original - {$detalle['detalle_id']} - {$detalle['ART_VALOR']}");
+                }
+            }
+
+
+            // validacion de descripcion difernete a tipo L
+            if ($detalle['ART_TIPO_COMPRA']  != 'L') {
+                if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
+                    return $this->requiredApprovalResponse("La descripcion del producto es diferente a la original");
+                }
+
+                if ($detalle['ART_VALOR'] < $detalle['ART_VALOR_ORIGINAL']) {
+                    return $this->requiredApprovalResponse("El valor del producto es meor que el valor original");
+                }
+
+                if ($detalle['ART_VALOR'] > ($detalle['ART_VALOR_ORIGINAL'] * (1 + ($ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO) / 100))) {
+                    return $this->requiredApprovalResponse("El valor del producto es mayor que el valor original y supera el margen permitido - {$ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO}");
+                }
+            }
+
+            // validaciones para tipo L
+            if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+                $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+                if (!$porcentajeMargen) {
+                    return $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
+                }
+
+                foreach ($detalle['proveedores'] as $proveedor) {
+                    $valor = number_format(($proveedor['COSTO_UNITARIO'] /
+                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
+                    if ($valor > $detalle['ART_VALOR']) {
+                        return $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
+                    }
+                    if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
+                        return $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    public function getTypeArticleLQuotationOrOrder($artArticulo)
+    {
+        $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
+        if (!$itemL) {
+            throw new \Exception('Item no encontrado', 404);
+        }
+
+        $datosL = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $itemL->ART_CLASE_ARTICULO)->first();
+        if (!$datosL) {
+            throw new \Exception('Datos L no encontrados', 404);
+        }
+        return $datosL;
+    }
+
+
+
     /*** aprovacion crediciticia *** */
 
     public function checkoutApprovalCredit($data)
