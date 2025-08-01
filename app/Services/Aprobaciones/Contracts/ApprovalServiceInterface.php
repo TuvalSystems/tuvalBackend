@@ -5,7 +5,8 @@ interface ApprovalServiceInterface
 {
 
 
-    public function checkoutApprovalComercial($data, $order = false);
+    public function checkoutApprovalComercial($data, $order = null);
+    public function checkOutApprovalCommercial($data, $type);
     public function checkoutApprovalCredit($data);
 
     public function checkoutApprovalDevoluciones($data);
