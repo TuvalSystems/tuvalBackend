@@ -1406,12 +1406,12 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    public function obtenerListaSegmentos(Request $request){
+    public function obtenerListaSegmentos(){
 
         return $this->quotationService->getSegmentosSqlServer();
     }
 
-    public function ontenerListaSubSegmentos(Request $request){
+    public function obtenerListaSubSegmentos(Request $request){
         $segmento = $request->get('segmento', null);
         return $this->quotationService->getSubSegmentosSqlServer($segmento);
     }
