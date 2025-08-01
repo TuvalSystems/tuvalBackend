@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\bodegas;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\ventas\PedidosController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\cobranzas\GpCobro;
 use App\Models\cobranzas\GpCobrosCheques;
@@ -29,11 +28,8 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Api\ApiGpService;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
@@ -58,15 +54,9 @@ class DespachosController extends Controller
     }
     public function generarordendespacho($pedido)
     {
-
-        $apiGp = app(ApiGpService::class);
-        $order = app(OrderServiceInterface::class);
-        $aproval = app(ApprovalServiceInterface::class);
-        $invoice = app(InvoiceServiceInterface::class);
-        $function = app(FunctionsServiceInterface::class);
-
-        $pedidos = new PedidosController($apiGp, $order, $aproval, $invoice, $function);
-        $pedidos->checktrasladado($pedido);
+        if ($this->dispatchService->checkTraslado($pedido)) {
+            return;
+        }
 
         if ($pedido->estado == 'orden_de_compra') {
             return;

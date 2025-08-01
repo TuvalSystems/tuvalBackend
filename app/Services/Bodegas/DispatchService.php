@@ -4,12 +4,15 @@ namespace App\Services\Bodegas;
 
 use App\Models\despachos\GpGuiaRemision;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 
 class DispatchService implements DispatchServiceInterface
 {
-    public function __construct()
+
+    protected $invoiceService;
+    public function __construct(InvoiceServiceInterface $invoiceService)
     {
+        $this->invoiceService = $invoiceService;
     }
 
 
@@ -251,5 +254,10 @@ class DispatchService implements DispatchServiceInterface
     }
 
 
+
+    public function checkTraslado($order)
+    {
+         $this->invoiceService->checkTrasladado($order);
+    }
 
 }
