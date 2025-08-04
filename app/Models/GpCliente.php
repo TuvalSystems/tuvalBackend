@@ -47,6 +47,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $CLI_SUBGRUPO
  * @property int|null $CLI_DIA_MAXIMO_MES_FACTURACION
  * @property string|null $CLI_FACTURA_POSTERIOR_AL_DESPACHO
+ * @property int|null $CLI_SEGMENTO_ID
+ * @property string|null $CLI_SUBSEGMENTO_ID
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente newModelQuery()
@@ -97,4 +99,5 @@ use Illuminate\Database\Eloquent\Model;
 class GpCliente extends Model
 {
     use HasFactory;
+
 }

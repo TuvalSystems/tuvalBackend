@@ -66,4 +66,10 @@ interface QuotationServiceInterface
      /** función dedicada para guardar proveedores */
      public function saveProviderQuotationTemp(array $data);
 
+
+     /** procesos de cliente */
+
+     public function getSegmentosSqlServer();
+     public function getSubSegmentosSqlServer($segmento);
+
 }

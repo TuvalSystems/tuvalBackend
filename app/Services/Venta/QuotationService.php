@@ -34,6 +34,7 @@ use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -52,6 +53,7 @@ class QuotationService implements QuotationServiceInterface
     protected $OrderQuotationService;
     protected $approvalService;
     protected $orderAndQuotationService;
+    protected $clienTSqlService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -61,7 +63,8 @@ class QuotationService implements QuotationServiceInterface
         MswService $MsWebservice,
         OrderAndQuotationServiceInterface $OrderQuotationService,
         ApprovalServiceInterface $approvalService,
-        OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface
+        OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
+        ClientServiceInterface $clienTSqlService
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -72,6 +75,7 @@ class QuotationService implements QuotationServiceInterface
         $this->OrderQuotationService = $OrderQuotationService;
         $this->approvalService = $approvalService;
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
+        $this->clienTSqlService = $clienTSqlService;
     }
 
 
@@ -1178,4 +1182,28 @@ class QuotationService implements QuotationServiceInterface
         GpTempCart::where('id', $idTempCart)
             ->update(['ART_VALOR' => $artValor]);
     }
+
+
+
+    /** Seccion de clientes */
+    public function getSegmentosSqlServer()
+    {
+        try {
+            $segmentos =  $this->clienTSqlService->getListSegments();
+            return $this->successResponse('Segmentos obtenidos correctamente', $segmentos, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function getSubSegmentosSqlServer($segmento)
+    {
+        try {
+            $subsegmentos =  $this->clienTSqlService->getLisSubSegmentos($segmento);
+            return $this->successResponse('Segmentos obtenidos correctamente', $subsegmentos, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }
+

@@ -105,13 +105,14 @@ Route::get('/consultas/buscarcode/{artCode}', [PedidosController::class, 'buscar
 Route::get('/devolucion/obtener-nota-credito-devolucion/{id}', [DevolucionesController::class, 'restaurarNotaCreditoDevolucion']);
 
 
-
+Route::get('/cotizaciones/obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
+Route::get('/cotizaciones/obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
 
 
 Route::prefix('pedidos')->group(function () {
     Route::get('/facturar-pedido-test/{codPedido}', [PedidosController::class, 'facturarpedidoTest']);
     Route::get('/generar-orden-despacho/{id}', [PedidosController::class, 'generarOrdenDeDespacho']);
     Route::get('/recalcular-pedido/{id}', [PedidosController::class, 'recalcularPedidoTest']);
-
     Route::get('/actualizar-pedido-y-recalcular/{id}', [PedidosController::class, 'actualizarPedidoYRecalcular']);
 });
+

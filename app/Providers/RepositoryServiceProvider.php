@@ -11,6 +11,8 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
+use App\Repositories\SqlServer\Venta\ClientSqlRepository;
+use App\Repositories\SqlServer\Venta\Contracts\ClientSqlRepositoryInterface;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(OrderRepositoryInterface::class, OrderRepository::class);
         $this->app->bind(PurchaseReceipRepositoryInterface::class, PurchaseReceipRepository::class);
         $this->app->bind(QuotationRepositoryInterface::class, QuotationRepository::class);
+        $this->app->bind(ClientSqlRepositoryInterface::class, ClientSqlRepository::class);
     }
 
     /**

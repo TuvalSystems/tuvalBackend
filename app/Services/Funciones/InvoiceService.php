@@ -416,17 +416,6 @@ class InvoiceService implements InvoiceServiceInterface
         if ($order->rechazado) {
             return false;
         }
-        // if ($typeFacturacion == 'facturanormal') {
-        //     // verifica que no tenga factura posterior despacho y factura siguiente mes
-        //     if ($order->factura_a_demanda && !$order->factura_siguiente_mes) {
-        //         return false;
-        //     }
-
-        //     // verifica que no tenga factura posterior despacho y factura siguiente mes
-        //     if (!$order->factura_a_demanda && $order->factura_siguiente_mes) {
-        //         return false;
-        //     }
-        // }
 
 
         // Validar que tenga detalles
@@ -504,19 +493,6 @@ class InvoiceService implements InvoiceServiceInterface
         if ($pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial !== 'yes') {
             return false;
         }
-
-        // if ($typeFacturacion == 'facturanormal') {
-
-        //     // verifica que no tenga factura posterior despacho y factura siguiente mes
-        //     if ($pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
-        //         return false;
-        //     }
-
-        //     // verifica que no tenga factura posterior despacho y factura siguiente mes
-        //     if (!$pedido->factura_a_demanda && $pedido->factura_siguiente_mes) {
-        //         return false;
-        //     }
-        // }
 
         return true;
     }
