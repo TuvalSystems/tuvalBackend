@@ -758,29 +758,39 @@ class OrderService implements OrderServiceInterface
 
     public function updateOrderAndRecalculate($orderId)
     {
-        $order = GpPedido::find($orderId);
-        //datos de cotizacion
-        $dataQuotation = $this->getDataQuotationToUpdateOrder($order->cotizacion_id);
-        $newOrder = $this->fillOrderHeader($order, $dataQuotation);
+        try {
+            DB::beginTransaction();
+            $order = GpPedido::find($orderId);
+            //datos de cotizacion
+            $dataQuotation = $this->getDataQuotationToUpdateOrder($order->cotizacion_id);
+            $newOrder = $this->fillOrderHeader($order, $dataQuotation);
 
 
-        foreach ($dataQuotation['detallecotizacion'] as $i => $item) {
-            $detail = GpPedidoDetalle::where('pedido_id', $orderId)->where('ART_CODIGO', $item['ART_CODIGO'])
-                ->where('ART_CANTIDAD', $item['ART_CANTIDAD'])->first();
-            if (!$detail) { //crea
-                $detail =  $this->prepareOrderDetailToCreate($newOrder, $item, $i);
-                $detail->save();
-            } else {
-                //actualiza
-                $fields  =  $this->prepareOrderDetailToUpdate($newOrder, $item,  $detail, $i);
-                $detail->fill($fields);
-                $detail->save();
+            foreach ($dataQuotation['detallecotizacion'] as $i => $item) {
+                $detail = GpPedidoDetalle::where('pedido_id', $orderId)->where('ART_CODIGO', $item['ART_CODIGO'])
+                    ->where('ART_CANTIDAD', $item['ART_CANTIDAD'])->first();
+                if (!$detail) { //crea
+                    $detail =  $this->prepareOrderDetailToCreate($newOrder, $item, $i);
+                    $detail->save();
+                } else {
+                    //actualiza
+                    $fields  =  $this->prepareOrderDetailToUpdate($newOrder, $item,  $detail, $i);
+                    $detail->fill($fields);
+                    $detail->save();
+                }
+                $this->syncDetailProvidersUpdateOrCreate($newOrder, $detail->id, $item['proveedores'] ?? []);
+                $this->syncDetailStockUpdateOrCreate($newOrder, $detail,     $item['stock']      ?? []);
             }
-            $this->syncDetailProvidersUpdateOrCreate($newOrder, $detail->id, $item['proveedores'] ?? []);
-            $this->syncDetailStockUpdateOrCreate($newOrder, $detail,     $item['stock']      ?? []);
+            $this->functionsService->recalculateOrder($orderId);
+            DB::commit();
+            return $order;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error in updateOrderAndRecalculate (actualizar pedido)', [
+                'error' => $e->getMessage(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
-        $this->functionsService->recalculateOrder($orderId);
-        return $order;
     }
 
     public function getDataQuotationToUpdateOrder($quotationId)
@@ -796,26 +806,26 @@ class OrderService implements OrderServiceInterface
     {
 
         $order->fill([
-            'cotizacion_id' => $dataQuotation['cotizacion_id'],
-            'sucursal_id' => $dataQuotation['sucursal_id'],
-            'sucursal_facturacion_id' => $dataQuotation['sucursal_facturacion_id'],
-            'cliente_id' => $dataQuotation['cliente_id'],
-            'factura_posterior_despacho' => $dataQuotation['factura_posterior_despacho'],
-            'factura_a_demanda' => $dataQuotation['factura_a_demanda'],
-            'factura_siguiente_mes' => $dataQuotation['factura_siguiente_mes'],
-            'impuesto' => env('IVA_IMPUESTO'),
-            'BOD_BODEGA' => $dataQuotation['bodega_facturacion'],
-            'PTO_VTA_ID' => $dataQuotation['PTO_VTA_ID'],
-            'DESC_FORMA_PAGO_CODIGO' => $dataQuotation['DESC_FORMA_PAGO_CODIGO'],
-            'CLI_RUC' => $dataQuotation['CLI_RUC'],
-            'CLI_RAZON_SOCIAL' => $dataQuotation['CLI_RAZON_SOCIAL'],
-            'CLI_CORREO_ELECT_SRI' => $dataQuotation['CLI_CORREO_ELECT_SRI'],
-            'COND_ID' => $dataQuotation['COND_ID'],
-            'COND_ID_ORIGINAL' => $dataQuotation['COND_ID_ORIGINAL'],
-            'VEND_ID' => $dataQuotation['VEND_ID'],
-            'VEND_NOMBRES' => $dataQuotation['VEND_NOMBRES'],
-            'VEND_APELLIDOS' => $dataQuotation['VEND_APELLIDOS'],
-            'despacho' => $dataQuotation['despacho'],
+            'cotizacion_id' => $dataQuotation['id'],
+            // 'sucursal_id' => $dataQuotation['sucursal_id'],
+            // 'sucursal_facturacion_id' => $dataQuotation['sucursal_facturacion_id'],
+            // 'cliente_id' => $dataQuotation['cliente_id'],
+            // 'factura_posterior_despacho' => $dataQuotation['factura_posterior_despacho'],
+            // 'factura_a_demanda' => $dataQuotation['factura_a_demanda'],
+            // 'factura_siguiente_mes' => $dataQuotation['factura_siguiente_mes'],
+            // 'impuesto' => env('IVA_IMPUESTO'),
+            // 'BOD_BODEGA' => $dataQuotation['BOD_BODEGA'],
+            // 'PTO_VTA_ID' => $dataQuotation['PTO_VTA_ID'],
+            // 'DESC_FORMA_PAGO_CODIGO' => $dataQuotation['DESC_FORMA_PAGO_CODIGO'],
+            // 'CLI_RUC' => $dataQuotation['CLI_RUC'],
+            // 'CLI_RAZON_SOCIAL' => $dataQuotation['CLI_RAZON_SOCIAL'],
+            // 'CLI_CORREO_ELECT_SRI' => $dataQuotation['CLI_CORREO_ELECT_SRI'],
+            // 'COND_ID' => $dataQuotation['COND_ID'],
+            // 'COND_ID_ORIGINAL' => $dataQuotation['COND_ID_ORIGINAL'],
+            // 'VEND_ID' => $dataQuotation['VEND_ID'],
+            // 'VEND_NOMBRES' => $dataQuotation['VEND_NOMBRES'],
+            // 'VEND_APELLIDOS' => $dataQuotation['VEND_APELLIDOS'],
+            // 'despacho' => $dataQuotation['despacho'],
             'porcentage_descuentooriginal' => $dataQuotation['porcentage_descuentooriginal'],
             'porcentage_descuento' => $dataQuotation['porcentage_descuento'],
             'subtotal' => number_format((float) $dataQuotation['subtotal'] + (float) $dataQuotation['descuento'], 2, '.', ''),
@@ -927,6 +937,7 @@ class OrderService implements OrderServiceInterface
             );
             $incoming[] = $model->id;
         }
+
         GpPedidoDetalleProveedores::where('pedido_id', $newOrder->id)
             ->where('detalle_id', $detailOrderId)
             ->whereNotIn('id', $incoming)
@@ -934,23 +945,23 @@ class OrderService implements OrderServiceInterface
     }
     public function syncDetailStockUpdateOrCreate(GpPedido $newOrder,  GpPedidoDetalle $detailOrder, array $stock)
     {
-        $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes'
-            || $newOrder->requiere_aprobacion_comercial === 'yes';
+        // $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes'
+        //     || $newOrder->requiere_aprobacion_comercial === 'yes';
         $incoming = [];
         foreach ($stock as $item) {
 
-            $newFormatStock = [
-                'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
-            ];
-            if ($item['seleccionado'] > 0) {
-                $newFormatStock = $this->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
-                if (!$newFormatStock) {
-                    throw new \Exception("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
-                }
-                if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $item['seleccionado']) {
-                    throw new \Exception("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
-                }
-            }
+            // $newFormatStock = [
+            //     'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
+            // ];
+            // if ($item['seleccionado'] > 0) {
+            //     $newFormatStock = $this->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
+            //     if (!$newFormatStock) {
+            //         throw new \Exception("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
+            //     }
+            //     if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $item['seleccionado']) {
+            //         throw new \Exception("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
+            //     }
+            // }
 
             $model = GpPedidoDetalleStock::updateOrCreate([
                 'pedido_id' => $newOrder->id,
@@ -958,9 +969,9 @@ class OrderService implements OrderServiceInterface
                 'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
                 // 'seleccionado' => $item['seleccionado'],
             ], [
-                'STO_ART_STOCK_DISPONIBLE' => $newFormatStock['STO_ART_STOCK_DISPONIBLE'], // me devuelve el stock disponile
+                'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'], // me devuelve el stock disponile
                 'seleccionado' => $item['seleccionado'],
-                'reservado' => $requiereAprobacion ? 0 : $item['seleccionado'],
+                'reservado' =>  $item['seleccionado'],
             ]);
             // Añado su ID a la lista de entrantes
             $incoming[] = $model->id;
