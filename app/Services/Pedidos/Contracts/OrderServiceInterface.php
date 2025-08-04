@@ -42,4 +42,8 @@ interface OrderServiceInterface
      *
      */
     public function generateNextMonthInvoice();
+
+    /** funcion para la actualizacion de un pedido y el recalculo del mismo  */
+
+    public function updateOrderAndRecalculate($orderId);
 }
