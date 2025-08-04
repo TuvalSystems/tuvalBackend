@@ -1475,4 +1475,11 @@ class PedidosController extends Controller
     {
         return $this->orderService->generateNextMonthInvoice();
     }
+
+
+    /** funcion para actualizar un pedido  */
+
+    public function actualizarPedidoYRecalcular($id){
+        return $this->orderService->updateOrderAndRecalculate($id);
+    }
 }
