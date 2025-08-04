@@ -717,6 +717,8 @@ class CotizacionesController extends Controller
         $cliente->CLI_SUBGRUPO = $data['CLI_SUBGRUPO'];
         $cliente->CLI_DIA_MAXIMO_MES_FACTURACION = 0;
         $cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO = 'NO';
+        $cliente->CLI_SEGMENTO_ID = $data['CLI_SEGMENTO_ID'];
+        $cliente->CLI_SUBSEGMENTO_ID = $data['CLI_SUBSEGMENTO_ID'];
         if ($cliente->save()) {
 
             $direccion = new GpClienteSucursal;

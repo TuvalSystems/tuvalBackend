@@ -26,9 +26,8 @@ class ClientSqlRepository implements ClientSqlRepositoryInterface
 
     public function getQueryListSubSegmentsBySegment($segmento)
     {
-        return DB::connection('sqlsrvdyn')
-            ->table('vw_clientesPorSegmento')
-            ->where('segmento', $segmento)
-            ->get();
+        return DB::connection('sqlsrvdyn')->table('vw_segmentosClientes')
+        ->where('co_atrPadre', '=',  $segmento)
+        ->orderBy('co_atrHijo', 'desc')->get();
     }
 }

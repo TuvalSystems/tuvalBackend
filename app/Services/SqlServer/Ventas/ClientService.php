@@ -54,9 +54,10 @@ class ClientService implements ClientServiceInterface
             throw new Exception("No se encontraron subsegmentos", 500);
         }
         return $subSegmentos
-            ->sortBy('segmento')
+            ->sortBy('subsegmento')
             ->map(function ($subseg) {
                 return [
+                    'cot_artPadre' => $subseg->co_atrPadre,
                     'co_atrHijo' => $subseg->co_atrHijo,
                     'subsegmento' => $subseg->subsegmento,
                 ];
