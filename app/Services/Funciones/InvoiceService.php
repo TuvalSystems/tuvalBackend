@@ -44,9 +44,8 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         }
 
-        if ($this->shouldSkipDueToTransferStatus($pedido, $trasladado)) {
-            return;
-        }
+        $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
+
 
         if ($this->processPurchaseOrders($pedido)) {
             return;
