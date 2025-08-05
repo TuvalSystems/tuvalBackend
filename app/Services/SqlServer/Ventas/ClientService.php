@@ -149,7 +149,7 @@ class ClientService implements ClientServiceInterface
     }
 
 
-    public function sendToSegmentAndRucToSqlServer($ruc, $segmentoId)
+    public function sendToSegmentAndRucToSqlServer($ruc, $subsegmentoId)
     {
 
         try {
@@ -157,12 +157,17 @@ class ClientService implements ClientServiceInterface
                 ->table('tbr_atrcli')
                 ->insert([
                     'tx_cli'    => $ruc,
-                    'co_atrCli' => $segmentoId,
+                    'co_atrCli' => $subsegmentoId,
                 ]);
         } catch (Throwable $e) {
             // Opcional: loguear el error para debugging
             Log::channel('sql_errors')->error("Error al insertar en tbr_atrcli (SQL Server): {$e->getMessage()}");
             throw $e;
         }
+    }
+
+    public function getValidateCLientWithSegment($ruc): bool
+    {
+        return  $this->clienTSqlRepository->checkQueryClientWithSegment($ruc);
     }
 }

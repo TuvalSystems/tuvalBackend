@@ -1276,4 +1276,9 @@ class CotizacionesController extends Controller
         $segmento = $request->get('segmento', null);
         return $this->quotationService->getSubSegmentosSqlServer($segmento);
     }
+
+    public function validarSegmentoCliente(Request $request){
+        $cliente = $request->get('cliente', null);
+            return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+    }
 }

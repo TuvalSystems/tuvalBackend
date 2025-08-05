@@ -72,4 +72,6 @@ interface QuotationServiceInterface
     public function getSegmentosSqlServer();
     public function getSubSegmentosSqlServer($segmento);
     public function storeClientQuotation(array $data);
+
+    public function checkClientWithSegmentExist($ruc);
 }

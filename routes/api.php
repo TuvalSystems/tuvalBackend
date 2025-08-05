@@ -257,6 +257,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         /** Proceso Clientes */
         Route::post('obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
         Route::post('obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
+        Route::post ('validar-segmento-cliente', [CotizacionesController::class, 'validarSegmentoCliente']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

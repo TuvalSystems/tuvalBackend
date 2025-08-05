@@ -1368,6 +1368,23 @@ class QuotationService implements QuotationServiceInterface
 
     public function sendToSegmentAndRucToSqlServer($data)
     {
-         $this->clienTSqlService->sendToSegmentAndRucToSqlServer($data['CLI_RUC'], $data['CLI_SEGMENTO_ID']);
+        $this->clienTSqlService->sendToSegmentAndRucToSqlServer($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
+    }
+
+
+    public function checkClientWithSegmentExist($ruc)
+    {
+        $hasSegment = $this->clienTSqlService->getValidateCLientWithSegment($ruc);
+        if ($hasSegment) {
+            return response()->json([
+                'exists'  => true,
+                'message' => 'Segmento encontrado',
+            ], 200);
+        }
+
+        return response()->json([
+            'exists'  => false,
+            'message' => 'Segmento no encontrado',
+        ], 202);
     }
 }

@@ -23,6 +23,10 @@ interface ClientServiceInterface
      * @param mixed $data
      * @return void
      */
- public function sendToSegmentAndRucToSqlServer($ruc, $segmentoId);
+ public function sendToSegmentAndRucToSqlServer($ruc, $subsegmentoId);
+
+ /** verifica si el cliente tiene segmento asignado o no  */
+
+  public function getValidateCLientWithSegment($ruc);
 
 }
