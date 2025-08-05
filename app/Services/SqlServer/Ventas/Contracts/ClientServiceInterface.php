@@ -14,4 +14,15 @@ interface ClientServiceInterface
      */
     public function getListSegments();
     public function getLisSubSegmentos($segmento);
+
+    /** funcion para almacenar los clientes en sql Server */
+    public function syncToSqlServerModifyOrCreateClient($params);
+
+    /**
+     *  para guardar el segmento y ruc en sql server
+     * @param mixed $data
+     * @return void
+     */
+ public function sendToSegmentAndRucToSqlServer($ruc, $segmentoId);
+
 }
