@@ -99,5 +99,45 @@ use Illuminate\Database\Eloquent\Model;
 class GpCliente extends Model
 {
     use HasFactory;
-
+    protected $fillable = [
+        'CLI_RUC',
+        'CLI_RAZON_SOCIAL',
+        'CLI_NOMBRE_CORTO',
+        'CLI_CLASE',
+        'CLI_PRIORIDAD',
+        'CLI_ID_DIRECCION',
+        'CLI_CONTACTO',
+        'CLI_DIRECCION',
+        'CLI_CIUDAD',
+        'CLI_PROVINCIA',
+        'CLI_TERRITORIO',
+        'CLI_ESTADO',
+        'CLI_SUSPENDIDO',
+        'CLI_TELEFONO_1',
+        'CLI_TELEFONO_2',
+        'CLI_TELEFONO_3',
+        'CLI_TELEFONO_4',
+        'CLI_FECHA_MODIFICACION',
+        'CLI_FECHA_CREACION',
+        'CLI_CORREO_ELECT_SRI',
+        'CLI_CORREO_ELECT_NOTIFICACION_INTERNA',
+        'CLI_IMPUESTO',
+        'CLI_DIRECCION_ENVIO',
+        'CLI_DIRECCION_FACTURA',
+        'CLI_VENDEDOR',
+        'CLI_DSTO_COMERCIAL',
+        'CLI_CONDICION_PAGO',
+        'CLI_DIA_GRACIA_VTA_CREDITO',
+        'CLI_DIA_GRACIA_CHEQUE_A_FECHA',
+        'CLI_NIVEL_PRECIO',
+        'CLI_TIPO_CREDITO',
+        'CLI_MONTO_CREDITO',
+        'CLI_GRUPO_ECONOMICO',
+        'CLI_GRUPO',
+        'CLI_SUBGRUPO',
+        'CLI_DIA_MAXIMO_MES_FACTURACION',
+        'CLI_FACTURA_POSTERIOR_AL_DESPACHO',
+        'CLI_SEGMENTO_ID',
+        'CLI_SUBSEGMENTO_ID'
+    ];
 }

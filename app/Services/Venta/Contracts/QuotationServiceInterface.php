@@ -13,7 +13,7 @@ interface QuotationServiceInterface
     /**
      *  recuperar cotizacion
      */
-     public function restoreQuotation($data, $user);
+    public function restoreQuotation($data, $user);
     public function getStockGeneralRestoreQuotation($articulos, $bodegas);
     public function restoreDescriptionItemQuotation($articulos, $bodegas);
 
@@ -23,28 +23,28 @@ interface QuotationServiceInterface
 
     /** lista de items alternativos para cotizacione s */
 
-    public function getItemsAlternatives ($item);
+    public function getItemsAlternatives($item);
 
     /**
      * actualizaciones de campos de gp_temp_cart
      */
-     public function syncAndGetCheckAlternativo($data, $articulo);
-     public function updateCheckAlternativeItem($id, $checkAlternative);
+    public function syncAndGetCheckAlternativo($data, $articulo);
+    public function updateCheckAlternativeItem($id, $checkAlternative);
 
 
-     /**
-      *  imprimir cotizacion pdf
-      */
+    /**
+     *  imprimir cotizacion pdf
+     */
 
-      public function printQuotationPdf($id);
+    public function printQuotationPdf($id);
 
-      /***
-       * API para obtener listado de cotizaciones con novedades
-       */
-      public function consultQuotationsNews($data);
+    /***
+     * API para obtener listado de cotizaciones con novedades
+     */
+    public function consultQuotationsNews($data);
 
 
-      /** funcion para obtener el detalle de la cotizacion  */
+    /** funcion para obtener el detalle de la cotizacion  */
 
     public function detailQuotation($data);
 
@@ -58,18 +58,21 @@ interface QuotationServiceInterface
     public function requestQuotationAgain($data, $user);
 
     /** funcion para guardado de cotización  */
-     public function storeQuotation($data, $user);
+    public function storeQuotation($data, $user);
 
-     /** funcion para obtener el margen del item l en cotizaciónes */
-     public function getMarginItem($artArticulo);
+    /** funcion para obtener el margen del item l en cotizaciónes */
+    public function getMarginItem($artArticulo);
 
-     /** función dedicada para guardar proveedores */
-     public function saveProviderQuotationTemp(array $data);
+    /** función dedicada para guardar proveedores */
+    public function saveProviderQuotationTemp(array $data);
 
 
-     /** procesos de cliente */
+    /** procesos de cliente */
 
-     public function getSegmentosSqlServer();
-     public function getSubSegmentosSqlServer($segmento);
+    public function getSegmentosSqlServer();
+    public function getSubSegmentosSqlServer($segmento);
+    public function storeClientQuotation(array $data);
 
+    public function checkClientWithSegmentExist($ruc);
+     public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId) ;
 }

@@ -5,15 +5,12 @@ namespace App\Http\Controllers\ventas;
 use App\Http\Controllers\Controller;
 use App\Models\GpCronLog;
 use App\Models\GpProspecto;
-use App\Models\GpRegistroCopia;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpTempCart;
-use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpClienteSucursal;
@@ -611,151 +608,10 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function guardarcliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function guardarcliente(Request $request)
     {
         $data = $request->all();
-
-        foreach ($data as $key => $direccion) {
-            if ($key != 'CLI_CORREO_ELECT_SRI' && $key != 'CLI_CORREO_ELECT_NOTIFICACION_INTERNA')
-                $data[$key] = mb_strtoupper($direccion);
-            else
-                $data[$key] = strtolower($direccion);
-        }
-        $data['CLI_PROVINCIA'] = $data['CLI_PROVINCIA_NOMBRE'];
-        unset($data['CLI_PROVINCIA_NOMBRE']);
-        $data['CLI_GRUPO'] = $data['CLI_GRUPO_NOMBRE'];
-        unset($data['CLI_GRUPO_NOMBRE']);
-        $data['CLI_CLASE'] = 'LOCAL';
-        $data['CLI_PRIORIDAD'] = '1';
-
-        $dir = str_split($data['CLI_DIRECCION'], 61);
-
-        if (!isset($dir[1])) {
-            $dir[1] = '';
-        }
-
-        $parameters = array(
-            'CLI_TIPO_ID' => $data['CLI_TIPO_ID'],
-            'CLI_RUC' => $data['CLI_RUC'],
-            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_NOMBRE_CORTO' => $data['CLI_NOMBRE_CORTO'],
-            'CLI_CLASE' => $data['CLI_CLASE'],
-            'CLI_COND_PAGO' => 'CONTADO',
-            'CLI_DESC_COMERCIAL' => '25',
-            'CLI_NIVEL_PRECIO' => 'GENERAL',
-            'CLI_PRIORIDAD' => $data['CLI_PRIORIDAD'],
-            'CLI_CONTACTO' => $data['CLI_CONTACTO'],
-            'CLI_DIRECCION_1' => $dir[0],
-            'CLI_DIRECCION_2' => $dir[1],
-            'CLI_CIUDAD' => $data['CLI_CIUDAD'],
-            'CLI_PROVINCIA' => $data['CLI_PROVINCIA'],
-            'CLI_PAIS' => 'Ec',
-            'CLI_TERRITORIO' => $data['CLI_TERRITORIO'],
-            'CLI_TELEFONO_1' => $data['CLI_TELEFONO_1'],
-            'CLI_TELEFONO_2' => $data['CLI_TELEFONO_2'],
-            'CLI_TELEFONO_3' => $data['CLI_TELEFONO_3'],
-            'CLI_TELEFONO_4' => $data['CLI_TELEFONO_4'],
-            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
-            'CLI_CORREO_ELECT_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'CLI_VENDEDOR' => $data['CLI_VENDEDOR'],
-            'CLI_GRUPO' => $data['CLI_GRUPO'],
-            'CLI_SUBGRUPO' => $data['CLI_SUBGRUPO'],
-            'CLI_PUNTO_VENTA' => $data['CLI_PUNTO_VENTA'],
-        );
-
-        //        echo '<pre>';
-        //        print_r($parameters);
-        //        die();
-
-        $parameters = [
-            'Cliente' => array($parameters)
-        ];
-        $webservices = new WebserviceController;
-        $nuevoCliente = $webservices->transaccional('MST_Cliente_Creacion_Modificacion', $parameters);
-
-        if (!isset($nuevoCliente['MST_Cliente_Creacion_ModificacionResult'])) {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
-        }
-
-        $cliente = new GpCliente;
-        $cliente->CLI_RUC = $data['CLI_RUC'];
-        $cliente->CLI_RAZON_SOCIAL = $data['CLI_RAZON_SOCIAL'];
-        $cliente->CLI_NOMBRE_CORTO = $data['CLI_NOMBRE_CORTO'];
-        $cliente->CLI_CLASE = $data['CLI_CLASE'];
-        $cliente->CLI_PRIORIDAD = $data['CLI_PRIORIDAD'];
-        $cliente->CLI_ID_DIRECCION = 'PRINCIPAL';
-        $cliente->CLI_CONTACTO = $data['CLI_CONTACTO'];
-        $cliente->CLI_DIRECCION = $data['CLI_DIRECCION'];
-        $cliente->CLI_CIUDAD = $data['CLI_CIUDAD'];
-        $cliente->CLI_PROVINCIA = $data['CLI_PROVINCIA'];
-        $cliente->CLI_TERRITORIO = $data['CLI_TERRITORIO'];
-        $cliente->CLI_ESTADO = 'ACTIVO';
-        $cliente->CLI_SUSPENDIDO = 'NO';
-        $cliente->CLI_TELEFONO_1 = $data['CLI_TELEFONO_1'];
-        $cliente->CLI_TELEFONO_2 = $data['CLI_TELEFONO_2'];
-        $cliente->CLI_TELEFONO_3 = $data['CLI_TELEFONO_3'];
-        $cliente->CLI_TELEFONO_4 = $data['CLI_TELEFONO_4'];
-        $cliente->CLI_FECHA_MODIFICACION = date('Y-m-d 00:00:00');
-        $cliente->CLI_FECHA_CREACION = date('Y-m-d 00:00:00');
-        $cliente->CLI_CORREO_ELECT_SRI = $data['CLI_CORREO_ELECT_SRI'];
-        $cliente->CLI_CORREO_ELECT_NOTIFICACION_INTERNA = $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'];
-        $cliente->CLI_IMPUESTO = env('IVA_IMPUESTO');
-        $cliente->CLI_DIRECCION_ENVIO = 'PRINCIPAL';
-        $cliente->CLI_DIRECCION_FACTURA = 'PRINCIPAL';
-        $cliente->CLI_VENDEDOR = $data['CLI_VENDEDOR'];
-        $cliente->CLI_DSTO_COMERCIAL = 25;
-        $cliente->CLI_CONDICION_PAGO = 'CONTADO';
-        $cliente->CLI_DIA_GRACIA_VTA_CREDITO = 0;
-        $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA = 0;
-        $cliente->CLI_NIVEL_PRECIO = 'GENERAL';
-        $cliente->CLI_TIPO_CREDITO = 'SIN CREDITO';
-        $cliente->CLI_MONTO_CREDITO = 0;
-        $cliente->CLI_GRUPO_ECONOMICO = '';
-        $cliente->CLI_GRUPO = $data['CLI_GRUPO'];
-        $cliente->CLI_SUBGRUPO = $data['CLI_SUBGRUPO'];
-        $cliente->CLI_DIA_MAXIMO_MES_FACTURACION = 0;
-        $cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO = 'NO';
-        $cliente->CLI_SEGMENTO_ID = $data['CLI_SEGMENTO_ID'];
-        $cliente->CLI_SUBSEGMENTO_ID = $data['CLI_SUBSEGMENTO_ID'];
-        if ($cliente->save()) {
-
-            $direccion = new GpClienteSucursal;
-            $direccion->CLI_SUC_RUC = $data['CLI_RUC'];
-            $direccion->CLI_SUC_DESCRIPCION = $data['CLI_RAZON_SOCIAL'];
-            $direccion->CLI_SUC_ID_DIRECCION = 'PRINCIPAL';
-            $direccion->CLI_SUC_DIRECCION = $data['CLI_DIRECCION'];
-            $direccion->CLI_SUC_CONTACTO = $data['CLI_CONTACTO'];
-            $direccion->CLI_SUC_REFERENCIA = $data['CLI_CONTACTO'];
-            $direccion->CLI_SUC_VENDEDOR = $data['CLI_VENDEDOR'];
-            $direccion->CLI_SUC_TERRITORIO = $data['CLI_TERRITORIO'];
-            $direccion->CLI_SUC_CIUDAD = $data['CLI_CIUDAD'];
-            $direccion->CLI_SUC_PROVINCIA = $data['CLI_PROVINCIA'];
-            $direccion->CLI_SUC_PAIS = 'Ecuador';
-            $direccion->CLI_SUC_TELEFONO = $data['CLI_TELEFONO_1'];
-            $direccion->CLI_SUC_CORREO_ELECTRONICO_SRI = $data['CLI_CORREO_ELECT_SRI'];
-            $direccion->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = $data['CLI_CORREO_ELECT_SRI'];
-            $direccion->save();
-
-            $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
-            $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-            $cliente->vendedor = $vendedor;
-
-            $sucursales = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
-            $cliente->sucursales = $sucursales;
-            $cliente->sucursalesfacturacion = $sucursales;
-
-            return response([
-                'success' => true,
-                'message' => 'Cliente correctaente guardado',
-                'cliente' => $cliente,
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
-        }
+        return $this->quotationService->storeClientQuotation($data);
     }
 
     public function detallecotizacion(Request $request)
@@ -1416,5 +1272,17 @@ class CotizacionesController extends Controller
     public function obtenerListaSubSegmentos(Request $request){
         $segmento = $request->get('segmento', null);
         return $this->quotationService->getSubSegmentosSqlServer($segmento);
+    }
+
+    public function validarSegmentoCliente(Request $request){
+        $cliente = $request->get('cliente', null);
+            return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+    }
+
+    public function actualizarSegmentoCliente(Request $request){
+        $cliente = $request->get('cliente', null);
+        $segmento = $request->get('segmento', null);
+        $subsegmento = $request->get('subsegmento', null);
+        return $this->quotationService->updateClientWithSegment($cliente, $segmento, $subsegmento);
     }
 }
