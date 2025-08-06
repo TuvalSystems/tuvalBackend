@@ -170,4 +170,6 @@ class ClientService implements ClientServiceInterface
     {
         return  $this->clienTSqlRepository->checkQueryClientWithSegment($ruc);
     }
+
+
 }

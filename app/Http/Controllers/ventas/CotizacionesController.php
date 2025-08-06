@@ -5,15 +5,12 @@ namespace App\Http\Controllers\ventas;
 use App\Http\Controllers\Controller;
 use App\Models\GpCronLog;
 use App\Models\GpProspecto;
-use App\Models\GpRegistroCopia;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpTempCart;
-use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpClienteSucursal;
@@ -1280,5 +1277,12 @@ class CotizacionesController extends Controller
     public function validarSegmentoCliente(Request $request){
         $cliente = $request->get('cliente', null);
             return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+    }
+
+    public function actualizarSegmentoCliente(Request $request){
+        $cliente = $request->get('cliente', null);
+        $segmento = $request->get('segmento', null);
+        $subsegmento = $request->get('subsegmento', null);
+        return $this->quotationService->updateClientWithSegment($cliente, $segmento, $subsegmento);
     }
 }

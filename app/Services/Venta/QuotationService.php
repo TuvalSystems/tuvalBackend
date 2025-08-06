@@ -1387,4 +1387,22 @@ class QuotationService implements QuotationServiceInterface
             'message' => 'Segmento no encontrado',
         ], 202);
     }
+
+
+    public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId)
+    {
+        try {
+            DB::beginTransaction();
+            $cliente = GpCliente::find($cliente['id']);
+            $cliente->CLI_SEGMENTO_ID = $segmentoId;
+            $cliente->CLI_SUBSEGMENTO_ID = $subsegmentoId;
+            $cliente->save();
+            DB::commit();
+            $this->clienTSqlService->sendToSegmentAndRucToSqlServer($cliente['CLI_RUC'], $subsegmentoId);
+            return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+           return $this->buildErrorResponse('Error al actualizar el segmento del cliente :'.$e->getMessage(), 500);
+        }
+    }
 }
