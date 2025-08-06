@@ -969,7 +969,7 @@ class OrderService implements OrderServiceInterface
                 $stock = $stocks->get($item->id);
                 $cantidad = 0;
 
-                if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
+                if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV' && $item->ART_TIPO_COMPRA != 'SER') {
                     $cantidad = $stock->seleccionado;
                 }
                 $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
