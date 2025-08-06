@@ -1009,7 +1009,7 @@ class OrderService implements OrderServiceInterface
                 ->filter()
                 ->values();
             $data['subtotal'] = round($processed->sum('subtotal'), 2);
-            $data['descuento '] = round($processed->sum(fn($i) => $i->ART_DESCUENTO * $i->ART_CANTIDAD), 2);
+            $data['descuento'] = round($processed->sum(fn($i) => $i->ART_DESCUENTO * $i->ART_CANTIDAD), 2);
             $data['subtotalmenosdescuento'] = round($processed->sum(fn($i) => ($i->ART_VALOR - $i->ART_DESCUENTO) * $i->ART_CANTIDAD), 2);
             $data['iva'] = round($processed->sum('ART_IVA'), 2);
 
