@@ -38,9 +38,9 @@ class FunctionsService implements FunctionsServiceInterface
         $this->apiBillingService = $apiBillingService;
     }
 
-    public function getItemProviders($data, $item, $pendientes = false, $existentes = false): array
+    public function getItemProviders($pedidoId, $item, $pendientes = false, $existentes = false): array
     {
-        $providers = $this->orderRepository->getSuppliersByOrderAndItem($data['id'], $item->id);
+        $providers = $this->orderRepository->getSuppliersByOrderAndItem($pedidoId, $item->id);
         if ($item->ART_DECIMAL_CANTIDAD == 0) {
             $item->ART_STOCK = (int) $item->ART_STOCK;
             $item->ART_CANTIDAD = (int) $item->ART_CANTIDAD;

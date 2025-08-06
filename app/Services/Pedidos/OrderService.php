@@ -499,7 +499,7 @@ class OrderService implements OrderServiceInterface
         $pendientes = false;
         $existentes = false;
         $detalle->each(function ($item) use ($data, &$pendientes, &$existentes) {
-            $proveedores = $this->functionsService->getItemProviders($data, $item, $pendientes, $existentes);
+            $proveedores = $this->functionsService->getItemProviders($data['id'], $item, $pendientes, $existentes);
             $item->proveedores = $proveedores['proveedores'];
             $pendientes = $proveedores['pendientes'] ?: $pendientes;
             $existentes = $proveedores['existentes'] ?: $existentes;
