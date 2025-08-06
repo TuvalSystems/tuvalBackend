@@ -231,73 +231,11 @@ class PedidosController extends Controller
     }
 
 
-    public function consultarexistente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function consultarexistente(Request $request)
     {
         $data = $request->all();
-        $facturarExistente = array();
-
-        $data['subtotal'] = 0;
-        $data['descuento'] = 0;
-        $data['subtotalmenosdescuento'] = 0;
-        $data['iva'] = 0;
-        $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
-        $funciones = new FuncionesController();
-
-        foreach ($detalle as $key => $articulo) {
-            $stocks = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
-                ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
-                ->first();
-
-            if ($stocks && $stocks->seleccionado == 0 && $articulo->ART_TIPO_COMPRA != 'L' && $articulo->ART_TIPO_COMPRA != 'SERV') {
-                unset($detalle[$key]);
-                continue;
-            }
-
-            if ($stocks && $articulo->ART_TIPO_COMPRA != 'L' && $articulo->ART_TIPO_COMPRA != 'SERV') {
-                $articulo->ART_CANTIDAD = $stocks->seleccionado;
-            }
-            $articulo->stocks = $stocks;
-
-            $proveedores = $funciones->getitemproveedores($data, $articulo, false);
-            $array_prov = array();
-
-            if (count($proveedores['proveedores']) > 0) {
-                $articulo->ART_CANTIDAD = 0;
-                foreach ($proveedores['proveedores'] as $proveedor) {
-                    if ($proveedor->ingresado > 0) {
-                        $articulo->ART_CANTIDAD += $proveedor->ingresado - $proveedor->ejecutado;
-                        $array_prov[] = $proveedor;
-                    }
-                }
-            }
-
-            if ($articulo->ART_CANTIDAD == 0) {
-                unset($detalle[$key]);
-                continue;
-            }
-
-            $articulo->proveedores = $array_prov;
-
-            $articulo->ART_IMP_VTA = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first()->ART_IMP_VTA;
-            $articulo->ART_IVA = number_format(number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD), 2, '.', '') * ($articulo->ART_IMP_VTA / 100), 2, '.', '');
-            $articulo->subtotal = (float) number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD, 2, '.', '');
-            $data['subtotal'] += (float) number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD, 2, '.', '');
-            $data['descuento'] += (float) number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD, 2, '.', '');
-            $data['subtotalmenosdescuento'] += (float) number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.', '');
-            $data['iva'] += $articulo->ART_IVA;
-        }
-
-        $data['descuento'] = number_format($data['descuento'], 2, '.', '');
-        $data['subtotalmenosdescuento'] = number_format($data['subtotalmenosdescuento'], 2, '.', '');
-        $data['iva'] = number_format($data['iva'], 2, '.', '');
-        $data['total'] = number_format($data['subtotalmenosdescuento'] + (float) $data['iva'], 2, '.', '');
-        $facturarExistente['pedido'] = $data;
-        $facturarExistente['detalle'] = $detalle;
-
-        return response([
-            'success' => true,
-            'facturar_existente' => $facturarExistente,
-        ]);
+        return $this->orderService->checkExistence($data);
+     
     }
 
     public function facturarexistente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

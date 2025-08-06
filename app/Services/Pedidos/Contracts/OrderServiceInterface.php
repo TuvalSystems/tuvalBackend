@@ -46,4 +46,8 @@ interface OrderServiceInterface
     /** funcion para la actualizacion de un pedido y el recalculo del mismo  */
 
     public function updateOrderAndRecalculate($orderId);
+
+    /*** proceso de facturar existente  */
+
+        public function checkExistence($data);
 }

@@ -3,6 +3,7 @@
 namespace App\Services\Pedidos;
 
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
@@ -16,12 +17,9 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleStock;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
-use App\Models\GpProveedor;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
@@ -807,25 +805,6 @@ class OrderService implements OrderServiceInterface
 
         $order->fill([
             'cotizacion_id' => $dataQuotation['id'],
-            // 'sucursal_id' => $dataQuotation['sucursal_id'],
-            // 'sucursal_facturacion_id' => $dataQuotation['sucursal_facturacion_id'],
-            // 'cliente_id' => $dataQuotation['cliente_id'],
-            // 'factura_posterior_despacho' => $dataQuotation['factura_posterior_despacho'],
-            // 'factura_a_demanda' => $dataQuotation['factura_a_demanda'],
-            // 'factura_siguiente_mes' => $dataQuotation['factura_siguiente_mes'],
-            // 'impuesto' => env('IVA_IMPUESTO'),
-            // 'BOD_BODEGA' => $dataQuotation['BOD_BODEGA'],
-            // 'PTO_VTA_ID' => $dataQuotation['PTO_VTA_ID'],
-            // 'DESC_FORMA_PAGO_CODIGO' => $dataQuotation['DESC_FORMA_PAGO_CODIGO'],
-            // 'CLI_RUC' => $dataQuotation['CLI_RUC'],
-            // 'CLI_RAZON_SOCIAL' => $dataQuotation['CLI_RAZON_SOCIAL'],
-            // 'CLI_CORREO_ELECT_SRI' => $dataQuotation['CLI_CORREO_ELECT_SRI'],
-            // 'COND_ID' => $dataQuotation['COND_ID'],
-            // 'COND_ID_ORIGINAL' => $dataQuotation['COND_ID_ORIGINAL'],
-            // 'VEND_ID' => $dataQuotation['VEND_ID'],
-            // 'VEND_NOMBRES' => $dataQuotation['VEND_NOMBRES'],
-            // 'VEND_APELLIDOS' => $dataQuotation['VEND_APELLIDOS'],
-            // 'despacho' => $dataQuotation['despacho'],
             'porcentage_descuentooriginal' => $dataQuotation['porcentage_descuentooriginal'],
             'porcentage_descuento' => $dataQuotation['porcentage_descuento'],
             'subtotal' => number_format((float) $dataQuotation['subtotal'] + (float) $dataQuotation['descuento'], 2, '.', ''),
@@ -945,24 +924,9 @@ class OrderService implements OrderServiceInterface
     }
     public function syncDetailStockUpdateOrCreate(GpPedido $newOrder,  GpPedidoDetalle $detailOrder, array $stock)
     {
-        // $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes'
-        //     || $newOrder->requiere_aprobacion_comercial === 'yes';
+
         $incoming = [];
         foreach ($stock as $item) {
-
-            // $newFormatStock = [
-            //     'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
-            // ];
-            // if ($item['seleccionado'] > 0) {
-            //     $newFormatStock = $this->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
-            //     if (!$newFormatStock) {
-            //         throw new \Exception("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
-            //     }
-            //     if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $item['seleccionado']) {
-            //         throw new \Exception("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
-            //     }
-            // }
-
             $model = GpPedidoDetalleStock::updateOrCreate([
                 'pedido_id' => $newOrder->id,
                 'detalle_id' => $detailOrder->id,
@@ -982,5 +946,85 @@ class OrderService implements OrderServiceInterface
             ->where('detalle_id', $detailOrder->id)
             ->whereNotIn('id', $incoming)
             ->delete();
+    }
+
+
+
+
+    /***
+     *   PROCESO DE FACTURAR PEDIDO EXISTENTE
+     *
+     */
+
+    public function checkExistence($data)
+    {
+        try {
+            $detailOrder = $this->orderRepository->getAllDetailsOrderById($data['id']);
+            $stocks =  $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
+            $impVtaByCodigo = GpArticulo::query()
+                ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
+                ->pluck('ART_IMP_VTA', 'ART_CODIGO');
+
+            $processed  = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks) {
+                $stock = $stocks->get($item->id);
+                $cantidad = 0;
+
+                if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
+                    $cantidad = $stock->seleccionado;
+                }
+                $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
+
+                $validProviders = [];
+                if ($providers['proveedores']->isNotEmpty()) {
+                    $cantidad = 0;
+                    foreach ($providers['proveedores'] as $prov) {
+                        $diff = $prov->ingresado - $prov->ejecutado;
+                        if ($prov->ingresado > 0) {
+                            $cantidad += $diff;
+                            $validProviders[] = $prov;
+                        }
+                    }
+                }
+
+                if ($cantidad <= 0) {
+                    return null;
+                }
+
+                $item->stocks         = $stock;
+                $item->ART_CANTIDAD   = $cantidad;
+                $item->proveedores    = $validProviders;
+                $item->ART_IMP_VTA    = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
+
+                // calculos monetarios
+                $subTotal             = $item->ART_VALOR * $cantidad;
+                $discountTotal        = $item->ART_DESCUENTO * $cantidad;
+                $taxableAmount        = $subTotal - $discountTotal;
+                $ivaAmount            = round($taxableAmount * ($item->ART_IMP_VTA / 100), 2);
+
+                $item->subtotal       = round($subTotal, 2);
+                $item->ART_IVA        = $ivaAmount;
+                return $item;
+            })
+                ->filter()
+                ->values();
+            $data['subtotal'] = round($processed->sum('subtotal'), 2);
+            $data['descuento '] = round($processed->sum(fn($i) => $i->ART_DESCUENTO * $i->ART_CANTIDAD), 2);
+            $data['subtotalmenosdescuento'] = round($processed->sum(fn($i) => ($i->ART_VALOR - $i->ART_DESCUENTO) * $i->ART_CANTIDAD), 2);
+            $data['iva'] = round($processed->sum('ART_IVA'), 2);
+
+            $data['total'] = round($data['subtotalmenosdescuento'] + $data['iva'], 2);
+
+
+            $facturarExistente = [];
+            $facturarExistente['pedido'] = $data;
+            $facturarExistente['detalle'] = $processed;
+
+            return response([
+                'success' => true,
+                'facturar_existente' => $facturarExistente,
+            ]);
+        } catch (\Throwable $e) {
+            return response(['success' => false, 'message' => $e->getMessage(), 500]);
+        }
     }
 }
