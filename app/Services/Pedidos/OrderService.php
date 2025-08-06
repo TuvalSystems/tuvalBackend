@@ -991,8 +991,9 @@ class OrderService implements OrderServiceInterface
                 }
 
                 $item->stocks         = $stock;
-                $item->ART_CANTIDAD   = $cantidad;
                 $item->proveedores    = $validProviders;
+
+                $item->ART_CANTIDAD   = $cantidad;
                 $item->ART_IMP_VTA    = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
 
                 // calculos monetarios
@@ -1024,7 +1025,13 @@ class OrderService implements OrderServiceInterface
                 'facturar_existente' => $facturarExistente,
             ]);
         } catch (\Throwable $e) {
-            return response(['success' => false, 'message' => $e->getMessage(), 500]);
+            // Log interno
+            Log::error('Error en checkExistence', ['exception' => $e]);
+            // Respuesta genérica
+            return response()->json([
+                'success' => false,
+                'message' => 'Ocurrió un error al comprobar la existencia.'
+            ], 500);
         }
     }
 }
