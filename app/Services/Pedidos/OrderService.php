@@ -967,7 +967,7 @@ class OrderService implements OrderServiceInterface
 
             $processed  = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks) {
                 $stock = $stocks->get($item->id);
-                $cantidad = 0;
+                $cantidad = $item->ART_CANTIDAD;
 
                 if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV' && $item->ART_TIPO_COMPRA != 'SER') {
                     $cantidad = $stock->seleccionado;
