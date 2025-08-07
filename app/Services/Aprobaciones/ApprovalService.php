@@ -200,10 +200,10 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($precioActual > $precioLimite) {
                     $exceso = $precioActual - $precioLimite;
                     $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
+                    return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                        . "(límite: {$precioLimite}), excede en {$exceso} "
+                        . "({$excesoPct}% sobre el valor original).");
                 }
-                return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
-                    . "(límite: {$precioLimite}), excede en {$exceso} "
-                    . "({$excesoPct}% sobre el valor original).");
             }
 
             // validaciones para tipo L
