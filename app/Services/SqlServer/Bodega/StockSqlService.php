@@ -46,6 +46,7 @@ class StockSqlService implements StockSqlServiceInterface
     {
         $item = reset($rows);
         return [
+            'DESCRIPCION_ARTICULO'      => $item->DESCRIPCION_ARTICULO,
             'STO_ART_ARTICULO'          => trim($item->ARTICULO),
             'STO_ART_BODEGA'            => trim($item->BODEGA),
             // 'STOCK_MANO'                => $item->STOCK_MANO,
@@ -54,5 +55,44 @@ class StockSqlService implements StockSqlServiceInterface
             // 'STOCK_USO'                 => $item->STOCK_USO,
             // 'STOCK_DANADO'              => $item->STOCK_DANADO,
         ];
+    }
+
+
+
+    /**
+     * @param array $params
+     * @return array
+     *  params contiene un array de articulos con bodegas diferentes
+     */
+
+    public function getStockByArticleBatch(array $params)
+    {
+
+        if ($params === []) return [];
+
+        // Deduplicar manteniendo orden
+        $unique = [];
+        $order  = [];
+        foreach ($params as $p) {
+            $key = trim($p['articulo']) . '|' . strtoupper(trim($p['bodega']));
+            if (!isset($unique[$key])) {
+                $unique[$key] = ['articulo' => trim($p['articulo']), 'bodega' => strtoupper(trim($p['bodega']))];
+            }
+            $order[] = $key;
+        }
+
+        // Consultar cada par único
+        $byKey = [];
+        foreach ($unique as $key => $p) {
+            $byKey[$key] = $this->consultStockWarehouseSql($p); // puede devolver array o null
+        }
+
+        // Reconstruir en el mismo orden del input
+        $out = [];
+        foreach ($order as $key) {
+            $out[] = $byKey[$key] ?? null;
+        }
+
+        return $out;
     }
 }
