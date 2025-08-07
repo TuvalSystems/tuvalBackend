@@ -160,13 +160,13 @@ class ApprovalService implements ApprovalServiceInterface
     {
 
         foreach ($detalles as  $detalle) {
-            if (empty($detalle['detalle_id'])) continue;
-            $detOriginal = GpCotizacionDetalle::find($detalle['detalle_id']);
-            if (!$detOriginal) continue;
-
 
             /// validaciones tipo pedido
             if ($type == 'pedido') {
+                if (empty($detalle['detalle_id'])) continue;
+                $detOriginal = GpCotizacionDetalle::find($detalle['detalle_id']);
+                if (!$detOriginal) continue;
+
                 //validaciones del descuento en caso de que sea pedido
                 if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $detOriginal->descuento) {
                     return $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - {$detalle['detalle_id']}");
@@ -199,11 +199,11 @@ class ApprovalService implements ApprovalServiceInterface
 
                 if ($precioActual > $precioLimite) {
                     $exceso = $precioActual - $precioLimite;
-                    $excesoPct = round( ($exceso / $valorOriginal) * 100, 2);
+                    $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
+                    return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                        . "(límite: {$precioLimite}), excede en {$exceso} "
+                        . "({$excesoPct}% sobre el valor original).");
                 }
-                return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
-                    . "(límite: {$precioLimite}), excede en {$exceso} "
-                    . "({$excesoPct}% sobre el valor original).");
             }
 
             // validaciones para tipo L
