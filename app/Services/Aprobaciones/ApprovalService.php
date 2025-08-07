@@ -189,6 +189,8 @@ class ApprovalService implements ApprovalServiceInterface
                 }
 
                 /** proceso para calculo de porcetaje maximo de precio de venta */
+                $exceso = 0;
+                $excesoPct = 0;
                 $valorOriginal = $detalle['ART_VALOR_ORIGINAL'];
                 $porcMaxSubida = $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
                 $factor = 1 + ($porcMaxSubida / 100);
@@ -197,7 +199,7 @@ class ApprovalService implements ApprovalServiceInterface
 
                 if ($precioActual > $precioLimite) {
                     $exceso = $precioActual - $precioLimite;
-                    $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
+                    $excesoPct = round( ($exceso / $valorOriginal) * 100, 2);
                 }
                 return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
                     . "(límite: {$precioLimite}), excede en {$exceso} "
