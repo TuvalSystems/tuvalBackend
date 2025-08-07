@@ -1006,10 +1006,10 @@ class OrderService implements OrderServiceInterface
                 $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
                 $lineaSubtotal = $valorUnitario * (float) $cantidad;
-                $lineaDiscount = $descuentoUnitario * $cantidad;
+                $lineaDiscount = $descuentoUnitario * (float) $cantidad;
                 $lineNet = round(($valorUnitario - $descuentoUnitario) * (float)$cantidad, 2);
                 $impuestoPorcentaje   = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
-                $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
+                $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
 
                 // calculos monetarios
                 $subtotal += $lineaSubtotal;
@@ -1017,20 +1017,20 @@ class OrderService implements OrderServiceInterface
                 $netSubtotal += $lineNet;
                 $totalIva += $lineaIva;
 
-                $item->subtotal       = round($lineaSubtotal, 2);
-                $item->ART_IMP_VTA = $impuestoPorcentaje;
-                $item->ART_IVA = round($lineaIva, 2);
+                $item->subtotal       = $lineaSubtotal;
+                $item->ART_IMP_VTA    = $impuestoPorcentaje;
+                $item->ART_IVA        = round($lineaIva, 2);
                 return $item;
             })
                 ->filter()
                 ->values();
-            $total = $netSubtotal + $totalIva;
-            $data['subtotal'] = round($subtotal, 2);
-            $data['descuento'] = round($totalDiscount, 2);
+            $total                          = $netSubtotal + $totalIva;
+            $data['subtotal']               = round($subtotal, 2);
+            $data['descuento']              = round($totalDiscount, 2);
             $data['subtotalmenosdescuento'] = round($netSubtotal, 2);
-            $data['iva'] = round($totalIva, 2);
+            $data['iva']                    = round($totalIva, 2);
 
-            $data['total'] = round($total, 2);
+            $data['total']                  = round($total, 2);
 
 
             $facturarExistente = [];
