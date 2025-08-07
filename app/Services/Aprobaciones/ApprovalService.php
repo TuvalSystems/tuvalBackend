@@ -284,7 +284,7 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($detalle['ART_VALOR'] > ($detalle['ART_VALOR_ORIGINAL'] * (1 + ($ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO) / 100))) {
                     return [
                         'requiere' => 'yes',
-                        'motivo' => "El valor del producto es mayor que el valor original y supera el margen permitido - {$porcentajeMargen->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO}"
+                        'motivo' => "El valor del producto es mayor que el valor original y supera el margen permitido: {$porcentajeMargen->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO} %"
                     ];
                 }
                 if ($detalle['ART_TIPO_COMPRA']  != 'L') {
