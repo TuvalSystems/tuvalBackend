@@ -189,7 +189,7 @@ class ApprovalService implements ApprovalServiceInterface
                 }
 
                 /** proceso para calculo de porcetaje maximo de precio de venta */
-                $valorOriginal = $detalles['ART_VALOR_ORIGINAL'];
+                $valorOriginal = $detalle['ART_VALOR_ORIGINAL'];
                 $porcMaxSubida = $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
                 $factor = 1 + ($porcMaxSubida / 100);
                 $precioLimite      = $valorOriginal * $factor;
