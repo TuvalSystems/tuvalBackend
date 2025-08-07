@@ -959,8 +959,6 @@ class OrderService implements OrderServiceInterface
     public function checkExistence($data)
     {
         try {
-
-
             $subtotal = 0.0;
             $totalDiscount = 0.0;
             $netSubtotal = 0.0;
@@ -974,10 +972,13 @@ class OrderService implements OrderServiceInterface
 
             $processed  = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks,  &$subtotal,  &$totalDiscount,  &$netSubtotal,  &$totalIva) {
                 $stock = $stocks->get($item->id);
-                $cantidad = $item->ART_CANTIDAD;
+                $cantidad = 0;
 
                 if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV' && $item->ART_TIPO_COMPRA != 'SER') {
                     $cantidad = $stock->seleccionado;
+                }
+                if ($item->ART_TIPO_COMPRA == 'SER') {
+                    $cantidad = $item->ART_CANTIDAD;
                 }
                 $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
 
