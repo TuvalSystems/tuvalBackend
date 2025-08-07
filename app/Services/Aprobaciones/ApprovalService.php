@@ -53,253 +53,6 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
     // aprobacion comercial tanto de pedido como de cotizaciones
-
-    public function checkoutApprovalComercial($data, $order = null)
-    {
-        // TODO: Implement checkoutApprovalComercial() method.
-        $return = ['requiere' => 'no', 'motivo' => null];
-
-        $nivelFormaPagoCliente = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL'])->orderBy('DESC_FORMA_PAGO_CODIGO')->first();
-        if (!$nivelFormaPagoCliente) {
-            return [
-                'requiere' => 'no',
-                'motivo' => "Forma de pago no encontrada en la base de datos."
-            ];
-        }
-        $nivelCliente = $nivelFormaPagoCliente->nivel;
-
-
-        $nivelFormaPagoCotizacion = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO'])->orderBy('DESC_FORMA_PAGO_CODIGO')->first();
-        if (!$nivelFormaPagoCotizacion) {
-            return [
-                'requiere' => 'no',
-                'motivo' => "Forma de pago de cotizacion no encontrada en la base de datos."
-            ];
-        }
-        $nivelCotizacion = $nivelFormaPagoCotizacion->nivel;
-
-        if (!empty($data['cotizacion_id']) && isset($data['cotizacion']) && $data['cotizacion_id'] != '') {
-            $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->first();
-            if (!$cotizacion) {
-                return [
-                    'requiere' => 'no',
-                    'motivo' => "Cotizacion no encontrada en la base de datos."
-                ];
-            }
-
-
-
-            $nivelFormPagoCotizacionAnterior = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion->DESC_FORMA_PAGO_CODIGO)
-                ->orderBy('DESC_FORMA_PAGO_CODIGO')->first();
-            $nivelAnterior = $nivelFormPagoCotizacionAnterior && isset($nivelFormPagoCotizacionAnterior->nivel) ? $nivelFormPagoCotizacionAnterior->nivel : 0;
-
-            // si la forma de pago de la cotizacion es mayor que la del cliente
-            if ($nivelCotizacion > $nivelAnterior && $nivelCotizacion > $nivelCliente) {
-                $cotizacion->aprobado_comercial = 'no';
-                $cotizacion->save();
-                return [
-                    'requiere' => 'yes',
-                    'motivo' => "Forma de pago de cotizacion mayor que la del cliente modificando cotizacion: " . $nivelCotizacion . ' - ' . $nivelCliente
-                ];
-            }
-
-            //detalle de la cotizacion
-            foreach ($data['cotizacion'] as $detalle) {
-                if (!empty($detalle['detalle_id'])) {
-                    $detOriginal = GpCotizacionDetalle::find($detalle['detalle_id']);
-                    if (!$detOriginal)
-                        continue;
-
-                    //VALIDACIONES PARA EL PEDIDO
-                    if ($order) {
-                        //validaciones del descuento en caso de que sea pedido
-                        if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $detOriginal->descuento) {
-                            return [
-                                'requiere' => 'yes',
-                                'motivo' => "Descuento del detalle diferente al descuento original -" . $detalle['detalle_id']
-                            ];
-                        }
-
-                        //validaciones para el valor en caso de que sea pedido
-                        if ($detalle['ART_VALOR'] < $detOriginal->ART_VALOR) {
-                            return [
-                                'requiere' => 'yes',
-                                'motivo' => "Valor menor que el detalle Original -" . $detalle['detalle_id'] . ' - ' . $detalle['ART_VALOR']
-                            ];
-                        }
-                    }
-
-                    //VALIDACIONES POR EL TIO DE ARTICULO
-                    if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                        $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
-                        if (!$porcentajeMargen) {
-                            return [
-                                'requiere' => 'yes',
-                                'motivo' => "Porcentaje de margen no encontrado en la base de datos."
-                            ];
-                        }
-                        foreach ($detalle['proveedores'] as $proveedor) {
-                            if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
-                                return [
-                                    'requiere' => 'yes',
-                                    'motivo' => "Margen del producto L es menor al margen aprobado en la cotización."
-                                ];
-                            }
-                        }
-                    } else {
-                        if ($detalle['ART_DESCRIPCION'] != $detOriginal->ART_DESCRIPCION) {
-                            return [
-                                'requiere' => 'yes',
-                                'motivo' => 'Descripcion del detalle diferente a la original -' . $detalle['detalle_id']
-                            ];
-                        }
-
-                        if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] > $detOriginal->descuento) {
-                            return [
-                                'requiere' => 'yes',
-                                'motivo' => "Descuento del detalle diferente al descuento original - {$detalle['detalle_id']}."
-
-                            ];
-                        }
-                    }
-                }
-            }
-
-
-            //chequeo del total corrregido
-            if (
-                $cotizacion->requiere_aprobacion_comercial == 'yes' &&
-                $cotizacion->aprobado_comercial == 'yes' &&
-                abs($data['total'] - $cotizacion->total) <= 0.10
-            ) {
-                return [
-                    'requiere' => 'no',
-                    'motivo' => "Total dentro del rango permitido"
-                ];
-            }
-        }
-        if ($order) {
-            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
-            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
-                return [
-                    'requiere' => 'yes',
-                    'motivo' => "Requiere aprobación comercial. El pedido generado desde 'Volver a pedir' no cuenta con la aprobación de la cotización {$cotizacion->cotizacion}."
-
-                ];
-            }
-        }
-        // validacion para "volver a pedir"
-        if (!$order) {
-            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
-            if ($registroVolverAPedir) {
-                $desde = $registroVolverAPedir->pedido_origen ? 'pedido' : 'cotizacion';
-                $origen = $registroVolverAPedir->pedido_origen
-                    ? 'PED' . str_pad($registroVolverAPedir->pedido_origen, 8, "0", STR_PAD_LEFT)
-                    : 'COT' . str_pad($registroVolverAPedir->cotizacion_origen, 8, "0", STR_PAD_LEFT);
-                $fechaOrigen = $registroVolverAPedir->pedido_origen
-                    ? optional(GpPedido::find($registroVolverAPedir->pedido_origen))->created_at
-                    : optional(GpCotizacion::find($registroVolverAPedir->cotizacion_origen))->created_at;
-
-                $origenEntidad = $registroVolverAPedir->pedido_origen
-                    ? GpPedido::find($registroVolverAPedir->pedido_origen)
-                    : GpCotizacion::find($registroVolverAPedir->cotizacion_origen);
-
-                // para validar si el origen esta en espera y no ha sido aprobado
-                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial == 'yes' && $origenEntidad->aprobado_comercial != 'yes') {
-                    return [
-                        'requiere' => 'yes',
-                        'motivo' => "Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10)
-                    ];
-                }
-
-                // Motivo normal por ser copia
-                return [
-                    'requiere' => 'yes',
-                    'motivo' => "Cotización desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")"
-                ];
-            }
-        }
-
-        //validar nivel de forma de pago Mayor que del cliente
-
-        if ($nivelCotizacion > $nivelCliente) {
-            return [
-                'requiere' => 'yes',
-                'motivo' => "Forma de pago de cotizacion mayor que la del cliente: ' . $nivelCotizacion . ' > ' . $nivelCliente"
-            ];
-        }
-
-        // Porcentaje de descuento general diferente
-        if ($data['porcentage_descuento'] != $data['porcentage_descuentooriginal']) {
-            return [
-                'requiere' => 'yes',
-                'motivo' => "Porcentaje de descuento general diferente a la original"
-            ];
-        }
-
-        // validacion de cada detallle
-        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-        foreach ($data['cotizacion'] as $detalle) {
-            //validacin de descuento por detalle
-            if ($detalle['descuento'] != $detalle['descuento_original']) {
-                return [
-                    'requiere' => 'yes',
-                    'motivo' => "Porcentaje de descuento general diferenye a la original"
-                ];
-            }
-
-            if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                foreach ($detalle['proveedores'] as $proveedor) {
-                    $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
-                    if (!$porcentajeMargen) {
-                        return [
-                            'requiere' => 'yes',
-                            'motivo' => "Porcentaje de margen no encontrado en la base de datos."
-                        ];
-                    }
-
-                    $valor = number_format(($proveedor['COSTO_UNITARIO'] /
-                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
-                    if ($valor > $detalle['ART_VALOR']) {
-                        return [
-                            'requiere' => 'yes',
-                            'motivo' => "Valor del producto L es mayor al valor del precio minimo"
-                        ];
-                    }
-                    if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
-                        return [
-                            'requiere' => 'yes',
-                            'motivo' => "Margen del producto L es menor al margen aprobado en la cotización."
-                        ];
-                    }
-                }
-            } else {
-                if ($detalle['ART_VALOR'] < $detalle['ART_VALOR_ORIGINAL']) {
-                    return [
-                        'requiere' => 'yes',
-                        'motivo' => "El valor del producto es meor que el valor original"
-                    ];
-                }
-
-                if ($detalle['ART_VALOR'] > ($detalle['ART_VALOR_ORIGINAL'] * (1 + ($ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO) / 100))) {
-                    return [
-                        'requiere' => 'yes',
-                        'motivo' => "El valor del producto es mayor que el valor original y supera el margen permitido: {$porcentajeMargen->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO} %"
-                    ];
-                }
-                if ($detalle['ART_TIPO_COMPRA']  != 'L') {
-                    if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
-                        return [
-                            'requiere' => 'yes',
-                            'motivo' => "La descripcion del producto es diferente a la original"
-                        ];
-                    }
-                }
-            }
-        }
-        return $return;
-    }
-
     public function checkOutApprovalCommercial($data, $type)
     {
         $return = ['requiere' => 'no', 'motivo' => null];
@@ -385,7 +138,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function requiredNotApprovalResponse(string $motivo)
     {
-        return ['requiere' => 'no', 'motivo' => $motivo ];
+        return ['requiere' => 'no', 'motivo' => $motivo];
     }
 
 
@@ -394,7 +147,7 @@ class ApprovalService implements ApprovalServiceInterface
         $nivelAnterior = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $cotizacion->DESC_FORMA_PAGO_CODIGO);
         return ($nivelCotizacion > $nivelAnterior && $nivelCotizacion > $nivelCliente);
     }
-    public function getNivelFormaPago( $columna,$codigo)
+    public function getNivelFormaPago($columna, $codigo)
     {
         $formaPago = GpDescuentoFormaPago::where($columna, $codigo)
             ->orderBy('DESC_FORMA_PAGO_CODIGO')
@@ -431,13 +184,24 @@ class ApprovalService implements ApprovalServiceInterface
                     return $this->requiredApprovalResponse("La descripcion del producto es diferente a la original");
                 }
 
-                if ($detalle['ART_VALOR'] < $detalle['ART_VALOR_ORIGINAL']) {
+                if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL']) {
                     return $this->requiredApprovalResponse("El valor del producto es meor que el valor original");
                 }
 
-                if ($detalle['ART_VALOR'] > ($detalle['ART_VALOR_ORIGINAL'] * (1 + ($ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO) / 100))) {
-                    return $this->requiredApprovalResponse("El valor del producto es mayor que el valor original y supera el margen permitido - {$ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO}");
+                /** proceso para calculo de porcetaje maximo de precio de venta */
+                $valorOriginal = $detalles['ART_VALOR_ORIGINAL'];
+                $porcMaxSubida = $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
+                $factor = 1 + ($porcMaxSubida / 100);
+                $precioLimite      = $valorOriginal * $factor;
+                $precioActual      = $detalle['ART_VALOR'];
+
+                if ($precioActual > $precioLimite) {
+                    $exceso = $precioActual - $precioLimite;
+                    $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
                 }
+                return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                    . "(límite: {$precioLimite}), excede en {$exceso} "
+                    . "({$excesoPct}% sobre el valor original).");
             }
 
             // validaciones para tipo L
