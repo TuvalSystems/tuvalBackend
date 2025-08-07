@@ -1285,4 +1285,10 @@ class CotizacionesController extends Controller
         $subsegmento = $request->get('subsegmento', null);
         return $this->quotationService->updateClientWithSegment($cliente, $segmento, $subsegmento);
     }
+
+
+    public function obtenerStockPrueba ($articulo, $bodega){
+
+        return $this->quotationService->consultaStockPrueba($articulo, $bodega);
+    }
 }

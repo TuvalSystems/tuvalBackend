@@ -35,6 +35,7 @@ use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,7 @@ class QuotationService implements QuotationServiceInterface
     protected $approvalService;
     protected $orderAndQuotationService;
     protected $clienTSqlService;
+    protected $stockSqlService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -65,7 +67,8 @@ class QuotationService implements QuotationServiceInterface
         OrderAndQuotationServiceInterface $OrderQuotationService,
         ApprovalServiceInterface $approvalService,
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
-        ClientServiceInterface $clienTSqlService
+        ClientServiceInterface $clienTSqlService,
+        StockSqlServiceInterface $stockSqlService,
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -77,6 +80,7 @@ class QuotationService implements QuotationServiceInterface
         $this->approvalService = $approvalService;
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
         $this->clienTSqlService = $clienTSqlService;
+        $this->stockSqlService = $stockSqlService;
     }
 
 
@@ -237,8 +241,9 @@ class QuotationService implements QuotationServiceInterface
             }
         }
 
-        $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
-        return $this->formatResultStocksQuotation($stockResults);
+        return $this->stockSqlService->getStockByArticleBatch($stockRequests);
+        // $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
+        // return $this->formatResultStocksQuotation($stockResults);
     }
 
 
@@ -780,7 +785,7 @@ class QuotationService implements QuotationServiceInterface
         $warehouses = $this->functionService->getBodegas($warehouse, 1);
         $arrArticulos = ['articulo' => $article['ART_CODIGO']];
         $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
-        $stockGeneral = $this->getStocItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+        $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
         $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
         $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $article);
         $availableArticulos = [];
@@ -838,14 +843,15 @@ class QuotationService implements QuotationServiceInterface
         return $result;
     }
 
-    public function getStocItemByWarehouseRestoreQuotation($arrArticulos, $warehouses)
+    public function getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses)
     {
         $stockRequests = [];
         foreach ($warehouses as $warehouse) {
             $stockRequests[] = array_merge($arrArticulos, ['bodega' => $warehouse]);
         }
-        $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
-        return $this->formatResultStocksQuotation($stockResults);
+        return $this->stockSqlService->getStockByArticleBatch($stockRequests);
+        // $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
+        // return $this->formatResultStocksQuotation($stockResults);
     }
 
     public function reassignStockIds($article, $stockArticle)
@@ -1404,5 +1410,15 @@ class QuotationService implements QuotationServiceInterface
             DB::rollBack();
            return $this->buildErrorResponse('Error al actualizar el segmento del cliente :'.$e->getMessage(), 500);
         }
+    }
+
+    /** test de stock  */
+
+    public function consultaStockPrueba ($articulo, $bodega){
+        $params = [
+            'articulo' => $articulo,
+            'bodega' => $bodega
+        ];
+         return  $this->stockSqlService->consultStockWarehouseSql($params);
     }
 }
