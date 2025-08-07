@@ -76,7 +76,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->whereIn('gp_pedido_detalle_stocks.STO_ART_BODEGA', $bodegas)
             ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
             ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'rechazado'])
+            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'rechazado', 'anulada'])
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado')
                     ->orWhere('gp_pedidos.despachado', 0);
