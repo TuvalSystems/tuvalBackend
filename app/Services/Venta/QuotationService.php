@@ -35,6 +35,7 @@ use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,7 @@ class QuotationService implements QuotationServiceInterface
     protected $approvalService;
     protected $orderAndQuotationService;
     protected $clienTSqlService;
+    protected $stockSqlService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -65,7 +67,8 @@ class QuotationService implements QuotationServiceInterface
         OrderAndQuotationServiceInterface $OrderQuotationService,
         ApprovalServiceInterface $approvalService,
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
-        ClientServiceInterface $clienTSqlService
+        ClientServiceInterface $clienTSqlService,
+        StockSqlServiceInterface $stockSqlService
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -77,6 +80,7 @@ class QuotationService implements QuotationServiceInterface
         $this->approvalService = $approvalService;
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
         $this->clienTSqlService = $clienTSqlService;
+        $this->stockSqlService = $stockSqlService;
     }
 
 
@@ -1404,5 +1408,11 @@ class QuotationService implements QuotationServiceInterface
             DB::rollBack();
            return $this->buildErrorResponse('Error al actualizar el segmento del cliente :'.$e->getMessage(), 500);
         }
+    }
+
+    /** test de stock  */
+
+    public function consultaStockPrueba ($articulo, $bodega){
+         return  $this->stockSqlService->consultStockWarehouse($articulo, $bodega);
     }
 }

@@ -180,19 +180,20 @@ return [
         Milon\Barcode\BarcodeServiceProvider::class,
 
         //Providers DDD
-         App\Providers\ApiServiceProvider::class,
-         App\Providers\Service\DevolucionServiceProvider::class,
-         App\Providers\Service\AprobacionServiceProvider::class,
-         App\Providers\Service\BodegasServiceProvider::class,
-         App\Providers\Service\FuncionServiceProvider::class,
-         App\Providers\Service\NotificacionServiceProvider::class,
-         App\Providers\Service\ReposicionesServiceProvider::class,
-         App\Providers\Service\VentaServiceProvider::class,
-         App\Providers\RepositoryServiceProvider::class,
+        App\Providers\ApiServiceProvider::class,
+        App\Providers\Service\DevolucionServiceProvider::class,
+        App\Providers\Service\AprobacionServiceProvider::class,
+        App\Providers\Service\BodegasServiceProvider::class,
+        App\Providers\Service\FuncionServiceProvider::class,
+        App\Providers\Service\NotificacionServiceProvider::class,
+        App\Providers\Service\ReposicionesServiceProvider::class,
+        App\Providers\Service\VentaServiceProvider::class,
+        App\Providers\RepositoryServiceProvider::class,
 
-         // Providers SqlServer --> para mantener separada logica de SQL Server
-         App\Providers\Service\SqlServer\SqlServerServiceProvider::class,
-         App\Providers\Service\SqlServer\VentaSqlServerServiceProvider::class,
+        // Providers SqlServer --> para mantener separada logica de SQL Server
+        App\Providers\Service\SqlServer\SqlServerServiceProvider::class,
+        App\Providers\Service\SqlServer\VentaSqlServerServiceProvider::class,
+        App\Providers\Service\SqlServer\BodegaSqlServerServiceProvider::class,
 
 
     ],

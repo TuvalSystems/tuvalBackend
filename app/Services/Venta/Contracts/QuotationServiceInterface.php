@@ -75,4 +75,10 @@ interface QuotationServiceInterface
 
     public function checkClientWithSegmentExist($ruc);
      public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId) ;
+
+
+
+     /*** prueba  */
+
+     public function consultaStockPrueba ($articulo, $bodega);
 }

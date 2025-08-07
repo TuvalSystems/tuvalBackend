@@ -116,3 +116,9 @@ Route::prefix('pedidos')->group(function () {
     Route::get('/actualizar-pedido-y-recalcular/{id}', [PedidosController::class, 'actualizarPedidoYRecalcular']);
 });
 
+
+Route::prefix('cotizaciones')->group(function () {
+    Route::get('/consulta-stock-web/{articulo}/{bodega}', [CotizacionesController::class, 'obtenerStockPrueba']);
+});
+
+
