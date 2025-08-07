@@ -50,8 +50,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
         $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
         // $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-        $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
         // $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
+        $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
         $art = $this->stockWarehouseService->newFormatStock($stockResults, $articulo); //nose porque hace pero va
         return response([
             'success' => true,
@@ -71,8 +71,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
         $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
         // $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-         $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
         // $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
+        $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
         $art = $this->stockWarehouseService->newFormatStock($stockResults, $articulo); //nose porque hace pero va
         return response([
             'success' => true,

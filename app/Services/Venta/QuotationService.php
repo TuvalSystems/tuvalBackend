@@ -787,7 +787,7 @@ class QuotationService implements QuotationServiceInterface
         $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
         $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
         $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
-        $artFormat = $this->stockWarehouseService->newFormatStock($stockGeneral, $article);
+        $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article);
         $availableArticulos = [];
         if (!$artFormat['disponible']) {
             $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
