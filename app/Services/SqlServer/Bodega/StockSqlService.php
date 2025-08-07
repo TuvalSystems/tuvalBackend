@@ -13,28 +13,46 @@ class StockSqlService implements StockSqlServiceInterface
     use JsonResponseTrait;
     public function __construct() {}
 
-    public function consultStockWarehouse(string $article, string $warehouse)
+    public function consultStockWarehouseSql(array $params)
     {
         try {
-            $sql = <<<SQL
+            $sql = <<<'SQL'
             EXEC SP_TUV_OBTENER_STOCK_BODEGA
                 @ARTICULO = :article,
-                @BODEGA =   :warehouse;
+                @BODEGA   = :warehouse
             SQL;
 
             $bindings = [
-                'article' => $article,
-                'warehouse' => $warehouse,
+                'article' => $params['articulo'],
+                'warehouse' => strtoupper($params['bodega']),
             ];
-
-          return  DB::connection('sqlsrvtuv')->select($sql, $bindings);
+            $data =  DB::connection('sqlsrvtuv')->select($sql, $bindings);
+            if (empty($data)) {
+                throw new \Exception('No se encontraron registros', 404);
+            }
+            $formattedData = $this->formatResultStocks($data);
+            Log::channel('sql_errors')->info('Stock obtenido (consultStockWarehouseSql)', $formattedData);
+            return $formattedData;
         } catch (Throwable $th) {
             Log::channel('sql_errors')->error('Error en consultaStockWarehouse (SP_TUV_OBTENER_STOCK_BODEGA):', [
                 'error' => $th->getMessage(),
                 'trace' => $th->getTraceAsString()
             ]);
-
-            return $this;
+            throw new \Exception('Error interno al consultar stock (consultStockWarehouseSql) ', 500);
         }
+    }
+
+    public function formatResultStocks($rows)
+    {
+        $item = reset($rows);
+        return [
+            'STO_ART_ARTICULO'          => trim($item->ARTICULO),
+            'STO_ART_BODEGA'            => trim($item->BODEGA),
+            // 'STOCK_MANO'                => $item->STOCK_MANO,
+            // 'STOCK_RESERVADO'           => $item->STOCK_RESERVADO,
+            'STO_ART_STOCK_DISPONIBLE'  => number_format((float)$item->STOCK_DISPONIBLE, 2, '.', ''),
+            // 'STOCK_USO'                 => $item->STOCK_USO,
+            // 'STOCK_DANADO'              => $item->STOCK_DANADO,
+        ];
     }
 }

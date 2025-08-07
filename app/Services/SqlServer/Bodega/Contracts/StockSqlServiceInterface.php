@@ -6,5 +6,5 @@ interface StockSqlServiceInterface
 {
     // Define los métodos que debe implementar el servicio
 
-    public function consultStockWarehouse(string $article, string $warehouse);
+    public function consultStockWarehouseSql(array $params);
 }
