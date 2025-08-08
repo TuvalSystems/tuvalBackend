@@ -23,6 +23,7 @@ class LimpiarLog extends Command
             'soap_errors.log',
             'apiservice.log',
             'devolucion.log',
+            'sql_errors.log'
         ];
 
         // Obtener propietario real del directorio storage
