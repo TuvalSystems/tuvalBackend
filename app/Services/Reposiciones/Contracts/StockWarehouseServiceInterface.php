@@ -18,7 +18,7 @@ interface StockWarehouseServiceInterface
     /**
      * Esta funcion especifica para consulta stock y consulta otros stock
      */
-    public function computeAvailableStockForArticleConsult(array $stockResults, array $articulo);
+    public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo);
      /**fin de funciones en prueba para remplazo  */
     public function formatResultStocks($stockResults);
 

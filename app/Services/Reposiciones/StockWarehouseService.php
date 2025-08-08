@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
-    public function computeAvailableStockForArticleConsult(array $stockResults, array $articulo)
+    public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo)
     {
         $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
         $articulo['stock'] = [];

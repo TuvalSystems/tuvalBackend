@@ -11,6 +11,7 @@ use App\Services\SqlServer\Cobranza\Contracts\CreditValidationServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Support\Facades\Log;
 
 class InventoryQueryService implements InventoryQueryServiceInterface
 {
@@ -42,45 +43,58 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function getConsultStock($data)
     {
-        $articulo = $data['articulo'];
-        $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
-        if (empty($warehouses)) {
-            return [];
-        }
+        try {
+            $articulo = $data['articulo'];
+            $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
+            if (empty($warehouses)) {
+                return [];
+            }
 
-        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-        // $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-        // $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
-        $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
-        // $art = $this->stockWarehouseService->newFormatStock($stockResults, $articulo); //nose porque hace pero va
-        $art = $this->stockWarehouseService->computeAvailableStockForArticleConsult($stockResults, $articulo); //nose porque hace pero va
-        return response([
-            'success' => true,
-            'stock' => $art['stock'],
-            'ART_STOCK' => $art['ART_STOCK'],
-        ]);
+            $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+            $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
+            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($stockResults, $articulo); //nose porque hace pero va
+            return response([
+                'success' => true,
+                'stock' => $art['stock'],
+                'ART_STOCK' => $art['ART_STOCK'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al consultar Stock (getConsultStock)' . ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'data' => $data]);
+            return $this->buildErrorResponse('Stock insuficiente', 500);
+        }
     }
 
 
     public function getConsultStockOthers($data)
     {
-        $articulo = $data['articulo'];
-        $warehouses = $this->stockWarehouseService->getWarehouse($data);
-        if (empty($warehouses)) {
-            return [];
-        }
+        try {
+            $articulo = $data['articulo'];
+            $warehouses = $this->stockWarehouseService->getWarehouse($data);
+            if (empty($warehouses)) {
+                return [];
+            }
 
-        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-        // $stockResults = array_map(fn($params) => $this->apiGp->getStockWarehouse($params), $stockRequests);
-        // $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
-        $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
-        // $art = $this->stockWarehouseService->newFormatStock($stockResults, $articulo); //nose porque hace pero va
-        $art = $this->stockWarehouseService->computeAvailableStockForArticleConsult($stockResults, $articulo); //nose porque hace pero va
-        return response([
-            'success' => true,
-            'stock' => $art['stock'],
-            'ART_STOCK' => $art['ART_STOCK'],
-        ]);
+            $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+            $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
+            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($stockResults, $articulo); //nose porque hace pero va
+            return response([
+                'success' => true,
+                'stock' => $art['stock'],
+                'ART_STOCK' => $art['ART_STOCK'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al consultar Stock (getConsultStockOthers)', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'data'  => $data,
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Stock insuficiente'
+            ], 500);
+        }
     }
 
     public function getAvailableSpace($ruc)
