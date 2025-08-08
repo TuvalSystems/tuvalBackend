@@ -388,24 +388,25 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId)
     {
+
+        $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $stockFormatted)));
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId);
+
         return collect($stockFormatted)
             ->filter(function ($item) use ($articulo) {
                 return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
                     $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
             })
-            ->map(function ($stockItem) use ($articulo, $orderId) {
-                $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
+            ->map(function ($stockItem) use ($articulo, $reservas) {
+                $bodega = (string) $stockItem['STO_ART_BODEGA'];
+                $stockBase = $stockItem['STO_ART_STOCK_DISPONIBLE'];
 
-                $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
-                    ? (int) $stockValue
-                    : round((float) $stockValue, 2);
+                $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                    ? (int) $stockBase
+                    : round($stockBase, 2);
 
-                $reservado = $this->stockReservado(
-                    $articulo['ART_CODIGO'],
-                    $stockItem['STO_ART_BODEGA'],
-                    $orderId
-                );
-                $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+                $resta = (float)($reservas[$bodega] ?? 0);
+                $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockBase - $resta);
                 return $stockItem;
             })
             ->values()
@@ -418,21 +419,21 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function formatResultStockStoreOrder(&$stock, $article, $orderId)
     {
+        $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $stock)));
+        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId);
+
         if (
             isset($stock['STO_ART_STOCK_DISPONIBLE'], $stock['STO_ART_BODEGA'], $stock['STO_ART_ARTICULO']) &&
             $stock['STO_ART_ARTICULO'] === $article['ART_CODIGO']
         ) {
+            $bodega = $stock['STO_ART_BODEGA'];
             $stockValue = $stock['STO_ART_STOCK_DISPONIBLE'];
-            $stock['STO_ART_STOCK_DISPONIBLE'] = $article['ART_DECIMAL_CANTIDAD'] == 0
+            $stockValue = $article['ART_DECIMAL_CANTIDAD'] == 0
                 ? (int) $stockValue
                 : round((float) $stockValue, 2);
 
-            $reservado = $this->stockReservado(
-                $article['ART_CODIGO'],
-                $stock['STO_ART_BODEGA'],
-                $orderId
-            );
-            $stock['STO_ART_STOCK_DISPONIBLE'] = max(0, $stock['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+            $resta = (float)($reservas[$bodega] ?? 0);
+            $stock['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockValue - $resta);
         }
     }
 }
