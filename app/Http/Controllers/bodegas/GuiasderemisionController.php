@@ -895,12 +895,15 @@ class GuiasderemisionController extends Controller
 
             $webservices = new WebserviceController();
             $respuesta = $webservices->inventario('GeneraDespachoVenta', $parameters);
-           Log::channel('soap_errors')->info('Respuesta al generar la guía de despacho', [
-                'Guia' => $guia->id,
-                'Respuesta' => is_array($respuesta) || is_object($respuesta)
-                    ? json_encode($respuesta, JSON_UNESCAPED_UNICODE)
-                    : $respuesta,
-            ]);
+            Log::channel('soap_errors')->info(
+                'Respuesta al generar la guía de despacho',
+                [
+                    'Guia'      => $guia->id,
+                    'Respuesta' => is_array($respuesta) || is_object($respuesta)
+                        ? json_encode($respuesta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+                        : $respuesta,
+                ]
+            );
             if ($respuesta == 'Error') {
                 $guia->procesando = null;
                 $guia->save();
