@@ -121,7 +121,6 @@ return [
         'soap_errors' => [
             'driver' => 'single',
             'path' => storage_path('logs/soap_errors.log'),
-            'level' => 'warning',
         ],
         'apiservice' => [
             'driver' => 'single',
