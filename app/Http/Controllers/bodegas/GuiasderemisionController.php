@@ -28,7 +28,10 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 class GuiasderemisionController extends Controller
 {
     protected $deliveryNoteService;
@@ -558,28 +561,84 @@ class GuiasderemisionController extends Controller
         ]);
     }
 
+    // public function despacharguia($id)
+    // {
+    //     try {
+    //         $guia = GpGuiaRemision::where('id', $id)->first();
+
+    //     if ($guia->estado == 'enviada') {
+    //         return response([
+    //             'success' => true,
+    //             'message' => 'Guía de remisión despachada por otro usuario',
+    //         ]);
+    //     }
+
+    //     $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
+
+    //     if ($guia->tipo == 'transferencia') {
+    //         return $this->despacharguiatransferencia($guia, $detalle);
+    //     }
+    //     if ($guia->tipo == 'despacho') {
+    //         return $this->despacharguiadespacho($guia, $detalle);
+    //     }
+
+    //     if ($guia->tipo == 'reposicion') {
+    //         return $this->despacharguiareposicion($guia, $detalle);
+    //     }
+    //     } catch (\Throwable $e) {
+    //        return response([
+    //            'success' => false,
+    //            'message' => $e->getMessage(),
+    //        ]);
+    //     }
+
+    // }
+
     public function despacharguia($id)
     {
-        $guia = GpGuiaRemision::where('id', $id)->first();
+        DB::beginTransaction();
+        try {
+            // Bloquea la fila para este proceso
+            $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
+            if ($guia->estado === 'enviada') {
+                DB::rollBack(); // No es necesario, pero explícito
+                return response([
+                    'success' => true,
+                    'message' => 'Guía de remisión despachada por otro usuario',
+                ]);
+            }
 
-        if ($guia->estado == 'enviada') {
-            return response([
-                'success' => true,
-                'message' => 'Guía de remisión despachada por otro usuario',
+            $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
+
+            $response = null;
+
+            switch ($guia->tipo) {
+                case 'transferencia':
+                    $response = $this->despacharguiatransferencia($guia, $detalle);
+                    break;
+                case 'despacho':
+                    $response = $this->despacharguiadespacho($guia, $detalle);
+                    break;
+                case 'reposicion':
+                    $response = $this->despacharguiareposicion($guia, $detalle);
+                    break;
+                default:
+                    throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
+            }
+
+            DB::commit();
+            return $response;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error en despachar guia de remision (despacharguia)', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'guia_id' => $id
             ]);
-        }
-
-        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
-
-        if ($guia->tipo == 'transferencia') {
-            return $this->despacharguiatransferencia($guia, $detalle);
-        }
-        if ($guia->tipo == 'despacho') {
-            return $this->despacharguiadespacho($guia, $detalle);
-        }
-
-        if ($guia->tipo == 'reposicion') {
-            return $this->despacharguiareposicion($guia, $detalle);
+            return response([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -828,7 +887,7 @@ class GuiasderemisionController extends Controller
                 'PedidoNuevo' => $pedido_nuevo,
                 'BodegaOrigen' => $guia->bodega_origen,
                 'Observacion' => $guia->GUI_REM_OBSERVACION,
-                'Usuario' => $user->USERID,
+                'Usuario' => $user->USERID ?? 'adminWeb',
                 'Items' => $item_arr
             );
 
@@ -871,10 +930,15 @@ class GuiasderemisionController extends Controller
                 }
                 $listo = true;
             } else {
-
+                $mensaje = $respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Mensaje']
+                    ?? 'Error desconocido al generar la guía de despacho';
+                Log::error("Error al generar la guía de despacho (despacharguiadespacho): {$mensaje}");
+                if ($mensaje !== 'Guía ya despachada por otro usuario') {
+                    throw new \Exception($mensaje);
+                }
                 return response([
                     'success' => false,
-                    'message' => $respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Mensaje'],
+                    'message' => $mensaje
                 ]);
             }
         }
@@ -1144,11 +1208,11 @@ class GuiasderemisionController extends Controller
 
                     // $pedidosControl->checkenviarfactura($pedido, true);
                     $this->invoiceService->checkSendInvoice($pedido, true);
-                     $this->notifyService->sendNotification(
+                    $this->notifyService->sendNotification(
                         $pedido->user_id,
                         'Artículo/s recibidos',
                         'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
-                     );
+                    );
                 }
                 //aqui la notifiacion
 
@@ -1174,10 +1238,10 @@ class GuiasderemisionController extends Controller
                         //aqui la notifiacion
 
                         $this->notifyService->sendNotification(
-                        $pedido->user_id,
-                        'Artículo/s recibidos',
-                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
-                     );
+                            $pedido->user_id,
+                            'Artículo/s recibidos',
+                            'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
+                        );
                     }
                 }
             }
@@ -1209,11 +1273,11 @@ class GuiasderemisionController extends Controller
                     $this->invoiceService->checkSendInvoice($pedido, true);
                 }
                 //aqui la notifiacion
-                 $this->notifyService->sendNotification(
-                        $pedido->user_id,
-                        'Artículo/s recibidos',
-                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
-                     );
+                $this->notifyService->sendNotification(
+                    $pedido->user_id,
+                    'Artículo/s recibidos',
+                    'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
+                );
 
                 return response([
                     'success' => true,
@@ -1222,11 +1286,11 @@ class GuiasderemisionController extends Controller
             } else {
                 $pedido = GpPedido::where('pedido', $guia->pedido)->first();
                 //aqui la notifiacion
-                 $this->notifyService->sendNotification(
-                        $pedido->user_id,
-                        'Artículo/s recibidos',
-                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
-                     );
+                $this->notifyService->sendNotification(
+                    $pedido->user_id,
+                    'Artículo/s recibidos',
+                    'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
+                );
 
                 return response([
                     'success' => true,
