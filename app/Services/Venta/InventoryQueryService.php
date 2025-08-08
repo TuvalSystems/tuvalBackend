@@ -53,7 +53,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         // $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
         $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
         // $art = $this->stockWarehouseService->newFormatStock($stockResults, $articulo); //nose porque hace pero va
-        $art = $this->stockWarehouseService->computeAvailableStockForArticle($stockResults, $articulo); //nose porque hace pero va
+        $art = $this->stockWarehouseService->computeAvailableStockForArticleConsult($stockResults, $articulo); //nose porque hace pero va
         return response([
             'success' => true,
             'stock' => $art['stock'],
@@ -75,7 +75,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         // $formatStock = $this->stockWarehouseService->formatResultStocks($stockResults);
         $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
         // $art = $this->stockWarehouseService->newFormatStock($stockResults, $articulo); //nose porque hace pero va
-        $art = $this->stockWarehouseService->computeAvailableStockForArticle($stockResults, $articulo); //nose porque hace pero va
+        $art = $this->stockWarehouseService->computeAvailableStockForArticleConsult($stockResults, $articulo); //nose porque hace pero va
         return response([
             'success' => true,
             'stock' => $art['stock'],

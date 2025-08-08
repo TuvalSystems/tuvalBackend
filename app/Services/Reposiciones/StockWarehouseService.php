@@ -16,6 +16,54 @@ use Illuminate\Support\Facades\DB;
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
+    public function computeAvailableStockForArticleConsult(array $stockResults, array $articulo)
+    {
+        $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
+        $articulo['stock'] = [];
+        $articulo['ART_STOCK'] = 0;
+        if (empty($stockResults) || empty($articulo['ART_CODIGO'])) {
+            return $articulo;
+        }
+        $filtered = array_filter($stockResults, function ($item) use ($articulo) {
+            return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+                $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
+        });
+
+        if (!$filtered) {
+            return $articulo;
+        }
+
+        // Bodegas involucradas (para agrupar y traer reservas en una sola pasada)
+        $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $filtered)));
+        // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas);
+
+        $total = 0;
+        $normalizados = [];
+        foreach ($filtered as $item) {
+            $bodega = (string) $item['STO_ART_BODEGA'];
+            $stockBase = (float) $item['STO_ART_STOCK_DISPONIBLE'];
+            $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                ? (int) $stockBase
+                : round($stockBase, 2);
+            $resta = (float)($reservas[$bodega] ?? 0);
+            $disponible = max(0, $stockBase - $resta);
+            $disponible = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                ? (int) $disponible
+                : round($disponible, 2);
+
+            $normalizados[] = [
+                'STO_ART_BODEGA'           => $bodega,
+                'STO_ART_STOCK_DISPONIBLE' => $disponible,
+            ];
+
+            $total += $disponible;
+        }
+        $articulo['stock']     = $normalizados;
+        $articulo['ART_STOCK'] = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0 ? (int)$total : round((float)$total, 2);
+        return $articulo;
+    }
+
     public function computeAvailableStockForArticle(array $stockResults, array $articulo)
     {
         $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
@@ -53,9 +101,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 : round($disponible, 2);
 
             $normalizados[] = [
+                'DESCRIPCION_ARTICULO'     => (string)$item['DESCRIPCION_ARTICULO'],
                 'STO_ART_ARTICULO'         => (string)$item['STO_ART_ARTICULO'],
                 'STO_ART_BODEGA'           => $bodega,
                 'STO_ART_STOCK_DISPONIBLE' => $disponible,
+                'seleccionado'             => $item['seleccionado']
             ];
 
             $total += $disponible;

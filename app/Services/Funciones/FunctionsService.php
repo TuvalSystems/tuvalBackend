@@ -326,7 +326,7 @@ class FunctionsService implements FunctionsServiceInterface
             if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {
                 $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
             }
-            unset($stockData['STO_ART_ARTICULO']);
+    
             GpTempCartStock::updateOrCreate(
                 ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
                 [

@@ -240,27 +240,7 @@ class QuotationService implements QuotationServiceInterface
                 $stockRequests[] = ['articulo' => $art['articulo'], 'bodega' => $bod];
             }
         }
-
         return $this->stockSqlService->getStockByArticleBatch($stockRequests);
-        // $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
-        // return $this->formatResultStocksQuotation($stockResults);
-    }
-
-
-    public function formatResultStocksQuotation($stockResults)
-    {
-        if (!is_array($stockResults)) {
-            return [];
-        }
-        return collect($stockResults)
-            ->filter(fn($item) => is_array($item))
-            ->map(fn($item) => [
-                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-            ])
-            ->values()
-            ->toArray();
     }
 
 
@@ -782,24 +762,29 @@ class QuotationService implements QuotationServiceInterface
 
     public function getStockItemForWarehouse($article, $warehouse)
     {
-        $warehouses = $this->functionService->getBodegas($warehouse, 1);
-        $arrArticulos = ['articulo' => $article['ART_CODIGO']];
-        $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
-        $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
-        $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
-        $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article);
-        $availableArticulos = [];
-        if (!$artFormat['disponible']) {
-            $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
-            $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
-            $availableArticulos[] = $article['ART_CODIGO'];
+        try {
+            $warehouses = $this->functionService->getBodegas($warehouse, 1);
+            $arrArticulos = ['articulo' => $article['ART_CODIGO']];
+            $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
+            $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+            $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
+            $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article);
+            $availableArticulos = [];
+            if (!$artFormat['disponible']) {
+                $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
+                $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+                $availableArticulos[] = $article['ART_CODIGO'];
+            }
+            $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
+            $newStock = $this->reassignStockIds($article, $artFormat['stock']);
+            $article['stock'] = $newStock;
+            $article['ART_STOCK'] = $artFormat['ART_STOCK'];
+            $article['stockListo'] = true;
+            return $this->successResponse('Stock obtenido correctamente', $article, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al obtener stock', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'data' => $article]);
+            return $this->buildErrorResponse('Error al obtener stock', 500);
         }
-        $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
-        $newStock = $this->reassignStockIds($article, $artFormat['stock']);
-        $article['stock'] = $newStock;
-        $article['ART_STOCK'] = $artFormat['ART_STOCK'];
-        $article['stockListo'] = true;
-        return $this->successResponse('Stock obtenido correctamente', $article, 200);
     }
 
 
@@ -850,8 +835,7 @@ class QuotationService implements QuotationServiceInterface
             $stockRequests[] = array_merge($arrArticulos, ['bodega' => $warehouse]);
         }
         return $this->stockSqlService->getStockByArticleBatch($stockRequests);
-        // $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
-        // return $this->formatResultStocksQuotation($stockResults);
+
     }
 
     public function reassignStockIds($article, $stockArticle)
@@ -1408,17 +1392,18 @@ class QuotationService implements QuotationServiceInterface
             return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
         } catch (\Throwable $e) {
             DB::rollBack();
-           return $this->buildErrorResponse('Error al actualizar el segmento del cliente :'.$e->getMessage(), 500);
+            return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
         }
     }
 
     /** test de stock  */
 
-    public function consultaStockPrueba ($articulo, $bodega){
+    public function consultaStockPrueba($articulo, $bodega)
+    {
         $params = [
             'articulo' => $articulo,
             'bodega' => $bodega
         ];
-         return  $this->stockSqlService->consultStockWarehouseSql($params);
+        return  $this->stockSqlService->consultStockWarehouseSql($params);
     }
 }

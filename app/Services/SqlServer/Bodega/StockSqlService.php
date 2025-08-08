@@ -46,14 +46,10 @@ class StockSqlService implements StockSqlServiceInterface
     {
         $item = reset($rows);
         return [
-            'DESCRIPCION_ARTICULO'      => $item->DESCRIPCION_ARTICULO,
+            'DESCRIPCION_ARTICULO'      => trim($item->DESCRIPCION_ARTICULO),
             'STO_ART_ARTICULO'          => trim($item->ARTICULO),
             'STO_ART_BODEGA'            => trim($item->BODEGA),
-            // 'STOCK_MANO'                => $item->STOCK_MANO,
-            // 'STOCK_RESERVADO'           => $item->STOCK_RESERVADO,
             'STO_ART_STOCK_DISPONIBLE'  => number_format((float)$item->STOCK_DISPONIBLE, 2, '.', ''),
-            // 'STOCK_USO'                 => $item->STOCK_USO,
-            // 'STOCK_DANADO'              => $item->STOCK_DANADO,
         ];
     }
 
