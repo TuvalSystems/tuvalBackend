@@ -895,7 +895,10 @@ class GuiasderemisionController extends Controller
 
             $webservices = new WebserviceController();
             $respuesta = $webservices->inventario('GeneraDespachoVenta', $parameters);
-
+            Log::info('Respuesta al generar la guía de despacho:'. [
+                'Respuesta' => $respuesta,
+                'Guia' => $guia->id
+            ]);
             if ($respuesta == 'Error') {
                 $guia->procesando = null;
                 $guia->save();
