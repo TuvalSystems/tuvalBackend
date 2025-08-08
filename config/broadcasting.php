@@ -37,7 +37,11 @@ return [
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
                 'cluster' => env('PUSHER_APP_CLUSTER'),
-                'useTLS' => true,
+                'useTLS' => false, //local
+                // 'useTLS' => env('VITE_PUSHER_FORCE_TLS', false), // producccion
+                'host' => parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?? '127.0.0.1',
+                'port' => (int) env('VITE_PUSHER_PORT', 6001),
+                'scheme' => env('VITE_PUSHER_SCHEME', 'http'),
             ],
         ],
 

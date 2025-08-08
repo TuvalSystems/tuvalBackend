@@ -1,5 +1,6 @@
 <?php
 
+use App\Events\PingArrived;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\PedidosController;
@@ -124,4 +125,13 @@ Route::prefix('cotizaciones')->group(function () {
 Route::prefix('bodegas')->group(function () {
     Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
     Route::get('/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
+});
+
+
+
+/** para pruebas  */
+
+Route::get('/ping', function () {
+    broadcast(new PingArrived('pong ' . now()->toDateTimeString()));
+    return 'Ping enviado';
 });
