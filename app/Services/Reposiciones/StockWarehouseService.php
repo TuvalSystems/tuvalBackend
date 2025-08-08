@@ -101,15 +101,14 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             $q->where('gp_pedidos.id', '!=', $pedidoId);
         }
 
-        $reservasPedidos = $q
-            ->select(
-                'gp_pedido_detalle_stocks.STO_ART_BODEGA as bodega',
-                DB::raw('SUM(gp_pedido_detalle_stocks.reservado) as total')
-            )->groupBy('gp_pedido_detalle_stocks.STO_ART_BODEGA')
-            ->pluck('total', 'bodega')           // ← ahora key = 'bodega' (sin puntos)
-            ->map(fn($v) => (float) $v)
+        $reservasPedidos = $q->select(
+            'gp_pedido_detalle_stocks.STO_ART_BODEGA as bodega',
+            DB::raw('SUM(gp_pedido_detalle_stocks.reservado) as total')
+        )
+            ->groupBy('gp_pedido_detalle_stocks.STO_ART_BODEGA')
+            ->pluck('total', 'bodega')
+            ->map(fn($v) => (float) ($v ?? 0))
             ->all();
-
         // 2) Traslados de reposición pendientes (agrupado por bodega_origen)
         $reservasTraslados = GpTrasladosReposicion::query()
             ->select('bodega_origen', DB::raw('SUM(COALESCE(cantidad,0) - COALESCE(trasladado,0)) as total'))
@@ -118,7 +117,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->whereNull('completado')
             ->groupBy('bodega_origen')
             ->pluck('total', 'bodega_origen')
-            ->map(fn($v) => max(0, (float)$v))
+            ->map(fn($v) => max(0, (float)($v ?? 0)))
             ->all();
         $out = [];
         foreach ($bodegas as $b) {
