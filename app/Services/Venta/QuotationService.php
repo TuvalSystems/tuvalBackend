@@ -783,7 +783,7 @@ class QuotationService implements QuotationServiceInterface
             return $this->successResponse('Stock obtenido correctamente', $article, 200);
         } catch (\Throwable $e) {
             Log::error('Error al obtener stock', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'data' => $article]);
-            return $this->buildErrorResponse('Error al obtener stock', 500);
+            return $this->buildErrorResponse('Stock insuficiente', 500);
         }
     }
 
