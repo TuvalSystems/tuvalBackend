@@ -849,9 +849,9 @@ class QuotationService implements QuotationServiceInterface
         foreach ($warehouses as $warehouse) {
             $stockRequests[] = array_merge($arrArticulos, ['bodega' => $warehouse]);
         }
-        return $this->stockSqlService->getStockByArticleBatch($stockRequests);
-        // $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
-        // return $this->formatResultStocksQuotation($stockResults);
+        // return $this->stockSqlService->getStockByArticleBatch($stockRequests);
+        $stockResults = $this->apiGpService->getStockWarehouseAsync($stockRequests);
+        return $this->formatResultStocksQuotation($stockResults);
     }
 
     public function reassignStockIds($article, $stockArticle)
