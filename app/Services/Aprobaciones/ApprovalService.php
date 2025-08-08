@@ -405,7 +405,11 @@ class ApprovalService implements ApprovalServiceInterface
             }
             return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
         } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 402);
+            Log::error('Error al realizar aprobacion comercial (getOrderApprovalData)', [
+                'error' => $th->getMessage(),
+                'data' => $data
+            ]);
+            return $this->buildErrorResponse('Operación fallida, consulte con el administrador', 402);
         }
     }
 

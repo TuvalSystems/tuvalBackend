@@ -2,16 +2,16 @@
 
 namespace App\Services\Reposiciones;
 
+use Carbon\Carbon;
 use App\Models\GpArticulo;
 use App\Models\GpTempCart;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
+use Illuminate\Support\Facades\DB;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
@@ -438,8 +438,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId)
     {
-
-        $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $stockFormatted)));
+        $bodegas = $stockFormatted
+            ->pluck('STO_ART_BODEGA')
+            ->unique()
+            ->values()
+            ->map(fn($i) => (string) $i)
+            ->toArray();
         $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId);
 
         return collect($stockFormatted)
@@ -469,7 +473,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function formatResultStockStoreOrder(&$stock, $article, $orderId)
     {
-        $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $stock)));
+        $bodega   = (string) $stock['STO_ART_BODEGA'];
+        $bodegas  = [$bodega];
         $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId);
 
         if (
