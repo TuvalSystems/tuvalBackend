@@ -13,7 +13,7 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Http\Controllers\WebserviceController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-
+use Illuminate\Support\Facades\Log;
 
 class RecibosdecompraeleController extends Controller
 {
@@ -184,6 +184,7 @@ class RecibosdecompraeleController extends Controller
             }
         } catch (\Throwable $th) {
             DB::rollBack();
+            Log::channel('soap_errors')->error('Error al recibir la orden de compra de Item L en (recibir): ' . $th->getMessage());
             return response(['status' => 'error', 'message' => $th->getMessage()]);
         }
     }
