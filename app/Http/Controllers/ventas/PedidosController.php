@@ -235,7 +235,7 @@ class PedidosController extends Controller
     {
         $data = $request->all();
         return $this->orderService->checkExistence($data);
-     
+
     }
 
     public function facturarexistente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -863,6 +863,22 @@ class PedidosController extends Controller
                 abort(403, $pedido); // Ej: 'No permitido'
             }
             $pdf = PDF::loadView('pedidoridePDF', $pedido);
+            return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
+        } catch (\Throwable $e) {
+            // report($e);
+            return $this->buildErrorResponse($e->getMessage(), 404);
+        }
+    }
+
+     public function imprimirpedidoridesinimagen($id)
+    {
+        try {
+            $pedido = $this->orderService->generateInvoiceRide($id);
+
+            if (is_string($pedido)) {
+                abort(403, $pedido); // Ej: 'No permitido'
+            }
+            $pdf = PDF::loadView('pedidoridesinImagenPDF', $pedido);
             return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
         } catch (\Throwable $e) {
             // report($e);
