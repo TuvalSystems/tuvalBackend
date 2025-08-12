@@ -604,18 +604,18 @@ class QuotationService implements QuotationServiceInterface
                 'cupoDisponible' => $credito['cupos'][0] ?? []
             ];
             $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-            $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->first();
+            // $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->first();
 
-            if (!$porcentajeMargen) {
-                throw new \Exception('Porcentaje de margen no encontrado');
-            }
+            // if (!$porcentajeMargen) {
+            //     throw new \Exception('Porcentaje de margen no encontrado');
+            // }
 
-            $margenBruto = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
+            // $margenBruto = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
             $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
 
             foreach ($detalle as $det) {
                 $this->castDecimalValuesTemp($det);
-                $this->loadProviderDetailQuotation($data['id'], $det, $margenBruto, $descuentoGeneral);
+                $this->loadProviderDetailQuotation($data['id'], $det,  $descuentoGeneral);
             }
 
             return response([
@@ -628,14 +628,33 @@ class QuotationService implements QuotationServiceInterface
         }
     }
 
-    public function loadProviderDetailQuotation($quotationId, &$detalle, $margenBruto, $descuentoGeneral)
+    public function loadProviderDetailQuotation($quotationId, &$detalle,  $descuentoGeneral)
     {
+        $margenBruto = 0;
+        if ($detalle->ART_TIPO_COMPRA == 'L') {
+            $ItemL = $this->getTypeArticleLQuotationOrOrder($detalle->ART_CODIGO);
+            $margenBruto = $ItemL->DATOS_ITEMS_L_MARGEN;
+        }
         $proveedores = $this->getAllProvidersQuotation($quotationId, $detalle->id);
         $detalle->proveedores = $proveedores->map(function ($prov) use ($detalle, $margenBruto, $descuentoGeneral) {
             $prov->margen =  number_format($this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO), 4, '.', '');
             $prov->CANTIDAD = $detalle->ART_DECIMAL_CANTIDAD == 0 ? (int) $prov->CANTIDAD : $prov->CANTIDAD;
             return $prov;
         })->toArray();
+    }
+
+      public function getTypeArticleLQuotationOrOrder($artArticulo)
+    {
+        $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
+        if (!$itemL) {
+            throw new \Exception('Item no encontrado', 404);
+        }
+
+        $datosL = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $itemL->ART_CLASE_ARTICULO)->first();
+        if (!$datosL) {
+            throw new \Exception('Datos L no encontrados', 404);
+        }
+        return $datosL;
     }
 
     public function getAllProvidersQuotation($cotizacionId, $cotizacionDetalleId)
