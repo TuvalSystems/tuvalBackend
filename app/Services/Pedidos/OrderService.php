@@ -1255,7 +1255,6 @@ class OrderService implements OrderServiceInterface
     public function storeFillProviderDetailExistence($providers, $newOrderDetail, $newOrder, $oldDetailOrder)
     {
         foreach ($providers as $provider) {
-            $recibido = isset($provider['recibido']) ? $provider['recibido'] : 'no';
             $newProv = new GpPedidoDetalleProveedores();
             $newProv->fill([
                 'pedido_id' => $newOrder->id,
@@ -1269,7 +1268,7 @@ class OrderService implements OrderServiceInterface
                 'TOTAL' => $provider['TOTAL'],
                 'TOTALCONIMPUESTO' => $provider['TOTALCONIMPUESTO'],
                 'NOTA' => $provider['NOTA'],
-                'recibido' => $recibido,
+                'recibido' =>"yes",
                 'MARGEN' => $provider['MARGEN']
             ]);
             $newProv->save();
@@ -1287,7 +1286,8 @@ class OrderService implements OrderServiceInterface
                 ->where('detalle_id', $oldDetailOrder['id'])
                 ->where('detalle_proveedores_id', $oldProvider['id'])
                 ->first();
-            $ejecutado = GpPedidoDetalleProveedores::find($oldProvider['id']);
+                
+             $ejecutado = GpPedidoDetalleProveedores::where('id', $oldProvider['id'])->first();
 
             if ($ejecutado) {
                 $ejecutado->ejecutado += $oldDetailOrder['ART_CANTIDAD'];
