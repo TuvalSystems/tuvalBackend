@@ -604,7 +604,7 @@ class QuotationService implements QuotationServiceInterface
                 'cupoDisponible' => $credito['cupos'][0] ?? []
             ];
             $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-          
+
             $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
 
             foreach ($detalle as $det) {
@@ -628,13 +628,14 @@ class QuotationService implements QuotationServiceInterface
         if ($detalle->ART_TIPO_COMPRA == 'L') {
             $ItemL = $this->getTypeArticleLQuotationOrOrder($detalle->ART_CODIGO);
             $margenBruto = $ItemL->DATOS_ITEMS_L_MARGEN;
+            $proveedores = $this->getAllProvidersQuotation($quotationId, $detalle->id);
+            $detalle->proveedores = $proveedores->map(function ($prov) use ($detalle, $margenBruto, $descuentoGeneral) {
+                $prov->margen =  number_format($this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO), 4, '.', '');
+                $prov->CANTIDAD = $detalle->ART_DECIMAL_CANTIDAD == 0 ? (int) $prov->CANTIDAD : $prov->CANTIDAD;
+                return $prov;
+            })->toArray();
         }
-        $proveedores = $this->getAllProvidersQuotation($quotationId, $detalle->id);
-        $detalle->proveedores = $proveedores->map(function ($prov) use ($detalle, $margenBruto, $descuentoGeneral) {
-            $prov->margen =  number_format($this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO), 4, '.', '');
-            $prov->CANTIDAD = $detalle->ART_DECIMAL_CANTIDAD == 0 ? (int) $prov->CANTIDAD : $prov->CANTIDAD;
-            return $prov;
-        })->toArray();
+        $detalle->proveedores = $detalle->proveedores ?? [];
     }
 
       public function getTypeArticleLQuotationOrOrder($artArticulo)
