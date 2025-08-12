@@ -50,4 +50,5 @@ interface OrderServiceInterface
     /*** proceso de facturar existente  */
 
         public function checkExistence($data);
+         public function generateInvoiceFromExistingOrder($data, $detalle, $user);
 }
