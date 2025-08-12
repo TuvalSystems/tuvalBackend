@@ -604,13 +604,7 @@ class QuotationService implements QuotationServiceInterface
                 'cupoDisponible' => $credito['cupos'][0] ?? []
             ];
             $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-            // $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->first();
-
-            // if (!$porcentajeMargen) {
-            //     throw new \Exception('Porcentaje de margen no encontrado');
-            // }
-
-            // $margenBruto = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
+          
             $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
 
             foreach ($detalle as $det) {
