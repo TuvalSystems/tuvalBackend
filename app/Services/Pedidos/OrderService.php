@@ -1142,7 +1142,7 @@ class OrderService implements OrderServiceInterface
             Log::info('Pedido desde Facturar Existente Generado Correctamente en generateInvoiceFromExistingOrder', [
                 'pedido' => $newOrder->pedido
             ]);
-            return $this->buildSuccessResponse('Pedido ' . $newOrder->pedido . ' desde Facturar Existente Generado Correctamente',200);
+            return $this->buildSuccessResponse('Pedido ' . $newOrder->pedido . ' desde Facturar Existente Generado Correctamente', 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error in generateInvoiceFromExistingOrder', [
@@ -1268,70 +1268,59 @@ class OrderService implements OrderServiceInterface
                 'TOTAL' => $provider['TOTAL'],
                 'TOTALCONIMPUESTO' => $provider['TOTALCONIMPUESTO'],
                 'NOTA' => $provider['NOTA'],
-                'recibido' =>"yes", // se asigna recibido porque ya hay items que se recibieron y seran despachados para que no me genere el pedido en orden de compra
+                'recibido' => "yes", // se asigna recibido porque ya hay items que se recibieron y seran despachados para que no me genere el pedido en orden de compra
                 'MARGEN' => $provider['MARGEN']
             ]);
             $newProv->save();
 
             if ($provider['orden_detalle']) {
-                $this->storeOrUpdateOrderSalesProvider($provider['orden_detalle'], $newProv, $newOrderDetail, $newOrder, $oldDetailOrder, $provider);
+                $this->storeOrUpdateOrderSalesProvider($provider['orden_detalle'],  $oldDetailOrder, $provider);
             }
         }
     }
 
-    public function storeOrUpdateOrderSalesProvider($orderSales, $newProv, $newOrderDetail, $newOrder, $oldDetailOrder, $oldProvider)
+
+    public function storeOrUpdateOrderSalesProvider($orderSales, $oldDetailOrder, $oldProvider)
     {
         foreach ($orderSales as $ordC) {
-            $ordenCompra = GpOrdenDeCompra::where('DOC_GENERADO', $ordC['ORDEN_COMPRA_DOCUMENTO'])
+            $ordenCompra  = GpOrdenDeCompra::where('DOC_GENERADO', $ordC['ORDEN_COMPRA_DOCUMENTO'])
                 ->where('detalle_id', $oldDetailOrder['id'])
                 ->where('detalle_proveedores_id', $oldProvider['id'])
+                ->lockForUpdate()
                 ->first();
 
-             $ejecutado = GpPedidoDetalleProveedores::where('id', $oldProvider['id'])->first();
-
-            if ($ejecutado) {
-                $ejecutado->ejecutado += $oldDetailOrder['ART_CANTIDAD'];
-                $ejecutado->save();
+            if (!$ordenCompra) {
+                continue;
             }
 
-            if (!$ejecutado) {
-                $ordenCompra->ORDEN_COMPRA_DOCU_ORIGEN = $newOrder->pedido;
-                $ordenCompra->detalle_id = $newOrderDetail->id;
-                $ordenCompra->detalle_proveedores_id = $newProv->id;
-                $ordenCompra->save();
-            } else {
-                $newOC = $ordenCompra->replicate();
-                $newOC->ORDEN_COMPRA_DOCU_ORIGEN = $newOrder->pedido;
-                $newOC->detalle_id = $newOrderDetail->id;
-                $newOC->detalle_proveedores_id = $newProv->id;
-                $newOC->ORDEN_COMPRA_CANTIDAD = $oldDetailOrder['ART_CANTIDAD'];
-                $newOC->save();
+            $oldProv = GpPedidoDetalleProveedores::query()
+                ->lockForUpdate()
+                ->find($oldProvider['id']);
+
+            if (!$oldProv) {
+                continue;
             }
 
-            $ordenCompraGenerado = GpOrdenDeCompraGenerado::where('orden_id', $ordenCompra->id)->first();
-
-            if (!$ejecutado) {
-                $ordenCompraGenerado->detalle_id = $newOrderDetail->id;
-                $ordenCompraGenerado->detalle_proveedores_id = $newProv->id;
-                $ordenCompraGenerado->save();
-            } else {
-                if ($ordenCompraGenerado) {
-                    $newOCG = $ordenCompraGenerado->replicate();
-                    $newOCG->orden_id = $newOC->id;
-                    $newOCG->detalle_id = $newOrderDetail->id;
-                    $newOCG->detalle_proveedores_id = $newProv->id;
-                    $newOCG->estado = 'recibido';
-                    $newOCG->save();
-
-                    $ordenCompraGeneradoDetalle = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ordenCompraGenerado->id)->get();
-                    foreach ($ordenCompraGeneradoDetalle as $ocgd) {
-                        $newOCGD = $ocgd->replicate();
-                        $newOCGD->orden_generada_id = $newOCG->id;
-                        $newOCGD->detalle_proveedores_id = $newProv->id;
-                        $newOCGD->save();
-                    }
-                }
+            $delta = (int) ($oldDetailOrder['ART_CANTIDAD'] ?? 0);
+            if ($delta <= 0) {
+                break;
             }
+            $prev = (int) ($oldProv->ejecutado ?? 0);
+            $cap  = (int) ($oldProv->CANTIDAD ?? 0);
+
+            if ($cap <= 0 || $prev >= $cap) {
+                break; // ya completo o sin cantidad base
+            }
+            $oldProv->ejecutado = min($cap, $prev + $delta);
+            $oldProv->save();
+
+
+            $ordCGD = GpOrdenDeCompraGenerado::where('orden_id', $ordenCompra->id)->first();
+            if (!$ordCGD) {
+                continue;
+            }
+            $ordCGD->estado = 'recibido';
+            $ordCGD->save();
         }
     }
 
