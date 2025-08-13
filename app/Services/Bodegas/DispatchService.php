@@ -268,7 +268,7 @@ class DispatchService implements DispatchServiceInterface
     {
           return Cache::remember('pto_vta_all', 300, function () {
             return GpRelacionPuntoVentaBodega::query()
-                ->orderBy('nombre')               // ajusta campo
+                ->orderBy('PTO_VTA_BOD_BODEGA')               // ajusta campo
                 ->get(['id','PTO_VTA_BOD_BODEGA','PTO_VTA_BOD_PUNTO_VENTA']); // solo lo necesario
         });
 
