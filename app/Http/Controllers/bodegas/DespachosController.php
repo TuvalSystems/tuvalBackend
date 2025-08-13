@@ -1055,59 +1055,10 @@ class DespachosController extends Controller
         return $pedido;
     }
 
-    public function guiasprocesadas($puntodeventa_id): Response|Application|ResponseFactory
-    {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->first();
-        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $guias_despachadas = GpGuiaRemision::join('gp_pedidos', 'gp_pedidos.pedido', 'gp_guia_remisions.pedido')
-            ->join('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
-            ->where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'despacho')
-            ->select('gp_guia_remisions.*', 'gp_orden_despachos.orden', 'gp_orden_despachos.id AS orden_id')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1500)
-            ->get();
-
-        $transferencias_enviadas = GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'transferencia')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        $transferencias_recibidas = GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'transferencia')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        $reposiciones_enviadas = GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'reposicion')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        $reposiciones_recibidas = GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'reposicion')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        return response([
-            'success' => true,
-            'guias_despachadas' => $guias_despachadas,
-            'transferencias_enviadas' => $transferencias_enviadas,
-            'transferencias_recibidas' => $transferencias_recibidas,
-            'reposiciones_enviadas' => $reposiciones_enviadas,
-            'reposiciones_recibidas' => $reposiciones_recibidas,
-        ]);
+    public function obtenetListadoPuntoVenta() {
+            return $this->dispatchService->getAllPtoVta();
     }
-
     public function getDispatchedGuides(Request $request, $puntodeventa_id)
     {
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');

@@ -3,6 +3,7 @@
 namespace App\Services\Bodegas;
 
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 
@@ -137,7 +138,7 @@ class DispatchService implements DispatchServiceInterface
             ->Where('gp_guia_remisions.tipo', 'transferencia');
 
         if ($search) {
-             $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('gp_guia_remisions.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
                     ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
                     ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA', 'like', '%' . $search . '%')
@@ -184,7 +185,7 @@ class DispatchService implements DispatchServiceInterface
 
 
         if ($search) {
-             $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('gp_guia_remisions.pedido', 'like', '%' . $search . '%')
                     ->orWhere('gp_guia_remisions.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
                     ->orWhere('gp_guia_remisions.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
@@ -257,7 +258,12 @@ class DispatchService implements DispatchServiceInterface
 
     public function checkTraslado($order)
     {
-         $this->invoiceService->checkTrasladado($order);
+        $this->invoiceService->checkTrasladado($order);
     }
 
+
+    public function getAllPtoVta()
+    {
+        return GpRelacionPuntoVentaBodega::all();
+    }
 }
