@@ -1294,8 +1294,9 @@ class OrderService implements OrderServiceInterface
             }
 
             $oldProv = GpPedidoDetalleProveedores::query()
+                ->whereKey($oldProvider['id']) 
                 ->lockForUpdate()
-                ->find($oldProvider['id']);
+                ->first();
 
             if (!$oldProv) {
                 continue;
@@ -1319,8 +1320,10 @@ class OrderService implements OrderServiceInterface
             if (!$ordCGD) {
                 continue;
             }
-            $ordCGD->estado = 'recibido';
-            $ordCGD->save();
+            if ($oldProv->ejecutado >= $cap) {
+                $ordCGD->estado = 'recibido';
+                $ordCGD->save();
+            }
         }
     }
 
