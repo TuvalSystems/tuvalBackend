@@ -1268,7 +1268,7 @@ class OrderService implements OrderServiceInterface
                 'TOTAL' => $provider['TOTAL'],
                 'TOTALCONIMPUESTO' => $provider['TOTALCONIMPUESTO'],
                 'NOTA' => $provider['NOTA'],
-                'recibido' =>"yes",
+                'recibido' =>"yes", // se asigna recibido porque ya hay items que se recibieron y seran despachados para que no me genere el pedido en orden de compra
                 'MARGEN' => $provider['MARGEN']
             ]);
             $newProv->save();
@@ -1286,7 +1286,7 @@ class OrderService implements OrderServiceInterface
                 ->where('detalle_id', $oldDetailOrder['id'])
                 ->where('detalle_proveedores_id', $oldProvider['id'])
                 ->first();
-                
+
              $ejecutado = GpPedidoDetalleProveedores::where('id', $oldProvider['id'])->first();
 
             if ($ejecutado) {
