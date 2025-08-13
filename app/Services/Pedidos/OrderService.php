@@ -1125,13 +1125,7 @@ class OrderService implements OrderServiceInterface
                         $pendiente = $prov->ingresado - $prov->ejecutado;
                         if ($pendiente > 0) {
                             $artL->ART_CANTIDAD  -= $pendiente;
-                            if ((int)$prov->ingresado === (int)$prov->CANTIDAD) {
-                                unset($prov->orden_detalle);
-                                $deteleArticle['proveedores'][] = $prov;
-                            } else {
-                                unset($prov->orden_detalle);
                                 $prov->save();
-                            }
                         }
                     }
                 }
@@ -1356,11 +1350,11 @@ class OrderService implements OrderServiceInterface
 
     public function deleteProvidersAndArticlesForNewOrder($deleteItems)
     {
-        $deleteItems['proveedores'] = $deleteItems['proveedores'] ?? [];
+        // $deleteItems['proveedores'] = $deleteItems['proveedores'] ?? [];
         $deleteItems['articulos']   = $deleteItems['articulos'] ?? [];
-        if (!empty($deleteItems['proveedores'])) {
-            $this->deleteProvidersOldOrder($deleteItems['proveedores']);
-        }
+        // if (!empty($deleteItems['proveedores'])) {
+        //     $this->deleteProvidersOldOrder($deleteItems['proveedores']);
+        // }
         if (!empty($deleteItems['articulos'])) {
             $this->deleteArticlesOldOrder($deleteItems['articulos']);
         }
