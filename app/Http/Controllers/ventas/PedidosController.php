@@ -38,6 +38,7 @@ use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PedidosController extends Controller
 {
@@ -245,7 +246,7 @@ class PedidosController extends Controller
         return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
     }
 
-   
+
 
     public function consultardespachado(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -686,12 +687,17 @@ class PedidosController extends Controller
     }
     public function despachoenproceso($id)
     {
-        $pedido = gpPedido::where('id', $id)->first();
-        return response([
-            'success' => true,
-            'despacho_en_proceso' => $pedido->despacho_en_proceso,
-            'transferencia_en_proceso' => $pedido->transferencia_en_proceso,
-        ]);
+        try {
+            $order = $this->orderService->verifyOrderDispatchOrItemLRecived($id);
+            return $this->successResponse('Información Obtenida Correctamente', $order, 200);
+        } catch (\Throwable $th) {
+            Log::error('Error al obtener el despacho en proceso: ', [
+                'error' => $th->getMessage(),
+                'pedido_id' => $id,
+                'linea' => $th->getLine()
+            ]);
+            return $this->buildErrorResponse('Opps! Error al obtener el despacho en proceso', 500);
+        }
     }
 
 

@@ -482,6 +482,17 @@ class OrderService implements OrderServiceInterface
      *
      */
 
+
+    public function verifyOrderDispatchOrItemLRecived($orderId){
+        $order = GpPedido::find($orderId);
+        $existeItemLRecibido = GpPedidoDetalleProveedores::where('pedido_id', $orderId)->where('recibido', 'yes')->exists();
+        return [
+            'despacho_en_proceso' => $order->despacho_en_proceso,
+             'transferencia_en_proceso' => $order->transferencia_en_proceso,
+            'item_l_recibido' => $existeItemLRecibido
+        ];
+    }
+
     public function detailOrderById($data)
     {
         // 🔍 1. Obtener detalles del pedido
