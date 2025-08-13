@@ -12,7 +12,6 @@ interface DispatchServiceInterface
     public function reposicionesRecibidas($bodega, $perpage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta,$clienteRuc);
 
     public function checkTraslado($order);
-
     public function getAllPtoVta();
 
 }

@@ -33,6 +33,7 @@ use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -41,10 +42,12 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DateTime;
+use Illuminate\Support\Facades\Log;
 use stdClass;
 
 class DespachosController extends Controller
 {
+    use JsonResponseTrait;
     protected $orderService;
     protected $dispatchService;
     public function __construct(OrderServiceInterface $orderService, DispatchServiceInterface $dispatchService)
@@ -1056,8 +1059,19 @@ class DespachosController extends Controller
     }
 
 
-    public function obtenetListadoPuntoVenta() {
-            return $this->dispatchService->getAllPtoVta();
+    public function obtenetListadoPuntoVenta()
+    {
+        try {
+            $items = $this->dispatchService->getAllPtoVta();
+            return $this->successResponse('Información obtenida', $items, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error obtenetListadoPuntoVenta', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse('Error al obtener la información', 500);
+        }
     }
     public function getDispatchedGuides(Request $request, $puntodeventa_id)
     {

@@ -6,6 +6,8 @@ use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use Illuminate\Support\Facades\Cache;
+
 
 class DispatchService implements DispatchServiceInterface
 {
@@ -264,6 +266,11 @@ class DispatchService implements DispatchServiceInterface
 
     public function getAllPtoVta()
     {
-        return GpRelacionPuntoVentaBodega::all();
+          return Cache::remember('pto_vta_all', 300, function () {
+            return GpRelacionPuntoVentaBodega::query()
+                ->orderBy('nombre')               // ajusta campo
+                ->get(['id','PTO_VTA_BOD_BODEGA','PTO_VTA_BOD_PUNTO_VENTA']); // solo lo necesario
+        });
+
     }
 }
