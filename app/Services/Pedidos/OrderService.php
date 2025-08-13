@@ -483,12 +483,13 @@ class OrderService implements OrderServiceInterface
      */
 
 
-    public function verifyOrderDispatchOrItemLRecived($orderId){
+    public function verifyOrderDispatchOrItemLRecived($orderId)
+    {
         $order = GpPedido::find($orderId);
         $existeItemLRecibido = GpPedidoDetalleProveedores::where('pedido_id', $orderId)->where('recibido', 'yes')->exists();
         return [
             'despacho_en_proceso' => $order->despacho_en_proceso,
-             'transferencia_en_proceso' => $order->transferencia_en_proceso,
+            'transferencia_en_proceso' => $order->transferencia_en_proceso,
             'item_l_recibido' => $existeItemLRecibido
         ];
     }
@@ -1125,7 +1126,8 @@ class OrderService implements OrderServiceInterface
                         $pendiente = $prov->ingresado - $prov->ejecutado;
                         if ($pendiente > 0) {
                             $artL->ART_CANTIDAD  -= $pendiente;
-                                $prov->save();
+                            unset($prov->orden_detalle);
+                            $prov->save();
                         }
                     }
                 }
