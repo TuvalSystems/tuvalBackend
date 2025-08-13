@@ -1142,14 +1142,14 @@ class OrderService implements OrderServiceInterface
             Log::info('Pedido desde Facturar Existente Generado Correctamente en generateInvoiceFromExistingOrder', [
                 'pedido' => $newOrder->pedido
             ]);
-            return $this->buildSuccessResponse('Pedido ' . $newOrder->pedido . ' desde Facturar Existente Generado Correctamente', 200);
+            return $this->buildSuccessResponse('Pedido Generado Correctamente' . ' ' . $newOrder->pedido . ' ' . ' en Facturar Existente', 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error in generateInvoiceFromExistingOrder', [
                 'error' => $e->getMessage(),
                 'data' => $data['id'],
             ]);
-            return $this->buildErrorResponse('ERROR AL GENERAR LA NUEVA FACTURA, CONTACTE A SISTEMAS', 400);
+            return $this->buildErrorResponse('Error al generar el pedido, contacte al administrador', 400);
         }
     }
 
@@ -1294,7 +1294,7 @@ class OrderService implements OrderServiceInterface
             }
 
             $oldProv = GpPedidoDetalleProveedores::query()
-                ->whereKey($oldProvider['id']) 
+                ->whereKey($oldProvider['id'])
                 ->lockForUpdate()
                 ->first();
 
