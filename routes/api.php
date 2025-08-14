@@ -266,11 +266,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('despachoenproceso/{id}', [PedidosController::class, 'despachoenproceso']);
     });
 
-       Route::group(['prefix' => 'bodegas'], function () {
+    Route::group(['prefix' => 'bodegas'], function () {
         Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
-
     });
-
-
 });
 Route::post('/login', [AuthController::class, 'login']);
