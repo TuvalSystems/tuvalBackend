@@ -1119,19 +1119,25 @@ class OrderService implements OrderServiceInterface
             foreach ($detailIdsWithLOrSERV as  $artL) {
                 if ($artL->ART_TIPO_COMPRA == 'SERV') {
                     $artL->delete();
+                    continue;
                 }
                 $providers = $this->functionsService->getItemProviders($data['id'], $artL, false);
-                if ($providers && $providers['proveedores']->count() > 0) {
-                    foreach ($providers['proveedores'] as  $prov) {
-                        $pendiente = $prov->ingresado - $prov->ejecutado;
-                        if ($pendiente > 0) {
-                            $artL->ART_CANTIDAD  -= $pendiente;
-                            unset($prov->orden_detalle);
-                            $prov->save();
-                        }
-                    }
+                $provList  = $providers['proveedores'] ?? collect();
+                if ($provList->isEmpty()) {
+                    continue;
                 }
-                if ($providers['proveedores']->count()) {
+
+                foreach ( $provList as  $prov) {
+                    $pendiente = max(0, (int)$prov->ingresado - (int)$prov->ejecutado);
+                    if ($pendiente <= 0) continue;
+
+                    $toDeduct = min((int)$artL->ART_CANTIDAD, $pendiente);
+                    if ($toDeduct <= 0) break;
+
+                    $artL->ART_CANTIDAD = (int)$artL->ART_CANTIDAD - $toDeduct;
+                }
+
+                if ($provList->isNotEmpty()) {
                     if ($artL->ART_CANTIDAD == 0) {
                         $deteleArticle['articulos'][] = $artL;
                     } else {
@@ -1142,7 +1148,7 @@ class OrderService implements OrderServiceInterface
 
             $newOrder = $this->prepareToStoreOrderHeaderExistence($data, $user);
             $this->storeFillDetailOrderExistence($detalle, $newOrder);
-            $this->deleteProvidersAndArticlesForNewOrder($deteleArticle);
+            $this->deleteArticlesForNewOrder($deteleArticle);
             $this->recalculateOldAndNewOrder($data['id'], $newOrder->id);
             $this->invoiceService->checkSendInvoice($newOrder, true);
             DB::commit();
@@ -1350,13 +1356,9 @@ class OrderService implements OrderServiceInterface
         $nwStock->save();
     }
 
-    public function deleteProvidersAndArticlesForNewOrder($deleteItems)
+    public function deleteArticlesForNewOrder($deleteItems)
     {
-        // $deleteItems['proveedores'] = $deleteItems['proveedores'] ?? [];
         $deleteItems['articulos']   = $deleteItems['articulos'] ?? [];
-        // if (!empty($deleteItems['proveedores'])) {
-        //     $this->deleteProvidersOldOrder($deleteItems['proveedores']);
-        // }
         if (!empty($deleteItems['articulos'])) {
             $this->deleteArticlesOldOrder($deleteItems['articulos']);
         }
