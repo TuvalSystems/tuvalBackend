@@ -4,6 +4,7 @@ namespace App\Http\Controllers\bodegas;
 
 
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 
 class RecibosdecompraeleController extends Controller
 {
-
+    use JsonResponseTrait;
     protected $purchaseReceiptLItemService;
 
     public function __construct(PurchaseReceiptLItemServiceInterface $purchaseReceiptLItemService)
@@ -234,37 +235,49 @@ class RecibosdecompraeleController extends Controller
         return $ordendecompra;
     }
 
-    public function imprimir($id): \Illuminate\Http\Response
+    // public function imprimir($id): \Illuminate\Http\Response
+    // {
+    //     $ordendecompra = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
+    //         ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
+    //         ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
+    //         ->where('gp_orden_de_compra_generados.id', $id)
+    //         ->select(
+    //             'gp_orden_de_compra_generados.*',
+    //             'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN',
+    //             'gp_orden_de_compras.ORDEN_COMPRA_BODEGA',
+    //             'gp_orden_de_compras.ORDEN_COMPRA_NOTA_DOCU',
+    //             'gp_proveedors.PROV_RAZON_SOCIAL',
+    //             'gp_proveedors.PROV_DIRECCION_1',
+    //             'gp_proveedors.PROV_TELEFONO_1',
+    //             'gp_proveedors.PROV_CONDICION_PAGO',
+    //             'gp_pedidos.CLI_RAZON_SOCIAL',
+    //             'gp_pedidos.USERID',
+    //             'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE'
+    //         )
+    //         ->first();
+    //     if ($ordendecompra) {
+    //         $this->setdetalleordendecompra($ordendecompra);
+    //     }
+
+    //     //        echo '<pre>';
+    //     //        print_r($ordendecompra);
+    //     //        echo '</pre>';
+    //     //        die();
+
+    //     //return view('ordendecompraPDF', $ordendecompra);
+    //     $pdf = PDF::loadView('ordendecompraPDF', $ordendecompra->toArray());
+    //     return $pdf->stream('ordendecompra-' . $ordendecompra->ORDEN_COMPRA_DOCUMENTO . '.pdf');
+    // }
+
+    public function imprimir($id)
     {
-        $ordendecompra = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
-            ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
-            ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
-            ->where('gp_orden_de_compra_generados.id', $id)
-            ->select(
-                'gp_orden_de_compra_generados.*',
-                'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN',
-                'gp_orden_de_compras.ORDEN_COMPRA_BODEGA',
-                'gp_orden_de_compras.ORDEN_COMPRA_NOTA_DOCU',
-                'gp_proveedors.PROV_RAZON_SOCIAL',
-                'gp_proveedors.PROV_DIRECCION_1',
-                'gp_proveedors.PROV_TELEFONO_1',
-                'gp_proveedors.PROV_CONDICION_PAGO',
-                'gp_pedidos.CLI_RAZON_SOCIAL',
-                'gp_pedidos.USERID',
-                'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE'
-            )
-            ->first();
-        if ($ordendecompra) {
-            $this->setdetalleordendecompra($ordendecompra);
+        try {
+            $ordendecompra = $this->purchaseReceiptLItemService->printPurchaseReceiptL($id);
+            $pdf = PDF::loadView('ordendecompraPDF', $ordendecompra->toArray());
+            return $pdf->stream('ordendecompra-' . $ordendecompra->ORDEN_COMPRA_DOCUMENTO . '.pdf');
+        } catch (\Throwable $e) {
+            Log::error('Error al imprimir el recibo de compra: ' . $e->getMessage());
+            return $this->buildErrorResponse('Error al imprimir el recibo de compra', 404);
         }
-
-        //        echo '<pre>';
-        //        print_r($ordendecompra);
-        //        echo '</pre>';
-        //        die();
-
-        //return view('ordendecompraPDF', $ordendecompra);
-        $pdf = PDF::loadView('ordendecompraPDF', $ordendecompra->toArray());
-        return $pdf->stream('ordendecompra-' . $ordendecompra->ORDEN_COMPRA_DOCUMENTO . '.pdf');
     }
 }

@@ -7,7 +7,9 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 
@@ -16,10 +18,17 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
 
     protected $invoiceService;
     protected $notificacionService;
-    public function __construct(InvoiceServiceInterface $invoiceServiceInterface, NotificationServiceInterface $notificacionService)
+    protected $purechaseReceiptService;
+    protected $purchaseReceipRepository;
+    public function __construct(InvoiceServiceInterface $invoiceServiceInterface,
+    NotificationServiceInterface $notificacionService,
+    PurchaseReceiptServiceInterface $purechaseReceiptService,
+    PurchaseReceipRepositoryInterface $purchaseReceipRepositoryInterface)
     {
         $this->invoiceService = $invoiceServiceInterface;
         $this->notificacionService = $notificacionService;
+        $this->purechaseReceiptService = $purechaseReceiptService;
+        $this->purchaseReceipRepository = $purchaseReceipRepositoryInterface;
     }
 
     public function checkOrderReception($orden, $detailOrder, $user)
@@ -93,4 +102,27 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             $order->save();
         }
     }
+
+
+
+    /** proceso de impresion de recibos de compra L  */
+
+    public function printPurchaseReceiptL($id)
+    {
+        $data  = $this->purchaseReceipRepository->getPurchaseReceiptLById($id);
+        if (!$data) {
+            throw new \Exception('El recibo de compra no existe');
+        }
+        $this->getDetailPurchaseReceiptL($data);
+        return $data;
+    }
+
+
+
+
+    public function getDetailPurchaseReceiptL($ordCG)
+    {
+        return $this->purechaseReceiptService->setPurcharseOrderdetails($ordCG);
+    }
+
 }

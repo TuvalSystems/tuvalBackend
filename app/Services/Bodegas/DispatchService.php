@@ -75,6 +75,7 @@ class DispatchService implements DispatchServiceInterface
         $query = GpGuiaRemision::fromSub(function ($sub) use ($bodega) {
             $sub->select([
                 'gp_guia_remisions.id',
+                'gp_guia_remisions.pedido',
                 'gp_guia_remisions.GUI_REM_GUIA_REMISION',
                 'gp_guia_remisions.bodega_origen',
                 'gp_guia_remisions.bodega_destino',
@@ -103,7 +104,7 @@ class DispatchService implements DispatchServiceInterface
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('gp_guia_remisions.pedido', 'like', '%' . $search . '%')
+                $q->where('subquery.pedido', 'like', '%' . $search . '%')
                     ->orWhere('subquery.GUI_REM_GUIA_REMISION', 'like', '%' . $search . '%')
                     ->orWhere('subquery.GUI_REM_RAZON_SOCIAL_DESTINATARIO', 'like', '%' . $search . '%')
                     ->orWhere('subquery.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA', 'like', '%' . $search . '%')
