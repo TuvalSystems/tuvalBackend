@@ -316,7 +316,7 @@ class DevolucionService implements DevolucionServiceInterface
                     ->where('STO_ART_BODEGA', $bodega)
                     ->first();
                 if ($stock) {
-                    $stock->reservado -= $value->devuelto;
+                    $stock->reservado = max(0, $stock->reservado - $value->devuelto);
                     $stock->save();
                 }
             }
