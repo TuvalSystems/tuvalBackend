@@ -177,6 +177,12 @@ class ApprovalService implements ApprovalServiceInterface
                 }
             }
 
+            if ($type == 'cotizacion') {
+                if ($detalle['descuento'] != $detalle['descuento_original'] ) {
+                    return $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - {$detalle['detalle_id']}");
+                }
+            }
+
 
             // validacion de descripcion difernete a tipo L
             if ($detalle['ART_TIPO_COMPRA']  != 'L') {
