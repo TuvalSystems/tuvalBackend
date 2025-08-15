@@ -369,6 +369,7 @@ class ConsultasController extends Controller
             ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
             ->where('gp_pedidos.estado', '!=', 'eliminado')
             ->where('gp_pedidos.estado', '!=', 'rechazado')
+            ->where('gp_pedidos.estado', '!=', 'anulada')
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado');
                 $query->orWhere('gp_pedidos.despachado', 0);
