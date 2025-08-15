@@ -160,7 +160,11 @@ class ApprovalService implements ApprovalServiceInterface
     {
 
         foreach ($detalles as  $detalle) {
-
+            if ($type == 'cotizacion') {
+                if ($detalle['descuento'] != $detalle['descuento_original']) {
+                    return $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - {$detalle['descuento']}");
+                }
+            }
             /// validaciones tipo pedido
             if ($type == 'pedido') {
                 if (empty($detalle['detalle_id'])) continue;
@@ -176,13 +180,6 @@ class ApprovalService implements ApprovalServiceInterface
                     return $this->requiredApprovalResponse("Valor menor que el detalle Original - {$detalle['detalle_id']} - {$detalle['ART_VALOR']}");
                 }
             }
-
-            if ($type == 'cotizacion') {
-                if ($detalle['descuento'] != $detalle['descuento_original'] ) {
-                    return $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - {$detalle['detalle_id']}");
-                }
-            }
-
 
             // validacion de descripcion difernete a tipo L
             if ($detalle['ART_TIPO_COMPRA']  != 'L') {
