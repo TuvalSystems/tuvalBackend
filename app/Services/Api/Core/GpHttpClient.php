@@ -59,7 +59,7 @@ class GpHttpClient
             }
             // Log para depuración avanzada cuando la respuesta es vacía o no JSON
             if (empty($responseData)) {
-                Log::error("API Response vacío o no JSON en {$url}", [
+                Log::channel('apiservice')->error("API Response vacío o no JSON en {$url}", [
                     'status' => $response->status(),
                     'body' => $response->body(),
                     'url' => $url,
@@ -75,7 +75,7 @@ class GpHttpClient
 
             // Log para warnings (4xx/5xx)
             if (!$response->successful()) {
-                Log::warning("API Request Warning - {$url}: " . $response->body(), [
+                Log::channel('apiservice')->warning("API Request Warning - {$url}: " . $response->body(), [
                     'url' => $url,
                     'data' => $data,
                     'status' => $response->status()
@@ -93,7 +93,7 @@ class GpHttpClient
                 'method' => $method
             ];
 
-            Log::warning("Invalid API Request", $errorResponse);
+            Log::channel('apiservice')->warning("Invalid API Request", $errorResponse);
             return $errorResponse;
         } catch (\Exception $e) {
             $errorResponse = [
@@ -105,7 +105,7 @@ class GpHttpClient
                 'method' => $method
             ];
 
-            Log::error("API Request Error", $errorResponse);
+            Log::channel('apiservice')->error("API Request Error", $errorResponse);
             return $errorResponse;
         }
     }
@@ -147,7 +147,7 @@ class GpHttpClient
                 ];
 
                 // 🚀 Log detallado del error
-                Log::error("Async API Request Error", $errorResponse);
+                Log::channel('apiservice')->error("Async API Request Error", $errorResponse);
 
                 return $errorResponse;
             }
@@ -159,25 +159,24 @@ class GpHttpClient
      * Adicional, siempre seran en POST ya que GET no admite json por eso en este caso siempre post
      */
 
-   public function makeBatchRequest(string $urlKey, array $data)
-{
-    $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
+    public function makeBatchRequest(string $urlKey, array $data)
+    {
+        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
 
-    try {
-        $response = $this->client->post($url, [
-            'json' => $data
-        ]);
+        try {
+            $response = $this->client->post($url, [
+                'json' => $data
+            ]);
 
-        return json_decode($response->getBody()->getContents(), true);
-    } catch (\Exception $e) {
-        Log::error('Error in makeBatchRequest', [
-            'url' => $url,
-            'error' => $e->getMessage(),
-            'data' => $data
-        ]);
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (\Exception $e) {
+            Log::channel('apiservice')->error('Error in makeBatchRequest', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+                'data' => $data
+            ]);
 
-        return [];
+            return [];
+        }
     }
-}
-
 }

@@ -69,6 +69,14 @@ class GpPedidoDetalleProveedores extends Model
 
     ];
 
+    protected $casts = [
+        'CANTIDAD' => 'float',
+        'COSTO_UNITARIO' => 'float',
+        'IMPUESTO' => 'float',
+        'TOTAL' => 'float',
+        'TOTALCONIMPUESTO' => 'float',
+        'MARGEN' => 'float',
+    ];
 
     public function pedidodetalle(){
         return $this->belongsTo(GpPedidoDetalle::class, 'detalle_id');

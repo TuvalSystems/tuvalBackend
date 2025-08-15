@@ -5,6 +5,7 @@ namespace App\Services\Funciones;
 use App\Models\GpCliente;
 use App\Models\GpArticulo;
 use App\Models\GpClienteSucursal;
+use App\Models\GpPedido;
 use App\Models\GpVendedor;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
@@ -37,9 +38,9 @@ class FunctionsService implements FunctionsServiceInterface
         $this->apiBillingService = $apiBillingService;
     }
 
-    public function getItemProviders($data, $item, $pendientes = false, $existentes = false): array
+    public function getItemProviders($pedidoId, $item, $pendientes = false, $existentes = false): array
     {
-        $providers = $this->orderRepository->getSuppliersByOrderAndItem($data['id'], $item->id);
+        $providers = $this->orderRepository->getSuppliersByOrderAndItem($pedidoId, $item->id);
         if ($item->ART_DECIMAL_CANTIDAD == 0) {
             $item->ART_STOCK = (int) $item->ART_STOCK;
             $item->ART_CANTIDAD = (int) $item->ART_CANTIDAD;
@@ -100,9 +101,10 @@ class FunctionsService implements FunctionsServiceInterface
 
 
     /** funcion de recalcular pedido  */
-    public function recalculateOrder($order)
+    public function recalculateOrder($orderId)
     {
-        $detalle = GpPedidoDetalle::where('pedido_id', $order->id)->get();
+        $order = GpPedido::find($orderId);
+        $detalle = GpPedidoDetalle::where('pedido_id', $orderId)->get();
         if ($detalle->isEmpty()) {
             return;
         }
@@ -122,7 +124,7 @@ class FunctionsService implements FunctionsServiceInterface
             $lineaDiscount = $descuentoUnitario * $cantidad;
             $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = round( $lineNet * ($impuestoPorcentaje / 100), 2);
+            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;
@@ -324,6 +326,7 @@ class FunctionsService implements FunctionsServiceInterface
             if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {
                 $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
             }
+    
             GpTempCartStock::updateOrCreate(
                 ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
                 [

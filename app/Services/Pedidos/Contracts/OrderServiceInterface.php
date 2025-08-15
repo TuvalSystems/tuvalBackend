@@ -9,6 +9,8 @@ interface OrderServiceInterface
     public function generateInvoiceXml($id);
     public function storeOrder($order, $user);
 
+
+    public function verifyOrderDispatchOrItemLRecived($orderId);
     public function detailOrderById($data);
 
     //volver a facturar
@@ -42,4 +44,13 @@ interface OrderServiceInterface
      *
      */
     public function generateNextMonthInvoice();
+
+    /** funcion para la actualizacion de un pedido y el recalculo del mismo  */
+
+    public function updateOrderAndRecalculate($orderId);
+
+    /*** proceso de facturar existente  */
+
+    public function checkExistence($data);
+    public function generateInvoiceFromExistingOrder($data, $detalle, $user);
 }

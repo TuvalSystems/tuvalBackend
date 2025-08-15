@@ -2,18 +2,179 @@
 
 namespace App\Services\Reposiciones;
 
+use Carbon\Carbon;
 use App\Models\GpArticulo;
 use App\Models\GpTempCart;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
+use Illuminate\Support\Facades\DB;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use Carbon\Carbon;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
+
+    public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo)
+    {
+        $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
+        $articulo['stock'] = [];
+        $articulo['ART_STOCK'] = 0;
+        if (empty($stockResults) || empty($articulo['ART_CODIGO'])) {
+            return $articulo;
+        }
+        $filtered = array_filter($stockResults, function ($item) use ($articulo) {
+            return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+                $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
+        });
+
+        if (!$filtered) {
+            return $articulo;
+        }
+
+        // Bodegas involucradas (para agrupar y traer reservas en una sola pasada)
+        $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $filtered)));
+        // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas);
+
+        $total = 0;
+        $normalizados = [];
+        foreach ($filtered as $item) {
+            $bodega = (string) $item['STO_ART_BODEGA'];
+            $stockBase = (float) $item['STO_ART_STOCK_DISPONIBLE'];
+            $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                ? (int) $stockBase
+                : round($stockBase, 2);
+            $resta = (float)($reservas[$bodega] ?? 0);
+            $disponible = max(0, $stockBase - $resta);
+            $disponible = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                ? (int) $disponible
+                : round($disponible, 2);
+
+            $normalizados[] = [
+                'STO_ART_BODEGA'           => $bodega,
+                'STO_ART_STOCK_DISPONIBLE' => $disponible,
+            ];
+
+            $total += $disponible;
+        }
+        $articulo['stock']     = $normalizados;
+        $articulo['ART_STOCK'] = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0 ? (int)$total : round((float)$total, 2);
+        return $articulo;
+    }
+
+    public function computeAvailableStockForArticle(array $stockResults, array $articulo)
+    {
+        $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
+        $articulo['stock'] = [];
+        $articulo['ART_STOCK'] = 0;
+        if (empty($stockResults) || empty($articulo['ART_CODIGO'])) {
+            return $articulo;
+        }
+        $filtered = array_filter($stockResults, function ($item) use ($articulo) {
+            return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+                $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
+        });
+
+        if (!$filtered) {
+            return $articulo;
+        }
+
+        // Bodegas involucradas (para agrupar y traer reservas en una sola pasada)
+        $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $filtered)));
+        // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas);
+
+        $total = 0;
+        $normalizados = [];
+        foreach ($filtered as $item) {
+            $bodega = (string) $item['STO_ART_BODEGA'];
+            $stockBase = (float) $item['STO_ART_STOCK_DISPONIBLE'];
+            $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                ? (int) $stockBase
+                : round($stockBase, 2);
+            $resta = (float)($reservas[$bodega] ?? 0);
+            $disponible = max(0, $stockBase - $resta);
+            $disponible = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                ? (int) $disponible
+                : round($disponible, 2);
+
+            $normalizados[] = [
+                'DESCRIPCION_ARTICULO'     => (string)$item['DESCRIPCION_ARTICULO'],
+                'STO_ART_ARTICULO'         => (string)$item['STO_ART_ARTICULO'],
+                'STO_ART_BODEGA'           => $bodega,
+                'STO_ART_STOCK_DISPONIBLE' => $disponible,
+                'seleccionado'             => $item['seleccionado']
+            ];
+
+            $total += $disponible;
+        }
+        $articulo['stock']     = $normalizados;
+        $articulo['ART_STOCK'] = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0 ? (int)$total : round((float)$total, 2);
+        return $articulo;
+    }
+
+    public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null): array
+    {
+
+        if (empty($bodegas)) return [];
+        $q = GpPedidoDetalleStock::query()
+            ->join('gp_pedido_detalles', 'gp_pedido_detalle_stocks.detalle_id', '=', 'gp_pedido_detalles.id')
+            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
+            ->where('gp_pedido_detalles.ART_CODIGO', $articulo)
+            ->whereIn('gp_pedido_detalle_stocks.STO_ART_BODEGA', $bodegas)
+            ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
+            ->whereNotNull('gp_pedido_detalle_stocks.reservado')
+            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'rechazado', 'anulada'])
+            ->where(function ($query) {
+                $query->whereNull('gp_pedidos.despachado')
+                    ->orWhere('gp_pedidos.despachado', 0);
+            })
+            // Comercial OK o no requiere
+            ->where(function ($query) {
+                $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no')
+                    ->orWhere(function ($q) {
+                        $q->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
+                            ->where('gp_pedidos.aprobado_comercial', 'yes');
+                    });
+            })
+            // Crediticia OK o no requiere
+            ->where(function ($query) {
+                $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no')
+                    ->orWhere(function ($q) {
+                        $q->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes')
+                            ->where('gp_pedidos.aprobado_crediticio', 'yes');
+                    });
+            });
+        if ($pedidoId) {
+            $q->where('gp_pedidos.id', '!=', $pedidoId);
+        }
+
+        $reservasPedidos = $q->select(
+            'gp_pedido_detalle_stocks.STO_ART_BODEGA as bodega',
+            DB::raw('SUM(gp_pedido_detalle_stocks.reservado) as total')
+        )
+            ->groupBy('gp_pedido_detalle_stocks.STO_ART_BODEGA')
+            ->pluck('total', 'bodega')
+            ->map(fn($v) => (float) ($v ?? 0))
+            ->all();
+        // 2) Traslados de reposición pendientes (agrupado por bodega_origen)
+        $reservasTraslados = GpTrasladosReposicion::query()
+            ->select('bodega_origen', DB::raw('SUM(COALESCE(cantidad,0) - COALESCE(trasladado,0)) as total'))
+            ->whereIn('bodega_origen', $bodegas)
+            ->where('ART_CODIGO', $articulo)
+            ->whereNull('completado')
+            ->groupBy('bodega_origen')
+            ->pluck('total', 'bodega_origen')
+            ->map(fn($v) => max(0, (float)($v ?? 0)))
+            ->all();
+        $out = [];
+        foreach ($bodegas as $b) {
+            $out[$b] = (float)($reservasPedidos[$b] ?? 0) + (float)($reservasTraslados[$b] ?? 0);
+        }
+        return $out;
+    }
 
     public function newFormatStock($stockResults, $articulo)
     {
@@ -277,24 +438,29 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId)
     {
+        $bodegas = $stockFormatted
+            ->pluck('STO_ART_BODEGA')
+            ->unique()
+            ->values()
+            ->map(fn($i) => (string) $i)
+            ->toArray();
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId);
+
         return collect($stockFormatted)
             ->filter(function ($item) use ($articulo) {
                 return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
                     $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
             })
-            ->map(function ($stockItem) use ($articulo, $orderId) {
-                $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
+            ->map(function ($stockItem) use ($articulo, $reservas) {
+                $bodega = (string) $stockItem['STO_ART_BODEGA'];
+                $stockBase = $stockItem['STO_ART_STOCK_DISPONIBLE'];
 
-                $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
-                    ? (int) $stockValue
-                    : round((float) $stockValue, 2);
+                $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                    ? (int) $stockBase
+                    : round($stockBase, 2);
 
-                $reservado = $this->stockReservado(
-                    $articulo['ART_CODIGO'],
-                    $stockItem['STO_ART_BODEGA'],
-                    $orderId
-                );
-                $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+                $resta = (float)($reservas[$bodega] ?? 0);
+                $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockBase - $resta);
                 return $stockItem;
             })
             ->values()
@@ -307,21 +473,22 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function formatResultStockStoreOrder(&$stock, $article, $orderId)
     {
+        $bodega   = (string) $stock['STO_ART_BODEGA'];
+        $bodegas  = [$bodega];
+        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId);
+
         if (
             isset($stock['STO_ART_STOCK_DISPONIBLE'], $stock['STO_ART_BODEGA'], $stock['STO_ART_ARTICULO']) &&
             $stock['STO_ART_ARTICULO'] === $article['ART_CODIGO']
         ) {
+            $bodega = $stock['STO_ART_BODEGA'];
             $stockValue = $stock['STO_ART_STOCK_DISPONIBLE'];
-            $stock['STO_ART_STOCK_DISPONIBLE'] = $article['ART_DECIMAL_CANTIDAD'] == 0
+            $stockValue = $article['ART_DECIMAL_CANTIDAD'] == 0
                 ? (int) $stockValue
                 : round((float) $stockValue, 2);
 
-            $reservado = $this->stockReservado(
-                $article['ART_CODIGO'],
-                $stock['STO_ART_BODEGA'],
-                $orderId
-            );
-            $stock['STO_ART_STOCK_DISPONIBLE'] = max(0, $stock['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+            $resta = (float)($reservas[$bodega] ?? 0);
+            $stock['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockValue - $resta);
         }
     }
 }

@@ -98,4 +98,14 @@ class GpCotizacionDetalle extends Model
     {
         return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
     }
+
+    public function proveedores()
+    {
+        return $this->hasMany(GpCotizacionDetalleProveedores::class, 'detalle_id');
+    }
+
+    public function stock()
+    {
+        return $this->hasMany(GpCotizacionDetalleStock::class, 'detalle_id');
+    }
 }

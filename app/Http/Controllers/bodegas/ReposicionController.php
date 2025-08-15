@@ -2,19 +2,21 @@
 
 namespace App\Http\Controllers\bodegas;
 
+
+use Illuminate\Http\Request;
+use App\Traits\JsonResponseTrait;
 use App\Http\Controllers\Controller;
 use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Models\reposicion\GpTrasladosReposicionCabecera;
-use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
-use App\Traits\JsonResponseTrait;
-use App\Traits\TransferRepositionTrait;
-use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\reposicion\GpTrasladosReposicion;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Http\Controllers\bodegas\GuiasderemisionController;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 
 
 class ReposicionController extends Controller
@@ -30,7 +32,7 @@ class ReposicionController extends Controller
 
     public function getreposicion(Request $request)
     {
-            set_time_limit(300);
+        set_time_limit(300);
         try {
             $soapRequest = $request->all();
             $this->transferRepositionService->validateRequest($soapRequest);
@@ -41,7 +43,6 @@ class ReposicionController extends Controller
             $proccessDocument =  $this->transferRepositionService->processDocumentsInBatches($soapRequest, $transferHeader);
 
             return $this->transferRepositionService->buildResponse($proccessDocument);
-
         } catch (\Throwable $th) {
             return $this->errorResponse('Error al obtener las transferencias', $th->getMessage(), 500);
         }
@@ -119,7 +120,10 @@ class ReposicionController extends Controller
 
         $bodegas = array_values($bodegas);
 
-        $guias = new GuiasderemisionController();
+        $invoice = app(InvoiceServiceInterface::class);
+        $notify = app(NotificationServiceInterface::class);
+        $deliveryNote = app(DeliveryNoteServiceInterface::class);
+        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
         $guias->checkguiaremision();
 
         if ($documento) {

@@ -113,6 +113,22 @@ class GpPedidoDetalle extends Model
 
     ];
 
+    protected $casts = [
+        'ART_DECIMAL_CANTIDAD' => 'integer',
+        'CHECK_ALTERNATIVO' => 'boolean',
+        'ART_VALOR' => 'float',
+        'ART_VALOR_ORIGINAL' => 'float',
+        'ART_DESCUENTO' => 'float',
+        'ART_IVA' => 'float',
+        'ART_CANTIDAD' => 'float',
+        'ART_STOCK' => 'float',
+        'ART_IMP_VTA' => 'float',
+        'ART_COSTO_PROMEDIO' => 'float',
+        'descuento' => 'float',
+        'descuento_original' => 'float',
+        'modificador' => 'float',
+    ];
+
 
     public function pedidoDetalleStocks()
     {

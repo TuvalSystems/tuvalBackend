@@ -38,15 +38,12 @@ class ProcesarDevolucionesCommand extends Command
      */
     public function handle(DevolucionJobService $devolucionJobService)
     {
-        Log::info('✅ [ProcessDevolucionesJob] - Command executed at ' . now());
+        Log::channel('devolucion')->info('✅ [ProcessDevolucionesJob] - Command executed at ' . now());
         $this->info('🔄 Procesando devoluciones...');
 
         $startTime = Carbon::now();
         $devoluciones = $devolucionJobService->listarTodasLasDevolucionesAplicables();
         $total = $devoluciones->count();
-
-        // $cl = collect($devoluciones)->pluck('id')->toArray();
-        // dd($cl, $total);
 
         if ($total === 0) {
             $this->info('✅ No hay devoluciones pendientes por procesar.');
@@ -61,10 +58,11 @@ class ProcesarDevolucionesCommand extends Command
         $errors = 0;
         foreach ($devoluciones as $devolucion) {
             if ($this->hasProcessingError($devolucion)) {
-                Log::warning("⏸️ Devolución con ID {$devolucion->id} ya tiene un error registrado. No se procesa.");
+                Log::channel('devolucion')->warning("⏸️ Devolución con ID {$devolucion->id} ya tiene un error registrado. No se procesa.");
                 continue;
             }
             if ($this->processDevolucion($devolucion, $devolucionJobService)) {
+                Log::channel('devolucion')->info("⏸️ Devolución con ID {$devolucion->id} . Procesada con Exito.");
                 $processed++;
             } else {
                 $errors++;
@@ -94,19 +92,20 @@ class ProcesarDevolucionesCommand extends Command
 
         try {
             $devolucionJobService->procesarDevolucionJob($devolucion);
-            Log::info("✔️ [ProcessDevolucionesJob] - Devolución ID: {$devolucion->id} processed successfully.");
+            Log::channel('devolucion')->info("✔️ [ProcessDevolucionesJob] - Devolución ID: {$devolucion->id} processed successfully.");
             return true;
         } catch (\Throwable $e) {
-            Log::error("❌ [ProcessDevolucionesJob] - Error processing Devolución ID: {$devolucion->id}. Error: " . $e->getMessage());
+            Log::channel('devolucion')->error("❌ [ProcessDevolucionesJob] - Error processing Devolución ID: {$devolucion->id}. Error: " . $e->getMessage());
             return false;
         }
     }
 
     public function generateFinalLog(int $processed, int $total, int $errors, int $duration)
     {
-        Log::info("🕒 [ProcessDevolucionesJob] - Process finished.");
-        Log::info("📊 Total processed: {$processed}");
-        Log::info("⚠️ Total errors: {$errors}");
-        Log::info("⏱️ Duration: {$duration} seconds");
+        Log::channel('devolucion')->info("🕒 [ProcessDevolucionesJob] - Process finished.");
+        Log::channel('devolucion')->info("📊 Total processed: {$processed}");
+        Log::channel('devolucion')->info("⚠️ Total errors: {$errors}");
+        Log::channel('devolucion')->info("📊 Total to process: {$total}");
+        Log::channel('devolucion')->info("⏱️ Duration: {$duration} seconds");
     }
 }

@@ -194,7 +194,8 @@
                     <td>{{$value->ORDEN_COMPRA_DETALLE_ARTICULO}}</td>
                     <td>{{$value->ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO}}</td>
                     <td>{{$value->ORDEN_COMPRA_DETALLE_UMEDIDA}}</td>
-                    <td class="text-right">{{$value->ART_PESO}}Kg</td>
+                    <td class="text-right"> {{ number_format((float)($value->ART_PESO ?? 0), 2, ',', '.') }} Kg
+                    </td>
                     <td class="text-right">{{ number_format($value->ORDEN_COMPRA_DETALLE_CANTIDAD,2,'.', ',')}}</td>
                     <td class="text-right">${{$value->ORDEN_COMPRA_DETALLE_COSTO_UNITARIO}}</td>
                     <td class="text-right">{{ number_format($value->ORDEN_COMPRA_DETALLE_TOTAL,2,'.', ',')}}</td>

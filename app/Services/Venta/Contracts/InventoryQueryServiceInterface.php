@@ -10,7 +10,14 @@ interface InventoryQueryServiceInterface
     public function getConsultStockOthers($data);
 
 
-    /** consultar stock del pedido antes de guardar */
-   
+    /** funcion para consulta de cupo de cliente */
+
+    public function getAvailableSpace($ruc);
+
+
+    /** funcion para consulta de segmento de cliente */
+
+    public function getConsultClientSegment($data);
+
 
 }

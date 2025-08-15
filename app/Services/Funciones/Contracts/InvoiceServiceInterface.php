@@ -13,4 +13,8 @@ interface InvoiceServiceInterface
     public function generateDisptachOrder($pedido);
 
     public function sendInvoiceGp($pedido);
+
+     public function checkTrasladado(GpPedido $pedido);
+
+     public function respuestaFacturaVenta($order);
 }

@@ -15,11 +15,16 @@ interface OrderRepositoryInterface
 
     public function getTransferOrdersBySale(int $orderId);
     public function getShipmentGuidesByTransfer(object $transfer);
-     public function getDispatchOrder (int $orderId);
-     public function getShipmentGuides(string $orderCode );
-     public function getReturnsByOrder(int $orderId);
+    public function getDispatchOrder(int $orderId);
+    public function getShipmentGuides(string $orderCode);
+    public function getReturnsByOrder(int $orderId);
 
-     /** facturacion de siguiente mes */
+    /** facturacion de siguiente mes */
 
-     public function getOrdersToInvoiceNextMonth($mes);
+    public function getOrdersToInvoiceNextMonth($mes);
+
+    /** functiones  para el proceso de facturar existentes */
+
+
+    public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder);
 }
