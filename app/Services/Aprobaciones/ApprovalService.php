@@ -3,6 +3,7 @@
 namespace App\Services\Aprobaciones;
 
 use App\Models\GpCotizacionDetalleProveedores;
+use App\Models\GpTempCart;
 use DateTime;
 use App\Models\GpPedido;
 use App\Models\GpArticulo;
@@ -20,6 +21,7 @@ use App\Models\GpCotizacionDetalle;
 use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpTempCartProveedores;
 use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -264,6 +266,10 @@ class ApprovalService implements ApprovalServiceInterface
                     }
 
                     foreach ($detalle['proveedores'] as $proveedor) {
+                        $porvOrigin = $this->getProviderToValidateMargen($proveedor);
+                        if ($porvOrigin->MARGEN == $proveedor['MARGEN']) {
+                            continue;
+                        }
                         $valor = number_format(($proveedor['COSTO_UNITARIO'] /
                             (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
                         if ($valor > $detalle['ART_VALOR']) {
@@ -294,6 +300,13 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
+    public function getProviderToValidateMargen($prov)
+    {
+     
+        $tempCardItem = GpTempCart::where('ID', $prov['id_tempcart'])->first();
+        $quotationProv = GpCotizacionDetalleProveedores::where('detalle_id', $tempCardItem->detalle_id)->first();
+        return $quotationProv;
+    }
 
     /*** aprovacion crediciticia *** */
 
