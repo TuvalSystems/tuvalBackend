@@ -266,9 +266,11 @@ class ApprovalService implements ApprovalServiceInterface
                     }
 
                     foreach ($detalle['proveedores'] as $proveedor) {
-                        $porvOrigin = $this->getProviderToValidateMargen($proveedor);
-                        if ($porvOrigin->MARGEN == $proveedor['MARGEN']) {
-                            continue;
+                        if ($proveedor['id_tempcart']) {
+                            $porvOrigin = $this->getProviderToValidateMargen($proveedor);
+                            if ($porvOrigin->MARGEN == $proveedor['MARGEN']) {
+                                continue;
+                            }
                         }
                         $valor = number_format(($proveedor['COSTO_UNITARIO'] /
                             (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
@@ -302,7 +304,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getProviderToValidateMargen($prov)
     {
-     
+
         $tempCardItem = GpTempCart::where('ID', $prov['id_tempcart'])->first();
         $quotationProv = GpCotizacionDetalleProveedores::where('detalle_id', $tempCardItem->detalle_id)->first();
         return $quotationProv;
