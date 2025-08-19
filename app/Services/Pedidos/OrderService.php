@@ -250,6 +250,9 @@ class OrderService implements OrderServiceInterface
             DB::rollBack();
             Log::error('Error in storeOrder (guardar pedido )', [
                 'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
