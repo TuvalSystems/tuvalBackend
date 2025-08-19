@@ -47,7 +47,9 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
     public function receivedL(array $data, $user)
     {
         $ord = $this->purchaseReceipRepository->getPurchaseReceiptLById($data['id']);
-        $ordGDetail = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ord->id)->first();
+        $hasPending  = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ord->id)
+            ->whereRaw('ORDEN_COMPRA_DETALLE_CANTIDAD > COALESCE(recibido, 0)')
+            ->exists();
         $header = $this->formatHeaderPurcharseOrder($ord);
 
         $items = array_values(array_filter($data['detalle'], function ($d) {
@@ -70,7 +72,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
         $successValidate = (bool)($resValidate['success'] ?? false);
         $dataValidate = $resValidate['data'] ?? [];
         $codigo  = (string)($dataValidate['codigo']  ?? '');
-        // $mensajeValidate = (string)($dataValidate['message'] ? $resValidate['message'] : 'Validación desconocida');
+
         if ($successValidate && $codigo != '0') {
             Log::channel('apiservice')->error("funcion receivedL, validacion fallida:", [
                 'res' => $dataValidate
@@ -78,7 +80,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             throw new \RuntimeException("Error al validar el recibo de compra");
         }
 
-        if ($successValidate && $codigo === '0' && $ordGDetail->ORDEN_COMPRA_DETALLE_CANTIDAD === $ordGDetail->recibido) {
+        if ($successValidate && $codigo === '0' && !$hasPending) {
             Log::channel('apiservice')->error("Ya existe un documento en Dynamics GP :", [
                 'res' => $dataValidate
             ]);
@@ -127,7 +129,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             $resultRcOrdG = $this->apiGpReceiptService->responseReceivedItemL($valHdr);
             $successRcOrd = (bool)($resultRcOrdG['success'] ?? false);
             $resRcOrd = $resultRcOrdG['data'] ?? [];
-            // $msjRcOrdG = (string)($resRcOrd['message'] ? $resultRcOrdG['message'] : 'Error desconocido');
+
             if ($successRcOrd) {
                 if ($resRcOrd['codigo'] === '0' && $resRcOrd['numDocGenerado'] != '') {
                     $ord->ORDEN_COMPRA_RECIBO .= '_' . $resRcOrd['numDocGenerado'];

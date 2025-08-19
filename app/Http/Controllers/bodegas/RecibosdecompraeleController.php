@@ -11,12 +11,10 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Http\Controllers\WebserviceController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Services\Venta\PurchaseOrderService;
 use Illuminate\Support\Facades\Log;
-use PHPStan\PhpDocParser\Ast\Type\ThisTypeNode;
+
 
 class RecibosdecompraeleController extends Controller
 {

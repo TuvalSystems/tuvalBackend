@@ -249,9 +249,9 @@ class OrderService implements OrderServiceInterface
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error in storeOrder (guardar pedido )', [
-                'error' => $e,
+                'error' => $e->getMessage(),
             ]);
-            return $this->buildErrorResponse('Opps! Error al guardar el pedido', 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
