@@ -21,7 +21,6 @@ use App\Models\GpCotizacionDetalle;
 use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\GpTempCartProveedores;
 use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
