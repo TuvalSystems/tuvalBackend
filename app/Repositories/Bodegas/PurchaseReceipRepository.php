@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseReceipRepository implements PurchaseReceipRepositoryInterface
 {
-
     public function getGeneratedOrderDetails(int $purchaseOrderId)
     {
         return  GpOrdenDeCompraGeneradoDetalle::query()

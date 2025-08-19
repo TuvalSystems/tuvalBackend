@@ -59,6 +59,14 @@ return [
             //cotizaciones
             'guardar_cotizacion_recordatorio'            => 'api/cotizaciones/guardar-cotizacion-recordatorio',
             'lista_items_alternativos'                   => 'api/cotizaciones/lista-items-alternativos',
+
+
+            //transacciones
+            'validar_recibo_item_l'                     => 'api/transacciones/validar-generacion-documento-recibo-compra-l',
+            'eliminar_recibo_item_l'                    => 'api/transacciones/eliminar-documento-recibo-compra-l',
+            'guardar_recibo_item_l'                     => 'api/transacciones/guardar-documento-recibo-compra-l',
+            'generar_recibo_item_l'                     => 'api/transacciones/generar-documento-recibo-compra-l',
+            'respuesta_recibo_item_l'                   => 'api/transacciones/respuesta-documento-recibo-compra-l',
         ],
     ],
     'api_sales' => [

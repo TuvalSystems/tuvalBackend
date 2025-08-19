@@ -925,6 +925,7 @@ class QuotationService implements QuotationServiceInterface
             DB::rollBack();
             Log::error('Error in storeQuotation (Guardar cotización)', [
                 'error' => $th->getMessage(),
+                'linea' => $th->getLine(),
             ]);
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
