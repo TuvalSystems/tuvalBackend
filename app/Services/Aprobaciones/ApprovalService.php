@@ -2,6 +2,7 @@
 
 namespace App\Services\Aprobaciones;
 
+use App\Models\GpCotizacionDetalleProveedores;
 use DateTime;
 use App\Models\GpPedido;
 use App\Models\GpArticulo;
@@ -164,6 +165,53 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($detalle['descuento'] != $detalle['descuento_original']) {
                     return $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - {$detalle['descuento']}");
                 }
+
+                // validacion de descripcion difernete a tipo L
+                if ($detalle['ART_TIPO_COMPRA']  != 'L') {
+                    if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
+                        return $this->requiredApprovalResponse("La descripcion del producto es diferente a la original");
+                    }
+
+                    if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL']) {
+                        return $this->requiredApprovalResponse("El valor del producto es menor que el valor original");
+                    }
+
+                    /** proceso para calculo de porcetaje maximo de precio de venta */
+                    $exceso = 0;
+                    $excesoPct = 0;
+                    $valorOriginal = $detalle['ART_VALOR_ORIGINAL'];
+                    $porcMaxSubida = $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
+                    $factor = 1 + ($porcMaxSubida / 100);
+                    $precioLimite      = $valorOriginal * $factor;
+                    $precioActual      = $detalle['ART_VALOR'];
+
+                    if ($precioActual > $precioLimite) {
+                        $exceso = $precioActual - $precioLimite;
+                        $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
+                        return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                            . "(límite: {$precioLimite}), excede en {$exceso} "
+                            . "({$excesoPct}% sobre el valor original).");
+                    }
+                }
+
+                // validaciones para tipo L
+                if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+                    $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+                    if (!$porcentajeMargen) {
+                        return $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
+                    }
+
+                    foreach ($detalle['proveedores'] as $proveedor) {
+                        $valor = number_format(($proveedor['COSTO_UNITARIO'] /
+                            (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
+                        if ($valor > $detalle['ART_VALOR']) {
+                            return $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
+                        }
+                        if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
+                            return $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+                        }
+                    }
+                }
             }
             /// validaciones tipo pedido
             if ($type == 'pedido') {
@@ -179,51 +227,51 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($detalle['ART_VALOR'] != $detOriginal->ART_VALOR && $detalle['ART_VALOR'] != $detOriginal['ART_VALOR_ORIGINAL']) {
                     return $this->requiredApprovalResponse("Valor menor que el detalle Original - {$detalle['detalle_id']} - {$detalle['ART_VALOR']}");
                 }
-            }
 
-            // validacion de descripcion difernete a tipo L
-            if ($detalle['ART_TIPO_COMPRA']  != 'L') {
-                if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL']) {
-                    return $this->requiredApprovalResponse("La descripcion del producto es diferente a la original");
-                }
-
-                if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL']) {
-                    return $this->requiredApprovalResponse("El valor del producto es meor que el valor original");
-                }
-
-                /** proceso para calculo de porcetaje maximo de precio de venta */
-                $exceso = 0;
-                $excesoPct = 0;
-                $valorOriginal = $detalle['ART_VALOR_ORIGINAL'];
-                $porcMaxSubida = $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
-                $factor = 1 + ($porcMaxSubida / 100);
-                $precioLimite      = $valorOriginal * $factor;
-                $precioActual      = $detalle['ART_VALOR'];
-
-                if ($precioActual > $precioLimite) {
-                    $exceso = $precioActual - $precioLimite;
-                    $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
-                    return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
-                        . "(límite: {$precioLimite}), excede en {$exceso} "
-                        . "({$excesoPct}% sobre el valor original).");
-                }
-            }
-
-            // validaciones para tipo L
-            if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
-                if (!$porcentajeMargen) {
-                    return $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
-                }
-
-                foreach ($detalle['proveedores'] as $proveedor) {
-                    $valor = number_format(($proveedor['COSTO_UNITARIO'] /
-                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
-                    if ($valor > $detalle['ART_VALOR']) {
-                        return $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
+                // validacion de descripcion difernete a tipo L
+                if ($detalle['ART_TIPO_COMPRA']  != 'L') {
+                    if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL'] && $detalle['ART_DESCRIPCION'] != $detOriginal->ART_DESCRIPCION) {
+                        return $this->requiredApprovalResponse("La descripcion del producto es diferente a la original");
                     }
-                    if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
-                        return $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+
+                    if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL'] && $detalle['ART_VALOR'] != $detOriginal->ART_VALOR) {
+                        return $this->requiredApprovalResponse("El valor del producto es diferente al valor original");
+                    }
+
+                    /** proceso para calculo de porcetaje maximo de precio de venta */
+                    $exceso = 0;
+                    $excesoPct = 0;
+                    $valorOriginal = $detalle['ART_VALOR_ORIGINAL'];
+                    $porcMaxSubida = $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
+                    $factor = 1 + ($porcMaxSubida / 100);
+                    $precioLimite      = $valorOriginal * $factor;
+                    $precioActual      = $detalle['ART_VALOR'];
+
+                    if ($precioActual > $precioLimite) {
+                        $exceso = $precioActual - $precioLimite;
+                        $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
+                        return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                            . "(límite: {$precioLimite}), excede en {$exceso} "
+                            . "({$excesoPct}% sobre el valor original).");
+                    }
+                }
+
+                // validaciones para tipo L
+                if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+                    $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+                    if (!$porcentajeMargen) {
+                        return $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
+                    }
+
+                    foreach ($detalle['proveedores'] as $proveedor) {
+                        $valor = number_format(($proveedor['COSTO_UNITARIO'] /
+                            (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
+                        if ($valor > $detalle['ART_VALOR']) {
+                            return $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
+                        }
+                        if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
+                            return $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+                        }
                     }
                 }
             }
