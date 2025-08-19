@@ -153,7 +153,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $items = GpGuiaRemisionDetalle::where('GUI_REM_CODI_INTERNO', $articuloCodigo)
             ->whereHas('guia', function ($query) use ($bodegaDestino) {
                 $query->where('tipo', 'reposicion')
-                    ->where('estado', 'pendiente')
+                    ->where('estado', 'enviada')
                     ->where('bodega_destino', $bodegaDestino);
             })
             ->sum('GUI_REM_CANTIDAD');
