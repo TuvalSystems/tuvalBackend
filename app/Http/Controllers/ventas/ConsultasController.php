@@ -8,6 +8,7 @@ use App\Models\GpArticulo;
 use App\Models\GpVendedor;
 use App\Models\GpPuntoVenta;
 use App\Models\GpTerritorio;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpGrupoCliente;
 use App\Models\Notificaciones;
@@ -29,7 +30,9 @@ use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 
 class ConsultasController extends Controller
 {
+    use JsonResponseTrait;
     protected $InventoryQueryService;
+
 
 
     public function __construct(InventoryQueryServiceInterface $InventoryQueryService)
@@ -193,6 +196,17 @@ class ConsultasController extends Controller
     {
         $data = $request->all();
         return $this->InventoryQueryService->getConsultStockOthers($data);
+    }
+
+    public function consultaItemTransito(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $items = $this->InventoryQueryService->getConsultItemTransito($data);
+            return $this->successResponse('Transitos obtenidos correctamente', $items, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
 
@@ -803,9 +817,9 @@ class ConsultasController extends Controller
     }
 
 
-    public function consultarClienteSegmento (Request $request){
+    public function consultarClienteSegmento(Request $request)
+    {
         $data = $request->all();
         return $this->InventoryQueryService->getConsultClientSegment($data);
-
     }
 }
