@@ -176,7 +176,7 @@ class ApprovalService implements ApprovalServiceInterface
                     return $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - {$detalle['detalle_id']}");
                 }
                 //validaciones para el valor en caso de que sea pedido
-                if ($detalle['ART_VALOR'] < $detOriginal->ART_VALOR) {
+                if ($detalle['ART_VALOR'] != $detOriginal->ART_VALOR && $detalle['ART_VALOR'] != $detOriginal['ART_VALOR_ORIGINAL']) {
                     return $this->requiredApprovalResponse("Valor menor que el detalle Original - {$detalle['detalle_id']} - {$detalle['ART_VALOR']}");
                 }
             }
