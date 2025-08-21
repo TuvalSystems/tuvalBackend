@@ -1151,10 +1151,13 @@ class DespachosController extends Controller
         $fecha_desde = $request->input('fecha_desde', null);
         $fecha_hasta = $request->input('fecha_hasta', null);
         $clienteRuc = $request->input('cliente', null);
-          $ptovtaSearch = $request->input('ptovta', null);
+        $ptovtaSearch = $request->input('ptovta', null);
         return response()->json([
             'success' => true,
             'data' => $this->dispatchService->reposicionesRecibidas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc, $ptovtaSearch),
         ]);
     }
+
+
+   
 }

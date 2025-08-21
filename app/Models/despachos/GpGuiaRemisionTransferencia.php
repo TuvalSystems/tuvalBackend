@@ -28,4 +28,10 @@ use Illuminate\Database\Eloquent\Model;
 class GpGuiaRemisionTransferencia extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'guia_remision_id',
+        'codigo',
+        'pedido',
+    ];
 }

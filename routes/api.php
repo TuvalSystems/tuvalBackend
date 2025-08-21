@@ -265,6 +265,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::group(['prefix' => 'bodegas'], function () {
         Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
+        Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
+    Route::post('/guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
+
     });
 
     Route::group(['prefix' => 'consultas'], function () {

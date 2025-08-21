@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\bodegas;
 
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Traits\JsonResponseTrait;
 use stdClass;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
@@ -34,6 +35,7 @@ use Illuminate\Support\Facades\Log;
 
 class GuiasderemisionController extends Controller
 {
+    use JsonResponseTrait;
     protected $deliveryNoteService;
     protected $invoiceService;
     protected $notifyService;
@@ -1395,6 +1397,23 @@ class GuiasderemisionController extends Controller
         if (isset($result['MST_Respuesta_Guia_RemisionResult']['CS_RESPUESTA_GUIA_REMISION'][0]['CLAVE_ACCESO'])) {
             $guiaderemision->GUI_REM_CODIGO = $result['MST_Respuesta_Guia_RemisionResult']['CS_RESPUESTA_GUIA_REMISION'][0]['CLAVE_ACCESO'];
             $guiaderemision->save();
+        }
+    }
+
+
+
+    public function consultarDetalleGuiaPorId(Request $request)
+    {
+        try {
+            $data = $request->all();
+            return $this->successResponse('Detalle de guia obtenido', $this->deliveryNoteService->getDeliveryNoteDetailByType($data['guia']), 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al consultar detalle de guia', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine()
+            ]);
+            return $this->buildErrorResponse('Error al consultar detalle de guia', 500);
         }
     }
 }
