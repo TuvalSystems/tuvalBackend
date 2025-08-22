@@ -1008,7 +1008,7 @@ class PedidosController extends Controller
         $nuevo_pedido->factura_origen = $pedido->factura;
         $nuevo_pedido->fecha_factura = null;
         $nuevo_pedido->estado = 'espera';
-
+        $nuevo_pedido->nota_cliente = $pedido->nota_cliente;
         $nuevo_pedido->sucursal_id = $devolucion->sucursal_id;
         $nuevo_pedido->sucursal_facturacion_id = $devolucion->sucursal_facturacion_id;
         $nuevo_pedido->cliente_id = $devolucion->cliente_volver_a_facturar_id;
