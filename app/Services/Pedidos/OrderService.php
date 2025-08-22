@@ -509,7 +509,7 @@ class OrderService implements OrderServiceInterface
             'idCompania' => config('services.api_gp.company'),
         ]);
         $estadoCuenta = [
-            'cupoDisponible' => $credito['cupos'][0] ?? []
+            'cupoDisponible' => $credito['data'] ?? []
         ];
 
         // 🔍 3. Procesar proveedores y stock

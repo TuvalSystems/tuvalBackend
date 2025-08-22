@@ -184,9 +184,9 @@ class FunctionsService implements FunctionsServiceInterface
         $cupoDisponible = $this->getClientCreditInfo($cliente->CLI_RUC);
 
 
-        $cliente->suspendido = $cupoDisponible['SUSPENDIDO'] ?? 0;
-        $cliente->cupo_disponible = $this->formatCurrency($cupoDisponible['CUPO_DISPONIBLE_GP'] ?? 0);
-        $cliente->cupo_asignado = $this->formatCurrency($cupoDisponible['CUPO_ASIGNADO'] ?? 0);
+        $cliente->suspendido = $cupoDisponible['suspendido'] ?? 0;
+        $cliente->cupo_disponible = $this->formatCurrency($cupoDisponible['cupoDisponibleGp'] ?? 0);
+        $cliente->cupo_asignado = $this->formatCurrency($cupoDisponible['cupoAsignado'] ?? 0);
 
         return $cliente;
     }
@@ -198,7 +198,7 @@ class FunctionsService implements FunctionsServiceInterface
             'ruc' => $ruc,
             'idCompania' => config('services.api_gp.company'),
         ]);
-        return reset($response['cupos'][0]);
+        return $response['data'] ?? [];
     }
 
     public function getClientBranches($ruc)
@@ -326,7 +326,7 @@ class FunctionsService implements FunctionsServiceInterface
             if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {
                 $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
             }
-    
+
             GpTempCartStock::updateOrCreate(
                 ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
                 [
