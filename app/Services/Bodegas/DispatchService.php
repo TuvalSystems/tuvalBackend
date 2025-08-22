@@ -24,6 +24,7 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.id',
             'gp_guia_remisions.GUI_REM_GUIA_REMISION',
             'gp_guia_remisions.pedido',
+            'gp_pedidos.despacho as pedido_despacho',
             'gp_guia_remisions.GUI_REM_NUME_DOCU_SUSTENTO',
             'gp_orden_despachos.orden',
             'gp_orden_despachos.id AS orden_id',
