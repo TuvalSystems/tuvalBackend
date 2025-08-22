@@ -14,6 +14,7 @@ use App\Services\SqlServer\Cobranza\Contracts\CreditValidationServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class InventoryQueryService implements InventoryQueryServiceInterface
@@ -156,7 +157,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                     ->where('estado', 'enviada')
                     ->where('bodega_destino', $bodegaDestino);
             })
-            ->sum('GUI_REM_CANTIDAD');
+            ->value(DB::raw('COALESCE(SUM(COALESCE(GUI_REM_CANTIDAD,0) - (COALESCE(recibido,0))), 0)'));
         return [
             'bodega_destino' => $bodegaDestino,
             'transito' => (int) $items
