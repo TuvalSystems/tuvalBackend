@@ -160,7 +160,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->value(DB::raw('COALESCE(SUM(COALESCE(GUI_REM_CANTIDAD,0) - (COALESCE(recibido,0))), 0)'));
         return [
             'bodega_destino' => $bodegaDestino,
-            'transito' => (int) $items
+            'transito' => (float) $items
         ];
     }
 }
