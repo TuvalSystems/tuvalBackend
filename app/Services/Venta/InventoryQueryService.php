@@ -2,7 +2,10 @@
 
 namespace App\Services\Venta;
 
+use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpCliente;
+use App\Models\GpPuntoVenta;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
@@ -11,6 +14,7 @@ use App\Services\SqlServer\Cobranza\Contracts\CreditValidationServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class InventoryQueryService implements InventoryQueryServiceInterface
@@ -125,5 +129,38 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         } else {
             return $this->buildErrorResponse('Segmento no encontrado', 500);
         }
+    }
+
+
+
+    /**
+     *  consulta de items en transito por reposicion
+     * estado : pendiente
+     * tipo de guia : reposicion
+     * @articulo
+     * @punto_venta
+     * @param mixed $data
+     * @return void
+     */
+    public function getConsultItemTransito($data): array
+    {
+        $articuloCodigo = data_get($data, 'articulo.ART_CODIGO');
+        $ptoVentaId     = data_get($data, 'puntodeventa_id');
+
+        $bodegaDestino  = GpRelacionPuntoVentaBodega::query()
+            ->where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVentaId)
+            ->value('PTO_VTA_BOD_BODEGA');
+
+        $items = GpGuiaRemisionDetalle::where('GUI_REM_CODI_INTERNO', $articuloCodigo)
+            ->whereHas('guia', function ($query) use ($bodegaDestino) {
+                $query->where('tipo', 'reposicion')
+                    ->where('estado', 'enviada')
+                    ->where('bodega_destino', $bodegaDestino);
+            })
+            ->value(DB::raw('COALESCE(SUM(COALESCE(GUI_REM_CANTIDAD,0) - (COALESCE(recibido,0))), 0)'));
+        return [
+            'bodega_destino' => $bodegaDestino,
+            'transito' => (float) $items
+        ];
     }
 }

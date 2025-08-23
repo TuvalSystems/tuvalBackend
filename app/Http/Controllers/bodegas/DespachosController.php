@@ -33,6 +33,7 @@ use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -41,10 +42,12 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DateTime;
+use Illuminate\Support\Facades\Log;
 use stdClass;
 
 class DespachosController extends Controller
 {
+    use JsonResponseTrait;
     protected $orderService;
     protected $dispatchService;
     public function __construct(OrderServiceInterface $orderService, DispatchServiceInterface $dispatchService)
@@ -1055,62 +1058,24 @@ class DespachosController extends Controller
         return $pedido;
     }
 
-    public function guiasprocesadas($puntodeventa_id): Response|Application|ResponseFactory
+
+    public function obtenetListadoPuntoVenta()
     {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->first();
-        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
-
-        $guias_despachadas = GpGuiaRemision::join('gp_pedidos', 'gp_pedidos.pedido', 'gp_guia_remisions.pedido')
-            ->join('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
-            ->where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'despacho')
-            ->select('gp_guia_remisions.*', 'gp_orden_despachos.orden', 'gp_orden_despachos.id AS orden_id')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1500)
-            ->get();
-
-        $transferencias_enviadas = GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'transferencia')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        $transferencias_recibidas = GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'transferencia')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        $reposiciones_enviadas = GpGuiaRemision::where('gp_guia_remisions.bodega_origen', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'reposicion')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        $reposiciones_recibidas = GpGuiaRemision::where('gp_guia_remisions.bodega_destino', $bodega)
-            ->where('gp_guia_remisions.estado', '!=', 'pendiente')
-            ->Where('gp_guia_remisions.tipo', 'reposicion')
-            ->orderByDesc('gp_guia_remisions.GUI_REM_FECHA_INICIO')
-            ->limit(1000)
-            ->get();
-
-        return response([
-            'success' => true,
-            'guias_despachadas' => $guias_despachadas,
-            'transferencias_enviadas' => $transferencias_enviadas,
-            'transferencias_recibidas' => $transferencias_recibidas,
-            'reposiciones_enviadas' => $reposiciones_enviadas,
-            'reposiciones_recibidas' => $reposiciones_recibidas,
-        ]);
+        try {
+            $items = $this->dispatchService->getAllPtoVta();
+            return $this->successResponse('Información obtenida', $items, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error obtenetListadoPuntoVenta', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse('Error al obtener la información', 500);
+        }
     }
-
     public function getDispatchedGuides(Request $request, $puntodeventa_id)
     {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
@@ -1121,13 +1086,12 @@ class DespachosController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->guiasDespachadas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
+            'data' => $this->dispatchService->guiasDespachadas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
         ]);
     }
 
     public function getDispatchedTransfers(Request $request, $puntodeventa_id)
     {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
@@ -1135,15 +1099,16 @@ class DespachosController extends Controller
         $fecha_desde = $request->input('fecha_desde', null);
         $fecha_hasta = $request->input('fecha_hasta', null);
         $clienteRuc = $request->input('cliente', null);
+        $ptovtaSearch = $request->input('ptovta', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->transferenciasEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
+            'data' => $this->dispatchService->transferenciasEnviadas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc,  $ptovtaSearch),
         ]);
     }
 
     public function getReceivedTransfers(Request $request, $puntodeventa_id)
     {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
@@ -1151,15 +1116,16 @@ class DespachosController extends Controller
         $fecha_desde = $request->input('fecha_desde', null);
         $fecha_hasta = $request->input('fecha_hasta', null);
         $clienteRuc = $request->input('cliente', null);
+        $ptovtaSearch = $request->input('ptovta', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->transferenciasRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
+            'data' => $this->dispatchService->transferenciasRecibidas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc, $ptovtaSearch),
         ]);
     }
 
     public function getDispatchedRepositions(Request $request, $puntodeventa_id)
     {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
@@ -1167,15 +1133,17 @@ class DespachosController extends Controller
         $fecha_desde = $request->input('fecha_desde', null);
         $fecha_hasta = $request->input('fecha_hasta', null);
         $clienteRuc = $request->input('cliente', null);
+        $ptovtaSearch = $request->input('ptovta', null);
+
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->reposicionesEnviadas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
+            'data' => $this->dispatchService->reposicionesEnviadas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc,  $ptovtaSearch),
         ]);
     }
 
     public function getReceivedRepositions(Request $request, $puntodeventa_id)
     {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa_id)->value('PTO_VTA_BOD_BODEGA');
+
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
@@ -1183,9 +1151,13 @@ class DespachosController extends Controller
         $fecha_desde = $request->input('fecha_desde', null);
         $fecha_hasta = $request->input('fecha_hasta', null);
         $clienteRuc = $request->input('cliente', null);
+        $ptovtaSearch = $request->input('ptovta', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->reposicionesRecibidas($bodega, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc),
+            'data' => $this->dispatchService->reposicionesRecibidas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc, $ptovtaSearch),
         ]);
     }
+
+
+   
 }

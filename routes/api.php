@@ -66,10 +66,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/updateperfil', [SectionsController::class, 'updateperfil']);
     Route::post('/updateperfilsection', [SectionsController::class, 'updateperfilsection']);
     Route::post('/updateusuarioperfil', [SectionsController::class, 'updateusuarioperfil']);
-    Route::post('/consultas/buscararticulo', [ConsultasController::class, 'buscararticulo']);
-    Route::post('/consultas/buscarcliente', [ConsultasController::class, 'buscarcliente']);
-    Route::post('/consultas/consultarstock', [ConsultasController::class, 'consultarstock']);
-    Route::post('/consultas/consultastockothers', [ConsultasController::class, 'consultaStockOthers']);
+
     Route::post('/cotizaciones/selectarticulo', [CotizacionesController::class, 'selectarticulo']);
     Route::post('/cotizaciones/selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
     Route::post('/cotizaciones/llenarcotizacion', [CotizacionesController::class, 'llenarcotizacion']);
@@ -264,6 +261,20 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('imprimirpedidoride-sin-imagen/{id}', [PedidosController::class, 'imprimirpedidoridesinimagen']);
         Route::get('imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
         Route::get('despachoenproceso/{id}', [PedidosController::class, 'despachoenproceso']);
+    });
+
+    Route::group(['prefix' => 'bodegas'], function () {
+        Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
+        Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
+        Route::post('/guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
+    });
+
+    Route::group(['prefix' => 'consultas'], function () {
+        Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
+        Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
+        Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
+        Route::post('consultastockothers', [ConsultasController::class, 'consultaStockOthers']);
+        Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

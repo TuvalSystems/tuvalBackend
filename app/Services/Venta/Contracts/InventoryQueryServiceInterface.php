@@ -9,6 +9,7 @@ interface InventoryQueryServiceInterface
     public function getConsultStock($data);
     public function getConsultStockOthers($data);
 
+    public function getConsultItemTransito($data);
 
     /** funcion para consulta de cupo de cliente */
 

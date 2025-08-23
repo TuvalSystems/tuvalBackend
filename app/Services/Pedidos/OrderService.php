@@ -249,9 +249,12 @@ class OrderService implements OrderServiceInterface
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error in storeOrder (guardar pedido )', [
-                'error' => $e,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
             ]);
-            return $this->buildErrorResponse('Opps! Error al guardar el pedido', 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
@@ -350,7 +353,7 @@ class OrderService implements OrderServiceInterface
                         'pedido_id' => $newOrder->id,
                         'articulo' => $item['ART_CODIGO'] ?? null
                     ]);
-                    throw new \Exception("No se encontró un artículo tipo L disponible para el código {$item['ART_CODIGO']}");
+                    throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$item['ART_CODIGO']}");
                 }
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
@@ -427,10 +430,10 @@ class OrderService implements OrderServiceInterface
             if ($item['seleccionado'] > 0) {
                 $newFormatStock = $this->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
                 if (!$newFormatStock) {
-                    throw new \Exception("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
+                    throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
                 }
                 if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $item['seleccionado']) {
-                    throw new \Exception("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
+                    throw new \DomainException("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
                 }
             }
             GpPedidoDetalleStock::create([
@@ -460,7 +463,7 @@ class OrderService implements OrderServiceInterface
         $stocksResult = $this->apiGpService->getStockWarehouse($params);
         Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
         if (is_null($stocksResult) || !is_array($stocksResult)) {
-            throw new \Exception("No se pudo obtener el stock de los articulos");
+            throw new \RuntimeException("No se pudo obtener el stock de los articulos", 0 | 500);
         }
         // $stockResponseFormated = $this->stockWarehouseService->formatResultStocks($stocksResult);
 
@@ -506,7 +509,7 @@ class OrderService implements OrderServiceInterface
             'idCompania' => config('services.api_gp.company'),
         ]);
         $estadoCuenta = [
-            'cupoDisponible' => $credito['cupos'][0] ?? []
+            'cupoDisponible' => $credito['data'] ?? []
         ];
 
         // 🔍 3. Procesar proveedores y stock

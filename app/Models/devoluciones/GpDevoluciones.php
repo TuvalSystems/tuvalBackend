@@ -73,6 +73,7 @@ use Illuminate\Support\Facades\DB;
  * @property string|null $USERID
  * @property string|null $NC_VTA_MENSAJE
  * @property string|null $AJ_VTA_MENSAJE
+ * @property string|null $nota_cliente
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereClienteId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereDOCGENERADO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereDevolucion($value)
@@ -117,6 +118,7 @@ class GpDevoluciones extends Model
         "observacion",
         "permite_anulacion",
         "anulacion_habilitada",
+        "nota_cliente"
     ];
     /**
      * Prepare a date for array / JSON serialization.
@@ -172,7 +174,7 @@ class GpDevoluciones extends Model
                             ->where('dp.tipo_devolucion', 'parcial');
                     })
                      ->orWhere('gp_devoluciones.permite_anulacion', 0)
-                      ->orWhere('gp_devoluciones.anulacion_habilitada', 0); 
+                      ->orWhere('gp_devoluciones.anulacion_habilitada', 0);
                 });
         }
 

@@ -374,6 +374,7 @@ class DevolucionService implements DevolucionServiceInterface
         $return->sucursal_facturacion_id = Arr::get($data, 'devolucion.sucursal_facturacion_id');
         $return->motivo = Arr::get($data, 'devolucion.motivo');
         $return->orden_de_compra = Arr::get($data, 'pedido.orden_de_compra');
+        $return->nota_cliente = Arr::get($data, 'pedido.nota_cliente');
         $return->requiere_aprobacion = $requiredApproval;
         $return->aprobado = 'no';
         $return->impuesto = Arr::get($data, 'pedido.impuesto');

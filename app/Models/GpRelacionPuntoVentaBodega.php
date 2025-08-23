@@ -26,4 +26,9 @@ use Illuminate\Database\Eloquent\Model;
 class GpRelacionPuntoVentaBodega extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'PTO_VTA_BOD_BODEGA',
+        'PTO_VTA_BOD_PUNTO_VENTA',
+    ];
 }
