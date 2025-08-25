@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpCliente;
 use App\Models\GpPuntoVenta;
@@ -145,22 +146,39 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     public function getConsultItemTransito($data): array
     {
         $articuloCodigo = data_get($data, 'articulo.ART_CODIGO');
-        $ptoVentaId     = data_get($data, 'puntodeventa_id');
+        $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
 
-        $bodegaDestino  = GpRelacionPuntoVentaBodega::query()
-            ->where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVentaId)
-            ->value('PTO_VTA_BOD_BODEGA');
+        $rows = GpGuiaRemisionDetalle::query()
+            ->join('gp_guia_remisions as g', 'g.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
+            ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $articuloCodigo)
+            ->where('g.tipo', 'reposicion')
+            ->where('g.estado', 'enviada')
+            ->whereIn('g.bodega_destino', $warehouses)
+            ->groupBy('g.bodega_destino')
+            ->select([
+                'g.bodega_destino as bodega',
+                DB::raw('COALESCE(SUM(COALESCE(gp_guia_remision_detalles.GUI_REM_CANTIDAD,0) - COALESCE(gp_guia_remision_detalles.recibido,0)),0) as pendiente')
+            ])
+            ->get();
 
-        $items = GpGuiaRemisionDetalle::where('GUI_REM_CODI_INTERNO', $articuloCodigo)
-            ->whereHas('guia', function ($query) use ($bodegaDestino) {
-                $query->where('tipo', 'reposicion')
-                    ->where('estado', 'enviada')
-                    ->where('bodega_destino', $bodegaDestino);
-            })
-            ->value(DB::raw('COALESCE(SUM(COALESCE(GUI_REM_CANTIDAD,0) - (COALESCE(recibido,0))), 0)'));
-        return [
-            'bodega_destino' => $bodegaDestino,
-            'transito' => (float) $items
-        ];
+        // 2) Mapa [bodega => pendiente] con default 0
+        $map = array_fill_keys($warehouses, 0.0);
+        foreach ($rows as $r) {
+            // Si quieres capar negativos a 0: max(0, (float)$r->pendiente)
+            $map[$r->bodega] = (float) $r->pendiente;
+        }
+
+        // 3) Formato final respetando el orden de $warehouses
+        $items = [];
+        foreach ($warehouses as $bodega) {
+            $items[] = [
+                'bodega'    => $bodega,
+                'pendiente' => $map[$bodega],
+            ];
+        }
+        return ['transito' => $items];
     }
+
+
+
 }
