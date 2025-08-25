@@ -147,38 +147,28 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     {
         $articuloCodigo = data_get($data, 'articulo.ART_CODIGO');
         $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
-
-        $rows = GpGuiaRemisionDetalle::query()
-            ->join('gp_guia_remisions as g', 'g.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
-            ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $articuloCodigo)
+        if (empty($warehouses)) {
+            throw new \InvalidArgumentException('No se encontraron bodegas para consultar en transito.');
+        }
+        $rows = DB::table('gp_guia_remision_detalles as d')
+            ->join('gp_guia_remisions as g', 'g.id', '=', 'd.guia_remision_id')
+            ->where('d.GUI_REM_CODI_INTERNO',  $articuloCodigo)
             ->where('g.tipo', 'reposicion')
             ->where('g.estado', 'enviada')
             ->whereIn('g.bodega_destino', $warehouses)
             ->groupBy('g.bodega_destino')
             ->select([
-                'g.bodega_destino as bodega',
-                DB::raw('COALESCE(SUM(COALESCE(gp_guia_remision_detalles.GUI_REM_CANTIDAD,0) - COALESCE(gp_guia_remision_detalles.recibido,0)),0) as pendiente')
+                DB::raw('g.bodega_destino as bodega'),
+                DB::raw('COALESCE(SUM(COALESCE(d.GUI_REM_CANTIDAD,0) - COALESCE(d.recibido,0)),0) as pendiente'),
             ])
-            ->get();
+            ->pluck('pendiente', 'bodega')
+            ->all();
 
-        // 2) Mapa [bodega => pendiente] con default 0
-        $map = array_fill_keys($warehouses, 0.0);
-        foreach ($rows as $r) {
-            // Si quieres capar negativos a 0: max(0, (float)$r->pendiente)
-            $map[$r->bodega] = (float) $r->pendiente;
-        }
+        $items = array_map(function (string $bodega) use ($rows) {
+            $pendiente =  (float)($rows[$bodega] ?? 0);
+            return ['bodega' => $bodega, 'pendiente' => max(0, $pendiente)];
+        }, $warehouses);
 
-        // 3) Formato final respetando el orden de $warehouses
-        $items = [];
-        foreach ($warehouses as $bodega) {
-            $items[] = [
-                'bodega'    => $bodega,
-                'pendiente' => $map[$bodega],
-            ];
-        }
         return ['transito' => $items];
     }
-
-
-
 }
