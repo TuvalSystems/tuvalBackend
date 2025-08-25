@@ -449,6 +449,7 @@ class InvoiceService implements InvoiceServiceInterface
             'FAC_VTA_IMPUESTO' => $pedido->iva,
             'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
             'FAC_VTA_TIPO_DESPACHO' => $pedido->despacho,
+            'FAC_VTA_NOTA_CLIENTE' => $pedido->nota_cliente ?? '',
         ]];
     }
 
