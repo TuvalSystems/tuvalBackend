@@ -2,15 +2,13 @@
 
 namespace App\Services\Bodegas;
 
-use App\Models\GpPedido;
-use App\Models\GpPuntoVenta;
-use App\Models\GpOrdenDespacho;
-use App\Models\GpPedidoDetalle;
+
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\GpPedidoDetalle;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use Illuminate\Support\Collection;
 
@@ -57,7 +55,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             })->filter()->values();
         }
         $transferencias = GpGuiaRemisionTransferencia::where('guia_remision_id', $guia->id)
-            ->pluck( 'pedido')
+            ->pluck('pedido')
             ->toArray();
         return [
             'detalle' => $detalle,
@@ -90,4 +88,31 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         return GpPedidoDetalle::whereIn('id', $ids)
             ->pluck('CHECK_ALTERNATIVO', 'id');
     }
+
+
+
+
+
+    /***
+     *
+     *
+     * PROCESO DE DEPACHO DE GUIA POR TIPO - DESPACHO - REPOSICION - TRANSFERENCIA
+     *
+     *
+     */
+
+
+    //transferencia
+    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, array $detalle, $user) {
+        $itemsIds = collect($detalle)->pluck('detalle_id')->toArray();
+    }
+
+
+
+    //despacho
+    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, array $detalle, $user) {}
+
+
+    // reposicion
+    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, array $detalle, $user) {}
 }

@@ -600,6 +600,7 @@ class GuiasderemisionController extends Controller
     {
         DB::beginTransaction();
         try {
+             $user = Auth::user();
             // Bloquea la fila para este proceso
             $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
             if ($guia->estado === 'enviada') {
@@ -616,13 +617,18 @@ class GuiasderemisionController extends Controller
 
             switch ($guia->tipo) {
                 case 'transferencia':
-                    $response = $this->despacharguiatransferencia($guia, $detalle);
+                    $response = $this->despacharguiatransferencia($guia, detalle: $detalle);
+                    $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle,  $user);
                     break;
                 case 'despacho':
                     $response = $this->despacharguiadespacho($guia, $detalle);
+                    $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle,  $user);
+
                     break;
                 case 'reposicion':
                     $response = $this->despacharguiareposicion($guia, $detalle);
+                    $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle,  $user);
+
                     break;
                 default:
                     throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
@@ -729,7 +735,7 @@ class GuiasderemisionController extends Controller
     {
 
         $user = Auth::user();
-
+        
 
         $documentos = array();
 

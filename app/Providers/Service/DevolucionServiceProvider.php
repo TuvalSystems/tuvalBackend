@@ -14,14 +14,19 @@ class DevolucionServiceProvider extends ServiceProvider
 
     public function register()
     {
-           $this->app->bind(EntryServiceInterface::class, EntryService::class);
-        $this->app->bind(DevolucionServiceInterface::class, DevolucionService::class);
-        $this->app->bind(DevolucionJobService::class);
+        $this->app->singleton(EntryServiceInterface::class, EntryService::class);
+        $this->app->singleton(DevolucionServiceInterface::class, DevolucionService::class);
+        // $this->app->bind(DevolucionJobService::class);
     }
 
 
-    public function boot()
-    {
+    public function boot() {}
 
+    public function provides(): array
+    {
+        return [
+            EntryServiceInterface::class,
+            DevolucionServiceInterface::class,
+        ];
     }
 }

@@ -29,14 +29,18 @@ class BodegasServiceProvider extends ServiceProvider
             PurchaseReceiptService::class
         );
 
-             /**Servicio para utilizar para los recibidos de Item L  */
-        $this->app->bind(PurchaseReceiptLItemServiceInterface::class,
-        PurchaseReceiptLItemService::class);
+        /**Servicio para utilizar para los recibidos de Item L  */
+        $this->app->bind(
+            PurchaseReceiptLItemServiceInterface::class,
+            PurchaseReceiptLItemService::class
+        );
 
 
         /** servicio dedicadoa las guias de remision  */
-        $this->app->bind(DeliveryNoteServiceInterface::class,
-         DeliveryNoteService::class);
+        $this->app->bind(
+            DeliveryNoteServiceInterface::class,
+            DeliveryNoteService::class
+        );
     }
 
 
