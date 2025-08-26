@@ -31,14 +31,14 @@ class BodegasServiceProvider extends ServiceProvider  implements DeferrableProvi
         );
 
         /**Servicio para utilizar para los recibidos de Item L  */
-        $this->app->bind(
+        $this->app->singleton(
             PurchaseReceiptLItemServiceInterface::class,
             PurchaseReceiptLItemService::class
         );
 
 
         /** servicio dedicadoa las guias de remision  */
-        $this->app->bind(
+        $this->app->singleton(
             DeliveryNoteServiceInterface::class,
             DeliveryNoteService::class
         );
