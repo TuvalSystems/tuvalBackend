@@ -11,6 +11,7 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Api\MswService;
+use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
@@ -25,13 +26,15 @@ class InvoiceService implements InvoiceServiceInterface
     protected $purchaseOrderService;
     protected $functionService;
     protected $mswService;
+    protected $apiGpProcessInvoice;
     // Implementa todos los metodos de facturacion de pedidos, devoluciones, aprobaciones, etc
 
-    public function __construct(PurchaseOrderServiceInterface $purchaseOrderService, FunctionsServiceInterface $functionService, MswService $mswService)
+    public function __construct(PurchaseOrderServiceInterface $purchaseOrderService, FunctionsServiceInterface $functionService, MswService $mswService, ApiGpProcessInviceVta $apiGpProcessInvoice)
     {
         $this->purchaseOrderService = $purchaseOrderService;
         $this->functionService = $functionService;
         $this->mswService = $mswService;
+        $this->apiGpProcessInvoice = $apiGpProcessInvoice;
     }
 
     /** Funcion de checkenviarfactura pasada aqui para reutilizar en otros servicios
@@ -353,33 +356,48 @@ class InvoiceService implements InvoiceServiceInterface
             $pedido->factura_origen = '';
         }
 
-        $cabecera = $this->mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO);
+        // verificar si el pedido ya fue facturado
+        $existInvoice =  $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        if ($existInvoice['success'] === true) {
+            $info = $existInvoice['data'];
+            throw new \Exception("El pedido {$pedido->pedido} ya se encuentra facturado con el documento {$info['numeroDocGenerado']}.");
+        }
+        // eliminar factura existente si existe y no se proceso correctamente
+        $deleteInvoice =  $this->apiGpProcessInvoice->deleteDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        if ($deleteInvoice['success'] === false) {
+            throw new \Exception("No se pudo eliminar la factura existente para el pedido {$pedido->pedido}. Error: {$deleteInvoice['message']}");
+        }
 
+        $cabecera = $this->mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO);
         $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
         if ($detalles->isEmpty()) {
             Log::error("Pedido {$pedido->pedido} sin detalles");
-            return;
+            throw new \Exception("El pedido {$pedido->pedido} no tiene detalles para facturar.");
         }
         $detallePedido = $this->mapFormatDetailInvoice($detalles, $pedido);
 
         $params = [
-            'Cabecera' => $cabecera,
-            'Detalle' => $detallePedido
+            'cabecera' => $cabecera,
+            'detalle' => $detallePedido
         ];
-
+        // Log::info("Enviando factura para el pedido {$pedido->pedido} con los siguientes parámetros: " . json_encode($params));
+        // return $params;
         if ($pedido->rechazado) {
             $pedido->estado = 'rechazado';
             $pedido->save();
             Log::error("Pedido {$pedido->pedido} rechazado");
             return;
         }
-
-        $result = $this->mswService->transaccional('MST_FAC_VTA', $params);
-        if (isset($result['MST_FAC_VTAResult'])) {
-            $pedido->MST_FAC_VTAResult = $result['MST_FAC_VTAResult'];
-            $pedido->save();
-            $this->respuestaFacturaVenta($pedido);
+        $result = $this->apiGpProcessInvoice->storeDocumentInvoiceVta($params);
+        // $result = $this->mswService->transaccional('MST_FAC_VTA', $params);
+        if ($result['success'] === false) {
+            throw new \Exception("Error al facturar el pedido {$pedido->pedido}: {$result['message']}");
         }
+        // if (isset($result['MST_FAC_VTAResult'])) {
+        $pedido->MST_FAC_VTAResult = $result['message'];
+        $pedido->save();
+        $this->respuestaFacturaVenta($pedido);
+        // }
     }
 
 
@@ -429,7 +447,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO)
     {
-        return [[
+        return [
             'FAC_VTA_DOCU_ORIGEN' => $pedido->pedido,
             'FAC_VTA_DOC_COMPRA' => $pedido->orden_de_compra,
             'FAC_VTA_ID_TIPO' => 3,
@@ -449,8 +467,8 @@ class InvoiceService implements InvoiceServiceInterface
             'FAC_VTA_IMPUESTO' => $pedido->iva,
             'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
             'FAC_VTA_TIPO_DESPACHO' => $pedido->despacho,
-            // 'FAC_VTA_NOTA_CLIENTE' => $pedido->nota_cliente ?? '',
-        ]];
+            'FAC_VTA_NOTA_CLIENTE' => $pedido->nota_cliente ?? '',
+        ];
     }
 
     public function mapFormatDetailInvoice($detalles, $pedido)
@@ -479,6 +497,15 @@ class InvoiceService implements InvoiceServiceInterface
         })->toArray();
     }
 
+    public function formatParamsInvoiceValidate($pedido)
+    {
+        return [
+            'documentoOrigen' =>  $pedido->pedido,
+            'tipoDocumento' => 3
+        ];
+    }
+
+
 
     public function checkFinalInvoiceValidation(GpPedido $pedido): bool
     {
@@ -497,28 +524,22 @@ class InvoiceService implements InvoiceServiceInterface
         return true;
     }
 
-
-
     public function respuestaFacturaVenta($order)
     {
         $pedido = GpPedido::where('pedido', $order->pedido)->first();
-        $params = [
-            'documento_origen' => $pedido->pedido,
-            'tipo_documento' => 3,
-        ];
-        $result = $this->mswService->transaccional('MST_Respuesta_Factura_Vta', $params);
-        $respuesta = $result['MST_Respuesta_Factura_VtaResult']['CS_RESPUESTA_FACTURA'][0] ?? null;
 
-        if ($respuesta && !empty($respuesta['DOC_GENERADO'])) {
-            $pedido->factura = $respuesta['DOC_GENERADO'];
-            $pedido->FAC_VTA_MENSAJE = $respuesta['FAC_VTA_MENSAJE'] ?? null;
-            $pedido->estado = 'facturado';
-            $pedido->fecha_factura = now()->toDateString();
-            $pedido->fecha_hora_factura = now();
-        } else {
-            $pedido->FAC_VTA_MENSAJE = $respuesta['FAC_VTA_MENSAJE'] ?? 'Error no definido por GP';
+        $existInvoice =  $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        if ($existInvoice['success'] === false) {
+            $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? 'Error no definido por GP';
             $pedido->estado = 'espera';
+            throw new \Exception("Ocurrio un error al obtener la factura: {$existInvoice['message']}");
         }
+        $info = $existInvoice['data'];
+        $pedido->factura = $info['numeroDocGenerado'];
+        $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? null;
+        $pedido->estado = 'facturado';
+        $pedido->fecha_factura = now()->toDateString();
+        $pedido->fecha_hora_factura = now();
 
         try {
             $pedido->save();
