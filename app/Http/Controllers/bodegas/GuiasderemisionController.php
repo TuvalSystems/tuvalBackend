@@ -901,17 +901,16 @@ class GuiasderemisionController extends Controller
                 'Respuesta al generar la guía de despacho',
                 [
                     'Guia'      => $guia->id,
-                    'Respuesta' => is_array($respuesta) || is_object($respuesta)
-                        ? json_encode($respuesta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
-                        : $respuesta,
+                    'Respuesta' =>  $respuesta,
                 ]
             );
             if ($respuesta == 'Error') {
                 $guia->procesando = null;
                 $guia->save();
-                return response([
-                    'error' => 'Intente de nuevo en un minuto',
-                ], 401);
+                throw new \Exception('Error al generar la guía de despacho, intente de nuevo en un minuto');
+                // return response([
+                //     'error' => 'Intente de nuevo en un minuto',
+                // ], 401);
             }
 
 
