@@ -629,7 +629,7 @@ class DevolucionService implements DevolucionServiceInterface
         ]);
 
         if (!$grupoEconomico['success']) {
-            $this->buildErrorResponse($grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente', 400);
+           return $this->buildErrorResponse($grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente', 400);
         }
 
         $clientesArr = collect($grupoEconomico['CGE_RUC'] ?? [])->map(function ($ruc) {
