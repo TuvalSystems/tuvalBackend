@@ -2,13 +2,14 @@
 
 namespace App\Providers\Service;
 
+use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Devoluciones\DevolucionService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 
-class DevolucionServiceProvider extends ServiceProvider
+class DevolucionServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
     public function register()

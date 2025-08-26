@@ -4,9 +4,10 @@ namespace App\Providers\Service\Builder;
 
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use App\Services\Builders\Bodega\DeliveryNoteParamsBuilder;
+use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 
-class BodegaBuilderServiceProvider extends ServiceProvider
+class BodegaBuilderServiceProvider extends ServiceProvider implements DeferrableProvider
 {
     /**
      * Register services.
