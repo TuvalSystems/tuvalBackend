@@ -15,7 +15,7 @@ interface QuotationServiceInterface
      */
     public function restoreQuotation($data, $user);
     public function getStockGeneralRestoreQuotation($articulos, $bodegas);
-    public function restoreDescriptionItemQuotation($articulos, $bodegas);
+  
 
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);

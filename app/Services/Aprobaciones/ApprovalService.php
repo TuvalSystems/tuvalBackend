@@ -814,29 +814,12 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
-        $stocksResult =  $this->apiGpService->getStockWarehouseAsync($parmas);
+        $stocksResult =  $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
         Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
-        if (is_null($stocksResult) || !is_array($stocksResult)) {
-            throw new \Exception("No se pudo obtener el stock de los articulos");
-        }
-        return $this->formatResultStocksApproval($stocksResult);
+        return $this->stockWarehouseService->transformStockResponse($stocksResult);
     }
 
-    public function formatResultStocksApproval($stockResults)
-    {
-        if (!is_array($stockResults)) {
-            return [];
-        }
-        return collect($stockResults)
-            ->filter(fn($item) => is_array($item))
-            ->map(fn($item) => [
-                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-            ])
-            ->values()
-            ->toArray();
-    }
+
 
     public function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
     {

@@ -232,6 +232,7 @@ class QuotationService implements QuotationServiceInterface
         return $selectedStock;
     }
 
+    /** funcion para llenar el stock de llenar cotizacion prospecto */
     public function getStockGeneralRestoreQuotation($articulos, $bodegas)
     {
         $stockRequests = [];
@@ -240,7 +241,7 @@ class QuotationService implements QuotationServiceInterface
                 $stockRequests[] = ['articulo' => $art['articulo'], 'bodega' => $bod];
             }
         }
-        return $this->stockSqlService->getStockByArticleBatch($stockRequests);
+         return $this->stockSqlService->getStockByArticleBatch($stockRequests);
     }
 
 
@@ -259,18 +260,7 @@ class QuotationService implements QuotationServiceInterface
         }
     }
 
-    public function restoreDescriptionItemQuotation($articulo, $bodega)
-    {
-        $params = ['articulo' => $articulo, 'bodega' => $bodega];
-        $articulo = $this->apiGpService->getStockWarehouse($params);
-
-        if (empty($articulo) || !is_array($articulo) || !isset($articulo[0])) {
-            return null;
-        }
-        $art = $articulo[0] ?? null;
-        return $art['DESCRIPCION_ARTICULO'] ?? null;
-    }
-
+  
 
 
     /**
@@ -848,7 +838,8 @@ class QuotationService implements QuotationServiceInterface
         foreach ($warehouses as $warehouse) {
             $stockRequests[] = array_merge($arrArticulos, ['bodega' => $warehouse]);
         }
-        return $this->stockSqlService->getStockByArticleBatch($stockRequests);
+        $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
+        return $this->stockWarehouseService->transformStockQuotationResponse($stockResults);
 
     }
 
