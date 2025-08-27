@@ -2,7 +2,6 @@
 
 namespace App\Providers\Service;
 
-use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Bodegas\DispatchService;
 use App\Services\Bodegas\DeliveryNoteService;
@@ -13,7 +12,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 
-class BodegasServiceProvider extends ServiceProvider  implements DeferrableProvider
+class BodegasServiceProvider extends ServiceProvider
 {
 
     public function register()
@@ -45,13 +44,5 @@ class BodegasServiceProvider extends ServiceProvider  implements DeferrableProvi
     }
 
 
-       public function provides(): array
-    {
-        return [
-            DispatchServiceInterface::class,
-            PurchaseReceiptServiceInterface::class,
-            PurchaseReceiptLItemServiceInterface::class,
-            DeliveryNoteServiceInterface::class,
-        ];
-    }
+   public function boot(){}
 }

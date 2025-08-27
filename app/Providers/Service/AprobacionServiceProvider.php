@@ -19,8 +19,5 @@ class AprobacionServiceProvider extends ServiceProvider
     }
 
 
-    public function boot()
-    {
-        //
-    }
+    public function boot(){}
 }

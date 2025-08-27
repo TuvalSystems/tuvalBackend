@@ -10,7 +10,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register()
     {
- $this->app->bind(
+        $this->app->bind(
             UserServiceInterface::class,
             UserService::class
         );

@@ -10,6 +10,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpPedidoDetalle;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
 
 class DeliveryNoteService implements DeliveryNoteServiceInterface
@@ -18,11 +19,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
      *  SERVICIO DEDICADO AL  GUIAREMISIONCONTROLLER
      */
 
-    // protected $invoiceService;
-    public function __construct()
-    {
-        // $this->invoiceService = $invoiceService;
-    }
+    // protected $deliveryNoteBuilder ;
+    // // protected $invoiceService;
+    // public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder)
+    // {
+    //     // $this->invoiceService = $invoiceService;
+    //     $this->deliveryNoteBuilder = $deliveryNoteBuilder;
+    // }
 
 
     /**
@@ -84,7 +87,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         if (empty($ids)) {
             return collect();
         }
-
         return GpPedidoDetalle::whereIn('id', $ids)
             ->pluck('CHECK_ALTERNATIVO', 'id');
     }
@@ -103,16 +105,74 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
     //transferencia
-    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, array $detalle, $user) {
+    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, array $detalle,  $user)
+    {
         $itemsIds = collect($detalle)->pluck('detalle_id')->toArray();
+        if (empty($itemsIds)) {
+            return;
+        }
+        $traslados = GpTrasladosVentas::query()
+            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
+            ->whereIn('gp_traslados_ventas.id', $itemsIds)
+            ->whereNull('gp_traslados_ventas.completado')
+            ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
+            ->keyBy('id');
+
+        $grupos = $this->groupItemsByOrder($detalle, $traslados);
+
+        $almenos_uno = false;
+        foreach ($grupos as $grupo) {
+            // $parmas = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
+        }
+
+        // $documento = [];
+        // foreach ($detalle as $det) {
+        //     $traslado = $traslados->get($det['detalle_id'])->first();
+        //     $det->item = $traslado;
+        //     if ($traslado) {
+        //         $documento[$traslado->pedido]['pedido'] = $traslado->pedido;
+        //         $documento[$traslado->pedido]['items'][] = $det;
+        //     }
+        // }
+
+        // $documento = array_values($documento);
+    }
+
+
+    public function groupItemsByOrder(array $detalle, Collection $traslados): array
+    {
+        $grupos = [];
+        foreach ($detalle as $det) {
+            $traslado = $traslados->get($det['detalle_id']);
+            if (!$traslado) {
+                // puedes loggear y continuar
+                continue;
+            }
+            $det->traslado = $traslado;
+            $pedido = $traslado->pedido;
+            $grupos[$pedido]['pedido'] = $pedido;
+            $grupos[$pedido]['items'][] = $det;
+
+                //items para webservice
+            $grupos[$pedido]['ws_items'] = [
+                'item' => $det->GUI_REM_CODI_INTERNO,
+                'compartimiento' => '',
+                'cantidad' => $det->GUI_REM_CANTIDAD,
+            ];
+        }
+        return $grupos;
     }
 
 
 
     //despacho
-    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, array $detalle, $user) {}
+    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, array $detalle, $user) {
+        return true;
+    }
 
 
     // reposicion
-    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, array $detalle, $user) {}
+    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, array $detalle, $user) {
+         return true;
+    }
 }

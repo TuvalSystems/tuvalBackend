@@ -16,8 +16,6 @@ class ApiServiceProvider extends ServiceProvider
     public function register()
     {
 
-
-
         $this->app->singleton(ApiGpService::class, function ($app) {
             return new ApiGpService();
         });
@@ -32,8 +30,6 @@ class ApiServiceProvider extends ServiceProvider
         $this->app->singleton(MswService::class);
     }
 
-    public function boot()
-    {
-        //
-    }
+
+       public function boot(){}
 }

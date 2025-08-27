@@ -13,7 +13,7 @@ class FuncionServiceProvider extends ServiceProvider
 
     public function register()
     {
-          //aqui va el servicio facturas de Pedidos
+        //aqui va el servicio facturas de Pedidos
         $this->app->singleton(
             InvoiceServiceInterface::class,
             InvoiceService::class
@@ -26,10 +26,5 @@ class FuncionServiceProvider extends ServiceProvider
             FunctionsService::class
         );
     }
-
-
-    public function boot()
-    {
-
-    }
+    public function boot() {}
 }

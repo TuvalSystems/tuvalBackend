@@ -735,7 +735,7 @@ class GuiasderemisionController extends Controller
     {
 
         $user = Auth::user();
-        
+
 
         $documentos = array();
 

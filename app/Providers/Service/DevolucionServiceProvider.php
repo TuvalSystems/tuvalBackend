@@ -2,14 +2,13 @@
 
 namespace App\Providers\Service;
 
-use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Devoluciones\DevolucionService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 
-class DevolucionServiceProvider extends ServiceProvider implements DeferrableProvider
+class DevolucionServiceProvider extends ServiceProvider
 {
 
     public function register()
@@ -21,11 +20,5 @@ class DevolucionServiceProvider extends ServiceProvider implements DeferrablePro
 
     public function boot() {}
 
-    public function provides(): array
-    {
-        return [
-            EntryServiceInterface::class,
-            DevolucionServiceInterface::class,
-        ];
-    }
+   
 }
