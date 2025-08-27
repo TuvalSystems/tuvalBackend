@@ -265,7 +265,7 @@ class ApprovalService implements ApprovalServiceInterface
                         $precioLimite      = $valorOriginal * $factor;
                         $precioActual      = $detalle['ART_VALOR'];
 
-                        if ($precioActual > $precioLimite) {
+                        if ($precioActual > $precioLimite && $precioActual != $detOriginal->ART_VALOR) {
                             $exceso = $precioActual - $precioLimite;
                             $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
                             return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
