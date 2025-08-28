@@ -11,10 +11,17 @@ use Illuminate\Support\Facades\DB;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Services\Api\ApiGpService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
+
+    protected $apiGpService;
+    public function __construct(ApiGpService $apiGpService)
+    {
+        $this->apiGpService = $apiGpService;
+    }
 
     public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo)
     {
@@ -356,22 +363,83 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ])
             ->exists();
     }
-    public function formatResultStocks($stockResults)
+
+
+    public function fetchStockBatchWarehouses(array $params)
     {
-        if (!is_array($stockResults)) {
-            return [];
+        $res = $this->apiGpService->getStockWarehouseAsync($params);
+
+        if (!data_get($res, 'success', false)) {
+            abort(502, 'No se pudo obtener el stock del artículo: ' . data_get($res, 'message', 'Error'));
+            // throw new \RuntimeException("No se pudo obtener el stock del articulo".  data_get($res, 'message', 'Error'), 500);
         }
-        return collect($stockResults)
-            ->filter(fn($item) => is_array($item))
-            ->flatten(1)
-            ->map(fn($item) => [
-                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-            ])
-            ->values()
-            ->toArray();
+
+        $data = data_get($res, 'data', []);
+        return is_array($data) ? $data : (array) $data;
     }
+
+    public function fetchStockByOnlyWarehouse(array $params)
+    {
+        $res = $this->apiGpService->getStockWarehouse($params);
+        if (!data_get($res, 'success', false)) {
+            // throw new \RuntimeException((string) data_get($res, 'message', 'Error'), 500);
+            throw new \RuntimeException("No se pudo obtener el stock del articulo", 500);
+        }
+        $data = data_get($res, 'data', []);
+        if (is_array($data) && array_is_list($data)) {
+            $data = $data[0] ?? [];
+        }
+
+        return (array) $data;
+    }
+    public function fetchStock(array $infoRequest)
+    {
+        return collect($infoRequest)
+            ->map(function ($params) {
+                $res = $this->apiGpService->getStockWarehouse($params);
+
+                if (!data_get($res, 'success', false)) {
+                    throw new \RuntimeException((string) data_get($res, 'message', 'Error'), 500);
+                }
+
+                // Normaliza 'data' por si viene como objeto o lista de 1
+                $data = data_get($res, 'data', []);
+                if (is_array($data) && array_is_list($data)) {
+                    $data = $data[0] ?? [];
+                }
+
+                return (array) $data;
+            })
+            ->values()
+            ->all();
+    }
+
+    public function transformStockResponse($payload)
+    {
+        return array_values(array_map(function ($item) {
+            $disp = (float) ($item['STOCK_DISPONIBLE'] ?? 0);
+            return [
+                'STO_ART_ARTICULO'         => (string)($item['ARTICULO'] ?? ''),
+                'STO_ART_BODEGA'           => (string)($item['BODEGA'] ?? ''),
+                'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''), // "0.00"
+            ];
+        }, $payload));
+    }
+
+    public function transformStockQuotationResponse($payload)
+    {
+        return array_values(array_map(function ($item) {
+            $disp = (float) ($item['STOCK_DISPONIBLE'] ?? 0);
+            return [
+                'STO_ART_ARTICULO'         => (string)($item['ARTICULO'] ?? ''),
+                'DESCRIPCION_ARTICULO'    => (string)($item['DESCRIPCION_ARTICULO'] ?? ''),
+                'STO_ART_BODEGA'           => (string)($item['BODEGA'] ?? ''),
+                'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''), // "0.00"
+            ];
+        }, $payload));
+    }
+
+
 
     public function getWarehouse($data)
     {

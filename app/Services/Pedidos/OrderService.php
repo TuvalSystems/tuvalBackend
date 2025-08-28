@@ -460,18 +460,15 @@ class OrderService implements OrderServiceInterface
             'articulo' => $detailOrder->ART_CODIGO,
             'bodega' => $stock['STO_ART_BODEGA'],
         ];
-        $stocksResult = $this->apiGpService->getStockWarehouse($params);
-        Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
-        if (is_null($stocksResult) || !is_array($stocksResult)) {
-            throw new \RuntimeException("No se pudo obtener el stock de los articulos", 0 | 500);
-        }
-        // $stockResponseFormated = $this->stockWarehouseService->formatResultStocks($stocksResult);
+        $stocksResult = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
+        Log::info("Resultado stock de getAndValidateOrderDetailStock: " ,[
+            'stocksResult' => $stocksResult
+        ]);
 
-        $this->assignmentDisponibleStock($stock, $stocksResult[0], $detailOrder);
+        $this->assignmentDisponibleStock($stock, $stocksResult, $detailOrder);
         $this->stockWarehouseService->formatResultStockStoreOrder($stock, $detailOrder, $orderId);
         return $stock;
     }
-
 
     public function assignmentDisponibleStock(&$stock, $stockResponseFormatted, $detailOrder)
     {

@@ -2,11 +2,7 @@
 
 namespace App\Services\Venta;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpCliente;
-use App\Models\GpPuntoVenta;
-use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
@@ -56,8 +52,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             }
 
             $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-            $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
-            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($stockResults, $articulo); //nose porque hace pero va
+            $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
+            $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
+            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
             return response([
                 'success' => true,
                 'stock' => $art['stock'],
@@ -70,6 +67,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     }
 
 
+
     public function getConsultStockOthers($data)
     {
         try {
@@ -80,8 +78,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             }
 
             $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-            $stockResults = array_map(fn($params) =>  $this->stockSqlService->consultStockWarehouseSql($params), $stockRequests);
-            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($stockResults, $articulo); //nose porque hace pero va
+            $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
+            $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
+            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
             return response([
                 'success' => true,
                 'stock' => $art['stock'],
@@ -101,6 +100,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ], 500);
         }
     }
+
+
+
 
     public function getAvailableSpace($ruc)
     {

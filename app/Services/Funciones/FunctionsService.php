@@ -87,18 +87,6 @@ class FunctionsService implements FunctionsServiceInterface
         return $query->orderBy('orden', 'ASC')->pluck('PTO_VTA_BOD_REL_BODEGA', 'PTO_VTA_BOD_REL_BODEGA')->toArray();
     }
 
-    public function consultStockWarehouse($articulos, $bodegas)
-    {
-        $formatStock = [];
-        foreach ($articulos as $value) {
-            $stockRequests = array_map(fn($whr) => ['articulo' => $value['articulo'], 'bodega' => $whr,], $bodegas);
-            $stockResults = array_map(fn($params) => $this->apiGpService->getStockWarehouse($params), $stockRequests);
-            $formatted = $this->stockWarehouseService->formatResultStocks($stockResults);
-            $formatStock = array_merge($formatStock, $formatted);
-        }
-        return $formatStock;
-    }
-
 
     /** funcion de recalcular pedido  */
     public function recalculateOrder($orderId)

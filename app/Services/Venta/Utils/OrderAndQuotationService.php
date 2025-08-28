@@ -42,7 +42,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
         $warehouse = $this->functionService->getBodegas($data['PTO_VTA_ID'], 1);
         $detalles = $this->getQuotationDetailWithSuppliersType($data['id'], $copy, $type, $warehouse);
-        $this->resetQuotationDiscount($detalles, $cliente, $encera);
+        $this->resetQuotationDiscount($detalles, $cliente, $encera, $data['BOD_BODEGA']);
         $arrayArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['ART_CODIGO' => $artCode])->toArray();
         $listaPreciosWs = $this->getPriceListByItems($arrayArticulos);
 
@@ -132,18 +132,27 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         })->toArray();
     }
 
-    public function resetQuotationDiscount(&$detalles, $cliente, $encera)
+    public function resetQuotationDiscount(&$detalles, $cliente, $encera, $warehouse)
     {
         if ($encera) {
-            $detalles->each(function ($item) use ($cliente) {
+            $detalles->each(function ($item) use ($cliente, $warehouse) {
                 $item->descuento = $cliente->CLI_DSTO_COMERCIAL;
                 $item->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
                 $item->ART_DESCUENTO = 0;
                 $item->modificador = 0;
+                $item->ART_DESCRIPCION_ORIGINAL = $this->restoreDescriptionItemQuotation($item->ART_CODIGO, $warehouse) ?? $item->ART_DESCRIPCION_ORIGINAL;
                 $item->ART_DESCRIPCION = $item->ART_DESCRIPCION_ORIGINAL;
             });
         }
     }
+
+      public function restoreDescriptionItemQuotation($articulo, $bodega)
+    {
+        $params = ['articulo' => $articulo, 'bodega' => $bodega];
+        $articulo = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
+        return $articulo['DESCRIPCION_ARTICULO'] ?? null;
+    }
+
 
 
     public function getPriceListByItems($arArticulos)

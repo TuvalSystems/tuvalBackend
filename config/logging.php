@@ -116,27 +116,27 @@ return [
         'cron_process' => [
             'driver' => 'single',
             'path' => storage_path('logs/cron-process.log'),
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
         'soap_errors' => [
             'driver' => 'single',
             'path' => storage_path('logs/soap_errors.log'),
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
         'apiservice' => [
             'driver' => 'single',
             'path' => storage_path('logs/apiservice.log'),
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
         'devolucion' => [
             'driver' => 'single',
             'path' => storage_path('logs/devolucion.log'),
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
         'sql_errors' => [
             'driver' => 'single',
             'path' => storage_path('logs/sql_errors.log'),
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
     ],
 
