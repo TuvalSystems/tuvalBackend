@@ -90,4 +90,11 @@ class ApiGpService
 
         return $this->httpClient->makeBatchRequest($this->endpoints["consultar_stock_bodega_async"],  $request);
     }
+
+
+
+     public function getTypeBySeller(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["obtener_tipo_vendedor"], 'POST', $params, 'json');
+    }
 }

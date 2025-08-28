@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
+use App\Models\GpUsuario;
+
 interface QuotationServiceInterface
 {
 
@@ -15,7 +17,7 @@ interface QuotationServiceInterface
      */
     public function restoreQuotation($data, $user);
     public function getStockGeneralRestoreQuotation($articulos, $bodegas);
-  
+
 
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);
@@ -71,7 +73,7 @@ interface QuotationServiceInterface
 
     public function getSegmentosSqlServer();
     public function getSubSegmentosSqlServer($segmento);
-    public function storeClientQuotation(array $data);
+    public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist($ruc);
      public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId) ;

@@ -611,7 +611,8 @@ class CotizacionesController extends Controller
     public function guardarcliente(Request $request)
     {
         $data = $request->all();
-        return $this->quotationService->storeClientQuotation($data);
+        $user = Auth::user();
+        return $this->quotationService->storeClientQuotation($data,  $user);
     }
 
     public function detallecotizacion(Request $request)
