@@ -3,6 +3,7 @@
 namespace App\Services\Bodegas\Contracts;
 
 use App\Models\despachos\GpGuiaRemision;
+use Illuminate\Support\Collection;
 
 interface DeliveryNoteServiceInterface
 {
@@ -11,9 +12,9 @@ interface DeliveryNoteServiceInterface
 
 
     // proceso de despacho de guia
-    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, array $detalle, $user);
+    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle, $user);
     //despacho
-    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, array $detalle, $user);
+    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user);
     // reposicion
-    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, array $detalle, $user);
+    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user);
 }

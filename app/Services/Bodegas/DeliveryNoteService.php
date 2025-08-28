@@ -19,13 +19,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
      *  SERVICIO DEDICADO AL  GUIAREMISIONCONTROLLER
      */
 
-    // protected $deliveryNoteBuilder ;
-    // // protected $invoiceService;
-    // public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder)
-    // {
-    //     // $this->invoiceService = $invoiceService;
-    //     $this->deliveryNoteBuilder = $deliveryNoteBuilder;
-    // }
+    protected $deliveryNoteBuilder ;
+    // protected $invoiceService;
+    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder)
+    {
+        // $this->invoiceService = $invoiceService;
+        $this->deliveryNoteBuilder = $deliveryNoteBuilder;
+    }
 
 
     /**
@@ -105,7 +105,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
     //transferencia
-    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, array $detalle,  $user)
+    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle,  $user)
     {
         $itemsIds = collect($detalle)->pluck('detalle_id')->toArray();
         if (empty($itemsIds)) {
@@ -122,7 +122,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         $almenos_uno = false;
         foreach ($grupos as $grupo) {
-            // $parmas = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
+             $parmas = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
         }
 
         // $documento = [];
@@ -139,7 +139,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     }
 
 
-    public function groupItemsByOrder(array $detalle, Collection $traslados): array
+    public function groupItemsByOrder(Collection $detalle, Collection $traslados): array
     {
         $grupos = [];
         foreach ($detalle as $det) {
@@ -154,7 +154,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $grupos[$pedido]['items'][] = $det;
 
                 //items para webservice
-            $grupos[$pedido]['ws_items'] = [
+            $grupos[$pedido]['ws_items'][] = [
                 'item' => $det->GUI_REM_CODI_INTERNO,
                 'compartimiento' => '',
                 'cantidad' => $det->GUI_REM_CANTIDAD,
@@ -166,13 +166,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
     //despacho
-    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, array $detalle, $user) {
+    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user) {
         return true;
     }
 
 
     // reposicion
-    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, array $detalle, $user) {
+    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user) {
          return true;
     }
 }

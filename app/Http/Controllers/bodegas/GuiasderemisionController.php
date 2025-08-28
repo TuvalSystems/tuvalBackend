@@ -617,7 +617,7 @@ class GuiasderemisionController extends Controller
 
             switch ($guia->tipo) {
                 case 'transferencia':
-                    $response = $this->despacharguiatransferencia($guia, detalle: $detalle);
+                    // $response = $this->despacharguiatransferencia($guia,  $detalle);
                     $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle,  $user);
                     break;
                 case 'despacho':
