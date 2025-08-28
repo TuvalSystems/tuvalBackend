@@ -815,7 +815,9 @@ class ApprovalService implements ApprovalServiceInterface
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
         $stocksResult =  $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
-        Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
+        Log::info("Resultado de stock para aprobacion: ",[
+            'stocksResult' => $stocksResult
+        ]);
         return $this->stockWarehouseService->transformStockResponse($stocksResult);
     }
 
