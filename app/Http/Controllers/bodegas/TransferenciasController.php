@@ -83,7 +83,7 @@ class TransferenciasController extends Controller
             ->where('bodega_origen', $bodega)
             ->whereNull('completado')
             // ->where('gp_pedidos.estado', '!=', 'eliminado');
-           ->whereNotIn('estado', ['eliminado', 'anulada']);
+           ->whereNotIn('gp_pedidos.estado', ['eliminado', 'anulada']);
         if ($pedido && $pedido != 'null') {
             $trasladosventas = $trasladosventas->where('gp_pedidos.pedido', $pedido);
         }
