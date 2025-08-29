@@ -158,6 +158,15 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->where('g.tipo', 'reposicion')
             ->where('g.estado', 'enviada')
             ->whereIn('g.bodega_destino', $warehouses)
+            ->where(function ($query) {
+                $query->where(function ($q2) {
+                    $q2->where('g.bodega_destino', 'INMACONSA')
+                        ->where('g.bodega_origen', 'IMPORT');
+                })
+                    ->orWhere(function ($q3) {
+                        $q3->where('g.bodega_destino', '<>', 'INMACONSA');
+                    });
+            })
             ->groupBy('g.bodega_destino')
             ->select([
                 DB::raw('g.bodega_destino as bodega'),

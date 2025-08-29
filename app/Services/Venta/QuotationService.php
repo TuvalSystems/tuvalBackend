@@ -241,7 +241,7 @@ class QuotationService implements QuotationServiceInterface
                 $stockRequests[] = ['articulo' => $art['articulo'], 'bodega' => $bod];
             }
         }
-         return $this->stockSqlService->getStockByArticleBatch($stockRequests);
+        return $this->stockSqlService->getStockByArticleBatch($stockRequests);
     }
 
 
@@ -260,7 +260,7 @@ class QuotationService implements QuotationServiceInterface
         }
     }
 
-  
+
 
 
     /**
@@ -628,7 +628,7 @@ class QuotationService implements QuotationServiceInterface
         $detalle->proveedores = $detalle->proveedores ?? [];
     }
 
-      public function getTypeArticleLQuotationOrOrder($artArticulo)
+    public function getTypeArticleLQuotationOrOrder($artArticulo)
     {
         $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
         if (!$itemL) {
@@ -840,7 +840,6 @@ class QuotationService implements QuotationServiceInterface
         }
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         return $this->stockWarehouseService->transformStockQuotationResponse($stockResults);
-
     }
 
     public function reassignStockIds($article, $stockArticle)
@@ -1204,16 +1203,16 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function storeClientQuotation(array $data)
+    public function storeClientQuotation(array $data, GpUsuario $user)
     {
         try {
             DB::beginTransaction();
-
             $this->prepareForValidationDirection($data);
 
-            $params = $this->getParametersToSendSqlServer($data);
+            $nivelPrecio = $this->getNivelPriceSeller($data, $user);
+            $params = $this->getParametersToSendSqlServer($data, $nivelPrecio);
             $this->clienTSqlService->syncToSqlServerModifyOrCreateClient($params);
-            $this->createClientWeb($data);
+            $this->createClientWeb($data, $nivelPrecio);
             $this->createClientSucursalWeb($data);
             $this->sendToSegmentAndRucToSqlServer($data);
             $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
@@ -1246,7 +1245,7 @@ class QuotationService implements QuotationServiceInterface
         $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'] = isset($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) ? mb_strtoupper($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) : strtolower($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
     }
 
-    public function getParametersToSendSqlServer($data)
+    public function getParametersToSendSqlServer($data, string  $nivelPrecio)
     {
         $lines = str_split($data['CLI_DIRECCION'], 61);
         $line1 = $lines[0] ?? '';
@@ -1259,7 +1258,7 @@ class QuotationService implements QuotationServiceInterface
             'CLI_CLASE' =>  'LOCAL',
             'CLI_COND_PAGO' => 'CONTADO',
             'CLI_DESC_COMERCIAL' => '25',
-            'CLI_NIVEL_PRECIO' => 'GENERAL',
+            'CLI_NIVEL_PRECIO' =>  $nivelPrecio,
             'CLI_PRIORIDAD' => '1',
             'CLI_CONTACTO' => $data['CLI_CONTACTO'],
             'CLI_DIRECCION_1' => $line1,
@@ -1282,15 +1281,16 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function createClientWeb(array $data)
+    public function createClientWeb(array $data, string  $nivelPrecio)
     {
-        $attrs = $this->getDataFormatClient($data);
+        $attrs = $this->getDataFormatClient($data, $nivelPrecio);
         Log::info('GpCliente creará con attrs:', $attrs);
         return GpCliente::create($attrs);
     }
 
 
-    public function getDataFormatClient(array $data)
+
+    public function getDataFormatClient(array $data, string  $nivelPrecio)
     {
         $now = now()->toDateTimeString();
         return [
@@ -1323,7 +1323,7 @@ class QuotationService implements QuotationServiceInterface
             'CLI_CONDICION_PAGO'                    => 'CONTADO',
             'CLI_DIA_GRACIA_VTA_CREDITO'            => 0,
             'CLI_DIA_GRACIA_CHEQUE_A_FECHA'         => 0,
-            'CLI_NIVEL_PRECIO'                      => 'GENERAL',
+            'CLI_NIVEL_PRECIO'                      =>  $nivelPrecio,
             'CLI_TIPO_CREDITO'                      => 'SIN CREDITO',
             'CLI_MONTO_CREDITO'                     => 0,
             'CLI_GRUPO_ECONOMICO'                   => '',
@@ -1362,6 +1362,22 @@ class QuotationService implements QuotationServiceInterface
         ];
     }
 
+
+    public function getNivelPriceSeller(array $data, GpUsuario $user)
+    {
+        if ($data['CLI_PUNTO_VENTA'] !== '005') {
+            return 'GENERAL';
+        }
+        $nivelPrecioApi = $this->apiGpService->getTypeBySeller([
+            // 'usuario' => $user->USERID,
+            'usuario' => 'oficina',
+        ]);
+        if ($nivelPrecioApi['success'] === false) {
+            return 'GENERAL';
+        }
+        $payload = $nivelPrecioApi['data'];
+        return ((int)$payload['coTipVen'] === 1) ? 'TIENDA' : 'GENERAL';
+    }
     public function sendToSegmentAndRucToSqlServer($data)
     {
         $this->clienTSqlService->sendToSegmentAndRucToSqlServer($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);

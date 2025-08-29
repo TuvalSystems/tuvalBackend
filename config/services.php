@@ -72,6 +72,10 @@ return [
             'guarda_documento_factura_vta'              => 'api/transacciones/guardar-documento-factura-vta',
             'respuesta_documento_factura_vta'           => 'api/transacciones/respuesta-documento-factura-vta',
             'eliminar_documento_factura_vta'            => 'api/transacciones/eliminar-documento-factura-vta',
+
+
+            //cliente
+            'obtener_tipo_vendedor'                    => 'api/cliente/obtener-tipo-vendedor',
         ],
     ],
     'api_sales' => [
