@@ -10,14 +10,17 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
 
     public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $pedido, array $items,  $user): array
     {
-        return [
+        $header = [
             'IdCompania' => config('services.api_gp.company'),
             'pedido' => $pedido,
             'bodegaOrigen' => $guia->bodega_origen,
             'bodegaDestino' => $guia->bodega_destino,
             'observacion' => $guia->GUI_REM_OBSERVACION,
             'usuario' => $user->USERID ?? 'adminWeb',
-            'items' => $items
+        ];
+        return [
+            'cabecera' => $header,
+            'detalle' => $items
         ];
     }
 }
