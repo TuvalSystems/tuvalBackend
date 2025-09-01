@@ -90,8 +90,10 @@ class DispatchService implements DispatchServiceInterface
                 'gp_guia_remisions.GUI_REM_PLACA',
                 'gp_guia_remisions.created_at',
                 'gp_guia_remisions.GUI_REM_IDENTIFICACION_DESTINATARIO',
+                'gp_usuarios.USERID'
             ])
                 ->from('gp_guia_remisions')
+                ->leftJoin('gp_usuarios', 'gp_usuarios.id', 'gp_guia_remisions.user_id')
                 ->where('gp_guia_remisions.bodega_origen', $bodega)
                 ->where('gp_guia_remisions.estado', '!=', 'pendiente')
                 ->Where('gp_guia_remisions.tipo', 'transferencia');
@@ -143,7 +145,9 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.GUI_REM_PLACA',
             'gp_guia_remisions.created_at',
             'gp_guia_remisions.GUI_REM_IDENTIFICACION_DESTINATARIO',
+            'gp_usuarios.USERID'
         ])
+            ->join('gp_usuarios', 'gp_usuarios.id', 'gp_guia_remisions.user_id')
             ->where('gp_guia_remisions.bodega_destino', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'transferencia');
@@ -193,7 +197,9 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.GUI_REM_PLACA',
             'gp_guia_remisions.created_at',
             'gp_guia_remisions.GUI_REM_IDENTIFICACION_DESTINATARIO',
+            'gp_usuarios.USERID'
         ])
+            ->join('gp_usuarios', 'gp_usuarios.id', 'gp_guia_remisions.user_id')
             ->where('gp_guia_remisions.bodega_origen', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', 'reposicion');
@@ -245,8 +251,10 @@ class DispatchService implements DispatchServiceInterface
             'gp_guia_remisions.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA',
             'gp_guia_remisions.GUI_REM_PLACA',
             'gp_guia_remisions.created_at',
-            'gp_guia_remisions.GUI_REM_IDENTIFICACION_DESTINATARIO'
+            'gp_guia_remisions.GUI_REM_IDENTIFICACION_DESTINATARIO',
+            'gp_usuarios.USERID'
         ])
+            ->join('gp_usuarios', 'gp_usuarios.id', 'gp_guia_remisions.user_id')
             ->where('gp_guia_remisions.bodega_destino', $bodega)
             ->where('gp_guia_remisions.estado', '!=', 'pendiente')
             ->Where('gp_guia_remisions.tipo', '=', 'reposicion');
