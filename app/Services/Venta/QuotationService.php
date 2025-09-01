@@ -1369,8 +1369,8 @@ class QuotationService implements QuotationServiceInterface
             return 'GENERAL';
         }
         $nivelPrecioApi = $this->apiGpService->getTypeBySeller([
-            // 'usuario' => $user->USERID,
-            'usuario' => 'oficina',
+            'usuario' => $user->USERID,
+            // 'usuario' => 'oficina',
         ]);
         if ($nivelPrecioApi['success'] === false) {
             return 'GENERAL';
