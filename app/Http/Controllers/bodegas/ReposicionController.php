@@ -23,10 +23,12 @@ class ReposicionController extends Controller
 {
     use JsonResponseTrait;
     protected $transferRepositionService;
+    protected $deliveryNoteService;
 
-    public function __construct(TransferRepositionServiceInterface $transferRepositionService)
+    public function __construct(TransferRepositionServiceInterface $transferRepositionService, DeliveryNoteServiceInterface $deliveryNoteService)
     {
         $this->transferRepositionService = $transferRepositionService;
+        $this->deliveryNoteService = $deliveryNoteService;
     }
 
 
@@ -120,11 +122,12 @@ class ReposicionController extends Controller
 
         $bodegas = array_values($bodegas);
 
-        $invoice = app(InvoiceServiceInterface::class);
-        $notify = app(NotificationServiceInterface::class);
-        $deliveryNote = app(DeliveryNoteServiceInterface::class);
-        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
-        $guias->checkguiaremision();
+        // $invoice = app(InvoiceServiceInterface::class);
+        // $notify = app(NotificationServiceInterface::class);
+        // $deliveryNote = app(DeliveryNoteServiceInterface::class);
+        // $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
+        // $guias->checkguiaremision();
+         $this->deliveryNoteService->asigmentNumberGuideRemision();
 
         if ($documento) {
             return response([
