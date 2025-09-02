@@ -611,7 +611,8 @@ class CotizacionesController extends Controller
     public function guardarcliente(Request $request)
     {
         $data = $request->all();
-        return $this->quotationService->storeClientQuotation($data);
+        $user = Auth::user();
+        return $this->quotationService->storeClientQuotation($data,  $user);
     }
 
     public function detallecotizacion(Request $request)
@@ -656,79 +657,79 @@ class CotizacionesController extends Controller
         return $this->quotationService->requestQuotationAgain($data, $user);
     }
 
-    public function getdetallecotizacion($data, $encera = false): array|\Illuminate\Database\Eloquent\Collection
-    {
+    // public function getdetallecotizacion($data, $encera = false): array|\Illuminate\Database\Eloquent\Collection
+    // {
 
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
+    //     $funciones = new FuncionesController();
+    //     $cliente = $funciones->getcliente($data);
 
-        $arr_bodegas = $funciones->gebodegas($data, 1);
-        $consulta_bodega = array();
-        $consulta_precio = array();
-        $stock_bodega_arr = array();
+    //     $arr_bodegas = $funciones->gebodegas($data, 1);
+    //     $consulta_bodega = array();
+    //     $consulta_precio = array();
+    //     $stock_bodega_arr = array();
 
-        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-        $arrArticulos = array();
-        foreach ($detalle as $articulo) {
-            $articulo->proveedores = array();
+    //     $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
+    //     $arrArticulos = array();
+    //     foreach ($detalle as $articulo) {
+    //         $articulo->proveedores = array();
 
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get()->toArray();
-            $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
+    //         $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
+    //             ->where('detalle_id', $articulo->id)
+    //             ->get()->toArray();
+    //         $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
 
 
-            $arrArticulos[] = array(
-                'articulo' => $articulo->ART_CODIGO,
-            );
+    //         $arrArticulos[] = array(
+    //             'articulo' => $articulo->ART_CODIGO,
+    //         );
 
-            $consulta_precio[] = array(
-                'ART_CODIGO' => $articulo->ART_CODIGO,
-            );
+    //         $consulta_precio[] = array(
+    //             'ART_CODIGO' => $articulo->ART_CODIGO,
+    //         );
 
-            if ($encera) {
-                $articulo->descuento = $cliente->CLI_DSTO_COMERCIAL;
-                $articulo->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
-                $articulo->ART_DESCUENTO = 0;
-                $articulo->modificador = 0;
-                $articulo->ART_DESCRIPCION_ORIGINAL = $this->quotationService->restoreDescriptionItemQuotation($articulo->ART_CODIGO, $data['BOD_BODEGA']) ?? $articulo->ART_DESCRIPCION_ORIGINAL;
-                $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
-                $articulo->CHECK_ALTERNATIVO = 0;
-            }
-        }
+    //         if ($encera) {
+    //             $articulo->descuento = $cliente->CLI_DSTO_COMERCIAL;
+    //             $articulo->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
+    //             $articulo->ART_DESCUENTO = 0;
+    //             $articulo->modificador = 0;
+    //             $articulo->ART_DESCRIPCION_ORIGINAL = $this->quotationService->restoreDescriptionItemQuotation($articulo->ART_CODIGO, $data['BOD_BODEGA']) ?? $articulo->ART_DESCRIPCION_ORIGINAL;
+    //             $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
+    //             $articulo->CHECK_ALTERNATIVO = 0;
+    //         }
+    //     }
 
-        $webservices = new WebserviceController;
-        $precios = $webservices->listaprecios($consulta_precio);
-        $lista_precios_general = array();
-        foreach ($precios as $precio) {
-            $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
-        }
+    //     $webservices = new WebserviceController;
+    //     $precios = $webservices->listaprecios($consulta_precio);
+    //     $lista_precios_general = array();
+    //     foreach ($precios as $precio) {
+    //         $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
+    //     }
 
-        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
+    //     // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
 
-        $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
-        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
-            ->map(function ($items) {
-                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
-            })
-            ->toArray();
+    //     $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
+    //     $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
+    //         ->map(function ($items) {
+    //             return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
+    //         })
+    //         ->toArray();
 
-        foreach ($stock_bodega_arr as $key => $bodegas) {
-            foreach ($bodegas as $bodega) {
-                $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
-            }
-        }
+    //     foreach ($stock_bodega_arr as $key => $bodegas) {
+    //         foreach ($bodegas as $bodega) {
+    //             $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
+    //         }
+    //     }
 
-        foreach ($detalle as $articulo) {
-            $funciones->formatStock($articulo, $stock_general);
-            if ($articulo->ART_TIPO_COMPRA != 'L') {
-                $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-            }
-        }
+    //     foreach ($detalle as $articulo) {
+    //         $funciones->formatStock($articulo, $stock_general);
+    //         if ($articulo->ART_TIPO_COMPRA != 'L') {
+    //             $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
+    //             $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
+    //         }
+    //     }
 
-        return $detalle;
-    }
+    //     return $detalle;
+    // }
 
     public function llenarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {

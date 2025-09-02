@@ -137,22 +137,15 @@ class OrderService implements OrderServiceInterface
         return compact('detalle', 'peso', 'tipoImpuesto', 'sumaImpuesto');
     }
 
-    public function getCompartimento($articulo, $bodega)
+   public function getCompartimento($articulo, $bodega)
     {
         $params = array(
             'articulo' => $articulo,
             'bodega' => $bodega,
             'compartimento' => '',
         );
-
-        $compartment = $this->apiGpService->getStockByWarehouseAndCompartment($params);
-        if (isset($compartment) && count($compartment) > 0 && isset($compartment[0]['COMPARTIMIENTO'])) {
-            $stockDisponible = array_map('floatval', array_column($compartment, 'STOCK_DISPONIBLE'));
-            array_multisort($stockDisponible, SORT_DESC, $compartment);
-
-            return $compartment[0]['COMPARTIMIENTO'];
-        }
-        return null;
+        $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        return $response['COMPARTIMIENTO'] ?? null;
     }
 
     public function getImagenes(string $codigo): array
@@ -460,18 +453,15 @@ class OrderService implements OrderServiceInterface
             'articulo' => $detailOrder->ART_CODIGO,
             'bodega' => $stock['STO_ART_BODEGA'],
         ];
-        $stocksResult = $this->apiGpService->getStockWarehouse($params);
-        Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
-        if (is_null($stocksResult) || !is_array($stocksResult)) {
-            throw new \RuntimeException("No se pudo obtener el stock de los articulos", 0 | 500);
-        }
-        // $stockResponseFormated = $this->stockWarehouseService->formatResultStocks($stocksResult);
+        $stocksResult = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
+        Log::info("Resultado stock de getAndValidateOrderDetailStock: " ,[
+            'stocksResult' => $stocksResult
+        ]);
 
-        $this->assignmentDisponibleStock($stock, $stocksResult[0], $detailOrder);
+        $this->assignmentDisponibleStock($stock, $stocksResult, $detailOrder);
         $this->stockWarehouseService->formatResultStockStoreOrder($stock, $detailOrder, $orderId);
         return $stock;
     }
-
 
     public function assignmentDisponibleStock(&$stock, $stockResponseFormatted, $detailOrder)
     {

@@ -67,6 +67,15 @@ return [
             'guardar_recibo_item_l'                     => 'api/transacciones/guardar-documento-recibo-compra-l',
             'generar_recibo_item_l'                     => 'api/transacciones/generar-documento-recibo-compra-l',
             'respuesta_recibo_item_l'                   => 'api/transacciones/respuesta-documento-recibo-compra-l',
+
+            //transacciones - facturacion
+            'guarda_documento_factura_vta'              => 'api/transacciones/guardar-documento-factura-vta',
+            'respuesta_documento_factura_vta'           => 'api/transacciones/respuesta-documento-factura-vta',
+            'eliminar_documento_factura_vta'            => 'api/transacciones/eliminar-documento-factura-vta',
+
+
+            //cliente
+            'obtener_tipo_vendedor'                    => 'api/cliente/obtener-tipo-vendedor',
         ],
     ],
     'api_sales' => [

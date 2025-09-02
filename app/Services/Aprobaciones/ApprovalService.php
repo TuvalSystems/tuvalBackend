@@ -63,18 +63,33 @@ class ApprovalService implements ApprovalServiceInterface
             return $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
         }
 
-        $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO'],);
+        $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
         if (!$nivelCotizacion) {
             return $this->requiredApprovalResponse("Forma de pago de cotizacion no encontrada en la base de datos.");
         }
 
-        if ($nivelCotizacion > $nivelCliente) {
-            return $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
+        if ($type == 'cotizacion') {
+            if ($nivelCotizacion > $nivelCliente) {
+                return $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
+            }
+
+            if ($data['porcentage_descuento'] > $data['porcentage_descuentooriginal']) {
+                return $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
+            }
         }
 
-        if ($data['porcentage_descuento'] > $data['porcentage_descuentooriginal']) {
-            return $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
+        if ($type == 'pedido') {
+            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
+
+            if ($nivelCotizacion > $nivelCliente && $data['COND_ID'] != $cotizacion->COND_ID) {
+                return $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
+            }
+
+            if ($data['porcentage_descuento'] > $data['porcentage_descuentooriginal'] &&  $data['porcentage_descuento'] != $cotizacion->porcentage_descuento) {
+                return $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
+            }
         }
+
 
         // validacion de detalle de cotizaciony pedido e items L
         $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
@@ -250,7 +265,7 @@ class ApprovalService implements ApprovalServiceInterface
                         $precioLimite      = $valorOriginal * $factor;
                         $precioActual      = $detalle['ART_VALOR'];
 
-                        if ($precioActual > $precioLimite) {
+                        if ($precioActual > $precioLimite && $precioActual != $detOriginal->ART_VALOR) {
                             $exceso = $precioActual - $precioLimite;
                             $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
                             return $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
@@ -799,29 +814,14 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
-        $stocksResult =  $this->apiGpService->getStockWarehouseAsync($parmas);
-        Log::info("Resultado de stock para aprobacion: " . json_encode($stocksResult));
-        if (is_null($stocksResult) || !is_array($stocksResult)) {
-            throw new \Exception("No se pudo obtener el stock de los articulos");
-        }
-        return $this->formatResultStocksApproval($stocksResult);
+        $stocksResult =  $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
+        Log::info("Resultado de stock para aprobacion: ",[
+            'stocksResult' => $stocksResult
+        ]);
+        return $this->stockWarehouseService->transformStockResponse($stocksResult);
     }
 
-    public function formatResultStocksApproval($stockResults)
-    {
-        if (!is_array($stockResults)) {
-            return [];
-        }
-        return collect($stockResults)
-            ->filter(fn($item) => is_array($item))
-            ->map(fn($item) => [
-                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-            ])
-            ->values()
-            ->toArray();
-    }
+
 
     public function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
     {
