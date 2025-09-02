@@ -662,7 +662,9 @@ class PedidosController extends Controller
             $pdf = PDF::loadView('pedidoridesinImagenPDF', $pedido);
             return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
         } catch (\Throwable $e) {
-            // report($e);
+            Log::error('Error en imprimirpedidoridesinimagen', [
+                $e->getMessage()
+            ]);
             return $this->buildErrorResponse($e->getMessage(), 404);
         }
     }

@@ -126,7 +126,7 @@ class OrderService implements OrderServiceInterface
             $peso += $pesoItem;
             $type = strtoupper(trim((string)($item['ART_TIPO_COMPRA'] ?? '')));
             $item['compartimiento'] = match ($type) {
-               '', 'L', 'SERV' => '',
+                '', 'L', 'SERV' => '',
                 default     => $this->getCompartimento($item['ART_CODIGO'] ?? null, $pedido['BOD_BODEGA'] ?? null),
             };
             $impKey = $item['ART_IMP_VTA'];
@@ -148,8 +148,10 @@ class OrderService implements OrderServiceInterface
             'bodega' => $bodega,
             'compartimento' => '',
         );
-        $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
-        return $response['COMPARTIMIENTO'] ?? null;
+        $response = $this->apiGpService->getStockByWarehouseAndCompartment($params);
+        // $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        $data = data_get($response, 'data', []);
+        return $data['COMPARTIMIENTO'] ?? null;
     }
 
     public function getImagenes(string $codigo): array
