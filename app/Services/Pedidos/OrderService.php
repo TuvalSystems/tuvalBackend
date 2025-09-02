@@ -137,7 +137,7 @@ class OrderService implements OrderServiceInterface
         return compact('detalle', 'peso', 'tipoImpuesto', 'sumaImpuesto');
     }
 
-    public function getCompartimento($articulo, $bodega)
+   public function getCompartimento($articulo, $bodega)
     {
         $params = array(
             'articulo' => $articulo,
