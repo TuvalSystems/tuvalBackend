@@ -9,7 +9,7 @@ interface DeliveryNoteServiceInterface
 {
     // Define los métodos que debe implementar el servicio
     public function getDeliveryNoteDetailByType(int|string $guiaId): array;
-
+    public function asigmentNumberGuideRemision();
 
     // proceso de despacho de guia
     public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle, $user);

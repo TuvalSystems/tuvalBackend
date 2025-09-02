@@ -81,7 +81,40 @@ use Illuminate\Database\Eloquent\Model;
 class GpGuiaRemision extends Model
 {
     use HasFactory;
+    protected $fillable = [
+        'tipo',
+        'estado',
+        'bodega_origen',
+        'bodega_destino',
+        'pedido',
+        'user_id',
+        'GUI_REM_BODEGA',
+        'GUI_REM_GUIA_REMISION',
+        'GUI_REM_ESTABLECIMIENTO',
+        'GUI_REM_PTO_EMISION',
+        'GUI_REM_SECUENCIAL',
+        'GUI_REM_DIRECCION_PARTIDA',
+        'GUI_REM_RAZON_SOCIAL_TRANSPORTISTA',
+        'GUI_REM_IDENTIFICACION_TRANSPORTISTA',
+        'GUI_REM_TIPO_IDENTIFICACION_TRANSPORTISTA',
+        'GUI_REM_FECHA_INICIO',
+        'GUI_REM_FECHA_FIN',
+        'GUI_REM_PLACA',
+        'GUI_REM_OBSERVACION',
+        'GUI_REM_RAZON_SOCIAL_DESTINATARIO',
+        'GUI_REM_DIRECCION_DESTINATARIO',
+        'GUI_REM_IDENTIFICACION_DESTINATARIO',
+        'GUI_REM_MOTIVO_TRASLADO',
+        'GUI_REM_RUTA',
+        'GUI_REM_CODI_DOCU_SUSTENTO',
+        'GUI_REM_NUME_DOCU_SUSTENTO',
+        'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO',
+        'rebajado',
+        'procesado',
+        'GUI_REM_CODIGO',
+        
 
+    ];
 
     public function guiadetalle    (){
         return $this->hasMany(GpGuiaRemisionDetalle::class , 'guia_remision_id');

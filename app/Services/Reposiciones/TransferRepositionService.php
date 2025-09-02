@@ -6,6 +6,7 @@ use App\Models\GpArticulo;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +16,11 @@ class TransferRepositionService implements TransferRepositionServiceInterface
 {
  use JsonResponseTrait;
     protected ApiGpService $apiGp;
-    public function __construct(ApiGpService $apiGp)
+    protected $stockWarehouseService;
+    public function __construct(ApiGpService $apiGp, StockWarehouseServiceInterface $stockWarehouseService)
     {
         $this->apiGp = $apiGp;
+        $this->stockWarehouseService = $stockWarehouseService;
     }
 
     public function validateRequest($request)
@@ -263,7 +266,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'compartimento' => '',
         ];
         // MST_Stock_Articulo_Bodega_CompartimientoResult
-        $compartment = $this->apiGp->getStockByWarehouseAndCompartment($params) ?? [];
-        return  $compartment[0]['COMPARTIMIENTO'] ?? '';
+         $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        return $response['COMPARTIMIENTO'] ?? null;
     }
 }

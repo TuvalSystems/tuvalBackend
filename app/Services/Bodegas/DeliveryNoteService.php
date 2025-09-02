@@ -9,6 +9,8 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpPedidoDetalleStock;
+use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
@@ -19,12 +21,14 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
      *  SERVICIO DEDICADO AL  GUIAREMISIONCONTROLLER
      */
 
-    protected $deliveryNoteBuilder ;
+    protected $apiDeliveryNote;
+    protected $deliveryNoteBuilder;
     // protected $invoiceService;
-    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder)
+    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote)
     {
         // $this->invoiceService = $invoiceService;
         $this->deliveryNoteBuilder = $deliveryNoteBuilder;
+        $this->apiDeliveryNote = $apiDeliveryNote;
     }
 
 
@@ -122,20 +126,64 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         $almenos_uno = false;
         foreach ($grupos as $grupo) {
-             $parmas = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
+            $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
+            $response = $this->apiDeliveryNote->generateAndCreateGuideTrfv($params);
+            if ($response['success'] === false) {
+                throw new \Exception($response['message']);
+            }
+            foreach ($grupo['items'] as $key => $item) {
+                $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
+                $this->decrementReservedStockForGuideTransferVta($item->traslado, $item->GUI_REM_CANTIDAD);
+                $almenos_uno = true;
+            }
+            $this->createDocumentGuideTrfv($guia, $response['data'], $grupo['pedido']);
+        }
+        if ($almenos_uno) {
+            $guia->update(['estado' => 'enviada']);
+        } else {
+            throw new \Exception('No se pudo generar el despacho');
         }
 
-        // $documento = [];
-        // foreach ($detalle as $det) {
-        //     $traslado = $traslados->get($det['detalle_id'])->first();
-        //     $det->item = $traslado;
-        //     if ($traslado) {
-        //         $documento[$traslado->pedido]['pedido'] = $traslado->pedido;
-        //         $documento[$traslado->pedido]['items'][] = $det;
-        //     }
-        // }
+        return response([
+            'success' => true,
+            'message' => 'Guía de remisión despachada',
+        ]);
+    }
 
-        // $documento = array_values($documento);
+    public function moveReservedToTransferredForTrfvLine($trl, $qty)
+    {
+        $cantidad    = (float) ($trl->cantidad ?? 0);
+        $trasladado  = (float) ($trl->trasladado ?? 0);
+        $reservado   = (float) ($trl->reservado ?? 0);
+
+        $restante = max(0.0,  $cantidad - $trasladado);
+        $delta = max(0.0, min((float)$qty, $restante, $reservado));
+        if ($delta <= 0) return;
+
+        $trl->trasladado = min($cantidad, $trasladado + $delta);
+        $trl->reservado = max(0.0, $reservado - $delta);
+        $trl->completado = (int) ($trl->trasladado >= $trl->cantidad);
+        $trl->save();
+    }
+
+    public function decrementReservedStockForGuideTransferVta($trl, $qty)
+    {
+        $stock = GpPedidoDetalleStock::where('detalle_id', $trl->detalle_id)
+            ->where('STO_ART_BODEGA', $trl->bodega_origen)
+            ->lockForUpdate()
+            ->first();
+        $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
+        $stock->reservado = $nuevo;
+        $stock->save();
+    }
+
+    public function createDocumentGuideTrfv(GpGuiaRemision $guia, $responseApi, $pedido)
+    {
+        $newDocuTrfv = new GpGuiaRemisionTransferencia();
+        $newDocuTrfv->guia_remision_id = $guia->id;
+        $newDocuTrfv->pedido = $pedido;
+        $newDocuTrfv->codigo = $responseApi['docGp'];
+        $newDocuTrfv->save();
     }
 
 
@@ -153,7 +201,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $grupos[$pedido]['pedido'] = $pedido;
             $grupos[$pedido]['items'][] = $det;
 
-                //items para webservice
+            //items para webservice
             $grupos[$pedido]['ws_items'][] = [
                 'item' => $det->GUI_REM_CODI_INTERNO,
                 'compartimiento' => '',
@@ -166,13 +214,38 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
     //despacho
-    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user) {
+    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
+    {
         return true;
     }
 
 
     // reposicion
-    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user) {
-         return true;
+    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user)
+    {
+        return true;
+    }
+
+
+
+
+    /** funcion para asignar el numero de  GUI_REM_GUIA_REMISION a cada guia de remision */
+
+
+    public function asigmentNumberGuideRemision()
+    {
+        $guias = GpGuiaRemision::whereNull('GUI_REM_CODIGO')->get();
+        
+        foreach ($guias as $guia) {
+            $result = $this->apiDeliveryNote->getAccessCodeByNumberDocDelivery([
+                'numDoc' => $guia->GUI_REM_GUIA_REMISION,
+            ]);
+            if ($result['success'] === false) {
+                throw new \Exception($result['message']);
+            }
+            $response = $result['data'];
+            $guia->GUI_REM_CODIGO = $response['claveAcceso'];
+            $guia->save();
+        }
     }
 }

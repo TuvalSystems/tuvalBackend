@@ -423,20 +423,17 @@ class GuiasderemisionController extends Controller
 
     public function checkguiaremision()
     {
-
-        $webservices = new WebserviceController();
-        $guias = GpGuiaRemision::whereNull('GUI_REM_CODIGO')->get();
-        foreach ($guias as $guiaderemision) {
-            $parameters = array(
-                'documento_origen' => $guiaderemision->GUI_REM_GUIA_REMISION,
-            );
-
-            $result = $webservices->transaccional('MST_Respuesta_Guia_Remision', $parameters);
-
-            if (isset($result['MST_Respuesta_Guia_RemisionResult']['CS_RESPUESTA_GUIA_REMISION'][0]['CLAVE_ACCESO'])) {
-                $guiaderemision->GUI_REM_CODIGO = $result['MST_Respuesta_Guia_RemisionResult']['CS_RESPUESTA_GUIA_REMISION'][0]['CLAVE_ACCESO'];
-                $guiaderemision->save();
-            }
+        try {
+            DB::beginTransaction();
+            $this->deliveryNoteService->asigmentNumberGuideRemision();
+            DB::commit();
+            return $this->buildSuccessResponse('Guias de remision actualizadas',  200);
+        } catch (\Throwable $e) {
+            Log::error('Error en la funcion de checkGuiaRemision', [
+                'error' => $e->getMessage(),
+            ]);
+            DB::rollBack();
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
@@ -600,7 +597,7 @@ class GuiasderemisionController extends Controller
     {
         DB::beginTransaction();
         try {
-             $user = Auth::user();
+            $user = Auth::user();
             // Bloquea la fila para este proceso
             $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
             if ($guia->estado === 'enviada') {
@@ -617,7 +614,7 @@ class GuiasderemisionController extends Controller
 
             switch ($guia->tipo) {
                 case 'transferencia':
-                    // $response = $this->despacharguiatransferencia($guia,  $detalle);
+                    //  $response = $this->despacharguiatransferencia($guia,  $detalle);
                     $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle,  $user);
                     break;
                 case 'despacho':
