@@ -364,6 +364,16 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->exists();
     }
 
+      public function fetchStockWarehouseCompartiment(array $params){
+        $res = $this->apiGpService->getStockByWarehouseAndCompartment($params);
+
+        if (!data_get($res, 'success', false)) {
+            throw new \RuntimeException((string) data_get($res, 'message', 'Error'), 500);
+        }
+
+        $data = data_get($res, 'data', []);
+        return is_array($data) ? $data : (array) $data;
+    }
 
     public function fetchStockBatchWarehouses(array $params)
     {
