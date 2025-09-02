@@ -137,22 +137,15 @@ class OrderService implements OrderServiceInterface
         return compact('detalle', 'peso', 'tipoImpuesto', 'sumaImpuesto');
     }
 
-    public function getCompartimento($articulo, $bodega)
+   public function getCompartimento($articulo, $bodega)
     {
         $params = array(
             'articulo' => $articulo,
             'bodega' => $bodega,
             'compartimento' => '',
         );
-
-        $compartment = $this->apiGpService->getStockByWarehouseAndCompartment($params);
-        if (isset($compartment) && count($compartment) > 0 && isset($compartment[0]['COMPARTIMIENTO'])) {
-            $stockDisponible = array_map('floatval', array_column($compartment, 'STOCK_DISPONIBLE'));
-            array_multisort($stockDisponible, SORT_DESC, $compartment);
-
-            return $compartment[0]['COMPARTIMIENTO'];
-        }
-        return null;
+        $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        return $response['COMPARTIMIENTO'] ?? null;
     }
 
     public function getImagenes(string $codigo): array
