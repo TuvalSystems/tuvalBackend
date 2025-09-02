@@ -124,7 +124,11 @@ class OrderService implements OrderServiceInterface
             $pesoItem = $item['ART_PESO'] * $item['ART_CANTIDAD'];
             $item['ART_PESO_TOTAL'] = number_format($pesoItem, 2, '.', '');
             $peso += $pesoItem;
-            $item['compartimiento'] = $this->getCompartimento($item['ART_CODIGO'], $pedido['BOD_BODEGA']);
+            $type = strtoupper(trim((string)($item['ART_TIPO_COMPRA'] ?? '')));
+            $item['compartimiento'] = match ($type) {
+               '', 'L', 'SERV' => '',
+                default     => $this->getCompartimento($item['ART_CODIGO'] ?? null, $pedido['BOD_BODEGA'] ?? null),
+            };
             $impKey = $item['ART_IMP_VTA'];
             $tipoImpuesto[$impKey] = ($tipoImpuesto[$impKey] ?? 0) + round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
             $sumaImpuesto[$impKey] = ($sumaImpuesto[$impKey] ?? 0) + round($item['ART_IVA'], 2);
@@ -137,7 +141,7 @@ class OrderService implements OrderServiceInterface
         return compact('detalle', 'peso', 'tipoImpuesto', 'sumaImpuesto');
     }
 
-   public function getCompartimento($articulo, $bodega)
+    public function getCompartimento($articulo, $bodega)
     {
         $params = array(
             'articulo' => $articulo,
@@ -454,7 +458,7 @@ class OrderService implements OrderServiceInterface
             'bodega' => $stock['STO_ART_BODEGA'],
         ];
         $stocksResult = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
-        Log::info("Resultado stock de getAndValidateOrderDetailStock: " ,[
+        Log::info("Resultado stock de getAndValidateOrderDetailStock: ", [
             'stocksResult' => $stocksResult
         ]);
 
@@ -1120,7 +1124,7 @@ class OrderService implements OrderServiceInterface
                     continue;
                 }
 
-                foreach ( $provList as  $prov) {
+                foreach ($provList as  $prov) {
                     $pendiente = max(0, (int)$prov->ingresado - (int)$prov->ejecutado);
                     if ($pendiente <= 0) continue;
 
