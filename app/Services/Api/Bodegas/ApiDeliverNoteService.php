@@ -9,7 +9,7 @@ use App\Services\Api\ApiGpService;
 class ApiDeliverNoteService  extends ApiGpService
 {
 
-    public function generateAndCreateGuideTrfv(array $params)
+    public function createTransferGuideVta(array $params)
     {
         return $this->httpClient->makeRequest($this->endpoints["guia.trfv.movimientos.generar"], 'POST', $params, 'json');
     }
@@ -17,5 +17,10 @@ class ApiDeliverNoteService  extends ApiGpService
      public function getAccessCodeByNumberDocDelivery(array $params)
     {
         return $this->httpClient->makeRequest($this->endpoints["guia.obtener.clave_acceso"], 'GET', $params );
+    }
+
+    public function createReplacementShipmentGuideVta(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reposicion.movimiento.generar"], 'POST', $params, 'json');
     }
 }

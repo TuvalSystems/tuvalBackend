@@ -8,11 +8,11 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
 {
 
-    public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $pedido, array $items,  $user): array
+    public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $documento, array $items,  $user): array
     {
         $header = [
             'idCompany' => config('services.api_gp.company'),
-            'pedido' => $pedido,
+            'pedido' => $documento,
             'bodegaOrigen' => $guia->bodega_origen,
             'bodegaDestino' => $guia->bodega_destino,
             'observacion' => $guia->GUI_REM_OBSERVACION,

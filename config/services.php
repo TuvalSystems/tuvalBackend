@@ -79,6 +79,7 @@ return [
 
             // guia de remision
             'guia.trfv.movimientos.generar'             => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
+            'guia.reposicion.movimiento.generar'               => 'api/inventario/guardar-generar-movimiento-reposicion',
             'guia.obtener.clave_acceso'                 => 'api/inventario/guia-remision-obtener-claveacceso',
         ],
     ],

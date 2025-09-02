@@ -122,12 +122,12 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
             ->keyBy('id');
 
-        $grupos = $this->groupItemsByOrder($detalle, $traslados);
+        $grupos = $this->groupItemsByOrderTransferVta($detalle, $traslados);
 
         $almenos_uno = false;
         foreach ($grupos as $grupo) {
             $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
-            $response = $this->apiDeliveryNote->generateAndCreateGuideTrfv($params);
+            $response = $this->apiDeliveryNote->createTransferGuideVta($params);
             if ($response['success'] === false) {
                 throw new \Exception($response['message']);
             }
@@ -177,17 +177,17 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $stock->save();
     }
 
-    public function createDocumentGuideTrfv(GpGuiaRemision $guia, $responseApi, $pedido)
+    public function createDocumentGuideTrfv(GpGuiaRemision $guia, $responseApi, $documento)
     {
         $newDocuTrfv = new GpGuiaRemisionTransferencia();
         $newDocuTrfv->guia_remision_id = $guia->id;
-        $newDocuTrfv->pedido = $pedido;
+        $newDocuTrfv->pedido = $documento;
         $newDocuTrfv->codigo = $responseApi['docGp'];
         $newDocuTrfv->save();
     }
 
 
-    public function groupItemsByOrder(Collection $detalle, Collection $traslados): array
+    public function groupItemsByOrderTransferVta(Collection $detalle, Collection $traslados): array
     {
         $grupos = [];
         foreach ($detalle as $det) {
@@ -223,7 +223,60 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     // reposicion
     public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user)
     {
-        return true;
+        $itemsIds = collect($detalle)->pluck('detalle_id')->toArray();
+        if (empty($itemsIds)) {
+            return;
+        }
+
+        $traslados = GpTrasladosReposicion::whereIn('id', $itemsIds)->whereNull('completado')->get()->keyBy('id');
+        $grupos = $this->groupItemsByOrderReplacementShipment($detalle, $traslados);
+        $checkList = false;
+        foreach ($grupos as  $grupo) {
+            $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['documento'], $grupo['ws_items'], $user);
+            $response = $this->apiDeliveryNote->createReplacementShipmentGuideVta($params);
+            if ($response['success'] === false) {
+                throw new \Exception($response['message']);
+            }
+            foreach ($grupo['items'] as $key => $item) {
+                $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
+                $checkList = true;
+            }
+            $this->createDocumentGuideTrfv($guia, $response['data'], $grupo['documento']);
+        }
+        if ($checkList) {
+            $guia->update(['estado' => 'enviada']);
+        } else {
+            throw new \Exception('No se pudo despachar la guia de reposición');
+        }
+
+        return response([
+            'success' => true,
+            'message' => 'Guía de remisión despachada',
+        ]);
+    }
+
+    public function groupItemsByOrderReplacementShipment(Collection $detalle, Collection $traslados): array
+    {
+        $grupos = [];
+        foreach ($detalle as $det) {
+            $traslado = $traslados->get($det['detalle_id']);
+            if (!$traslado) {
+                // puedes loggear y continuar
+                continue;
+            }
+            $det->traslado = $traslado;
+            $documento = $traslado->Documento;
+            $grupos[$documento]['documento'] = $documento;
+            $grupos[$documento]['items'][] = $det;
+
+            //items para webservice
+            $grupos[$documento]['ws_items'][] = [
+                'item' => $det->GUI_REM_CODI_INTERNO,
+                'compartimiento' => '',
+                'cantidad' => $det->GUI_REM_CANTIDAD,
+            ];
+        }
+        return $grupos;
     }
 
 
@@ -235,7 +288,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function asigmentNumberGuideRemision()
     {
         $guias = GpGuiaRemision::whereNull('GUI_REM_CODIGO')->get();
-        
+
         foreach ($guias as $guia) {
             $result = $this->apiDeliveryNote->getAccessCodeByNumberDocDelivery([
                 'numDoc' => $guia->GUI_REM_GUIA_REMISION,

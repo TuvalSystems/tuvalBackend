@@ -9,5 +9,5 @@ interface DeliveryNoteParamsBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
 
-     public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $pedido, array $items, GpUsuario $user): array;
+     public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $documento, array $items, GpUsuario $user): array;
 }
