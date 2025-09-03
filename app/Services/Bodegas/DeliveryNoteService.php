@@ -4,6 +4,7 @@ namespace App\Services\Bodegas;
 
 
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
@@ -289,6 +290,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
             }
             $guia->update(['rebajado' => 1]);
+            $this->createDocumentDispatchTrfv($guia, $response['data'], $grupo['pedido']);
             $wsOk = true;
         }
 
@@ -366,6 +368,15 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $dt->save();
 
         return $dt->refresh();
+    }
+
+    public function createDocumentDispatchTrfv(GpGuiaRemision $guia, $responseApi, $documento)
+    {
+        $dispatchTrfv = new GpGuiaRemisionDespacho();
+        $dispatchTrfv->guia_remision_id = $guia->id;
+        $dispatchTrfv->pedido = $documento;
+        $dispatchTrfv->codigo = $responseApi['docGp'];
+        $dispatchTrfv->save();
     }
 
 

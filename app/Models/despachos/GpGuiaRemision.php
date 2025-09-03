@@ -112,11 +112,17 @@ class GpGuiaRemision extends Model
         'rebajado',
         'procesado',
         'GUI_REM_CODIGO',
-        
+
 
     ];
 
-    public function guiadetalle    (){
-        return $this->hasMany(GpGuiaRemisionDetalle::class , 'guia_remision_id');
+    public function guiadetalle()
+    {
+        return $this->hasMany(GpGuiaRemisionDetalle::class, 'guia_remision_id');
+    }
+
+    public function guiadespacho()
+    {
+        return $this->hasMany(GpGuiaRemisionDespacho::class, 'guia_remision_id');
     }
 }
