@@ -384,6 +384,7 @@ class DevolucionJobService
             $devolucion->save();
             throw new \Exception('Ajuste : mensaje -  ' . ($res1['message'] ?? 'Error desconocido'));
         }
+        Log::channel('devolucion')->info("Se realizo el Ajuste de la devolucion {$devolucion->id} con el documento {$res1['data']['docGp']}");
         $this->createDocumentDevolution($devolucion, $res1['data'], $userId);
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
