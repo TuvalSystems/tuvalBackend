@@ -404,13 +404,21 @@ class InvoiceService implements InvoiceServiceInterface
     public function checkOrderHaveItemTransferPending(GpPedido $order): bool
     {
         $tieneTraslado = $this->getDataCheckTraslado($order);
-        if ($tieneTraslado) {
-            $order->estado = 'traslado';
+        $nuevoEstado = $tieneTraslado ? 'traslado' : 'espera';
+
+        if ($order->estado !== $nuevoEstado) {
+            $order->estado = $nuevoEstado;
             $order->save();
-            Log::info("Pedido {$order->pedido} actualizado a estado 'traslado' por traslado pendiente. No se Factura");
+
+            if ($tieneTraslado) {
+                Log::info("Pedido {$order->pedido} actualizado a 'traslado' por traslado pendiente. No se factura.");
+            } else {
+                Log::info("Pedido {$order->pedido} actualizado a 'espera' (sin traslado pendiente).");
+            }
         }
-        $order->estado = 'espera';
-        $order->save();
+        // Recarga en la MISMA instancia (no rompe la referencia del objeto)
+        $order->refresh();
+
         return $tieneTraslado;
     }
 
