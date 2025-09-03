@@ -16,6 +16,7 @@ use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 
 
@@ -23,10 +24,12 @@ class ReposicionController extends Controller
 {
     use JsonResponseTrait;
     protected $transferRepositionService;
+    protected $logisticsOperationsService;
 
-    public function __construct(TransferRepositionServiceInterface $transferRepositionService)
+    public function __construct(TransferRepositionServiceInterface $transferRepositionService, LogisticsOperationsServiceInterface $logisticsOperationsService)
     {
         $this->transferRepositionService = $transferRepositionService;
+        $this->logisticsOperationsService = $logisticsOperationsService;
     }
 
 
@@ -120,11 +123,12 @@ class ReposicionController extends Controller
 
         $bodegas = array_values($bodegas);
 
-        $invoice = app(InvoiceServiceInterface::class);
-        $notify = app(NotificationServiceInterface::class);
-        $deliveryNote = app(DeliveryNoteServiceInterface::class);
-        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
-        $guias->checkguiaremision();
+        // $invoice = app(InvoiceServiceInterface::class);
+        // $notify = app(NotificationServiceInterface::class);
+        // $deliveryNote = app(DeliveryNoteServiceInterface::class);
+        // $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
+        // $guias->checkguiaremision();
+         $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
 
         if ($documento) {
             return response([

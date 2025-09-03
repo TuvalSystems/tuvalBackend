@@ -195,6 +195,9 @@ return [
         App\Providers\Service\SqlServer\VentaSqlServerServiceProvider::class,
         App\Providers\Service\SqlServer\BodegaSqlServerServiceProvider::class,
 
+        //Provider Builders
+        App\Providers\Service\Builder\BodegaBuilderServiceProvider::class,
+
 
     ],
 

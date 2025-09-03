@@ -21,15 +21,14 @@ class ReposicionesServiceProvider extends ServiceProvider
             TransferRepositionService::class
         );
 
-        $this->app->bind(
+        $this->app->singleton(
             StockWarehouseServiceInterface::class,
             StockWarehouseService::class
         );
     }
 
 
-    public function boot()
-    {
 
-    }
+
+    public function boot() {}
 }

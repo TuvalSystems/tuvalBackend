@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Repositories\Pedidos\OrderRepository;
 use App\Repositories\Venta\QuotationRepository;
@@ -23,18 +24,15 @@ class RepositoryServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->bind(DevolucionRepositoryInterface::class, DevolucionRepository::class);
-        $this->app->bind(OrderRepositoryInterface::class, OrderRepository::class);
-        $this->app->bind(PurchaseReceipRepositoryInterface::class, PurchaseReceipRepository::class);
-        $this->app->bind(QuotationRepositoryInterface::class, QuotationRepository::class);
-        $this->app->bind(ClientSqlRepositoryInterface::class, ClientSqlRepository::class);
+        $this->app->singleton(DevolucionRepositoryInterface::class, DevolucionRepository::class);
+        $this->app->singleton(OrderRepositoryInterface::class, OrderRepository::class);
+        $this->app->singleton(PurchaseReceipRepositoryInterface::class, PurchaseReceipRepository::class);
+        $this->app->singleton(QuotationRepositoryInterface::class, QuotationRepository::class);
+        $this->app->singleton(ClientSqlRepositoryInterface::class, ClientSqlRepository::class);
     }
 
-    /**
-     * Bootstrap services.
-     *
-     * @return void
-     */
+
+
     public function boot()
     {
         //

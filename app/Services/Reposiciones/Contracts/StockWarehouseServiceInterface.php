@@ -20,7 +20,6 @@ interface StockWarehouseServiceInterface
      */
     public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo);
     /**fin de funciones en prueba para remplazo  */
-
     public function fetchStockWarehouseCompartiment(array $params);
     public function fetchStockBatchWarehouses(array $params);
     public function fetchStockByOnlyWarehouse(array $params);

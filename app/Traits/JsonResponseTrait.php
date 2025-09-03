@@ -15,7 +15,7 @@ trait JsonResponseTrait
     }
 
 
-    public function errorResponse($message, $errors = null,  int $code): JsonResponse
+    protected function errorResponse($message, $errors = null,  int $code): JsonResponse
     {
         return response()->json([
             'success' => false,
@@ -25,12 +25,12 @@ trait JsonResponseTrait
     }
 
 
-    private function buildErrorResponse(string $message, int $statusCode ): JsonResponse
+    protected function buildErrorResponse(string $message, int $statusCode ): JsonResponse
     {
         return response()->json([  'success' => false,  'error' => $message], $statusCode);
     }
 
-    public function buildSuccessResponse(string $message, int $statusCode ): JsonResponse
+    protected function buildSuccessResponse(string $message, int $statusCode ): JsonResponse
     {
         return response()->json(['success'=> true,'message'=> $message], $statusCode);
     }

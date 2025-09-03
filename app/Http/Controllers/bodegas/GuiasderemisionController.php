@@ -28,6 +28,7 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,8 @@ class GuiasderemisionController extends Controller
     public function __construct(
         DeliveryNoteServiceInterface $deliveryNoteService,
         InvoiceServiceInterface $invoiceServiceInterface,
-        NotificationServiceInterface $notificacionService
+        NotificationServiceInterface $notificacionService,
+
     ) {
         $this->deliveryNoteService = $deliveryNoteService;
         $this->invoiceService = $invoiceServiceInterface;
@@ -423,20 +425,17 @@ class GuiasderemisionController extends Controller
 
     public function checkguiaremision()
     {
-
-        $webservices = new WebserviceController();
-        $guias = GpGuiaRemision::whereNull('GUI_REM_CODIGO')->get();
-        foreach ($guias as $guiaderemision) {
-            $parameters = array(
-                'documento_origen' => $guiaderemision->GUI_REM_GUIA_REMISION,
-            );
-
-            $result = $webservices->transaccional('MST_Respuesta_Guia_Remision', $parameters);
-
-            if (isset($result['MST_Respuesta_Guia_RemisionResult']['CS_RESPUESTA_GUIA_REMISION'][0]['CLAVE_ACCESO'])) {
-                $guiaderemision->GUI_REM_CODIGO = $result['MST_Respuesta_Guia_RemisionResult']['CS_RESPUESTA_GUIA_REMISION'][0]['CLAVE_ACCESO'];
-                $guiaderemision->save();
-            }
+        try {
+            DB::beginTransaction();
+            $this->deliveryNoteService->mapAssigmentNumberGuideRemision();
+            DB::commit();
+            return $this->buildSuccessResponse('Guias de remision actualizadas',  200);
+        } catch (\Throwable $e) {
+            Log::error('Error en la funcion de checkGuiaRemision', [
+                'error' => $e->getMessage(),
+            ]);
+            DB::rollBack();
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
@@ -598,40 +597,41 @@ class GuiasderemisionController extends Controller
 
     public function despacharguia($id)
     {
-        DB::beginTransaction();
+        $user = Auth::user();
+
         try {
-            // Bloquea la fila para este proceso
-            $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
+            return DB::transaction(function () use ($user, $id) {
+                 $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
+
+            // Re-chequea después del lock (otro proceso pudo enviarla)
             if ($guia->estado === 'enviada') {
-                DB::rollBack(); // No es necesario, pero explícito
                 return response([
                     'success' => true,
                     'message' => 'Guía de remisión despachada por otro usuario',
                 ]);
             }
+                $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)->get();
+                $response = null;
 
-            $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
+                switch ($guia->tipo) {
+                    case 'transferencia':
+                        $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle,  $user);
+                        break;
+                    case 'despacho':
+                        $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle,  $user);
 
-            $response = null;
+                        break;
+                    case 'reposicion':
+                        $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle,  $user);
 
-            switch ($guia->tipo) {
-                case 'transferencia':
-                    $response = $this->despacharguiatransferencia($guia, $detalle);
-                    break;
-                case 'despacho':
-                    $response = $this->despacharguiadespacho($guia, $detalle);
-                    break;
-                case 'reposicion':
-                    $response = $this->despacharguiareposicion($guia, $detalle);
-                    break;
-                default:
-                    throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
-            }
+                        break;
+                    default:
+                        throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
+                }
 
-            DB::commit();
-            return $response;
+                return $response;
+            }, 5);
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error('Error en despachar guia de remision (despacharguia)', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -642,185 +642,6 @@ class GuiasderemisionController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
-    }
-
-    public function despacharguiareposicion(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
-    {
-
-        $user = Auth::user();
-
-        $documentos = array();
-
-        foreach ($detalle as $item) {
-            $traslado = GpTrasladosReposicion::where('id', $item->detalle_id)
-                ->whereNull('completado')
-                ->first();
-
-            if ($traslado) {
-                $item->traslado = $traslado;
-                $documentos[$traslado->Documento]['Documento'] = $traslado->Documento;
-                $documentos[$traslado->Documento]['items'][] = $item;
-            }
-        }
-
-        $documentos = array_values($documentos);
-
-        $webservices = new WebserviceController();
-
-        $listo = false;
-
-        foreach ($documentos as $transferencia) {
-            $item_arr = array();
-            foreach ($transferencia['items'] as $key => $item) {
-                $item_arr[$key]['Item'] = $item->GUI_REM_CODI_INTERNO;
-                $item_arr[$key]['Compartimento'] = '';
-                $item_arr[$key]['Cantidad'] = $item->GUI_REM_CANTIDAD;
-            }
-
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Documento' => $transferencia['Documento'],
-                'BodegaOrigen' => $guia->bodega_origen,
-                'BodegaDestino' => $guia->bodega_destino,
-                'Observacion' => $guia->GUI_REM_OBSERVACION,
-                'Usuario' => $user->USERID,
-                'Items' => $item_arr
-            );
-
-            $respuesta = $webservices->inventario('GeneraTransferenciaReposicion', $parameters);
-
-            if (isset($respuesta['GeneraTransferenciaReposicionResult']['Retorno'][0]['Codigo']) && $respuesta['GeneraTransferenciaReposicionResult']['Retorno'][0]['Codigo'] == '0') {
-                foreach ($transferencia['items'] as $key => $item) {
-                    $traslado = $item->traslado;
-                    $traslado->reservado = $traslado->reservado - $item->GUI_REM_CANTIDAD;
-                    $traslado->trasladado = $traslado->trasladado + $item->GUI_REM_CANTIDAD;
-
-                    if ($traslado->trasladado == $traslado->cantidad) {
-                        $traslado->completado = 1;
-                    }
-                    $traslado->save();
-
-                    $listo = true;
-                }
-
-                $docu_transferencia = new GpGuiaRemisionTransferencia();
-                $docu_transferencia->guia_remision_id = $guia->id;
-                $docu_transferencia->pedido = $transferencia['Documento'];
-                $docu_transferencia->codigo = $respuesta['GeneraTransferenciaReposicionResult']['Retorno'][0]['Mensaje'];
-                $docu_transferencia->save();
-            } else {
-                return response([
-                    'success' => false,
-                    'message' => $respuesta['GeneraTransferenciaReposicionResult']['Retorno'][0]['Mensaje'],
-                ]);
-            }
-        }
-        if ($listo) {
-            $guia->estado = 'enviada';
-            $guia->save();
-        }
-        return response([
-            'success' => true,
-            'message' => 'Guía de remisión despachada',
-        ]);
-    }
-
-    public function despacharguiatransferencia(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
-    {
-
-        $user = Auth::user();
-
-
-        $documentos = array();
-
-        foreach ($detalle as $item) {
-            $traslado = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
-                ->where('gp_traslados_ventas.id', $item->detalle_id)
-                ->whereNull('gp_traslados_ventas.completado')
-                ->select('gp_traslados_ventas.*', 'gp_pedidos.pedido')
-                ->first();
-
-            if ($traslado) {
-                $item->traslado = $traslado;
-
-                $documentos[$traslado->pedido]['pedido'] = $traslado->pedido;
-                $documentos[$traslado->pedido]['items'][] = $item;
-            }
-        }
-
-        $documentos = array_values($documentos);
-
-        $webservices = new WebserviceController();
-
-        $listo = false;
-
-        foreach ($documentos as $transferencia) {
-            $item_arr = array();
-            foreach ($transferencia['items'] as $key => $item) {
-                $item_arr[$key]['Item'] = $item->GUI_REM_CODI_INTERNO;
-                $item_arr[$key]['Compartimento'] = '';
-                $item_arr[$key]['Cantidad'] = $item->GUI_REM_CANTIDAD;
-            }
-
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Pedido' => $transferencia['pedido'],
-                'BodegaOrigen' => $guia->bodega_origen,
-                'BodegaDestino' => $guia->bodega_destino,
-                'Observacion' => $guia->GUI_REM_OBSERVACION,
-                'Usuario' => $user->USERID,
-                'Items' => $item_arr
-            );
-
-
-
-            $respuesta = $webservices->inventario('GeneraTransferenciaVenta', $parameters);
-
-
-
-            if (isset($respuesta['GeneraTransferenciaVentaResult']['Retorno'][0]['Codigo']) && $respuesta['GeneraTransferenciaVentaResult']['Retorno'][0]['Codigo'] == '0') {
-                foreach ($transferencia['items'] as $key => $item) {
-                    $traslado = $item->traslado;
-                    $traslado->reservado = $traslado->reservado - $item->GUI_REM_CANTIDAD;
-                    $traslado->trasladado = $traslado->trasladado + $item->GUI_REM_CANTIDAD;
-
-                    if ($traslado->trasladado == $traslado->cantidad) {
-                        $traslado->completado = 1;
-                    }
-                    $traslado->save();
-
-
-
-                    $stock = GpPedidoDetalleStock::where('detalle_id', $traslado->detalle_id)
-                        ->where('STO_ART_BODEGA', $traslado->bodega_origen)
-                        ->first();
-
-                    $stock->reservado = $stock->reservado - $item->GUI_REM_CANTIDAD;
-                    $stock->save();
-
-                    $listo = true;
-                }
-
-                $docu_transferencia = new GpGuiaRemisionTransferencia();
-                $docu_transferencia->guia_remision_id = $guia->id;
-                $docu_transferencia->pedido = $transferencia['pedido'];
-                $docu_transferencia->codigo = $respuesta['GeneraTransferenciaVentaResult']['Retorno'][0]['Mensaje'];
-                $docu_transferencia->save();
-            } else {
-                return response([
-                    'success' => false,
-                    'message' => $respuesta['GeneraTransferenciaVentaResult']['Retorno'][0]['Mensaje'],
-                ]);
-            }
-        }
-        if ($listo) {
-            $guia->estado = 'enviada';
-            $guia->save();
-        }
-        return response([
-            'success' => true,
-            'message' => 'Guía de remisión despachada',
-        ]);
     }
 
     public function despacharguiadespacho(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
@@ -852,7 +673,8 @@ class GuiasderemisionController extends Controller
             //$guia->delete();
             $order = app(OrderServiceInterface::class);
             $dispatch = app(DispatchServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch);
+            $logistics = app(LogisticsOperationsServiceInterface::class);
+            $despachos = new DespachosController($order, $dispatch, $logistics);
             $pedido = $despachos->checkdespacho($guia);
             return response([
                 'success' => true,
@@ -957,7 +779,8 @@ class GuiasderemisionController extends Controller
         }
         $order = app(OrderServiceInterface::class);
         $dispatch = app(DispatchServiceInterface::class);
-        $despachos = new DespachosController($order, $dispatch);
+        $logistics = app(LogisticsOperationsServiceInterface::class);
+        $despachos = new DespachosController($order, $dispatch, $logistics);
         $pedido = $despachos->checkdespacho($guia);
 
 
