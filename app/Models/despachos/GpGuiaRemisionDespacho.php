@@ -13,6 +13,7 @@ class GpGuiaRemisionDespacho extends Model
         'guia_remision_id',
         'codigo',
         'pedido',
+        'id_movimiento'
     ];
 
 

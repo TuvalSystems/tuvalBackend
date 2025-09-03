@@ -279,7 +279,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
             if ($response['success'] === false) {
                 $guia->update(['procesando' => null]);
-                throw new \Exception('Error al generar la guía de despacho, intente de nuevo en un minuto');
+                throw new \Exception($response['message']);
             }
 
             if ($guia->rebajado) {
@@ -374,12 +374,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
         $dispatchTrfv = new GpGuiaRemisionDespacho();
         $dispatchTrfv->guia_remision_id = $guia->id;
+        $dispatchTrfv->id_movimiento = $responseApi['idMovimiento'];
         $dispatchTrfv->pedido = $documento;
         $dispatchTrfv->codigo = $responseApi['docGp'];
         $dispatchTrfv->save();
     }
-
-
 
     // reposicion
     public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user)
