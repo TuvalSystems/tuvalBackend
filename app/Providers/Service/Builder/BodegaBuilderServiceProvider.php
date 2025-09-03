@@ -2,9 +2,11 @@
 
 namespace App\Providers\Service\Builder;
 
-use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
-use App\Services\Builders\Bodega\DeliveryNoteParamsBuilder;
 use Illuminate\Support\ServiceProvider;
+use App\Services\Builders\Bodega\DeliveryNoteParamsBuilder;
+use App\Services\Builders\Devolucion\DevolucionParamsBuilder;
+use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
+use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 
 class BodegaBuilderServiceProvider extends ServiceProvider
 {
@@ -18,6 +20,11 @@ class BodegaBuilderServiceProvider extends ServiceProvider
         $this->app->singleton(
             DeliveryNoteParamsBuilderInterface::class,
             DeliveryNoteParamsBuilder::class
+        );
+
+         $this->app->singleton(
+            DevolucionParamsBuilderInterface::class,
+            DevolucionParamsBuilder::class
         );
     }
 
