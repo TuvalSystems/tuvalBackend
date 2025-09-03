@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
@@ -26,6 +27,7 @@ use App\Services\Api\ApiSeedBellingService;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +46,7 @@ class DevolucionService implements DevolucionServiceInterface
     protected DevolucionRepositoryInterface $devolucionRepository;
     protected OrderRepositoryInterface $orderRepository;
     protected NotificationServiceInterface $notificationService;
+    protected $devolucionBuilder;
 
     public function __construct(
 
@@ -53,6 +56,7 @@ class DevolucionService implements DevolucionServiceInterface
         ApprovalServiceInterface $approvalService,
         DevolucionRepositoryInterface $devolucionRepository,
         OrderRepositoryInterface $orderRepository,
+        DevolucionParamsBuilderInterface $devolucionBuilder
     ) {
         $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
         $this->apiSales = $apiSales;
@@ -60,6 +64,7 @@ class DevolucionService implements DevolucionServiceInterface
         $this->approvalService = $approvalService;
         $this->devolucionRepository = $devolucionRepository;
         $this->orderRepository = $orderRepository;
+        $this->devolucionBuilder = $devolucionBuilder;
     }
 
 
@@ -629,7 +634,7 @@ class DevolucionService implements DevolucionServiceInterface
         ]);
 
         if (!$grupoEconomico['success']) {
-           return $this->buildErrorResponse($grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente', 400);
+            return $this->buildErrorResponse($grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente', 400);
         }
 
         $clientesArr = collect($grupoEconomico['CGE_RUC'] ?? [])->map(function ($ruc) {
@@ -1053,9 +1058,9 @@ class DevolucionService implements DevolucionServiceInterface
                 $compartimiento = $detalle->ART_TIPO_COMPRA === 'L' ? $pedido->pedido : $detalle->compartimiento;
 
                 return [
-                    'Item' => $detalle->ART_CODIGO,
-                    'Cantidad' => $devuelto,
-                    'Compartimento' => $compartimiento
+                    'item' => $detalle->ART_CODIGO,
+                    'cantidad' => $devuelto,
+                    'compartimiento' => $compartimiento
                 ];
             })->filter()->values()->toArray(); // Removemos los nulos y reindexamos el array
 
@@ -1067,40 +1072,39 @@ class DevolucionService implements DevolucionServiceInterface
             }
 
             // 🔄 Parámetros para la integración
-            $parms = [
-                'IDCompania' => config('services.api_gp.company'),
-                'Documento' => $devolucion->devolucion,
-                'PedidoOrigen' => $pedido->pedido,
-                'Bodega' => $pedido->BOD_BODEGA,
-                'Observacion' => $devolucion->DOC_GENERADO,
-                'Usuario' => $userId ?? 'adminWeb',
-                'Items_Devolucion' => $itemsDevolucion,
-            ];
+            $params = $this->devolucionBuilder->builderParamsDevolutionAdjustment($devolucion, $pedido, $userId, $itemsDevolucion);
 
             // 🚀 Llamada al servicio
-            $res1 = $this->apiGpReturnsIntegrationService->generateSalesReturn($parms);
-
-            // ✅ Validación de la respuesta
-            $codigo = Arr::get($res1, '0.codigo', 99); // Si no existe 'codigo', se asume error 99
-            $success = Arr::get($res1, '0.success', false);
-            $mensaje = Arr::get($res1, '0.mensaje', 'Error desconocido');
-
-            if (!$success) {
-                Log::channel('devolucion')->error("Error en procesar la devolución: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
-                $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
+            $res1 = $this->apiGpReturnsIntegrationService->generateSalesReturn($params);
+            if ($res1['success'] === false) {
+                Log::error("Error al realizar el Ajuste de la devolucion ", [
+                    'res1' => $res1
+                ]);
+                $devolucion->AJ_VTA_MENSAJE = $res1['message'];
                 $devolucion->devolucion_bodega = false;
                 $devolucion->save();
-                throw new \Exception('Ajuste : Codigo - ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
+                throw new \Exception('Ajuste : mensaje -  ' . ($res1['message'] ?? 'Error desconocido'));
             }
-            Log::channel('devolucion')->info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1[0]));
+            $this->createDocumentDevolution($devolucion, $res1['data'], $userId);
             // 🟢 Actualización correcta
             $devolucion->devolucion_bodega = true;
             $devolucion->save();
 
-            return $this->buildSuccessResponse($mensaje, 200);
+            return $this->buildSuccessResponse('Ajuste realizado correctamente', 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
+    }
+
+    public function createDocumentDevolution($devolucion, $responseApi, $userId)
+    {
+        $devDoc = new GpDevolucionDocument();
+        $devDoc->devolucion_id = $devolucion->id;
+        $devDoc->devolucion = $devolucion->devolucion;
+        $devDoc->id_movimiento = $responseApi['idMovimiento'];
+        $devDoc->documento_gp = $responseApi['docGp'];
+        $devDoc->user_id = $userId;
+        $devDoc->save();
     }
 
 
