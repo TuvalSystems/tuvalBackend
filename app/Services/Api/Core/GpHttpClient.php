@@ -43,7 +43,7 @@ class GpHttpClient
             $client = method_exists($client, 'connectTimeout')
                 ? $client->connectTimeout(3)
                 : $client->withOptions(['connect_timeout' => 3]);
-            $client = $client->retry(3, 200) // 3 intentos, 200ms backoff
+            $client = $client->retry(0) // 3 intentos, 200ms backoff
                 ->withHeaders([
                     'Accept'           => 'application/json',
                     'X-Correlation-Id' => $cid,
