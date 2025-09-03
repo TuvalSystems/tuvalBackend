@@ -23,4 +23,20 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'detalle' => $items
         ];
     }
+
+
+    public function buildParameterHeaderAndDetailDispatchShipment(GpGuiaRemision $guia, string $documento, string $newOrder, array $items, $user): array{
+        $header = [
+            'idCompany' => config('services.api_gp.company'),
+            'pedido' => $documento,
+            'pedidoNuevo' => $newOrder,
+            'bodegaOrigen' => $guia->bodega_origen,
+            'observacion' => $guia->GUI_REM_OBSERVACION,
+            'usuario' => $user->USERID ?? 'adminWeb',
+        ];
+        return [
+            'cabecera' => $header,
+            'detalle' => $items
+        ];
+    }
 }

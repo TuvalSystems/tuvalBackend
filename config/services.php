@@ -75,11 +75,12 @@ return [
 
 
             //cliente
-            'obtener_tipo_vendedor'                    => 'api/cliente/obtener-tipo-vendedor',
+            'obtener_tipo_vendedor'                     => 'api/cliente/obtener-tipo-vendedor',
 
-            // guia de remision
+            // guia de remision - despacho                  
             'guia.trfv.movimientos.generar'             => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
-            'guia.reposicion.movimiento.generar'               => 'api/inventario/guardar-generar-movimiento-reposicion',
+            'guia.reposicion.movimiento.generar'        => 'api/inventario/guardar-generar-movimiento-reposicion',
+            'guia.despacho.movimiento.generar'          => 'api/inventario/guardar-generar-movimiento-despacho',
             'guia.obtener.clave_acceso'                 => 'api/inventario/guia-remision-obtener-claveacceso',
         ],
     ],

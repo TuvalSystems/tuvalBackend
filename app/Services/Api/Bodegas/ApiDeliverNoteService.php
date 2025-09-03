@@ -23,4 +23,9 @@ class ApiDeliverNoteService  extends ApiGpService
     {
         return $this->httpClient->makeRequest($this->endpoints["guia.reposicion.movimiento.generar"], 'POST', $params, 'json');
     }
+
+    public function createDispatchShipmentGuideVta(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.despacho.movimiento.generar"], 'POST', $params, 'json');
+    }
 }

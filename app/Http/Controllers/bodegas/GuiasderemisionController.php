@@ -28,6 +28,7 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,8 @@ class GuiasderemisionController extends Controller
     public function __construct(
         DeliveryNoteServiceInterface $deliveryNoteService,
         InvoiceServiceInterface $invoiceServiceInterface,
-        NotificationServiceInterface $notificacionService
+        NotificationServiceInterface $notificacionService,
+
     ) {
         $this->deliveryNoteService = $deliveryNoteService;
         $this->invoiceService = $invoiceServiceInterface;
@@ -425,7 +427,7 @@ class GuiasderemisionController extends Controller
     {
         try {
             DB::beginTransaction();
-            $this->deliveryNoteService->asigmentNumberGuideRemision();
+            $this->deliveryNoteService->mapAssigmentNumberGuideRemision();
             DB::commit();
             return $this->buildSuccessResponse('Guias de remision actualizadas',  200);
         } catch (\Throwable $e) {
@@ -617,12 +619,12 @@ class GuiasderemisionController extends Controller
                     $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle,  $user);
                     break;
                 case 'despacho':
-                     $response = $this->despacharguiadespacho($guia, $detalle);
-                     $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle,  $user);
+                    // $response = $this->despacharguiadespacho($guia, $detalle);
+                    $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle,  $user);
 
                     break;
                 case 'reposicion':
-                     $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle,  $user);
+                    $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle,  $user);
 
                     break;
                 default:
@@ -645,7 +647,7 @@ class GuiasderemisionController extends Controller
         }
     }
 
-   public function despacharguiadespacho(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
+    public function despacharguiadespacho(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
     {
         $user = Auth::user();
         $listo = false;
@@ -674,7 +676,8 @@ class GuiasderemisionController extends Controller
             //$guia->delete();
             $order = app(OrderServiceInterface::class);
             $dispatch = app(DispatchServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch);
+            $logistics = app(LogisticsOperationsServiceInterface::class);
+            $despachos = new DespachosController($order, $dispatch, $logistics);
             $pedido = $despachos->checkdespacho($guia);
             return response([
                 'success' => true,
@@ -779,7 +782,8 @@ class GuiasderemisionController extends Controller
         }
         $order = app(OrderServiceInterface::class);
         $dispatch = app(DispatchServiceInterface::class);
-        $despachos = new DespachosController($order, $dispatch);
+        $logistics = app(LogisticsOperationsServiceInterface::class);
+        $despachos = new DespachosController($order, $dispatch, $logistics);
         $pedido = $despachos->checkdespacho($guia);
 
 

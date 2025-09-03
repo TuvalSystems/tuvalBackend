@@ -2,7 +2,6 @@
 
 namespace App\Services\Pedidos;
 
-use App\Http\Controllers\bodegas\DespachosController;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -17,20 +16,17 @@ class OrderJobService
 {
     use JsonResponseTrait;
     protected $webService;
-    protected $despachoController;
     protected $invoiceService;
     protected $orderService;
     protected $orderRepository;
 
     public function __construct(
         MswService $webService,
-        DespachosController $despachoController,
         InvoiceServiceInterface $invoiceService,
         OrderServiceInterface $orderServiceInterface,
         OrderRepositoryInterface $orderRepository
     ) {
         $this->webService = $webService;
-        $this->despachoController = $despachoController;
         $this->invoiceService = $invoiceService;
         $this->orderService = $orderServiceInterface;
         $this->orderRepository = $orderRepository;

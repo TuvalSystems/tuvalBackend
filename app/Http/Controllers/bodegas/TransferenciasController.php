@@ -19,18 +19,18 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class TransferenciasController extends Controller
 {
     protected $invoiceService;
-    protected $deliveryNoteService;
+    protected $logisticsOperationsService;
     protected $stockWarehouseService;
-    public function __construct(InvoiceServiceInterface $invoiceService,    DeliveryNoteServiceInterface $deliveryNoteService, StockWarehouseServiceInterface $stockWarehouseService)
+    public function __construct(InvoiceServiceInterface $invoiceService, LogisticsOperationsServiceInterface $logisticsOperationsService, StockWarehouseServiceInterface $stockWarehouseService)
     {
         $this->invoiceService = $invoiceService;
-        $this->deliveryNoteService = $deliveryNoteService;
+        $this->logisticsOperationsService = $logisticsOperationsService;
         $this->stockWarehouseService = $stockWarehouseService;
     }
     public function savetransferenciasventas(GpPedido $pedido, $detalles)
@@ -176,7 +176,7 @@ class TransferenciasController extends Controller
 
         $bodegas = array_values($bodegas);
 
-        $this->deliveryNoteService->asigmentNumberGuideRemision();
+        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
         if (!isset($bodegas[0])) {
             return response([
                 'error' => 'No existen resultados'

@@ -9,8 +9,10 @@ use App\Services\Bodegas\PurchaseReceiptService;
 use App\Services\Bodegas\PurchaseReceiptLItemService;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Services\Bodegas\LogisticsOperationsService;
 
 class BodegasServiceProvider extends ServiceProvider
 {
@@ -40,6 +42,11 @@ class BodegasServiceProvider extends ServiceProvider
         $this->app->singleton(
             DeliveryNoteServiceInterface::class,
             DeliveryNoteService::class
+        );
+
+           $this->app->singleton(
+            LogisticsOperationsServiceInterface::class,
+            LogisticsOperationsService::class
         );
     }
 

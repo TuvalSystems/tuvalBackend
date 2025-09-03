@@ -29,16 +29,15 @@ use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Http\Controllers\bodegas\DespachosController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+
 
 class PedidosController extends Controller
 {
@@ -92,11 +91,7 @@ class PedidosController extends Controller
     {
         $pedido = GpPedido::where('id', $id)
             ->first();
-        $order = app(OrderServiceInterface::class);
-        $dispatch = app(DispatchServiceInterface::class);
-        $despachos = new DespachosController($order, $dispatch);
-        // $despachos = new DespachosController();
-        $despachos->generarordendespacho($pedido);
+        $this->invoiceService->generateDisptachOrder($pedido);
     }
 
 
@@ -158,15 +153,10 @@ class PedidosController extends Controller
                     $listo = 'no';
                 }
             }
-            $order = app(OrderServiceInterface::class);
-            $dispatch = app(DispatchServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch);
-            // $despachos = new DespachosController();
             if ($listo == 'yes') {
                 $pedido->estado = 'espera';
                 $pedido->save();
-                $despachos->generarordendespacho($pedido);
-
+                $this->invoiceService->generateDisptachOrder($pedido);
                 $this->invoiceService->sendInvoiceGp($pedido);
             }
         }
