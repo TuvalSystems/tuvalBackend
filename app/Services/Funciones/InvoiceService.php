@@ -409,6 +409,8 @@ class InvoiceService implements InvoiceServiceInterface
             $order->save();
             Log::info("Pedido {$order->pedido} actualizado a estado 'traslado' por traslado pendiente. No se Factura");
         }
+        $order->estado = 'espera';
+        $order->save();
         return $tieneTraslado;
     }
 
