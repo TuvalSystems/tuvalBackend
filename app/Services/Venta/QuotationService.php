@@ -170,6 +170,7 @@ class QuotationService implements QuotationServiceInterface
             $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
                 'success' => true,
@@ -177,6 +178,7 @@ class QuotationService implements QuotationServiceInterface
                 'currentSucursal' => $data['sucursal_id'],
                 'cotizacion_id' => $data['id'],
                 'test' => 'recuperarcotizacion',
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -602,16 +604,19 @@ class QuotationService implements QuotationServiceInterface
                 $this->castDecimalValuesTemp($det);
                 $this->loadProviderDetailQuotation($data['id'], $det,  $descuentoGeneral);
             }
-
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             return response([
                 'success' => true,
                 'estadodecuenta' => $estadoCuenta,
                 'detalle' => $detalle,
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
+
 
     public function loadProviderDetailQuotation($quotationId, &$detalle,  $descuentoGeneral)
     {
@@ -693,11 +698,10 @@ class QuotationService implements QuotationServiceInterface
                 }
             }
         }
-
         $this->functionService->recalculateIva($articulosTemp);
         return response([
             'success' => true,
-            'articulos' => $articulosTemp
+            'articulos' => $articulosTemp,
         ]);
     }
 
@@ -872,13 +876,15 @@ class QuotationService implements QuotationServiceInterface
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
             $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
+             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
                 'success' => true,
                 'cliente' => $cliente,
                 'registro_copia' => $registroCopiaId,
                 'currentSucursal' => $data['sucursal_id'],
-                'test' => 'volver_a_pedir'
+                'test' => 'volver_a_pedir',
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();

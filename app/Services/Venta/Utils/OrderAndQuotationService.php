@@ -146,7 +146,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         }
     }
 
-      public function restoreDescriptionItemQuotation($articulo, $bodega)
+    public function restoreDescriptionItemQuotation($articulo, $bodega)
     {
         $params = ['articulo' => $articulo, 'bodega' => $bodega];
         $articulo = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
@@ -196,5 +196,14 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         }
         $registroCopia->save();
         return $registroCopia->id;
+    }
+
+    public function getSegmentoCliente($ruc)
+    {
+        $response = $this->apiGpService->fetchClientSegment([
+            'ruc' => $ruc,
+        ]);
+        $data = data_get($response, 'data', []);
+        return is_array($data) ? $data : (array) $data;
     }
 }

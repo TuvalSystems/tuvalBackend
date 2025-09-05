@@ -558,7 +558,7 @@ class OrderService implements OrderServiceInterface
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
         return response([
             'success' => true,
             'detalle' => $detalle,
@@ -570,6 +570,7 @@ class OrderService implements OrderServiceInterface
             'devoluciones' => $devoluciones,
             'pendientes' => $pendientes,
             'existentes' => $existentes,
+            'segmento' => $segmento
         ]);
     }
 
@@ -652,13 +653,15 @@ class OrderService implements OrderServiceInterface
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data, $user);
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
                 'success' => true,
                 'cliente' => $cliente,
                 'registro_copia' => $registerCopyId,
                 'currentSucursal' => $data['sucursal_id'],
-                'test' => 'volver_a_pedir'
+                'test' => 'volver_a_pedir',
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -684,6 +687,8 @@ class OrderService implements OrderServiceInterface
             $data['pedido']['cliente_id'] = $data['cliente_id'];
             $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
+             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
+
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
             DB::commit();
@@ -692,7 +697,8 @@ class OrderService implements OrderServiceInterface
                 'cliente' => $cliente,
                 'registro_copia' => $registerCopyId,
                 'currentSucursal' => $data['sucursal_id'],
-                'test' => 'copiarpedido'
+                'test' => 'copiarpedido',
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();

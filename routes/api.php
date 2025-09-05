@@ -112,7 +112,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/pedidos/facturarexistente', [PedidosController::class, 'facturarexistente']);
     Route::post('/pedidos/facturardespachado', [PedidosController::class, 'facturardespachado']);
     // Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
-    Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
+
     Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);
     Route::post('/cotizaciones/recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
     Route::post('/cotizaciones/volverapedircotizacion', [CotizacionesController::class, 'volverapedircotizacion']);
@@ -246,6 +246,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
 
+
+          Route::post('detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
 
         /** Proceso Clientes */
         Route::post('obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
