@@ -252,6 +252,11 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
         Route::post('validar-segmento-cliente', [CotizacionesController::class, 'validarSegmentoCliente']);
         Route::post('actualizar-segmento-cliente', [CotizacionesController::class, 'actualizarSegmentoCliente']);
+
+
+        /** reservas */
+        Route::get('reserva/cabecera-cotizaciones/{id}', [CotizacionesController::class, 'getReservaCotizacion']);
+        Route::get('reserva/lista-tipo-reservas', [CotizacionesController::class, 'obtenerListaTipoReservas']);
     });
 
     Route::group(['prefix' => 'pedidos'], function () {

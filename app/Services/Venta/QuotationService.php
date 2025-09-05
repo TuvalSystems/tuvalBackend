@@ -28,6 +28,7 @@ use App\Models\GpRegistroCopia;
 use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
+use App\Models\reservas\GpTipoReservas;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
@@ -1427,5 +1428,34 @@ class QuotationService implements QuotationServiceInterface
             'bodega' => $bodega
         ];
         return  $this->stockSqlService->consultStockWarehouseSql($params);
+    }
+
+
+
+
+    /**
+     *  RESERVAS
+     */
+
+    public function getQuotationHeaderReservedByID(int $id)
+    {
+        return $this->quotationRepository->getQuotationHeaderById($id);
+    }
+
+    public function saveQuotationHeaderReserved(array $data, GpUsuario $user)
+    {
+        GpCotizacion::find($data['id'])->update([
+            'st_solResInv' => 'P',
+            'co_tipSolResInv' => $data['tipo_reserva'],
+            'fe_solResInv' => $data['fecha_reserva'],
+            'tx_obsSolResInv' => $data['observacion'],
+            'co_usrIngSolResInv' => $user->id
+        ]);
+    }
+
+
+    public function fetchListTipeReserved()
+    {
+        return GpTipoReservas::where('estado', 1)->get();
     }
 }

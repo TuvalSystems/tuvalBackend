@@ -162,15 +162,27 @@ class GpCotizacion extends Model
         'aprobado_comercial_mensaje',
         'fecha_entrega',
         'facturado',
-        'user_ing_recordatorio'
+        'user_ing_recordatorio',
+        'st_solResInv',
+        'co_TipSolResInv',
+        'co_tipTrasResInv',
+        'co_FecSolResInv',
+        'tx_obsSolResInv',
+        'fe_ingSolResInv',
+        'co_usrIngSolResInv',
+        'st_autSolResInv',
+        'fe_autSolResInv',
+        'tx_obsAutSolResInv',
+        'co_usrIngAutSolResInv',
+        'fe_ingAutSolResInv',
     ];
 
     /**
-    * Prepare a date for array / JSON serialization.
-    *
-    * @param  \DateTimeInterface  $date
-    * @return string
-    */
+     * Prepare a date for array / JSON serialization.
+     *
+     * @param  \DateTimeInterface  $date
+     * @return string
+     */
     protected function serializeDate(DateTimeInterface $date): string
     {
         return $date->format('Y-m-d H:i');
@@ -196,6 +208,4 @@ class GpCotizacion extends Model
     {
         return $this->belongsTo(GpUsuario::class, 'user_ing_recordatorio');
     }
-
-
 }

@@ -83,4 +83,13 @@ interface QuotationServiceInterface
      /*** prueba  */
 
      public function consultaStockPrueba ($articulo, $bodega);
+
+
+     /**
+      *  reservas
+      */
+
+     public function getQuotationHeaderReservedByID(int $id);
+     public function saveQuotationHeaderReserved(array $data , GpUsuario $user);
+     public function fetchListTipeReserved();
 }

@@ -21,11 +21,13 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
 use App\Models\GpPedido;
+use App\Models\GpUsuario;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class CotizacionesController extends Controller
 {
@@ -1265,22 +1267,26 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    public function obtenerListaSegmentos(){
+    public function obtenerListaSegmentos()
+    {
 
         return $this->quotationService->getSegmentosSqlServer();
     }
 
-    public function obtenerListaSubSegmentos(Request $request){
+    public function obtenerListaSubSegmentos(Request $request)
+    {
         $segmento = $request->get('segmento', null);
         return $this->quotationService->getSubSegmentosSqlServer($segmento);
     }
 
-    public function validarSegmentoCliente(Request $request){
+    public function validarSegmentoCliente(Request $request)
+    {
         $cliente = $request->get('cliente', null);
-            return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+        return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
     }
 
-    public function actualizarSegmentoCliente(Request $request){
+    public function actualizarSegmentoCliente(Request $request)
+    {
         $cliente = $request->get('cliente', null);
         $segmento = $request->get('segmento', null);
         $subsegmento = $request->get('subsegmento', null);
@@ -1288,8 +1294,43 @@ class CotizacionesController extends Controller
     }
 
 
-    public function obtenerStockPrueba ($articulo, $bodega){
+    public function obtenerStockPrueba($articulo, $bodega)
+    {
 
         return $this->quotationService->consultaStockPrueba($articulo, $bodega);
+    }
+
+
+    public function getReservaCotizacion($id)
+    {
+        try {
+            $quotation = $this->quotationService->getQuotationHeaderReservedByID($id);
+            return $this->successResponse('Cotizacion obtenida correctamente', $quotation, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function guardarReservaCotización(Request $request)
+    {
+        $gpUser = GpUsuario::find(Auth::user()->id);
+        try {
+            return DB::transaction(function () use ($request, $gpUser) {
+                $this->quotationService->saveQuotationHeaderReserved($request->all(), $gpUser);
+                return $this->buildSuccessResponse('Cotizacion guardada correctamente',  200);
+            });
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerListaTipoReservas()
+    {
+        try {
+            $data =  $this->quotationService->fetchListTipeReserved();
+            return $this->successResponse('Tipos de reservas obtenidos correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 }
