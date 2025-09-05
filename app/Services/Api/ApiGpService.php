@@ -97,4 +97,9 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest($this->endpoints["obtener_tipo_vendedor"], 'POST', $params, 'json');
     }
+
+     public function fetchClientSegment(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["obtener_segmento_cliente"], 'GET', $params, );
+    }
 }

@@ -601,16 +601,19 @@ class QuotationService implements QuotationServiceInterface
                 $this->castDecimalValuesTemp($det);
                 $this->loadProviderDetailQuotation($data['id'], $det,  $descuentoGeneral);
             }
-
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             return response([
                 'success' => true,
                 'estadodecuenta' => $estadoCuenta,
                 'detalle' => $detalle,
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
+
 
     public function loadProviderDetailQuotation($quotationId, &$detalle,  $descuentoGeneral)
     {

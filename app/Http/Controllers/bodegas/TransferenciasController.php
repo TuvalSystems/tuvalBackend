@@ -123,7 +123,7 @@ class TransferenciasController extends Controller
 
 
             $compartimento =  $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
-            $traslado->compartimiento = $compartimento['COMPARTIMIENTO'];
+            $traslado->compartimiento = $compartimento['COMPARTIMIENTO'] ?? '';
 
             $funciones = new FuncionesController();
 

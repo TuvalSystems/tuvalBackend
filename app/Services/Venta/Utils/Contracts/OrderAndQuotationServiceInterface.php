@@ -10,4 +10,6 @@ interface OrderAndQuotationServiceInterface
 
     public function createRegisterCopy($dataId, $user, $typeCopy, $typeRegisterCopy);
 
+    public function getSegmentoCliente($ruc);
+
 }
