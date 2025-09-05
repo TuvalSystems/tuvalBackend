@@ -23,6 +23,7 @@ use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use App\Services\Api\ApiGpService;
 use App\Services\Api\ApiSeedBellingService;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
@@ -47,6 +48,7 @@ class DevolucionService implements DevolucionServiceInterface
     protected OrderRepositoryInterface $orderRepository;
     protected NotificationServiceInterface $notificationService;
     protected $devolucionBuilder;
+    protected $apiGpService;
 
     public function __construct(
 
@@ -56,7 +58,8 @@ class DevolucionService implements DevolucionServiceInterface
         ApprovalServiceInterface $approvalService,
         DevolucionRepositoryInterface $devolucionRepository,
         OrderRepositoryInterface $orderRepository,
-        DevolucionParamsBuilderInterface $devolucionBuilder
+        DevolucionParamsBuilderInterface $devolucionBuilder,
+        ApiGpService $apiGpService
     ) {
         $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
         $this->apiSales = $apiSales;
@@ -65,6 +68,7 @@ class DevolucionService implements DevolucionServiceInterface
         $this->devolucionRepository = $devolucionRepository;
         $this->orderRepository = $orderRepository;
         $this->devolucionBuilder = $devolucionBuilder;
+        $this->apiGpService = $apiGpService;
     }
 
 
@@ -591,11 +595,21 @@ class DevolucionService implements DevolucionServiceInterface
             return $item;
         })->toArray();
 
-
+        $segmento = $this->getSegmentoCliente($pedido['CLI_RUC']);
         return response([
             'success' => true,
             'detalle' => $detalle,
+            'segmento' => $segmento
         ]);
+    }
+
+     public function getSegmentoCliente($ruc)
+    {
+        $response = $this->apiGpService->fetchClientSegment([
+            'ruc' => $ruc,
+        ]);
+        $data = data_get($response, 'data', []);
+        return is_array($data) ? $data : (array) $data;
     }
 
 

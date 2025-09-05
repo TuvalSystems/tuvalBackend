@@ -558,7 +558,7 @@ class OrderService implements OrderServiceInterface
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
         return response([
             'success' => true,
             'detalle' => $detalle,
@@ -570,6 +570,7 @@ class OrderService implements OrderServiceInterface
             'devoluciones' => $devoluciones,
             'pendientes' => $pendientes,
             'existentes' => $existentes,
+            'segmento' => $segmento
         ]);
     }
 
