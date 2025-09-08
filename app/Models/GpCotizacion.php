@@ -164,7 +164,7 @@ class GpCotizacion extends Model
         'facturado',
         'user_ing_recordatorio',
         'st_solResInv',
-        'co_TipSolResInv',
+        'co_tipSolResInv',
         'co_tipTrasResInv',
         'fe_solResInv',
         'tx_obsSolResInv',

@@ -14,12 +14,12 @@ class AddColumnsReservasToGpCotizacionsTable extends Migration
     public function up()
     {
         Schema::table('gp_cotizacions', function (Blueprint $table) {
-            $table->enum('st_solResInv', ['P', 'C'])
+            $table->enum('st_solResInv', ['pendiente','autorizado', 'denegado', 'cancelado', 'facturado'])
                 ->nullable()
                 ->default(null)
-                ->comment('P=Pendiente, C=Confirmada, NULL=Sin estado')
                 ->index();
-            $table->unsignedBigInteger('co_TipSolResInv')->nullable()->unsigned();
+            $table->unsignedBigInteger('co_tipSolResInv')->nullable()->unsigned();
+             $table->unsignedBigInteger('co_tipTrasResInv')->nullable()->unsigned();
             $table->date('fe_solResInv')->nullable();
             $table->string('tx_obsSolResInv', 400)->nullable();
             $table->date('fe_ingSolResInv')->nullable()->index();
@@ -43,6 +43,7 @@ class AddColumnsReservasToGpCotizacionsTable extends Migration
             $table->dropColumn([
             'st_solResInv',
             'co_TipSolResInv',
+            'co_tipTrasResInv',
             'co_FecSolResInv',
             'tx_obsSolResInv',
             'fe_ingSolResInv',

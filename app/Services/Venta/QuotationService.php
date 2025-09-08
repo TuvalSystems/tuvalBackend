@@ -1452,8 +1452,8 @@ class QuotationService implements QuotationServiceInterface
     public function saveQuotationHeaderReserved(array $reserva,  GpUsuario $user)
     {
         GpCotizacion::find($reserva['id'])->update([
-            'st_solResInv' => 'P', // cuando se crean las reservas se cambia el estado a pendiente
-            'co_TipSolResInv' => $reserva['co_TipSolResInv'],
+            'st_solResInv' => 'pendiente', // cuando se crean las reservas se cambia el estado a pendiente
+            'co_tipSolResInv' => $reserva['co_tipSolResInv'],
             'co_tipTrasResInv' => $reserva['co_tipTrasResInv'],  // si va a tener traslado o no
             'fe_solResInv' => $reserva['fe_solResInv'],
             'tx_obsSolResInv' => $reserva['tx_obsSolResInv'],
