@@ -12,14 +12,18 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Http\Controllers\WebserviceController;
+use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class AprobacionesController extends Controller
 {
     protected $approvalService;
-    public function __construct(ApprovalServiceInterface $approvalService)
+    protected $apiGpService;
+
+    public function __construct(ApiGpService $apiGpService, ApprovalServiceInterface $approvalService)
     {
+        $this->apiGpService = $apiGpService;
         $this->approvalService = $approvalService;
     }
 
@@ -106,6 +110,11 @@ class AprobacionesController extends Controller
 
             ->orderBy('created_at', 'ASC')->get();
 
+        foreach ($pedidos as $key => $pedido) {
+            $res = $this->getSegmentoCliente($pedido->CLI_RUC);
+            $pedido->segmento = data_get($res, 'segmento', null);
+            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
+        }
         //where('PTO_VTA_ID', $data['puntodeventa_id'])
 
         $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
@@ -115,6 +124,12 @@ class AprobacionesController extends Controller
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->orderBy('created_at', 'ASC')->get();
+        foreach ($cotizaciones as $key => $cot) {
+
+            $res2 = $this->getSegmentoCliente($pedido->CLI_RUC);
+            $cot->segmento = data_get($res2, 'segmento', null);
+            $cot->subsegmento =  data_get($res2, 'subsegmento', null);
+        }
 
         //where('PTO_VTA_ID', $data['puntodeventa_id'])
 
@@ -123,6 +138,15 @@ class AprobacionesController extends Controller
             'pedidos' => $pedidos,
             'cotizaciones' => $cotizaciones,
         ]);
+    }
+
+    public function getSegmentoCliente($ruc)
+    {
+        $response = $this->apiGpService->fetchClientSegment([
+            'ruc' => $ruc,
+        ]);
+        $data = data_get($response, 'data', []);
+        return is_array($data) ? $data : (array) $data;
     }
 
 
@@ -142,6 +166,11 @@ class AprobacionesController extends Controller
             ->where('estado', '!=', 'eliminado')
             ->orderBy('created_at', 'DESC')->get();
 
+        foreach ($pedidos as $key => $pedido) {
+            $res = $this->getSegmentoCliente($pedido->CLI_RUC);
+            $pedido->segmento = data_get($res, 'segmento', null);
+            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
+        }
 
         return response([
             'success' => true,
@@ -232,7 +261,6 @@ class AprobacionesController extends Controller
 
         $data = $request->all();
         return $this->approvalService->denyCreditApproval($data);
-
     }
 
     public function rechazarpedidocrediticioporstock(Request $request)
