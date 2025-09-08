@@ -39,6 +39,7 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -876,7 +877,7 @@ class QuotationService implements QuotationServiceInterface
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
             $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
-             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
                 'success' => true,
@@ -1448,14 +1449,16 @@ class QuotationService implements QuotationServiceInterface
         return $this->quotationRepository->getQuotationHeaderById($id);
     }
 
-    public function saveQuotationHeaderReserved(array $data, GpUsuario $user)
+    public function saveQuotationHeaderReserved(array $reserva,  GpUsuario $user)
     {
-        GpCotizacion::find($data['id'])->update([
-            'st_solResInv' => 'P',
-            'co_tipSolResInv' => $data['tipo_reserva'],
-            'fe_solResInv' => $data['fecha_reserva'],
-            'tx_obsSolResInv' => $data['observacion'],
-            'co_usrIngSolResInv' => $user->id
+        GpCotizacion::find($reserva['id'])->update([
+            'st_solResInv' => 'P', // cuando se crean las reservas se cambia el estado a pendiente
+            'co_TipSolResInv' => $reserva['co_TipSolResInv'],
+            'co_tipTrasResInv' => $reserva['co_tipTrasResInv'],  // si va a tener traslado o no
+            'fe_solResInv' => $reserva['fe_solResInv'],
+            'tx_obsSolResInv' => $reserva['tx_obsSolResInv'],
+            'co_usrIngSolResInv' => $user->id,
+            'fe_ingSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
     }
 

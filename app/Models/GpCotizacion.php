@@ -166,7 +166,7 @@ class GpCotizacion extends Model
         'st_solResInv',
         'co_TipSolResInv',
         'co_tipTrasResInv',
-        'co_FecSolResInv',
+        'fe_solResInv',
         'tx_obsSolResInv',
         'fe_ingSolResInv',
         'co_usrIngSolResInv',

@@ -20,7 +20,7 @@ class AddColumnsReservasToGpCotizacionsTable extends Migration
                 ->comment('P=Pendiente, C=Confirmada, NULL=Sin estado')
                 ->index();
             $table->unsignedBigInteger('co_TipSolResInv')->nullable()->unsigned();
-            $table->date('co_FecSolResInv')->nullable();
+            $table->date('fe_solResInv')->nullable();
             $table->string('tx_obsSolResInv', 400)->nullable();
             $table->date('fe_ingSolResInv')->nullable()->index();
             $table->unsignedBigInteger('co_usrIngSolResInv')->nullable()->unsigned();

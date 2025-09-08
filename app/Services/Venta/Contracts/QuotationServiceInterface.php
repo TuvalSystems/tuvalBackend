@@ -90,6 +90,6 @@ interface QuotationServiceInterface
       */
 
      public function getQuotationHeaderReservedByID(int $id);
-     public function saveQuotationHeaderReserved(array $data , GpUsuario $user);
+     public function saveQuotationHeaderReserved(array $reserva, GpUsuario $user);
      public function fetchListTipeReserved();
 }

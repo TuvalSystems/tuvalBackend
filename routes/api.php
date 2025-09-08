@@ -247,7 +247,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
 
 
-          Route::post('detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
+        Route::post('detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
 
         /** Proceso Clientes */
         Route::post('obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
@@ -257,8 +257,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
         /** reservas */
-        Route::get('reserva/cabecera-cotizaciones/{id}', [CotizacionesController::class, 'getReservaCotizacion']);
         Route::get('reserva/lista-tipo-reservas', [CotizacionesController::class, 'obtenerListaTipoReservas']);
+        Route::post('reserva/guardar-solicitud-reserva', [CotizacionesController::class, 'guardarReservaCotización']);
     });
 
     Route::group(['prefix' => 'pedidos'], function () {

@@ -1314,9 +1314,10 @@ class CotizacionesController extends Controller
     public function guardarReservaCotización(Request $request)
     {
         $gpUser = GpUsuario::find(Auth::user()->id);
+        $reserva = $request->get('reserva', null);
         try {
-            return DB::transaction(function () use ($request, $gpUser) {
-                $this->quotationService->saveQuotationHeaderReserved($request->all(), $gpUser);
+            return DB::transaction(function () use ($reserva ,  $gpUser) {
+                $this->quotationService->saveQuotationHeaderReserved($reserva ,  $gpUser);
                 return $this->buildSuccessResponse('Cotizacion guardada correctamente',  200);
             });
         } catch (\Throwable $e) {
