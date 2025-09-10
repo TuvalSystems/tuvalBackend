@@ -1444,9 +1444,18 @@ class QuotationService implements QuotationServiceInterface
      *  RESERVAS
      */
 
-    public function getQuotationHeaderReservedByID(int $id)
+
+    public function hasItemsTypeL(int $quotationId)
     {
-        return $this->quotationRepository->getQuotationHeaderById($id);
+        return GpCotizacionDetalle::where('cotizacion_id', $quotationId)
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->exists();
+    }
+
+    public function hasAnyReserveState(int $quotationId)
+    {
+        return GpCotizacion::whereKey($quotationId)->whereNotNull('st_solResInv')->where('st_solResInv', '!=', '')
+            ->exists();
     }
 
     public function saveQuotationHeaderReserved(array $reserva,  GpUsuario $user)
@@ -1466,5 +1475,88 @@ class QuotationService implements QuotationServiceInterface
     public function fetchListTipeReserved()
     {
         return GpTipoReservas::where('estado', 1)->get();
+    }
+
+    public function fetchListReservedPending($perpage, $search, $sortBy = null, $sortOrder = 'asc')
+    {
+        $query = GpCotizacion::select([
+            'gp_cotizacions.id',
+            'gp_cotizacions.cotizacion',
+            'gp_cotizacions.PTO_VTA_DESCRIPCION',
+            'gp_cotizacions.CLI_RAZON_SOCIAL',
+            'gp_cotizacions.created_at',
+            'gp_cotizacions.total',
+            'gp_cotizacions.fe_solResInv',
+            'gp_cotizacions.st_solResInv',
+            'gp_tipo_reservas.descripcion as tipo_reserva',
+            'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
+            'gp_cotizacions.tx_obsSolResInv',
+        ])->from('gp_cotizacions')
+            ->join('gp_tipo_reservas', 'gp_cotizacions.co_tipSolResInv', '=', 'gp_tipo_reservas.id')
+            ->join('gp_reserva_tipo_traslado', 'gp_cotizacions.co_tipTrasResInv', '=', 'gp_reserva_tipo_traslado.id')
+            ->where('gp_cotizacions.st_solResInv', 'pendiente');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('gp_cotizacions.cotizacion', 'like', '%' . $search . '%')
+                    ->orWhere('gp_cotizacions.PTO_VTA_DESCRIPCION', 'like', '%' . $search . '%')
+                    ->orWhere('gp_cotizacions.CLI_RUC', 'like', '%' . $search . '%')
+                    ->orWhere('gp_cotizacions.CLI_RAZON_SOCIAL', 'like', '%' . $search . '%');
+            });
+        }
+        if ($sortBy) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderByDesc('gp_cotizacions.cotizacion');
+        }
+
+        return $query->paginate($perpage);
+    }
+
+
+    public function getQuotationWithDetails(int $id)
+    {
+        $cotizacion = GpCotizacion::with('detallecotizacion')->find($id);
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
+        return [
+            'cotizacion' => $cotizacion,
+            'segmento' => $segmento
+        ];
+    }
+
+
+    public function getQuotationWithDetailsAndStock(int $id)
+    {
+        $cotizacion = GpCotizacion::with(['detallecotizacion.stock'])->find($id);
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
+        return [
+            'cotizacion' => $cotizacion,
+            'segmento' => $segmento
+        ];
+    }
+
+
+    public function denyApplicationReservedQuotation(array $data, $userId)
+    {
+        GpCotizacion::find($data['id'])->update([
+            'st_solResInv' => 'denegada',
+            'st_autSolResInv' => 0,
+            'fe_autSolResInv' => $data['fe_autSolResInv'],
+            'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'],
+            'co_usrIngAutSolResInv' => $userId,
+            'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function approvalApplicationReservedQuotation(array $data, $userId)
+    {
+        GpCotizacion::find($data['id'])->update([
+            'st_solResInv' => 'autorizado',
+            'st_autSolResInv' => 1,
+            'fe_autSolResInv' => $data['fe_autSolResInv'],
+            'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'],
+             'co_usrIngAutSolResInv' => $userId,
+            'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
     }
 }

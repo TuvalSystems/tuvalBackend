@@ -1301,11 +1301,28 @@ class CotizacionesController extends Controller
     }
 
 
-    public function getReservaCotizacion($id)
+    /*** reservas */
+
+    public function validarExistenciaItemLCotizacion($id)
     {
         try {
-            $quotation = $this->quotationService->getQuotationHeaderReservedByID($id);
-            return $this->successResponse('Cotizacion obtenida correctamente', $quotation, 200);
+            $existL = $this->quotationService->hasItemsTypeL($id);
+            if ($existL) {
+                return $this->buildExistResponse($existL, 'La cotizacion contiene items de tipo L', 200);
+            }
+            return $this->buildExistResponse($existL, 'La cotizacion no contiene items de tipo L', 202);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+    public function validarGeneracionReservaCotizacion($id)
+    {
+        try {
+            $existeReserva = $this->quotationService->hasAnyReserveState($id);
+            if ($existeReserva) {
+                return $this->buildExistResponse($existeReserva, 'No es posible recuperar, copiar o volver a pedir la cotización porque cuenta con una reserva', 200);
+            }
+            return $this->buildExistResponse($existeReserva, 'La cotización no tiene reservas registradas. Puede continuar con su actividad', 202);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1316,8 +1333,8 @@ class CotizacionesController extends Controller
         $gpUser = GpUsuario::find(Auth::user()->id);
         $reserva = $request->get('reserva', null);
         try {
-            return DB::transaction(function () use ($reserva ,  $gpUser) {
-                $this->quotationService->saveQuotationHeaderReserved($reserva ,  $gpUser);
+            return DB::transaction(function () use ($reserva,  $gpUser) {
+                $this->quotationService->saveQuotationHeaderReserved($reserva,  $gpUser);
                 return $this->buildSuccessResponse('Cotizacion guardada correctamente',  200);
             });
         } catch (\Throwable $e) {
@@ -1331,6 +1348,78 @@ class CotizacionesController extends Controller
             $data =  $this->quotationService->fetchListTipeReserved();
             return $this->successResponse('Tipos de reservas obtenidos correctamente', $data, 200);
         } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function obtenerListaReservasPendientes(Request $request)
+    {
+        try {
+            $perPage = $request->input('perPage', 10);
+            $search = $request->input('search', null);
+            $sortBy = $request->input('sortBy', null);
+            $sortOrder = $request->input('sortOrder', 'asc');
+            return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->quotationService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function obtenerCotizacionConDetalle($id)
+    {
+        try {
+            return $this->successResponse('Cotizacion obtenida correctamente', $this->quotationService->getQuotationWithDetails($id), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerCotizacionDetalleConStock($id)
+    {
+        try {
+            return $this->successResponse('Cotizacion obtenida correctamente', $this->quotationService->getQuotationWithDetailsAndStock($id), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function rechazarSolicitudReservaCotizacion(Request $request)
+    {
+        try {
+            $gpUser = GpUsuario::find(Auth::user()->id);
+            $data = $request->all();
+            return DB::transaction(function () use ($data, $gpUser) {
+                $this->quotationService->denyApplicationReservedQuotation($data, $gpUser->id);
+                return $this->buildSuccessResponse('Cotización rechazada correctamente', 200);
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->buildErrorResponse('Cotización no encontrada', 404);
+        } catch (\DomainException $e) { // por si tu service valida estados
+            return $this->buildErrorResponse($e->getMessage(), 409);
+        } catch (\Throwable $e) {
+
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function aprobarSolicitudReservaCotizacion(Request $request)
+    {
+        try {
+            $gpUser = GpUsuario::find(Auth::user()->id);
+            $data = $request->all();
+            return DB::transaction(function () use ($data, $gpUser) {
+                $this->quotationService->approvalApplicationReservedQuotation($data, $gpUser->id);
+                return $this->buildSuccessResponse('Cotización autorizada correctamente', 200);
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->buildErrorResponse('Cotización no encontrada', 404);
+        } catch (\DomainException $e) { // por si tu service valida estados
+            return $this->buildErrorResponse($e->getMessage(), 409);
+        } catch (\Throwable $e) {
+
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }

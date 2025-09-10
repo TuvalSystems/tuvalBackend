@@ -89,7 +89,14 @@ interface QuotationServiceInterface
       *  reservas
       */
 
-     public function getQuotationHeaderReservedByID(int $id);
+     public function hasItemsTypeL(int $id);
+     public function hasAnyReserveState(int $id);
      public function saveQuotationHeaderReserved(array $reserva, GpUsuario $user);
      public function fetchListTipeReserved();
+
+     public function fetchListReservedPending($perPage, $search, $sortBy, $sortOrder);
+     public function getQuotationWithDetails(int $id);
+     public function getQuotationWithDetailsAndStock(int $id);
+     public function denyApplicationReservedQuotation(array $data, $userId);
+     public function approvalApplicationReservedQuotation(array $data, $userId);
 }

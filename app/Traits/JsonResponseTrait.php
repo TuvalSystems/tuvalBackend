@@ -34,4 +34,12 @@ trait JsonResponseTrait
     {
         return response()->json(['success'=> true,'message'=> $message], $statusCode);
     }
+
+
+    /** para respuestas de JSon true o false de existencias de algo  */
+
+    protected function buildExistResponse(bool $exists, string $message , int $statusCode ): JsonResponse
+    {
+        return response()->json(['exists'=> $exists, 'message'=> $message ], $statusCode);
+    }
 }
