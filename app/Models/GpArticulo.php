@@ -166,7 +166,8 @@ class GpArticulo extends Model
             ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
             ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'BNS-INACT')
             ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'CMP-GASTOS')
-            ->where('gp_articulos.ART_TIPO_COMPRA','L');
+            ->where('gp_articulos.ART_TIPO_COMPRA','L')
+            ->where('gp_articulos.disponible', '=', 1);
         if(isset($buscar['text_nombre']) && $buscar['text_nombre'] != ''){
             if($buscar['select_nombre'] == 'empieza'){
                 $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'].'%');
@@ -178,8 +179,8 @@ class GpArticulo extends Model
                 $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%'.$buscar['text_nombre']);
             }
         }
-        $resultados = $resultados->inRandomOrder()
-            ->limit(500)
+        $resultados = $resultados
+        ->inRandomOrder() ->limit(500)
             ->get(['gp_articulos.*', 'gp_unidad_medidas.UMEDIDA_BASE AS ART_PLAN_UMEDIDA']);
         return $resultados;
     }
