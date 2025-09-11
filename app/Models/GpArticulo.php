@@ -37,6 +37,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $ART_CODIGO_MARCA_MATERIAL
  * @property string|null $ART_DESCRIPCION_MARCA_MATERIAL
  * @property string|null $combinado
+ * @property string|null $fecha_ultimo_uso
+ * @property boolean|null $disponible
+ * @property string|null $numero_dias_ultimo_uso
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo newModelQuery()

@@ -87,7 +87,7 @@ return [
     ],
     'api_sales' => [
         'url' => env('API_SALES_URL'),
-        'timeout' => env('API_GP_TIMEOUT', default: 150),
+        'timeout' => env('API_GP_TIMEOUT',  150),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'endpoints' => [

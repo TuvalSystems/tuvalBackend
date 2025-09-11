@@ -22,7 +22,6 @@ use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
@@ -344,11 +343,12 @@ class OrderService implements OrderServiceInterface
              * considerando la clase y el tipo de impuesto
              */
             $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
-            $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
+            // $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
+            $hasStock = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
             if ($isTypeL && !$hasStock) {
                 $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item,  $usedItemLExcluded);
                 if (!$replacementCodeL) {
-                    Log::warning('No se encontró un item L disponible para el pedido ', [
+                    Log::warning('No se encontró un item L disponible para el pedido', [
                         'pedido_id' => $newOrder->id,
                         'articulo' => $item['ART_CODIGO'] ?? null
                     ]);
