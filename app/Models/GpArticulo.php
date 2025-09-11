@@ -81,6 +81,42 @@ class GpArticulo extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'ART_CODIGO',
+        'ART_DESCRIPCION',
+        'ART_CODIGO_ZAFIRO',
+        'ART_CODIGO_TRES_LETRAS',
+        'ART_CLASE_ARTICULO',
+        'ART_METODO_VALUACION',
+        'ART_TIPO_COMPRA',
+        'ART_FECHA_MODIFICACION',
+        'ART_FECHA_CREACION',
+        'ART_ESTADO',
+        'ART_IMP_VTA',
+        'ART_DECIMAL_CANTIDAD',
+        'ART_DECIMAL_MONEDA',
+        'ART_COSTO_PROMEDIO',
+        'ART_PLAN_UMEDIDA',
+        'ART_IMP_COMPRA',
+        'ART_SUSTITUTO_1',
+        'ART_SUSTITUTO_2',
+        'ART_MARCA',
+        'ART_MATERIAL',
+        'ART_REFERENCIA_GENERAL',
+        'ART_REFERENCIA_DETALLADA',
+        'ART_TIPO_COMPRA',
+        'ART_PESO',
+        'ART_TAMANO',
+        'ART_CODIGO_MARCA_MATERIAL',
+        'ART_DESCRIPCION_MARCA_MATERIAL',
+        'combinado',
+        'disponible',
+        'fecha_ultima_actividad',
+        'dias_transcurridos',
+        'dias_restantes',
+        'dias_enfriamiento',
+    ];
+
     public static function busqueda($buscar): \Illuminate\Support\Collection
     {
         $resultados = self::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')

@@ -23,7 +23,7 @@ class Kernel extends ConsoleKernel
             ->runInBackground(); // hace que no bloquee otros jobs
 
         // ejecuta cada 2 horas la actualización de articulos
-        $schedule->command('articulol:update')->everyThirtyMinutes()->withoutOverlapping(60);
+        $schedule->command('articulol:update')->everyTenMinutes()->withoutOverlapping(60);
 
         $schedule->command('optimize:clear')->dailyAt('03:15')
             ->timezone('America/Guayaquil')
