@@ -134,4 +134,9 @@ class GpPedidoDetalle extends Model
     {
         return $this->hasMany(GpPedidoDetalleStock::class, 'detalle_id', 'id');
     }
+
+
+    public function pedido (){
+        return $this->belongsTo(GpPedido::class, 'pedido_id', 'id');
+    }
 }

@@ -37,6 +37,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $ART_CODIGO_MARCA_MATERIAL
  * @property string|null $ART_DESCRIPCION_MARCA_MATERIAL
  * @property string|null $combinado
+ * @property string|null $fecha_ultimo_uso
+ * @property boolean|null $disponible
+ * @property string|null $numero_dias_ultimo_uso
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo newModelQuery()
@@ -77,6 +80,42 @@ use Illuminate\Database\Eloquent\Model;
 class GpArticulo extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'ART_CODIGO',
+        'ART_DESCRIPCION',
+        'ART_CODIGO_ZAFIRO',
+        'ART_CODIGO_TRES_LETRAS',
+        'ART_CLASE_ARTICULO',
+        'ART_METODO_VALUACION',
+        'ART_TIPO_COMPRA',
+        'ART_FECHA_MODIFICACION',
+        'ART_FECHA_CREACION',
+        'ART_ESTADO',
+        'ART_IMP_VTA',
+        'ART_DECIMAL_CANTIDAD',
+        'ART_DECIMAL_MONEDA',
+        'ART_COSTO_PROMEDIO',
+        'ART_PLAN_UMEDIDA',
+        'ART_IMP_COMPRA',
+        'ART_SUSTITUTO_1',
+        'ART_SUSTITUTO_2',
+        'ART_MARCA',
+        'ART_MATERIAL',
+        'ART_REFERENCIA_GENERAL',
+        'ART_REFERENCIA_DETALLADA',
+        'ART_TIPO_COMPRA',
+        'ART_PESO',
+        'ART_TAMANO',
+        'ART_CODIGO_MARCA_MATERIAL',
+        'ART_DESCRIPCION_MARCA_MATERIAL',
+        'combinado',
+        'disponible',
+        'fecha_ultima_actividad',
+        'dias_transcurridos',
+        'dias_restantes',
+        'dias_enfriamiento',
+    ];
 
     public static function busqueda($buscar): \Illuminate\Support\Collection
     {
@@ -127,7 +166,8 @@ class GpArticulo extends Model
             ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
             ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'BNS-INACT')
             ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'CMP-GASTOS')
-            ->where('gp_articulos.ART_TIPO_COMPRA','L');
+            ->where('gp_articulos.ART_TIPO_COMPRA','L')
+            ->where('gp_articulos.disponible', '=', 1);
         if(isset($buscar['text_nombre']) && $buscar['text_nombre'] != ''){
             if($buscar['select_nombre'] == 'empieza'){
                 $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'].'%');
@@ -139,8 +179,8 @@ class GpArticulo extends Model
                 $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%'.$buscar['text_nombre']);
             }
         }
-        $resultados = $resultados->inRandomOrder()
-            ->limit(500)
+        $resultados = $resultados
+        ->inRandomOrder() ->limit(500)
             ->get(['gp_articulos.*', 'gp_unidad_medidas.UMEDIDA_BASE AS ART_PLAN_UMEDIDA']);
         return $resultados;
     }

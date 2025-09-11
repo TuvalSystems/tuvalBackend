@@ -19,15 +19,21 @@ class Kernel extends ConsoleKernel
         $schedule->command('cotizaciones:notificar-noventa')->dailyAt('08:00');
 
         //se ejecuta el 1 de cada mez
-        $schedule->command('pedidos:enviar-facturas-mes-siguiente')->monthlyOn(9, '02:00')->
-        timezone('America/Guayaquil')->withoutOverlapping(60)
-        ->runInBackground();// hace que no bloquee otros jobs
+        $schedule->command('pedidos:enviar-facturas-mes-siguiente')->monthlyOn(9, '02:00')->timezone('America/Guayaquil')->withoutOverlapping(60)
+            ->runInBackground(); // hace que no bloquee otros jobs
+
+        // ejecuta cada 2 horas la actualización de articulos
+        $schedule->command('articulol:update')->everyTenMinutes()->withoutOverlapping(60);
+
+        $schedule->command('optimize:clear')->dailyAt('03:15')
+            ->timezone('America/Guayaquil')
+            ->withoutOverlapping(60);
     }
 
 
     protected function commands()
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }
