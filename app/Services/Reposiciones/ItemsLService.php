@@ -16,7 +16,7 @@ class ItemsLService
     {
         return GpArticulo::where('ART_TIPO_COMPRA', 'L')
             ->where('ART_ESTADO', 'ACTIVO')
-             ->where('ART_CODIGO', '=', '000-001696-L')
+            //  ->where('ART_CODIGO', '=', '000-000777-L')
             ->get();
     }
 
