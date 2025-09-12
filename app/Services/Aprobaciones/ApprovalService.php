@@ -117,7 +117,7 @@ class ApprovalService implements ApprovalServiceInterface
         if ($type == 'pedido') {
             $cotizacion = GpCotizacion::find($data['cotizacion_id']);
             if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
-                return $this->requiredApprovalResponse("Requiere aprobación comercial. El pedido generado desde 'Volver a pedir' no cuenta con la aprobación de la cotización {$cotizacion->cotizacion}.");
+                return $this->requiredApprovalResponse("La cotización  {$cotizacion->cotizacion} requiere aprobación comercial previa. Pedido en estado pendiente de aprobación comercial.");
             }
         }
         // validacion para "volver a pedir"
