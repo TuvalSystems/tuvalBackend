@@ -1392,7 +1392,7 @@ class CotizacionesController extends Controller
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
             return DB::transaction(function () use ($data, $gpUser) {
-                $this->quotationService->denyApplicationReservedQuotation($data, $gpUser->id);
+                $this->quotationService->denyApplicationReservedQuotation($data['data'], $gpUser->id);
                 return $this->buildSuccessResponse('Cotización rechazada correctamente', 200);
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -1411,7 +1411,7 @@ class CotizacionesController extends Controller
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
             return DB::transaction(function () use ($data, $gpUser) {
-                $this->quotationService->approvalApplicationReservedQuotation($data, $gpUser->id);
+                $this->quotationService->approvalApplicationReservedQuotation($data['data'], $gpUser->id);
                 return $this->buildSuccessResponse('Cotización autorizada correctamente', 200);
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -1420,6 +1420,25 @@ class CotizacionesController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 409);
         } catch (\Throwable $e) {
 
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function obtenerListaCotizacionesAprobadas(Request $request)
+    {
+        try {
+            $perPage = $request->input('perPage', 10);
+            $search = $request->input('search', null);
+            $sortBy = $request->input('sortBy', null);
+            $sortOrder = $request->input('sortOrder', 'asc');
+            $fecha_desde = $request->input('fecha_desde', null);
+            $fecha_hasta = $request->input('fecha_hasta', null);
+            $estado = $request->input('status', null);
+            $ptoVtaId = $request->input('ptovta', null);
+
+            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId), 200);
+        } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }

@@ -1527,7 +1527,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function getQuotationWithDetailsAndStock(int $id)
     {
-        $cotizacion = GpCotizacion::with(['detallecotizacion.stock'])->find($id);
+        $cotizacion = GpCotizacion::with(['detallecotizacion.stock', 'reservaTraslado'])->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
         return [
             'cotizacion' => $cotizacion,
@@ -1539,24 +1539,155 @@ class QuotationService implements QuotationServiceInterface
     public function denyApplicationReservedQuotation(array $data, $userId)
     {
         GpCotizacion::find($data['id'])->update([
-            'st_solResInv' => 'denegada',
+            'st_solResInv' => 'rechazada',
             'st_autSolResInv' => 0,
-            'fe_autSolResInv' => $data['fe_autSolResInv'],
-            'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'],
+            'fe_autSolResInv' => $data['fe_autSolResInv'] ?? Carbon::now()->format('Y-m-d'),
+            'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'] ?? 'Sin observaciones',
             'co_usrIngAutSolResInv' => $userId,
             'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
+        $this->cleanStockQuotationForDeny($data['id']);
     }
 
     public function approvalApplicationReservedQuotation(array $data, $userId)
     {
         GpCotizacion::find($data['id'])->update([
-            'st_solResInv' => 'autorizado',
+            'st_solResInv' => 'aprobado',
             'st_autSolResInv' => 1,
             'fe_autSolResInv' => $data['fe_autSolResInv'],
             'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'],
-             'co_usrIngAutSolResInv' => $userId,
+            'co_usrIngAutSolResInv' => $userId,
             'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
+
+        $quotation = GpCotizacion::find($data['id']);
+        if ($quotation->co_tipTrasResInv === 2) { //consolidar cantidades
+            $this->updateQuotationDetatilStockMovements($quotation);
+        } else {
+            $this->updateQuotationStocksAuthorizedDontConsolidate($quotation);
+        }
+    }
+
+
+    public function updateQuotationDetatilStockMovements(GpCotizacion $quotation)
+    {
+        $bodegaDespacho = $quotation->BOD_BODEGA;
+        $detailIds = GpCotizacionDetalle::where('cotizacion_id', $quotation->id)
+            ->pluck('id');
+
+        $stocksByDetail = GpCotizacionDetalleStock::whereIn('detalle_id', $detailIds)
+            ->lockForUpdate()
+            ->get()
+            ->groupBy('detalle_id');
+        foreach ($stocksByDetail as $detailId => $rows) {
+
+            //bodega despacho
+            $own = $rows->firstWhere('STO_ART_BODEGA', $bodegaDespacho);
+            //otras bodegas
+            $others = $rows->where('STO_ART_BODEGA', '!=', $bodegaDespacho);
+
+            $moveQty = round((float) $others->sum('seleccionado'), 6);
+            if ($moveQty <= 0) {
+                continue;
+            }
+
+            //actualizar los seleccionado de otras bodegas a 0
+            $othersIds = $others->pluck('id')->all();
+            if (!empty($othersIds)) {
+                GpCotizacionDetalleStock::whereIn('id', $othersIds)
+                    ->update([
+                        'seleccionado' => 0,
+                    ]);
+            }
+
+            //sumar el consolidado al seleccionado de la bodega de despacho
+            $own->increment('seleccionado', $moveQty);
+
+            GpCotizacionDetalleStock::where('id', $own->id)
+                ->update([
+                    'seleccionado' => $own->seleccionado,
+                    'cantidad_autorizada_reserva' => $own->seleccionado
+                ]);
+        }
+    }
+
+
+    public function updateQuotationStocksAuthorizedDontConsolidate(GpCotizacion $quotation)
+    {
+        $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotation->id)
+            ->lockForUpdate()
+            ->get();
+        foreach ($stocks as $stock) {
+            $stock->update([
+                'cantidad_autorizada_reserva' => $stock->seleccionado
+            ]);
+        }
+    }
+
+    public function cleanStockQuotationForDeny($quotationId)
+    {
+        $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
+            ->lockForUpdate()
+            ->get();
+        foreach ($stocks as $stock) {
+            $stock->update([
+                'seleccionado' => 0,
+                'cantidad_autorizada_reserva' => 0
+            ]);
+        }
+    }
+
+
+
+
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null)
+    {
+
+        $query = GpCotizacion::select([
+            'gp_cotizacions.id',
+            'gp_cotizacions.cotizacion',
+            'gp_cotizacions.PTO_VTA_DESCRIPCION',
+            'gp_cotizacions.CLI_RAZON_SOCIAL',
+            'gp_cotizacions.created_at',
+            'gp_cotizacions.total',
+            'gp_cotizacions.fe_solResInv',
+            'gp_cotizacions.st_solResInv',
+            'gp_tipo_reservas.descripcion as tipo_reserva',
+            'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
+            'gp_cotizacions.tx_obsSolResInv',
+            'gp_cotizacions.fe_autSolResInv',
+        ])->from('gp_cotizacions')
+            ->join('gp_tipo_reservas', 'gp_cotizacions.co_tipSolResInv', '=', 'gp_tipo_reservas.id')
+            ->join('gp_reserva_tipo_traslado', 'gp_cotizacions.co_tipTrasResInv', '=', 'gp_reserva_tipo_traslado.id')
+            //  ->where('gp_cotizacions.st_solResInv', 'aprobado')
+        ;
+
+        if ($fecha_desde && $fecha_hasta) {
+            $query->where('subquery.created_at', '>=', $fecha_desde)
+                ->where('subquery.created_at', '<=', $fecha_hasta);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('gp_cotizacions.cotizacion', 'like', '%' . $search . '%')
+                    ->orWhere('gp_cotizacions.PTO_VTA_DESCRIPCION', 'like', '%' . $search . '%')
+                    ->orWhere('gp_cotizacions.CLI_RUC', 'like', '%' . $search . '%')
+                    ->orWhere('gp_cotizacions.CLI_RAZON_SOCIAL', 'like', '%' . $search . '%');
+            });
+        }
+        if ($estado) {
+            $query->where('gp_cotizacions.st_solResInv', $estado);
+        }
+        if ($ptoVtaId) {
+            $query->where('gp_cotizacions.PTO_VTA_ID', $ptoVtaId);
+        }
+
+        if ($sortBy) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderByDesc('gp_cotizacions.cotizacion');
+        }
+
+        return $query->paginate($perPage);
     }
 }

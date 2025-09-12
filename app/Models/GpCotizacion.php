@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\reservas\GpReservaTipoTraslado;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -110,6 +111,7 @@ use \DateTimeInterface;
  * @property boolean $facturado
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaEntrega($value)
  * @property string|null  $user_ing_recordatorio
+ * @property int|null $co_tipTrasResInv
  */
 class GpCotizacion extends Model
 {
@@ -207,5 +209,9 @@ class GpCotizacion extends Model
     public function usuariorecordatorio()
     {
         return $this->belongsTo(GpUsuario::class, 'user_ing_recordatorio');
+    }
+
+    public function reservaTraslado(){
+        return $this->belongsTo(GpReservaTipoTraslado::class, 'co_tipTrasResInv' , 'id');
     }
 }

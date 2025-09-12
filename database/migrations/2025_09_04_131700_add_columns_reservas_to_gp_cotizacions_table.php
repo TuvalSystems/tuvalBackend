@@ -14,7 +14,7 @@ class AddColumnsReservasToGpCotizacionsTable extends Migration
     public function up()
     {
         Schema::table('gp_cotizacions', function (Blueprint $table) {
-            $table->enum('st_solResInv', ['pendiente','autorizado', 'denegado', 'cancelado', 'facturado'])
+            $table->enum('st_solResInv', ['pendiente','aprobado', 'rechazada', 'cancelado', 'facturado'])
                 ->nullable()
                 ->default(null)
                 ->index();

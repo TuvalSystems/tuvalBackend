@@ -28,6 +28,9 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereSeleccionado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereUpdatedAt($value)
  * @mixin \Eloquent
+ * @property int|null $cantidad_autorizada_reserva
+ * @property int|null $cantidad_facturada
+ * @property int|null $cantidad_cancelada
  */
 class GpCotizacionDetalleStock extends Model
 {
@@ -38,7 +41,10 @@ class GpCotizacionDetalleStock extends Model
         'detalle_id',
         'STO_ART_BODEGA',
         'STO_ART_STOCK_DISPONIBLE',
-        'seleccionado'
+        'seleccionado',
+        'cantidad_autorizada_reserva',
+        'cantidad_facturada',
+        'cantidad_cancelada'
     ];
 
 }
