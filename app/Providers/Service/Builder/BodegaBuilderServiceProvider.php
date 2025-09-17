@@ -7,6 +7,8 @@ use App\Services\Builders\Bodega\DeliveryNoteParamsBuilder;
 use App\Services\Builders\Devolucion\DevolucionParamsBuilder;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
+use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
+use App\Services\Builders\Venta\QuotationBuilder;
 
 class BodegaBuilderServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,12 @@ class BodegaBuilderServiceProvider extends ServiceProvider
          $this->app->singleton(
             DevolucionParamsBuilderInterface::class,
             DevolucionParamsBuilder::class
+        );
+
+        /** venta */
+        $this->app->singleton(
+            QuotationBuilderInterface::class,
+            QuotationBuilder::class
         );
     }
 

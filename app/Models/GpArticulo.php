@@ -184,4 +184,10 @@ class GpArticulo extends Model
             ->get(['gp_articulos.*', 'gp_unidad_medidas.UMEDIDA_BASE AS ART_PLAN_UMEDIDA']);
         return $resultados;
     }
+
+
+    public function detallecotizacionArticulo()
+    {
+        return $this->hasMany(GpCotizacionDetalle::class, 'ART_CODIGO', 'ART_CODIGO');
+    }
 }

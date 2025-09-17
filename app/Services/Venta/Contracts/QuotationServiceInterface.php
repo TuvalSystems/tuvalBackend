@@ -97,7 +97,11 @@ interface QuotationServiceInterface
     public function fetchListReservedPending($perPage, $search, $sortBy, $sortOrder);
     public function getQuotationWithDetails(int $id);
     public function getQuotationWithDetailsAndStock(int $id);
+     public function getQuotationWithDetailsAndActiveStockById(int $id);
     public function denyApplicationReservedQuotation(array $data, $userId);
     public function approvalApplicationReservedQuotation(array $data, $userId);
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId);
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc);
+
+    public function processReservedQuotation (array $data, $user);
+    public function recalculateQuotation($quotationId);
 }

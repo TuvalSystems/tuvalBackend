@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CotizacionesController extends Controller
 {
@@ -1385,6 +1386,15 @@ class CotizacionesController extends Controller
         }
     }
 
+     public function obtenerCotizacionConDetalleYStockActivo($id)
+    {
+        try {
+            return $this->successResponse('Cotizacion obtenida correctamente', $this->quotationService->getQuotationWithDetailsAndActiveStockById($id), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
 
     public function rechazarSolicitudReservaCotizacion(Request $request)
     {
@@ -1436,10 +1446,42 @@ class CotizacionesController extends Controller
             $fecha_hasta = $request->input('fecha_hasta', null);
             $estado = $request->input('status', null);
             $ptoVtaId = $request->input('ptovta', null);
-
-            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId), 200);
+            $clienteRuc = $request->input('cliente', null);
+            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+
+    public function procesarReservaCotizacion(Request $request)
+    {
+        $data = $request->all();
+        $gpUser = GpUsuario::find(Auth::user()->id);
+        try {
+            $response =  $this->quotationService->processReservedQuotation($data['data'], $gpUser);
+            $msg = $response['cotizacion'] === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$response['cotizacion']}";
+
+            return  $this->buildSuccessResponse($msg,  200);
+        } catch (\Throwable $e) {
+            Log::error('Error al procesar la reserva de la cotizacion: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'data' => $data
+            ]);
+            return $this->buildErrorResponse('Error al procesar la reserva de la cotizacion', 500);
+        }
+    }
+
+
+    public function recalcularCotizacionReserva ($id) {
+        try {
+            return $this->successResponse('Cotizacion recalcular correctamente', $this->quotationService->recalculateQuotation($id), 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
 }

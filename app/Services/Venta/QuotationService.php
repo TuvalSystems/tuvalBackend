@@ -34,6 +34,7 @@ use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
@@ -43,7 +44,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Validation\ValidationException;
 
 class QuotationService implements QuotationServiceInterface
 {
@@ -59,6 +60,7 @@ class QuotationService implements QuotationServiceInterface
     protected $orderAndQuotationService;
     protected $clienTSqlService;
     protected $stockSqlService;
+    protected $quotationBuilder;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -71,6 +73,7 @@ class QuotationService implements QuotationServiceInterface
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
         ClientServiceInterface $clienTSqlService,
         StockSqlServiceInterface $stockSqlService,
+        QuotationBuilderInterface $quotationBuilderInterface
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -83,6 +86,7 @@ class QuotationService implements QuotationServiceInterface
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
         $this->clienTSqlService = $clienTSqlService;
         $this->stockSqlService = $stockSqlService;
+        $this->quotationBuilder = $quotationBuilderInterface;
     }
 
 
@@ -1527,7 +1531,19 @@ class QuotationService implements QuotationServiceInterface
 
     public function getQuotationWithDetailsAndStock(int $id)
     {
-        $cotizacion = GpCotizacion::with(['detallecotizacion.stock', 'reservaTraslado'])->find($id);
+        $cotizacion = GpCotizacion::with(['detallecotizacion.stock', 'detallecotizacion.articulo', 'reservaTraslado'])->find($id);
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
+        return [
+            'cotizacion' => $cotizacion,
+            'segmento' => $segmento
+        ];
+    }
+
+    public function getQuotationWithDetailsAndActiveStockById(int $id)
+    {
+        $cotizacion = GpCotizacion::with(['detallecotizacion.stock' => function ($q) {
+            $q->where('seleccionado', '>', 0);
+        }, 'detallecotizacion.articulo', 'reservaTraslado'])->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
         return [
             'cotizacion' => $cotizacion,
@@ -1640,7 +1656,7 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null)
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null,  $clienteRuc)
     {
 
         $query = GpCotizacion::select([
@@ -1675,6 +1691,10 @@ class QuotationService implements QuotationServiceInterface
                     ->orWhere('gp_cotizacions.CLI_RAZON_SOCIAL', 'like', '%' . $search . '%');
             });
         }
+
+        if ($clienteRuc) {
+            $query->where('gp_cotizacions.CLI_RUC', $clienteRuc);
+        }
         if ($estado) {
             $query->where('gp_cotizacions.st_solResInv', $estado);
         }
@@ -1689,5 +1709,249 @@ class QuotationService implements QuotationServiceInterface
         }
 
         return $query->paginate($perPage);
+    }
+
+
+
+    /**
+     *Liberar o facturar cotización reservada
+     */
+
+    public function processReservedQuotation(array $payload, $user)
+    {
+        return DB::transaction(function () use ($payload, $user) {
+            $items = collect(data_get($payload, 'detallecotizacion', []))->flatMap(function ($det) {
+                $d = is_array($det) ? $det : (array) $det;
+                return collect(data_get($d, 'stock', []))->map(function ($st) use ($d) {
+                    $s = is_array($st) ? $st : (array) $st;
+                    return [
+                        'detalle_id'     => $d['id'],
+                        'stock_id'       => $s['id'],
+                        'STO_ART_BODEGA' => $s['STO_ART_BODEGA'],
+                        'ART_CODIGO'     => $d['ART_CODIGO'],
+                        'to_cancel'      => $s['a_cancelar'],
+                        'to_invoice'     => $s['a_facturar'],
+                    ];
+                });
+            })->filter(fn($i) => $i['to_cancel'] > 0 || $i['to_invoice'] > 0)->values();
+
+            if ($items->isEmpty()) {
+                throw new \Exception('No se encontraron items para liberar o facturar');
+            }
+
+            $stocksIds = $items->pluck('stock_id')->toArray();
+            $rows = GpCotizacionDetalleStock::whereIn('id', $stocksIds)->lockForUpdate()->get()->keyBy('id');
+            $toQuote = [];
+            $totalLiberado = 0.0;
+            $totalFacturar = 0.0;
+            foreach ($items as $itm) {
+                $row = $rows[$itm['stock_id']];
+                if (!$row) {
+                    throw ValidationException::withMessages(["stock:{$itm['stock_id']}" => 'Stock no existe.']);
+                }
+                $decrease = $itm['to_cancel'] + $itm['to_invoice'];
+                if ($decrease <= 0) {
+                    continue;
+                }
+                $affected = DB::table($row->getTable())->where('id', $row->id)->decrement('seleccionado', $decrease);
+                if ($affected === 0) {
+                    throw ValidationException::withMessages([
+                        "stock:{$itm['stock_id']}" => "Cantidad solicitada ({$decrease}) excede lo seleccionado ({$row->seleccionado})."
+                    ]);
+                }
+                if ($itm['to_cancel'] > 0) {
+                    $this->toCancelStockQuotationReserved($row, $itm, $user);
+                    $totalLiberado += $itm['to_cancel'];
+                }
+
+                if ($itm['to_invoice'] > 0) {
+                    $this->toInvoiceStockQuotationReserved($row, $itm, $user);
+                    $totalFacturar += $itm['to_invoice'];
+                    $toQuote[] = [
+                        'detalle_id'        =>  $itm['detalle_id'],
+                        'stock_id'          => $itm['stock_id'],
+                        'STO_ART_BODEGA'    => $itm['STO_ART_BODEGA'],
+                        'ART_CODIGO'        => $itm['ART_CODIGO'],
+                        'cantidad'          => $itm['to_invoice'],
+                    ];
+                }
+            }
+
+            $new = null;
+            if (!empty($toQuote)) {
+                $new = $this->createQuotationReserveWithDetailAndStock($payload, $toQuote, $user);
+                $this->recalculateQuotation($new->id); // para recacular la cotizacion
+            }
+            $this->closeReservationIfEmpty($payload['id']);
+            return [
+                'cotizacion' => $new->cotizacion ?? null,
+                'liberado_total' => $totalLiberado,
+                'facturado_total' => $totalFacturar,
+                'lineas_facturar' => count($toQuote)
+            ];
+        });
+    }
+
+
+    public function toCancelStockQuotationReserved($row, $itm, $user)
+    {
+        DB::table($row->getTable())->where('id', $row->id)->increment(
+            'cantidad_cancelada',
+            $itm['to_cancel']
+        );
+        $this->storeQuotationReservedStockLogs($row, $user, 'liberar', $itm['to_cancel']);
+    }
+
+    public function toInvoiceStockQuotationReserved($row, $itm, $user)
+    {
+        DB::table($row->getTable())->where('id', $row->id)->increment(
+            'cantidad_facturada',
+            $itm['to_invoice']
+        );
+        $this->storeQuotationReservedStockLogs($row, $user, 'facturar', $itm['to_invoice']);
+    }
+
+    public function storeQuotationReservedStockLogs($row,  $user, $type, $qty)
+    {
+        DB::table('gp_cotizacion_detalle_stocks_logs')->insert([
+            'stock_id' => $row->id,
+            'user_id' => $user->id,
+            'tipo' => $type,
+            'cantidad' => $qty,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+
+    public function createQuotationReserveWithDetailAndStock(array $payload, array  $linesToQuote, GpUsuario $user)
+    {
+        // proceso de creación de nueva cotizacion
+        $linesGroupedDetail = collect($linesToQuote)->groupBy('detalle_id');
+        $linesGroupStock = collect($linesToQuote)->groupBy('stock_id');
+
+        $linesDetailIds = collect($linesToQuote)->pluck('detalle_id')->unique()->toArray();
+        $lineStocksIds = collect($linesToQuote)->pluck('stock_id')->toArray();
+
+        $oldDetails = GpCotizacionDetalle::whereIn('id', $linesDetailIds)->get();
+        $oldStocks = GpCotizacionDetalleStock::whereIn('id', $lineStocksIds)->orderBy('detalle_id')->get()
+            ->groupBy('detalle_id');
+
+
+        $cotizacion = $this->createHeaderQuotationReserve($payload, $user);
+        $this->createDetailAndStockQuotationReserve($cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails);
+        //al final por si acaso xd
+        $this->storeQuotationReservedLogs($cotizacion->id, $payload['id'], $payload['BOD_BODEGA'], $linesToQuote, $user);
+        return $cotizacion;
+    }
+
+
+    public function createHeaderQuotationReserve(array $payload, GpUsuario $user)
+    {
+        $cotOld = [];
+        $cotOld = $payload;
+        $cotOld['registro_copia'] = null;
+        $cotOld['cotizacion'] = $payload['detallecotizacion'];
+        $requiereAprobacionComercial = $this->approvalService->checkOutApprovalCommercial($cotOld, 'cotizacion');
+        $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
+        $requiereAprobacionComercial['aprobado'] = 'no';
+        $cotizacion = $this->quotationBuilder->fromPayloadReservedToQuotation($payload, $requiereAprobacionComercial, $user);
+        $cotizacion->save();
+        return $cotizacion;
+    }
+
+
+    public function createDetailAndStockQuotationReserve(GpCotizacion $cotizacion,  $linesGroupedDetail,  $linesGroupStock,  $oldStocks,  $oldDetails)
+    {
+        foreach ($oldDetails as $oldDetail) {
+            $line = $linesGroupedDetail->get($oldDetail->id);
+            if (empty($line)) {
+                continue;
+            }
+            $totalLines = collect($line)->sum('cantidad');
+            $newDetail =  $this->quotationBuilder->formPayloadReservedToDetail($cotizacion->id, $oldDetail, $totalLines);
+            $newDetail->save();
+            $oldStocksByDetail = $oldStocks->get($oldDetail->id);
+            foreach ($oldStocksByDetail as $stkOld) {
+                $lineStock = $linesGroupStock->get($stkOld->id)->first();
+                if (empty($lineStock)) {
+                    continue;
+                }
+                $newStock = $this->quotationBuilder->formPayloadReservedToDetaiLStock($cotizacion->id, $newDetail->id, $stkOld, $lineStock);
+                $newStock->save();
+            }
+        }
+    }
+
+
+    public function storeQuotationReservedLogs($quotationIdNew, $quotationIdOld, $bodega, $linesToQuote, $user)
+    {
+        foreach ($linesToQuote as  $value) {
+            DB::table('gp_cotizacion_reserva_logs')->insert([
+                'cotizacion_origen_id' => $quotationIdOld,
+                'cotizacion_destino_id' => $quotationIdNew,
+                'user_id' => $user->id,
+                'STO_BODEGA' => $bodega,
+                'ART_CODIGO' => $value['ART_CODIGO'],
+                'STO_ART_BODEGA' => $value['STO_ART_BODEGA'],
+                'STO_ART_CANTIDAD' => $value['cantidad'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+
+    public function recalculateQuotation($quotationId)
+    {
+        $qt = GpCotizacion::where('id', $quotationId)->first();
+        $qtds = GpCotizacionDetalle::where('cotizacion_id', $qt->id)->get();
+        if ($qtds->isEmpty()) {
+            return;
+        }
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $qtds->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        $subtotal = 0.0;
+        $totalDiscount = 0.0;
+        $netSubtotal = 0.0;
+        $totalIva = 0.0;
+
+        foreach ($qtds as $item) {
+            $valorUnitario = (float) $item->ART_VALOR;
+            $cantidad = (float) $item->ART_CANTIDAD;
+            $descuentoUnitario = (float) $item->ART_DESCUENTO;
+
+            $lineaSubtotal = $valorUnitario * $cantidad;
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
+            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
+
+            $subtotal += $lineaSubtotal;
+            $totalDiscount += $lineaDiscount;
+            $netSubtotal += $lineNet;
+            $totalIva += $lineaIva;
+
+            $item->ART_IMP_VTA = $impuestoPorcentaje;
+            $item->ART_IVA = round($lineaIva, 2);
+            $item->save();
+        }
+        $total = $netSubtotal + $totalIva;
+
+        $qt->subtotal = round($subtotal, 2);
+        $qt->descuento = round($totalDiscount, 2);
+        $qt->subtotalmenosdescuento = round($netSubtotal, 2);
+        $qt->iva = round($totalIva, 2);
+        $qt->total = round($total, 2);
+        $qt->save();
+        return $qt;
+    }
+
+
+    public function closeReservationIfEmpty($oldQuotationId)
+    {
+        $affected = GpCotizacion::whereKey($oldQuotationId)->whereDoesntHave('detallecotizacionstock', function ($q) {
+            $q->where('seleccionado', '>', 0);
+        })->update(['st_solResInv' => 'procesado']);
+        return $affected > 0;
     }
 }

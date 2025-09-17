@@ -117,6 +117,10 @@ class GpCotizacion extends Model
 {
     use HasFactory;
 
+    protected $appends = ['reserva_disabled'];
+    protected $casts = [
+        'reserva_disabled' => 'boolean',
+    ];
     protected $fillable = [
         'cotizacion',
         'user_id',
@@ -214,4 +218,22 @@ class GpCotizacion extends Model
     public function reservaTraslado(){
         return $this->belongsTo(GpReservaTipoTraslado::class, 'co_tipTrasResInv' , 'id');
     }
+
+
+    public function detallecotizacionstock()
+    {
+        return $this->hasMany(GpCotizacionDetalleStock::class, 'cotizacion_id', 'id');
+    }
+
+
+    public function getReservaDisabledAttribute() : bool {
+        if(array_key_exists('selected_gt_zero_count', $this->attributes)) {
+             return ((int) $this->attributes['selected_gt_zero_count']) === 0;
+        }
+        $hay = $this->detallecotizacionstock()->where('seleccionado', '>', 0)->exists();
+        $this->attributes['selected_gt_zero_count'] = $hay;
+        return !$hay;
+    }
+
+
 }

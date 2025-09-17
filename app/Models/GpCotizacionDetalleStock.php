@@ -36,6 +36,9 @@ class GpCotizacionDetalleStock extends Model
 {
     use HasFactory;
 
+    protected $table = 'gp_cotizacion_detalle_stocks';
+    protected $appends = ['disable_movimiento', 'pendiente'];
+    protected $casts = ['disable_movimiento' => 'boolean', 'pendiente' => 'integer'];
     protected $fillable = [
         'cotizacion_id',
         'detalle_id',
@@ -44,7 +47,25 @@ class GpCotizacionDetalleStock extends Model
         'seleccionado',
         'cantidad_autorizada_reserva',
         'cantidad_facturada',
-        'cantidad_cancelada'
+        'user_id_facturacion',
+        'cantidad_cancelada',
+        'user_id_cancelacion',
     ];
 
+
+
+    protected function getAutorizada (){
+        return (int)  $this->cantidad_autorizada_reserva ?? 0;
+    }
+
+    public function getPendienteAttribute () : int {
+        $aut = $this->getAutorizada();
+        $fact = $this->cantidad_facturada ?? 0;
+        $can = $this->cantidad_cancelada ?? 0;
+        return max(0, $aut - $fact - $can);
+    }
+
+    public function getDisableMovimientoAttribute () : bool {
+        return $this->pendiente  === 0;
+    }
 }
