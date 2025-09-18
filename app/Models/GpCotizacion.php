@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\reservas\GpReservaTipoTraslado;
+use App\Models\reservas\GpTipoReservas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -117,9 +118,11 @@ class GpCotizacion extends Model
 {
     use HasFactory;
 
-    protected $appends = ['reserva_disabled'];
+    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items'];
     protected $casts = [
         'reserva_disabled' => 'boolean',
+        'has_l_items' => 'boolean',
+        'has_service_items' => 'boolean',
     ];
     protected $fillable = [
         'cotizacion',
@@ -225,6 +228,13 @@ class GpCotizacion extends Model
         return $this->hasMany(GpCotizacionDetalleStock::class, 'cotizacion_id', 'id');
     }
 
+    public function tiporeserva(){
+        return $this->belongsTo(GpTipoReservas::class, 'co_tipSolResInv' , 'id');
+    }
+
+
+
+    /** functiones de atributos  */
 
     public function getReservaDisabledAttribute() : bool {
         if(array_key_exists('selected_gt_zero_count', $this->attributes)) {
@@ -234,6 +244,21 @@ class GpCotizacion extends Model
         $this->attributes['selected_gt_zero_count'] = $hay;
         return !$hay;
     }
+
+
+    public function getHasLItemsAttribute() : bool {
+         return $this->relationLoaded('detallecotizacion')
+        ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'L')
+        : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'L')->exists();
+    }
+
+
+    public function getHasServiceItemsAttribute() : bool {
+       return $this->relationLoaded('detallecotizacion')
+        ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'SERV')
+        : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'SERV')->exists();
+    }
+
 
 
 }

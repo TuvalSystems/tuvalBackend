@@ -1304,18 +1304,7 @@ class CotizacionesController extends Controller
 
     /*** reservas */
 
-    public function validarExistenciaItemLCotizacion($id)
-    {
-        try {
-            $existL = $this->quotationService->hasItemsTypeL($id);
-            if ($existL) {
-                return $this->buildExistResponse($existL, 'La cotizacion contiene items de tipo L', 200);
-            }
-            return $this->buildExistResponse($existL, 'La cotizacion no contiene items de tipo L', 202);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
+
     public function validarGeneracionReservaCotizacion($id)
     {
         try {

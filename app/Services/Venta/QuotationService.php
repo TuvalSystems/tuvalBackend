@@ -1449,12 +1449,7 @@ class QuotationService implements QuotationServiceInterface
      */
 
 
-    public function hasItemsTypeL(int $quotationId)
-    {
-        return GpCotizacionDetalle::where('cotizacion_id', $quotationId)
-            ->where('ART_TIPO_COMPRA', 'L')
-            ->exists();
-    }
+
 
     public function hasAnyReserveState(int $quotationId)
     {
@@ -1520,7 +1515,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function getQuotationWithDetails(int $id)
     {
-        $cotizacion = GpCotizacion::with('detallecotizacion')->find($id);
+        $cotizacion = GpCotizacion::with('detallecotizacion','tiporeserva')->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
         return [
             'cotizacion' => $cotizacion,
@@ -1531,19 +1526,68 @@ class QuotationService implements QuotationServiceInterface
 
     public function getQuotationWithDetailsAndStock(int $id)
     {
-        $cotizacion = GpCotizacion::with(['detallecotizacion.stock', 'detallecotizacion.articulo', 'reservaTraslado'])->find($id);
+        $cotizacion = GpCotizacion::with(['detallecotizacion' => function ($q) {
+            $q->select([
+                'id',
+                'cotizacion_id',
+                'ART_CODIGO',
+                'ART_CODIGO_TRES_LETRAS',
+                'ART_DESCRIPCION',
+                'ART_PLAN_UMEDIDA',
+                'ART_PESO',
+                'ART_TIPO_COMPRA',
+                'ART_CANTIDAD'
+            ]);
+        }, 'detallecotizacion.stock' => function ($q) {
+            $q->select(['id', 'detalle_id', 'cotizacion_id', 'STO_ART_BODEGA', 'seleccionado']);
+        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO', 'reservaTraslado','tiporeserva'])->find($id);
+
+        $rows = $cotizacion->detallecotizacion->flatMap(function ($detalle) use ($cotizacion) {
+            if (in_array($detalle->ART_TIPO_COMPRA, ['SERV', 'L'])) {
+                return [[
+                    'detalle_id'                => $detalle->id,
+                    'stock_id'                  => null,
+                    'ART_CODIGO'                => $detalle->ART_CODIGO,
+                    'ART_CODIGO_TRES_LETRAS'    => $detalle->ART_CODIGO_TRES_LETRAS,
+                    'ART_DESCRIPCION'           => $detalle->ART_DESCRIPCION,
+                    'ART_PLAN_UMEDIDA'          => $detalle->ART_PLAN_UMEDIDA,
+                    'ART_PESO'                  => $detalle->ART_PESO,
+                    'STO_ART_BODEGA'            => $cotizacion->BOD_BODEGA,
+                    'ART_TIPO_COMPRA'           => $detalle->ART_TIPO_COMPRA,
+                    'ART_CANTIDAD'              => $detalle->ART_CANTIDAD,
+                ]];
+            }
+            return $detalle->stock->map(function ($stock) use ($detalle) {
+                return [
+                    'detalle_id'               => $detalle->id,
+                    'stock_id'                 => $stock->id,
+                    'ART_CODIGO'               => $detalle->ART_CODIGO,
+                    'ART_CODIGO_TRES_LETRAS'   => $detalle->ART_CODIGO_TRES_LETRAS,
+                    'ART_DESCRIPCION'          => $detalle->ART_DESCRIPCION,
+                    'ART_PLAN_UMEDIDA'         => $detalle->ART_PLAN_UMEDIDA,
+                    'ART_PESO'                 => $detalle->ART_PESO,
+                    'STO_ART_BODEGA'           => $stock->STO_ART_BODEGA,
+                    'ART_TIPO_COMPRA'          => $detalle->ART_TIPO_COMPRA,
+                    'ART_CANTIDAD'             => $stock->seleccionado,
+                ];
+            });
+        })->values();
+
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
+
         return [
             'cotizacion' => $cotizacion,
+            'rows' => $rows,
             'segmento' => $segmento
         ];
     }
 
     public function getQuotationWithDetailsAndActiveStockById(int $id)
     {
-        $cotizacion = GpCotizacion::with(['detallecotizacion.stock' => function ($q) {
+         $cotizacion = GpCotizacion::with(['detallecotizacion.stock' => function ($q) {
             $q->where('seleccionado', '>', 0);
-        }, 'detallecotizacion.articulo', 'reservaTraslado'])->find($id);
+        }, 'detallecotizacion.articulo', 'reservaTraslado','tiporeserva'])->find($id);
+
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
         return [
             'cotizacion' => $cotizacion,
