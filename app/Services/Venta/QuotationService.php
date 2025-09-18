@@ -1727,6 +1727,7 @@ class QuotationService implements QuotationServiceInterface
             'gp_cotizacions.total',
             'gp_cotizacions.fe_solResInv',
             'gp_cotizacions.st_solResInv',
+            'gp_tipo_reservas.id as tipo_reserva_id',
             'gp_tipo_reservas.descripcion as tipo_reserva',
             'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
             'gp_cotizacions.tx_obsSolResInv',
