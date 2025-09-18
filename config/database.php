@@ -105,12 +105,17 @@ return [
 
             'appname' => env('APP_NAME', 'Laravel') . '_App',
             'options' => array_filter([
-
                 // Manejo de errores
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
                 // Para stored procedures
                 PDO::SQLSRV_ATTR_DIRECT_QUERY => true,
+
+                // ❗ evita conexiones pegadas
+                PDO::ATTR_PERSISTENT => false,
+
+                // ⏱️ corta consultas largas (segundos)
+                PDO::SQLSRV_ATTR_QUERY_TIMEOUT => 30,
 
             ]),
         ],
@@ -132,6 +137,12 @@ return [
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
                 // Para stored procedures
                 PDO::SQLSRV_ATTR_DIRECT_QUERY => true,
+
+                // ❗ evita conexiones pegadas
+                PDO::ATTR_PERSISTENT => false,
+
+                // ⏱️ corta consultas largas (segundos)
+                PDO::SQLSRV_ATTR_QUERY_TIMEOUT => 30,
             ]),
         ],
 

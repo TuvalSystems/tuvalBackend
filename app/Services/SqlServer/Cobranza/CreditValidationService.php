@@ -69,5 +69,8 @@ class CreditValidationService implements CreditValidationServiceInterface
 
             return collect(); // o return $this->buildErrorResponse($message, 500);
         }
+        finally {
+             DB::disconnect('sqlsrvtuv');
+        }
     }
 }
