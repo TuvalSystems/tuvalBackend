@@ -123,6 +123,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
+        
     }
 
     public function getConsultClientSegment($ruc)

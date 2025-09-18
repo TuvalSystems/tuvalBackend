@@ -1189,6 +1189,9 @@ class QuotationService implements QuotationServiceInterface
             return $this->successResponse('Segmentos obtenidos correctamente', $segmentos, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
+        } finally {
+            // evita sesiones "sleeping" abiertas en sqlsrvtuv
+            DB::disconnect('sqlsrvdyn');
         }
     }
 
@@ -1199,6 +1202,9 @@ class QuotationService implements QuotationServiceInterface
             return $this->successResponse('Segmentos obtenidos correctamente', $subsegmentos, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
+        } finally {
+            // evita sesiones "sleeping" abiertas en sqlsrvtuv
+            DB::disconnect('sqlsrvdyn');
         }
     }
 
@@ -1236,6 +1242,9 @@ class QuotationService implements QuotationServiceInterface
                 'data' => $data,
             ]);
             return $this->buildErrorResponse('Opps! Hubo un error al guardar el cliente' . '' . $e->getMessage(), 500);
+        } finally {
+            // evita sesiones "sleeping" abiertas en sqlsrvtuv
+            DB::disconnect('sqlsrvtuv');
         }
     }
 
@@ -1386,18 +1395,24 @@ class QuotationService implements QuotationServiceInterface
 
     public function checkClientWithSegmentExist($ruc)
     {
-        $hasSegment = $this->clienTSqlService->getValidateCLientWithSegment($ruc);
-        if ($hasSegment) {
-            return response()->json([
-                'exists'  => true,
-                'message' => 'Segmento encontrado',
-            ], 200);
-        }
+        try {
+            $hasSegment = $this->clienTSqlService->getValidateCLientWithSegment($ruc);
+            if ($hasSegment) {
+                return response()->json([
+                    'exists'  => true,
+                    'message' => 'Segmento encontrado',
+                ], 200);
+            }
 
-        return response()->json([
-            'exists'  => false,
-            'message' => 'Segmento no encontrado',
-        ], 202);
+            return response()->json([
+                'exists'  => false,
+                'message' => 'Segmento no encontrado',
+            ], 202);
+        } catch (\Throwable $th) {
+            throw $th;
+        } finally {
+            DB::disconnect('sqlsrvdyn');
+        }
     }
 
 
