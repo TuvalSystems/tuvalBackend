@@ -39,6 +39,8 @@ class StockSqlService implements StockSqlServiceInterface
                 'trace' => $th->getTraceAsString()
             ]);
             throw new \Exception('Error interno al consultar stock (consultStockWarehouseSql) ', 500);
+        } finally {
+            DB::disconnect('sqlsrvtuv');
         }
     }
 
