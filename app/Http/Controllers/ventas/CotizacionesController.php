@@ -1375,7 +1375,7 @@ class CotizacionesController extends Controller
         }
     }
 
-     public function obtenerCotizacionConDetalleYStockActivo($id)
+    public function obtenerCotizacionConDetalleYStockActivo($id)
     {
         try {
             return $this->successResponse('Cotizacion obtenida correctamente', $this->quotationService->getQuotationWithDetailsAndActiveStockById($id), 200);
@@ -1466,7 +1466,30 @@ class CotizacionesController extends Controller
     }
 
 
-    public function recalcularCotizacionReserva ($id) {
+    public function procesarReservaFacturaDemandaCotizacion(Request $request)
+    {
+        $data = $request->all();
+        $gpUser = GpUsuario::find(Auth::user()->id);
+        try {
+            $response =  $this->quotationService->processReservedQuotationInvoiceDemand($data['data'], $gpUser);
+            $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
+
+            return  $this->buildSuccessResponse($msg,  200);
+        } catch (\Throwable $e) {
+            Log::error('Error al procesar la reserva de la cotizacion: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'data' => $data
+            ]);
+            return $this->buildErrorResponse('Error al procesar la reserva de la cotizacion', 500);
+        }
+    }
+
+
+    public function recalcularCotizacionReserva($id)
+    {
         try {
             return $this->successResponse('Cotizacion recalcular correctamente', $this->quotationService->recalculateQuotation($id), 200);
         } catch (\Throwable $th) {

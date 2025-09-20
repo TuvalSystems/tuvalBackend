@@ -269,6 +269,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::get('reserva/lista-reserva-aprobadas', [CotizacionesController::class, 'obtenerListaCotizacionesAprobadas']);
         Route::post ('reserva/procesar-reserva', [CotizacionesController::class, 'procesarReservaCotizacion']);
+        Route::post ('reserva/procesar-reserva-factura-demanda', [CotizacionesController::class, 'procesarReservaFacturaDemandaCotizacion']);
 
 
     });

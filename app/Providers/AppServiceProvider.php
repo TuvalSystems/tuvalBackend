@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\GpCotizacion;
+use App\Models\GpPedido;
 use App\Services\User\Contracts\UserServiceInterface;
 use App\Services\User\UserService;
 use Illuminate\Queue\Events\JobProcessed;
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         Queue::exceptionOccurred(fn(JobProcessed $e) => DB::disconnect());
         Queue::looping(fn() => rescue(fn() => DB::reconnect(), report: false));
         $this->generateCodeQuotation();
+        $this->generateCodeOrder();
         $this->clearSleepConecctionsSQLServer();
     }
 
@@ -39,6 +41,14 @@ class AppServiceProvider extends ServiceProvider
         GpCotizacion::created(function (GpCotizacion $cotizacion) {
             $code = 'COT' . str_pad($cotizacion->id, 8, "0", STR_PAD_LEFT);
             $cotizacion->updateQuietly(['cotizacion' => $code]);
+        });
+    }
+
+
+    public function generateCodeOrder(){
+        GpPedido::created(function (GpPedido $pedido) {
+            $code = 'PED' . str_pad($pedido->id, 8, "0", STR_PAD_LEFT);
+            $pedido->updateQuietly(['pedido' => $code]);
         });
     }
 

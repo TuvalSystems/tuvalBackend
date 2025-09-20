@@ -206,4 +206,24 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $data = data_get($response, 'data', []);
         return is_array($data) ? $data : (array) $data;
     }
+
+
+    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId)
+    {
+        $params = [
+            'articulo' => $detailOrder->ART_CODIGO,
+            'bodega' => $stock['STO_ART_BODEGA'],
+        ];
+        $stocksResult = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
+        $this->assignmentDisponibleStock($stock, $stocksResult, $detailOrder);
+        $this->stockWarehouseService->formatResultStockStoreOrder($stock, $detailOrder, $orderId);
+        return $stock;
+    }
+
+
+     public function assignmentDisponibleStock(&$stock, $stockResponseFormatted, $detailOrder)
+    {
+        $stock['STO_ART_STOCK_DISPONIBLE'] = $stockResponseFormatted['STOCK_DISPONIBLE'] ?? 0;
+        $stock['STO_ART_ARTICULO'] = $detailOrder->ART_CODIGO;
+    }
 }

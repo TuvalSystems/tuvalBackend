@@ -34,8 +34,10 @@ use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
@@ -61,6 +63,8 @@ class QuotationService implements QuotationServiceInterface
     protected $clienTSqlService;
     protected $stockSqlService;
     protected $quotationBuilder;
+    protected $orderBuilder;
+    protected $invoiceService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -73,7 +77,9 @@ class QuotationService implements QuotationServiceInterface
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
         ClientServiceInterface $clienTSqlService,
         StockSqlServiceInterface $stockSqlService,
-        QuotationBuilderInterface $quotationBuilderInterface
+        QuotationBuilderInterface $quotationBuilderInterface,
+        OrderBuilderInterface $orderBuilderInterface,
+        InvoiceServiceInterface $invoiceServiceInterface
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -87,6 +93,8 @@ class QuotationService implements QuotationServiceInterface
         $this->clienTSqlService = $clienTSqlService;
         $this->stockSqlService = $stockSqlService;
         $this->quotationBuilder = $quotationBuilderInterface;
+        $this->orderBuilder = $orderBuilderInterface;
+        $this->invoiceService = $invoiceServiceInterface;
     }
 
 
@@ -1530,7 +1538,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function getQuotationWithDetails(int $id)
     {
-        $cotizacion = GpCotizacion::with('detallecotizacion','tiporeserva')->find($id);
+        $cotizacion = GpCotizacion::with('detallecotizacion', 'tiporeserva')->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
         return [
             'cotizacion' => $cotizacion,
@@ -1555,7 +1563,7 @@ class QuotationService implements QuotationServiceInterface
             ]);
         }, 'detallecotizacion.stock' => function ($q) {
             $q->select(['id', 'detalle_id', 'cotizacion_id', 'STO_ART_BODEGA', 'seleccionado']);
-        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO', 'reservaTraslado','tiporeserva'])->find($id);
+        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO', 'reservaTraslado', 'tiporeserva'])->find($id);
 
         $rows = $cotizacion->detallecotizacion->flatMap(function ($detalle) use ($cotizacion) {
             if (in_array($detalle->ART_TIPO_COMPRA, ['SERV', 'L'])) {
@@ -1599,9 +1607,9 @@ class QuotationService implements QuotationServiceInterface
 
     public function getQuotationWithDetailsAndActiveStockById(int $id)
     {
-         $cotizacion = GpCotizacion::with(['detallecotizacion.stock' => function ($q) {
+        $cotizacion = GpCotizacion::with(['detallecotizacion.stock'  => function ($q) {
             $q->where('seleccionado', '>', 0);
-        }, 'detallecotizacion.articulo', 'reservaTraslado','tiporeserva'])->find($id);
+        }, 'detallecotizacion.articulo', 'detallecotizacion.proveedores', 'reservaTraslado', 'tiporeserva'])->find($id);
 
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
         return [
@@ -2011,7 +2019,162 @@ class QuotationService implements QuotationServiceInterface
     {
         $affected = GpCotizacion::whereKey($oldQuotationId)->whereDoesntHave('detallecotizacionstock', function ($q) {
             $q->where('seleccionado', '>', 0);
-        })->update(['st_solResInv' => 'procesado']);
+        })->update(['estado' => 'procesado', 'st_solResInv' => 'procesado']);
         return $affected > 0;
+    }
+
+
+    public function processReservedQuotationInvoiceDemand($payload, $user)
+    {
+
+        return DB::transaction(function () use ($payload, $user) {
+            $order = $this->storeReservedHeaderOrder($payload, $user);
+            $this->storeReservedDetailOrder($payload['detallecotizacion'], $order);
+            $rows = $this->formPayloadReservedQuotationLog($payload, $payload['detallecotizacion'], $order, $user->id);
+
+            $this->insertReservedOrderLogs($rows);
+            $this->updateQuotationReservedStatus($payload['id']);
+            $this->cleanStockQuotationForDeny($payload['id']);
+            $this->invoiceService->checkSendInvoice($order);
+            return $order;
+        });
+    }
+
+    public function storeReservedHeaderOrder($payload, $user)
+    {
+
+        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $payload['PTO_VTA_ID'])->first();
+        $approvalComercial = $this->approvalService->checkOutApprovalCommercialReservedOrder($payload);
+        $approvalCredit = $this->approvalService->checkoutApprovalCredit($payload);
+
+        $requieresApproval = $approvalCredit != 'no';
+        $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
+        $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
+
+        $fechaEntrega = $payload['despacho'] == 'Despacho en ruta' ? $payload['fecha_entrega'] : null;
+
+        $newOrder = $this->orderBuilder->fromPayloadOrder($payload['id'], $payload, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio,  $fechaEntrega);
+        $newOrder->save();
+        return $newOrder;
+    }
+
+    public function storeReservedDetailOrder($detailOrder, $order)
+    {
+        $usedItemLExcluded = [];
+        foreach ($detailOrder as $i => $item) {
+            $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
+            $hasStock = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
+            if ($isTypeL && !$hasStock) {
+                $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item,  $usedItemLExcluded);
+                if (!$replacementCodeL) {
+                    throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$item['ART_CODIGO']}");
+                }
+                $item['ART_CODIGO'] = $replacementCodeL;
+                $usedItemLExcluded[] = $replacementCodeL;
+            }
+
+            $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($order->id, $item, $i);
+            $newOrderDetail->save();
+
+            if ($item['proveedores']) {
+                $this->storeReservedDetailOrderProviders($item['proveedores'], $order->id, $newOrderDetail->id);
+            }
+            if ($item['stock']) {
+                $this->storeReservedDetailOrderStock($item['stock'], $order, $newOrderDetail);
+            }
+        }
+    }
+
+    public function storeReservedDetailOrderProviders($providers, $orderId, $detailOrderId)
+    {
+
+        foreach ($providers as $prov) {
+            $recibido = isset($prov['recibido']) ? $prov['recibido'] : 'no';
+            $newProvider = $this->orderBuilder->formPayloadOrderDetailProvider($prov, $orderId, $detailOrderId,  $recibido);
+            $newProvider->save();
+        }
+    }
+
+    public function storeReservedDetailOrderStock($stock, $order, $detailOrder)
+    {
+
+        $requiereAprobacion = $order->requiere_aprobacion_crediticia === 'yes'
+            || $order->requiere_aprobacion_comercial === 'yes';
+        foreach ($stock as $sto) {
+
+            $newFormatStock = [
+                'STO_ART_STOCK_DISPONIBLE' => $sto['STO_ART_STOCK_DISPONIBLE'],
+            ];
+            if ($sto['seleccionado'] > 0) {
+                $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $sto, $order->id);
+                if (!$newFormatStock) {
+                    throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder->ART_CODIGO} en la bodega {$sto['STO_ART_BODEGA']}");
+                }
+                if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $sto['seleccionado']) {
+                    throw new \DomainException("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$sto['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
+                }
+            }
+            $reservado = $requiereAprobacion ? 0 : $sto['seleccionado'];
+            $newStock = $this->orderBuilder->formPayloadOrderDetailStock($sto, $order->id, $detailOrder->id, $newFormatStock['STO_ART_STOCK_DISPONIBLE'], $reservado);
+            $newStock->save();
+        }
+    }
+
+
+
+    public function updateQuotationReservedStatus(int $quotationId)
+    {
+        return GpCotizacion::whereKey($quotationId)
+            ->update(['estado' => 'procesado', 'st_solResInv' => 'procesado', 'updated_at' => now()]);
+    }
+
+
+    public function formPayloadReservedQuotationLog($quotation, $detailQuotation, $order, $userId)
+    {
+
+        return collect($detailQuotation)->flatMap(function ($detalle) use ($quotation, $order, $userId) {
+            $tipo = data_get($detalle, 'ART_TIPO_COMPRA');
+
+            if (in_array($tipo, ['SERV', 'L'], true)) {
+                return [[
+                    'cotizacion_id'           => data_get($quotation, 'id'),
+                    'pedido_id'               => data_get($order, 'id'),
+                    'user_id'                 => $userId,
+                    'STO_BODEGA'              => data_get($quotation, 'BOD_BODEGA'),
+                    'ART_CODIGO'              => data_get($detalle, 'ART_CODIGO'),
+                    'STO_ART_BODEGA'          => data_get($quotation, 'BOD_BODEGA'),
+                    'STO_ART_CANTIDAD'        => (float) data_get($detalle, 'ART_CANTIDAD', 0),
+                ]];
+            }
+
+            return collect(data_get($detalle, 'stock', []))->map(function ($stock) use ($detalle, $quotation, $order, $userId) {
+                return [
+                    'cotizacion_id'           => data_get($quotation, 'id'),
+                    'pedido_id'               => data_get($order, 'id'),
+                    'user_id'                 => $userId,
+                    'STO_BODEGA'              => data_get($quotation, 'BOD_BODEGA'),
+                    'ART_CODIGO'              => data_get($detalle, 'ART_CODIGO'),
+                    'STO_ART_BODEGA'          => data_get($stock, 'STO_ART_BODEGA', data_get($quotation, 'BOD_BODEGA')),
+                    'STO_ART_CANTIDAD'        => (float) data_get($stock, 'seleccionado', 0),
+                ];
+            });
+        })->values()->all();
+    }
+
+    public function insertReservedOrderLogs($rows)
+    {
+        foreach ($rows as  $value) {
+            DB::table('gp_pedidos_reserva_logs')->insert([
+                'cotizacion_origen_id' => $value['cotizacion_id'],
+                'pedido_destino_id'    => $value['pedido_id'],
+                'user_id'              => $value['user_id'],
+                'STO_BODEGA'           => $value['STO_BODEGA'],
+                'ART_CODIGO'           => $value['ART_CODIGO'],
+                'STO_ART_BODEGA'       => $value['STO_ART_BODEGA'],
+                'STO_ART_CANTIDAD'     => $value['STO_ART_CANTIDAD'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

@@ -334,14 +334,8 @@ class OrderService implements OrderServiceInterface
 
     public function prepareOrderDetailStoreFill($detailOrder, $newOrder)
     {
-        Log::info('Cantidad de items recibidos para cotización: ' . count($detailOrder) . '-' . 'pedido_id :' . $newOrder->id);
         $usedItemLExcluded = [];
         foreach ($detailOrder as $i => $item) {
-
-            /** antes de almacenar el detalle del pedido, verificamos los items L
-             *  si tienen stock y sino se asigna un item que este disponible
-             * considerando la clase y el tipo de impuesto
-             */
             $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
             // $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
             $hasStock = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
@@ -427,7 +421,7 @@ class OrderService implements OrderServiceInterface
                 'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
             ];
             if ($item['seleccionado'] > 0) {
-                $newFormatStock = $this->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
+                $newFormatStock =  $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
                 if (!$newFormatStock) {
                     throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
                 }
@@ -451,28 +445,6 @@ class OrderService implements OrderServiceInterface
     public function updateValueInvoiceQuotation($orderId)
     {
         GpCotizacion::where('id', $orderId)->update(['estado' => 'procesado', 'facturado' => 1]);
-    }
-
-    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId)
-    {
-        $params = [
-            'articulo' => $detailOrder->ART_CODIGO,
-            'bodega' => $stock['STO_ART_BODEGA'],
-        ];
-        $stocksResult = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
-        Log::info("Resultado stock de getAndValidateOrderDetailStock: ", [
-            'stocksResult' => $stocksResult
-        ]);
-
-        $this->assignmentDisponibleStock($stock, $stocksResult, $detailOrder);
-        $this->stockWarehouseService->formatResultStockStoreOrder($stock, $detailOrder, $orderId);
-        return $stock;
-    }
-
-    public function assignmentDisponibleStock(&$stock, $stockResponseFormatted, $detailOrder)
-    {
-        $stock['STO_ART_STOCK_DISPONIBLE'] = $stockResponseFormatted['STOCK_DISPONIBLE'] ?? 0;
-        $stock['STO_ART_ARTICULO'] = $detailOrder->ART_CODIGO;
     }
 
     /**
