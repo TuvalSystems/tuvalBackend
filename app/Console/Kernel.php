@@ -14,35 +14,42 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('devoluciones:procesar')
             ->everyMinute()
-            ->withoutOverlapping(60);
+            ->withoutOverlapping(60)
+            ->runInBackground();
 
         //se ejecuta una vez al dia a las 08:00
         $schedule->command('cotizaciones:notificar-noventa')
             ->dailyAt('08:00')
-            ->after(fn() => DbUtils::flush())
-            ->onFailure(fn() => DbUtils::flush());
+
+             ->runInBackground();
 
         //se ejecuta el 1 de cada mez
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
             ->monthlyOn(9, '02:00')
             ->timezone('America/Guayaquil')->withoutOverlapping(60)
-            ->runInBackground()
-            ->after(fn() => DbUtils::flush())
-            ->onFailure(fn() => DbUtils::flush()); // hace que no bloquee otros jobs
+            ->runInBackground(); // hace que no bloquee otros jobs
 
         // ejecuta cada 2 horas la actualización de articulos
         $schedule->command('articulol:update')
             ->everyTenMinutes()
             ->withoutOverlapping(60)
-            ->after(fn() => DbUtils::flush())
-            ->onFailure(fn() => DbUtils::flush());
+            ->runInBackground();
 
-        $schedule->command('optimize:clear')
-            ->dailyAt('03:15')
+        // $schedule->command('optimize:clear')
+        //     ->dailyAt('03:15')
+        //     ->timezone('America/Guayaquil')
+        //     ->withoutOverlapping(60)
+        //     ->after(fn() => DbUtils::flush())
+        //     ->onFailure(fn() => DbUtils::flush());
+
+
+        $schedule->command('pedidos:facturar-reservas')
             ->timezone('America/Guayaquil')
-            ->withoutOverlapping(60)
-            ->after(fn() => DbUtils::flush())
-            ->onFailure(fn() => DbUtils::flush());
+            ->between('06:00', '22:00')
+            ->everyTenMinutes()              // frecuencia
+            ->withoutOverlapping(30)            // evita procesos en paralelo
+            ->runInBackground()
+        ; // hace que no bloquee otros jobs
     }
 
 

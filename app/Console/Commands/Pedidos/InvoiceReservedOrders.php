@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Pedidos;
 
 use App\Services\Pedidos\OrderJobService;
+use App\Supports\DbUtils;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Command\Command as Cmd;
@@ -86,6 +87,9 @@ class InvoiceReservedOrders extends Command
             ]);
             $this->error('❌ Error al facturar reservas. Revisa logs.');
             return Cmd::FAILURE;
+        } finally {
+            // vacía el pool de conexiones para evitar problemas en siguientes jobs
+           DbUtils::flush();
         }
     }
 }
