@@ -32,130 +32,6 @@ class OrderJobService
         $this->orderRepository = $orderRepository;
     }
 
-    /** funcion para enviar las facturas del siguiente mes a gp cada 1 de cad mes
-     *  remplazo de sendfacturasgp()
-     *
-     */
-
-    // public function sendInvoiceNextMonth()
-    // {
-
-    //     // Procesar pedidos en estado 'espera'
-    //     $this->processPendingOrders();
-    //     // Procesar traslados en estado 'orden_de_compra'
-    //     $this->processPurchaseOrderTransfers();
-    //     Log::channel( 'cron_process' )->info( '✅ [OrderJobService] - Proceso sendInvoiceNextMonth FINALIZADO.' );
-    // }
-
-    // public function processPendingOrders()
-    // {
-    //     // $pedidos = GpPedido::where( 'estado', 'espera' )->get();
-    //     $pedidos = GpPedido::where( 'estado', 'espera' )->where( 'id', 290314 )->get();
-    //     foreach ( $pedidos as $pedido ) {
-    //         try {
-    //             $this->invoiceService->checkSendInvoice( $pedido );
-    //         } catch ( Exception $e ) {
-    //             $this->logOrderError( $pedido, $e, 'enviando factura' );
-    //         }
-    //     }
-    // }
-
-    // public function processPurchaseOrderTransfers()
-    // {
-    //     $transferOrders = GpPedido::where( 'estado', 'orden_de_compra' )->get();
-
-    //     foreach ( $transferOrders as $order ) {
-    //         if ( $this->isOrderReadyForProcessing( $order ) ) {
-    //             $this->processReadyOrder( $order );
-    //         } else {
-    //             $this->logUnprocessedOrder( $order );
-    //         }
-    //     }
-    // }
-
-    // public function isOrderReadyForProcessing( GpPedido $order ): bool
-    // {
-    //     $supplierDetails = $this->getSupplierDetailsWithPurchaseOrders( $order );
-    //     if ( $supplierDetails->isEmpty() ) {
-    //         return false;
-    //     }
-
-    //     return $this->areAllSupplierDetailsProcessed( $supplierDetails );
-    // }
-
-    // public function getSupplierDetailsWithPurchaseOrders( GpPedido $order )
-    // {
-    //     return GpPedidoDetalleProveedores::join(
-    //         'gp_orden_de_compra_generados',
-    //         'gp_orden_de_compra_generados.detalle_id',
-    //         'gp_pedido_detalle_proveedores.detalle_id'
-    // )
-    //         ->where( 'pedido_id', $order->id )
-    //         ->select( 'gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO' )
-    //         ->get();
-    // }
-
-    // public function areAllSupplierDetailsProcessed( Collection $supplierDetails )
-    // {
-    //     foreach ( $supplierDetails as $detail ) {
-    //         if ( $detail->recibido === 'no' || !$this->isPurchaseOrderProcessed( $detail ) ) {
-    //             return false;
-    //         }
-    //     }
-    //     return true;
-    // }
-
-    // public function isPurchaseOrderProcessed( $supplierDetail )
-    // {
-    //     try {
-    //         $parameters = [
-    //             'documento_origen' => $supplierDetail->ORDEN_COMPRA_RECIBO,
-    //             'tipo_documento' => 1,
-    // ];
-
-    //         $result = $this->webService->transaccional( 'MST_Estado_Recibo_Compra', $parameters );
-    //         $status = $result[ 'MST_Estado_Recibo_CompraResult' ][ 'CS_ESTADO_RECIBO_COMPRA' ][ 0 ][ 'REC_COM_ESTADO_RECEPCION' ] ?? null;
-
-    //         return $status === 'PROCESADO';
-    //     } catch ( Exception $e ) {
-    //         $this->logWebServiceError( $supplierDetail, $e );
-    //         return false;
-    //     }
-    // }
-
-    // public function processReadyOrder( GpPedido $order )
-    // {
-    //     try {
-    //         $order->estado = 'espera';
-    //         $order->save();
-    //         $this->invoiceService->generateDisptachOrder( $order );
-    //         $this->invoiceService->sendInvoiceGp( $order );
-    //     } catch ( Exception $e ) {
-    //         $this->logOrderError( $order, $e, 'procesando despacho/factura' );
-    //     }
-    // }
-
-    // public function logWebServiceError( $supplierDetail, Exception $e ): void
-    // {
-    //     Log::channel( 'cron_process' )->error(
-    //         "[OrderJobService] - Error en WebService para documento {$supplierDetail->ORDEN_COMPRA_RECIBO}: {$e->getMessage()}"
-    // );
-    // }
-
-    // public function logOrderError( GpPedido $order, Exception $e, string $action ): void
-    // {
-    //     Log::channel( 'cron_process' )->error(
-    //         "[OrderJobService] - Error {$action} para Pedido ID {$order->id}: {$e->getMessage()}"
-    // );
-    //     Log::channel( 'cron_process' )->error( $e->getTraceAsString() );
-    // }
-
-    // public function logUnprocessedOrder( GpPedido $order ): void
-    // {
-    //     Log::channel( 'cron_process' )->info(
-    //         "❌ [OrderJobService] - Pedido ID {$order->id} NO cumple condiciones para pasar a 'espera'."
-    // );
-    // }
 
     /** reemplazo de la función de  facturarsiguientemescron */
 
@@ -169,7 +45,7 @@ class OrderJobService
             throw new Exception('Dia no Habil');
         }
 
-        return $this->generateNextMonthInvoice();
+        return $this->invoicePreviousMonthOrders();
     }
 
     public function isWeekend(): bool
@@ -197,41 +73,92 @@ class OrderJobService
 
     /** funciones para el facturar siguiente mes */
 
-    public function generateNextMonthInvoice()
+    public function invoicePreviousMonthOrders()
     {
-        DB::beginTransaction();
-        $errores = [];
-        $mes = $this->getPreviousMonth();
+        [$start, $end, $targetMonthKey] = $this->getPreviousMonthPeriod();
+        $m = ['processed' => 0, 'invoiced' => 0, 'skipped' => 0, 'failed' => 0];
 
-
-        /** se comento para pruebas  */
-        if ($this->shouldAbortBilling($mes)) {
-            DB::rollBack();
-            Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
-            return;
+        $q = $this->orderRepository->getOrdersToInvoiceNextMonth($start, $end);
+        if (!(clone $q)->exists()) {
+            Log::channel('cron_process')->info("ℹ️ Sin pedidos para facturar (siguiente mes). target_month={$targetMonthKey}");
+            return $m;
         }
 
-        $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
-        foreach ($pedidos as $pedido) {
-            try {
-                $this->invoiceService->checkSendInvoice($pedido, true, false);
-                Log::channel('cron_process')->info("✅ Pedido {$pedido->id} facturado correctamente.");
-            } catch (\Throwable $e) {
-                $errores[] = [
-                    'pedido_id' => $pedido->id,
-                    'error' => $e->getMessage(),
-                ];
+        $q->chunkById(200, function ($orders) use (&$m) {
+            foreach ($orders as $key => $order) {
+                $m['processed']++;
 
-                Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->id}: {$e->getMessage()}");
+                try {
+                    DB::transaction(function () use ($order, &$m) {
+                        $fresh = \App\Models\GpPedido::query()
+                            ->whereKey($order->id)
+                            ->lock('FOR UPDATE') // MySQL 8+: 'FOR UPDATE' o 'FOR UPDATE SKIP LOCKED'
+                            ->first();
+
+                        if (!$fresh) {
+                            $m['skipped']++;
+                            return;
+                        }
+                        if (in_array($fresh->estado, ['facturado'], true) || !empty($fresh->factura)) {
+                            $m['skipped']++;
+                            return; // idempotencia
+                        }
+                        $this->invoiceService->checkSendInvoice($fresh, true, false);
+                        $m['invoiced']++;
+                        Log::channel('cron_process')->info("✅ Pedido {$fresh->id} facturado (siguiente mes).");
+                    });
+                } catch (\DomainException $e) {
+                    $m['skipped']++;
+                    Log::channel('cron_process')->warning("⚠️ Pedido {$order->id} omitido (regla): {$e->getMessage()}");
+                } catch (\Throwable $e) {
+                    $m['failed']++;
+                    Log::channel('cron_process')->error("❌ Error facturando pedido {$order->id}: {$e->getMessage()}", [
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
             }
-        }
-        if (!empty($errores)) {
-            DB::rollBack();
-            Log::channel('cron_process')->error('❌ Proceso de facturación cancelado. Se encontraron errores.', $errores);
-            return;
-        }
-        DB::commit();
-        Log::channel('cron_process')->info('✅ Todos los pedidos facturados exitosamente.');
+        }, 'id');
+        Log::channel('cron_process')->info('next-month-invoicing finished', $m + [
+            'target_month'   => $targetMonthKey,
+            'ended_at'       => now()->toDateTimeString(),
+            'peak_memory_mb' => round(memory_get_peak_usage(true) / 1048576, 1),
+        ]);
+        return $m;
+
+        // dd($q->count());
+        // DB::beginTransaction();
+        // $errores = [];
+        // $mes = $this->getPreviousMonth();
+
+
+        // /** se comento para pruebas  */
+        // if ($this->shouldAbortBilling($mes)) {
+        //     DB::rollBack();
+        //     Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
+        //     return;
+        // }
+
+        // $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
+        // foreach ($pedidos as $pedido) {
+        //     try {
+        //         $this->invoiceService->checkSendInvoice($pedido, true, false);
+        //         Log::channel('cron_process')->info("✅ Pedido {$pedido->id} facturado correctamente.");
+        //     } catch (\Throwable $e) {
+        //         $errores[] = [
+        //             'pedido_id' => $pedido->id,
+        //             'error' => $e->getMessage(),
+        //         ];
+
+        //         Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->id}: {$e->getMessage()}");
+        //     }
+        // }
+        // if (!empty($errores)) {
+        //     DB::rollBack();
+        //     Log::channel('cron_process')->error('❌ Proceso de facturación cancelado. Se encontraron errores.', $errores);
+        //     return;
+        // }
+        // DB::commit();
+        // Log::channel('cron_process')->info('✅ Todos los pedidos facturados exitosamente.');
     }
 
     public function getPreviousMonth()
@@ -242,5 +169,77 @@ class OrderJobService
     public function shouldAbortBilling($mes)
     {
         return $mes === date("m");
+    }
+
+
+
+    public function getPreviousMonthPeriod(?string $runDate = null)
+    {
+
+        $ref = $runDate ? Carbon::parse($runDate) : Carbon::now();
+        $start = $ref->copy()->startOfMonth()->subMonthNoOverflow();
+        $end = $ref->copy()->endOfMonth()->subMonthNoOverflow();
+        return [$start, $end, $start->format('Y-m')];
+    }
+
+
+    /** facturacion de pedidos en estado de reserva  */
+
+
+    public function generateInvoiceForReservedOrders(?string $date = null): array
+    {
+        $today = $date ? Carbon::parse($date)->toDateString() : now()->toDateString();
+        $metrics = ['processed' => 0, 'invoiced' => 0, 'skipped' => 0, 'failed' => 0];
+        $orders =  $this->orderRepository->queryInvoiceReservedOrdersForDate($today);
+        $orders->orderBy('id')->chunkById(200, function ($orders) use (&$metrics, $today) {
+            foreach ($orders as $order) {
+                $metrics['processed']++;
+
+                try {
+                    DB::transaction(function () use ($order, $today, &$metrics) {
+                        // 3) Re-carga con lock para evitar doble facturación concurrente
+                        /** @var \App\Models\GpPedido $fresh */
+                        $fresh = \App\Models\GpPedido::query()
+                            ->whereKey($order->id)
+                            ->lock('FOR UPDATE') // MySQL 8+: 'FOR UPDATE' o 'FOR UPDATE SKIP LOCKED'
+                            ->first();
+
+                        // Idempotencia: sal si ya está facturado o tiene número de factura, etc.
+                        if (in_array($fresh->estado, ['facturado'], true) || !empty($fresh->factura)) {
+                            $metrics['skipped']++;
+                            Log::channel('cron_process')->info("⏭️ Pedido {$fresh->id} omitido: ya facturado.");
+                            return;
+                        }
+
+                        // Asegura fecha (si por algún motivo entró fuera de rango)
+                        $orderDate = $fresh->fe_facturacion_reserva instanceof Carbon
+                            ? $fresh->fe_facturacion_reserva->toDateString()
+                            : Carbon::parse($fresh->fe_facturacion_reserva)->toDateString();
+
+                        if ($fresh->origen !== 'reserva' || $orderDate !== $today) {
+                            $metrics['skipped']++;
+                            Log::channel('cron_process')->info("⏭️ Pedido {$fresh->id} omitido: origen/fecha no coincide.");
+                            return;
+                        }
+
+                        // 4) Ejecuta la facturación (tu servicio)
+                        $this->invoiceService->checkSendInvoice($fresh, true, false);
+
+                        $metrics['invoiced']++;
+                        Log::channel('cron_process')->info("✅ Pedido {$fresh->id} facturado correctamente (reserva).");
+                    });
+                } catch (\DomainException $e) {
+                    $metrics['skipped']++;
+                    Log::channel('cron_process')->warning("⚠️ Pedido {$order->id} no facturado (regla negocio): {$e->getMessage()}");
+                } catch (\Throwable $e) {
+                    $metrics['failed']++;
+                    Log::channel('cron_process')->error("❌ Error facturando pedido {$order->id}: {$e->getMessage()} - Reserva", [
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
+            }
+        });
+
+        return $metrics;
     }
 }

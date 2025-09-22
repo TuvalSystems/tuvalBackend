@@ -647,7 +647,8 @@ class OrderService implements OrderServiceInterface
                 Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
                 return;
             }
-            $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
+            [$start, $end] = $this->getPreviousMonthPeriod();
+            $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($start, $end);
             foreach ($pedidos as $pedido) {
                 $this->invoiceService->checkSendInvoice($pedido, true, false);
                 Log::channel('cron_process')->info("✅ Pedido {$pedido->id} facturado correctamente de generateNextMonthInvoice - orderService");
@@ -659,6 +660,15 @@ class OrderService implements OrderServiceInterface
             Log::channel('cron_process')->error("❌ Error facturando pedido: {$e->getMessage()}");
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
+    }
+
+    public function getPreviousMonthPeriod(?string $runDate = null)
+    {
+
+        $ref = $runDate ? Carbon::parse($runDate) : Carbon::now();
+        $start = $ref->copy()->startOfMonth()->subMonthNoOverflow();
+        $end = $ref->copy()->endOfMonth()->subMonthNoOverflow();
+        return [$start, $end, $start->format('Y-m')];
     }
 
     public function getPreviousMonth()

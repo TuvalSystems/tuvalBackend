@@ -14,6 +14,7 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use Carbon\Carbon;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -122,27 +123,44 @@ class OrderRepository implements OrderRepositoryInterface
 
     /** facturacion de siguiente mes*/
 
-    public function getOrdersToInvoiceNextMonth($mes)
+    public function getOrdersToInvoiceNextMonth(Carbon $start, Carbon $end)
     {
-        return GpPedido::where('estado', 'espera')
+
+        return GpPedido::query()
+            ->where('estado', 'espera')                 // ajusta según tus reglas
             ->where('factura_posterior_despacho', 1)
             ->where(function ($q) {
                 $q->whereNull('factura_a_demanda')
                     ->orWhere('factura_a_demanda', 0);
             })
+            ->where('origen', '!=', 'reserva')
             ->where('factura_siguiente_mes', 1)
-            ->whereMonth('created_at', '=', $mes)
-            ->get();
+            ->whereBetween('created_at', [
+                $start->toDateTimeString(),
+                $end->toDateTimeString(),
+            ]);
     }
 
 
 
-    public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder){
-      return  GpPedidoDetalleStock::query()
+    public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder)
+    {
+        return  GpPedidoDetalleStock::query()
             ->where('STO_ART_BODEGA', $warehouseId)
             ->whereIn('detalle_id', $detailOrder)
             ->where('seleccionado', '>', 0)
             ->get()
             ->keyBy('detalle_id');
+    }
+
+
+
+    public function queryInvoiceReservedOrdersForDate($date)
+    {
+        return GpPedido::where('origen', 'reserva')
+            ->where('estado', 'espera')
+            ->whereNotNull('fe_facturacion_reserva')
+            ->whereDate('fe_facturacion_reserva', $date)
+        ;
     }
 }
