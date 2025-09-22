@@ -42,24 +42,6 @@ class SendInvoiceNextMonth extends Command
      */
     public function handle(OrderJobService $orderJobService)
     {
-        // Log::channel('cron_process')->info('✅ [SendInvoiceNextMonthJob] - Command executed at ' . now());
-        // $this->info('🔄 Enviando Pedidos a Facturar...');
-
-        // $startTime = Carbon::now();
-        // try {
-        //     $orderJobService->sendInvoiceNextMonthCron();
-        //     $endTime = Carbon::now();
-        //     $duration = $startTime->diffInSeconds($endTime);
-        //     Log::channel('cron_process')->info("✅ [SendInvoiceNextMonthJob] - Command finished at {$endTime} (Duration: {$duration} seconds)");
-        //     $this->info('✅ Proceso completado exitosamente.');
-        // } catch (\Exception $e) {
-        //     Log::channel('cron_process')->error("[SendInvoiceNextMonthJob] - Error: " . $e->getMessage(), [
-        //         'trace' => $e->getTraceAsString(),
-        //     ]);
-        //     $this->error('❌ Error al enviar pedidos a facturar. Ver logs para más detalles.');
-        // }
-        // return 0;
-
         $this->info('🔄 Enviando pedidos a facturar (ciclo “siguiente mes”)…');
         $t0 = microtime(true);
 

@@ -124,51 +124,7 @@ class OrderJobService
         ]);
         return $m;
 
-        // dd($q->count());
-        // DB::beginTransaction();
-        // $errores = [];
-        // $mes = $this->getPreviousMonth();
-
-
-        // /** se comento para pruebas  */
-        // if ($this->shouldAbortBilling($mes)) {
-        //     DB::rollBack();
-        //     Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
-        //     return;
-        // }
-
-        // $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
-        // foreach ($pedidos as $pedido) {
-        //     try {
-        //         $this->invoiceService->checkSendInvoice($pedido, true, false);
-        //         Log::channel('cron_process')->info("✅ Pedido {$pedido->id} facturado correctamente.");
-        //     } catch (\Throwable $e) {
-        //         $errores[] = [
-        //             'pedido_id' => $pedido->id,
-        //             'error' => $e->getMessage(),
-        //         ];
-
-        //         Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->id}: {$e->getMessage()}");
-        //     }
-        // }
-        // if (!empty($errores)) {
-        //     DB::rollBack();
-        //     Log::channel('cron_process')->error('❌ Proceso de facturación cancelado. Se encontraron errores.', $errores);
-        //     return;
-        // }
-        // DB::commit();
-        // Log::channel('cron_process')->info('✅ Todos los pedidos facturados exitosamente.');
     }
-
-    // public function getPreviousMonth()
-    // {
-    //     return date("m", strtotime("-1 month"));
-    // }
-
-    // public function shouldAbortBilling($mes)
-    // {
-    //     return $mes === date("m");
-    // }
 
 
 
