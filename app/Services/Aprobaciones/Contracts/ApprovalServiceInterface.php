@@ -34,4 +34,8 @@ interface ApprovalServiceInterface
     public function denyApproveComercialOrderForInsufficientStock($data);
     public function denyApproveComercialOrder($data);
 
+    /** funcion para obtener el estado de cuenta de un cliente */
+
+    public function accountStatusClient($ruc);
+
 }

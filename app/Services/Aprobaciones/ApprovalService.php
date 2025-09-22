@@ -585,22 +585,27 @@ class ApprovalService implements ApprovalServiceInterface
             return 'no';
         }
 
-        $params = [
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => Arr::get($data, 'CLI_RUC'),
-        ];
-        $cupoDisponible = $this->mswService->cobranzas('ConsultaCupoDisponibleCliente', $params);
-        if ($data['total'] > $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
+        $cupoDisponible = $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        if (!$cupoDisponible) {
+            return 'no';
+        }
+        if ($data['total'] >  $cupoDisponible['cupoDisponibleGp']) {
             return 'Cupo';
         }
 
-        $documentosVencidos = $this->mswService->cobranzas('ConsultaDocumentosVencidosCliente', $params);
-        if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
+        $documentosVencidos = $this->functionService->getClientDocumentExpired($data['CLI_RUC']);
+        if (!$documentosVencidos) {
+            return 'no';
+        }
+        if ($documentosVencidos['pendienteGpMc'] > 0) {
             return 'Documentos Vencidos';
         }
 
-        $documentosSinSoporte = $this->mswService->cobranzas('ConsultaDocumentosSinSoporteCliente', $params);
-        if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
+        $documentosSinSoporte = $this->functionService->getClientDocumentWithoutSupport($data['CLI_RUC']);
+        if (!$documentosSinSoporte) {
+            return 'no';
+        }
+        if ($documentosSinSoporte['pendienteGpMc'] > 0) {
             return 'Saldo Pendiente';
         }
 
@@ -999,7 +1004,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
         $stocksResult = $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
-        Log::info("Resultado de stock para aprobacion: ", [
+        Log::info("Resultado de stock para aprobacion: ",  [
             'stocksResult' => $stocksResult
         ]);
         return $this->stockWarehouseService->transformStockResponse($stocksResult);
@@ -1049,5 +1054,17 @@ class ApprovalService implements ApprovalServiceInterface
                 $st->save();
             }
         }
+    }
+
+
+
+
+    public function accountStatusClient($ruc)
+    {
+        $detalle = [];
+        $detalle['cupoDisponible'] = $this->functionService->getClientCheckAvailableQuota($ruc);
+        $detalle['documentosVencidos'] = $this->functionService->getListClientDocumentExpired($ruc);
+        $detalle['documentosSinSoporte'] = $this->functionService->getListClientDocumentWithoutSupport($ruc);
+        return $detalle;
     }
 }
