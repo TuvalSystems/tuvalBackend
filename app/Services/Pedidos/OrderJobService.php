@@ -77,13 +77,12 @@ class OrderJobService
     {
         [$start, $end, $targetMonthKey] = $this->getPreviousMonthPeriod();
         $m = ['processed' => 0, 'invoiced' => 0, 'skipped' => 0, 'failed' => 0];
-
         $q = $this->orderRepository->getOrdersToInvoiceNextMonth($start, $end);
+
         if (!(clone $q)->exists()) {
             Log::channel('cron_process')->info("ℹ️ Sin pedidos para facturar (siguiente mes). target_month={$targetMonthKey}");
             return $m;
         }
-
         $q->chunkById(200, function ($orders) use (&$m) {
             foreach ($orders as $key => $order) {
                 $m['processed']++;
@@ -161,15 +160,15 @@ class OrderJobService
         // Log::channel('cron_process')->info('✅ Todos los pedidos facturados exitosamente.');
     }
 
-    public function getPreviousMonth()
-    {
-        return date("m", strtotime("-1 month"));
-    }
+    // public function getPreviousMonth()
+    // {
+    //     return date("m", strtotime("-1 month"));
+    // }
 
-    public function shouldAbortBilling($mes)
-    {
-        return $mes === date("m");
-    }
+    // public function shouldAbortBilling($mes)
+    // {
+    //     return $mes === date("m");
+    // }
 
 
 

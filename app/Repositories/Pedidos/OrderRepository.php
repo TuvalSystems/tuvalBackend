@@ -125,7 +125,6 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function getOrdersToInvoiceNextMonth(Carbon $start, Carbon $end)
     {
-
         return GpPedido::query()
             ->where('estado', 'espera')                 // ajusta según tus reglas
             ->where('factura_posterior_despacho', 1)
@@ -133,7 +132,11 @@ class OrderRepository implements OrderRepositoryInterface
                 $q->whereNull('factura_a_demanda')
                     ->orWhere('factura_a_demanda', 0);
             })
-            ->where('origen', '!=', 'reserva')
+            // ->where('origen', '!=', 'reserva')
+            ->where( function ($q){
+                $q->whereNull('origen')
+                  ->orWhere('origen', '!=', 'reserva');
+            })
             ->where('factura_siguiente_mes', 1)
             ->whereBetween('created_at', [
                 $start->toDateTimeString(),
