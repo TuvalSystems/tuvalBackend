@@ -499,13 +499,8 @@ class OrderService implements OrderServiceInterface
         $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
 
         // 🔍 2. Consultar el crédito del cliente
-        //  $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-        $credito = $this->apiBillingService->consultCreditClient([
-            'ruc' => $data['CLI_RUC'],
-            'idCompania' => config('services.api_gp.company'),
-        ]);
         $estadoCuenta = [
-            'cupoDisponible' => $credito['data'] ?? []
+            'cupoDisponible' =>$this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC'])
         ];
 
         // 🔍 3. Procesar proveedores y stock

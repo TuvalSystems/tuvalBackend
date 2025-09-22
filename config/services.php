@@ -55,6 +55,10 @@ return [
 
             //cobros
             'consultar_cupo_disponible_cliente'          => 'api/cobros/consultar-cupo-disponible-cliente',
+            'consulta_documentos_vencidos_cliente'       => 'api/cobros/consultar-documentos-vencidos-cliente',
+            'consulta_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-documentos-sin-soporte-cliente',
+            'consulta_lista_documentos_vencidos_cliente'       => 'api/cobros/consultar-lista-documentos-vencidos-cliente',
+            'consulta_lista_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-lista-documentos-sin-soporte-cliente',
 
             //cotizaciones
             'guardar_cotizacion_recordatorio'            => 'api/cotizaciones/guardar-cotizacion-recordatorio',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ventas;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpClienteSucursal;
@@ -18,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 
 class AprobacionesController extends Controller
 {
+    use JsonResponseTrait;
     protected $approvalService;
     protected $apiGpService;
 
@@ -27,12 +29,24 @@ class AprobacionesController extends Controller
         $this->approvalService = $approvalService;
     }
 
-    // public function checkAprobacionesCrediticias($data): string
-    // {
+    public function estadodecuenta(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->all();
+            $detalle = $this->approvalService->accountStatusClient($data['CLI_RUC']);
+            return $this->successResponse('Información Obtenida Correctamente', $detalle, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al obtener la información: ' . $e->getMessage(), 500);
+        }
+    }
 
-    //     if ($data['COND_ID'] == 'CONTADO') {
-    //         return 'no';
-    //     }
+
+    // public function estadodecuenta(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // {
+    //     $data = $request->all();
+    //     $user = Auth::user();
+
+    //     $detalle = array();
 
     //     $webservices = new WebserviceController();
     //     $parameters = array(
@@ -42,57 +56,23 @@ class AprobacionesController extends Controller
 
     //     $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
 
-    //     if ($data['total'] > $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
-    //         return 'Cupo';
-    //     }
+    //     $detalle['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
 
     //     $documentosVencidos = $webservices->cobranzas('ConsultaDocumentosVencidosCliente', $parameters);
-
     //     if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
-    //         return 'Documentos Vencidos';
+    //         $detalle['documentosVencidos'] = $documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'];
     //     }
 
     //     $documentosSinSoporte = $webservices->cobranzas('ConsultaDocumentosSinSoporteCliente', $parameters);
-
     //     if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
-    //         return 'Saldo Pendiente';
+    //         $detalle['documentosSinSoporte'] = $documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'];
     //     }
 
-    //     return 'no';
+    //     return response([
+    //         'success' => true,
+    //         'detalle' => $detalle
+    //     ]);
     // }
-
-    public function estadodecuenta(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-        $user = Auth::user();
-
-        $detalle = array();
-
-        $webservices = new WebserviceController();
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $data['CLI_RUC'],
-        );
-
-        $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-
-        $detalle['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
-
-        $documentosVencidos = $webservices->cobranzas('ConsultaDocumentosVencidosCliente', $parameters);
-        if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
-            $detalle['documentosVencidos'] = $documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'];
-        }
-
-        $documentosSinSoporte = $webservices->cobranzas('ConsultaDocumentosSinSoporteCliente', $parameters);
-        if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
-            $detalle['documentosSinSoporte'] = $documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'];
-        }
-
-        return response([
-            'success' => true,
-            'detalle' => $detalle
-        ]);
-    }
 
     public function verpedidosycotizacionesporaprobar(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {

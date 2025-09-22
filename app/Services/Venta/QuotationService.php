@@ -588,12 +588,8 @@ class QuotationService implements QuotationServiceInterface
     public function detailQuotation($data)
     {
         try {
-            $credito = $this->apiBillingService->consultCreditClient([
-                'ruc' => $data['CLI_RUC'],
-                'idCompania' => config('services.api_gp.company'),
-            ]);
             $estadoCuenta = [
-                'cupoDisponible' => $credito['data'] ?? []
+                'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
             ];
             $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
 
