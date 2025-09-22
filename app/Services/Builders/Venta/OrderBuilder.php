@@ -14,7 +14,7 @@ class OrderBuilder implements OrderBuilderInterface
 
 
 
-    public function fromPayloadOrder($cotizacionId, array $data,  array $approvalComercial, GpUsuario $user, $pv, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega)
+    public function fromPayloadOrder($cotizacionId, array $data,  array $approvalComercial, GpUsuario $user, $pv, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega, $origen, $fFacturacionReserva = null)
     {
         $newOrder = new GpPedido();
         $subtotalBruto = (float) $data['subtotal'] + (float) $data['descuento'];
@@ -64,6 +64,8 @@ class OrderBuilder implements OrderBuilderInterface
             'nota_cliente' => $data['nota_cliente'],
             'orden_de_compra' => $data['orden_de_compra'],
             'fecha_entrega' => $fechaEntrega,
+            'origen' => $origen,
+            'fe_facturacion_reserva' => $fFacturacionReserva,
         ]);
 
         return $newOrder;
