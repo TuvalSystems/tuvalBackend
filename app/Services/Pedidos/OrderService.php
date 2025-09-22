@@ -484,9 +484,6 @@ class OrderService implements OrderServiceInterface
         try {
             DB::beginTransaction();
             $order = $this->getOrderOrFail($orderId);
-            $pedidoDate = Carbon::parse($order->fe_facturacion_reserva)->format('Y-m-d');
-
-            $today = now()->toDateString();
             if (!$this->isInvoiceDateValidForReservedOrder($order)) {
                 throw new \DomainException(sprintf(
                     "La fecha de facturación no es válida para pedidos con origen 'reserva'. La fecha del pedido (%s) debe ser igual a la fecha actual (%s).",
