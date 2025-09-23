@@ -11,10 +11,18 @@ use Illuminate\Support\Facades\DB;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Services\Api\ApiGpService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use Illuminate\Support\Arr;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
+
+    protected $apiGpService;
+    public function __construct(ApiGpService $apiGpService)
+    {
+        $this->apiGpService = $apiGpService;
+    }
 
     public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo)
     {
@@ -115,8 +123,9 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return $articulo;
     }
 
-    public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null): array
+    public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null, ?int $excludeQuotationId = null): array
     {
+
 
         if (empty($bodegas)) return [];
         $q = GpPedidoDetalleStock::query()
@@ -159,8 +168,49 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->pluck('total', 'bodega')
             ->map(fn($v) => (float) ($v ?? 0))
             ->all();
+
+        //sumar reservados de cotizaciones
         // 2) Traslados de reposición pendientes (agrupado por bodega_origen)
-        $reservasTraslados = GpTrasladosReposicion::query()
+        $reservasTraslados = $this->getReservedStockByWarehousesForTransfer($articulo, $bodegas);
+        // 4) Reserva de Cotizaciones aprobadas
+        $reservaCotizaciones = $this->getReservedStockByWarehousesForQuotation($articulo, $bodegas, $excludeQuotationId);
+
+        $out = [];
+        foreach ($bodegas as $b) {
+            $out[$b] =  (float) ($reservaCotizaciones[$b] ?? 0) +
+                (float)($reservasPedidos[$b] ?? 0) +
+                (float)($reservasTraslados[$b] ?? 0);
+        }
+
+
+        return $out;
+    }
+
+    public function getReservedStockByWarehousesForQuotation($articulo, $bodegas, $excludeQuotationId = null)
+    {
+        if (empty($bodegas)) return [];
+        return  DB::table('gp_cotizacion_detalle_stocks as st')
+            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
+            ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
+            ->whereIn('c.st_solResInv', ['aprobado'])
+            ->where('d.ART_CODIGO', $articulo)
+            ->whereIn('st.STO_ART_BODEGA', $bodegas)
+            ->where('st.seleccionado', '>', 0)
+            ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
+                $query->where('c.id', '!=', $excludeQuotationId);
+            })
+            ->select(
+                'st.STO_ART_BODEGA as bodega',
+                DB::raw('SUM(st.seleccionado) as total')
+            )
+            ->groupBy('st.STO_ART_BODEGA')
+            ->pluck('total', 'bodega')
+            ->map(fn($v) => (float) ($v ?? 0))
+            ->all();
+    }
+    public function getReservedStockByWarehousesForTransfer($articulo, $bodegas)
+    {
+        return GpTrasladosReposicion::query()
             ->select('bodega_origen', DB::raw('SUM(COALESCE(cantidad,0) - COALESCE(trasladado,0)) as total'))
             ->whereIn('bodega_origen', $bodegas)
             ->where('ART_CODIGO', $articulo)
@@ -169,11 +219,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->pluck('total', 'bodega_origen')
             ->map(fn($v) => max(0, (float)($v ?? 0)))
             ->all();
-        $out = [];
-        foreach ($bodegas as $b) {
-            $out[$b] = (float)($reservasPedidos[$b] ?? 0) + (float)($reservasTraslados[$b] ?? 0);
-        }
-        return $out;
     }
 
     public function newFormatStock($stockResults, $articulo)
@@ -356,22 +401,101 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ])
             ->exists();
     }
-    public function formatResultStocks($stockResults)
+
+    public function fetchStockWarehouseCompartiment(array $params)
     {
-        if (!is_array($stockResults)) {
-            return [];
-        }
-        return collect($stockResults)
-            ->filter(fn($item) => is_array($item))
-            ->flatten(1)
-            ->map(fn($item) => [
-                'STO_ART_ARTICULO' => $item['ARTICULO'] ?? '',
-                'STO_ART_BODEGA' => $item['BODEGA'] ?? '',
-                'STO_ART_STOCK_DISPONIBLE' => number_format((float) $item['STOCK_DISPONIBLE'], 2, '.', '') ?? 0,
-            ])
-            ->values()
-            ->toArray();
+        $res = $this->apiGpService->getStockByWarehouseAndCompartment($params);
+
+        // if (!data_get($res, 'success', false)) {
+        //     $message = sprintf(
+        //         '%s | Artículo: %s | Bodega: %s | Compartimento: %s',
+        //         (string) data_get($res, 'message', 'Error'),
+        //         Arr::get($params, 'articulo', 'N/D'),
+        //         Arr::get($params, 'bodega', 'N/D'),
+        //         Arr::get($params, 'compartimento', 'N/D')
+        //     );
+        //     throw new \RuntimeException($message, 500);
+        // }
+
+        $data = data_get($res, 'data', []);
+        return is_array($data) ? $data : (array) $data;
     }
+
+    public function fetchStockBatchWarehouses(array $params)
+    {
+        $res = $this->apiGpService->getStockWarehouseAsync($params);
+
+        if (!data_get($res, 'success', false)) {
+            abort(502, 'No se pudo obtener el stock del artículo: ' . data_get($res, 'message', 'Error'));
+            // throw new \RuntimeException("No se pudo obtener el stock del articulo".  data_get($res, 'message', 'Error'), 500);
+        }
+
+        $data = data_get($res, 'data', []);
+        return is_array($data) ? $data : (array) $data;
+    }
+
+    public function fetchStockByOnlyWarehouse(array $params)
+    {
+        $res = $this->apiGpService->getStockWarehouse($params);
+        if (!data_get($res, 'success', false)) {
+            // throw new \RuntimeException((string) data_get($res, 'message', 'Error'), 500);
+            throw new \RuntimeException("No se pudo obtener el stock del articulo", 500);
+        }
+        $data = data_get($res, 'data', []);
+        if (is_array($data) && array_is_list($data)) {
+            $data = $data[0] ?? [];
+        }
+
+        return (array) $data;
+    }
+    public function fetchStock(array $infoRequest)
+    {
+        return collect($infoRequest)
+            ->map(function ($params) {
+                $res = $this->apiGpService->getStockWarehouse($params);
+
+                if (!data_get($res, 'success', false)) {
+                    throw new \RuntimeException((string) data_get($res, 'message', 'Error'), 500);
+                }
+
+                // Normaliza 'data' por si viene como objeto o lista de 1
+                $data = data_get($res, 'data', []);
+                if (is_array($data) && array_is_list($data)) {
+                    $data = $data[0] ?? [];
+                }
+
+                return (array) $data;
+            })
+            ->values()
+            ->all();
+    }
+
+    public function transformStockResponse($payload)
+    {
+        return array_values(array_map(function ($item) {
+            $disp = (float) ($item['STOCK_DISPONIBLE'] ?? 0);
+            return [
+                'STO_ART_ARTICULO'         => (string)($item['ARTICULO'] ?? ''),
+                'STO_ART_BODEGA'           => (string)($item['BODEGA'] ?? ''),
+                'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''), // "0.00"
+            ];
+        }, $payload));
+    }
+
+    public function transformStockQuotationResponse($payload)
+    {
+        return array_values(array_map(function ($item) {
+            $disp = (float) ($item['STOCK_DISPONIBLE'] ?? 0);
+            return [
+                'STO_ART_ARTICULO'         => (string)($item['ARTICULO'] ?? ''),
+                'DESCRIPCION_ARTICULO'    => (string)($item['DESCRIPCION_ARTICULO'] ?? ''),
+                'STO_ART_BODEGA'           => (string)($item['BODEGA'] ?? ''),
+                'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''), // "0.00"
+            ];
+        }, $payload));
+    }
+
+
 
     public function getWarehouse($data)
     {
@@ -409,26 +533,36 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     public function getFirstAvailablePurchaseArticle($article, $excludeItemsL)
     {
         $itemsL = $this->getListArticlesOfTypeLWithLimit($article, $excludeItemsL);
-        foreach ($itemsL as $artL) {
-            $disponible = $this->checkArticuloDisponible($artL);
-            if ($disponible) {
-                return $artL['ART_CODIGO'];
-            }
-        }
-        return null;
+        return $itemsL?->ART_CODIGO;
     }
 
     public function getListArticlesOfTypeLWithLimit($articulo, $excludeItemsL)
     {
-        $itemL = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])->first()->toArray();
-        return GpArticulo::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
-            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_CLASE_ARTICULO', '=',  $itemL['ART_CLASE_ARTICULO'])
-            ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
-            ->where('gp_articulos.ART_IMP_COMPRA', '=',  $itemL['ART_IMP_COMPRA'])->orderBy('ART_DESCRIPCION', 'desc')
-            ->whereNotIn('ART_CODIGO', $excludeItemsL)
-            ->orderBy('ART_DESCRIPCION', 'desc')
-            ->limit(500)->get()->toArray();
+        $base = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])
+            ->where('ART_ESTADO', 'ACTIVO')
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->first(['ART_CLASE_ARTICULO', 'ART_IMP_COMPRA']);
+        if (!$base) return null;
+
+        $q = GpArticulo::query()
+            ->where('ART_ESTADO', 'ACTIVO')
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->where('ART_CLASE_ARTICULO', $base->ART_CLASE_ARTICULO)
+            ->where('ART_IMP_COMPRA', $base->ART_IMP_COMPRA)
+            ->where('disponible', 1);
+        if (!empty($excludeItemsL)) {
+            $q->whereNotIn('ART_CODIGO', $excludeItemsL);
+        }
+        return $q->orderBy('ART_DESCRIPCION', 'desc')
+            ->orderBy('ART_CODIGO', 'asc')
+            ->first();
+    }
+
+    public function checkValidateDisponibleItemL($articulo)
+    {
+        return GpArticulo::where('ART_ESTADO', 'ACTIVO')
+            ->where('ART_TIPO_COMPRA', 'L')->where('ART_CODIGO', $articulo)
+            ->where('disponible', 1)->exists();
     }
 
 
@@ -471,11 +605,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     /*** function para formatear y consultar el stock para guardado de pedido  */
 
-    public function formatResultStockStoreOrder(&$stock, $article, $orderId)
+    public function applyReservedQtyToAvailableStock(&$stock, $article, $orderId, $quotationId = null)
     {
         $bodega   = (string) $stock['STO_ART_BODEGA'];
         $bodegas  = [$bodega];
-        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId);
+        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId, $quotationId);
 
         if (
             isset($stock['STO_ART_STOCK_DISPONIBLE'], $stock['STO_ART_BODEGA'], $stock['STO_ART_ARTICULO']) &&

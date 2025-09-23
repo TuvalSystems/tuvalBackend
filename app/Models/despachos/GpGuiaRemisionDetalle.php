@@ -37,4 +37,12 @@ use Illuminate\Database\Eloquent\Model;
 class GpGuiaRemisionDetalle extends Model
 {
     use HasFactory;
+
+
+
+
+    public function guia()
+    {
+        return $this->belongsTo(GpGuiaRemision::class, 'guia_remision_id');
+    }
 }

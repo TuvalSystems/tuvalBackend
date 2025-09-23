@@ -21,11 +21,14 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
 use App\Models\GpPedido;
+use App\Models\GpUsuario;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CotizacionesController extends Controller
 {
@@ -611,7 +614,8 @@ class CotizacionesController extends Controller
     public function guardarcliente(Request $request)
     {
         $data = $request->all();
-        return $this->quotationService->storeClientQuotation($data);
+        $user = Auth::user();
+        return $this->quotationService->storeClientQuotation($data,  $user);
     }
 
     public function detallecotizacion(Request $request)
@@ -656,79 +660,6 @@ class CotizacionesController extends Controller
         return $this->quotationService->requestQuotationAgain($data, $user);
     }
 
-    public function getdetallecotizacion($data, $encera = false): array|\Illuminate\Database\Eloquent\Collection
-    {
-
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
-
-        $arr_bodegas = $funciones->gebodegas($data, 1);
-        $consulta_bodega = array();
-        $consulta_precio = array();
-        $stock_bodega_arr = array();
-
-        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-        $arrArticulos = array();
-        foreach ($detalle as $articulo) {
-            $articulo->proveedores = array();
-
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get()->toArray();
-            $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
-
-
-            $arrArticulos[] = array(
-                'articulo' => $articulo->ART_CODIGO,
-            );
-
-            $consulta_precio[] = array(
-                'ART_CODIGO' => $articulo->ART_CODIGO,
-            );
-
-            if ($encera) {
-                $articulo->descuento = $cliente->CLI_DSTO_COMERCIAL;
-                $articulo->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
-                $articulo->ART_DESCUENTO = 0;
-                $articulo->modificador = 0;
-                $articulo->ART_DESCRIPCION_ORIGINAL = $this->quotationService->restoreDescriptionItemQuotation($articulo->ART_CODIGO, $data['BOD_BODEGA']) ?? $articulo->ART_DESCRIPCION_ORIGINAL;
-                $articulo->ART_DESCRIPCION = $articulo->ART_DESCRIPCION_ORIGINAL;
-                $articulo->CHECK_ALTERNATIVO = 0;
-            }
-        }
-
-        $webservices = new WebserviceController;
-        $precios = $webservices->listaprecios($consulta_precio);
-        $lista_precios_general = array();
-        foreach ($precios as $precio) {
-            $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
-        }
-
-        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-
-        $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
-        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
-            ->map(function ($items) {
-                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
-            })
-            ->toArray();
-
-        foreach ($stock_bodega_arr as $key => $bodegas) {
-            foreach ($bodegas as $bodega) {
-                $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
-            }
-        }
-
-        foreach ($detalle as $articulo) {
-            $funciones->formatStock($articulo, $stock_general);
-            if ($articulo->ART_TIPO_COMPRA != 'L') {
-                $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-            }
-        }
-
-        return $detalle;
-    }
 
     public function llenarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1264,22 +1195,26 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    public function obtenerListaSegmentos(){
+    public function obtenerListaSegmentos()
+    {
 
         return $this->quotationService->getSegmentosSqlServer();
     }
 
-    public function obtenerListaSubSegmentos(Request $request){
+    public function obtenerListaSubSegmentos(Request $request)
+    {
         $segmento = $request->get('segmento', null);
         return $this->quotationService->getSubSegmentosSqlServer($segmento);
     }
 
-    public function validarSegmentoCliente(Request $request){
+    public function validarSegmentoCliente(Request $request)
+    {
         $cliente = $request->get('cliente', null);
-            return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+        return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
     }
 
-    public function actualizarSegmentoCliente(Request $request){
+    public function actualizarSegmentoCliente(Request $request)
+    {
         $cliente = $request->get('cliente', null);
         $segmento = $request->get('segmento', null);
         $subsegmento = $request->get('subsegmento', null);
@@ -1287,8 +1222,205 @@ class CotizacionesController extends Controller
     }
 
 
-    public function obtenerStockPrueba ($articulo, $bodega){
+    public function obtenerStockPrueba($articulo, $bodega)
+    {
 
         return $this->quotationService->consultaStockPrueba($articulo, $bodega);
+    }
+
+
+    /*** reservas */
+
+
+    public function validarGeneracionReservaCotizacion($id)
+    {
+        try {
+            $existeReserva = $this->quotationService->hasAnyReserveState($id);
+            if ($existeReserva) {
+                return $this->buildExistResponse($existeReserva, 'No es posible recuperar, copiar o volver a pedir la cotización porque cuenta con una reserva', 200);
+            }
+            return $this->buildExistResponse($existeReserva, 'La cotización no tiene reservas registradas. Puede continuar con su actividad', 202);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function guardarReservaCotización(Request $request)
+    {
+        $gpUser = GpUsuario::find(Auth::user()->id);
+        $reserva = $request->get('reserva', null);
+        try {
+            return DB::transaction(function () use ($reserva,  $gpUser) {
+                $this->quotationService->saveQuotationHeaderReserved($reserva,  $gpUser);
+                return $this->buildSuccessResponse('Cotizacion guardada correctamente',  200);
+            });
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerListaTipoReservas()
+    {
+        try {
+            $data =  $this->quotationService->fetchListTipeReserved();
+            return $this->successResponse('Tipos de reservas obtenidos correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function obtenerListaReservasPendientes(Request $request)
+    {
+        try {
+            $perPage = $request->input('perPage', 10);
+            $search = $request->input('search', null);
+            $sortBy = $request->input('sortBy', null);
+            $sortOrder = $request->input('sortOrder', 'asc');
+            return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->quotationService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function obtenerCotizacionConDetalle($id)
+    {
+        try {
+            return $this->successResponse('Cotizacion obtenida correctamente', $this->quotationService->getQuotationWithDetails($id), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerCotizacionDetalleConStock($id)
+    {
+        try {
+            return $this->successResponse('Cotizacion obtenida correctamente', $this->quotationService->getQuotationWithDetailsAndStock($id), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerCotizacionConDetalleYStockActivo($id)
+    {
+        try {
+            return $this->successResponse('Cotizacion obtenida correctamente', $this->quotationService->getQuotationWithDetailsAndActiveStockById($id), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function rechazarSolicitudReservaCotizacion(Request $request)
+    {
+        try {
+            $gpUser = GpUsuario::find(Auth::user()->id);
+            $data = $request->all();
+            return DB::transaction(function () use ($data, $gpUser) {
+                $this->quotationService->denyApplicationReservedQuotation($data['data'], $gpUser->id);
+                return $this->buildSuccessResponse('Cotización rechazada correctamente', 200);
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->buildErrorResponse('Cotización no encontrada', 404);
+        } catch (\DomainException $e) { // por si tu service valida estados
+            return $this->buildErrorResponse($e->getMessage(), 409);
+        } catch (\Throwable $e) {
+
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function aprobarSolicitudReservaCotizacion(Request $request)
+    {
+        try {
+            $gpUser = GpUsuario::find(Auth::user()->id);
+            $data = $request->all();
+            return DB::transaction(function () use ($data, $gpUser) {
+                $this->quotationService->approvalApplicationReservedQuotation($data['data'], $gpUser->id);
+                return $this->buildSuccessResponse('Cotización autorizada correctamente', 200);
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->buildErrorResponse('Cotización no encontrada', 404);
+        } catch (\DomainException $e) { 
+            return $this->buildErrorResponse($e->getMessage(), 409);
+        } catch (\Throwable $e) {
+
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function obtenerListaCotizacionesAprobadas(Request $request)
+    {
+        try {
+            $perPage = $request->input('perPage', 10);
+            $search = $request->input('search', null);
+            $sortBy = $request->input('sortBy', null);
+            $sortOrder = $request->input('sortOrder', 'asc');
+            $fecha_desde = $request->input('fecha_desde', null);
+            $fecha_hasta = $request->input('fecha_hasta', null);
+            $estado = $request->input('status', null);
+            $ptoVtaId = $request->input('ptovta', null);
+            $clienteRuc = $request->input('cliente', null);
+            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc), 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+
+    public function procesarReservaCotizacion(Request $request)
+    {
+        $data = $request->all();
+        $gpUser = GpUsuario::find(Auth::user()->id);
+        try {
+            $response =  $this->quotationService->processReservedQuotation($data['data'], $gpUser);
+            $msg = $response['cotizacion'] === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$response['cotizacion']}";
+
+            return  $this->buildSuccessResponse($msg,  200);
+        } catch (\Throwable $e) {
+            Log::error('Error al procesar la reserva de la cotizacion: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'data' => $data
+            ]);
+            return $this->buildErrorResponse('Error al procesar la reserva de la cotizacion', 500);
+        }
+    }
+
+
+    public function procesarReservaFacturaDemandaCotizacion(Request $request)
+    {
+        $data = $request->all();
+        $gpUser = GpUsuario::find(Auth::user()->id);
+        try {
+            $response =  $this->quotationService->processReservedQuotationInvoiceDemand($data['data'], $gpUser);
+            $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
+
+            return  $this->buildSuccessResponse($msg,  200);
+        } catch (\Throwable $e) {
+            Log::error('Error al procesar la reserva de la cotizacion: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'data' => $data
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function recalcularCotizacionReserva($id)
+    {
+        try {
+            return $this->successResponse('Cotizacion recalcular correctamente', $this->quotationService->recalculateQuotation($id), 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
     }
 }

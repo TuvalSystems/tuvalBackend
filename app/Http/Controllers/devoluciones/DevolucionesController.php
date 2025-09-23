@@ -12,6 +12,7 @@ use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
@@ -138,7 +139,8 @@ class DevolucionesController extends Controller
 
             $order = app(OrderServiceInterface::class);
             $dispatch = app(DispatchServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch);
+             $logistics = app(LogisticsOperationsServiceInterface::class);
+            $despachos = new DespachosController($order, $dispatch, $logistics);
             $despachos->checkeliminardespacho($pedido);
 
             // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura

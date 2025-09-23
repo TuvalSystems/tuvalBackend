@@ -4,20 +4,21 @@ namespace App\Http\Controllers\bodegas;
 
 
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Http\Controllers\WebserviceController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use Illuminate\Support\Facades\Log;
 
 
 class RecibosdecompraeleController extends Controller
 {
-
+    use JsonResponseTrait;
     protected $purchaseReceiptLItemService;
 
     public function __construct(PurchaseReceiptLItemServiceInterface $purchaseReceiptLItemService)
@@ -102,91 +103,22 @@ class RecibosdecompraeleController extends Controller
         ]);
     }
 
-    public function recibir(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibir(Request $request)
     {
-        $data = $request->all();
-        $user = Auth::user();
         try {
+            $data = $request->all();
+            $user = Auth::user();
             DB::beginTransaction();
-            $orden = GpOrdenDeCompraGenerado::where('id', $data['id'])->get()->first();
-
-            $cabecera = array(
-                array(
-                    'REC_COM_DOCU_ORIGEN' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
-                    'REC_COM_ID_TIPO' => 1,
-                    'REC_COM_ID_PROVEEDOR' => $orden->ORDEN_COMPRA_ID_PROVEEDOR,
-                    'REC_COM_FECHA' => date('Y-m-d'),
-                )
-            );
-
-            $DetalleOrden = array();
-
-            foreach ($data['detalle'] as $detalle) {
-
-                if ($detalle['seleccionado'] > 0) {
-                    $DetalleOrden[] = array(
-                        'REC_COM_DOCU_ORIGEN' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
-                        'REC_COM_ID_TIPO' => 1,
-                        'REC_COM_ID_ARTICULO' => $detalle['ORDEN_COMPRA_DETALLE_ARTICULO'],
-                        'REC_COM_DESCRIPCION_ARTICULO' => $detalle['ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO'],
-                        'REC_COM_UNIDAD_MEDIDA' => $detalle['ORDEN_COMPRA_DETALLE_UMEDIDA'],
-                        'REC_COM_BODEGA' => $detalle['ORDEN_COMPRA_DETALLE_BODEGA'],
-                        'REC_COM_CANTIDAD' => $detalle['seleccionado'],
-                    );
-                }
-            }
-
-            $DetalleOrden = array_values($DetalleOrden);
-
-            $parameters = array(
-                'Cabecera' => $cabecera,
-                'Detalle' => $DetalleOrden,
-            );
-
-            $webservices = new WebserviceController();
-            $result = $webservices->transaccional('MST_RECIBO_COMPRA', $parameters);
-
-            $listo = false;
-
-            if (isset($result['MST_RECIBO_COMPRAResult'])) {
-
-                $parameters = array(
-                    'documento_origen' => $orden->ORDEN_COMPRA_DOCUMENTO . '_' . $orden->recibidos,
-                    'tipo_documento' => 1,
-                );
-                $result = $webservices->transaccional('MST_Respuesta_Recibo_Compra', $parameters);
-
-                if (
-                    isset($result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'])
-                    && $result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'] != ''
-                ) {
-                    $orden->ORDEN_COMPRA_RECIBO .= '_' . $result['MST_Respuesta_Recibo_CompraResult']['CS_RESPUESTA_RECIBO_COMPRA'][0]['DOC_GENERADO'];
-                    $orden->recibidos += 1;
-                    $orden->save();
-                    //$this->checkordenrecibida($orden, $data['detalle']);
-                    $this->purchaseReceiptLItemService->checkOrderReception($orden, $data['detalle'],  $user);
-                    $listo = true;
-                }
-            }
-
+            $this->purchaseReceiptLItemService->receivedL($data, $user);
             DB::commit();
-            if ($listo) {
-                $ingresos = new IngresosController();
-                $ingresos->ingreso('compra', $data, $data['detalle']);
-                return response([
-                    'success' => true,
-                    'message' => 'Orden de compra recibida',
-                ]);
-            } else {
-                return response([
-                    'error' => 'El recibo de orden de compra aun no ha sido contabilizado<br>Recibir la orden de compra en un minuto'
-                ], 401);
-            }
+            return $this->buildSuccessResponse('Orden de compra recibida', 200);
         } catch (\Throwable $th) {
+            Log::channel('soap_errors')->error('Error al recibir la orden de compra de Item L en (recibir): ' . $th->getMessage());
             DB::rollBack();
-            return response(['status' => 'error', 'message' => $th->getMessage()]);
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
 
     public function imprimirrecibol(Request $request): \Illuminate\Http\Response
     {
@@ -233,37 +165,17 @@ class RecibosdecompraeleController extends Controller
         return $ordendecompra;
     }
 
-    public function imprimir($id): \Illuminate\Http\Response
+
+
+    public function imprimir($id)
     {
-        $ordendecompra = GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
-            ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
-            ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
-            ->where('gp_orden_de_compra_generados.id', $id)
-            ->select(
-                'gp_orden_de_compra_generados.*',
-                'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN',
-                'gp_orden_de_compras.ORDEN_COMPRA_BODEGA',
-                'gp_orden_de_compras.ORDEN_COMPRA_NOTA_DOCU',
-                'gp_proveedors.PROV_RAZON_SOCIAL',
-                'gp_proveedors.PROV_DIRECCION_1',
-                'gp_proveedors.PROV_TELEFONO_1',
-                'gp_proveedors.PROV_CONDICION_PAGO',
-                'gp_pedidos.CLI_RAZON_SOCIAL',
-                'gp_pedidos.USERID',
-                'gp_orden_de_compras.ORDEN_COMPRA_ID_CLIENTE'
-            )
-            ->first();
-        if ($ordendecompra) {
-            $this->setdetalleordendecompra($ordendecompra);
+        try {
+            $ordendecompra = $this->purchaseReceiptLItemService->printPurchaseReceiptL($id);
+            $pdf = PDF::loadView('ordendecompraPDF', $ordendecompra->toArray());
+            return $pdf->stream('ordendecompra-' . $ordendecompra->ORDEN_COMPRA_DOCUMENTO . '.pdf');
+        } catch (\Throwable $e) {
+            Log::error('Error al imprimir el recibo de compra: ' . $e->getMessage());
+            return $this->buildErrorResponse('Error al imprimir el recibo de compra', 404);
         }
-
-        //        echo '<pre>';
-        //        print_r($ordendecompra);
-        //        echo '</pre>';
-        //        die();
-
-        //return view('ordendecompraPDF', $ordendecompra);
-        $pdf = PDF::loadView('ordendecompraPDF', $ordendecompra->toArray());
-        return $pdf->stream('ordendecompra-' . $ordendecompra->ORDEN_COMPRA_DOCUMENTO . '.pdf');
     }
 }

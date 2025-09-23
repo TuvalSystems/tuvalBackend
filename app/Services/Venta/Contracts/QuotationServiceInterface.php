@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
+use App\Models\GpUsuario;
+
 interface QuotationServiceInterface
 {
 
@@ -15,7 +17,7 @@ interface QuotationServiceInterface
      */
     public function restoreQuotation($data, $user);
     public function getStockGeneralRestoreQuotation($articulos, $bodegas);
-    public function restoreDescriptionItemQuotation($articulos, $bodegas);
+
 
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);
@@ -71,14 +73,35 @@ interface QuotationServiceInterface
 
     public function getSegmentosSqlServer();
     public function getSubSegmentosSqlServer($segmento);
-    public function storeClientQuotation(array $data);
+    public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist($ruc);
-     public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId) ;
+    public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId);
 
 
 
-     /*** prueba  */
+    /*** prueba  */
 
-     public function consultaStockPrueba ($articulo, $bodega);
+    public function consultaStockPrueba($articulo, $bodega);
+
+
+    /**
+     *  reservas
+     */
+
+    public function hasAnyReserveState(int $id);
+    public function saveQuotationHeaderReserved(array $reserva, GpUsuario $user);
+    public function fetchListTipeReserved();
+
+    public function fetchListReservedPending($perPage, $search, $sortBy, $sortOrder);
+    public function getQuotationWithDetails(int $id);
+    public function getQuotationWithDetailsAndStock(int $id);
+     public function getQuotationWithDetailsAndActiveStockById(int $id);
+    public function denyApplicationReservedQuotation(array $data, $userId);
+    public function approvalApplicationReservedQuotation(array $data, $userId);
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc);
+
+    public function processReservedQuotation (array $data, $user);
+     public function processReservedQuotationInvoiceDemand($cotizacion, $user);
+    public function recalculateQuotation($quotationId);
 }

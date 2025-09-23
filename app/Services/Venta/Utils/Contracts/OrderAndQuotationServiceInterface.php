@@ -10,4 +10,8 @@ interface OrderAndQuotationServiceInterface
 
     public function createRegisterCopy($dataId, $user, $typeCopy, $typeRegisterCopy);
 
+    public function getSegmentoCliente($ruc);
+
+    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId, $quotationId = null);
+
 }

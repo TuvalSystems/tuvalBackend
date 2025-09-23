@@ -153,7 +153,7 @@
             <table border="0" width="100%">
                 <tr>
                     <div class="bordered" style="text-align: justify;">
-                        <div><strong>RAZÓN SOCIAL/NOMBRES :</strong>{{  $cliente['CLI_RAZON_SOCIAL'] }}</div>
+                        <div><strong>RAZÓN SOCIAL/NOMBRES :</strong>{{ $cliente['CLI_RAZON_SOCIAL'] }}</div>
                         <div><strong>RUC :</strong> {{ $cliente['CLI_RUC'] }} </div>
                         <div><strong>FECHA EMISIÓN :</strong>
                             {{ $fecha_factura }}
@@ -184,42 +184,42 @@
             </thead>
             <tbody>
                 @foreach ($detalle as $key => $value)
-                    <tr>
-                        <td class="nowrap">
-                            @if($value['ART_TIPO_COMPRA'] == 'SERV')
-                                +
-                            @endif
-                            @if($value['ART_IMP_VTA'] == 5)
-                                *
-                            @endif
-                            {{$value['ART_CODIGO']}}
-                        </td>
-                        <td>{{$value['ART_CODIGO_TRES_LETRAS']}}</td>
-                        <td class="text-left">{{$value['ART_DESCRIPCION']}}
-                            @if($value['CHECK_ALTERNATIVO'] === 1)
-                                <span class="text-danger" style="color: red;">(Alternativa)</span>
-                            @endif
-                        </td>
-                        <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
-                        <td class="text-right">{{$value['ART_CANTIDAD']}}</td>
-                        <td class="text-right">${{$value['ART_VALOR']}}</td>
-                        <td class="text-right">{{$value['descuento']}}%</td>
-                        <td class="text-right">
-                            ${{ number_format($value['ART_DESCUENTO'] * $value['ART_CANTIDAD'], 4, '.', '')}}</td>
-                        <td class="text-right">
-                            ${{ number_format(($value['ART_VALOR'] - $value['ART_DESCUENTO']) * $value['ART_CANTIDAD'], 2, '.', '')}}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td class="text-center">
-                            @foreach($value['imagenes'] as $imagen)
-                                <img src="{{$imagen}}" style="max-width: 150px;margin-top: 20px;" alt="">
-                            @endforeach
-                        </td>
-                        <td colspan="6"></td>
-                    </tr>
+                <tr>
+                    <td class="nowrap">
+                        @if($value['ART_TIPO_COMPRA'] == 'SERV')
+                        +
+                        @endif
+                        @if($value['ART_IMP_VTA'] == 5)
+                        *
+                        @endif
+                        {{$value['ART_CODIGO']}}
+                    </td>
+                    <td>{{$value['ART_CODIGO_TRES_LETRAS']}}</td>
+                    <td class="text-left">{{$value['ART_DESCRIPCION']}}
+                        @if($value['CHECK_ALTERNATIVO'] === 1)
+                        <span class="text-danger" style="color: red;">(Alternativa)</span>
+                        @endif
+                    </td>
+                    <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
+                    <td class="text-right">{{$value['ART_CANTIDAD']}}</td>
+                    <td class="text-right">${{$value['ART_VALOR']}}</td>
+                    <td class="text-right">{{$value['descuento']}}%</td>
+                    <td class="text-right">
+                        ${{ number_format($value['ART_DESCUENTO'] * $value['ART_CANTIDAD'], 4, '.', '')}}</td>
+                    <td class="text-right">
+                        ${{ number_format(($value['ART_VALOR'] - $value['ART_DESCUENTO']) * $value['ART_CANTIDAD'], 2, '.', '')}}
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td class="text-center">
+                        @foreach($value['imagenes'] as $imagen)
+                        <img src="{{$imagen}}" style="max-width: 150px;margin-top: 20px;" alt="">
+                        @endforeach
+                    </td>
+                    <td colspan="6"></td>
+                </tr>
                 @endforeach
             </tbody>
         </table>
@@ -243,7 +243,7 @@
 
                         <tr>
                             <td>Teléfono Cliente:</td>
-                            <td>{{$cliente['CLI_CONTACTO']}}</td>
+                            <td>{{$cliente['CLI_TELEFONO_1']}}</td>
                         </tr>
                         <tr>
                             <td>Peso:</td>
@@ -256,22 +256,26 @@
                         <tr>
                             <td>
                                 @if($despacho == 'Retiro en bodega')
-                                    Bodega Retiro:
+                                Bodega Retiro:
                                 @else
-                                    Bodega:
+                                Bodega:
                                 @endif
                             </td>
                             <td>{{ $BOD_BODEGA }}</td>
                         </tr>
                         @if($orden_de_compra != '')
-                            <tr>
-                                <td>Orden de compra:</td>
-                                <td>{{ $orden_de_compra }}</td>
-                            </tr>
+                        <tr>
+                            <td>Orden de compra:</td>
+                            <td>{{ $orden_de_compra }}</td>
+                        </tr>
                         @endif
                         <tr>
                             <td>Forma de pago SRI:</td>
                             <td>{{ $formadepagoSRI }}</td>
+                        </tr>
+                        <tr>
+                            <td>Nota Cliente:</td>
+                            <td>{{ $nota_cliente }}</td>
                         </tr>
                     </table>
                     <!-- formas de pago -->
@@ -298,10 +302,10 @@
 
                     <table class="table2 " align="right" style="margin-right: 10px;">
                         @foreach($tipoimpuesto as $key => $tipo)
-                            <tr>
-                                <td><b>SUBTOTAL {{ (int) $key}}%: </b></td>
-                                <td style="text-align: right;">${{ number_format($tipo, 2, '.', '')}}</td>
-                            </tr>
+                        <tr>
+                            <td><b>SUBTOTAL {{ (int) $key}}%: </b></td>
+                            <td style="text-align: right;">${{ number_format($tipo, 2, '.', '')}}</td>
+                        </tr>
                         @endforeach
                         <tr>
                             <td><b>SUBTOTAL 0%: </b></td>
@@ -333,10 +337,10 @@
                         </tr>
 
                         @foreach($sumaimpuesto as $key => $impuesto)
-                            <tr>
-                                <td><b>IVA {{ (int) $key}}%: </b></td>
-                                <td style="text-align: right;">${{ number_format($impuesto, 2, '.', '')}}</td>
-                            </tr>
+                        <tr>
+                            <td><b>IVA {{ (int) $key}}%: </b></td>
+                            <td style="text-align: right;">${{ number_format($impuesto, 2, '.', '')}}</td>
+                        </tr>
                         @endforeach
                         <tr>
                             <td><b>TOTAL: </b></td>

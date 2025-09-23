@@ -2,6 +2,8 @@
 
 namespace App\Repositories\Pedidos\Contracts;
 
+use Carbon\Carbon;
+
 interface OrderRepositoryInterface
 {
     public function getAllDetailsOrderById($id);
@@ -21,10 +23,15 @@ interface OrderRepositoryInterface
 
     /** facturacion de siguiente mes */
 
-    public function getOrdersToInvoiceNextMonth($mes);
+    public function getOrdersToInvoiceNextMonth(Carbon $start, Carbon $end);
 
     /** functiones  para el proceso de facturar existentes */
 
 
     public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder);
+
+
+
+    /** funcion para obtener todos los pedidos en estado de espera para facturar */
+     public function queryInvoiceReservedOrdersForDate($date);
 }

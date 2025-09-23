@@ -33,7 +33,9 @@ use App\Models\GpCajaBancos;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
+use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -1097,8 +1099,8 @@ class CobranzasController extends Controller
 
         $order = app(OrderServiceInterface::class);
         $dispatch = app(DispatchServiceInterface::class);
-        $despachos = new DespachosController($order,$dispatch  );
-        // $despachos = new DespachosController();
+         $logistics = app(LogisticsOperationsServiceInterface::class);
+        $despachos = new DespachosController($order,$dispatch , $logistics);
         $despachos->checkfacturasdespachos($cobro->id);
 
         return response([

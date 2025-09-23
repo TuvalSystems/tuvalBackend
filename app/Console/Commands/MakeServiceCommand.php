@@ -52,8 +52,8 @@ class MakeServiceCommand extends Command
             File::makeDirectory($directory, 0755, true);
         }
 
-        $servicePath = $directory . '/' . $className . 'Service.php';
-        $interfacePath = $directory . '/Contracts/' . $className . 'ServiceInterface.php';
+        $servicePath = $directory . '/' . $className . '.php';
+        $interfacePath = $directory . '/Contracts/' . $className . 'Interface.php';
 
 
         // Evita sobreescritura
@@ -64,7 +64,7 @@ class MakeServiceCommand extends Command
 
         // Contenido del Service
         $serviceNamespace = $namespace;
-        $interfaceName = $className . 'ServiceInterface';
+        $interfaceName = $className . 'Interface';
         $implements = $withInterface ? "implements {$interfaceName}" : '';
         $interfaceUse = $withInterface ? "use {$serviceNamespace}\\Contracts\\{$interfaceName};" : '';
 
@@ -75,7 +75,7 @@ class MakeServiceCommand extends Command
 
         {$interfaceUse}
 
-        class {$className}Service {$implements}
+        class {$className} {$implements}
         {
 
             public function __construct()

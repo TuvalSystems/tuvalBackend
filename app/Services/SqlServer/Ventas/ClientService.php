@@ -163,6 +163,9 @@ class ClientService implements ClientServiceInterface
             // Opcional: loguear el error para debugging
             Log::channel('sql_errors')->error("Error al insertar en tbr_atrcli (SQL Server): {$e->getMessage()}");
             throw $e;
+        } finally {
+            // evita sesiones "sleeping" abiertas en sqlsrvtuv
+            DB::disconnect('sqlsrvdyn');
         }
     }
 
@@ -170,6 +173,4 @@ class ClientService implements ClientServiceInterface
     {
         return  $this->clienTSqlRepository->checkQueryClientWithSegment($ruc);
     }
-
-
 }

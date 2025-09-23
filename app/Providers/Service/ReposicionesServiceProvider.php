@@ -7,6 +7,7 @@ use App\Services\Reposiciones\StockWarehouseService;
 use App\Services\Reposiciones\TransferRepositionService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Reposiciones\ItemsLService;
 
 class ReposicionesServiceProvider extends ServiceProvider
 {
@@ -21,15 +22,15 @@ class ReposicionesServiceProvider extends ServiceProvider
             TransferRepositionService::class
         );
 
-        $this->app->bind(
+        $this->app->singleton(
             StockWarehouseServiceInterface::class,
             StockWarehouseService::class
         );
+        $this->app->singleton(ItemsLService::class);
     }
 
 
-    public function boot()
-    {
 
-    }
+
+    public function boot() {}
 }

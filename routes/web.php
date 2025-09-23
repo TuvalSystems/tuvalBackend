@@ -120,11 +120,15 @@ Route::prefix('pedidos')->group(function () {
 
 Route::prefix('cotizaciones')->group(function () {
     Route::get('/consulta-stock-web/{articulo}/{bodega}', [CotizacionesController::class, 'obtenerStockPrueba']);
+    Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
 });
 
 Route::prefix('bodegas')->group(function () {
     Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
+
     Route::get('/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
+    Route::get('/guiasderemision/checkguiasremisiones', [GuiasderemisionController::class, 'checkguiaremision']);
+
 });
 
 

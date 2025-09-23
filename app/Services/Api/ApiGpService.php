@@ -38,7 +38,7 @@ class ApiGpService
 
     public function getStockWarehouse(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_stock_bodega"], 'GET', $params);
+        return $this->httpClient->makeRequest($this->endpoints["consultar_stock_bodega"], 'POST', $params, 'json');
     }
 
 
@@ -89,5 +89,17 @@ class ApiGpService
         })->toArray();
 
         return $this->httpClient->makeBatchRequest($this->endpoints["consultar_stock_bodega_async"],  $request);
+    }
+
+
+
+     public function getTypeBySeller(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["obtener_tipo_vendedor"], 'POST', $params, 'json');
+    }
+
+     public function fetchClientSegment(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["obtener_segmento_cliente"], 'GET', $params, );
     }
 }

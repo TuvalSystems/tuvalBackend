@@ -87,18 +87,6 @@ class FunctionsService implements FunctionsServiceInterface
         return $query->orderBy('orden', 'ASC')->pluck('PTO_VTA_BOD_REL_BODEGA', 'PTO_VTA_BOD_REL_BODEGA')->toArray();
     }
 
-    public function consultStockWarehouse($articulos, $bodegas)
-    {
-        $formatStock = [];
-        foreach ($articulos as $value) {
-            $stockRequests = array_map(fn($whr) => ['articulo' => $value['articulo'], 'bodega' => $whr,], $bodegas);
-            $stockResults = array_map(fn($params) => $this->apiGpService->getStockWarehouse($params), $stockRequests);
-            $formatted = $this->stockWarehouseService->formatResultStocks($stockResults);
-            $formatStock = array_merge($formatStock, $formatted);
-        }
-        return $formatStock;
-    }
-
 
     /** funcion de recalcular pedido  */
     public function recalculateOrder($orderId)
@@ -181,24 +169,61 @@ class FunctionsService implements FunctionsServiceInterface
         $cliente->sucursales = $sucursales;
         $cliente->sucursalesfacturacion = $sucursales;
 
-        $cupoDisponible = $this->getClientCreditInfo($cliente->CLI_RUC);
+        $cupoDisponible = $this->getClientCheckAvailableQuota($cliente->CLI_RUC);
 
 
-        $cliente->suspendido = $cupoDisponible['SUSPENDIDO'] ?? 0;
-        $cliente->cupo_disponible = $this->formatCurrency($cupoDisponible['CUPO_DISPONIBLE_GP'] ?? 0);
-        $cliente->cupo_asignado = $this->formatCurrency($cupoDisponible['CUPO_ASIGNADO'] ?? 0);
+        $cliente->suspendido = $cupoDisponible['suspendido'] ?? 0;
+        $cliente->cupo_disponible = $this->formatCurrency($cupoDisponible['cupoDisponibleGp'] ?? 0);
+        $cliente->cupo_asignado = $this->formatCurrency($cupoDisponible['cupoAsignado'] ?? 0);
 
         return $cliente;
     }
 
 
-    public function getClientCreditInfo($ruc)
+    public function getClientCheckAvailableQuota(String $ruc)
     {
-        $response = $this->apiBillingService->consultCreditClient([
+        $response = $this->apiBillingService->consultCheckAvailableQuotaClient([
             'ruc' => $ruc,
             'idCompania' => config('services.api_gp.company'),
         ]);
-        return reset($response['cupos'][0]);
+        return $response['data'] ?? [];
+    }
+
+
+    public function getClientDocumentExpired($ruc)
+    {
+        $response = $this->apiBillingService->consultDocumentExpiredClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
+    }
+
+    public function getClientDocumentWithoutSupport($ruc)
+    {
+        $response = $this->apiBillingService->consultDocumentWithoutSupportClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
+    }
+
+      public function getListClientDocumentExpired($ruc)
+    {
+        $response = $this->apiBillingService->consultListDocumentExpiredClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
+    }
+
+    public function getListClientDocumentWithoutSupport($ruc)
+    {
+        $response = $this->apiBillingService->consultListDocumentWithoutSupportClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
     }
 
     public function getClientBranches($ruc)
@@ -326,7 +351,7 @@ class FunctionsService implements FunctionsServiceInterface
             if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {
                 $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
             }
-    
+
             GpTempCartStock::updateOrCreate(
                 ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
                 [

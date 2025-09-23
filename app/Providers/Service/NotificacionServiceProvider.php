@@ -5,6 +5,7 @@ namespace App\Providers\Service;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Notificacion\NotificationService;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use Illuminate\Contracts\Support\DeferrableProvider;
 
 class NotificacionServiceProvider extends ServiceProvider
 {
@@ -14,9 +15,10 @@ class NotificacionServiceProvider extends ServiceProvider
 
 
         /** servicio dedicado a las notificciones */
-        $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
+        $this->app->singleton(NotificationServiceInterface::class, NotificationService::class);
     }
 
 
-    public function boot() {}
+   public function boot(){}
+
 }

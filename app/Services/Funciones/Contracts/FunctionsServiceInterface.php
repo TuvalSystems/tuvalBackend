@@ -12,6 +12,12 @@ interface FunctionsServiceInterface
 
 
     public function getClient($data);
+    public function getClientCheckAvailableQuota(String $ruc);
+    public function getClientDocumentExpired($ruc);
+    public function getClientDocumentWithoutSupport($ruc);
+      public function getListClientDocumentExpired($ruc);
+    public function getListClientDocumentWithoutSupport($ruc);
+
 
     public function getBodegas($data, $consulta = null);
     public function findAvailableArticleCodeL($artArrm, $class = 'VTA_BNS_L', $limit = 300);

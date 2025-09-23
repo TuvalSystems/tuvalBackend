@@ -29,15 +29,15 @@ use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Http\Controllers\bodegas\DespachosController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 
 class PedidosController extends Controller
 {
@@ -91,11 +91,7 @@ class PedidosController extends Controller
     {
         $pedido = GpPedido::where('id', $id)
             ->first();
-        $order = app(OrderServiceInterface::class);
-        $dispatch = app(DispatchServiceInterface::class);
-        $despachos = new DespachosController($order, $dispatch);
-        // $despachos = new DespachosController();
-        $despachos->generarordendespacho($pedido);
+        $this->invoiceService->generateDisptachOrder($pedido);
     }
 
 
@@ -111,7 +107,6 @@ class PedidosController extends Controller
 
         foreach ($enviando as $pedido) {
             $this->invoiceService->respuestaFacturaVenta($pedido);
-
         }
     }
 
@@ -158,15 +153,10 @@ class PedidosController extends Controller
                     $listo = 'no';
                 }
             }
-            $order = app(OrderServiceInterface::class);
-            $dispatch = app(DispatchServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch);
-            // $despachos = new DespachosController();
             if ($listo == 'yes') {
                 $pedido->estado = 'espera';
                 $pedido->save();
-                $despachos->generarordendespacho($pedido);
-
+                $this->invoiceService->generateDisptachOrder($pedido);
                 $this->invoiceService->sendInvoiceGp($pedido);
             }
         }
@@ -235,237 +225,18 @@ class PedidosController extends Controller
     {
         $data = $request->all();
         return $this->orderService->checkExistence($data);
-     
     }
 
-    public function facturarexistente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function facturarexistente(Request $request)
     {
         $facturarExistente = $request->all();
-
         $data = $facturarExistente['pedido'];
-
-        $funciones = new FuncionesController();
-        $webservices = new WebserviceController();
-        $detalle = GpPedidoDetalle::where('pedido_id', $data['id'])->get();
-
-        $eliminar = array('');
-
-        foreach ($detalle as $key => $articulo) {
-            $stocks = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
-                ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])
-                ->first();
-
-            if ($articulo->ART_TIPO_COMPRA != 'SERV') {
-                if ($stocks->seleccionado == $articulo->ART_CANTIDAD) {
-                    //echo 'por eliminar: '.$articulo->ART_CODIGO.'<br>';
-                    $articulo->delete();
-                } elseif ($stocks->seleccionado > 0 && $stocks->seleccionado < $articulo->ART_CANTIDAD) {
-                    //echo 'Encera stock bodega '.$stocks->id.' y edita cantidad linea: '.$articulo->ART_CODIGO.' a '.$articulo->ART_CANTIDAD - $stocks->seleccionado.'<br>';
-                    $articulo->ART_CANTIDAD = $articulo->ART_CANTIDAD - $stocks->seleccionado;
-                    $articulo->save();
-
-                    $stocks->seleccionado = 0;
-                    $stocks->reservado = 0;
-                    $stocks->save();
-                }
-
-                $proveedores = $funciones->getitemproveedores($data, $articulo, false);
-
-                foreach ($proveedores['proveedores'] as $proveedor) {
-                    if (($proveedor->ingresado - $proveedor->ejecutado) > 0) {
-                        //echo 'Eliminar Proveedor: '.$proveedor->id.'<br>';
-                        $articulo->ART_CANTIDAD -= $proveedor->ingresado - $proveedor->ejecutado;
-                        if ($proveedor->ingresado == $proveedor->CANTIDAD) {
-                            unset($proveedor->orden_detalle);
-
-                            $eliminar['proveedores'][] = $proveedor;
-
-                            //$proveedor->delete();
-                        } else {
-                            unset($proveedor->orden_detalle);
-                            $proveedor->save();
-                        }
-                    }
-                }
-
-                if (count($proveedores['proveedores'])) {
-                    if ($articulo->ART_CANTIDAD == 0) {
-                        //echo 'Por eliminar L: '.$articulo->ART_CODIGO.'<br>';
-                        $eliminar['articulos'][] = $articulo;
-                        //$articulo->delete();
-                    } else {
-                        //echo 'Editar la cantidad del L '.$articulo->ART_CODIGO.' a: '.$articulo->ART_CANTIDAD.'<br>';
-                        $articulo->save();
-                    }
-                }
-            } else {
-                $articulo->delete();
-            }
-        }
-
-        $articulos = $facturarExistente['detalle'];
-
+        $detalle = $facturarExistente['detalle'];
         $user = Auth::user();
-        $pedido = new GpPedido;
-
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-
-        $ultimoPedido = GpPedido::orderBy('id', 'DESC')->first();
-
-        if (!$ultimoPedido) {
-            $ultimoPedido = new \stdClass();
-            $ultimoPedido->id = env('SECUENCIAL_PEDIDO');
-            $pedido->id = $ultimoPedido->id + 1;
-        }
-        $pedido->pedido = 'PED' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
-        $pedido->user_id = $user->id;
-        $pedido->sucursal_id = $data['sucursal_id'];
-        $pedido->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
-        $pedido->cliente_id = $data['cliente_id'];
-        $pedido->factura_posterior_despacho = $data['factura_posterior_despacho'];
-        $pedido->factura_a_demanda = $data['factura_a_demanda'];
-        $pedido->factura_siguiente_mes = $data['factura_siguiente_mes'];
-        $pedido->cotizacion_id = $data['cotizacion_id'];
-        $pedido->BOD_BODEGA = $data['BOD_BODEGA'];
-        $pedido->PTO_VTA_ID = $data['PTO_VTA_ID'];
-        $pedido->PTO_VTA_DESCRIPCION = $puntodeventa['PTO_VTA_DESCRIPCION'];
-        $pedido->USERID = $user->USERID;
-        $pedido->DESC_FORMA_PAGO_CODIGO = $data['DESC_FORMA_PAGO_CODIGO'];
-        $pedido->CLI_RUC = $data['CLI_RUC'];
-        $pedido->CLI_RAZON_SOCIAL = $data['CLI_RAZON_SOCIAL'];
-        $pedido->CLI_CORREO_ELECT_SRI = $data['CLI_CORREO_ELECT_SRI'];
-        $pedido->COND_ID = $data['COND_ID'];
-        $pedido->COND_ID_ORIGINAL = $data['COND_ID_ORIGINAL'];
-        $pedido->VEND_ID = $data['VEND_ID'];
-        $pedido->VEND_NOMBRES = $data['VEND_NOMBRES'];
-        $pedido->VEND_APELLIDOS = $data['VEND_APELLIDOS'];
-        $pedido->despacho = $data['despacho'];
-        $pedido->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
-        $pedido->porcentage_descuento = $data['porcentage_descuento'];
-        $pedido->subtotal = number_format((float) $data['subtotal'], 2, '.', '');
-        $pedido->descuento = number_format((float) $data['descuento'], 2, '.', '');
-        $pedido->subtotalmenosdescuento = number_format((float) $data['subtotalmenosdescuento'], 2, '.', '');
-        $pedido->iva = number_format((float) $data['iva'], 2, '.', '');
-        $pedido->total = number_format((float) $data['total'], 2, '.', '');
-        $pedido->requiere_aprobacion_comercial = $data['requiere_aprobacion_comercial'];
-        $pedido->aprobado_comercial = $data['aprobado_comercial'];
-        $pedido->aprobador_comercial_id = $data['aprobador_comercial_id'];
-        $pedido->requiere_aprobacion_crediticia = $data['requiere_aprobacion_crediticia'];
-        $pedido->aprobado_crediticio = $data['aprobado_crediticio'];
-        $pedido->aprobador_crediticio_id = $data['aprobador_crediticio_id'];
-        $pedido->nota_interna = $data['nota_interna'];
-        $pedido->nota_cliente = $data['nota_cliente'];
-        $pedido->orden_de_compra = $data['orden_de_compra'];
-        $pedido->pedido_origen = $data['pedido'];
-        $pedido->impuesto = env('IVA_IMPUESTO');
-
-        if ($pedido->save()) {
-            $i = 0;
-            foreach ($articulos as $det) {
-                $i++;
-                $detalle = $this->savePedidoDetalle($i, $pedido, $det);
-
-                if ($det['ART_TIPO_COMPRA'] != 'SERV') {
-                    if (count($det['proveedores']) > 0) {
-                        foreach ($det['proveedores'] as $pro) {
-                            $pro['recibido'] = 'yes';
-                            $proveedor = $this->savePedidoDetalleProveedores($pedido, $detalle, $pro);
-                            $proveedor->save();
-
-
-                            foreach ($pro['orden_detalle'] as $orden) {
-                                $ordenCompra = GpOrdenDeCompra::where('DOC_GENERADO', $orden['ORDEN_COMPRA_DOCUMENTO'])
-                                    ->where('detalle_id', $det['id'])
-                                    ->where('detalle_proveedores_id', $pro['id'])
-                                    ->first();
-
-                                $ejecutado = GpPedidoDetalleProveedores::where('id', $pro['id'])->first();
-
-                                //                                if(!$proveedor->ejecutado)
-                                //                                    $proveedor->ejecutado = 0;
-
-                                if ($ejecutado) {
-                                    $ejecutado->ejecutado += $det['ART_CANTIDAD'];
-                                    $ejecutado->save();
-                                }
-
-                                if (!$ejecutado) {
-                                    $ordenCompra->ORDEN_COMPRA_DOCU_ORIGEN = $pedido->pedido;
-                                    $ordenCompra->detalle_id = $detalle->id;
-                                    $ordenCompra->detalle_proveedores_id = $proveedor->id;
-                                    $ordenCompra->save();
-                                } else {
-                                    $nueva_orden = $ordenCompra->replicate();
-                                    $nueva_orden->ORDEN_COMPRA_DOCU_ORIGEN = $pedido->pedido;
-                                    $nueva_orden->detalle_id = $detalle->id;
-                                    $nueva_orden->detalle_proveedores_id = $proveedor->id;
-                                    $nueva_orden->ORDEN_COMPRA_CANTIDAD = $det['ART_CANTIDAD'];
-                                    $nueva_orden->save();
-                                }
-
-                                $ordenCompraGenerado = GpOrdenDeCompraGenerado::where('orden_id', $ordenCompra->id)
-                                    //                                    ->where('detalle_id', $det['id'])
-                                    //                                    ->where('detalle_proveedores_id', $pro['id'])
-                                    ->first();
-
-                                if (!$ejecutado) {
-                                    $ordenCompraGenerado->detalle_id = $detalle->id;
-                                    $ordenCompraGenerado->detalle_proveedores_id = $proveedor->id;
-                                    $ordenCompraGenerado->save();
-                                } else {
-                                    if ($ordenCompraGenerado) {
-                                        $nueva_ordenCompraGenerado = $ordenCompraGenerado->replicate();
-                                        $nueva_ordenCompraGenerado->orden_id = $nueva_orden->id;
-                                        $nueva_ordenCompraGenerado->detalle_id = $detalle->id;
-                                        $nueva_ordenCompraGenerado->detalle_proveedores_id = $proveedor->id;
-                                        $nueva_ordenCompraGenerado->estado = 'recibido';
-                                        $nueva_ordenCompraGenerado->save();
-
-                                        $ordenCompraGeneradoDetalle = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ordenCompraGenerado->id)->get();
-
-                                        foreach ($ordenCompraGeneradoDetalle as $ocgd) {
-                                            $nueva_ocgd = $ocgd->replicate();
-                                            $nueva_ocgd->orden_generada_id = $nueva_ordenCompraGenerado->id;
-                                            $nueva_ocgd->detalle_proveedores_id = $proveedor->id;
-                                            $nueva_ocgd->save();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    $stock = new GpPedidoDetalleStock();
-                    $stock->pedido_id = $pedido->id;
-                    $stock->detalle_id = $detalle->id;
-                    $stock->STO_ART_BODEGA = $det['stocks']['STO_ART_BODEGA'];
-                    $stock->STO_ART_STOCK_DISPONIBLE = $det['stocks']['STO_ART_STOCK_DISPONIBLE'];
-                    $stock->seleccionado = $det['stocks']['seleccionado'];
-                    $stock->reservado = $det['stocks']['seleccionado'];
-                    $stock->save();
-                }
-            }
-
-            if (isset($eliminar['proveedores']) && count($eliminar['proveedores']) > 0) {
-                foreach ($eliminar['proveedores'] as $proveedor) {
-                    $proveedor->delete();
-                }
-            }
-            if (isset($eliminar['articulos']) && count($eliminar['articulos']) > 0) {
-                foreach ($eliminar['articulos'] as $articulo) {
-                    $articulo->delete();
-                }
-            }
-
-            $this->functionService->recalculateOrder($data['id']);
-            $this->functionService->recalculateOrder($pedido->id);
-            $pedido = GpPedido::where('id', $pedido->id)->first();
-            $this->invoiceService->checkSendInvoice($pedido, true);
-        }
-        return response([
-            'success' => true,
-            'message' => 'El pedido ha sido dividido'
-        ]);
+        return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
     }
+
+
 
     public function consultardespachado(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -870,6 +641,24 @@ class PedidosController extends Controller
         }
     }
 
+    public function imprimirpedidoridesinimagen($id)
+    {
+        try {
+            $pedido = $this->orderService->generateInvoiceRide($id);
+
+            if (is_string($pedido)) {
+                abort(403, $pedido); // Ej: 'No permitido'
+            }
+            $pdf = PDF::loadView('pedidoridesinImagenPDF', $pedido);
+            return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
+        } catch (\Throwable $e) {
+            Log::error('Error en imprimirpedidoridesinimagen', [
+                $e->getMessage()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 404);
+        }
+    }
+
     public function imprimirpedidoxml($id)
     {
         try {
@@ -890,12 +679,17 @@ class PedidosController extends Controller
     }
     public function despachoenproceso($id)
     {
-        $pedido = gpPedido::where('id', $id)->first();
-        return response([
-            'success' => true,
-            'despacho_en_proceso' => $pedido->despacho_en_proceso,
-            'transferencia_en_proceso' => $pedido->transferencia_en_proceso,
-        ]);
+        try {
+            $order = $this->orderService->verifyOrderDispatchOrItemLRecived($id);
+            return $this->successResponse('Información Obtenida Correctamente', $order, 200);
+        } catch (\Throwable $th) {
+            Log::error('Error al obtener el despacho en proceso: ', [
+                'error' => $th->getMessage(),
+                'pedido_id' => $id,
+                'linea' => $th->getLine()
+            ]);
+            return $this->buildErrorResponse('Opps! Error al obtener el despacho en proceso', 500);
+        }
     }
 
 
@@ -1206,11 +1000,11 @@ class PedidosController extends Controller
         $nuevo_pedido->factura_origen = $pedido->factura;
         $nuevo_pedido->fecha_factura = null;
         $nuevo_pedido->estado = 'espera';
-
         $nuevo_pedido->sucursal_id = $devolucion->sucursal_id;
         $nuevo_pedido->sucursal_facturacion_id = $devolucion->sucursal_facturacion_id;
         $nuevo_pedido->cliente_id = $devolucion->cliente_volver_a_facturar_id;
         $nuevo_pedido->orden_de_compra = $devolucion->orden_de_compra;
+        $nuevo_pedido->nota_cliente = $devolucion->nota_cliente;
 
         $nuevo_pedido->CLI_RUC = $cliente->CLI_RUC;
         $nuevo_pedido->CLI_RAZON_SOCIAL = $cliente->CLI_RAZON_SOCIAL;
@@ -1417,7 +1211,8 @@ class PedidosController extends Controller
 
     /** funcion para actualizar un pedido  */
 
-    public function actualizarPedidoYRecalcular($id){
+    public function actualizarPedidoYRecalcular($id)
+    {
         return $this->orderService->updateOrderAndRecalculate($id);
     }
 }
