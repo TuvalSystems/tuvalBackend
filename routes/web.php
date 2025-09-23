@@ -128,3 +128,10 @@ Route::prefix('bodegas')->group(function () {
     Route::get('/guiasderemision/checkguiasremisiones', [GuiasderemisionController::class, 'checkguiaremision']);
 
 });
+
+
+Route::prefix('consultas')->group(function () {
+    Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+});
+
+
