@@ -145,3 +145,10 @@ Route::get('/debug/demo-broadcast', function () {
     event(new DemoMessage(request('msg', 'hola')));
     return 'ok';
 });
+
+
+Route::prefix('consultas')->group(function () {
+    Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+});
+
+

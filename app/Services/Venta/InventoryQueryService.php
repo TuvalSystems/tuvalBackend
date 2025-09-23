@@ -126,6 +126,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         ]);
         $data = data_get($response, 'data', []);
         return is_array($data) ? $data : (array) $data;
+
     }
 
     public function getConsultClientSegment($ruc)
@@ -209,6 +210,28 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             'bodega' => $bodegaDestino,
             'pendiente' => max(0, $items)
         ];
+
+    }
+
+
+
+    public function fetchStockInTransit()
+    {
+        return DB::table('gp_guia_remision_detalles as d')
+            ->join('gp_guia_remisions as g', 'g.id', '=', 'd.guia_remision_id')
+            ->where('g.tipo', 'reposicion')
+            ->where('g.estado', 'enviada')
+            ->select([
+                DB::raw('g.bodega_destino as bodega'),
+                DB::raw('d.GUI_REM_CODI_INTERNO as codigo'),
+                DB::raw('COALESCE(SUM(COALESCE(d.GUI_REM_CANTIDAD,0) - COALESCE(d.recibido,0)),0) as pendiente'),
+            ])
+            ->groupBy('g.bodega_destino', 'd.GUI_REM_CODI_INTERNO')
+            ->having('pendiente', '>', 0)
+            ->orderBy('bodega')
+            ->orderBy('codigo')
+            ->get();
+
     }
 
 
