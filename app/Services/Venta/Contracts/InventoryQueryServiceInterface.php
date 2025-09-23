@@ -11,6 +11,8 @@ interface InventoryQueryServiceInterface
 
     public function getConsultItemTransito($data);
 
+    public function fetchStockInTransit();
+
     /** funcion para consulta de cupo de cliente */
 
     public function getAvailableSpace($ruc);

@@ -222,7 +222,15 @@ class ConsultasController extends Controller
     }
 
 
-
+    public function consultStockInTransit()
+    {
+        try {
+            $items = $this->InventoryQueryService->fetchStockInTransit();
+            return $this->successResponse('Transitos obtenidos correctamente', $items, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 
 
 
