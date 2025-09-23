@@ -1658,6 +1658,7 @@ class QuotationService implements QuotationServiceInterface
             ->lockForUpdate()
             ->get()
             ->groupBy('detalle_id');
+
         foreach ($stocksByDetail as $detailId => $rows) {
 
             //bodega despacho
@@ -1676,6 +1677,7 @@ class QuotationService implements QuotationServiceInterface
                 GpCotizacionDetalleStock::whereIn('id', $othersIds)
                     ->update([
                         'seleccionado' => 0,
+                        'cantidad_autorizada_reserva' => 0
                     ]);
             }
 

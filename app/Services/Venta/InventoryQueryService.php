@@ -8,8 +8,6 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
-use App\Services\SqlServer\Cobranza\Contracts\CreditValidationServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -23,23 +21,17 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     protected $stockWarehouseService;
     protected $apiGp;
     protected $functionsService;
-    protected $sqlCreditValidtionService;
     protected $clientSqlService;
-    protected $stockSqlService;
     public function __construct(
         StockWarehouseServiceInterface $stockWarehouseService,
         ApiGpService $apiGp,
         FunctionsServiceInterface $functionsService,
-        CreditValidationServiceInterface $sqlCreditValidtionService,
         ClientServiceInterface $clientSqlService,
-        StockSqlServiceInterface $stockSqlService
     ) {
         $this->stockWarehouseService = $stockWarehouseService;
         $this->apiGp = $apiGp;
         $this->functionsService = $functionsService;
-        $this->sqlCreditValidtionService = $sqlCreditValidtionService;
         $this->clientSqlService = $clientSqlService;
-        $this->stockSqlService = $stockSqlService;
     }
 
 
@@ -125,7 +117,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
     public function getSegmentoCliente($ruc)
@@ -218,5 +209,102 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             'bodega' => $bodegaDestino,
             'pendiente' => max(0, $items)
         ];
+    }
+
+
+
+    public function listReservedInventory()
+    {
+        $baseOrders = fn() => DB::table('gp_pedido_detalle_stocks as st')
+            ->join('gp_pedido_detalles as d', 'd.id', 'st.detalle_id')
+            ->join('gp_pedidos as p', 'p.id', '=', 'st.pedido_id')
+            ->where('st.reservado', '>', 0)
+            ->whereIn('p.estado', ['eliminado', 'rechazado', 'anulada'])
+            ->where(function ($q) {
+                $q->whereNull('p.despachado')->orWhere('p.despachado', 0);
+            })
+            ->selectRaw(
+                "
+            d.ART_CODIGO as codigo,
+            st.STO_ART_BODEGA AS bodega,
+            st.reservado AS reservado,
+            'pedido' as tipo"
+            );
+
+        //caso a : no requiere comercial, no requiere crediticia
+        $pA = (clone $baseOrders())
+            ->where('p.requiere_aprobacion_comercial', 'no')
+            ->where('p.requiere_aprobacion_crediticia', 'no');
+
+        //Caso B: no requiere comercial, requiere crediticia y está aprobada
+        $pB = (clone $baseOrders())
+            ->where('p.requiere_aprobacion_comercial', 'no')
+            ->where('p.requiere_aprobacion_crediticia', 'yes')
+            ->where('p.aprobado_crediticio', 'yes');
+
+        // Caso C: requiere comercial y aprobada, no requiere crediticia
+        $pC = (clone $baseOrders())
+            ->where('p.requiere_aprobacion_comercial', 'yes')
+            ->where('p.aprobado_comercial', 'yes')
+            ->where('p.requiere_aprobacion_crediticia', 'no');
+
+        // Caso D: requiere ambas y ambas aprobadas
+        $pD = (clone $baseOrders())
+            ->where('p.requiere_aprobacion_comercial', 'yes')
+            ->where('p.aprobado_comercial', 'yes')
+            ->where('p.requiere_aprobacion_crediticia', 'yes')
+            ->where('p.aprobado_crediticio', 'yes');
+        $unionOrders = $pA->unionAll($pB)->unionAll($pC)->unionAll($pD);
+
+     $traslados = DB::table('gp_traslados_reposicions as t')
+        ->join('gp_articulos as a', 'a.ART_CODIGO', '=', 't.ART_CODIGO')
+        ->whereNull('t.completado')
+        ->selectRaw(
+            "
+            t.ART_CODIGO as codigo,
+            t.bodega_destino AS bodega,
+            t.cantidad AS reservado,
+            'traslado' as tipo"
+        );
+
+         // ----- UNION final y ordenamiento -----
+
+          $unionAll = DB::query()->fromSub($unionOrders, 'ped')
+          ->unionAll($traslados);
+         $response = DB::query()->fromSub($unionAll, 'u')
+         -> where('u.reservado', '>', 0)
+         ->orderBy('u.codigo')
+         ->orderBy('u.bodega')
+         ->get()
+         ->map(function ($item) {
+             $item->reservado = (float)$item->reservado;
+             return $item;
+         });
+        $response2 = $this->listReservedInventoryByQuotation();
+        return $response->merge($response2);
+
+    }
+
+    public function listReservedInventoryByQuotation(){
+        $baseQuotation  = DB::table('gp_cotizacion_detalle_stocks as st')
+        ->join('gp_cotizacion_detalles as d', 'd.id', 'st.detalle_id')
+        ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
+        ->where('st.seleccionado', '>', 0)
+        ->whereIn('p.st_solResInv', ['aprobado'])
+        ->selectRaw("
+            d.ART_CODIGO as codigo,
+            st.STO_ART_BODEGA AS bodega,
+            st.seleccionado AS reservado,
+            'cotizacion' as tipo"
+        );
+        return DB::query()->fromSub($baseQuotation, 'u')
+        -> where('u.reservado', '>', 0)
+        ->orderBy('u.codigo')
+        ->orderBy('u.bodega')
+        ->get()
+        ->map(function ($item) {
+            $item->reservado = (float)$item->reservado;
+            return $item;
+        });
     }
 }

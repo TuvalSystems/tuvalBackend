@@ -125,6 +125,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null): array
     {
+        // 1) Cotizaciones aprobadas
+        $cot = $this->getReservedStockByWarehousesForQuotation($articulo, $bodegas);
 
         if (empty($bodegas)) return [];
         $q = GpPedidoDetalleStock::query()
@@ -167,8 +169,43 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->pluck('total', 'bodega')
             ->map(fn($v) => (float) ($v ?? 0))
             ->all();
+
+        //sumar reservados de cotizaciones
         // 2) Traslados de reposición pendientes (agrupado por bodega_origen)
-        $reservasTraslados = GpTrasladosReposicion::query()
+        $reservasTraslados = $this->getReservedStockByWarehousesForTransfer($articulo, $bodegas);
+
+
+        $out = [];
+        foreach ($bodegas as $b) {
+            $out[$b] =  (float) ($cot[$b] ?? 0) +
+                        (float)($reservasPedidos[$b] ?? 0) +
+                        (float)($reservasTraslados[$b] ?? 0);
+        }
+
+
+        return $out;
+    }
+
+    public function getReservedStockByWarehousesForQuotation($articulo, $bodegas)
+    {
+        return DB::table('gp_cotizacion_detalle_stocks as st')
+            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
+            ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
+            ->whereIn('c.st_solResInv', ['aprobado'])
+            ->where('d.ART_CODIGO', $articulo)
+            ->whereIn('st.STO_ART_BODEGA', $bodegas)
+            ->where('st.seleccionado', '>', 0)
+            ->select(
+                'st.STO_ART_BODEGA as bodega',
+                DB::raw('SUM(st.seleccionado) as total')
+            )
+            ->groupBy('st.STO_ART_BODEGA')
+            ->pluck('total', 'bodega')
+            ->map(fn($v) => (float) ($v ?? 0))
+            ->all();
+    }
+    public function getReservedStockByWarehousesForTransfer($articulo, $bodegas){
+        return GpTrasladosReposicion::query()
             ->select('bodega_origen', DB::raw('SUM(COALESCE(cantidad,0) - COALESCE(trasladado,0)) as total'))
             ->whereIn('bodega_origen', $bodegas)
             ->where('ART_CODIGO', $articulo)
@@ -177,11 +214,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->pluck('total', 'bodega_origen')
             ->map(fn($v) => max(0, (float)($v ?? 0)))
             ->all();
-        $out = [];
-        foreach ($bodegas as $b) {
-            $out[$b] = (float)($reservasPedidos[$b] ?? 0) + (float)($reservasTraslados[$b] ?? 0);
-        }
-        return $out;
     }
 
     public function newFormatStock($stockResults, $articulo)

@@ -27,6 +27,9 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 
 class ConsultasController extends Controller
@@ -366,77 +369,16 @@ class ConsultasController extends Controller
         ]);
     }
 
-    public function reservados(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function reservados(): JsonResponse|Response|ResponseFactory
     {
-        $articulos = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalles.id', 'gp_pedido_detalle_stocks.detalle_id')
-            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
-            ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->where(function ($q) {
-                $q->where(function ($query) {
-                    $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no');
-                })
-                    ->orWhere(function ($query) {
-                        $query->where('gp_pedidos.requiere_aprobacion_comercial', 'yes');
-                        $query->where('gp_pedidos.aprobado_comercial', 'yes');
-                    });
-            })
-            ->where(function ($q) {
-                $q->where(function ($query) {
-                    $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no');
-                })
-                    ->orWhere(function ($query) {
-                        $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes');
-                        $query->where('gp_pedidos.aprobado_crediticio', 'yes');
-                    });
-            })
-            ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
-            ->where('gp_pedidos.estado', '!=', 'eliminado')
-            ->where('gp_pedidos.estado', '!=', 'rechazado')
-            ->where('gp_pedidos.estado', '!=', 'anulada')
-            ->where(function ($query) {
-                $query->whereNull('gp_pedidos.despachado');
-                $query->orWhere('gp_pedidos.despachado', 0);
-            })
-            ->select(
-                'gp_pedido_detalles.ART_CODIGO as codigo',
-                'gp_pedido_detalle_stocks.STO_ART_BODEGA as bodega',
-                'gp_pedido_detalle_stocks.reservado',
-            )
-            ->get();
-
-        $arreglo = array();
-
-        foreach ($articulos as $articulo) {
-            $articulo->tipo = 'pedido';
-            unset($articulo->seleccionado);
+        try {
+            return response([
+                'reservados' => $this->InventoryQueryService->listReservedInventory(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al consultar reservados' . ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
+            return $this->buildErrorResponse('Error al consultar reservados', 500);
         }
-
-        foreach ($articulos as $articulo) {
-            $arreglo[] = $articulo;
-        }
-
-        $trasladosreposicion = GpTrasladosReposicion::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
-            ->whereNull('gp_traslados_reposicions.completado')
-            ->select(
-                'gp_articulos.ART_CODIGO as codigo',
-                'gp_traslados_reposicions.cantidad',
-                'gp_traslados_reposicions.trasladado',
-                'gp_traslados_reposicions.bodega_origen as bodega'
-            )
-            ->get();
-
-        foreach ($trasladosreposicion as $traslado) {
-            $traslado->reservado = ($traslado->cantidad ?? 0) - ($traslado->trasladado ?? 0);
-            unset($traslado->cantidad);
-            unset($traslado->trasladado);
-
-            $traslado->tipo = 'traslado';
-            $arreglo[] = $traslado;
-        }
-
-        return response([
-            'reservados' => $arreglo,
-        ]);
     }
 
     public function transferenciaspendientes(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
