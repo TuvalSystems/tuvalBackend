@@ -208,7 +208,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
-    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId)
+    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId, $quotationId = null)
     {
         $params = [
             'articulo' => $detailOrder->ART_CODIGO,
@@ -216,7 +216,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         ];
         $stocksResult = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
         $this->assignmentDisponibleStock($stock, $stocksResult, $detailOrder);
-        $this->stockWarehouseService->formatResultStockStoreOrder($stock, $detailOrder, $orderId);
+        $this->stockWarehouseService->applyReservedQtyToAvailableStock($stock, $detailOrder, $orderId, $quotationId);
         return $stock;
     }
 

@@ -1713,7 +1713,7 @@ class QuotationService implements QuotationServiceInterface
         foreach ($stocks as $stock) {
             $stock->update([
                 'seleccionado' => 0,
-                'cantidad_autorizada_reserva' => 0
+                // 'cantidad_autorizada_reserva' => 0
             ]);
         }
     }
@@ -2104,7 +2104,7 @@ class QuotationService implements QuotationServiceInterface
                 'STO_ART_STOCK_DISPONIBLE' => $sto['STO_ART_STOCK_DISPONIBLE'],
             ];
             if ($sto['seleccionado'] > 0) {
-                $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $sto, $order->id);
+                $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $sto, $order->id , $order->cotizacion_id);
                 if (!$newFormatStock) {
                     throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder->ART_CODIGO} en la bodega {$sto['STO_ART_BODEGA']}");
                 }

@@ -123,10 +123,9 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return $articulo;
     }
 
-    public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null): array
+    public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null, ?int $excludeQuotationId = null): array
     {
-        // 1) Cotizaciones aprobadas
-        $cot = $this->getReservedStockByWarehousesForQuotation($articulo, $bodegas);
+
 
         if (empty($bodegas)) return [];
         $q = GpPedidoDetalleStock::query()
@@ -173,28 +172,33 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         //sumar reservados de cotizaciones
         // 2) Traslados de reposición pendientes (agrupado por bodega_origen)
         $reservasTraslados = $this->getReservedStockByWarehousesForTransfer($articulo, $bodegas);
-
+        // 4) Reserva de Cotizaciones aprobadas
+        $reservaCotizaciones = $this->getReservedStockByWarehousesForQuotation($articulo, $bodegas, $excludeQuotationId);
 
         $out = [];
         foreach ($bodegas as $b) {
-            $out[$b] =  (float) ($cot[$b] ?? 0) +
-                        (float)($reservasPedidos[$b] ?? 0) +
-                        (float)($reservasTraslados[$b] ?? 0);
+            $out[$b] =  (float) ($reservaCotizaciones[$b] ?? 0) +
+                (float)($reservasPedidos[$b] ?? 0) +
+                (float)($reservasTraslados[$b] ?? 0);
         }
 
 
         return $out;
     }
 
-    public function getReservedStockByWarehousesForQuotation($articulo, $bodegas)
+    public function getReservedStockByWarehousesForQuotation($articulo, $bodegas, $excludeQuotationId = null)
     {
-        return DB::table('gp_cotizacion_detalle_stocks as st')
+        if (empty($bodegas)) return [];
+        return  DB::table('gp_cotizacion_detalle_stocks as st')
             ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
             ->whereIn('c.st_solResInv', ['aprobado'])
             ->where('d.ART_CODIGO', $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
             ->where('st.seleccionado', '>', 0)
+            ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
+                $query->where('c.id', '!=', $excludeQuotationId);
+            })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
                 DB::raw('SUM(st.seleccionado) as total')
@@ -204,7 +208,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->map(fn($v) => (float) ($v ?? 0))
             ->all();
     }
-    public function getReservedStockByWarehousesForTransfer($articulo, $bodegas){
+    public function getReservedStockByWarehousesForTransfer($articulo, $bodegas)
+    {
         return GpTrasladosReposicion::query()
             ->select('bodega_origen', DB::raw('SUM(COALESCE(cantidad,0) - COALESCE(trasladado,0)) as total'))
             ->whereIn('bodega_origen', $bodegas)
@@ -600,11 +605,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     /*** function para formatear y consultar el stock para guardado de pedido  */
 
-    public function formatResultStockStoreOrder(&$stock, $article, $orderId)
+    public function applyReservedQtyToAvailableStock(&$stock, $article, $orderId, $quotationId = null)
     {
         $bodega   = (string) $stock['STO_ART_BODEGA'];
         $bodegas  = [$bodega];
-        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId);
+        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId, $quotationId);
 
         if (
             isset($stock['STO_ART_STOCK_DISPONIBLE'], $stock['STO_ART_BODEGA'], $stock['STO_ART_ARTICULO']) &&

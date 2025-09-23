@@ -660,7 +660,7 @@ class CotizacionesController extends Controller
         return $this->quotationService->requestQuotationAgain($data, $user);
     }
 
-   
+
     public function llenarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
@@ -1342,7 +1342,7 @@ class CotizacionesController extends Controller
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->buildErrorResponse('Cotización no encontrada', 404);
-        } catch (\DomainException $e) { // por si tu service valida estados
+        } catch (\DomainException $e) { 
             return $this->buildErrorResponse($e->getMessage(), 409);
         } catch (\Throwable $e) {
 
@@ -1410,7 +1410,7 @@ class CotizacionesController extends Controller
                 'line' => $e->getLine(),
                 'data' => $data
             ]);
-            return $this->buildErrorResponse('Error al procesar la reserva de la cotizacion', 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 

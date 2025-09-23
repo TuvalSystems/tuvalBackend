@@ -336,7 +336,7 @@ class OrderService implements OrderServiceInterface
                 'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
             ];
             if ($item['seleccionado'] > 0) {
-                $newFormatStock =  $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id);
+                $newFormatStock =  $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id, null);
                 if (!$newFormatStock) {
                     throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
                 }

@@ -12,6 +12,6 @@ interface OrderAndQuotationServiceInterface
 
     public function getSegmentoCliente($ruc);
 
-    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId);
+    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId, $quotationId = null);
 
 }
