@@ -125,3 +125,10 @@ Route::prefix('bodegas')->group(function () {
     Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
     Route::get('/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
 });
+
+
+Route::prefix('consultas')->group(function () {
+    Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+});
+
+
