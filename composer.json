@@ -7,7 +7,6 @@
     "require": {
         "php": "^8.1",
         "barryvdh/laravel-dompdf": "^2.1",
-        "beyondcode/laravel-websockets": "^2.0@beta",
         "codedredd/laravel-soap": "2.x",
         "fruitcake/laravel-cors": "^3.0",
         "guzzlehttp/guzzle": "^7.0.1",
