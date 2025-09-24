@@ -1497,7 +1497,7 @@ class QuotationService implements QuotationServiceInterface
     {
         $cotizacion = GpCotizacion::find($cotizacionId);
         $usersApproval = GpUsuario::query()
-            ->where('perfil_id', 9)
+            ->where('perfil_id', [9, 2]) // perfiles que pueden aprobar reservas
             ->where('status', 1)       // si tienes ese campo
             ->whereKeyNot($user->id)          // evita duplicarte si el actor también es 9
             ->get();
