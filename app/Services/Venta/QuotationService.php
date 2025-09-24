@@ -48,6 +48,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class QuotationService implements QuotationServiceInterface
@@ -1489,11 +1490,20 @@ class QuotationService implements QuotationServiceInterface
             'co_usrIngSolResInv' => $user->id,
             'fe_ingSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
-        $cotizacion = GpCotizacion::find($reserva['id']);
+        $this->sendNotificationForRequestReserved($reserva['id'], $user);
+    }
 
-        /** pendiente de agregar a usuarios que deben llegar la notificacion */
-        $user->notify(new ReservationRequestNotification('Nueva solicitud de reserva de inventario',$cotizacion->cotizacion, $user));
-        event(new ReservationApprovalsChanged('solicitud', $reserva['id'], $user->USERID));
+    public function sendNotificationForRequestReserved($cotizacionId, GpUsuario $user)
+    {
+        $cotizacion = GpCotizacion::find($cotizacionId);
+        $usersApproval = GpUsuario::query()
+            ->where('perfil_id', 9)
+            ->where('status', 1)       // si tienes ese campo
+            ->whereKeyNot($user->id)          // evita duplicarte si el actor también es 9
+            ->get();
+        Notification::send($usersApproval, new ReservationRequestNotification('Nueva solicitud de reserva de inventario', $cotizacion->cotizacion, $user));
+
+        event(new ReservationApprovalsChanged('solicitud', $cotizacion->id, $user->USERID));
     }
 
 
@@ -2111,7 +2121,7 @@ class QuotationService implements QuotationServiceInterface
                 'STO_ART_STOCK_DISPONIBLE' => $sto['STO_ART_STOCK_DISPONIBLE'],
             ];
             if ($sto['seleccionado'] > 0) {
-                $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $sto, $order->id , $order->cotizacion_id);
+                $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $sto, $order->id, $order->cotizacion_id);
                 if (!$newFormatStock) {
                     throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder->ART_CODIGO} en la bodega {$sto['STO_ART_BODEGA']}");
                 }
