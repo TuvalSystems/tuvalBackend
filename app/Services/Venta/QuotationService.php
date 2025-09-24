@@ -1495,15 +1495,17 @@ class QuotationService implements QuotationServiceInterface
 
     public function sendNotificationForRequestReserved($cotizacionId, GpUsuario $user)
     {
-        $cotizacion = GpCotizacion::find($cotizacionId);
-        $usersApproval = GpUsuario::query()
-            ->where('perfil_id', [9, 2]) // perfiles que pueden aprobar reservas
-            ->where('status', 1)       // si tienes ese campo
-            ->whereKeyNot($user->id)          // evita duplicarte si el actor también es 9
-            ->get();
-        Notification::send($usersApproval, new ReservationRequestNotification('Nueva solicitud de reserva de inventario', $cotizacion->cotizacion, $user));
+        DB::afterCommit(function () use ($cotizacionId, $user) {
+            $cotizacion = GpCotizacion::find($cotizacionId);
+            $usersApproval = GpUsuario::query()
+                ->where('perfil_id', [9, 2]) // perfiles que pueden aprobar reservas
+                ->where('status', 1)       // si tienes ese campo
+                ->whereKeyNot($user->id)          // evita duplicarte si el actor también es 9
+                ->get();
+            Notification::send($usersApproval, new ReservationRequestNotification('Nueva solicitud de reserva de inventario', $cotizacion->cotizacion, $user));
 
-        event(new ReservationApprovalsChanged('solicitud', $cotizacion->id, $user->USERID));
+            event(new ReservationApprovalsChanged('solicitud', $cotizacion->id, $user->USERID));
+        });
     }
 
 

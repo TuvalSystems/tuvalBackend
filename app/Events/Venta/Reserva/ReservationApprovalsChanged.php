@@ -4,12 +4,12 @@ namespace App\Events\Venta\Reserva;
 
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
-use Illuminate\Support\Facades\Log;
 
-class ReservationApprovalsChanged implements ShouldBroadcastNow
+class ReservationApprovalsChanged implements ShouldBroadcast
 {
 
+    public $afterCommit = true; // se encola solo tras commit
+    public $broadcastQueue = 'broadcasts';
     public function __construct(public string $action, public int $reservationId, public ?string $byUser = null) {}
 
 
@@ -24,11 +24,11 @@ class ReservationApprovalsChanged implements ShouldBroadcastNow
     }
     public function broadcastWith()
     {
-         Log::info('approvals-reservations', ['msg' => $this->action, 'reservationId' => $this->reservationId, 'byUser' => $this->byUser]);
         return [
-            'action' => $this->action,
-            'reservationId' => $this->reservationId,
-            'byUser' => $this->byUser,
+            'action'         => $this->action,
+            'reservationId'  => $this->reservationId,
+            'byUser'         => $this->byUser,
+            'at'             => now()->toIso8601String(),
         ];
     }
 }
