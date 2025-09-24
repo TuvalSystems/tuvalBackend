@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Events\Venta\Reserva\ReservationApprovalsChanged;
 use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -11,6 +12,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
 use App\Models\GpClienteSucursal;
+use App\Notifications\Venta\Reservas\ReservationRequestNotification;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
@@ -1487,6 +1489,11 @@ class QuotationService implements QuotationServiceInterface
             'co_usrIngSolResInv' => $user->id,
             'fe_ingSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
+        $cotizacion = GpCotizacion::find($reserva['id']);
+
+        /** pendiente de agregar a usuarios que deben llegar la notificacion */
+        $user->notify(new ReservationRequestNotification('Nueva solicitud de reserva de inventario',$cotizacion->cotizacion, $user));
+        event(new ReservationApprovalsChanged('solicitud', $reserva['id'], $user->USERID));
     }
 
 
