@@ -288,6 +288,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
         Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
         Route::post('/guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
+        Route::get('puntos-venta/reservas/limites', [DespachosController::class, 'indexPuntosVentaReservaLimits']);
     });
 
     Route::group(['prefix' => 'consultas'], function () {

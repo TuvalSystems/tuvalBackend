@@ -8,8 +8,9 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 class ReservationApprovalsChanged implements ShouldBroadcast
 {
 
-    public $afterCommit = true; // se encola solo tras commit
     public $broadcastQueue = 'broadcasts';
+    public $connection = 'database';
+    public $afterCommit = true;
     public function __construct(public string $action, public int $reservationId, public ?string $byUser = null) {}
 
 

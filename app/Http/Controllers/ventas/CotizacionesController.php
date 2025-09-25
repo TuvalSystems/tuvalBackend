@@ -1229,7 +1229,14 @@ class CotizacionesController extends Controller
     }
 
 
-    /*** reservas */
+    /***
+     * *
+     *
+     *                                                                GESTION DE RESERVAS
+     *
+     *
+     *
+     *  */
 
 
     public function validarGeneracionReservaCotizacion($id)
@@ -1342,7 +1349,7 @@ class CotizacionesController extends Controller
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->buildErrorResponse('Cotización no encontrada', 404);
-        } catch (\DomainException $e) { 
+        } catch (\DomainException $e) {
             return $this->buildErrorResponse($e->getMessage(), 409);
         } catch (\Throwable $e) {
 

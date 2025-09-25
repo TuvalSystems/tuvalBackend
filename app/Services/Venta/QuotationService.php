@@ -12,7 +12,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
 use App\Models\GpClienteSucursal;
-use App\Notifications\Venta\Reservas\ReservationRequestNotification;
+
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
 use App\Http\Controllers\WebserviceController;
+use App\Jobs\Venta\Reservas\FanoutReservationRequest;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPedido;
@@ -48,7 +49,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class QuotationService implements QuotationServiceInterface
@@ -1467,7 +1467,11 @@ class QuotationService implements QuotationServiceInterface
 
 
     /**
-     *  RESERVAS
+     *
+     *
+     *                                                  GESTION DE RESERVAS
+     *
+     *
      */
 
 
@@ -1481,32 +1485,23 @@ class QuotationService implements QuotationServiceInterface
 
     public function saveQuotationHeaderReserved(array $reserva,  GpUsuario $user)
     {
-        GpCotizacion::find($reserva['id'])->update([
-            'st_solResInv' => 'pendiente', // cuando se crean las reservas se cambia el estado a pendiente
-            'co_tipSolResInv' => $reserva['co_tipSolResInv'],
-            'co_tipTrasResInv' => $reserva['co_tipTrasResInv'],  // si va a tener traslado o no
-            'fe_solResInv' => $reserva['fe_solResInv'],
-            'tx_obsSolResInv' => $reserva['tx_obsSolResInv'],
-            'co_usrIngSolResInv' => $user->id,
-            'fe_ingSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
+        GpCotizacion::whereKey($reserva['id'])->update([
+            'st_solResInv'          => 'pendiente', // cuando se crean las reservas se cambia el estado a pendiente
+            'co_tipSolResInv'       => $reserva['co_tipSolResInv'],
+            'co_tipTrasResInv'      => $reserva['co_tipTrasResInv'],  // si va a tener traslado o no
+            'fe_solResInv'          => $reserva['fe_solResInv'],
+            'tx_obsSolResInv'       => $reserva['tx_obsSolResInv'],
+            'co_usrIngSolResInv'    => $user->id,
+            'fe_ingSolResInv'       => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
-        $this->sendNotificationForRequestReserved($reserva['id'], $user);
-    }
-
-    public function sendNotificationForRequestReserved($cotizacionId, GpUsuario $user)
-    {
-        DB::afterCommit(function () use ($cotizacionId, $user) {
-            $cotizacion = GpCotizacion::find($cotizacionId);
-            $usersApproval = GpUsuario::query()
-                ->where('perfil_id', [9, 2]) // perfiles que pueden aprobar reservas
-                ->where('status', 1)       // si tienes ese campo
-                ->whereKeyNot($user->id)          // evita duplicarte si el actor también es 9
-                ->get();
-            Notification::send($usersApproval, new ReservationRequestNotification('Nueva solicitud de reserva de inventario', $cotizacion->cotizacion, $user));
-
-            event(new ReservationApprovalsChanged('solicitud', $cotizacion->id, $user->USERID));
+        DB::afterCommit(function () use ($reserva, $user) {
+            FanoutReservationRequest::dispatch(
+                $reserva['id'],
+                $user->id
+            )->onQueue('notifications');
         });
     }
+
 
 
     public function fetchListTipeReserved()

@@ -13,5 +13,6 @@ interface DispatchServiceInterface
 
     public function checkTraslado($order);
     public function getAllPtoVta();
+     public function getAllPtoVtaReserved();
 
 }
