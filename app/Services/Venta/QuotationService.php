@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta;
 
-use App\Events\Venta\Reserva\ReservationApprovalsChanged;
+
 use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;

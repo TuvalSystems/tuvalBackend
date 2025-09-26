@@ -40,7 +40,7 @@ class ReservationRequestNotification extends Notification implements ShouldQueue
         return [
             'titulo' => $this->message,
             'user_id' => $this->gpUsuario->id,
-            'mensaje' => "Nueva solicitud de reserva de inventario realizada por {$this->gpUsuario->USERID} para la cotización {$this->reservation}",
+            'mensaje' => "Nueva solicitud de reserva de inventario realizada por {$this->gpUsuario->USERNAME} para la cotización {$this->reservation}",
 
         ];
     }
@@ -50,7 +50,7 @@ class ReservationRequestNotification extends Notification implements ShouldQueue
         return new BroadcastMessage([
             'titulo'  => $this->message,
             'byUser'  => $this->gpUsuario->USERID,
-            'message' => "Nueva solicitud de reserva de inventario realizada por {$this->gpUsuario->USERID} para la cotización {$this->reservation}",
+            'message' => "Nueva solicitud de reserva de inventario realizada por {$this->gpUsuario->USERNAME} para la cotización {$this->reservation}",
         ]);
     }
 

@@ -7,7 +7,6 @@ use App\Models\GpCotizacion;
 use App\Models\GpUsuario;
 use App\Notifications\Venta\Reservas\DenyReservationNotification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;

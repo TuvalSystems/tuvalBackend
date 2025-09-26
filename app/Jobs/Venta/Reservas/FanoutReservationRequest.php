@@ -65,21 +65,23 @@ class FanoutReservationRequest implements ShouldQueue
 
     public function sendNotifyUsersWarehouse($cotizacion, $actor)
     {
-        $usersWarehouses = GpUsuario::query()
+         GpUsuario::query()
             ->whereIn('perfil_id', [13, 2])
             ->where('status', 1)
             ->whereKeyNot($actor->id) //comentado para que a mi mismo me llegue la notificación
-            ->get();
+            ->orderBy('id')
+            ->chunkById(200, function ($chunk) use ($cotizacion, $actor) {
 
-        if ($usersWarehouses->isNotEmpty()) {
-            Notification::send(
-                $usersWarehouses,
-                new WarehouseRequestNotificaction(
-                    'Reserva de inventario',
-                    $cotizacion->cotizacion,
-                    $actor
-                )
-            );
-        }
+                Notification::send(
+                    $chunk,
+                    (new WarehouseRequestNotificaction(
+                        'Reserva de inventario',
+                        $cotizacion->cotizacion,
+                        $actor
+                    ))->onQueue('notifications')->onConnection('database')
+                );
+            },'id');
+
+
     }
 }

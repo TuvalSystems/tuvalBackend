@@ -4,10 +4,11 @@ namespace App\Notifications\Venta\Reservas;
 
 use App\Models\GpUsuario;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
-class ApprovalReservationNotification extends Notification
+class ApprovalReservationNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
