@@ -2,7 +2,7 @@
 
 namespace App\Jobs\Venta\Reservas;
 
-use App\Events\Venta\Reserva\ReservationApprovalsChanged;
+use App\Events\Venta\Reservas\ReservationApprovalsChanged;
 use App\Models\GpCotizacion;
 use App\Models\GpUsuario;
 use App\Notifications\Venta\Reservas\ReservationRequestNotification;

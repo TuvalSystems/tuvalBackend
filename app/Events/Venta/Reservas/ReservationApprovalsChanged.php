@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events\Venta\Reserva;
+namespace App\Events\Venta\Reservas;
 
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;

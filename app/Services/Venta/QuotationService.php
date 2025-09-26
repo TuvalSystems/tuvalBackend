@@ -23,6 +23,8 @@ use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
 use App\Http\Controllers\WebserviceController;
 use App\Jobs\Venta\Reservas\FanoutReservationRequest;
+use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
+use App\Jobs\Venta\Reservas\SendDenyReservationNotification;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPedido;
@@ -32,6 +34,7 @@ use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
 use App\Models\reservas\GpTipoReservas;
+use App\Notifications\Venta\Reservas\DenyReservationNotification;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
@@ -49,6 +52,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class QuotationService implements QuotationServiceInterface
@@ -1523,9 +1527,11 @@ class QuotationService implements QuotationServiceInterface
             'gp_tipo_reservas.descripcion as tipo_reserva',
             'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
             'gp_cotizacions.tx_obsSolResInv',
+            'gp_usuarios.USERID as usuario_solicita',
         ])->from('gp_cotizacions')
             ->join('gp_tipo_reservas', 'gp_cotizacions.co_tipSolResInv', '=', 'gp_tipo_reservas.id')
             ->join('gp_reserva_tipo_traslado', 'gp_cotizacions.co_tipTrasResInv', '=', 'gp_reserva_tipo_traslado.id')
+            ->join('gp_usuarios', 'gp_cotizacions.co_usrIngSolResInv', '=', 'gp_usuarios.id')
             ->where('gp_cotizacions.st_solResInv', 'pendiente');
 
         if ($search) {
@@ -1629,27 +1635,32 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function denyApplicationReservedQuotation(array $data, $userId)
+    public function denyApplicationReservedQuotation(array $data, $gpUser)
     {
         GpCotizacion::find($data['id'])->update([
             'st_solResInv' => 'rechazada',
             'st_autSolResInv' => 0,
             'fe_autSolResInv' => $data['fe_autSolResInv'] ?? Carbon::now()->format('Y-m-d'),
             'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'] ?? 'Sin observaciones',
-            'co_usrIngAutSolResInv' => $userId,
+            'co_usrIngAutSolResInv' => $gpUser->id,
             'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
         $this->cleanStockQuotationForDeny($data['id']);
+
+        DB::afterCommit(function () use ($data, $gpUser) {
+              SendDenyReservationNotification::dispatch($data['id'], $gpUser->id);
+        });
     }
 
-    public function approvalApplicationReservedQuotation(array $data, $userId)
+
+    public function approvalApplicationReservedQuotation(array $data, $gpUser)
     {
         GpCotizacion::find($data['id'])->update([
             'st_solResInv' => 'aprobado',
             'st_autSolResInv' => 1,
             'fe_autSolResInv' => $data['fe_autSolResInv'],
             'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'],
-            'co_usrIngAutSolResInv' => $userId,
+            'co_usrIngAutSolResInv' => $gpUser->id,
             'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
 
@@ -1659,6 +1670,10 @@ class QuotationService implements QuotationServiceInterface
         } else {
             $this->updateQuotationStocksAuthorizedDontConsolidate($quotation);
         }
+
+          DB::afterCommit(function () use ($data, $gpUser) {
+              SendApprovalReservationNotification::dispatch($data['id'], $gpUser->id);
+        });
     }
 
 
@@ -1735,7 +1750,7 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null,  $clienteRuc)
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null,  $clienteRuc, $userId)
     {
 
         $query = GpCotizacion::select([
@@ -1755,7 +1770,7 @@ class QuotationService implements QuotationServiceInterface
         ])->from('gp_cotizacions')
             ->join('gp_tipo_reservas', 'gp_cotizacions.co_tipSolResInv', '=', 'gp_tipo_reservas.id')
             ->join('gp_reserva_tipo_traslado', 'gp_cotizacions.co_tipTrasResInv', '=', 'gp_reserva_tipo_traslado.id')
-            //  ->where('gp_cotizacions.st_solResInv', 'aprobado')
+              ->where('gp_cotizacions.co_usrIngSolResInv', $userId)
         ;
 
         if ($fecha_desde && $fecha_hasta) {

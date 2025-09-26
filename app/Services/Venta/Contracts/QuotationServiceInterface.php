@@ -97,9 +97,9 @@ interface QuotationServiceInterface
     public function getQuotationWithDetails(int $id);
     public function getQuotationWithDetailsAndStock(int $id);
      public function getQuotationWithDetailsAndActiveStockById(int $id);
-    public function denyApplicationReservedQuotation(array $data, $userId);
-    public function approvalApplicationReservedQuotation(array $data, $userId);
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc);
+    public function denyApplicationReservedQuotation(array $data, $gpUser);
+    public function approvalApplicationReservedQuotation(array $data, $gpUser);
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc, $userId);
 
     public function processReservedQuotation (array $data, $user);
      public function processReservedQuotationInvoiceDemand($cotizacion, $user);

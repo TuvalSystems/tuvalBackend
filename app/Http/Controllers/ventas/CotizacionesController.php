@@ -1325,7 +1325,7 @@ class CotizacionesController extends Controller
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
             return DB::transaction(function () use ($data, $gpUser) {
-                $this->quotationService->denyApplicationReservedQuotation($data['data'], $gpUser->id);
+                $this->quotationService->denyApplicationReservedQuotation($data['data'], $gpUser);
                 return $this->buildSuccessResponse('Cotización rechazada correctamente', 200);
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -1344,7 +1344,7 @@ class CotizacionesController extends Controller
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
             return DB::transaction(function () use ($data, $gpUser) {
-                $this->quotationService->approvalApplicationReservedQuotation($data['data'], $gpUser->id);
+                $this->quotationService->approvalApplicationReservedQuotation($data['data'], $gpUser);
                 return $this->buildSuccessResponse('Cotización autorizada correctamente', 200);
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -1370,7 +1370,8 @@ class CotizacionesController extends Controller
             $estado = $request->input('status', null);
             $ptoVtaId = $request->input('ptovta', null);
             $clienteRuc = $request->input('cliente', null);
-            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc), 200);
+            $userId = Auth::user()->id; //filto para ver las cotizaciones del usuario logueado
+            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc, $userId), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
