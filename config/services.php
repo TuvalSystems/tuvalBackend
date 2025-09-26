@@ -87,6 +87,9 @@ return [
             'guia.reposicion.movimiento.generar'        => 'api/inventario/guardar-generar-movimiento-reposicion',
             'guia.despacho.movimiento.generar'          => 'api/inventario/guardar-generar-movimiento-despacho',
             'guia.obtener.clave_acceso'                 => 'api/inventario/guia-remision-obtener-claveacceso',
+
+            //reservas
+            'obtener_notificaciones_local'              => 'api/reservas/obtener-notificaciones-local',
         ],
     ],
     'api_sales' => [
