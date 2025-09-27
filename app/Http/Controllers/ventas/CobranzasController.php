@@ -57,6 +57,16 @@ class CobranzasController extends Controller
         ]);
     }
 
+    public function estadoCuentaTest(){
+          $parameters = array(
+            'IDCompania' => 'TUVAL',
+            'Ruc' => '0991257721001',
+        );
+          $webservices = new WebserviceController();
+          $estadodecuenta = $webservices->cobranzas('ConsultaDetalleEstadoCuenta', $parameters);
+          return $estadodecuenta;
+    }
+
     public function estadodecuentacliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([

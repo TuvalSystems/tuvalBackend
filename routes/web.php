@@ -135,3 +135,8 @@ Route::prefix('consultas')->group(function () {
 });
 
 
+Route::prefix('cobros')->group(function () {
+    Route::get('/consulta/estado-cuenta', [CobranzasController::class, 'estadoCuentaTest']);
+});
+
+

@@ -25,3 +25,7 @@ _ide_helper_models.php
 /public/images/ventas/
 /vue
 /public/images/fotos/
+/detect-service-dependencies.php
+/service-dependencies.dot
+/service-dependencies.png
+
