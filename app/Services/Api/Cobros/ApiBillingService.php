@@ -36,4 +36,9 @@ class   ApiBillingService extends ApiGpService {
 
     }
 
+
+    public function consultStatusAccountClient(array $params){
+        return $this->httpClient->makeRequest($this->endpoints['consulta_detalle_estado_cuenta_cliente'], 'GET', $params);
+    }
+
 }

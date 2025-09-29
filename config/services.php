@@ -59,6 +59,8 @@ return [
             'consulta_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-documentos-sin-soporte-cliente',
             'consulta_lista_documentos_vencidos_cliente'       => 'api/cobros/consultar-lista-documentos-vencidos-cliente',
             'consulta_lista_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-lista-documentos-sin-soporte-cliente',
+            'consulta_detalle_estado_cuenta_cliente'     => 'api/cobros/consultar-detalle-estado-cuenta-cliente',
+
 
             //cotizaciones
             'guardar_cotizacion_recordatorio'            => 'api/cotizaciones/guardar-cotizacion-recordatorio',
