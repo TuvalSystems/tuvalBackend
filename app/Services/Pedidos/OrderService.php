@@ -357,6 +357,8 @@ class OrderService implements OrderServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
+            $this->stockWarehouseService->markArticleUnavailable( $item['ART_CODIGO']);
+
             $newOrderDetail = new GpPedidoDetalle([
                 'pedido_id' => $newOrder->id,
                 'orden' => $i + 1,
