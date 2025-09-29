@@ -21,7 +21,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('cotizaciones:notificar-noventa')
             ->dailyAt('08:00')
 
-             ->runInBackground();
+            ->runInBackground();
 
         //se ejecuta el 1 de cada mez
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
@@ -35,14 +35,6 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(60)
             ->runInBackground();
 
-        // $schedule->command('optimize:clear')
-        //     ->dailyAt('03:15')
-        //     ->timezone('America/Guayaquil')
-        //     ->withoutOverlapping(60)
-        //     ->after(fn() => DbUtils::flush())
-        //     ->onFailure(fn() => DbUtils::flush());
-
-
         $schedule->command('pedidos:facturar-reservas')
             ->timezone('America/Guayaquil')
             ->between('06:00', '22:00')
@@ -50,6 +42,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(30)            // evita procesos en paralelo
             ->runInBackground()
         ; // hace que no bloquee otros jobs
+
+        $schedule->command('reservas:notificacion-expiracion')
+            ->timezone('America/Guayaquil')
+            ->dailyAt('09:00')
+            ->withoutOverlapping(30)
+            ->runInBackground();
     }
 
 

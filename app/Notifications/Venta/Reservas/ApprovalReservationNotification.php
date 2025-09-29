@@ -39,7 +39,7 @@ class ApprovalReservationNotification extends Notification implements ShouldQueu
     {
         return [
             'titulo' => $this->message,
-            'user_id' => $this->gpUsuario->id,
+            // 'user_id' => $this->gpUsuario->id,
             'mensaje' => "Solicitude de reserva aprovada por {$this->gpUsuario->USERNAME} para la cotización {$this->reservation}",
 
         ];

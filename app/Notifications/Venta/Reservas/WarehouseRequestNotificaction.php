@@ -40,7 +40,7 @@ class WarehouseRequestNotificaction extends Notification implements ShouldQueue
     {
         return [
             'titulo' => $this->message,
-            'user_id' => $this->gpUsuario->id,
+            // 'user_id' => $this->gpUsuario->id,
             'mensaje' => "Nueva solicitud de reserva de inventario realizada por {$this->gpUsuario->USERNAME} para la cotización {$this->reservation}",
         ];
     }

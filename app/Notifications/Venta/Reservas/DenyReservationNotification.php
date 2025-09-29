@@ -42,7 +42,7 @@ class DenyReservationNotification extends Notification  implements ShouldQueue
     {
         return [
             'titulo' => $this->message,
-            'user_id' => $this->gpUsuario->id,
+            // 'user_id' => $this->gpUsuario->id,
             'mensaje' => "Solicitude de reserva denegada por {$this->gpUsuario->USERNAME} para la cotización {$this->reservation}",
 
         ];

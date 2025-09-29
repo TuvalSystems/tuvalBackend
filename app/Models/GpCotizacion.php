@@ -262,4 +262,10 @@ class GpCotizacion extends Model
             ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'SERV')
             : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'SERV')->exists();
     }
+
+
+     public function usuariosolicitudreserva()
+    {
+        return $this->belongsTo(GpUsuario::class, 'co_usrIngSolResInv');
+    }
 }
