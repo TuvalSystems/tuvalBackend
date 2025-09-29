@@ -1406,10 +1406,11 @@ class CotizacionesController extends Controller
         $data = $request->all();
         $gpUser = GpUsuario::find(Auth::user()->id);
         try {
-            $response =  $this->quotationService->processReservedQuotationInvoiceDemand($data['data'], $gpUser);
-            $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
-
-            return  $this->buildSuccessResponse($msg,  200);
+            return DB::transaction(function () use ($data, $gpUser) {
+                $response =  $this->quotationService->processReservedQuotationInvoiceDemand($data['data'], $gpUser);
+                $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
+                return  $this->buildSuccessResponse($msg,  200);
+            });
         } catch (\Throwable $e) {
             Log::error('Error al procesar la reserva de la cotizacion: ', [
                 'message' => $e->getMessage(),
