@@ -31,7 +31,8 @@ class Kernel extends ConsoleKernel
 
         // ejecuta cada 2 horas la actualización de articulos
         $schedule->command('articulol:update')
-            ->everyTenMinutes()
+            ->dailyAt('03:15')
+            ->timezone('America/Guayaquil')
             ->withoutOverlapping(60)
             ->runInBackground();
 

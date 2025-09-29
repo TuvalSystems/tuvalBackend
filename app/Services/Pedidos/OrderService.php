@@ -302,7 +302,34 @@ class OrderService implements OrderServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
-            $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($newOrder->id, $item, $i);
+            $this->stockWarehouseService->markArticleUnavailable( $item['ART_CODIGO']);
+
+            $newOrderDetail = new GpPedidoDetalle([
+                'pedido_id' => $newOrder->id,
+                'orden' => $i + 1,
+                'ART_CODIGO' => $item['ART_CODIGO'],
+                'ART_DESCRIPCION' => $item['ART_DESCRIPCION'],
+                'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
+                'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
+                'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
+                'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
+                'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
+                'ART_MARCA' => $item['ART_MARCA'],
+                'ART_MATERIAL' => $item['ART_MATERIAL'],
+                'ART_PESO' => $item['ART_PESO'],
+                'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
+                'ART_VALOR' =>  $item['ART_VALOR'],
+                'ART_VALOR_ORIGINAL' => $item['ART_VALOR_ORIGINAL'],
+                'ART_DESCUENTO' => $item['ART_DESCUENTO'],
+                'ART_IVA' => $item['ART_IVA'],
+                'ART_CANTIDAD' => $item['ART_CANTIDAD'],
+                'ART_STOCK' => $item['ART_STOCK'],
+                'ART_IMP_VTA' => $item['ART_IMP_VTA'],
+                'ART_COSTO_PROMEDIO' => $item['ART_COSTO_PROMEDIO'],
+                'descuento' => $item['descuento'],
+                'descuento_original' => $item['descuento_original'],
+                'modificador' => $item['modificador'],
+            ]);
             $newOrderDetail->save();
 
 
