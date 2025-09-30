@@ -1283,8 +1283,11 @@ class CotizacionesController extends Controller
             $perPage = $request->input('perPage', 10);
             $search = $request->input('search', null);
             $sortBy = $request->input('sortBy', null);
-            $sortOrder = $request->input('sortOrder', 'asc');
-            return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->quotationService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder), 200);
+            $sortOrder = $request->input('sortOrder', 'desc');
+            $tipoReserva = $request->input('tipoReserva', null);
+            $ptoVtaId = $request->input('ptovta', null);
+            $clienteRuc = $request->input('cliente', null);
+            return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->quotationService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1364,7 +1367,7 @@ class CotizacionesController extends Controller
             $perPage = $request->input('perPage', 10);
             $search = $request->input('search', null);
             $sortBy = $request->input('sortBy', null);
-            $sortOrder = $request->input('sortOrder', 'asc');
+            $sortOrder = $request->input('sortOrder', 'desc');
             $fecha_desde = $request->input('fecha_desde', null);
             $fecha_hasta = $request->input('fecha_hasta', null);
             $estado = $request->input('status', null);

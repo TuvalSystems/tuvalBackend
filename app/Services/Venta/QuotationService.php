@@ -1513,7 +1513,7 @@ class QuotationService implements QuotationServiceInterface
         return GpTipoReservas::where('estado', 1)->get();
     }
 
-    public function fetchListReservedPending($perpage, $search, $sortBy = null, $sortOrder = 'asc')
+    public function fetchListReservedPending($perpage, $search, $sortBy = 'created_at', $sortOrder = 'desc', $tipoReserva = null, $ptoVtaId = null, $clienteRuc)
     {
         $query = GpCotizacion::select([
             'gp_cotizacions.id',
@@ -1543,6 +1543,17 @@ class QuotationService implements QuotationServiceInterface
                     ->orWhere('gp_cotizacions.CLI_RAZON_SOCIAL', 'like', '%' . $search . '%');
             });
         }
+        if ($clienteRuc) {
+            $query->where('gp_cotizacions.CLI_RUC', $clienteRuc);
+        }
+        if ($ptoVtaId) {
+            $query->where('gp_cotizacions.PTO_VTA_ID', $ptoVtaId);
+        }
+        if ($tipoReserva) {
+            $query->where('gp_cotizacions.co_tipSolResInv', (int) $tipoReserva);
+        }
+
+
         if ($sortBy) {
             $query->orderBy($sortBy, $sortOrder);
         } else {
@@ -1730,8 +1741,8 @@ class QuotationService implements QuotationServiceInterface
                         ]);
                 }
             }
-             $ownSelected = (float) ($own->seleccionado ?? 0);
-              $finalSelected = $ownSelected + $moveQty;
+            $ownSelected = (float) ($own->seleccionado ?? 0);
+            $finalSelected = $ownSelected + $moveQty;
             //sumar el consolidado al seleccionado de la bodega de despacho
             GpCotizacionDetalleStock::where('id', $own->id)->update([
                 'seleccionado'                => $finalSelected,
@@ -1771,7 +1782,7 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null,  $clienteRuc, $userId)
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null,  $clienteRuc, $userId)
     {
 
         $query = GpCotizacion::select([
@@ -2120,7 +2131,7 @@ class QuotationService implements QuotationServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
-
+            $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
             $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($order->id, $item, $i);
             $newOrderDetail->save();
 
@@ -2240,5 +2251,11 @@ class QuotationService implements QuotationServiceInterface
                 'updated_at' => now(),
             ]);
         }
+    }
+
+
+    public function fetchListTypeReservations()
+    {
+        return GpTipoReservas::where('estado', 1)->get();
     }
 }

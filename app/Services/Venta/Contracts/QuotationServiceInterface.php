@@ -93,7 +93,7 @@ interface QuotationServiceInterface
     public function saveQuotationHeaderReserved(array $reserva, GpUsuario $user);
     public function fetchListTipeReserved();
 
-    public function fetchListReservedPending($perPage, $search, $sortBy, $sortOrder);
+    public function fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc);
     public function getQuotationWithDetails(int $id);
     public function getQuotationWithDetailsAndStock(int $id);
      public function getQuotationWithDetailsAndActiveStockById(int $id);
@@ -104,4 +104,6 @@ interface QuotationServiceInterface
     public function processReservedQuotation (array $data, $user);
      public function processReservedQuotationInvoiceDemand($cotizacion, $user);
     public function recalculateQuotation($quotationId);
+
+    public function fetchListTypeReservations();
 }

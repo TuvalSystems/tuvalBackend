@@ -16,12 +16,12 @@
     <p style="margin:0 0 4px;"><strong>Cliente:</strong> {{ $cotizacion['CLI_RAZON_SOCIAL'] ?? 'N/D' }}</p>
     <p style="margin:0 0 4px;"><strong>RUC:</strong> {{ $cotizacion['CLI_RUC'] ?? 'N/D' }}</p>
     <p style="margin:0 0 4px;">
-      <strong>Fecha de creación:</strong>
+      <strong>Fecha cotización:</strong>
       {{ !empty($cotizacion['created_at']) ? \Carbon\Carbon::parse($cotizacion['created_at'])->format('d/m/Y') : 'N/A' }}
     </p>
     <p style="margin:0 0 4px;"><strong>Usuario:</strong> {{ $actor->USERNAME ?? $actor->USERID ?? 'N/A' }}</p>
     <p style="margin:0 0 12px;">
-      <strong>Fecha de Solicitud:</strong>
+      <strong>Fecha solicitada de reserva:</strong>
       {{ !empty($cotizacion['fe_solResInv']) ? \Carbon\Carbon::parse($cotizacion['fe_solResInv'])->format('d/m/Y') : 'N/A' }}
     </p>
 
