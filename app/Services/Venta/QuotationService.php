@@ -2111,8 +2111,8 @@ class QuotationService implements QuotationServiceInterface
         $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
 
         $fechaEntrega = $payload['despacho'] == 'Despacho en ruta' ? $payload['fecha_entrega'] : null;
-
-        $newOrder = $this->orderBuilder->fromPayloadOrder($payload['id'], $payload, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio,  $fechaEntrega, 'reserva', $payload['fe_solResInv']);
+        $bodega = $payload['BOD_BODEGA'];
+        $newOrder = $this->orderBuilder->fromPayloadOrder($payload['id'], $payload, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio,  $fechaEntrega, 'reserva', $payload['fe_solResInv'],  $bodega);
         $newOrder->save();
         return $newOrder;
     }

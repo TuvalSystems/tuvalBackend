@@ -281,7 +281,8 @@ class OrderService implements OrderServiceInterface
         $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
         $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
         $fechaEntrega = $order['despacho'] == 'Despacho en ruta' ? $order['fecha_entrega'] : null;
-        $newOrder = $this->orderBuilder->fromPayloadOrder($order['cotizacion_id'], $order, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio,  $fechaEntrega, 'cotizacion');
+        $bodega = $order['bodega_facturacion'];
+        $newOrder = $this->orderBuilder->fromPayloadOrder($order['cotizacion_id'], $order, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio,  $fechaEntrega, 'cotizacion', null, $bodega);
         $newOrder->save();
         return $newOrder;
     }
