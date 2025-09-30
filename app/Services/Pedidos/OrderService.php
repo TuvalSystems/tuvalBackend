@@ -357,7 +357,7 @@ class OrderService implements OrderServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
-            $this->stockWarehouseService->markArticleUnavailable( $item['ART_CODIGO']);
+            $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
 
             $newOrderDetail = new GpPedidoDetalle([
                 'pedido_id' => $newOrder->id,
@@ -501,82 +501,130 @@ class OrderService implements OrderServiceInterface
         $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
 
         // 🔍 2. Consultar el crédito del cliente
-        $estadoCuenta = [
-            'cupoDisponible' =>$this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC'])
-        ];
-
-        // 🔍 3. Procesar proveedores y stock
-        $pendientes = false;
-        $existentes = false;
-        $detalle->each(function ($item) use ($data, &$pendientes, &$existentes) {
-            $proveedores = $this->functionsService->getItemProviders($data['id'], $item, $pendientes, $existentes);
-            $item->proveedores = $proveedores['proveedores'];
-            $pendientes = $proveedores['pendientes'] ?: $pendientes;
-            $existentes = $proveedores['existentes'] ?: $existentes;
-
-            $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
-            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
-                $existentes = true;
-            }
-        });
-
+        $clientQuota = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        // 🔍3. Obtener el segmento del cliente
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        // 🔍 3.  Enriquecer detalles con proveedores y stock
+        $enrichedDetails = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
 
         // 🔍 4. Obtener órdenes de compra optimizadas
-        $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
-            ->map(function ($orden) {
-                $recibodecompra = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
-                return count($recibodecompra->detalle) > 0 ? $recibodecompra : null;
-            })
-            ->filter()
-            ->values();
+        $ordenes =  $this->getPurchaseOrdersWithReceipts($data['pedido']);
 
-        // 🔍 5. Procesar traslados
-        $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
-        if ($trasladosVentas->isEmpty()) {
-            $pendientes = true; // Si no hay traslados, marcamos como pendientes
-            $trasladosVentas = collect(); // Inicializamos como colección vacía
-            // $existentes = false; // No hay traslados existentes
-        } else {
-            $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
-                $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
-                $trasladoVenta->guias = $guias;
-                $guias->each(function ($guia) use (&$pendientes, &$existentes) {
-                    if ($guia->estado != 'recibida')
-                        $pendientes = true;
-                    else
-                        $existentes = true;
-                });
-                if (!$trasladoVenta->completado)
-                    $pendientes = true;
-            });
-        }
+        $trasladosVentas = $this->getTransferWithGuides($data['id']);
+
 
         // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        return response([
-            'success' => true,
-            'detalle' => $detalle,
-            'estadodecuenta' => $estadoCuenta,
+        $status = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        return [
+            'detalle' => $enrichedDetails['details'],
+            'estadodecuenta' => [
+                'cupoDisponible' => $clientQuota
+            ],
             'ordendecompra' => $ordenes,
             'traslados' => $trasladosVentas,
             'orden_despacho' => $orderDespacho,
             'guias_remision' => $guiaRemision,
             'devoluciones' => $devoluciones,
-            'pendientes' => $pendientes,
-            'existentes' => $existentes,
+            'pendientes' => $status['pendientes'],
+            'existentes' => $status['existentes'],
             'segmento' => $segmento
-        ]);
+        ];
     }
 
+
+    public function enrichOrderDetails(Collection $details, int $orderId, string $warehouse)
+    {
+        $hasPending = false;
+        $hasExisting = false;
+        $itemIds = $details->pluck('id')->toArray();
+        $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
+            ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem) {
+            $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
+            $item->proveedores = $proveedores['proveedores'];
+            $hasPending = $proveedores['pendientes'] ?: $hasPending;
+            $hasExisting = $proveedores['existentes'] ?: $hasExisting;
+            // Obtener stock (desde el map precargado)
+            $stock = $stockByItem->get($item->id);
+            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
+                $hasExisting = true;
+            }
+
+            return $item;
+        });
+
+        return [
+            'details' => $details,
+            'hasPending' => $hasPending,
+            'hasExisting' => $hasExisting
+        ];
+    }
+
+    public function getPurchaseOrdersWithReceipts($orderNumber)
+    {
+        return  $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
+            ->map(function ($orden) {
+                $receipt  = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+                return count($receipt->detalle) > 0 ? $receipt  : null;
+            })
+            ->filter()
+            ->values();
+    }
 
     public function checkOutValidateDispatchReInvoice($devolucion)
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
             ->where('despachado_parcial', 1)->exists();
     }
+
+
+    public function getTransferWithGuides(int $orderId): Collection
+    {
+        $transfers = $this->orderRepository->getTransferOrdersBySale($orderId);
+        if ($transfers->isEmpty()) {
+            return collect();
+        }
+
+        return $transfers->transform(function ($transfer) {
+            $transfer->guias = $this->orderRepository->getShipmentGuidesByTransfer($transfer);
+            return $transfer;
+        });
+    }
+
+    public function calculateOrderStatus($details, $transfers)
+    {
+
+        $hasPending = $details['hasPending'];
+        $hasExisting = $details['hasExisting'];
+
+        if ($transfers->isEmpty()) {
+            $hasPending = true;
+        } else {
+            $transfers->each(function ($transfer) use (&$hasPending, &$hasExisting) {
+                $transfer->guias->each(function ($guide) use (&$hasPending, &$hasExisting) {
+                    if ($guide->estado != 'recibida') {
+                        $hasPending = true;
+                    } else {
+                        $hasExisting = true;
+                    }
+                });
+
+                if (!$transfer->completado) {
+                    $hasPending = true;
+                }
+            });
+        }
+
+        return [
+            'pendientes' => $hasPending,
+            'existentes' => $hasExisting
+        ];
+    }
+
+
 
 
 
@@ -684,7 +732,7 @@ class OrderService implements OrderServiceInterface
             $data['pedido']['cliente_id'] = $data['cliente_id'];
             $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
-             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
 
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);

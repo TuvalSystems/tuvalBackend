@@ -215,9 +215,19 @@ class PedidosController extends Controller
 
     public function detallepedido(Request $request)
     {
-
-        $data = $request->all();
-        return $this->orderService->detailOrderById($data);
+        try {
+            $data = $request->all();
+            $result = $this->orderService->detailOrderById($data);
+            return response()->json([
+                'success' => true,
+                ...$result
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener detalle del pedido: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 
