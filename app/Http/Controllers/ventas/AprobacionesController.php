@@ -107,7 +107,7 @@ class AprobacionesController extends Controller
             ->orderBy('created_at', 'ASC')->get();
         foreach ($cotizaciones as $key => $cot) {
 
-            $res2 = $this->getSegmentoCliente($pedido->CLI_RUC);
+            $res2 = $this->getSegmentoCliente($cot->CLI_RUC);
             $cot->segmento = data_get($res2, 'segmento', null);
             $cot->subsegmento =  data_get($res2, 'subsegmento', null);
         }
