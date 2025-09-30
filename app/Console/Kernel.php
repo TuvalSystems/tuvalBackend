@@ -49,6 +49,12 @@ class Kernel extends ConsoleKernel
             ->dailyAt('09:00')
             ->withoutOverlapping(30)
             ->runInBackground();
+
+            $schedule->command('reservas:release-stock')
+            ->timezone('America/Guayaquil')
+            ->dailyAt('09:00')
+            ->withoutOverlapping(30)
+            ->runInBackground();
     }
 
 
