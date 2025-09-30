@@ -88,7 +88,7 @@ class AprobacionesController extends Controller
             ->select('gp_pedidos.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
-            ->where('estado', '!=', 'eliminado')
+            ->whereNotIn('estado',['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
 
             ->orderBy('created_at', 'ASC')->get();
 
@@ -101,8 +101,7 @@ class AprobacionesController extends Controller
 
         $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO')
-            ->where('estado', '!=', 'caducado')
-            ->where('estado', '!=', 'procesado')
+            ->whereNotIn('estado',['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->orderBy('created_at', 'ASC')->get();
@@ -145,7 +144,7 @@ class AprobacionesController extends Controller
                     ->orWhere('requiere_aprobacion_comercial', 'yes')
                     ->where('aprobado_comercial', 'yes');
             })
-            ->where('estado', '!=', 'eliminado')
+            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
             ->orderBy('created_at', 'DESC')->get();
 
         foreach ($pedidos as $key => $pedido) {
