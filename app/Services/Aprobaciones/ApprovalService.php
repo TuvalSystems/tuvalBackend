@@ -605,14 +605,14 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
             ->lockForUpdate()->first();
         if (!$pedido) {
-            throw new \Exception("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->aprobado_crediticio = 'yes';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->save();
+        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
 
         DB::afterCommit(function () use ($pedido) {
-            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
             $this->invoiceService->checkSendInvoice($pedido);
         });
         return $pedido;
@@ -625,7 +625,7 @@ class ApprovalService implements ApprovalServiceInterface
             ->whereNotIn('estado', ['eliminado', 'anulada'])
             ->lockForUpdate()->first();
         if (!$pedido) {
-            throw new \Exception("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
         $pedido->aprobado_crediticio = 'no';
@@ -681,13 +681,13 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
             ->lockForUpdate()->first();
         if (!$pedido) {
-            throw new \Exception("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->aprobado_comercial = 'yes';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->save();
+        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
         DB::afterCommit(function () use ($pedido) {
-            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
             $this->invoiceService->checkSendInvoice($pedido);
         });
         return $pedido;
@@ -698,7 +698,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido = GpPedido::where('id', $data['id'])
             ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
         $pedido->aprobado_comercial = 'no';
@@ -725,7 +725,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido = GpPedido::where('id', $data['id'])
             ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
         $pedido->aprobado_comercial = 'no';
