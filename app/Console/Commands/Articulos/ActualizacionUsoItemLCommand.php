@@ -7,7 +7,6 @@ use App\Services\Reposiciones\ItemsLService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class ActualizacionUsoItemLCommand extends Command
 {
@@ -42,27 +41,6 @@ class ActualizacionUsoItemLCommand extends Command
      */
     public function handle(ItemsLService $itemsLService)
     {
-        // $articulosPorClase = $itemsLService->getListArticleL();
-        // $diasMaxPorClase   = $itemsLService->getDataItemLMaxDay();
-        // foreach ($articulosPorClase as  $articulo) {
-        //     $cooldownDays = optional($diasMaxPorClase->get($articulo->ART_CLASE_ARTICULO))->DATOS_ITEMS_L_DIA_MAXIMO ?? 60;
-
-        //     $info = $itemsLService->availabilityForItem($articulo->ART_CODIGO, $cooldownDays);
-
-        //     if ($itemsLService->isTemporalCart($articulo->ART_CODIGO)) {
-        //         $info['disponible'] = false;
-        //     }
-
-        //     $updateItem = array_merge($info, [
-        //         'disponible' => $info['disponible'] ? 1 : 0,
-        //     ]);
-        //     Log::info('Actualizando articulo ' . $articulo->ART_CODIGO . ' con :', [
-        //         'updateItem' => $updateItem
-        //     ]);
-        //     GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->update($updateItem);
-        // }
-        // return 0;
-
         $diasMax = $itemsLService->getDataItemLMaxDay(); // keyBy('DATOS_ITEMS_L_CLASE')
 
         GpArticulo::where('ART_TIPO_COMPRA', 'L')
@@ -124,7 +102,7 @@ class ActualizacionUsoItemLCommand extends Command
                         ];
                     }
                 }
-              
+
                 // 3) bulk upsert por id (1 query)
                 foreach ($rows as $r) {
                     DB::table('gp_articulos')

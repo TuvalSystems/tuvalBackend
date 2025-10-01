@@ -2,7 +2,7 @@
 
 namespace App\Console;
 
-use App\Supports\DbUtils;
+use App\Jobs\Devoluciones\EnqueueDevoluciones;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -11,11 +11,14 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
-
-        $schedule->command('devoluciones:procesar')
-            ->everyMinute()
-            ->withoutOverlapping(60)
-            ->runInBackground();
+        $schedule->job(new EnqueueDevoluciones(200))
+        ->everyMinute()
+        ->withoutOverlapping(60)
+        ->runInBackground();
+        // $schedule->command('devoluciones:procesar')
+        //     ->everyMinute()
+        //     ->withoutOverlapping(60)
+        //     ->runInBackground();
 
         //se ejecuta una vez al dia a las 08:00
         $schedule->command('cotizaciones:notificar-noventa')
