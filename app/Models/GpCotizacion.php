@@ -113,6 +113,8 @@ use \DateTimeInterface;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaEntrega($value)
  * @property string|null  $user_ing_recordatorio
  * @property int|null $co_tipTrasResInv
+ * @property int|null $co_usrIngSolResInv
+ *
  */
 class GpCotizacion extends Model
 {
@@ -218,8 +220,9 @@ class GpCotizacion extends Model
         return $this->belongsTo(GpUsuario::class, 'user_ing_recordatorio');
     }
 
-    public function reservaTraslado(){
-        return $this->belongsTo(GpReservaTipoTraslado::class, 'co_tipTrasResInv' , 'id');
+    public function reservaTraslado()
+    {
+        return $this->belongsTo(GpReservaTipoTraslado::class, 'co_tipTrasResInv', 'id');
     }
 
 
@@ -228,37 +231,41 @@ class GpCotizacion extends Model
         return $this->hasMany(GpCotizacionDetalleStock::class, 'cotizacion_id', 'id');
     }
 
-    public function tiporeserva(){
-        return $this->belongsTo(GpTipoReservas::class, 'co_tipSolResInv' , 'id');
+    public function tiporeserva()
+    {
+        return $this->belongsTo(GpTipoReservas::class, 'co_tipSolResInv', 'id');
     }
 
 
 
     /** functiones de atributos  */
 
-    public function getReservaDisabledAttribute() : bool {
-        if(array_key_exists('selected_gt_zero_count', $this->attributes)) {
-             return ((int) $this->attributes['selected_gt_zero_count']) === 0;
-        }
-        $hay = $this->detallecotizacionstock()->where('seleccionado', '>', 0)->exists();
-        $this->attributes['selected_gt_zero_count'] = $hay;
-        return !$hay;
+    public function getReservaDisabledAttribute(): bool
+    {
+        return ! $this->detallecotizacionstock()
+            ->where('seleccionado', '>', 0)
+            ->exists();
     }
 
 
-    public function getHasLItemsAttribute() : bool {
-         return $this->relationLoaded('detallecotizacion')
-        ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'L')
-        : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'L')->exists();
+    public function getHasLItemsAttribute(): bool
+    {
+        return $this->relationLoaded('detallecotizacion')
+            ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'L')
+            : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'L')->exists();
     }
 
 
-    public function getHasServiceItemsAttribute() : bool {
-       return $this->relationLoaded('detallecotizacion')
-        ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'SERV')
-        : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'SERV')->exists();
+    public function getHasServiceItemsAttribute(): bool
+    {
+        return $this->relationLoaded('detallecotizacion')
+            ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'SERV')
+            : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'SERV')->exists();
     }
 
 
-
+     public function usuariosolicitudreserva()
+    {
+        return $this->belongsTo(GpUsuario::class, 'co_usrIngSolResInv');
+    }
 }

@@ -1,5 +1,7 @@
 <?php
 
+use App\Events\DemoMessage;
+use App\Events\PingArrived;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\PedidosController;
@@ -129,6 +131,20 @@ Route::prefix('bodegas')->group(function () {
     Route::get('/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
     Route::get('/guiasderemision/checkguiasremisiones', [GuiasderemisionController::class, 'checkguiaremision']);
 
+});
+
+
+
+/** para pruebas  */
+
+// Route::get('/ping', function () {
+//     broadcast(new PingArrived('pong ' . now()->toDateTimeString()));
+//     return 'Ping enviado';
+// });
+
+Route::get('/debug/demo-broadcast', function () {
+    event(new DemoMessage(request('msg', 'hola')));
+    return 'ok';
 });
 
 

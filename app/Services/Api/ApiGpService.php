@@ -100,6 +100,13 @@ class ApiGpService
 
      public function fetchClientSegment(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["obtener_segmento_cliente"], 'GET', $params, );
+        return $this->httpClient->makeRequest($this->endpoints["obtener_segmento_cliente"], 'GET', $params );
+    }
+
+
+
+     public function fetchReservedNotifyLocal(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["obtener_notificaciones_local"], 'GET', $params );
     }
 }

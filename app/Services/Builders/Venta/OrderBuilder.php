@@ -14,7 +14,7 @@ class OrderBuilder implements OrderBuilderInterface
 
 
 
-    public function fromPayloadOrder($cotizacionId, array $data,  array $approvalComercial, GpUsuario $user, $pv, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega, $origen, $fFacturacionReserva = null)
+    public function fromPayloadOrder($cotizacionId, array $data,  array $approvalComercial, GpUsuario $user, $pv, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega, $origen, $fFacturacionReserva = null, $bodega)
     {
         $newOrder = new GpPedido();
         $subtotalBruto = (float) $data['subtotal'] + (float) $data['descuento'];
@@ -31,7 +31,7 @@ class OrderBuilder implements OrderBuilderInterface
             'factura_a_demanda' => $data['factura_a_demanda'],
             'factura_siguiente_mes' => $data['factura_siguiente_mes'],
             'impuesto' => env('IVA_IMPUESTO'),
-            'BOD_BODEGA' => $data['BOD_BODEGA'],
+            'BOD_BODEGA' => $bodega,
             'PTO_VTA_ID' => $data['PTO_VTA_ID'],
             'PTO_VTA_DESCRIPCION' => $pv->PTO_VTA_DESCRIPCION,
             'USERID' => $user->USERID,

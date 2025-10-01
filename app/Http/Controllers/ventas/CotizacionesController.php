@@ -1229,7 +1229,14 @@ class CotizacionesController extends Controller
     }
 
 
-    /*** reservas */
+    /***
+     * *
+     *
+     *                                                                GESTION DE RESERVAS
+     *
+     *
+     *
+     *  */
 
 
     public function validarGeneracionReservaCotizacion($id)
@@ -1276,8 +1283,11 @@ class CotizacionesController extends Controller
             $perPage = $request->input('perPage', 10);
             $search = $request->input('search', null);
             $sortBy = $request->input('sortBy', null);
-            $sortOrder = $request->input('sortOrder', 'asc');
-            return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->quotationService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder), 200);
+            $sortOrder = $request->input('sortOrder', 'desc');
+            $tipoReserva = $request->input('tipoReserva', null);
+            $ptoVtaId = $request->input('ptovta', null);
+            $clienteRuc = $request->input('cliente', null);
+            return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->quotationService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1318,7 +1328,7 @@ class CotizacionesController extends Controller
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
             return DB::transaction(function () use ($data, $gpUser) {
-                $this->quotationService->denyApplicationReservedQuotation($data['data'], $gpUser->id);
+                $this->quotationService->denyApplicationReservedQuotation($data['data'], $gpUser);
                 return $this->buildSuccessResponse('Cotización rechazada correctamente', 200);
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -1337,12 +1347,12 @@ class CotizacionesController extends Controller
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
             return DB::transaction(function () use ($data, $gpUser) {
-                $this->quotationService->approvalApplicationReservedQuotation($data['data'], $gpUser->id);
+                $this->quotationService->approvalApplicationReservedQuotation($data['data'], $gpUser);
                 return $this->buildSuccessResponse('Cotización autorizada correctamente', 200);
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->buildErrorResponse('Cotización no encontrada', 404);
-        } catch (\DomainException $e) { 
+        } catch (\DomainException $e) {
             return $this->buildErrorResponse($e->getMessage(), 409);
         } catch (\Throwable $e) {
 
@@ -1357,13 +1367,14 @@ class CotizacionesController extends Controller
             $perPage = $request->input('perPage', 10);
             $search = $request->input('search', null);
             $sortBy = $request->input('sortBy', null);
-            $sortOrder = $request->input('sortOrder', 'asc');
+            $sortOrder = $request->input('sortOrder', 'desc');
             $fecha_desde = $request->input('fecha_desde', null);
             $fecha_hasta = $request->input('fecha_hasta', null);
             $estado = $request->input('status', null);
             $ptoVtaId = $request->input('ptovta', null);
             $clienteRuc = $request->input('cliente', null);
-            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc), 200);
+            $userId = Auth::user()->id; //filto para ver las cotizaciones del usuario logueado
+            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->quotationService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc, $userId), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1398,10 +1409,11 @@ class CotizacionesController extends Controller
         $data = $request->all();
         $gpUser = GpUsuario::find(Auth::user()->id);
         try {
-            $response =  $this->quotationService->processReservedQuotationInvoiceDemand($data['data'], $gpUser);
-            $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
-
-            return  $this->buildSuccessResponse($msg,  200);
+            return DB::transaction(function () use ($data, $gpUser) {
+                $response =  $this->quotationService->processReservedQuotationInvoiceDemand($data['data'], $gpUser);
+                $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
+                return  $this->buildSuccessResponse($msg,  200);
+            });
         } catch (\Throwable $e) {
             Log::error('Error al procesar la reserva de la cotizacion: ', [
                 'message' => $e->getMessage(),

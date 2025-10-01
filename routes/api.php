@@ -1,5 +1,6 @@
 <?php
 
+use App\Events\PingArrived;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -287,6 +288,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
         Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
         Route::post('/guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
+        Route::get('puntos-venta/reservas/limites', [DespachosController::class, 'indexPuntosVentaReservaLimits']);
     });
 
     Route::group(['prefix' => 'consultas'], function () {
@@ -298,3 +300,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 });
 Route::post('/login', [AuthController::class, 'login']);
+// Route::get('/ping', function () {
+//     broadcast(new PingArrived('envio de ping de api ' . now()->toDateTimeString()));
+//     return 'Ping enviado';
+// });
