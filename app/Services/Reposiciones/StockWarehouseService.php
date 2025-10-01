@@ -565,6 +565,13 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('disponible', 1)->exists();
     }
 
+    public function markArticleUnavailable($articulo)
+    {
+        GpArticulo::where('ART_CODIGO', $articulo)
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->update(['disponible' => 0]);
+    }
+
 
     /** funcion para formatear y consultar reservado para
      *  actualizar el stock en pedido detalle stock

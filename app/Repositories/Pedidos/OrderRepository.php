@@ -14,6 +14,7 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use Illuminate\Support\Collection;
 use Carbon\Carbon;
 
 class OrderRepository implements OrderRepositoryInterface
@@ -41,11 +42,11 @@ class OrderRepository implements OrderRepositoryInterface
             ->get();
     }
 
-    public function getStockByItemAndWarehouse(int $itemId, string $warehouse)
+    public function getStockByItemAndWarehouse(array $itemId, string $warehouse)
     {
-        return GpPedidoDetalleStock::where('detalle_id', $itemId)
+        return GpPedidoDetalleStock::whereIn('detalle_id', $itemId)
             ->where('STO_ART_BODEGA', $warehouse)
-            ->first();
+            ->get();
     }
 
     public function getPurchaseOrdersByOrderNumber(string $orderNumber)
@@ -101,6 +102,7 @@ class OrderRepository implements OrderRepositoryInterface
             )
             ->get();
     }
+
 
 
     public function getDispatchOrder(int $orderId)

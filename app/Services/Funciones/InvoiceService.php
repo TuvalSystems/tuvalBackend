@@ -564,6 +564,10 @@ class InvoiceService implements InvoiceServiceInterface
             return false;
         }
 
+        if (!empty($pedido->factura)) {
+            return false;
+        }
+
         if ($pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio !== 'yes') {
             return false;
         }

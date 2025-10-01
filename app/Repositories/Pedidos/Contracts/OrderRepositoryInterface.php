@@ -11,7 +11,7 @@ interface OrderRepositoryInterface
     public function getSuppliersByOrderAndItem($pedidoId, $itemId);
     public function getPurchaseOrdersBySupplier($proveedorId);
 
-    public function getStockByItemAndWarehouse(int $itemId, string $warehouse);
+    public function getStockByItemAndWarehouse(array $itemId, string $warehouse);
 
     public function getPurchaseOrdersByOrderNumber(string $orderNumber);
 
