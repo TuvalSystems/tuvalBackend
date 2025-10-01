@@ -14,8 +14,6 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
-use Illuminate\Support\Collection;
-use Carbon\Carbon;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -125,10 +123,10 @@ class OrderRepository implements OrderRepositoryInterface
 
     /** facturacion de siguiente mes*/
 
-    public function getOrdersToInvoiceNextMonth(Carbon $start, Carbon $end)
+
+    public function queryOrdersToInvoiceNextMonth($year, $mes)
     {
-        return GpPedido::query()
-            ->where('estado', 'espera')                 // ajusta según tus reglas
+        return GpPedido::query()->where('estado', 'espera')
             ->where('factura_posterior_despacho', 1)
             ->where(function ($q) {
                 $q->whereNull('factura_a_demanda')
@@ -140,10 +138,9 @@ class OrderRepository implements OrderRepositoryInterface
                   ->orWhere('origen', '!=', 'reserva');
             })
             ->where('factura_siguiente_mes', 1)
-            ->whereBetween('created_at', [
-                $start->toDateTimeString(),
-                $end->toDateTimeString(),
-            ]);
+            ->whereMonth('created_at', '=', $mes)
+            ->whereYear('created_at', $year)
+            ->orderBy('id');
     }
 
 

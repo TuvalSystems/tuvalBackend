@@ -9,6 +9,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -75,126 +76,88 @@ class OrderJobService
 
     public function invoicePreviousMonthOrders()
     {
-        [$start, $end, $targetMonthKey] = $this->getPreviousMonthPeriod();
-        $m = ['processed' => 0, 'invoiced' => 0, 'skipped' => 0, 'failed' => 0];
-        $q = $this->orderRepository->getOrdersToInvoiceNextMonth($start, $end);
+        $now = now('America/Guayaquil');
+        $prev = $now->copy()->subMonthNoOverflow();
+        $year = (int) $prev->year;
+        $mes  = (int) $prev->month;
 
-        if (!(clone $q)->exists()) {
-            Log::channel('cron_process')->info("ℹ️ Sin pedidos para facturar (siguiente mes). target_month={$targetMonthKey}");
-            return $m;
+        if ($this->shouldAbortBilling($mes)) {
+            Log::channel('cron_process')->warning("⚠️ No se ejecuta facturación: Aún no llega el mes: {$mes}");
+            return [
+                'abortado' => true,
+                'razon' => "Mes actual no coincide: {$mes}",
+                'total' => 0,
+                'exitosos' => 0,
+                'fallidos' => 0,
+                'errores' => []
+            ];
         }
-        $q->chunkById(200, function ($orders) use (&$m) {
-            foreach ($orders as $key => $order) {
-                $m['processed']++;
+        $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
+        $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
+            foreach ($pedidos as  $pedido) {
+                $resultados['total']++;
 
-                try {
-                    DB::transaction(function () use ($order, &$m) {
-                        $fresh = \App\Models\GpPedido::query()
-                            ->whereKey($order->id)
-                            ->lock('FOR UPDATE') // MySQL 8+: 'FOR UPDATE' o 'FOR UPDATE SKIP LOCKED'
-                            ->first();
-
-                        if (!$fresh) {
-                            $m['skipped']++;
-                            return;
-                        }
-                        if (in_array($fresh->estado, ['facturado'], true) || !empty($fresh->factura)) {
-                            $m['skipped']++;
-                            return; // idempotencia
-                        }
-                        $this->invoiceService->checkSendInvoice($fresh, true, false);
-                        $m['invoiced']++;
-                        Log::channel('cron_process')->info("✅ Pedido {$fresh->id} facturado (siguiente mes).");
-                    });
-                } catch (\DomainException $e) {
-                    $m['skipped']++;
-                    Log::channel('cron_process')->warning("⚠️ Pedido {$order->id} omitido (regla): {$e->getMessage()}");
-                } catch (\Throwable $e) {
-                    $m['failed']++;
-                    Log::channel('cron_process')->error("❌ Error facturando pedido {$order->id}: {$e->getMessage()}", [
-                        'trace' => $e->getTraceAsString(),
-                    ]);
+                // Éxito idempotente si ya está facturado
+                if (filled($pedido->factura) && $pedido->estado === 'facturado') {
+                    $resultados['exitosos']++;
+                    continue;
                 }
-            }
-        }, 'id');
-        Log::channel('cron_process')->info('next-month-invoicing finished', $m + [
-            'target_month'   => $targetMonthKey,
-            'ended_at'       => now()->toDateTimeString(),
-            'peak_memory_mb' => round(memory_get_peak_usage(true) / 1048576, 1),
-        ]);
-        return $m;
 
-    }
-
-
-
-    public function getPreviousMonthPeriod(?string $runDate = null)
-    {
-
-        $ref = $runDate ? Carbon::parse($runDate) : Carbon::now();
-        $start = $ref->copy()->startOfMonth()->subMonthNoOverflow();
-        $end = $ref->copy()->endOfMonth()->subMonthNoOverflow();
-        return [$start, $end, $start->format('Y-m')];
-    }
-
-
-    /** facturacion de pedidos en estado de reserva  */
-
-
-    public function generateInvoiceForReservedOrders(?string $date = null): array
-    {
-        $today = $date ? Carbon::parse($date)->toDateString() : now()->toDateString();
-        $metrics = ['processed' => 0, 'invoiced' => 0, 'skipped' => 0, 'failed' => 0];
-        $orders =  $this->orderRepository->queryInvoiceReservedOrdersForDate($today);
-        $orders->orderBy('id')->chunkById(200, function ($orders) use (&$metrics, $today) {
-            foreach ($orders as $order) {
-                $metrics['processed']++;
-
+                $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
+                if (! $lock->get()) {
+                    // Otro proceso ya está facturando → no lo cuentes como error
+                    Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
+                    continue;
+                }
                 try {
-                    DB::transaction(function () use ($order, $today, &$metrics) {
-                        // 3) Re-carga con lock para evitar doble facturación concurrente
-                        /** @var \App\Models\GpPedido $fresh */
-                        $fresh = \App\Models\GpPedido::query()
-                            ->whereKey($order->id)
-                            ->lock('FOR UPDATE') // MySQL 8+: 'FOR UPDATE' o 'FOR UPDATE SKIP LOCKED'
-                            ->first();
+                    try {
 
-                        // Idempotencia: sal si ya está facturado o tiene número de factura, etc.
-                        if (in_array($fresh->estado, ['facturado'], true) || !empty($fresh->factura)) {
-                            $metrics['skipped']++;
-                            Log::channel('cron_process')->info("⏭️ Pedido {$fresh->id} omitido: ya facturado.");
-                            return;
+                        $this->invoiceService->checkSendInvoice($pedido, true, false);
+                    } catch (\Throwable $exGp) {
+                        // Clasifica “ya facturado” como éxito idempotente
+                        $msg = mb_strtolower($exGp->getMessage());
+                        if (str_contains($msg, 'ya se encuentra facturado') || str_contains($msg, 'ya existe')) {
+                            $resultados['exitosos']++;
+                            Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} ya estaba facturado (idempotente)");
+                        } else {
+                            throw $exGp;
                         }
+                    }
 
-                        // Asegura fecha (si por algún motivo entró fuera de rango)
-                        $orderDate = $fresh->fe_facturacion_reserva instanceof Carbon
-                            ? $fresh->fe_facturacion_reserva->toDateString()
-                            : Carbon::parse($fresh->fe_facturacion_reserva)->toDateString();
-
-                        if ($fresh->origen !== 'reserva' || $orderDate !== $today) {
-                            $metrics['skipped']++;
-                            Log::channel('cron_process')->info("⏭️ Pedido {$fresh->id} omitido: origen/fecha no coincide.");
-                            return;
-                        }
-
-                        // 4) Ejecuta la facturación (tu servicio)
-                        $this->invoiceService->checkSendInvoice($fresh, true, false);
-
-                        $metrics['invoiced']++;
-                        Log::channel('cron_process')->info("✅ Pedido {$fresh->id} facturado correctamente (reserva).");
-                    });
-                } catch (\DomainException $e) {
-                    $metrics['skipped']++;
-                    Log::channel('cron_process')->warning("⚠️ Pedido {$order->id} no facturado (regla negocio): {$e->getMessage()}");
+                    $pedido->refresh();
+                    if ($pedido->estado === 'facturado' && filled($pedido->factura)) {
+                        $resultados['exitosos']++;
+                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
+                    } else {
+                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} no cambió a 'facturado'");
+                        //  throw new Exception("El pedido no cambió a 'facturado'");
+                    }
                 } catch (\Throwable $e) {
-                    $metrics['failed']++;
-                    Log::channel('cron_process')->error("❌ Error facturando pedido {$order->id}: {$e->getMessage()} - Reserva", [
-                        'trace' => $e->getTraceAsString(),
+                    $resultados['fallidos']++;
+                    $resultados['errores'][] = [
+                        'pedido_id' => $pedido->id,
+                        'pedido'    => $pedido->pedido,
+                        'error'     => $e->getMessage(),
+                    ];
+                    Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->pedido}", [
+                        'pedido_id' => $pedido->id,
+                        'error'     => $e->getMessage(),
+                        'trace'     => $e->getTraceAsString(),
                     ]);
+                } finally {
+                    optional($lock)->release();
                 }
             }
         });
 
-        return $metrics;
+        Log::channel('cron_process')->info("📊 Resumen facturación masiva", $resultados);
+         return $resultados;
+    }
+
+
+
+    public function shouldAbortBilling($mes)
+    {
+        return $mes === date("m");
     }
 }
