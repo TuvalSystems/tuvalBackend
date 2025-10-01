@@ -774,9 +774,6 @@ class OrderService implements OrderServiceInterface
         $year = (int) $prev->year;
         $mes  = (int) $prev->month;
 
-
-        // $mes = $this->getPreviousMonth();
-        // $year = date('Y');
         if ($this->shouldAbortBilling($mes)) {
             Log::channel('cron_process')->warning("⚠️ No se ejecuta facturación: Aún no llega el mes: {$mes}");
             return [
@@ -825,7 +822,9 @@ class OrderService implements OrderServiceInterface
                         $resultados['exitosos']++;
                         Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
                     } else {
-                        throw new \Exception("El pedido no cambió a 'facturado'");
+                        // throw new \Exception("El pedido no cambió a 'facturado'");
+                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} no cambió a 'facturado'");
+
                     }
                 } catch (\Throwable $e) {
                     $resultados['fallidos']++;
@@ -847,11 +846,6 @@ class OrderService implements OrderServiceInterface
 
         Log::channel('cron_process')->info("📊 Resumen facturación masiva", $resultados);
         return $resultados;
-    }
-
-    public function getPreviousMonth()
-    {
-        return date("m", strtotime("-1 month"));
     }
 
     public function shouldAbortBilling($mes)
