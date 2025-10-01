@@ -13,9 +13,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Http\Controllers\WebserviceController;
+use App\Models\GpUsuario;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class AprobacionesController extends Controller
 {
@@ -86,7 +88,7 @@ class AprobacionesController extends Controller
             ->select('gp_pedidos.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
-            ->where('estado', '!=', 'eliminado')
+            ->whereNotIn('estado',['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
 
             ->orderBy('created_at', 'ASC')->get();
 
@@ -99,14 +101,13 @@ class AprobacionesController extends Controller
 
         $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO')
-            ->where('estado', '!=', 'caducado')
-            ->where('estado', '!=', 'procesado')
+            ->whereNotIn('estado',['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->orderBy('created_at', 'ASC')->get();
         foreach ($cotizaciones as $key => $cot) {
 
-            $res2 = $this->getSegmentoCliente($pedido->CLI_RUC);
+            $res2 = $this->getSegmentoCliente($cot->CLI_RUC);
             $cot->segmento = data_get($res2, 'segmento', null);
             $cot->subsegmento =  data_get($res2, 'subsegmento', null);
         }
@@ -143,7 +144,7 @@ class AprobacionesController extends Controller
                     ->orWhere('requiere_aprobacion_comercial', 'yes')
                     ->where('aprobado_comercial', 'yes');
             })
-            ->where('estado', '!=', 'eliminado')
+            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
             ->orderBy('created_at', 'DESC')->get();
 
         foreach ($pedidos as $key => $pedido) {
@@ -160,15 +161,35 @@ class AprobacionesController extends Controller
 
     public function aprobarpedido(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->approveComercialOrder($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $data = $request->all();
+            $pedido = DB::transaction(function () use ($data, $gpuser) {
+                return  $this->approvalService->approveComercialOrder($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al aprobar el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
 
     public function rechazarpedidoporstock(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->denyApproveComercialOrderForInsufficientStock($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $data = $request->all();
+            $response = DB::transaction(function () use ($data, $gpuser) {
+                return $this->approvalService->denyApproveComercialOrderForInsufficientStock($data, $gpuser);
+            });
+            $pedido = $response['pedido'];
+            $alert = $response['alert'];
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
     public function aprobardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -232,21 +253,49 @@ class AprobacionesController extends Controller
 
     public function aprobarpedidocrediticio(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->approveCreditOrder($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $pedido = DB::transaction(function () use ($request, $gpuser) {
+                $data = $request->all();
+                return $this->approvalService->approveCreditOrder($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error en la aprobación crediticia del pedido: ' . $e->getMessage(), 500);
+        }
     }
 
     public function rechazarpedidocrediticio(Request $request)
     {
-
-        $data = $request->all();
-        return $this->approvalService->denyCreditApproval($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $pedido = DB::transaction(function () use ($request, $gpuser) {
+                $data = $request->all();
+                return $this->approvalService->denyCreditApproval($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
     public function rechazarpedidocrediticioporstock(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->rejectCreditOrderForInsufficientStock($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $response = DB::transaction(function () use ($request, $gpuser) {
+                $data = $request->all();
+                return $this->approvalService->rejectCreditOrderForInsufficientStock($data, $gpuser);
+            });
+            $pedido = $response['pedido'];
+            $alert = $response['alert'];
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido por Stock: ' . $e->getMessage(), 500);
+        }
     }
 
     public function aprobarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -286,8 +335,17 @@ class AprobacionesController extends Controller
 
     public function rechazarpedido(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->denyApproveComercialOrder($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $data = $request->all();
+            $pedido = DB::transaction(function () use ($data, $gpuser) {
+                return $this->approvalService->denyApproveComercialOrder($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al obtener la información: ' . $e->getMessage(), 500);
+        }
     }
 
 

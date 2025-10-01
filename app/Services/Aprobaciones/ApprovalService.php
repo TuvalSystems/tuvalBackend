@@ -784,40 +784,35 @@ class ApprovalService implements ApprovalServiceInterface
      */
 
 
-    public function approveCreditOrder($data)
+    public function approveCreditOrder($data, $user)
     {
-        try {
-            DB::beginTransaction();
-            $user = Auth::user();
-            $pedido = GpPedido::where('id', $data['id'])->first();
-            if (!$pedido) {
-                DB::rollBack();
-                return $this->buildErrorResponse("Pedido no encontrado", 404);
-            }
-            $pedido->aprobado_crediticio = 'yes';
-            $pedido->aprobador_crediticio_id = $user->id;
-            $pedido->save();
-
-            $this->invoiceService->checkSendInvoice($pedido);
-            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
-            DB::commit();
-            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
-    public function denyCreditApproval($data)
-    {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+            ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
+        }
+        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobador_crediticio_id = $user->id;
+        $pedido->save();
+        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
+
+        DB::afterCommit(function () use ($pedido) {
+            $this->invoiceService->checkSendInvoice($pedido);
+        });
+        return $pedido;
+    }
+
+    public function denyCreditApproval($data, $user)
+    {
+
+        $pedido = GpPedido::where('id', $data['id'])
+            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->lockForUpdate()->first();
+        if (!$pedido) {
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -825,16 +820,17 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+        return $pedido;
     }
 
 
-    public function rejectCreditOrderForInsufficientStock($data)
+    public function rejectCreditOrderForInsufficientStock($data, $user)
     {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        $pedido = GpPedido::where('id', $data['id'])
+            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->lockForUpdate()->first();
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -842,8 +838,14 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
-        return $this->buildErrorResponse($data['alert'], 422);
+        DB::afterCommit(function () use ($pedido, $data) {
+            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+        });
+        return [
+            'pedido' => $pedido,
+            'alert' => $data['alert']
+
+        ];
     }
 
     public function cleanDetailOrderStock($pedido)
@@ -858,40 +860,32 @@ class ApprovalService implements ApprovalServiceInterface
 
     /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
 
-    public function approveComercialOrder($data)
+    public function approveComercialOrder($data, $user)
     {
-        try {
-            DB::beginTransaction();
-            $user = Auth::user();
-            $pedido = GpPedido::where('id', $data['id'])->first();
-            if (!$pedido) {
-                DB::rollBack();
-                return $this->buildErrorResponse("Pedido no encontrado", 404);
-            }
-            $pedido->aprobado_comercial = 'yes';
-            $pedido->aprobador_comercial_id = $user->id;
-            $pedido->save();
-
+        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+            ->lockForUpdate()->first();
+        if (!$pedido) {
+            throw new \Exception("Pedido no encontrado", 500);
+        }
+        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->save();
+        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
+        DB::afterCommit(function () use ($pedido) {
             $this->invoiceService->checkSendInvoice($pedido);
-            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
-            DB::commit();
-            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        });
+        return $pedido;
     }
 
-    public function denyApproveComercialOrderForInsufficientStock($data)
+    public function denyApproveComercialOrderForInsufficientStock($data, $user)
     {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->first();
+        $pedido = GpPedido::where('id', $data['id'])
+            ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -899,20 +893,26 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+        DB::afterCommit(function () use ($pedido, $data) {
+            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+        });
+        return [
+            'pedido' => $pedido,
+            'alert' => $data['alert']
+
+        ];
     }
 
 
-    public function denyApproveComercialOrder($data)
+    public function denyApproveComercialOrder($data, $user)
     {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->first();
+        $pedido = GpPedido::where('id', $data['id'])
+            ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -920,7 +920,10 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+        DB::afterCommit(function () use ($pedido, $data) {
+            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado', 'El pedido ha sido rechazado');
+        });
+        return $pedido;
     }
 
 

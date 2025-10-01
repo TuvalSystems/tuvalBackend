@@ -236,28 +236,16 @@ class OrderService implements OrderServiceInterface
 
     public function storeOrder($order, $user)
     {
-        try {
-            DB::beginTransaction();
-            $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
-            $newOrder = $this->prepareOrderStoreFill($order, $user);
-            $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
-            $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
-            if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
-                $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
-            }
-            $this->invoiceService->checkSendInvoice($newOrder);
-            DB::commit();
-            return $this->buildSuccessResponse("Pedido {$newOrder->pedido} guardado", 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in storeOrder (guardar pedido )', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
+        $newOrder = $this->prepareOrderStoreFill($order, $user);
+        $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
+        $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
+        if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
+            $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
         }
+        $this->invoiceService->checkSendInvoice($newOrder);
+        return $newOrder;
     }
 
 
@@ -303,34 +291,8 @@ class OrderService implements OrderServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
-            $this->stockWarehouseService->markArticleUnavailable( $item['ART_CODIGO']);
-
-            $newOrderDetail = new GpPedidoDetalle([
-                'pedido_id' => $newOrder->id,
-                'orden' => $i + 1,
-                'ART_CODIGO' => $item['ART_CODIGO'],
-                'ART_DESCRIPCION' => $item['ART_DESCRIPCION'],
-                'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
-                'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
-                'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-                'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
-                'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
-                'ART_MARCA' => $item['ART_MARCA'],
-                'ART_MATERIAL' => $item['ART_MATERIAL'],
-                'ART_PESO' => $item['ART_PESO'],
-                'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
-                'ART_VALOR' =>  $item['ART_VALOR'],
-                'ART_VALOR_ORIGINAL' => $item['ART_VALOR_ORIGINAL'],
-                'ART_DESCUENTO' => $item['ART_DESCUENTO'],
-                'ART_IVA' => $item['ART_IVA'],
-                'ART_CANTIDAD' => $item['ART_CANTIDAD'],
-                'ART_STOCK' => $item['ART_STOCK'],
-                'ART_IMP_VTA' => $item['ART_IMP_VTA'],
-                'ART_COSTO_PROMEDIO' => $item['ART_COSTO_PROMEDIO'],
-                'descuento' => $item['descuento'],
-                'descuento_original' => $item['descuento_original'],
-                'modificador' => $item['modificador'],
-            ]);
+            $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
+            $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($newOrder->id, $item, $i);
             $newOrderDetail->save();
 
 
@@ -409,82 +371,130 @@ class OrderService implements OrderServiceInterface
         $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
 
         // 🔍 2. Consultar el crédito del cliente
-        $estadoCuenta = [
-            'cupoDisponible' => $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC'])
-        ];
-
-        // 🔍 3. Procesar proveedores y stock
-        $pendientes = false;
-        $existentes = false;
-        $detalle->each(function ($item) use ($data, &$pendientes, &$existentes) {
-            $proveedores = $this->functionsService->getItemProviders($data['id'], $item, $pendientes, $existentes);
-            $item->proveedores = $proveedores['proveedores'];
-            $pendientes = $proveedores['pendientes'] ?: $pendientes;
-            $existentes = $proveedores['existentes'] ?: $existentes;
-
-            $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
-            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
-                $existentes = true;
-            }
-        });
-
+        $clientQuota = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        // 🔍3. Obtener el segmento del cliente
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        // 🔍 3.  Enriquecer detalles con proveedores y stock
+        $enrichedDetails = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
 
         // 🔍 4. Obtener órdenes de compra optimizadas
-        $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
-            ->map(function ($orden) {
-                $recibodecompra = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
-                return count($recibodecompra->detalle) > 0 ? $recibodecompra : null;
-            })
-            ->filter()
-            ->values();
+        $ordenes =  $this->getPurchaseOrdersWithReceipts($data['pedido']);
 
-        // 🔍 5. Procesar traslados
-        $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
-        if ($trasladosVentas->isEmpty()) {
-            $pendientes = true; // Si no hay traslados, marcamos como pendientes
-            $trasladosVentas = collect(); // Inicializamos como colección vacía
-            // $existentes = false; // No hay traslados existentes
-        } else {
-            $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
-                $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
-                $trasladoVenta->guias = $guias;
-                $guias->each(function ($guia) use (&$pendientes, &$existentes) {
-                    if ($guia->estado != 'recibida')
-                        $pendientes = true;
-                    else
-                        $existentes = true;
-                });
-                if (!$trasladoVenta->completado)
-                    $pendientes = true;
-            });
-        }
+        $trasladosVentas = $this->getTransferWithGuides($data['id']);
+
 
         // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        return response([
-            'success' => true,
-            'detalle' => $detalle,
-            'estadodecuenta' => $estadoCuenta,
+        $status = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        return [
+            'detalle' => $enrichedDetails['details'],
+            'estadodecuenta' => [
+                'cupoDisponible' => $clientQuota
+            ],
             'ordendecompra' => $ordenes,
             'traslados' => $trasladosVentas,
             'orden_despacho' => $orderDespacho,
             'guias_remision' => $guiaRemision,
             'devoluciones' => $devoluciones,
-            'pendientes' => $pendientes,
-            'existentes' => $existentes,
+            'pendientes' => $status['pendientes'],
+            'existentes' => $status['existentes'],
             'segmento' => $segmento
-        ]);
+        ];
     }
 
+
+    public function enrichOrderDetails(Collection $details, int $orderId, string $warehouse)
+    {
+        $hasPending = false;
+        $hasExisting = false;
+        $itemIds = $details->pluck('id')->toArray();
+        $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
+            ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem) {
+            $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
+            $item->proveedores = $proveedores['proveedores'];
+            $hasPending = $proveedores['pendientes'] ?: $hasPending;
+            $hasExisting = $proveedores['existentes'] ?: $hasExisting;
+            // Obtener stock (desde el map precargado)
+            $stock = $stockByItem->get($item->id);
+            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
+                $hasExisting = true;
+            }
+
+            return $item;
+        });
+
+        return [
+            'details' => $details,
+            'hasPending' => $hasPending,
+            'hasExisting' => $hasExisting
+        ];
+    }
+
+    public function getPurchaseOrdersWithReceipts($orderNumber)
+    {
+        return  $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
+            ->map(function ($orden) {
+                $receipt  = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+                return count($receipt->detalle) > 0 ? $receipt  : null;
+            })
+            ->filter()
+            ->values();
+    }
 
     public function checkOutValidateDispatchReInvoice($devolucion)
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
             ->where('despachado_parcial', 1)->exists();
     }
+
+
+    public function getTransferWithGuides(int $orderId): Collection
+    {
+        $transfers = $this->orderRepository->getTransferOrdersBySale($orderId);
+        if ($transfers->isEmpty()) {
+            return collect();
+        }
+
+        return $transfers->transform(function ($transfer) {
+            $transfer->guias = $this->orderRepository->getShipmentGuidesByTransfer($transfer);
+            return $transfer;
+        });
+    }
+
+    public function calculateOrderStatus($details, $transfers)
+    {
+
+        $hasPending = $details['hasPending'];
+        $hasExisting = $details['hasExisting'];
+
+        if ($transfers->isEmpty()) {
+            $hasPending = true;
+        } else {
+            $transfers->each(function ($transfer) use (&$hasPending, &$hasExisting) {
+                $transfer->guias->each(function ($guide) use (&$hasPending, &$hasExisting) {
+                    if ($guide->estado != 'recibida') {
+                        $hasPending = true;
+                    } else {
+                        $hasExisting = true;
+                    }
+                });
+
+                if (!$transfer->completado) {
+                    $hasPending = true;
+                }
+            });
+        }
+
+        return [
+            'pendientes' => $hasPending,
+            'existentes' => $hasExisting
+        ];
+    }
+
+
 
 
 
