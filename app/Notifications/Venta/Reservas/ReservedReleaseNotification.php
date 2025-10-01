@@ -5,7 +5,6 @@ namespace App\Notifications\Venta\Reservas;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class ReservedReleaseNotification extends Notification implements ShouldQueue
@@ -19,10 +18,11 @@ class ReservedReleaseNotification extends Notification implements ShouldQueue
      */
     public function __construct(public string $title, public string $reservation)
     {
-        //
+        $this->afterCommit = true;          // garantiza enviar tras commit
+        $this->onQueue('notifications');
     }
 
-     public function via($notifiable)
+    public function via($notifiable)
     {
         return ['database', 'broadcast'];
     }

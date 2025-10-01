@@ -16,7 +16,6 @@ class ReservationRequestNotification extends Notification implements ShouldQueue
     public function __construct(public string $message, public string $reservation, public GpUsuario $gpUsuario)
     {
         $this->afterCommit = true;          // garantiza enviar tras commit
-        $this->onConnection('database');
         $this->onQueue('notifications');
     }
 
@@ -53,7 +52,4 @@ class ReservationRequestNotification extends Notification implements ShouldQueue
             'message' => "Nueva solicitud de reserva de inventario realizada por {$this->gpUsuario->USERNAME} para la cotización {$this->reservation}",
         ]);
     }
-
-
-
 }

@@ -27,7 +27,7 @@ class ReservaMail extends Mailable implements ShouldQueue
 
         // ✅ Configura cola/conexión/reintentos sin declarar propiedades
         $this->onQueue('emails');           // cola
-        $this->onConnection('database');    // conexión (o 'redis')
+        $this->onConnection('redis');    // conexión (o 'redis')
     }
 
 

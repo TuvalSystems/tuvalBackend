@@ -15,7 +15,6 @@ class ReservaPorExpirarNotification extends Notification implements ShouldQueue
     public function __construct(public string $title, public string $reservation)
     {
         $this->afterCommit = true;          // garantiza enviar tras commit
-        $this->onConnection('database');
         $this->onQueue('notifications');
     }
 

@@ -16,7 +16,6 @@ class WarehouseRequestNotificaction extends Notification implements ShouldQueue
     public function __construct(public string $message, public string $reservation, public GpUsuario $gpUsuario)
     {
         $this->afterCommit = true;
-        $this->onConnection('database');
         $this->onQueue('notifications');
     }
 

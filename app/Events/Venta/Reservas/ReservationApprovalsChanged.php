@@ -2,14 +2,16 @@
 
 namespace App\Events\Venta\Reservas;
 
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
 class ReservationApprovalsChanged implements ShouldBroadcast
 {
-
+     use Dispatchable, InteractsWithSockets, SerializesModels;
     public $broadcastQueue = 'broadcasts';
-    public $connection = 'database';
     public $afterCommit = true;
     public function __construct(public string $action, public int $reservationId, public ?string $byUser = null) {}
 

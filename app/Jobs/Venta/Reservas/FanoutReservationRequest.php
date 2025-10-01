@@ -29,7 +29,6 @@ class FanoutReservationRequest implements ShouldQueue
     public function __construct(public int $cotizacionId, public int $actorId)
     {
         $this->onQueue('notifications');   // cola por defecto de este Job
-        $this->onConnection('database');   // conexión de colas
         $this->afterCommit = true;
     }
 
@@ -63,7 +62,7 @@ class FanoutReservationRequest implements ShouldQueue
                     $cotizacion->cotizacion,
                     $actor
                 )
-                )->onQueue('notifications')->onConnection('database')
+                )->onQueue('notifications')
             );
         }
     }
@@ -84,7 +83,7 @@ class FanoutReservationRequest implements ShouldQueue
                         'Reserva de inventario',
                         $cotizacion->cotizacion,
                         $actor
-                    ))->onQueue('notifications')->onConnection('database')
+                    ))->onQueue('notifications')
                 );
             }, 'id');
     }
