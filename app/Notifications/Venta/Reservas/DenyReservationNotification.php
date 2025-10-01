@@ -20,7 +20,6 @@ class DenyReservationNotification extends Notification  implements ShouldQueue
     public function __construct(public string $message, public string $reservation, public GpUsuario $gpUsuario)
     {
         $this->afterCommit = true;          // garantiza enviar tras commit
-        $this->onConnection('database');
         $this->onQueue('notifications');
     }
 

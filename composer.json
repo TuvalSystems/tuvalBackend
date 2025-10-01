@@ -19,6 +19,7 @@
         "php-http/message": "^1.16",
         "php-http/message-factory": "^1.1",
         "picqer/php-barcode-generator": "^2.2",
+        "predis/predis": "^3.2",
         "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {

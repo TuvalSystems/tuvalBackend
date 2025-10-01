@@ -19,7 +19,6 @@ class SendApprovalReservationNotification implements ShouldQueue
    public function __construct(public int $cotizacionId, public int $autorizadoId)
     {
         $this->onQueue('notifications');   // cola por defecto de este Job
-        $this->onConnection('database');   // conexión de colas
         $this->afterCommit = true;
     }
 

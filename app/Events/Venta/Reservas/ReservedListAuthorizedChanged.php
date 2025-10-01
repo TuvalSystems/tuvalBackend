@@ -2,9 +2,7 @@
 
 namespace App\Events\Venta\Reservas;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -16,7 +14,6 @@ class ReservedListAuthorizedChanged implements ShouldBroadcast
 
 
     public $broadcastQueue = 'broadcasts';
-    public $connection = 'database';
     public $afterCommit = true;
     public function __construct(public string $action, public int $reservationId, public ?string $byUser = null)
     {
