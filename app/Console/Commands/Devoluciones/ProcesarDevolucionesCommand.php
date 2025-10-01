@@ -89,30 +89,30 @@ class ProcesarDevolucionesCommand extends Command
 
 
 
-    public function hasProcessingError($devolucion): bool
-    {
-        return GpDevolucionErroresJob::where('devolucion_id', $devolucion->id)->exists();
-    }
+    // public function hasProcessingError($devolucion): bool
+    // {
+    //     return GpDevolucionErroresJob::where('devolucion_id', $devolucion->id)->exists();
+    // }
 
-    public function processDevolucion($devolucion, $devolucionJobService)
-    {
+    // public function processDevolucion($devolucion, $devolucionJobService)
+    // {
 
-        try {
-            $devolucionJobService->procesarDevolucionJob($devolucion);
-            Log::channel('devolucion')->info("✔️ [ProcessDevolucionesJob] - Devolución ID: {$devolucion->id} processed successfully.");
-            return true;
-        } catch (\Throwable $e) {
-            Log::channel('devolucion')->error("❌ [ProcessDevolucionesJob] - Error processing Devolución ID: {$devolucion->id}. Error: " . $e->getMessage());
-            return false;
-        }
-    }
+    //     try {
+    //         $devolucionJobService->procesarDevolucionJob($devolucion);
+    //         Log::channel('devolucion')->info("✔️ [ProcessDevolucionesJob] - Devolución ID: {$devolucion->id} processed successfully.");
+    //         return true;
+    //     } catch (\Throwable $e) {
+    //         Log::channel('devolucion')->error("❌ [ProcessDevolucionesJob] - Error processing Devolución ID: {$devolucion->id}. Error: " . $e->getMessage());
+    //         return false;
+    //     }
+    // }
 
-    public function generateFinalLog(int $processed, int $total, int $errors, int $duration)
-    {
-        Log::channel('devolucion')->info("🕒 [ProcessDevolucionesJob] - Process finished.");
-        Log::channel('devolucion')->info("📊 Total processed: {$processed}");
-        Log::channel('devolucion')->info("⚠️ Total errors: {$errors}");
-        Log::channel('devolucion')->info("📊 Total to process: {$total}");
-        Log::channel('devolucion')->info("⏱️ Duration: {$duration} seconds");
-    }
+    // public function generateFinalLog(int $processed, int $total, int $errors, int $duration)
+    // {
+    //     Log::channel('devolucion')->info("🕒 [ProcessDevolucionesJob] - Process finished.");
+    //     Log::channel('devolucion')->info("📊 Total processed: {$processed}");
+    //     Log::channel('devolucion')->info("⚠️ Total errors: {$errors}");
+    //     Log::channel('devolucion')->info("📊 Total to process: {$total}");
+    //     Log::channel('devolucion')->info("⏱️ Duration: {$duration} seconds");
+    // }
 }
