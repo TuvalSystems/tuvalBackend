@@ -2,7 +2,6 @@
 
 namespace App\Repositories\Pedidos\Contracts;
 
-use Carbon\Carbon;
 
 interface OrderRepositoryInterface
 {
@@ -22,8 +21,7 @@ interface OrderRepositoryInterface
     public function getReturnsByOrder(int $orderId);
 
     /** facturacion de siguiente mes */
-
-    public function getOrdersToInvoiceNextMonth(Carbon $start, Carbon $end);
+     public function queryOrdersToInvoiceNextMonth($year, $mes);
 
     /** functiones  para el proceso de facturar existentes */
 
