@@ -662,6 +662,7 @@ class OrderService implements OrderServiceInterface
 
     public function recalculateAndSendInvoice($order)
     {
+        $this->updateStockOrderTest($order);
         $this->functionsService->recalculateOrder($order->id);
         $this->invoiceService->sendInvoiceGp($order);
     }
@@ -669,6 +670,14 @@ class OrderService implements OrderServiceInterface
     public function recalculateOrder($order)
     {
         $this->functionsService->recalculateOrder($order->id);
+    }
+
+    public function updateStockOrderTest($order){
+        GpPedidoDetalleStock::where('pedido_id', $order->id)
+        ->update([
+            'reservado' => DB::raw('seleccionado'),
+             'updated_at' => now(),
+        ]);
     }
 
 
