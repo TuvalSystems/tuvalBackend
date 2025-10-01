@@ -65,9 +65,22 @@ class PedidosController extends Controller
     //en proceso de mejora
     public function guardarpedido(Request $request)
     {
-        $orderData = $request->all();
-        $user = Auth::user();
-        return $this->orderService->storeOrder($orderData, $user);
+        try {
+            $orderData = $request->all();
+            $user = Auth::user();
+            $pedido = DB::transaction(function () use ($orderData, $user) {
+                return $this->orderService->storeOrder($orderData, $user);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
+        } catch (\Throwable $e) {
+            Log::error('Error in storeOrder (guardar pedido )', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function facturarpedido(Request $request)

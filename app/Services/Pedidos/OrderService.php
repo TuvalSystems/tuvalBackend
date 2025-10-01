@@ -232,28 +232,16 @@ class OrderService implements OrderServiceInterface
 
     public function storeOrder($order, $user)
     {
-        try {
-            DB::beginTransaction();
-            $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
-            $newOrder = $this->prepareOrderStoreFill($order, $user);
-            $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
-            $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
-            if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
-                $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
-            }
-            $this->invoiceService->checkSendInvoice($newOrder);
-            DB::commit();
-            return $this->buildSuccessResponse("Pedido {$newOrder->pedido} guardado", 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in storeOrder (guardar pedido )', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
+        $newOrder = $this->prepareOrderStoreFill($order, $user);
+        $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
+        $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
+        if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
+            $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
         }
+        $this->invoiceService->checkSendInvoice($newOrder);
+        return $newOrder;
     }
 
 
