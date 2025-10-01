@@ -37,6 +37,7 @@ Route::get('/sincronizacion/llenaclientesgp', [SincronizacionController::class, 
 Route::get('/sincronizacion/llenadatoscoordenadasgp', [SincronizacionController::class, 'llenadatoscoordenadasgp']);
 Route::get('/cobranzas/consultacobrosanulados', [CobranzasController::class, 'consultacobrosanulados']);
 Route::get('/facturarsiguientemescron', [PedidosController::class, 'facturarsiguientemescron']);
+Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
 
 
 //Route::get('/sincronizacion/llenarelacionesgp', [SincronizacionController::class, 'llenarelacionesgp']);

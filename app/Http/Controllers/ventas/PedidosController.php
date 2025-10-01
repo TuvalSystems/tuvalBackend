@@ -1228,7 +1228,33 @@ class PedidosController extends Controller
 
     public function facturarsiguientemes()
     {
-        return $this->orderService->generateNextMonthInvoice();
+        try {
+            $resultado = $this->orderService->generateNextMonthInvoice();
+            if ($resultado['abortado']) {
+                return $this->buildSuccessResponse($resultado['razon'], 200);
+            }
+            // ✅ Manejar errores parciales
+            if ($resultado['fallidos'] > 0) {
+                return $this->buildSuccessResponse(
+                    "Proceso completado con errores: {$resultado['exitosos']} exitosos, {$resultado['fallidos']} fallidos",
+                    200,
+                );
+            }
+            return $this->buildSuccessResponse(
+                "Todos los pedidos facturados: {$resultado['exitosos']} procesados",
+                200,
+            );
+        } catch (\Throwable $e) {
+            Log::channel('cron_process')->error("❌ Error crítico en proceso de facturación masiva", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->buildErrorResponse(
+                "Error crítico en el proceso: {$e->getMessage()}",
+                500
+            );
+        }
     }
 
 

@@ -31,6 +31,7 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -768,27 +769,84 @@ class OrderService implements OrderServiceInterface
 
     public function generateNextMonthInvoice()
     {
-        try {
-            DB::beginTransaction();
-            $mes = $this->getPreviousMonth();
+        $now = now('America/Guayaquil');
+        $prev = $now->copy()->subMonthNoOverflow();
+        $year = (int) $prev->year;
+        $mes  = (int) $prev->month;
 
-            if ($this->shouldAbortBilling($mes)) {
-                DB::rollBack();
-                Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
-                return;
-            }
-            $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
-            foreach ($pedidos as $pedido) {
-                $this->invoiceService->checkSendInvoice($pedido, true, false);
-                Log::channel('cron_process')->info("✅ Pedido {$pedido->id} facturado correctamente de generateNextMonthInvoice - orderService");
-            }
-            DB::commit();
-            return $this->buildSuccessResponse("Pedidos facturados", 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::channel('cron_process')->error("❌ Error facturando pedido: {$e->getMessage()}");
-            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        // $mes = $this->getPreviousMonth();
+        // $year = date('Y');
+        if ($this->shouldAbortBilling($mes)) {
+            Log::channel('cron_process')->warning("⚠️ No se ejecuta facturación: Aún no llega el mes: {$mes}");
+            return [
+                'abortado' => true,
+                'razon' => "Mes actual no coincide: {$mes}",
+                'total' => 0,
+                'exitosos' => 0,
+                'fallidos' => 0,
+                'errores' => []
+            ];
         }
+        $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
+        $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
+            foreach ($pedidos as  $pedido) {
+                $resultados['total']++;
+
+                // Éxito idempotente si ya está facturado
+                if (filled($pedido->factura) && $pedido->estado === 'facturado') {
+                    $resultados['exitosos']++;
+                    continue;
+                }
+
+                $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
+                if (! $lock->get()) {
+                    // Otro proceso ya está facturando → no lo cuentes como error
+                    Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
+                    continue;
+                }
+                try {
+                    try {
+
+                        $this->invoiceService->checkSendInvoice($pedido, true, false);
+                    } catch (\Throwable $exGp) {
+                        // Clasifica “ya facturado” como éxito idempotente
+                        $msg = mb_strtolower($exGp->getMessage());
+                        if (str_contains($msg, 'ya se encuentra facturado') || str_contains($msg, 'ya existe')) {
+                            $resultados['exitosos']++;
+                            Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} ya estaba facturado (idempotente)");
+                        } else {
+                            throw $exGp;
+                        }
+                    }
+
+                    $pedido->refresh();
+                    if ($pedido->estado === 'facturado' && filled($pedido->factura)) {
+                        $resultados['exitosos']++;
+                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
+                    } else {
+                        throw new \Exception("El pedido no cambió a 'facturado'");
+                    }
+                } catch (\Throwable $e) {
+                    $resultados['fallidos']++;
+                    $resultados['errores'][] = [
+                        'pedido_id' => $pedido->id,
+                        'pedido'    => $pedido->pedido,
+                        'error'     => $e->getMessage(),
+                    ];
+                    Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->pedido}", [
+                        'pedido_id' => $pedido->id,
+                        'error'     => $e->getMessage(),
+                        'trace'     => $e->getTraceAsString(),
+                    ]);
+                } finally {
+                    optional($lock)->release();
+                }
+            }
+        });
+
+        Log::channel('cron_process')->info("📊 Resumen facturación masiva", $resultados);
+        return $resultados;
     }
 
     public function getPreviousMonth()

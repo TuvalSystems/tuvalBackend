@@ -138,6 +138,21 @@ class OrderRepository implements OrderRepositoryInterface
     }
 
 
+    public function queryOrdersToInvoiceNextMonth($year, $mes)
+    {
+        return GpPedido::query()->where('estado', 'espera')
+            ->where('factura_posterior_despacho', 1)
+            ->where(function ($q) {
+                $q->whereNull('factura_a_demanda')
+                    ->orWhere('factura_a_demanda', 0);
+            })
+            ->where('factura_siguiente_mes', 1)
+            ->whereMonth('created_at', '=', $mes)
+            ->whereYear('created_at', $year)
+            ->orderBy('id');
+    }
+
+
 
     public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder)
     {
