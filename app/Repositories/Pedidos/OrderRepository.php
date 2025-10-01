@@ -138,7 +138,7 @@ class OrderRepository implements OrderRepositoryInterface
                   ->orWhere('origen', '!=', 'reserva');
             })
             ->where('factura_siguiente_mes', 1)
-            ->whereMonth('created_at', '=', $mes)
+            ->whereMonth('created_at',  $mes)
             ->whereYear('created_at', $year)
             ->orderBy('id');
     }
