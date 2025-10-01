@@ -672,12 +672,13 @@ class OrderService implements OrderServiceInterface
         $this->functionsService->recalculateOrder($order->id);
     }
 
-    public function updateStockOrderTest($order){
+    public function updateStockOrderTest($order)
+    {
         GpPedidoDetalleStock::where('pedido_id', $order->id)
-        ->update([
-            'reservado' => DB::raw('seleccionado'),
-             'updated_at' => now(),
-        ]);
+            ->update([
+                'reservado' => DB::raw('seleccionado'),
+                'updated_at' => now(),
+            ]);
     }
 
 
@@ -833,7 +834,6 @@ class OrderService implements OrderServiceInterface
                     } else {
                         // throw new \Exception("El pedido no cambió a 'facturado'");
                         Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} no cambió a 'facturado'");
-
                     }
                 } catch (\Throwable $e) {
                     $resultados['fallidos']++;
