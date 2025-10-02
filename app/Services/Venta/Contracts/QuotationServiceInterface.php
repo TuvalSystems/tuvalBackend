@@ -89,7 +89,6 @@ interface QuotationServiceInterface
      *  reservas
      */
 
-    public function hasAnyReserveState(int $id);
     public function saveQuotationHeaderReserved(array $reserva, GpUsuario $user);
     public function fetchListTipeReserved();
 

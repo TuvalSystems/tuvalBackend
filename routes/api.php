@@ -19,6 +19,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
+use App\Http\Controllers\ventas\ReservasController;
 
 /*
 |--------------------------------------------------------------------------
@@ -258,9 +259,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
         /** reservas */
-        Route::get('reserva/validar-reserva-cotizacion/{id}', [CotizacionesController::class, 'validarGeneracionReservaCotizacion']);
         Route::get('reserva/lista-tipo-reservas', [CotizacionesController::class, 'obtenerListaTipoReservas']);
-        Route::post('reserva/guardar-solicitud-reserva', [CotizacionesController::class, 'guardarReservaCotización']);
         Route::get('reserva/lista-solicitudes-reserva', [CotizacionesController::class, 'obtenerListaReservasPendientes']);
         Route::get('reserva/cotizacion-con-detalle/{id}', [CotizacionesController::class, 'obtenerCotizacionConDetalle']);
         Route::get('reserva/cotizacion-detalle-stock/{id}', [CotizacionesController::class, 'obtenerCotizacionDetalleConStock']);
@@ -272,6 +271,11 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post ('reserva/procesar-reserva', [CotizacionesController::class, 'procesarReservaCotizacion']);
         Route::post ('reserva/procesar-reserva-factura-demanda', [CotizacionesController::class, 'procesarReservaFacturaDemandaCotizacion']);
 
+    });
+
+    Route::group(['prefix' => 'reservas'], function () {
+        Route::get('validar-reserva-cotizacion/{id}', [ReservasController::class, 'validarGeneracionReservaCotizacion']);
+        Route::post('guardar-solicitud-reserva', [ReservasController::class, 'guardarReservaCotización']);
 
     });
 

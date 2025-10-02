@@ -1239,19 +1239,6 @@ class CotizacionesController extends Controller
      *  */
 
 
-    public function validarGeneracionReservaCotizacion($id)
-    {
-        try {
-            $existeReserva = $this->quotationService->hasAnyReserveState($id);
-            if ($existeReserva) {
-                return $this->buildExistResponse($existeReserva, 'No es posible recuperar, copiar o volver a pedir la cotización porque cuenta con una reserva', 200);
-            }
-            return $this->buildExistResponse($existeReserva, 'La cotización no tiene reservas registradas. Puede continuar con su actividad', 202);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
     public function guardarReservaCotización(Request $request)
     {
         $gpUser = GpUsuario::find(Auth::user()->id);

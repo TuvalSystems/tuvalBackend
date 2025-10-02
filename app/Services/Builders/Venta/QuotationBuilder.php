@@ -18,7 +18,7 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-    public function fromPayloadReservedToQuotation(array $data,  array $requiereApproval, GpUsuario $user)
+    public function fromPayloadReservedToQuotation(array $data,  array $requiereApproval, GpUsuario $user, $origen)
     {
 
         $cot =  new GpCotizacion();
@@ -71,6 +71,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'nota_interna'              => $data['nota_interna'],
             'nota_cliente'              => $data['nota_cliente'],
             'impuesto' => env('IVA_IMPUESTO'),
+            'origen' => $origen
         ]);
 
         return $cot;

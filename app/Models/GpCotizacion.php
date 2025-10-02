@@ -114,6 +114,9 @@ use \DateTimeInterface;
  * @property string|null  $user_ing_recordatorio
  * @property int|null $co_tipTrasResInv
  * @property int|null $co_usrIngSolResInv
+ * @property string|null $origen
+ * @property int|null $pedido_reserva_id
+ * @property string|null $pedido_generado_at
  *
  */
 class GpCotizacion extends Model
@@ -186,6 +189,9 @@ class GpCotizacion extends Model
         'tx_obsAutSolResInv',
         'co_usrIngAutSolResInv',
         'fe_ingAutSolResInv',
+        'origen',
+        'pedido_reserva_id',
+        'pedido_generado_at',
     ];
 
     /**

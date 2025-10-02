@@ -1479,11 +1479,7 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function hasAnyReserveState(int $quotationId)
-    {
-        return GpCotizacion::whereKey($quotationId)->whereNotNull('st_solResInv')->where('st_solResInv', '!=', '')
-            ->exists();
-    }
+  
 
     public function saveQuotationHeaderReserved(array $reserva,  GpUsuario $user)
     {
@@ -1980,7 +1976,7 @@ class QuotationService implements QuotationServiceInterface
         $requiereAprobacionComercial = $this->approvalService->checkOutApprovalCommercial($cotOld, 'cotizacion');
         $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
         $requiereAprobacionComercial['aprobado'] = 'no';
-        $cotizacion = $this->quotationBuilder->fromPayloadReservedToQuotation($payload, $requiereAprobacionComercial, $user);
+        $cotizacion = $this->quotationBuilder->fromPayloadReservedToQuotation($payload, $requiereAprobacionComercial, $user, 'reserva');
         $cotizacion->save();
         return $cotizacion;
     }
