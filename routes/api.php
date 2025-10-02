@@ -232,8 +232,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
     Route::get('/devoluciones/procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
     Route::get('/pedidos/imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
-    Route::get('/cotizaciones/imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
-    Route::get('/cotizaciones/imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
+
     Route::get('/devoluciones/imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
     Route::post('/consultas/notificaciones', [ConsultasController::class, 'notificaciones']);
 
@@ -258,25 +257,25 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('actualizar-segmento-cliente', [CotizacionesController::class, 'actualizarSegmentoCliente']);
 
 
-        /** reservas */
-        Route::get('reserva/lista-tipo-reservas', [CotizacionesController::class, 'obtenerListaTipoReservas']);
-        Route::get('reserva/lista-solicitudes-reserva', [CotizacionesController::class, 'obtenerListaReservasPendientes']);
-        Route::get('reserva/cotizacion-con-detalle/{id}', [CotizacionesController::class, 'obtenerCotizacionConDetalle']);
-        Route::get('reserva/cotizacion-detalle-stock/{id}', [CotizacionesController::class, 'obtenerCotizacionDetalleConStock']);
-        Route::get('reserva/cotizacion-detalle-stock-activo/{id}', [CotizacionesController::class, 'obtenerCotizacionConDetalleYStockActivo']);
-        Route::post('reserva/rechazar-solicitud-reserva', [CotizacionesController::class, 'rechazarSolicitudReservaCotizacion']);
-        Route::post('reserva/aprobar-solicitud-reserva', [CotizacionesController::class, 'aprobarSolicitudReservaCotizacion']);
-
-        Route::get('reserva/lista-reserva-aprobadas', [CotizacionesController::class, 'obtenerListaCotizacionesAprobadas']);
-        Route::post ('reserva/procesar-reserva', [CotizacionesController::class, 'procesarReservaCotizacion']);
-        Route::post ('reserva/procesar-reserva-factura-demanda', [CotizacionesController::class, 'procesarReservaFacturaDemandaCotizacion']);
-
+        Route::get('imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
+        Route::get('imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
     });
 
     Route::group(['prefix' => 'reservas'], function () {
         Route::get('validar-reserva-cotizacion/{id}', [ReservasController::class, 'validarGeneracionReservaCotizacion']);
         Route::post('guardar-solicitud-reserva', [ReservasController::class, 'guardarReservaCotización']);
+        Route::get('lista-tipo-reservas', [ReservasController::class, 'obtenerListaTipoReservas']);
+        Route::get('lista-solicitudes-reserva', [ReservasController::class, 'obtenerListaReservasPendientes']);
 
+        Route::get('cotizacion-con-detalle/{id}', [ReservasController::class, 'obtenerCotizacionConDetalle']);
+        Route::get('cotizacion-detalle-stock/{id}', [ReservasController::class, 'obtenerCotizacionDetalleConStock']);
+        Route::get('cotizacion-detalle-stock-activo/{id}', [ReservasController::class, 'obtenerCotizacionConDetalleYStockActivo']);
+        Route::post('rechazar-solicitud-reserva', [ReservasController::class, 'rechazarSolicitudReservaCotizacion']);
+        Route::post('aprobar-solicitud-reserva', [ReservasController::class, 'aprobarSolicitudReservaCotizacion']);
+
+        Route::get('lista-reserva-aprobadas', [ReservasController::class, 'obtenerListaCotizacionesAprobadas']);
+        Route::post('procesar-reserva', [ReservasController::class, 'procesarReservaCotizacion']);
+        Route::post('procesar-reserva-factura-demanda', [ReservasController::class, 'procesarReservaFacturaDemandaCotizacion']);
     });
 
     Route::group(['prefix' => 'pedidos'], function () {
@@ -304,7 +303,3 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 });
 Route::post('/login', [AuthController::class, 'login']);
-// Route::get('/ping', function () {
-//     broadcast(new PingArrived('envio de ping de api ' . now()->toDateTimeString()));
-//     return 'Ping enviado';
-// });
