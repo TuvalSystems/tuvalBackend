@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 
+use App\Jobs\Venta\Reservas\FanoutReservationRequest;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
@@ -19,9 +20,9 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\reservas\GpTipoReservas;
 use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Validation\ValidationException;
-use App\Jobs\Venta\Reservas\FanoutReservationRequest;
 use App\Jobs\Venta\Reservas\SendDenyReservationNotification;
 use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
+use App\Models\reservas\GpReserva;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 
@@ -58,8 +59,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function hasAnyReserveState(int $quotationId)
     {
-        return GpCotizacion::whereKey($quotationId)->whereNotNull('st_solResInv')->where('st_solResInv', '!=', '')
-            ->exists();
+        return GpReserva::where('cotizacion_id', $quotationId)->where('estado', '!=', '')->exists();
     }
 
 
@@ -86,25 +86,27 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function fetchListReservedPending($perpage, $search, $sortBy = 'created_at', $sortOrder = 'desc', $tipoReserva = null, $ptoVtaId = null, $clienteRuc)
     {
-        $query = GpCotizacion::select([
-            'gp_cotizacions.id',
+        $query = GpReserva::select([
+            'gp_reservas.id',
+            'gp_cotizacions.id as cotizacion_id',
             'gp_cotizacions.cotizacion',
             'gp_cotizacions.PTO_VTA_DESCRIPCION',
             'gp_cotizacions.CLI_RAZON_SOCIAL',
             'gp_cotizacions.created_at',
             'gp_cotizacions.total',
-            'gp_cotizacions.fe_solResInv',
-            'gp_cotizacions.st_solResInv',
+            'gp_reservas.fe_solicitud_reserva',
+            'gp_reservas.estado',
             'gp_tipo_reservas.id as tipo_reserva_id',
             'gp_tipo_reservas.descripcion as tipo_reserva',
             'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
-            'gp_cotizacions.tx_obsSolResInv',
+            'gp_reservas.obs_solicitud_reserva',
             'gp_usuarios.USERID as usuario_solicita',
-        ])->from('gp_cotizacions')
-            ->join('gp_tipo_reservas', 'gp_cotizacions.co_tipSolResInv', '=', 'gp_tipo_reservas.id')
-            ->join('gp_reserva_tipo_traslado', 'gp_cotizacions.co_tipTrasResInv', '=', 'gp_reserva_tipo_traslado.id')
-            ->join('gp_usuarios', 'gp_cotizacions.co_usrIngSolResInv', '=', 'gp_usuarios.id')
-            ->where('gp_cotizacions.st_solResInv', 'pendiente');
+        ])->from('gp_reservas')
+            ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id')
+            ->join('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
+            ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
+            ->join('gp_tipo_reservas', 'gp_reservas.tipo_reserva_id', '=', 'gp_tipo_reservas.id')
+            ->where('gp_reservas.estado', 'pendiente');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -121,7 +123,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $query->where('gp_cotizacions.PTO_VTA_ID', $ptoVtaId);
         }
         if ($tipoReserva) {
-            $query->where('gp_cotizacions.co_tipSolResInv', (int) $tipoReserva);
+            $query->where('gp_reservas.co_tipSolResInv', (int) $tipoReserva);
         }
 
 
@@ -141,10 +143,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function getQuotationWithDetails(int $id)
     {
-        $cotizacion = GpCotizacion::with('detallecotizacion', 'tiporeserva')->find($id);
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
+        $reserva = GpReserva::find($id)->with(['cotizacion.detallecotizacion', 'tipoReserva', 'tipoTraslado']);
+        // $cotizacion = GpCotizacion::with('detallecotizacion', 'tiporeserva','reserva')->find($id);
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($reserva->cotizacion->CLI_RUC);
         return [
-            'cotizacion' => $cotizacion,
+            'cotizacion' => $reserva,
             'segmento' => $segmento
         ];
     }
@@ -166,7 +169,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ]);
         }, 'detallecotizacion.stock' => function ($q) {
             $q->select(['id', 'detalle_id', 'cotizacion_id', 'STO_ART_BODEGA', 'seleccionado']);
-        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO', 'reservaTraslado', 'tiporeserva'])->find($id);
+        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO', 'reservaTraslado', 'tiporeserva','reserva'])->find($id);
 
         $rows = $cotizacion->detallecotizacion->flatMap(function ($detalle) use ($cotizacion) {
             if (in_array($detalle->ART_TIPO_COMPRA, ['SERV', 'L'])) {

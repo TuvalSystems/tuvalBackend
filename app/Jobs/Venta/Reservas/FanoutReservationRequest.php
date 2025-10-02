@@ -34,6 +34,13 @@ class FanoutReservationRequest implements ShouldQueue
 
     public function handle(ApiGpService $apiGpService)
     {
+        // Log::info('FanoutReservationRequest boot', [
+        //     'env_host' => config('database.redis.default.host'),
+        //     'env_port' => config('database.redis.default.port'),
+        //     'client'   => config('database.redis.client'),
+        //     'queue_connection' => config('queue.default'),
+        // ]);
+
         $cotizacion = GpCotizacion::select('id', 'cotizacion', 'BOD_BODEGA', 'PTO_VTA_ID', 'PTO_VTA_DESCRIPCION', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'created_at')
             ->with([
                 'reserva:id,cotizacion_id,fe_solicitud_reserva,tipo_reserva_id'
@@ -112,7 +119,7 @@ class FanoutReservationRequest implements ShouldQueue
             $info = $this->computedFormatQuotationDetailStock($cotizacion->id);
             $asunto = trim((string)($cfg['txAsu'] ?? '')) ?: 'Solicitud de reserva de inventario';
             $mailable = $typeR['type'] === 'RESERVA' ?
-                (new ReservaMail($cotizacion, $info, $actor, $asunto))->onQueue('emails') : (new DemandaMail($cotizacion, $info, $actor, $asunto))->onQueue('emails');
+                (new ReservaMail($cotizacion, $info, $actor, $asunto))->onConnection('redis')->onQueue('emails') : (new DemandaMail($cotizacion, $info, $actor, $asunto))->onConnection('redis')->onQueue('emails');
             Mail::to('sistemas6@tuvalsa.com')->queue($mailable); //pruebas
             //  Mail::to($to)->cc($cc)->queue($mailable);
 
