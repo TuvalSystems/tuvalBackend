@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 use App\Jobs\Venta\Reservas\FanoutReservationRequest;
 use App\Jobs\Venta\Reservas\SendDenyReservationNotification;
 use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
-
+use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 
 
@@ -34,6 +34,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     protected $orderBuilder;
     protected $invoiceService;
     protected $stockWarehouseService;
+    protected $reservaBuilder;
 
 
     public function __construct(
@@ -43,6 +44,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         OrderBuilderInterface $orderBuilderInterface,
         InvoiceServiceInterface $invoiceServiceInterface,
         StockWarehouseServiceInterface $stockWarehouseService,
+        ReservedBuilderInterface $reservedBuilderInterface
     ) {
         $this->approvalService = $approvalService;
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
@@ -50,6 +52,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->orderBuilder = $orderBuilderInterface;
         $this->invoiceService = $invoiceServiceInterface;
         $this->stockWarehouseService = $stockWarehouseService;
+        $this->reservaBuilder = $reservedBuilderInterface;
     }
 
 
@@ -60,21 +63,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function saveQuotationHeaderReserved(array $reserva,  GpUsuario $user)
+    public function saveQuotationHeaderReserved(array $data,  GpUsuario $user)
     {
-        GpCotizacion::whereKey($reserva['id'])->update([
-            'st_solResInv'          => 'pendiente', // cuando se crean las reservas se cambia el estado a pendiente
-            'co_tipSolResInv'       => $reserva['co_tipSolResInv'],
-            'co_tipTrasResInv'      => $reserva['co_tipTrasResInv'],  // si va a tener traslado o no
-            'fe_solResInv'          => $reserva['fe_solResInv'],
-            'fe_autSolResInv'       => $reserva['fe_solResInv'],
-            'tx_obsSolResInv'       => $reserva['tx_obsSolResInv'],
-            'co_usrIngSolResInv'    => $user->id,
-            'fe_ingSolResInv'       => Carbon::now()->format('Y-m-d H:i:s'),
-        ]);
-        DB::afterCommit(function () use ($reserva, $user) {
+
+        $reserved = $this->reservaBuilder->fromPayloadReserved($data,  $user);
+        $reserved->save();
+        DB::afterCommit(function () use ($data, $user) {
             FanoutReservationRequest::dispatch(
-                $reserva['id'],
+                $data['cotizacion_id'],
                 $user->id
             )->onQueue('notifications');
         });

@@ -34,7 +34,10 @@ class FanoutReservationRequest implements ShouldQueue
 
     public function handle(ApiGpService $apiGpService)
     {
-        $cotizacion = GpCotizacion::select('id', 'cotizacion', 'BOD_BODEGA', 'PTO_VTA_ID', 'PTO_VTA_DESCRIPCION', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'co_tipSolResInv', 'fe_solResInv', 'created_at')->find($this->cotizacionId);
+        $cotizacion = GpCotizacion::select('id', 'cotizacion', 'BOD_BODEGA', 'PTO_VTA_ID', 'PTO_VTA_DESCRIPCION', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'created_at')
+            ->with([
+                'reserva:id,cotizacion_id,fe_solicitud_reserva,tipo_reserva_id'
+            ])->find($this->cotizacionId);
         $actor      = GpUsuario::find($this->actorId);
         if (!$cotizacion || !$actor) return;
 
@@ -73,7 +76,7 @@ class FanoutReservationRequest implements ShouldQueue
         GpUsuario::query()
             ->whereIn('perfil_id', [13, 2])
             ->where('status', 1)
-        //    ->where('id', '!=', $actor->id)  //comentado para que a mi mismo me llegue la notificación
+            //    ->where('id', '!=', $actor->id)  //comentado para que a mi mismo me llegue la notificación
             ->orderBy('id')
             ->chunkById(200, function ($chunk) use ($cotizacion, $actor) {
 
@@ -129,7 +132,7 @@ class FanoutReservationRequest implements ShouldQueue
             2 => ['conot' => 1,  'type' => 'DEMANDA'],
         ];
 
-        $key = (int)($cotizacion->co_tipSolResInv ?? 0);
+        $key = (int)($cotizacion->reserva?->tipo_reserva_id ?? 0);
         return $map[$key] ?? null;
     }
 

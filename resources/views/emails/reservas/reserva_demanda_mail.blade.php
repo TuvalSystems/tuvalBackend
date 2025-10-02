@@ -22,7 +22,7 @@
     <p style="margin:0 0 4px;"><strong>Usuario:</strong> {{ $actor->USERNAME ?? $actor->USERID ?? 'N/A' }}</p>
     <p style="margin:0 0 12px;">
       <strong>Fecha solicitada de reserva:</strong>
-      {{ !empty($cotizacion['fe_solResInv']) ? \Carbon\Carbon::parse($cotizacion['fe_solResInv'])->format('d/m/Y') : 'N/A' }}
+      {{ !empty($cotizacion['reserva']['fe_solicitud_reserva']) ? \Carbon\Carbon::parse($cotizacion['reserva']['fe_solicitud_reserva'])->format('d/m/Y') : 'N/A' }}
     </p>
 
     <h4 style="margin:20px 0 8px;">🛒 Detalle de Cotización</h4>

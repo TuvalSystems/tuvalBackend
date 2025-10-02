@@ -28,3 +28,6 @@ _ide_helper_models.php
 /detect-service-dependencies.php
 /service-dependencies.dot
 /service-dependencies.png
+/.env.dev
+/.env.local
+/.env.prod

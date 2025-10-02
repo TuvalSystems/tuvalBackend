@@ -31,6 +31,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $cantidad_autorizada_reserva
  * @property int|null $cantidad_facturada
  * @property int|null $cantidad_cancelada
+ * @property int|null $cantidad_cotizado
+ * @property int|null $cantidad_traslado
+ *
  */
 class GpCotizacionDetalleStock extends Model
 {
@@ -47,6 +50,8 @@ class GpCotizacionDetalleStock extends Model
         'seleccionado',
         'cantidad_autorizada_reserva',
         'cantidad_facturada',
+        'cantidad_cotizado',
+        'cantidad_traslado',
         'user_id_facturacion',
         'cantidad_cancelada',
         'user_id_cancelacion',
@@ -54,18 +59,23 @@ class GpCotizacionDetalleStock extends Model
 
 
 
-    protected function getAutorizada (){
+    protected function getAutorizada()
+    {
         return (int)  $this->cantidad_autorizada_reserva ?? 0;
     }
 
-    public function getPendienteAttribute () : int {
+    public function getPendienteAttribute(): int
+    {
         $aut = $this->getAutorizada();
-        $fact = $this->cantidad_facturada ?? 0;
-        $can = $this->cantidad_cancelada ?? 0;
-        return max(0, $aut - $fact - $can);
+        $fact = $this->cantidad_facturada   ?? 0;
+        $can = $this->cantidad_cancelada    ?? 0;
+        $cot = $this->cantidad_cotizado     ?? 0;
+        $tras = $this->cantidad_traslado    ?? 0;
+        return max(0, $aut - $fact - $can - $cot - $tras);
     }
 
-    public function getDisableMovimientoAttribute () : bool {
+    public function getDisableMovimientoAttribute(): bool
+    {
         return $this->pendiente  === 0;
     }
 }

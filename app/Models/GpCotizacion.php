@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\reservas\GpReserva;
 use App\Models\reservas\GpReservaTipoTraslado;
 use App\Models\reservas\GpTipoReservas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -123,11 +124,12 @@ class GpCotizacion extends Model
 {
     use HasFactory;
 
-    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items'];
+    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items', 'has_reserva'];
     protected $casts = [
         'reserva_disabled' => 'boolean',
         'has_l_items' => 'boolean',
         'has_service_items' => 'boolean',
+        'has_reserva' => 'boolean',
     ];
     protected $fillable = [
         'cotizacion',
@@ -273,5 +275,18 @@ class GpCotizacion extends Model
      public function usuariosolicitudreserva()
     {
         return $this->belongsTo(GpUsuario::class, 'co_usrIngSolResInv');
+    }
+
+
+    public function reserva ()
+    {
+        return $this->hasOne(GpReserva::class, 'cotizacion_id', 'id');
+    }
+
+    public function getHasReservaAttribute(): bool
+    {
+        return $this->relationLoaded('reservas')
+            ? $this->reserva->isNotEmpty()
+            : $this->reserva()->exists();
     }
 }

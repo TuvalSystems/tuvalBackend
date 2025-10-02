@@ -429,7 +429,7 @@ class CotizacionesController extends Controller
             'fecha_hasta' => '',
         ]);
 
-        $cotizaciones = GpCotizacion::where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
+        $cotizaciones = GpCotizacion::with('reserva')->where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
             ->join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
 
