@@ -170,11 +170,12 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $trl->save();
             return;
         }
+        $nuevoTrasladado = min($cantidad, $trasladado + $delta);
+        $nuevoReservado  = max(0.0, $reservado - $delta);
 
-        $trl->trasladado = min($cantidad, $trasladado + $delta);
-        $trl->reservado = max(0.0, $reservado - $delta);
-        $trl->completado = (int) ($trl->trasladado >= $trl->cantidad);
-
+        $trl->trasladado = $nuevoTrasladado;
+        $trl->reservado =  $nuevoReservado;
+        $trl->completado = (int) (($nuevoTrasladado + $EPS) >= $cantidad);
         $trl->save();
     }
 
