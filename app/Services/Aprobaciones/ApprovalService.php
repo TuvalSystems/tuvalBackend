@@ -57,14 +57,6 @@ class ApprovalService implements ApprovalServiceInterface
     public function checkOutApprovalCommercial($data, $type)
     {
         $return = ['requiere' => 'no', 'motivo' => null];
-
-
-        if ($type == 'pedido') {
-            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
-            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
-                return $this->requiredApprovalResponse("La cotización  {$cotizacion->cotizacion} requiere aprobación comercial previa. Pedido en estado pendiente de aprobación comercial.");
-            }
-        }
         // validacion para "volver a pedir"
         if ($type == 'cotizacion') {
             $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
@@ -88,6 +80,13 @@ class ApprovalService implements ApprovalServiceInterface
 
                 // Motivo normal por ser copia
                 return $this->requiredApprovalResponse("Cotización desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")");
+            }
+        }
+
+        if ($type == 'pedido') {
+            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
+            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
+                return $this->requiredApprovalResponse("La cotización  {$cotizacion->cotizacion} requiere aprobación comercial previa. Pedido en estado pendiente de aprobación comercial.");
             }
         }
 
