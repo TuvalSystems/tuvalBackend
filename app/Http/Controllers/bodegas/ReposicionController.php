@@ -61,7 +61,9 @@ class ReposicionController extends Controller
         $trasladosreposicion = GpTrasladosReposicion::join('gp_bodegas', 'gp_traslados_reposicions.bodega_destino', 'gp_bodegas.BOD_BODEGA')
             ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
             ->where('bodega_origen', $bodega)
-            ->whereNull('gp_traslados_reposicions.completado');
+            ->where(function($q){
+                $q->where('gp_traslados_reposicions.completado', 0)->orWhereNull('gp_traslados_reposicions.completado');
+            });
         if ($documento) {
             $trasladosreposicion = $trasladosreposicion->where('gp_traslados_reposicions.Documento', $documento);
         }
