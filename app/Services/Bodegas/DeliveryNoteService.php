@@ -124,7 +124,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $traslados = GpTrasladosVentas::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
             ->whereIn('gp_traslados_ventas.id', $itemsIds)
-            ->whereNull('gp_traslados_ventas.completado')
+            // ->whereNull('gp_traslados_ventas.completado')
+            ->where( function($q){
+                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
+            })
             ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
             ->keyBy('id');
 
@@ -158,15 +161,14 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function moveReservedToTransferredForTrfvLine($trl, $qty)
     {
-        $EPS = 1e-6;
         $cantidad    = (float) ($trl->cantidad ?? 0);
         $trasladado  = (float) ($trl->trasladado ?? 0);
         $reservado   = (float) ($trl->reservado ?? 0);
 
         $restante = max(0.0,  $cantidad - $trasladado);
-        $delta = max(0.0, min((float)$qty, $restante, $reservado));
-        if ($delta <= $EPS) {
-            $trl->completado = (int) (($trasladado + $EPS) >= $cantidad);
+        $delta = max(0.0, min((float)$qty, $restante));
+        if ($delta <= 0) {
+            $trl->completado = (int) (($trasladado) >= $cantidad);
             $trl->save();
             return;
         }
@@ -175,7 +177,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         $trl->trasladado = $nuevoTrasladado;
         $trl->reservado =  $nuevoReservado;
-        $trl->completado = (int) (($nuevoTrasladado + $EPS) >= $cantidad);
+        $trl->completado = (int) (($nuevoTrasladado ) >= $cantidad);
         $trl->save();
     }
 
@@ -407,7 +409,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             return;
         }
 
-        $traslados = GpTrasladosReposicion::whereIn('id', $itemsIds)->whereNull('completado')->get()->keyBy('id');
+        $traslados = GpTrasladosReposicion::whereIn('id', $itemsIds)
+        ->where(function($q){
+                $q->where('gp_traslados_reposicions.completado', 0)->orWhereNull('gp_traslados_reposicions.completado');
+            })->get()->keyBy('id');
         $grupos = $this->groupItemsByOrderReplacementShipment($detalle, $traslados);
         $checkList = false;
         foreach ($grupos as  $grupo) {
