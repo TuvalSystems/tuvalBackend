@@ -184,13 +184,16 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     }
     public function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse,  $qty)
     {
-        $stock = GpPedidoDetalleStock::where('detalle_id', $detalleId)
-            ->where('STO_ART_BODEGA', $warehouse)
-            ->lockForUpdate()
-            ->first();
-        $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
-        $stock->reservado = $nuevo;
-        $stock->save();
+        $det = GpPedidoDetalle::find($detalleId);
+        if ($det->ART_TIPO_COMPRA != 'L') {
+            $stock = GpPedidoDetalleStock::where('detalle_id', $detalleId)
+                ->where('STO_ART_BODEGA', $warehouse)
+                ->lockForUpdate()
+                ->first();
+            $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
+            $stock->reservado = $nuevo;
+            $stock->save();
+        }
     }
 
     public function createDocumentGuideTrfv(GpGuiaRemision $guia, $responseApi, $documento)
@@ -241,7 +244,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems válidos');
         }
 
-        $articulos = GpPedidoDetalle::query()->whereIn('id', $ids)->lockForUpdate()->get()->keyBy('id');
+        $articulos = GpPedidoDetalle::query()->whereIn('id', $ids)
+            ->where('reservado', '>', 0)
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
 
 
         $tocoServ = false;
@@ -286,6 +293,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $wsOk = true;
             }
             foreach ($grupo['items'] as $item) {
+
                 $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
                 $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
             }
@@ -331,7 +339,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $pedidonuevo = $pedidoOrigen ? $guia->pedido : '';
         $groups = [];
         foreach ($detalle as $item) {
-            if ($item->ART_TIPO_COMPRA == 'SERV') {
+            $detallePedido = GpPedidoDetalle::where('id', $item->detalle_id)->first();
+            if ($detallePedido->ART_TIPO_COMPRA == 'SERV') {
                 continue;
             }
             $doc = $documento;
