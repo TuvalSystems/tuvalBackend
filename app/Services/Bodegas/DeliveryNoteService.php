@@ -158,17 +158,23 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function moveReservedToTransferredForTrfvLine($trl, $qty)
     {
+        $EPS = 1e-6;
         $cantidad    = (float) ($trl->cantidad ?? 0);
         $trasladado  = (float) ($trl->trasladado ?? 0);
         $reservado   = (float) ($trl->reservado ?? 0);
 
         $restante = max(0.0,  $cantidad - $trasladado);
         $delta = max(0.0, min((float)$qty, $restante, $reservado));
-        if ($delta <= 0) return;
+        if ($delta <= $EPS) {
+            $trl->completado = (int) (($trasladado + $EPS) >= $cantidad);
+            $trl->save();
+            return;
+        }
 
         $trl->trasladado = min($cantidad, $trasladado + $delta);
         $trl->reservado = max(0.0, $reservado - $delta);
         $trl->completado = (int) ($trl->trasladado >= $trl->cantidad);
+
         $trl->save();
     }
 
