@@ -174,13 +174,16 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function decrementOriginWarehouseReservedStock($trl, $qty)
     {
-        $stock = GpPedidoDetalleStock::where('detalle_id', $trl->detalle_id)
-            ->where('STO_ART_BODEGA', $trl->bodega_origen)
-            ->lockForUpdate()
-            ->first();
-        $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
-        $stock->reservado = $nuevo;
-        $stock->save();
+        $dtP = GpPedidoDetalle::find($trl->detalle_id);
+        if ($dtP->ART_TIPO_COMPRA != 'L' && $dtP->ART_TIPO_COMPRA != 'SERV') {
+            $stock = GpPedidoDetalleStock::where('detalle_id', $trl->detalle_id)
+                ->where('STO_ART_BODEGA', $trl->bodega_origen)
+                ->lockForUpdate()
+                ->first();
+            $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
+            $stock->reservado = $nuevo;
+            $stock->save();
+        }
     }
     public function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse,  $qty)
     {
