@@ -84,9 +84,29 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         if ($type == 'pedido') {
-            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
-            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
-                return $this->requiredApprovalResponse("La cotización  {$cotizacion->cotizacion} requiere aprobación comercial previa. Pedido en estado pendiente de aprobación comercial.");
+            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
+            if ($registroVolverAPedir) {
+                $desde = $registroVolverAPedir->pedido_origen ? 'pedido' : 'cotizacion';
+                $origen = $registroVolverAPedir->pedido_origen
+                    ? 'PED' . str_pad($registroVolverAPedir->pedido_origen, 8, "0", STR_PAD_LEFT)
+                    : 'COT' . str_pad($registroVolverAPedir->cotizacion_origen, 8, "0", STR_PAD_LEFT);
+                $fechaOrigen = $registroVolverAPedir->pedido_origen
+                    ? optional(GpPedido::find($registroVolverAPedir->pedido_origen))->created_at
+                    : optional(GpCotizacion::find($registroVolverAPedir->cotizacion_origen))->created_at;
+
+                $origenEntidad = $registroVolverAPedir->pedido_origen
+                    ? GpPedido::find($registroVolverAPedir->pedido_origen)
+                    : GpCotizacion::find($registroVolverAPedir->cotizacion_origen);
+
+                // para validar si el origen esta en espera y no ha sido aprobado
+                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial == 'yes' && $origenEntidad->aprobado_comercial != 'yes') {
+                    return $this->requiredApprovalResponse("Requiere aprobación comercial. La Cotización del pedido es desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10));
+                }
+
+                $cotizacion = GpCotizacion::find($data['cotizacion_id']);
+                if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
+                    return $this->requiredApprovalResponse("Requiere aprobación comercial. La cotización  {$cotizacion->cotizacion} requiere aprobación comercial previa. Pedido en estado pendiente de aprobación comercial.");
+                }
             }
         }
 
