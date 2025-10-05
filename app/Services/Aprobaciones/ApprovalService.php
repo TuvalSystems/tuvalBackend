@@ -103,10 +103,13 @@ class ApprovalService implements ApprovalServiceInterface
                     return $this->requiredApprovalResponse("Requiere aprobación comercial. La Cotización del pedido es desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10));
                 }
 
-                $cotizacion = GpCotizacion::find($data['cotizacion_id']);
-                if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
-                    return $this->requiredApprovalResponse("Requiere aprobación comercial. La cotización  {$cotizacion->cotizacion} requiere aprobación comercial previa. Pedido en estado pendiente de aprobación comercial.");
-                }
+                // Motivo normal por ser copia
+                return $this->requiredApprovalResponse("Requiere aprobación comercial. Cotización del pedido es desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")");
+            }
+
+            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
+            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
+                return $this->requiredApprovalResponse("Requiere aprobación comercial. La cotización  {$cotizacion->cotizacion} no fue aprobada con anterioridad.");
             }
         }
 
