@@ -84,7 +84,7 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         if ($type == 'pedido') {
-            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
+            $registroVolverAPedir = GpRegistroCopia::where('cotizacion_destino', $data['cotizacion_id'])->where('tipo', 'volver_a_pedir')->first();
             if ($registroVolverAPedir) {
                 $desde = $registroVolverAPedir->pedido_origen ? 'pedido' : 'cotizacion';
                 $origen = $registroVolverAPedir->pedido_origen
