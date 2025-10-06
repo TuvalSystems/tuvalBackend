@@ -20,7 +20,6 @@ interface StockWarehouseServiceInterface
      */
     public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo);
     /**fin de funciones en prueba para remplazo  */
-
     public function fetchStockWarehouseCompartiment(array $params);
     public function fetchStockBatchWarehouses(array $params);
     public function fetchStockByOnlyWarehouse(array $params);
@@ -35,6 +34,9 @@ interface StockWarehouseServiceInterface
     public function checkArticuloDisponible($articulo);
 
     public function getFirstAvailablePurchaseArticle($articulo, $excludeItemsL);
+
+    public function checkValidateDisponibleItemL($articulo);
+     public function markArticleUnavailable( $articulo);
 
     public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId);
 

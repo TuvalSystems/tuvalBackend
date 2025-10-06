@@ -13,6 +13,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Api\ApiGpService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use Illuminate\Support\Arr;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
@@ -364,12 +365,20 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->exists();
     }
 
-      public function fetchStockWarehouseCompartiment(array $params){
+    public function fetchStockWarehouseCompartiment(array $params)
+    {
         $res = $this->apiGpService->getStockByWarehouseAndCompartment($params);
 
-        if (!data_get($res, 'success', false)) {
-            throw new \RuntimeException((string) data_get($res, 'message', 'Error'), 500);
-        }
+        // if (!data_get($res, 'success', false)) {
+        //     $message = sprintf(
+        //         '%s | Artículo: %s | Bodega: %s | Compartimento: %s',
+        //         (string) data_get($res, 'message', 'Error'),
+        //         Arr::get($params, 'articulo', 'N/D'),
+        //         Arr::get($params, 'bodega', 'N/D'),
+        //         Arr::get($params, 'compartimento', 'N/D')
+        //     );
+        //     throw new \RuntimeException($message, 500);
+        // }
 
         $data = data_get($res, 'data', []);
         return is_array($data) ? $data : (array) $data;
@@ -487,26 +496,43 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     public function getFirstAvailablePurchaseArticle($article, $excludeItemsL)
     {
         $itemsL = $this->getListArticlesOfTypeLWithLimit($article, $excludeItemsL);
-        foreach ($itemsL as $artL) {
-            $disponible = $this->checkArticuloDisponible($artL);
-            if ($disponible) {
-                return $artL['ART_CODIGO'];
-            }
-        }
-        return null;
+        return $itemsL?->ART_CODIGO;
     }
 
     public function getListArticlesOfTypeLWithLimit($articulo, $excludeItemsL)
     {
-        $itemL = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])->first()->toArray();
-        return GpArticulo::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
-            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_CLASE_ARTICULO', '=',  $itemL['ART_CLASE_ARTICULO'])
-            ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
-            ->where('gp_articulos.ART_IMP_COMPRA', '=',  $itemL['ART_IMP_COMPRA'])->orderBy('ART_DESCRIPCION', 'desc')
-            ->whereNotIn('ART_CODIGO', $excludeItemsL)
-            ->orderBy('ART_DESCRIPCION', 'desc')
-            ->limit(500)->get()->toArray();
+        $base = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])
+            ->where('ART_ESTADO', 'ACTIVO')
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->first(['ART_CLASE_ARTICULO', 'ART_IMP_COMPRA']);
+        if (!$base) return null;
+
+        $q = GpArticulo::query()
+            ->where('ART_ESTADO', 'ACTIVO')
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->where('ART_CLASE_ARTICULO', $base->ART_CLASE_ARTICULO)
+            ->where('ART_IMP_COMPRA', $base->ART_IMP_COMPRA)
+            ->where('disponible', 1);
+        if (!empty($excludeItemsL)) {
+            $q->whereNotIn('ART_CODIGO', $excludeItemsL);
+        }
+        return $q->orderBy('ART_DESCRIPCION', 'desc')
+            ->orderBy('ART_CODIGO', 'asc')
+            ->first();
+    }
+
+    public function checkValidateDisponibleItemL($articulo)
+    {
+        return GpArticulo::where('ART_ESTADO', 'ACTIVO')
+            ->where('ART_TIPO_COMPRA', 'L')->where('ART_CODIGO', $articulo)
+            ->where('disponible', 1)->exists();
+    }
+
+    public function markArticleUnavailable($articulo)
+    {
+        GpArticulo::where('ART_CODIGO', $articulo)
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->update(['disponible' => 0]);
     }
 
 

@@ -169,7 +169,7 @@ class FunctionsService implements FunctionsServiceInterface
         $cliente->sucursales = $sucursales;
         $cliente->sucursalesfacturacion = $sucursales;
 
-        $cupoDisponible = $this->getClientCreditInfo($cliente->CLI_RUC);
+        $cupoDisponible = $this->getClientCheckAvailableQuota($cliente->CLI_RUC);
 
 
         $cliente->suspendido = $cupoDisponible['suspendido'] ?? 0;
@@ -180,9 +180,46 @@ class FunctionsService implements FunctionsServiceInterface
     }
 
 
-    public function getClientCreditInfo($ruc)
+    public function getClientCheckAvailableQuota(String $ruc)
     {
-        $response = $this->apiBillingService->consultCreditClient([
+        $response = $this->apiBillingService->consultCheckAvailableQuotaClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
+    }
+
+
+    public function getClientDocumentExpired($ruc)
+    {
+        $response = $this->apiBillingService->consultDocumentExpiredClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
+    }
+
+    public function getClientDocumentWithoutSupport($ruc)
+    {
+        $response = $this->apiBillingService->consultDocumentWithoutSupportClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
+    }
+
+      public function getListClientDocumentExpired($ruc)
+    {
+        $response = $this->apiBillingService->consultListDocumentExpiredClient([
+            'ruc' => $ruc,
+            'idCompania' => config('services.api_gp.company'),
+        ]);
+        return $response['data'] ?? [];
+    }
+
+    public function getListClientDocumentWithoutSupport($ruc)
+    {
+        $response = $this->apiBillingService->consultListDocumentWithoutSupportClient([
             'ruc' => $ruc,
             'idCompania' => config('services.api_gp.company'),
         ]);

@@ -21,7 +21,6 @@ use App\Models\GpCotizacionDetalle;
 use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
-use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -58,6 +57,62 @@ class ApprovalService implements ApprovalServiceInterface
     public function checkOutApprovalCommercial($data, $type)
     {
         $return = ['requiere' => 'no', 'motivo' => null];
+        // validacion para "volver a pedir"
+        if ($type == 'cotizacion') {
+            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
+            if ($registroVolverAPedir) {
+                $desde = $registroVolverAPedir->pedido_origen ? 'pedido' : 'cotizacion';
+                $origen = $registroVolverAPedir->pedido_origen
+                    ? 'PED' . str_pad($registroVolverAPedir->pedido_origen, 8, "0", STR_PAD_LEFT)
+                    : 'COT' . str_pad($registroVolverAPedir->cotizacion_origen, 8, "0", STR_PAD_LEFT);
+                $fechaOrigen = $registroVolverAPedir->pedido_origen
+                    ? optional(GpPedido::find($registroVolverAPedir->pedido_origen))->created_at
+                    : optional(GpCotizacion::find($registroVolverAPedir->cotizacion_origen))->created_at;
+
+                $origenEntidad = $registroVolverAPedir->pedido_origen
+                    ? GpPedido::find($registroVolverAPedir->pedido_origen)
+                    : GpCotizacion::find($registroVolverAPedir->cotizacion_origen);
+
+                // para validar si el origen esta en espera y no ha sido aprobado
+                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial == 'yes' && $origenEntidad->aprobado_comercial != 'yes') {
+                    return $this->requiredApprovalResponse("Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10));
+                }
+
+                // Motivo normal por ser copia
+                return $this->requiredApprovalResponse("Cotización desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")");
+            }
+        }
+
+        if ($type == 'pedido') {
+            $registroVolverAPedir = GpRegistroCopia::where('cotizacion_destino', $data['cotizacion_id'])->where('tipo', 'volver_a_pedir')->first();
+            if ($registroVolverAPedir) {
+                $desde = $registroVolverAPedir->pedido_origen ? 'pedido' : 'cotizacion';
+                $origen = $registroVolverAPedir->pedido_origen
+                    ? 'PED' . str_pad($registroVolverAPedir->pedido_origen, 8, "0", STR_PAD_LEFT)
+                    : 'COT' . str_pad($registroVolverAPedir->cotizacion_origen, 8, "0", STR_PAD_LEFT);
+                $fechaOrigen = $registroVolverAPedir->pedido_origen
+                    ? optional(GpPedido::find($registroVolverAPedir->pedido_origen))->created_at
+                    : optional(GpCotizacion::find($registroVolverAPedir->cotizacion_origen))->created_at;
+
+                $origenEntidad = $registroVolverAPedir->pedido_origen
+                    ? GpPedido::find($registroVolverAPedir->pedido_origen)
+                    : GpCotizacion::find($registroVolverAPedir->cotizacion_origen);
+
+                // para validar si el origen esta en espera y no ha sido aprobado
+                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial == 'yes' && $origenEntidad->aprobado_comercial != 'yes') {
+                    return $this->requiredApprovalResponse("Requiere aprobación comercial. La Cotización del pedido es desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10));
+                }
+
+                // Motivo normal por ser copia
+                return $this->requiredApprovalResponse("Requiere aprobación comercial. Cotización del pedido es desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")");
+            }
+
+            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
+            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
+                return $this->requiredApprovalResponse("Requiere aprobación comercial. La cotización  {$cotizacion->cotizacion} no fue aprobada con anterioridad.");
+            }
+        }
+
         $nivelCliente = $this->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
         if (!$nivelCliente) {
             return $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
@@ -114,37 +169,6 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-        if ($type == 'pedido') {
-            $cotizacion = GpCotizacion::find($data['cotizacion_id']);
-            if ($cotizacion && $cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial != 'yes') {
-                return $this->requiredApprovalResponse("Requiere aprobación comercial. El pedido generado desde 'Volver a pedir' no cuenta con la aprobación de la cotización {$cotizacion->cotizacion}.");
-            }
-        }
-        // validacion para "volver a pedir"
-        if ($type == 'cotizacion') {
-            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
-            if ($registroVolverAPedir) {
-                $desde = $registroVolverAPedir->pedido_origen ? 'pedido' : 'cotizacion';
-                $origen = $registroVolverAPedir->pedido_origen
-                    ? 'PED' . str_pad($registroVolverAPedir->pedido_origen, 8, "0", STR_PAD_LEFT)
-                    : 'COT' . str_pad($registroVolverAPedir->cotizacion_origen, 8, "0", STR_PAD_LEFT);
-                $fechaOrigen = $registroVolverAPedir->pedido_origen
-                    ? optional(GpPedido::find($registroVolverAPedir->pedido_origen))->created_at
-                    : optional(GpCotizacion::find($registroVolverAPedir->cotizacion_origen))->created_at;
-
-                $origenEntidad = $registroVolverAPedir->pedido_origen
-                    ? GpPedido::find($registroVolverAPedir->pedido_origen)
-                    : GpCotizacion::find($registroVolverAPedir->cotizacion_origen);
-
-                // para validar si el origen esta en espera y no ha sido aprobado
-                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial == 'yes' && $origenEntidad->aprobado_comercial != 'yes') {
-                    return $this->requiredApprovalResponse("Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $origen, fecha: " . substr($fechaOrigen, 0, 10));
-                }
-
-                // Motivo normal por ser copia
-                return $this->requiredApprovalResponse("Cotización desde 'Volver a Pedir' ($desde original: $origen, fecha: " . substr($fechaOrigen, 0, 10) . ")");
-            }
-        }
         return $return;
     }
 
@@ -401,22 +425,27 @@ class ApprovalService implements ApprovalServiceInterface
             return 'no';
         }
 
-        $params = [
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => Arr::get($data, 'CLI_RUC'),
-        ];
-        $cupoDisponible = $this->mswService->cobranzas('ConsultaCupoDisponibleCliente', $params);
-        if ($data['total'] >  $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
+        $cupoDisponible = $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        if (!$cupoDisponible) {
+            return 'no';
+        }
+        if ($data['total'] >  $cupoDisponible['cupoDisponibleGp']) {
             return 'Cupo';
         }
 
-        $documentosVencidos = $this->mswService->cobranzas('ConsultaDocumentosVencidosCliente', $params);
-        if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
+        $documentosVencidos = $this->functionService->getClientDocumentExpired($data['CLI_RUC']);
+        if (!$documentosVencidos) {
+            return 'no';
+        }
+        if ($documentosVencidos['pendienteGpMc'] > 0) {
             return 'Documentos Vencidos';
         }
 
-        $documentosSinSoporte = $this->mswService->cobranzas('ConsultaDocumentosSinSoporteCliente', $params);
-        if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
+        $documentosSinSoporte = $this->functionService->getClientDocumentWithoutSupport($data['CLI_RUC']);
+        if (!$documentosSinSoporte) {
+            return 'no';
+        }
+        if ($documentosSinSoporte['pendienteGpMc'] > 0) {
             return 'Saldo Pendiente';
         }
 
@@ -595,40 +624,35 @@ class ApprovalService implements ApprovalServiceInterface
      */
 
 
-    public function approveCreditOrder($data)
+    public function approveCreditOrder($data, $user)
     {
-        try {
-            DB::beginTransaction();
-            $user = Auth::user();
-            $pedido = GpPedido::where('id', $data['id'])->first();
-            if (!$pedido) {
-                DB::rollBack();
-                return $this->buildErrorResponse("Pedido no encontrado", 404);
-            }
-            $pedido->aprobado_crediticio = 'yes';
-            $pedido->aprobador_crediticio_id = $user->id;
-            $pedido->save();
-
-            $this->invoiceService->checkSendInvoice($pedido);
-            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
-            DB::commit();
-            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
-    public function denyCreditApproval($data)
-    {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+            ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
+        }
+        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobador_crediticio_id = $user->id;
+        $pedido->save();
+        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
+
+        DB::afterCommit(function () use ($pedido) {
+            $this->invoiceService->checkSendInvoice($pedido);
+        });
+        return $pedido;
+    }
+
+    public function denyCreditApproval($data, $user)
+    {
+
+        $pedido = GpPedido::where('id', $data['id'])
+            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->lockForUpdate()->first();
+        if (!$pedido) {
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -636,16 +660,17 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+        return $pedido;
     }
 
 
-    public function rejectCreditOrderForInsufficientStock($data)
+    public function rejectCreditOrderForInsufficientStock($data, $user)
     {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->whereNotIn('estado', ['eliminado', 'anulada'])->first();
+        $pedido = GpPedido::where('id', $data['id'])
+            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->lockForUpdate()->first();
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_crediticio = 'yes';
+        $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -653,8 +678,14 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
-        return $this->buildErrorResponse($data['alert'], 422);
+        DB::afterCommit(function () use ($pedido, $data) {
+            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+        });
+        return [
+            'pedido' => $pedido,
+            'alert' => $data['alert']
+
+        ];
     }
 
     public function cleanDetailOrderStock($pedido)
@@ -669,40 +700,32 @@ class ApprovalService implements ApprovalServiceInterface
 
     /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
 
-    public function approveComercialOrder($data)
+    public function approveComercialOrder($data, $user)
     {
-        try {
-            DB::beginTransaction();
-            $user = Auth::user();
-            $pedido = GpPedido::where('id', $data['id'])->first();
-            if (!$pedido) {
-                DB::rollBack();
-                return $this->buildErrorResponse("Pedido no encontrado", 404);
-            }
-            $pedido->aprobado_comercial = 'yes';
-            $pedido->aprobador_comercial_id = $user->id;
-            $pedido->save();
-
+        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+            ->lockForUpdate()->first();
+        if (!$pedido) {
+            throw new \Exception("Pedido no encontrado", 500);
+        }
+        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->save();
+        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
+        DB::afterCommit(function () use ($pedido) {
             $this->invoiceService->checkSendInvoice($pedido);
-            $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
-            DB::commit();
-            return $this->buildSuccessResponse("Pedido {$data['pedido']} aprobado", 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error al aprobar el pedido {$data['pedido']} - function approveCreditOrder: " . $e);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        });
+        return $pedido;
     }
 
-    public function denyApproveComercialOrderForInsufficientStock($data)
+    public function denyApproveComercialOrderForInsufficientStock($data, $user)
     {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->first();
+        $pedido = GpPedido::where('id', $data['id'])
+            ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -710,20 +733,26 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+        DB::afterCommit(function () use ($pedido, $data) {
+            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+        });
+        return [
+            'pedido' => $pedido,
+            'alert' => $data['alert']
+
+        ];
     }
 
 
-    public function denyApproveComercialOrder($data)
+    public function denyApproveComercialOrder($data, $user)
     {
-        $user = Auth::user();
-        $pedido = GpPedido::where('id', $data['id'])->first();
+        $pedido = GpPedido::where('id', $data['id'])
+            ->lockForUpdate()->first();
         if (!$pedido) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            throw new \Exception("Pedido no encontrado", 500);
         }
         $pedido->estado = 'rechazado';
-        $pedido->aprobado_comercial = 'yes';
+        $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
         $pedido->rechazado = 1;
@@ -731,7 +760,10 @@ class ApprovalService implements ApprovalServiceInterface
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
-        return $this->buildSuccessResponse("Pedido {$data['pedido']} rechazado", 200);
+        DB::afterCommit(function () use ($pedido, $data) {
+            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado', 'El pedido ha sido rechazado');
+        });
+        return $pedido;
     }
 
 
@@ -815,7 +847,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
         $stocksResult =  $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
-        Log::info("Resultado de stock para aprobacion: ",[
+        Log::info("Resultado de stock para aprobacion: ", [
             'stocksResult' => $stocksResult
         ]);
         return $this->stockWarehouseService->transformStockResponse($stocksResult);
@@ -865,5 +897,17 @@ class ApprovalService implements ApprovalServiceInterface
                 $st->save();
             }
         }
+    }
+
+
+
+
+    public function accountStatusClient($ruc)
+    {
+        $detalle = [];
+        $detalle['cupoDisponible'] = $this->functionService->getClientCheckAvailableQuota($ruc);
+        $detalle['documentosVencidos'] = $this->functionService->getListClientDocumentExpired($ruc);
+        $detalle['documentosSinSoporte'] = $this->functionService->getListClientDocumentWithoutSupport($ruc);
+        return $detalle;
     }
 }

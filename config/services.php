@@ -55,6 +55,10 @@ return [
 
             //cobros
             'consultar_cupo_disponible_cliente'          => 'api/cobros/consultar-cupo-disponible-cliente',
+            'consulta_documentos_vencidos_cliente'       => 'api/cobros/consultar-documentos-vencidos-cliente',
+            'consulta_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-documentos-sin-soporte-cliente',
+            'consulta_lista_documentos_vencidos_cliente'       => 'api/cobros/consultar-lista-documentos-vencidos-cliente',
+            'consulta_lista_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-lista-documentos-sin-soporte-cliente',
 
             //cotizaciones
             'guardar_cotizacion_recordatorio'            => 'api/cotizaciones/guardar-cotizacion-recordatorio',
@@ -75,12 +79,19 @@ return [
 
 
             //cliente
-            'obtener_tipo_vendedor'                    => 'api/cliente/obtener-tipo-vendedor',
+            'obtener_tipo_vendedor'                     => 'api/cliente/obtener-tipo-vendedor',
+            'obtener_segmento_cliente'                  => 'api/cliente/obtener-segmento-cliente',
+
+            // guia de remision - despacho
+            'guia.trfv.movimientos.generar'             => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
+            'guia.reposicion.movimiento.generar'        => 'api/inventario/guardar-generar-movimiento-reposicion',
+            'guia.despacho.movimiento.generar'          => 'api/inventario/guardar-generar-movimiento-despacho',
+            'guia.obtener.clave_acceso'                 => 'api/inventario/guia-remision-obtener-claveacceso',
         ],
     ],
     'api_sales' => [
         'url' => env('API_SALES_URL'),
-        'timeout' => env('API_GP_TIMEOUT', default: 150),
+        'timeout' => env('API_GP_TIMEOUT',  150),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'endpoints' => [

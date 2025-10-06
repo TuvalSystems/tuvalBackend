@@ -111,18 +111,31 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
         try {
             $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
-            $cupoDisponible =  $this->sqlCreditValidtionService->consultCreditValidate($ruc, 3);
-            $cupo = $cupoDisponible->first();
-            $cliente->suspendido = (float)$cupo->SUSPENDIDO ?? 0;
-            $cliente->cupo_disponible = number_format($cupo->CUPO_PERMITIDO, 2, '.', ',');
-            $cliente->cupo_asignado = number_format($cupo->CUPO, 2, '.', ',');
+            $segmento = $this->getSegmentoCliente($ruc);
+            $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
+
+            $cliente->suspendido = (float)$cupoDisponible['suspendido'] ?? 0;
+            $cliente->cupo_disponible = number_format($cupoDisponible['cupoDisponibleGp'], 2, '.', ',');
+            $cliente->cupo_asignado = number_format($cupoDisponible['cupoAsignado'], 2, '.', ',');
             return response([
                 'success' => true,
-                'cliente' => $cliente
+                'cliente' => $cliente,
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
+
+    }
+
+    public function getSegmentoCliente($ruc)
+    {
+        $response = $this->apiGp->fetchClientSegment([
+            'ruc' => $ruc,
+        ]);
+        $data = data_get($response, 'data', []);
+        return is_array($data) ? $data : (array) $data;
+
     }
 
     public function getConsultClientSegment($ruc)
@@ -206,6 +219,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             'bodega' => $bodegaDestino,
             'pendiente' => max(0, $items)
         ];
+
     }
 
 

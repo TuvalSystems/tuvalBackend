@@ -40,11 +40,11 @@ class OrderRepository implements OrderRepositoryInterface
             ->get();
     }
 
-    public function getStockByItemAndWarehouse(int $itemId, string $warehouse)
+    public function getStockByItemAndWarehouse(array $itemId, string $warehouse)
     {
-        return GpPedidoDetalleStock::where('detalle_id', $itemId)
+        return GpPedidoDetalleStock::whereIn('detalle_id', $itemId)
             ->where('STO_ART_BODEGA', $warehouse)
-            ->first();
+            ->get();
     }
 
     public function getPurchaseOrdersByOrderNumber(string $orderNumber)
@@ -102,6 +102,7 @@ class OrderRepository implements OrderRepositoryInterface
     }
 
 
+
     public function getDispatchOrder(int $orderId)
     {
         return GpOrdenDespacho::where('pedido_id', $orderId)->first();
@@ -122,9 +123,10 @@ class OrderRepository implements OrderRepositoryInterface
 
     /** facturacion de siguiente mes*/
 
-    public function getOrdersToInvoiceNextMonth($mes)
+  
+    public function queryOrdersToInvoiceNextMonth($year, $mes)
     {
-        return GpPedido::where('estado', 'espera')
+        return GpPedido::query()->where('estado', 'espera')
             ->where('factura_posterior_despacho', 1)
             ->where(function ($q) {
                 $q->whereNull('factura_a_demanda')
@@ -132,13 +134,15 @@ class OrderRepository implements OrderRepositoryInterface
             })
             ->where('factura_siguiente_mes', 1)
             ->whereMonth('created_at', '=', $mes)
-            ->get();
+            ->whereYear('created_at', $year)
+            ->orderBy('id');
     }
 
 
 
-    public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder){
-      return  GpPedidoDetalleStock::query()
+    public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder)
+    {
+        return  GpPedidoDetalleStock::query()
             ->where('STO_ART_BODEGA', $warehouseId)
             ->whereIn('detalle_id', $detailOrder)
             ->where('seleccionado', '>', 0)

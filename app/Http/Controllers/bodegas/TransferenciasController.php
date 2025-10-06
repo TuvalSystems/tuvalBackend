@@ -18,18 +18,20 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
-
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class TransferenciasController extends Controller
 {
     protected $invoiceService;
-    public function __construct(InvoiceServiceInterface $invoiceService)
+    protected $logisticsOperationsService;
+    protected $stockWarehouseService;
+    public function __construct(InvoiceServiceInterface $invoiceService, LogisticsOperationsServiceInterface $logisticsOperationsService, StockWarehouseServiceInterface $stockWarehouseService)
     {
         $this->invoiceService = $invoiceService;
+        $this->logisticsOperationsService = $logisticsOperationsService;
+        $this->stockWarehouseService = $stockWarehouseService;
     }
     public function savetransferenciasventas(GpPedido $pedido, $detalles)
     {
@@ -81,9 +83,13 @@ class TransferenciasController extends Controller
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
             ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_ventas.ART_CODIGO')
             ->where('bodega_origen', $bodega)
-            ->whereNull('completado')
+            ->where( function ($q){
+                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
+            })
+            // ->whereNull('completado')
+            // ->where('completado', 0)
             // ->where('gp_pedidos.estado', '!=', 'eliminado');
-           ->whereNotIn('gp_pedidos.estado', ['eliminado', 'anulada']);
+            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'anulada']);
         if ($pedido && $pedido != 'null') {
             $trasladosventas = $trasladosventas->where('gp_pedidos.pedido', $pedido);
         }
@@ -113,23 +119,15 @@ class TransferenciasController extends Controller
 
             $traslado->fecha = substr($traslado->fecha, 0, -3);
 
-            $parameters = array(
-                'id_articulo' => $traslado->ART_CODIGO,
-                'id_bodega' => $bodega,
-                'id_compartimiento' => '',
+            $params = array(
+                'articulo' => $traslado->ART_CODIGO,
+                'bodega' => $bodega,
+                'compartimento' => '',
             );
 
-            $compartimento = $webservice->stockarticulobodegacompartimiento($parameters);
 
-            if (isset($compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'])) {
-                $compartimento = $compartimento['MST_Stock_Articulo_Bodega_CompartimientoResult']['CS_STOCK_ARTICULO_BODEGA_COMPARTIMIENTO'];
-
-                $stock = array_column($compartimento, 'STO_ART_COMPART_STOCK_DISPONIBLE');
-
-                array_multisort($stock, SORT_DESC, $compartimento);
-
-                $traslado->compartimiento = $compartimento[0]['STO_ART_COMPART_COMPARTIMIENTO'];
-            }
+            $compartimento =  $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+            $traslado->compartimiento = $compartimento['COMPARTIMIENTO'] ?? '';
 
             $funciones = new FuncionesController();
 
@@ -182,12 +180,7 @@ class TransferenciasController extends Controller
 
         $bodegas = array_values($bodegas);
 
-        $invoice = app(InvoiceServiceInterface::class);
-        $notify = app(NotificationServiceInterface::class);
-        $deliveryNote = app(DeliveryNoteServiceInterface::class);
-        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
-        $guias->checkguiaremision();
-
+        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
         if (!isset($bodegas[0])) {
             return response([
                 'error' => 'No existen resultados'

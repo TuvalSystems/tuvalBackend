@@ -3,6 +3,7 @@
 namespace App\Services\Devoluciones;
 
 use App\Http\Controllers\ventas\PedidosController;
+use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionErroresJob;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -16,6 +17,7 @@ use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
@@ -29,10 +31,11 @@ class DevolucionJobService
 {
     use DevolucionesCriteriosTrait, JsonResponseTrait;
     protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
-
-    public function __construct(ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService)
+    protected $devolucionBuilder;
+    public function __construct(ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService, DevolucionParamsBuilderInterface $devolucionBuilder)
     {
         $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
+        $this->devolucionBuilder = $devolucionBuilder;
     }
 
     public function listarTodasLasDevolucionesAplicables()
@@ -354,9 +357,9 @@ class DevolucionJobService
             $compartimiento = $detalle->ART_TIPO_COMPRA === 'L' ? $pedido->pedido : $detalle->compartimiento;
 
             return [
-                'Item' => $detalle->ART_CODIGO,
-                'Cantidad' => $devuelto,
-                'Compartimento' => $compartimiento
+                'item' => $detalle->ART_CODIGO,
+                'cantidad' => $devuelto,
+                'compartimiento' => $compartimiento
             ];
         })->filter()->values()->toArray(); // Removemos los nulos y reindexamos el array
 
@@ -368,35 +371,33 @@ class DevolucionJobService
         }
 
         // 🔄 Parámetros para la integración
-        $parms = [
-            'IDCompania' => config('services.api_gp.company'),
-            'Documento' => $devolucion->devolucion,
-            'PedidoOrigen' => $pedido->pedido,
-            'Bodega' => $pedido->BOD_BODEGA,
-            'Observacion' => $devolucion->DOC_GENERADO,
-            'Usuario' => $userId ?? 'adminWeb',
-            'Items_Devolucion' => $itemsDevolucion,
-        ];
+        $params = $this->devolucionBuilder->builderParamsDevolutionAdjustment($devolucion, $pedido, $userId, $itemsDevolucion);
 
         // 🚀 Llamada al servicio
-        $res1 = $this->apiGpReturnsIntegrationService->generateSalesReturn($parms);
-
-        // ✅ Validación de la respuesta
-        $codigo = Arr::get($res1, '0.codigo', 99); // Si no existe 'codigo', se asume error 99
-        $success = Arr::get($res1, '0.success', false);
-        $mensaje = Arr::get($res1, '0.mensaje', 'Error desconocido');
-
-        if (!$success) {
-            Log::error("Error en procesar la devolución: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
-            $devolucion->AJ_VTA_MENSAJE = "Error en la devolucion: $codigo - $mensaje";
+        $res1 = $this->apiGpReturnsIntegrationService->generateSalesReturn($params);
+        if ($res1['success'] === false) {
+            Log::error("Error al realizar el Ajuste de la devolucion ",[
+                'res1' => $res1
+            ]);
+            $devolucion->AJ_VTA_MENSAJE = $res1['message'];
             $devolucion->devolucion_bodega = false;
             $devolucion->save();
-            throw new \Exception('Ajuste : Codigo - ' . ($codigo ?? 'Código desconocido') . ' - ' . ($mensaje ?? 'Error desconocido'));
+            throw new \Exception('Ajuste : mensaje -  ' . ($res1['message'] ?? 'Error desconocido'));
         }
-        Log::channel('devolucion')->info("El ajuste de la devolucion se ha procesado correctamente: Código $devolucion->id - $devolucion->devolucion - $codigo - $mensaje - " . json_encode($res1));
+        Log::channel('devolucion')->info("Se realizo el Ajuste de la devolucion {$devolucion->id} con el documento {$res1['data']['docGp']}");
+        $this->createDocumentDevolution($devolucion, $res1['data'], $userId);
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
         $devolucion->save();
+    }
+
+    public function createDocumentDevolution($devolucion, $responseApi, $userId){
+        $devDoc = new GpDevolucionDocument();
+        $devDoc->devolucion_id = $devolucion->id;
+        $devDoc->devolucion = $devolucion->devolucion;
+        $devDoc->id_movimiento = $responseApi['idMovimiento'];
+        $devDoc->documento_gp = $responseApi['docGp'];
+        $devDoc->save();
     }
 
 

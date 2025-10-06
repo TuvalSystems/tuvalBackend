@@ -30,8 +30,7 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
+use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Contracts\Foundation\Application;
@@ -50,10 +49,15 @@ class DespachosController extends Controller
     use JsonResponseTrait;
     protected $orderService;
     protected $dispatchService;
-    public function __construct(OrderServiceInterface $orderService, DispatchServiceInterface $dispatchService)
+    protected $deliveryNoteService;
+    protected $logisticsOperationsService;
+    public function __construct(OrderServiceInterface $orderService, DispatchServiceInterface
+        $dispatchService,
+        LogisticsOperationsServiceInterface $logisticsOperationsService)
     {
         $this->orderService = $orderService;
         $this->dispatchService = $dispatchService;
+        $this->logisticsOperationsService = $logisticsOperationsService;
     }
     public function generarordendespacho($pedido)
     {
@@ -417,12 +421,7 @@ class DespachosController extends Controller
             ->orderBy('created_at', 'DESC')
             ->first();
 
-        $invoice = app(InvoiceServiceInterface::class);
-        $notify = app(NotificationServiceInterface::class);
-        $deliveryNote = app(DeliveryNoteServiceInterface::class);
-        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
-        $guias->checkguiaremision();
-
+        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
         $ordenes = array_values($ordenes->toArray());
         return response([
             'success' => true,
@@ -496,12 +495,7 @@ class DespachosController extends Controller
             ->orderBy('created_at', 'DESC')
             ->first();
 
-        $invoice = app(InvoiceServiceInterface::class);
-        $notify = app(NotificationServiceInterface::class);
-        $deliveryNote = app(DeliveryNoteServiceInterface::class);
-        $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
-
-        $guias->checkguiaremision();
+      $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
 
         $ordenes = array_values($ordenes->toArray());
         return response([
@@ -1102,7 +1096,7 @@ class DespachosController extends Controller
         $ptovtaSearch = $request->input('ptovta', null);
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->transferenciasEnviadas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc,  $ptovtaSearch),
+            'data' => $this->dispatchService->transferenciasEnviadas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc, $ptovtaSearch),
         ]);
     }
 
@@ -1137,7 +1131,7 @@ class DespachosController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $this->dispatchService->reposicionesEnviadas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc,  $ptovtaSearch),
+            'data' => $this->dispatchService->reposicionesEnviadas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc, $ptovtaSearch),
         ]);
     }
 
@@ -1157,7 +1151,4 @@ class DespachosController extends Controller
             'data' => $this->dispatchService->reposicionesRecibidas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc, $ptovtaSearch),
         ]);
     }
-
-
-   
 }

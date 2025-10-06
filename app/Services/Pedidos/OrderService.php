@@ -22,7 +22,6 @@ use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
@@ -32,6 +31,7 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -233,28 +233,19 @@ class OrderService implements OrderServiceInterface
 
     public function storeOrder($order, $user)
     {
-        try {
-            DB::beginTransaction();
-            $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
-            $newOrder = $this->prepareOrderStoreFill($order, $user);
-            $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
-            $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
-            if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
-                $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
-            }
-            $this->invoiceService->checkSendInvoice($newOrder);
-            DB::commit();
-            return $this->buildSuccessResponse("Pedido {$newOrder->pedido} guardado", 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in storeOrder (guardar pedido )', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
+        $newOrder = $this->prepareOrderStoreFill($order, $user);
+        $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
+        $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
+        if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
+            $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
         }
+        $newOrder->refresh();
+        DB::afterCommit(function () use ($newOrder) {
+            $this->invoiceService->checkSendInvoice($newOrder);
+        });
+        return $newOrder;
     }
 
 
@@ -344,11 +335,12 @@ class OrderService implements OrderServiceInterface
              * considerando la clase y el tipo de impuesto
              */
             $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
-            $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
+            // $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
+            $hasStock = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
             if ($isTypeL && !$hasStock) {
                 $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item,  $usedItemLExcluded);
                 if (!$replacementCodeL) {
-                    Log::warning('No se encontró un item L disponible para el pedido ', [
+                    Log::warning('No se encontró un item L disponible para el pedido', [
                         'pedido_id' => $newOrder->id,
                         'articulo' => $item['ART_CODIGO'] ?? null
                     ]);
@@ -357,6 +349,8 @@ class OrderService implements OrderServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
+            $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
+
             $newOrderDetail = new GpPedidoDetalle([
                 'pedido_id' => $newOrder->id,
                 'orden' => $i + 1,
@@ -499,86 +493,130 @@ class OrderService implements OrderServiceInterface
         $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
 
         // 🔍 2. Consultar el crédito del cliente
-        //  $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-        $credito = $this->apiBillingService->consultCreditClient([
-            'ruc' => $data['CLI_RUC'],
-            'idCompania' => config('services.api_gp.company'),
-        ]);
-        $estadoCuenta = [
-            'cupoDisponible' => $credito['data'] ?? []
-        ];
-
-        // 🔍 3. Procesar proveedores y stock
-        $pendientes = false;
-        $existentes = false;
-        $detalle->each(function ($item) use ($data, &$pendientes, &$existentes) {
-            $proveedores = $this->functionsService->getItemProviders($data['id'], $item, $pendientes, $existentes);
-            $item->proveedores = $proveedores['proveedores'];
-            $pendientes = $proveedores['pendientes'] ?: $pendientes;
-            $existentes = $proveedores['existentes'] ?: $existentes;
-
-            $stock = $this->orderRepository->getStockByItemAndWarehouse($item->id, $data['BOD_BODEGA']);
-            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
-                $existentes = true;
-            }
-        });
-
+        $clientQuota = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        // 🔍3. Obtener el segmento del cliente
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        // 🔍 3.  Enriquecer detalles con proveedores y stock
+        $enrichedDetails = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
 
         // 🔍 4. Obtener órdenes de compra optimizadas
-        $ordenes = $this->orderRepository->getPurchaseOrdersByOrderNumber($data['pedido'])
-            ->map(function ($orden) {
-                $recibodecompra = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
-                return count($recibodecompra->detalle) > 0 ? $recibodecompra : null;
-            })
-            ->filter()
-            ->values();
+        $ordenes =  $this->getPurchaseOrdersWithReceipts($data['pedido']);
 
-        // 🔍 5. Procesar traslados
-        $trasladosVentas = $this->orderRepository->getTransferOrdersBySale($data['id']);
-        if ($trasladosVentas->isEmpty()) {
-            $pendientes = true; // Si no hay traslados, marcamos como pendientes
-            $trasladosVentas = collect(); // Inicializamos como colección vacía
-            // $existentes = false; // No hay traslados existentes
-        } else {
-            $trasladosVentas->each(function ($trasladoVenta) use (&$pendientes, &$existentes) {
-                $guias = $this->orderRepository->getShipmentGuidesByTransfer($trasladoVenta);
-                $trasladoVenta->guias = $guias;
-                $guias->each(function ($guia) use (&$pendientes, &$existentes) {
-                    if ($guia->estado != 'recibida')
-                        $pendientes = true;
-                    else
-                        $existentes = true;
-                });
-                if (!$trasladoVenta->completado)
-                    $pendientes = true;
-            });
-        }
+        $trasladosVentas = $this->getTransferWithGuides($data['id']);
+
 
         // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-
-        return response([
-            'success' => true,
-            'detalle' => $detalle,
-            'estadodecuenta' => $estadoCuenta,
+        $status = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        return [
+            'detalle' => $enrichedDetails['details'],
+            'estadodecuenta' => [
+                'cupoDisponible' => $clientQuota
+            ],
             'ordendecompra' => $ordenes,
             'traslados' => $trasladosVentas,
             'orden_despacho' => $orderDespacho,
             'guias_remision' => $guiaRemision,
             'devoluciones' => $devoluciones,
-            'pendientes' => $pendientes,
-            'existentes' => $existentes,
-        ]);
+            'pendientes' => $status['pendientes'],
+            'existentes' => $status['existentes'],
+            'segmento' => $segmento
+        ];
     }
 
+
+    public function enrichOrderDetails(Collection $details, int $orderId, string $warehouse)
+    {
+        $hasPending = false;
+        $hasExisting = false;
+        $itemIds = $details->pluck('id')->toArray();
+        $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
+            ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem) {
+            $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
+            $item->proveedores = $proveedores['proveedores'];
+            $hasPending = $proveedores['pendientes'] ?: $hasPending;
+            $hasExisting = $proveedores['existentes'] ?: $hasExisting;
+            // Obtener stock (desde el map precargado)
+            $stock = $stockByItem->get($item->id);
+            if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
+                $hasExisting = true;
+            }
+
+            return $item;
+        });
+
+        return [
+            'details' => $details,
+            'hasPending' => $hasPending,
+            'hasExisting' => $hasExisting
+        ];
+    }
+
+    public function getPurchaseOrdersWithReceipts($orderNumber)
+    {
+        return  $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
+            ->map(function ($orden) {
+                $receipt  = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+                return count($receipt->detalle) > 0 ? $receipt  : null;
+            })
+            ->filter()
+            ->values();
+    }
 
     public function checkOutValidateDispatchReInvoice($devolucion)
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
             ->where('despachado_parcial', 1)->exists();
     }
+
+
+    public function getTransferWithGuides(int $orderId): Collection
+    {
+        $transfers = $this->orderRepository->getTransferOrdersBySale($orderId);
+        if ($transfers->isEmpty()) {
+            return collect();
+        }
+
+        return $transfers->transform(function ($transfer) {
+            $transfer->guias = $this->orderRepository->getShipmentGuidesByTransfer($transfer);
+            return $transfer;
+        });
+    }
+
+    public function calculateOrderStatus($details, $transfers)
+    {
+
+        $hasPending = $details['hasPending'];
+        $hasExisting = $details['hasExisting'];
+
+        if ($transfers->isEmpty()) {
+            $hasPending = true;
+        } else {
+            $transfers->each(function ($transfer) use (&$hasPending, &$hasExisting) {
+                $transfer->guias->each(function ($guide) use (&$hasPending, &$hasExisting) {
+                    if ($guide->estado != 'recibida') {
+                        $hasPending = true;
+                    } else {
+                        $hasExisting = true;
+                    }
+                });
+
+                if (!$transfer->completado) {
+                    $hasPending = true;
+                }
+            });
+        }
+
+        return [
+            'pendientes' => $hasPending,
+            'existentes' => $hasExisting
+        ];
+    }
+
+
 
 
 
@@ -627,6 +665,7 @@ class OrderService implements OrderServiceInterface
 
     public function recalculateAndSendInvoice($order)
     {
+        $this->updateStockOrderTest($order);
         $this->functionsService->recalculateOrder($order->id);
         $this->invoiceService->sendInvoiceGp($order);
     }
@@ -634,6 +673,15 @@ class OrderService implements OrderServiceInterface
     public function recalculateOrder($order)
     {
         $this->functionsService->recalculateOrder($order->id);
+    }
+
+    public function updateStockOrderTest($order)
+    {
+        GpPedidoDetalleStock::where('pedido_id', $order->id)
+            ->update([
+                'reservado' => DB::raw('seleccionado'),
+                'updated_at' => now(),
+            ]);
     }
 
 
@@ -652,13 +700,15 @@ class OrderService implements OrderServiceInterface
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data, $user);
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
                 'success' => true,
                 'cliente' => $cliente,
                 'registro_copia' => $registerCopyId,
                 'currentSucursal' => $data['sucursal_id'],
-                'test' => 'volver_a_pedir'
+                'test' => 'volver_a_pedir',
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -684,6 +734,8 @@ class OrderService implements OrderServiceInterface
             $data['pedido']['cliente_id'] = $data['cliente_id'];
             $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
+
             $this->functionsService->recalculateIva($detalle);
             $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
             DB::commit();
@@ -692,7 +744,8 @@ class OrderService implements OrderServiceInterface
                 'cliente' => $cliente,
                 'registro_copia' => $registerCopyId,
                 'currentSucursal' => $data['sucursal_id'],
-                'test' => 'copiarpedido'
+                'test' => 'copiarpedido',
+                'segmento' => $segmento
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -729,32 +782,82 @@ class OrderService implements OrderServiceInterface
 
     public function generateNextMonthInvoice()
     {
-        try {
-            DB::beginTransaction();
-            $mes = $this->getPreviousMonth();
+        $now = now('America/Guayaquil');
+        $prev = $now->copy()->subMonthNoOverflow();
+        $year = (int) $prev->year;
+        $mes  = (int) $prev->month;
 
-            if ($this->shouldAbortBilling($mes)) {
-                DB::rollBack();
-                Log::channel('cron_process')->warning('⚠️ No se ejecuta facturación: Aún no llega el mes :' . $mes);
-                return;
-            }
-            $pedidos = $this->orderRepository->getOrdersToInvoiceNextMonth($mes);
-            foreach ($pedidos as $pedido) {
-                $this->invoiceService->checkSendInvoice($pedido, true, false);
-                Log::channel('cron_process')->info("✅ Pedido {$pedido->id} facturado correctamente de generateNextMonthInvoice - orderService");
-            }
-            DB::commit();
-            return $this->buildSuccessResponse("Pedidos facturados", 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::channel('cron_process')->error("❌ Error facturando pedido: {$e->getMessage()}");
-            return $this->buildErrorResponse($e->getMessage(), 500);
+        if ($this->shouldAbortBilling($mes)) {
+            Log::channel('cron_process')->warning("⚠️ No se ejecuta facturación: Aún no llega el mes: {$mes}");
+            return [
+                'abortado' => true,
+                'razon' => "Mes actual no coincide: {$mes}",
+                'total' => 0,
+                'exitosos' => 0,
+                'fallidos' => 0,
+                'errores' => []
+            ];
         }
-    }
+        $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
+        $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
+            foreach ($pedidos as  $pedido) {
+                $resultados['total']++;
 
-    public function getPreviousMonth()
-    {
-        return date("m", strtotime("-1 month"));
+                // Éxito idempotente si ya está facturado
+                if (filled($pedido->factura) && $pedido->estado === 'facturado') {
+                    $resultados['exitosos']++;
+                    continue;
+                }
+
+                $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
+                if (! $lock->get()) {
+                    // Otro proceso ya está facturando → no lo cuentes como error
+                    Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
+                    continue;
+                }
+                try {
+                    try {
+
+                        $this->invoiceService->checkSendInvoice($pedido, true, false);
+                    } catch (\Throwable $exGp) {
+                        // Clasifica “ya facturado” como éxito idempotente
+                        $msg = mb_strtolower($exGp->getMessage());
+                        if (str_contains($msg, 'ya se encuentra facturado') || str_contains($msg, 'ya existe')) {
+                            $resultados['exitosos']++;
+                            Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} ya estaba facturado (idempotente)");
+                        } else {
+                            throw $exGp;
+                        }
+                    }
+
+                    $pedido->refresh();
+                    if ($pedido->estado === 'facturado' && filled($pedido->factura)) {
+                        $resultados['exitosos']++;
+                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
+                    } else {
+                        // throw new \Exception("El pedido no cambió a 'facturado'");
+                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} no cambió a 'facturado'");
+                    }
+                } catch (\Throwable $e) {
+                    $resultados['fallidos']++;
+                    $resultados['errores'][] = [
+                        'pedido_id' => $pedido->id,
+                        'pedido'    => $pedido->pedido,
+                        'error'     => $e->getMessage(),
+                    ];
+                    Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->pedido}", [
+                        'pedido_id' => $pedido->id,
+                        'error'     => $e->getMessage(),
+                        'trace'     => $e->getTraceAsString(),
+                    ]);
+                } finally {
+                    optional($lock)->release();
+                }
+            }
+        });
+
+        Log::channel('cron_process')->info("📊 Resumen facturación masiva", $resultados);
+        return $resultados;
     }
 
     public function shouldAbortBilling($mes)

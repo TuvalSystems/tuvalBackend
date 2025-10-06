@@ -7,6 +7,7 @@ use App\Services\Api\ApiSalesService;
 use App\Services\Api\MswService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Api\ApiSeedBellingService;
+use App\Services\Api\Bodegas\ApiDeliverNoteService;
 
 class ApiServiceProvider extends ServiceProvider
 {
@@ -15,8 +16,6 @@ class ApiServiceProvider extends ServiceProvider
     public $timeout;
     public function register()
     {
-
-
 
         $this->app->singleton(ApiGpService::class, function ($app) {
             return new ApiGpService();
@@ -30,10 +29,11 @@ class ApiServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(MswService::class);
+
+        /** servicio dedicado a las guias de remision */
+        $this->app->singleton(ApiDeliverNoteService::class);
     }
 
-    public function boot()
-    {
-        //
-    }
+
+       public function boot(){}
 }

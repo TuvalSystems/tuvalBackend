@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ventas;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpClienteSucursal;
@@ -12,23 +13,42 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Http\Controllers\WebserviceController;
+use App\Models\GpUsuario;
+use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class AprobacionesController extends Controller
 {
+    use JsonResponseTrait;
     protected $approvalService;
-    public function __construct(ApprovalServiceInterface $approvalService)
+    protected $apiGpService;
+
+    public function __construct(ApiGpService $apiGpService, ApprovalServiceInterface $approvalService)
     {
+        $this->apiGpService = $apiGpService;
         $this->approvalService = $approvalService;
     }
 
-    // public function checkAprobacionesCrediticias($data): string
-    // {
+    public function estadodecuenta(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->all();
+            $detalle = $this->approvalService->accountStatusClient($data['CLI_RUC']);
+            return $this->successResponse('Información Obtenida Correctamente', $detalle, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al obtener la información: ' . $e->getMessage(), 500);
+        }
+    }
 
-    //     if ($data['COND_ID'] == 'CONTADO') {
-    //         return 'no';
-    //     }
+
+    // public function estadodecuenta(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // {
+    //     $data = $request->all();
+    //     $user = Auth::user();
+
+    //     $detalle = array();
 
     //     $webservices = new WebserviceController();
     //     $parameters = array(
@@ -38,57 +58,23 @@ class AprobacionesController extends Controller
 
     //     $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
 
-    //     if ($data['total'] > $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['CUPO_DISPONIBLE_GP']) {
-    //         return 'Cupo';
-    //     }
+    //     $detalle['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
 
     //     $documentosVencidos = $webservices->cobranzas('ConsultaDocumentosVencidosCliente', $parameters);
-
     //     if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
-    //         return 'Documentos Vencidos';
+    //         $detalle['documentosVencidos'] = $documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'];
     //     }
 
     //     $documentosSinSoporte = $webservices->cobranzas('ConsultaDocumentosSinSoporteCliente', $parameters);
-
     //     if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
-    //         return 'Saldo Pendiente';
+    //         $detalle['documentosSinSoporte'] = $documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'];
     //     }
 
-    //     return 'no';
+    //     return response([
+    //         'success' => true,
+    //         'detalle' => $detalle
+    //     ]);
     // }
-
-    public function estadodecuenta(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-        $user = Auth::user();
-
-        $detalle = array();
-
-        $webservices = new WebserviceController();
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $data['CLI_RUC'],
-        );
-
-        $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-
-        $detalle['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
-
-        $documentosVencidos = $webservices->cobranzas('ConsultaDocumentosVencidosCliente', $parameters);
-        if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
-            $detalle['documentosVencidos'] = $documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'];
-        }
-
-        $documentosSinSoporte = $webservices->cobranzas('ConsultaDocumentosSinSoporteCliente', $parameters);
-        if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
-            $detalle['documentosSinSoporte'] = $documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'];
-        }
-
-        return response([
-            'success' => true,
-            'detalle' => $detalle
-        ]);
-    }
 
     public function verpedidosycotizacionesporaprobar(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -102,19 +88,29 @@ class AprobacionesController extends Controller
             ->select('gp_pedidos.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
-            ->where('estado', '!=', 'eliminado')
+            ->whereNotIn('estado',['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
 
             ->orderBy('created_at', 'ASC')->get();
 
+        foreach ($pedidos as $key => $pedido) {
+            $res = $this->getSegmentoCliente($pedido->CLI_RUC);
+            $pedido->segmento = data_get($res, 'segmento', null);
+            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
+        }
         //where('PTO_VTA_ID', $data['puntodeventa_id'])
 
         $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO')
-            ->where('estado', '!=', 'caducado')
-            ->where('estado', '!=', 'procesado')
+            ->whereNotIn('estado',['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->orderBy('created_at', 'ASC')->get();
+        foreach ($cotizaciones as $key => $cot) {
+
+            $res2 = $this->getSegmentoCliente($cot->CLI_RUC);
+            $cot->segmento = data_get($res2, 'segmento', null);
+            $cot->subsegmento =  data_get($res2, 'subsegmento', null);
+        }
 
         //where('PTO_VTA_ID', $data['puntodeventa_id'])
 
@@ -123,6 +119,15 @@ class AprobacionesController extends Controller
             'pedidos' => $pedidos,
             'cotizaciones' => $cotizaciones,
         ]);
+    }
+
+    public function getSegmentoCliente($ruc)
+    {
+        $response = $this->apiGpService->fetchClientSegment([
+            'ruc' => $ruc,
+        ]);
+        $data = data_get($response, 'data', []);
+        return is_array($data) ? $data : (array) $data;
     }
 
 
@@ -139,9 +144,14 @@ class AprobacionesController extends Controller
                     ->orWhere('requiere_aprobacion_comercial', 'yes')
                     ->where('aprobado_comercial', 'yes');
             })
-            ->where('estado', '!=', 'eliminado')
+            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
             ->orderBy('created_at', 'DESC')->get();
 
+        foreach ($pedidos as $key => $pedido) {
+            $res = $this->getSegmentoCliente($pedido->CLI_RUC);
+            $pedido->segmento = data_get($res, 'segmento', null);
+            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
+        }
 
         return response([
             'success' => true,
@@ -151,15 +161,35 @@ class AprobacionesController extends Controller
 
     public function aprobarpedido(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->approveComercialOrder($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $data = $request->all();
+            $pedido = DB::transaction(function () use ($data, $gpuser) {
+                return  $this->approvalService->approveComercialOrder($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al aprobar el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
 
     public function rechazarpedidoporstock(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->denyApproveComercialOrderForInsufficientStock($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $data = $request->all();
+            $response = DB::transaction(function () use ($data, $gpuser) {
+                return $this->approvalService->denyApproveComercialOrderForInsufficientStock($data, $gpuser);
+            });
+            $pedido = $response['pedido'];
+            $alert = $response['alert'];
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
     public function aprobardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -223,22 +253,49 @@ class AprobacionesController extends Controller
 
     public function aprobarpedidocrediticio(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->approveCreditOrder($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $pedido = DB::transaction(function () use ($request, $gpuser) {
+                $data = $request->all();
+                return $this->approvalService->approveCreditOrder($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error en la aprobación crediticia del pedido: ' . $e->getMessage(), 500);
+        }
     }
 
     public function rechazarpedidocrediticio(Request $request)
     {
-
-        $data = $request->all();
-        return $this->approvalService->denyCreditApproval($data);
-
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $pedido = DB::transaction(function () use ($request, $gpuser) {
+                $data = $request->all();
+                return $this->approvalService->denyCreditApproval($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
     public function rechazarpedidocrediticioporstock(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->rejectCreditOrderForInsufficientStock($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $response = DB::transaction(function () use ($request, $gpuser) {
+                $data = $request->all();
+                return $this->approvalService->rejectCreditOrderForInsufficientStock($data, $gpuser);
+            });
+            $pedido = $response['pedido'];
+            $alert = $response['alert'];
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido por Stock: ' . $e->getMessage(), 500);
+        }
     }
 
     public function aprobarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -278,8 +335,17 @@ class AprobacionesController extends Controller
 
     public function rechazarpedido(Request $request)
     {
-        $data = $request->all();
-        return $this->approvalService->denyApproveComercialOrder($data);
+        try {
+            $user = Auth::user();
+            $gpuser = GpUsuario::where('id', $user->id)->first();
+            $data = $request->all();
+            $pedido = DB::transaction(function () use ($data, $gpuser) {
+                return $this->approvalService->denyApproveComercialOrder($data, $gpuser);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al obtener la información: ' . $e->getMessage(), 500);
+        }
     }
 
 

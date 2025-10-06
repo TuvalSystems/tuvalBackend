@@ -360,7 +360,12 @@ class InvoiceService implements InvoiceServiceInterface
         $existInvoice =  $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === true) {
             $info = $existInvoice['data'];
-            throw new \Exception("El pedido {$pedido->pedido} ya se encuentra facturado con el documento {$info['numeroDocGenerado']}.");
+            $pedido = GpPedido::where('pedido', $pedido->pedido)->first();
+            $pedido->factura = $info['numeroDocGenerado'];
+            $pedido->estado = 'facturado';
+            $pedido->save();
+            return $pedido;
+            // throw new \Exception("El pedido {$pedido->pedido} ya se encuentra facturado con el documento {$info['numeroDocGenerado']}.");
         }
         // eliminar factura existente si existe y no se proceso correctamente
         $deleteInvoice =  $this->apiGpProcessInvoice->deleteDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
@@ -520,6 +525,10 @@ class InvoiceService implements InvoiceServiceInterface
     public function checkFinalInvoiceValidation(GpPedido $pedido): bool
     {
         if ($pedido->estado != 'enviando') {
+            return false;
+        }
+
+        if (!empty($pedido->factura)) {
             return false;
         }
 

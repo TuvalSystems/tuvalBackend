@@ -80,6 +80,35 @@ class GpPedidoDetalle extends Model
 {
     use HasFactory;
 
+    protected $appends = [
+        'approval_descripcion',
+        'approval_valor',
+        'approval_descuento',
+        'approval_modificador',
+
+    ];
+
+      protected $casts = [
+        'ART_DECIMAL_CANTIDAD' => 'integer',
+        'CHECK_ALTERNATIVO' => 'boolean',
+        'ART_VALOR' => 'float',
+        'ART_VALOR_ORIGINAL' => 'float',
+        'ART_DESCUENTO' => 'float',
+        'ART_IVA' => 'float',
+        'ART_CANTIDAD' => 'float',
+        'ART_STOCK' => 'float',
+        'ART_IMP_VTA' => 'float',
+        'ART_COSTO_PROMEDIO' => 'float',
+        'descuento' => 'float',
+        'descuento_original' => 'float',
+        'modificador' => 'float',
+        'approval_descripcion' => 'boolean',
+        'approval_valor' => 'boolean',
+        'approval_descuento' => 'boolean',
+        'approval_modificador' => 'boolean',
+    ];
+
+
     protected $fillable = [
         'pedido_id',
         'orden',
@@ -113,25 +142,42 @@ class GpPedidoDetalle extends Model
 
     ];
 
-    protected $casts = [
-        'ART_DECIMAL_CANTIDAD' => 'integer',
-        'CHECK_ALTERNATIVO' => 'boolean',
-        'ART_VALOR' => 'float',
-        'ART_VALOR_ORIGINAL' => 'float',
-        'ART_DESCUENTO' => 'float',
-        'ART_IVA' => 'float',
-        'ART_CANTIDAD' => 'float',
-        'ART_STOCK' => 'float',
-        'ART_IMP_VTA' => 'float',
-        'ART_COSTO_PROMEDIO' => 'float',
-        'descuento' => 'float',
-        'descuento_original' => 'float',
-        'modificador' => 'float',
-    ];
 
 
     public function pedidoDetalleStocks()
     {
         return $this->hasMany(GpPedidoDetalleStock::class, 'detalle_id', 'id');
+    }
+
+
+    public function pedido()
+    {
+        return $this->belongsTo(GpPedido::class, 'pedido_id', 'id');
+    }
+
+
+    protected function getApprovalDescripcionAttribute(): bool
+    {
+        $a = preg_replace('/\s+/u', ' ', trim((string)($this->ART_DESCRIPCION_ORIGINAL ?? '')));
+        $b = preg_replace('/\s+/u', ' ', trim((string)($this->ART_DESCRIPCION ?? '')));
+        return strcasecmp($a, $b) !== 0;
+    }
+
+
+    protected function getApprovalValorAttribute(): bool
+    {
+        return (float)$this->ART_VALOR !== (float)$this->ART_VALOR_ORIGINAL;
+    }
+
+
+    protected function getApprovalDescuentoAttribute(): bool
+    {
+        return (float)$this->descuento !== $this->descuento_original;
+    }
+
+
+    protected function getApprovalModificadorAttribute(): bool
+    {
+        return (float)$this->modificador !== 0;
     }
 }

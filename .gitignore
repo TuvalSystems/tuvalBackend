@@ -25,3 +25,6 @@ _ide_helper_models.php
 /public/images/ventas/
 /vue
 /public/images/fotos/
+.env.dev
+.env.local
+.env.prod

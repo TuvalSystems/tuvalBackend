@@ -29,16 +29,15 @@ use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Http\Controllers\bodegas\DespachosController;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+
 
 class PedidosController extends Controller
 {
@@ -66,9 +65,22 @@ class PedidosController extends Controller
     //en proceso de mejora
     public function guardarpedido(Request $request)
     {
-        $orderData = $request->all();
-        $user = Auth::user();
-        return $this->orderService->storeOrder($orderData, $user);
+        try {
+            $orderData = $request->all();
+            $user = Auth::user();
+            $pedido = DB::transaction(function () use ($orderData, $user) {
+                return $this->orderService->storeOrder($orderData, $user);
+            });
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
+        } catch (\Throwable $e) {
+            Log::error('Error in storeOrder (guardar pedido )', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function facturarpedido(Request $request)
@@ -92,11 +104,7 @@ class PedidosController extends Controller
     {
         $pedido = GpPedido::where('id', $id)
             ->first();
-        $order = app(OrderServiceInterface::class);
-        $dispatch = app(DispatchServiceInterface::class);
-        $despachos = new DespachosController($order, $dispatch);
-        // $despachos = new DespachosController();
-        $despachos->generarordendespacho($pedido);
+        $this->invoiceService->generateDisptachOrder($pedido);
     }
 
 
@@ -158,15 +166,10 @@ class PedidosController extends Controller
                     $listo = 'no';
                 }
             }
-            $order = app(OrderServiceInterface::class);
-            $dispatch = app(DispatchServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch);
-            // $despachos = new DespachosController();
             if ($listo == 'yes') {
                 $pedido->estado = 'espera';
                 $pedido->save();
-                $despachos->generarordendespacho($pedido);
-
+                $this->invoiceService->generateDisptachOrder($pedido);
                 $this->invoiceService->sendInvoiceGp($pedido);
             }
         }
@@ -225,9 +228,19 @@ class PedidosController extends Controller
 
     public function detallepedido(Request $request)
     {
-
-        $data = $request->all();
-        return $this->orderService->detailOrderById($data);
+        try {
+            $data = $request->all();
+            $result = $this->orderService->detailOrderById($data);
+            return response()->json([
+                'success' => true,
+                ...$result
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener detalle del pedido: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 
@@ -1215,7 +1228,33 @@ class PedidosController extends Controller
 
     public function facturarsiguientemes()
     {
-        return $this->orderService->generateNextMonthInvoice();
+        try {
+            $resultado = $this->orderService->generateNextMonthInvoice();
+            if ($resultado['abortado']) {
+                return $this->buildSuccessResponse($resultado['razon'], 200);
+            }
+            // ✅ Manejar errores parciales
+            if ($resultado['fallidos'] > 0) {
+                return $this->buildSuccessResponse(
+                    "Proceso completado con errores: {$resultado['exitosos']} exitosos, {$resultado['fallidos']} fallidos",
+                    200,
+                );
+            }
+            return $this->buildSuccessResponse(
+                "Todos los pedidos facturados: {$resultado['exitosos']} procesados",
+                200,
+            );
+        } catch (\Throwable $e) {
+            Log::channel('cron_process')->error("❌ Error crítico en proceso de facturación masiva", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->buildErrorResponse(
+                "Error crítico en el proceso: {$e->getMessage()}",
+                500
+            );
+        }
     }
 
 
