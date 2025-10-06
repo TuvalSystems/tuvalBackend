@@ -1401,8 +1401,7 @@ class QuotationService implements QuotationServiceInterface
             $hasSegment = $this->apiGpService->fetchClientSegment([
                 'ruc' => $ruc,
             ]);
-            $data = $hasSegment['data'];
-            if ($data && $hasSegment['success'] === true) {
+            if ($hasSegment['success'] === true) {
                 return response()->json([
                     'exists'  => true,
                     'message' => 'Segmento encontrado',
