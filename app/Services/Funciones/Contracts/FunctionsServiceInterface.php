@@ -24,4 +24,6 @@ interface FunctionsServiceInterface
     public function setCartFormQuotation($quotationDetails, $data, $user);
 
     public function storeCartStock($cartId, $stock);
+
+    public function like_match($pattern, $subject);
 }

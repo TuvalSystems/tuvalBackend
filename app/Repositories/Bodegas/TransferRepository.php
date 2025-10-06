@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Bodegas;
 
+use App\Models\despachos\GpGuiaRemision;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -31,5 +32,18 @@ class TransferRepository implements TransferRepositoryInterface
                 'gp_articulos.ART_DECIMAL_CANTIDAD'
             ]);
         return $q->get();
+    }
+
+
+    public function findGuidesToWarehouseDestinoAndOrigin($bodOrigin, $destId){
+       return GpGuiaRemision::query()
+            ->join('gp_bodegas', 'gp_guia_remisions.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
+            ->where('gp_guia_remisions.bodega_origen', $bodOrigin)
+            ->where('gp_guia_remisions.bodega_destino', $destId)
+            ->where('gp_guia_remisions.estado', 'pendiente')
+            ->where('gp_guia_remisions.tipo', 'transferencia')
+            ->select('gp_guia_remisions.*', 'gp_bodegas.BOD_DESCRIPCION', 'gp_bodegas.BOD_BODEGA')
+            ->orderByDesc('gp_guia_remisions.created_at')
+            ->get();
     }
 }
