@@ -871,7 +871,7 @@ class QuotationService implements QuotationServiceInterface
             $this->functionService->recalculateIva($detalles);
             $this->functionService->setCartFormQuotation($detalles, $data, $user);
             $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
-             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
                 'success' => true,
@@ -1398,8 +1398,11 @@ class QuotationService implements QuotationServiceInterface
     public function checkClientWithSegmentExist($ruc)
     {
         try {
-            $hasSegment = $this->clienTSqlService->getValidateCLientWithSegment($ruc);
-            if ($hasSegment) {
+            $hasSegment = $this->apiGpService->fetchClientSegment([
+                'ruc' => $ruc,
+            ]);
+            $data = $hasSegment['data'];
+            if ($data && $hasSegment['success'] === true) {
                 return response()->json([
                     'exists'  => true,
                     'message' => 'Segmento encontrado',
@@ -1412,8 +1415,6 @@ class QuotationService implements QuotationServiceInterface
             ], 202);
         } catch (\Throwable $th) {
             throw $th;
-        } finally {
-            DB::disconnect('sqlsrvdyn');
         }
     }
 
