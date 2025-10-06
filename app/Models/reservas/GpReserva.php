@@ -33,10 +33,11 @@ class GpReserva extends Model
 
     public function cotizacion()
     {
-        return $this->hasOne(GpCotizacion::class, 'cotizacion_id');
+        // FK está en ESTA tabla: gp_reservas.cotizacion_id -> gp_cotizacions.id
+        return $this->belongsTo(GpCotizacion::class, 'cotizacion_id', 'id');
     }
 
-      public function usuarioIngreso()
+    public function usuarioIngreso()
     {
         return $this->belongsTo(GpUsuario::class, 'user_ingreso_reserva_id');
     }
@@ -46,7 +47,7 @@ class GpReserva extends Model
         return $this->belongsTo(GpUsuario::class, 'user_autorizacion_reserva_id');
     }
 
-     public function tipoReserva()
+    public function tipoReserva()
     {
         return $this->belongsTo(GpTipoReservas::class, 'tipo_reserva_id');
     }

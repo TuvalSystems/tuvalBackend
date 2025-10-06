@@ -278,7 +278,7 @@ class GpCotizacion extends Model
     }
 
 
-    public function reserva ()
+    public function reserva()
     {
         return $this->hasOne(GpReserva::class, 'cotizacion_id', 'id');
     }

@@ -143,11 +143,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function getQuotationWithDetails(int $id)
     {
-        $reserva = GpReserva::find($id)->with(['cotizacion.detallecotizacion', 'tipoReserva', 'tipoTraslado']);
+        $reserva = GpReserva::with(['cotizacion','cotizacion.detallecotizacion', 'tipoReserva', 'tipoTraslado','usuarioIngreso'])->find($id);
         // $cotizacion = GpCotizacion::with('detallecotizacion', 'tiporeserva','reserva')->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($reserva->cotizacion->CLI_RUC);
         return [
-            'cotizacion' => $reserva,
+            'reserva' => $reserva,
             'segmento' => $segmento
         ];
     }
@@ -155,6 +155,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function getQuotationWithDetailsAndStock(int $id)
     {
+
+        $reserva = GpReserva::with(['cotizacion','tipoTraslado', 'tipoReserva','usuarioIngreso'])->find($id);
+
         $cotizacion = GpCotizacion::with(['detallecotizacion' => function ($q) {
             $q->select([
                 'id',
@@ -169,8 +172,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ]);
         }, 'detallecotizacion.stock' => function ($q) {
             $q->select(['id', 'detalle_id', 'cotizacion_id', 'STO_ART_BODEGA', 'seleccionado']);
-        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO', 'reservaTraslado', 'tiporeserva','reserva'])->find($id);
-
+        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO'])->find($reserva->id);
         $rows = $cotizacion->detallecotizacion->flatMap(function ($detalle) use ($cotizacion) {
             if (in_array($detalle->ART_TIPO_COMPRA, ['SERV', 'L'])) {
                 return [[
@@ -201,11 +203,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 ];
             });
         })->values();
-
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($cotizacion->CLI_RUC);
 
         return [
-            'cotizacion' => $cotizacion,
+            'reserva' => $reserva,
             'rows' => $rows,
             'segmento' => $segmento
         ];
