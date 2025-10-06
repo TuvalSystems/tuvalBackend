@@ -83,7 +83,11 @@ class TransferenciasController extends Controller
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
             ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_ventas.ART_CODIGO')
             ->where('bodega_origen', $bodega)
-            ->whereNull('completado')
+            ->where( function ($q){
+                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
+            })
+            // ->whereNull('completado')
+            // ->where('completado', 0)
             // ->where('gp_pedidos.estado', '!=', 'eliminado');
             ->whereNotIn('gp_pedidos.estado', ['eliminado', 'anulada']);
         if ($pedido && $pedido != 'null') {

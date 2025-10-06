@@ -124,7 +124,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $traslados = GpTrasladosVentas::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
             ->whereIn('gp_traslados_ventas.id', $itemsIds)
-            ->whereNull('gp_traslados_ventas.completado')
+            // ->whereNull('gp_traslados_ventas.completado')
+            ->where( function($q){
+                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
+            })
             ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
             ->keyBy('id');
 
@@ -163,34 +166,46 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $reservado   = (float) ($trl->reservado ?? 0);
 
         $restante = max(0.0,  $cantidad - $trasladado);
-        $delta = max(0.0, min((float)$qty, $restante, $reservado));
-        if ($delta <= 0) return;
+        $delta = max(0.0, min((float)$qty, $restante));
+        if ($delta <= 0) {
+            $trl->completado = (int) (($trasladado) >= $cantidad);
+            $trl->save();
+            return;
+        }
+        $nuevoTrasladado = min($cantidad, $trasladado + $delta);
+        $nuevoReservado  = max(0.0, $reservado - $delta);
 
-        $trl->trasladado = min($cantidad, $trasladado + $delta);
-        $trl->reservado = max(0.0, $reservado - $delta);
-        $trl->completado = (int) ($trl->trasladado >= $trl->cantidad);
+        $trl->trasladado = $nuevoTrasladado;
+        $trl->reservado =  $nuevoReservado;
+        $trl->completado = (int) (($nuevoTrasladado ) >= $cantidad);
         $trl->save();
     }
 
     public function decrementOriginWarehouseReservedStock($trl, $qty)
     {
-        $stock = GpPedidoDetalleStock::where('detalle_id', $trl->detalle_id)
-            ->where('STO_ART_BODEGA', $trl->bodega_origen)
-            ->lockForUpdate()
-            ->first();
-        $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
-        $stock->reservado = $nuevo;
-        $stock->save();
+        $dtP = GpPedidoDetalle::find($trl->detalle_id);
+        if ($dtP->ART_TIPO_COMPRA != 'L' && $dtP->ART_TIPO_COMPRA != 'SERV') {
+            $stock = GpPedidoDetalleStock::where('detalle_id', $trl->detalle_id)
+                ->where('STO_ART_BODEGA', $trl->bodega_origen)
+                ->lockForUpdate()
+                ->first();
+            $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
+            $stock->reservado = $nuevo;
+            $stock->save();
+        }
     }
     public function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse,  $qty)
     {
-        $stock = GpPedidoDetalleStock::where('detalle_id', $detalleId)
-            ->where('STO_ART_BODEGA', $warehouse)
-            ->lockForUpdate()
-            ->first();
-        $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
-        $stock->reservado = $nuevo;
-        $stock->save();
+        $det = GpPedidoDetalle::find($detalleId);
+        if ($det->ART_TIPO_COMPRA != 'L') {
+            $stock = GpPedidoDetalleStock::where('detalle_id', $detalleId)
+                ->where('STO_ART_BODEGA', $warehouse)
+                ->lockForUpdate()
+                ->first();
+            $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
+            $stock->reservado = $nuevo;
+            $stock->save();
+        }
     }
 
     public function createDocumentGuideTrfv(GpGuiaRemision $guia, $responseApi, $documento)
@@ -241,7 +256,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems válidos');
         }
 
-        $articulos = GpPedidoDetalle::query()->whereIn('id', $ids)->lockForUpdate()->get()->keyBy('id');
+        $articulos = GpPedidoDetalle::query()->whereIn('id', $ids)
+            ->where('reservado', '>', 0)
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
 
 
         $tocoServ = false;
@@ -286,6 +305,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $wsOk = true;
             }
             foreach ($grupo['items'] as $item) {
+
                 $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
                 $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
             }
@@ -331,7 +351,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $pedidonuevo = $pedidoOrigen ? $guia->pedido : '';
         $groups = [];
         foreach ($detalle as $item) {
-            if ($item->ART_TIPO_COMPRA == 'SERV') {
+            $detallePedido = GpPedidoDetalle::where('id', $item->detalle_id)->first();
+            if ($detallePedido->ART_TIPO_COMPRA == 'SERV') {
                 continue;
             }
             $doc = $documento;
@@ -388,7 +409,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             return;
         }
 
-        $traslados = GpTrasladosReposicion::whereIn('id', $itemsIds)->whereNull('completado')->get()->keyBy('id');
+        $traslados = GpTrasladosReposicion::whereIn('id', $itemsIds)
+        ->where(function($q){
+                $q->where('gp_traslados_reposicions.completado', 0)->orWhereNull('gp_traslados_reposicions.completado');
+            })->get()->keyBy('id');
         $grupos = $this->groupItemsByOrderReplacementShipment($detalle, $traslados);
         $checkList = false;
         foreach ($grupos as  $grupo) {

@@ -245,7 +245,10 @@ class OrderService implements OrderServiceInterface
         if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
             $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
         }
-        $this->invoiceService->checkSendInvoice($newOrder);
+        $newOrder->refresh();
+        DB::afterCommit(function () use ($newOrder) {
+            $this->invoiceService->checkSendInvoice($newOrder);
+        });
         return $newOrder;
     }
 

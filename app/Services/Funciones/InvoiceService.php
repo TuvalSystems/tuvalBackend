@@ -523,8 +523,15 @@ class InvoiceService implements InvoiceServiceInterface
             'FAC_VTA_IMPUESTO' => $pedido->iva,
             'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
             'FAC_VTA_TIPO_DESPACHO' => $pedido->despacho,
-            'FAC_VTA_NOTA_CLIENTE' => $pedido->nota_cliente ?? '',
+            'FAC_VTA_NOTA_CLIENTE' => $this->normalizeTextNoteClient($pedido->nota_cliente),
         ];
+    }
+
+    public function normalizeTextNoteClient(?string $nota): string
+    {
+        if ($nota === null) return '';
+        $clean = preg_replace('/\R+/u', ' ', $nota); 
+        return trim(preg_replace('/[^\S\r\n]+/u', ' ', $clean));
     }
 
     public function mapFormatDetailInvoice($detalles, $pedido)
