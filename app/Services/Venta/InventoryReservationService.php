@@ -123,7 +123,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $query->where('gp_cotizacions.PTO_VTA_ID', $ptoVtaId);
         }
         if ($tipoReserva) {
-            $query->where('gp_reservas.co_tipSolResInv', (int) $tipoReserva);
+            $query->where('gp_reservas.tipo_reserva_id', (int) $tipoReserva);
         }
 
 
