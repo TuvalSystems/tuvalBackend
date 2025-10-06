@@ -269,7 +269,7 @@
 
                     <p>Cta. Corriente Bco. Pichincha 3119240004</p>
                     <p>Cta. Ahorros Bco. Guayaquil 15740162</p>
-                    <p>Cta. Ahorros Bco. Pacifico 8682526</p>
+                    <p>Cta. Corriente Bco. Pacifico 8682526</p>
                     <p>Nota: Si los depósitos son realizados en otras cuentas, <br>deben esperar 72 horas para el despacho.</p>
                 </td>
                 <td width="40%">
@@ -280,7 +280,7 @@
                     <p>Cta. Corriente Bco. Pichincha 3119240004</p>
                     <p>Cta. Ahorros Bco. Guayaquil 15740162</p>
                     <p>Cta. Ahorros Bco. Bolivariano 0003839337</p>
-                    <p>Cta. Ahorros Bco. Pacifico 8682526</p>
+                    <p>Cta. Corriente Bco. Pacifico 8682526</p>
                 </td>
                 <td width="20%" style="vertical-align: top; text-align: right">
                     <table border="0" width="100%">
