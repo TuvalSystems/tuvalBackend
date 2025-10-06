@@ -194,7 +194,7 @@ class ReservasController extends Controller
         $gpUser = GpUsuario::find(Auth::user()->id);
         try {
             return DB::transaction(function () use ($data, $gpUser) {
-                $response =  $this->reserveService->processReservedQuotationInvoiceDemand($data['data'], $gpUser);
+                $response =  $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
                 $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
                 return  $this->buildSuccessResponse($msg,  200);
             });

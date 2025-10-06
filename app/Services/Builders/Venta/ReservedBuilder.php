@@ -27,7 +27,8 @@ class ReservedBuilder implements ReservedBuilderInterface
             'tipo_traslado_reserva_id' => $data['tipo_traslado_reserva_id'],
             'fe_solicitud_reserva' => $data['fe_solicitud_reserva'],
             'fe_ingreso_solicitud_reserva' => Carbon::now(),
-            'obs_solicitud_reserva' => $data['obs_solicitud_reserva']
+            'obs_solicitud_reserva' => $data['obs_solicitud_reserva'],
+            'fe_autorizacion_reserva' => $data['fe_solicitud_reserva'],
         ]);
         return $new;
     }

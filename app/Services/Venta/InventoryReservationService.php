@@ -218,7 +218,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $reserva = GpReserva::with(['cotizacion', 'cotizacion.detallecotizacion', 'cotizacion.detallecotizacion.stock' => function ($q) {
             $q->where('seleccionado', '>', 0);
         }, 'cotizacion.detallecotizacion.articulo',  'cotizacion.detallecotizacion.proveedores', 'tipoTraslado', 'tipoReserva', 'usuarioIngreso'])->find($id);
-       
+
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($reserva->cotizacion->CLI_RUC);
         return [
             'reserva' => $reserva,
@@ -664,14 +664,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function processReservedQuotationInvoiceDemand($payload, $user)
     {
-        $this->generateMovementsQuotationToStock($payload['id'], 'demanda');
-        $order = $this->storeReservedHeaderOrder($payload, $user);
-        $this->storeReservedDetailOrder($payload['detallecotizacion'], $order);
-        $rows = $this->formPayloadReservedQuotationLog($payload, $payload['detallecotizacion'], $order, $user->id);
+        // $this->generateMovementsQuotationToStock($payload['id'], 'demanda');
+        $order = $this->storeReservedHeaderOrder($payload['cotizacion'], $user, $payload['fe_autorizacion_reserva']);
+        $this->storeReservedDetailOrder($payload['cotizacion']['detallecotizacion'], $order);
+        $rows = $this->formPayloadReservedQuotationLog($payload['cotizacion'],  $order, $user->id);
 
         $this->insertReservedOrderLogs($rows);
         $this->updateQuotationReservedStatus($payload['id'], $payload, $user);
-        $this->cleanStockQuotationForDeny($payload['id']);
+        $this->cleanStockQuotationForDeny($payload['cotizacion']['id']);
         DB::afterCommit(function () use ($order) {
             $this->invoiceService->checkSendInvoice($order);
         });
@@ -679,7 +679,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function storeReservedHeaderOrder($payload, $user)
+
+    public function storeReservedHeaderOrder($payload, $user, $dateAuthoReserved)
     {
 
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $payload['PTO_VTA_ID'])->first();
@@ -692,7 +693,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
         $fechaEntrega = $payload['despacho'] == 'Despacho en ruta' ? $payload['fecha_entrega'] : null;
         $bodega = $payload['BOD_BODEGA'];
-        $newOrder = $this->orderBuilder->fromPayloadOrder($payload['id'], $payload, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio,  $fechaEntrega, 'reserva', $payload['fe_solResInv'],  $bodega);
+        $newOrder = $this->orderBuilder->fromPayloadOrder($payload['id'], $payload, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio,  $fechaEntrega, 'reserva', $dateAuthoReserved,  $bodega);
         $newOrder->save();
         return $newOrder;
     }
@@ -768,23 +769,23 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function updateQuotationReservedStatus(int $quotationId, $payload, GpUsuario $user)
+    public function updateQuotationReservedStatus(int $reservedId, $payload, GpUsuario $user)
     {
-        return GpCotizacion::whereKey($quotationId)
+        GpCotizacion::whereKey($payload['cotizacion_id'])->update(['estado' => 'procesado']);
+        return GpReserva::whereKey($reservedId)
             ->update([
-                'st_autSolResInv' => 1,
-                'fe_autSolResInv' => $payload['fe_autSolResInv'],
-                'tx_obsAutSolResInv' => $payload['tx_obsAutSolResInv'],
-                'co_usrIngAutSolResInv' => $user->id,
-                'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
-                'estado' => 'procesado', //para de cotización
-                'st_solResInv' => 'procesado', //estado de reserva en cotización
+                'estado_autorizacion_reserva' => 1,
+                'fe_autorizacion_reserva' => $payload['fe_autorizacion_reserva'],
+                'obs_autorizacion_reserva' => $payload['obs_autorizacion_reserva'],
+                'user_autorizacion_reserva_id' => $user->id,
+                'fe_ingreso_autorizacion_reserva' => Carbon::now()->format('Y-m-d H:i:s'),
+                'estado' => 'procesado',
                 'updated_at' => now()
             ]);
     }
 
 
-    public function formPayloadReservedQuotationLog($quotation, $detailQuotation, $order, $userId)
+    public function formPayloadReservedQuotationLog($quotation,  $order, $userId)
     {
         $detalleQuotation = GpCotizacionDetalle::with('stock')->where('cotizacion_id', $quotation['id'])->get();
         return collect($detalleQuotation)->flatMap(function ($detalle) use ($quotation, $order, $userId) {
