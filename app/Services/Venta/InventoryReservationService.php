@@ -685,15 +685,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         // $this->generateMovementsQuotationToStock($payload['id'], 'demanda');
         $order = $this->storeReservedHeaderOrder($payload['cotizacion'], $user, $payload['fe_autorizacion_reserva']);
         $this->storeReservedDetailOrder($payload['cotizacion']['detallecotizacion'], $order);
-        $rows = $this->formPayloadReservedQuotationLog($payload['cotizacion'],  $order, $user->id);
+        $rows = $this->formPayloadReservedQuotationLog($payload['id'],$payload['cotizacion'],  $order, $user->id);
 
         $this->insertReservedOrderLogs($rows);
         $this->updateQuotationReservedStatus($payload['id'], $payload, $user);
         $this->cleanStockQuotationForDeny($payload['cotizacion']['id']);
 
         DB::afterCommit(function () use ($order, $payload) {
-            $this->invoiceService->checkSendInvoice($order);
             NotifyReservationRequesterOrderCreatedJob::dispatch($order->pedido, $payload['user_ingreso_reserva_id']);
+            $this->invoiceService->checkSendInvoice($order);
         });
         return $order;
     }
@@ -805,14 +805,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function formPayloadReservedQuotationLog($quotation,  $order, $userId)
+    public function formPayloadReservedQuotationLog($reservedId,$quotation,  $order, $userId)
     {
         $detalleQuotation = GpCotizacionDetalle::with('stock')->where('cotizacion_id', $quotation['id'])->get();
-        return collect($detalleQuotation)->flatMap(function ($detalle) use ($quotation, $order, $userId) {
+        return collect($detalleQuotation)->flatMap(function ($detalle) use ($reservedId,$quotation, $order, $userId) {
             $tipo = data_get($detalle, 'ART_TIPO_COMPRA');
 
             if (in_array($tipo, ['SERV', 'L'], true)) {
                 return [[
+                    'reserva_id'              => $reservedId,
                     'cotizacion_id'           => data_get($quotation, 'id'),
                     'pedido_id'               => data_get($order, 'id'),
                     'user_id'                 => $userId,
@@ -823,8 +824,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 ]];
             }
 
-            return collect(data_get($detalle, 'stock', []))->map(function ($stock) use ($detalle, $quotation, $order, $userId) {
+            return collect(data_get($detalle, 'stock', []))->map(function ($stock) use ($reservedId ,$detalle, $quotation, $order, $userId) {
                 return [
+                    'reserva_id'              => $reservedId,
                     'cotizacion_id'           => data_get($quotation, 'id'),
                     'pedido_id'               => data_get($order, 'id'),
                     'user_id'                 => $userId,
@@ -841,6 +843,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         foreach ($rows as  $value) {
             DB::table('gp_pedidos_reserva_logs')->insert([
+                'reserva_id'           => $value['reserva_id'],
                 'cotizacion_origen_id' => $value['cotizacion_id'],
                 'pedido_destino_id'    => $value['pedido_id'],
                 'user_id'              => $value['user_id'],
