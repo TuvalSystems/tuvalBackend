@@ -19,24 +19,15 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class TransferenciasController extends Controller
 {
     use JsonResponseTrait;
-    protected $logisticsOperationsService;
-    protected $stockWarehouseService;
+
     protected $transferService;
-    public function __construct(
-        LogisticsOperationsServiceInterface $logisticsOperationsService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        TransferServiceInterface    $transferServiceInterface
-    ) {
-        $this->logisticsOperationsService = $logisticsOperationsService;
-        $this->stockWarehouseService = $stockWarehouseService;
+    public function __construct(TransferServiceInterface $transferServiceInterface)
+    {
         $this->transferService = $transferServiceInterface;
     }
     public function savetransferenciasventas(GpPedido $pedido, $detalles)
@@ -142,7 +133,7 @@ class TransferenciasController extends Controller
             );
 
 
-            $compartimento =  $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+            $compartimento = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
             $traslado->compartimiento = $compartimento['COMPARTIMIENTO'] ?? '';
 
             $funciones = new FuncionesController();
@@ -413,7 +404,7 @@ class TransferenciasController extends Controller
     {
         try {
             $this->transferService->checkOrderTranfer();
-            return $this->buildSuccessResponse('Pedidos de traslados actualizados',  200);
+            return $this->buildSuccessResponse('Pedidos de traslados actualizados', 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
