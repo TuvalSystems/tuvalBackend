@@ -4,6 +4,7 @@ namespace App\Http\Controllers\bodegas;
 
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\Notificaciones;
 use App\Models\GpPedidoDetalle;
@@ -20,18 +21,23 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class TransferenciasController extends Controller
 {
-    protected $invoiceService;
+    use JsonResponseTrait;
     protected $logisticsOperationsService;
     protected $stockWarehouseService;
-    public function __construct(InvoiceServiceInterface $invoiceService, LogisticsOperationsServiceInterface $logisticsOperationsService, StockWarehouseServiceInterface $stockWarehouseService)
-    {
-        $this->invoiceService = $invoiceService;
+    protected $transferService;
+    public function __construct(
+        LogisticsOperationsServiceInterface $logisticsOperationsService,
+        StockWarehouseServiceInterface $stockWarehouseService,
+        TransferServiceInterface    $transferServiceInterface
+    ) {
         $this->logisticsOperationsService = $logisticsOperationsService;
         $this->stockWarehouseService = $stockWarehouseService;
+        $this->transferService = $transferServiceInterface;
     }
     public function savetransferenciasventas(GpPedido $pedido, $detalles)
     {
@@ -72,10 +78,20 @@ class TransferenciasController extends Controller
         }
     }
 
-    public function transferenciasventa($id, $pedido = null, $compartimiento = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+
+    public function transferenciasVentas($id, $pedido = null, $compartimiento = null)
+    {
+        try {
+            $data = $this->transferService->fetchSalesTransfers($id, $pedido, $compartimiento);
+            return $this->successResponse('Transferencias obtenidas', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function transferenciasventa2($id, $pedido = null, $compartimiento = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
-        $webservice = new WebserviceController();
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
@@ -83,7 +99,7 @@ class TransferenciasController extends Controller
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
             ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_ventas.ART_CODIGO')
             ->where('bodega_origen', $bodega)
-            ->where( function ($q){
+            ->where(function ($q) {
                 $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
             })
             // ->whereNull('completado')
@@ -395,11 +411,11 @@ class TransferenciasController extends Controller
 
     public function checkpedidostraslados()
     {
-        $pedidos = GpPedido::where('estado', 'traslado')
-            ->get();
-        foreach ($pedidos as $pedido) {
-            // $pedidosControl->checkenviarfactura($pedido, true);
-            $this->invoiceService->checkSendInvoice($pedido, true);
+        try {
+            $this->transferService->checkOrderTranfer();
+            return $this->buildSuccessResponse('Pedidos de traslados actualizados',  200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
 }

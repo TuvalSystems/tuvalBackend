@@ -172,7 +172,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/bodegas/transportes/savevehiculo', [TransportesController::class, 'savevehiculo']);
     Route::delete('/bodegas/transportes/deletetransportista/{id}', [TransportesController::class, 'deletetransportista']);
     Route::delete('/bodegas/transportes/deletevehiculo/{id}', [TransportesController::class, 'deletevehiculo']);
-    Route::get('/bodegas/transferencias/transferenciasventa/{id}/{pedido?}/{compartimiento?}', [TransferenciasController::class, 'transferenciasventa']);
+    Route::get('/bodegas/transferencias/transferenciasventa/{id}/{pedido?}/{compartimiento?}', [TransferenciasController::class, 'transferenciasVentas']);
     Route::post('/bodegas/transferencias/picking', [TransferenciasController::class, 'picking']);
     Route::post('/bodegas/transferencias/imprimirpicking', [TransferenciasController::class, 'imprimirpicking']);
     Route::post('/bodegas/transferencias/cancelarpicking', [TransferenciasController::class, 'cancelarpicking']);
