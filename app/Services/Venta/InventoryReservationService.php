@@ -4,6 +4,7 @@ namespace App\Services\Venta;
 
 
 use App\Jobs\Venta\Reservas\FanoutReservationRequest;
+use App\Jobs\Venta\Reservas\NotifyReservationRequesterOrderCreatedJob;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
@@ -103,9 +104,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'gp_usuarios.USERID as usuario_solicita',
         ])->from('gp_reservas')
             ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id')
-            ->join('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
             ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
             ->join('gp_tipo_reservas', 'gp_reservas.tipo_reserva_id', '=', 'gp_tipo_reservas.id')
+            ->leftjoin('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
             ->where('gp_reservas.estado', 'pendiente');
 
         if ($search) {
@@ -689,8 +690,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->insertReservedOrderLogs($rows);
         $this->updateQuotationReservedStatus($payload['id'], $payload, $user);
         $this->cleanStockQuotationForDeny($payload['cotizacion']['id']);
-        DB::afterCommit(function () use ($order) {
+
+        DB::afterCommit(function () use ($order, $payload) {
             $this->invoiceService->checkSendInvoice($order);
+            NotifyReservationRequesterOrderCreatedJob::dispatch($order->pedido, $payload['user_ingreso_reserva_id']);
         });
         return $order;
     }
@@ -796,7 +799,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 'obs_autorizacion_reserva' => $payload['obs_autorizacion_reserva'],
                 'user_autorizacion_reserva_id' => $user->id,
                 'fe_ingreso_autorizacion_reserva' => Carbon::now()->format('Y-m-d H:i:s'),
-                'estado' => 'facturado',
+                'estado' => 'procesado',
                 'updated_at' => now()
             ]);
     }
