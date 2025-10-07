@@ -28,4 +28,10 @@ class ApiDeliverNoteService  extends ApiGpService
     {
         return $this->httpClient->makeRequest($this->endpoints["guia.despacho.movimiento.generar"], 'POST', $params, 'json');
     }
+
+
+
+    public function checkAdjustmentGuideDispatch(array $params){
+        return $this->httpClient->makeRequest($this->endpoints["guia.despacho.check.ajuste"], 'GET', $params, 'json');
+    }
 }
