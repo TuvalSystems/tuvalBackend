@@ -15,6 +15,7 @@ class CreateTableGpPedidosReservaLogsTable extends Migration
     {
         Schema::create('gp_pedidos_reserva_logs', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('reserva_id')->nullable();
             $table->unsignedBigInteger('cotizacion_origen_id')->nullable();
             $table->unsignedBigInteger('pedido_destino_id')->nullable();
             $table->unsignedBigInteger('user_id');
@@ -28,7 +29,7 @@ class CreateTableGpPedidosReservaLogsTable extends Migration
             $table->foreign('cotizacion_origen_id')->references('id')->on('gp_cotizacions');
             $table->foreign('pedido_destino_id')->references('id')->on('gp_pedidos');
             $table->foreign('user_id')->references('id')->on('gp_usuarios');
-
+            $table->foreign('reserva_id')->references('id')->on('gp_reservas');
             $table->timestamps();
         });
     }
