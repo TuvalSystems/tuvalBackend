@@ -229,36 +229,37 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function denyApplicationReservedQuotation(array $data, $gpUser)
     {
-        GpCotizacion::find($data['id'])->update([
-            'st_solResInv' => 'rechazada',
-            'st_autSolResInv' => 0,
-            'fe_autSolResInv' => $data['fe_autSolResInv'] ?? Carbon::now()->format('Y-m-d'),
-            'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'] ?? 'Sin observaciones',
-            'co_usrIngAutSolResInv' => $gpUser->id,
-            'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
+        GpReserva::find($data['id'])->update([
+            'estado' => 'rechazada',
+            'estado_autorizacion_reserva' => 0,
+            'fe_autorizacion_reserva' => $data['fe_autorizacion_reserva'] ?? Carbon::now()->format('Y-m-d'),
+            'obs_autorizacion_reserva' => $data['obs_autorizacion_reserva'] ?? 'Sin observaciones',
+            'user_autorizacion_reserva' => $gpUser->id,
+            'fe_ingreso_autorizacion_reserva' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
-        $this->cleanStockQuotationForDeny($data['id']);
+        $reserva = GpReserva::find($data['id']);
+        $this->cleanStockQuotationForDeny($reserva->cotizacion_id);
 
-        DB::afterCommit(function () use ($data, $gpUser) {
-            SendDenyReservationNotification::dispatch($data['id'], $gpUser->id);
+        DB::afterCommit(function () use ($reserva, $gpUser) {
+            SendDenyReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
         });
     }
 
 
     public function approvalApplicationReservedQuotation(array $data, $gpUser)
     {
-        GpCotizacion::find($data['id'])->update([
-            'st_solResInv' => 'aprobado',
-            'st_autSolResInv' => 1,
-            'fe_autSolResInv' => $data['fe_autSolResInv'],
-            'tx_obsAutSolResInv' => $data['tx_obsAutSolResInv'],
-            'co_usrIngAutSolResInv' => $gpUser->id,
-            'fe_ingAutSolResInv' => Carbon::now()->format('Y-m-d H:i:s'),
+        GpReserva::find($data['id'])->update([
+            'estado' => 'aprobado',
+            'estado_autorizacion_reserva' => 1,
+            'fe_autorizacion_reserva' => $data['fe_autorizacion_reserva'],
+            'obs_autorizacion_reserva' => $data['obs_autorizacion_reserva'],
+            'user_autorizacion_reserva' => $gpUser->id,
+            'fe_ingreso_autorizacion_reserva' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
-
-        $this->generateMovementsQuotationToStock($data['id'], 'reserva');
-        DB::afterCommit(function () use ($data, $gpUser) {
-            SendApprovalReservationNotification::dispatch($data['id'], $gpUser->id);
+        $reserva = GpReserva::find($data['id']);
+        // $this->generateMovementsQuotationToStock($data['id'], 'reserva');
+        DB::afterCommit(callback: function () use ($reserva, $gpUser) {
+            SendApprovalReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
         });
     }
 
@@ -365,24 +366,26 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null,  $clienteRuc, $userId)
     {
 
-        $query = GpCotizacion::select([
-            'gp_cotizacions.id',
+        $query = GpReserva::select([
+            'gp_reservas.id',
             'gp_cotizacions.cotizacion',
             'gp_cotizacions.PTO_VTA_DESCRIPCION',
             'gp_cotizacions.CLI_RAZON_SOCIAL',
             'gp_cotizacions.created_at',
             'gp_cotizacions.total',
-            'gp_cotizacions.fe_solResInv',
-            'gp_cotizacions.st_solResInv',
+            'gp_reservas.fe_solicitud_reserva',
+            'gp_reservas.estado',
             'gp_tipo_reservas.id as tipo_reserva_id',
             'gp_tipo_reservas.descripcion as tipo_reserva',
             'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
-            'gp_cotizacions.tx_obsSolResInv',
-            'gp_cotizacions.fe_autSolResInv',
-        ])->from('gp_cotizacions')
-            ->join('gp_tipo_reservas', 'gp_cotizacions.co_tipSolResInv', '=', 'gp_tipo_reservas.id')
-            ->join('gp_reserva_tipo_traslado', 'gp_cotizacions.co_tipTrasResInv', '=', 'gp_reserva_tipo_traslado.id')
-            ->where('gp_cotizacions.co_usrIngSolResInv', $userId);
+            'gp_reservas.obs_solicitud_reserva',
+            'gp_reservas.fe_autorizacion_reserva',
+        ])->from('gp_reservas')
+            ->join('gp_tipo_reservas', 'gp_reservas.tipo_reserva_id', '=', 'gp_tipo_reservas.id')
+            ->join('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
+            ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
+            ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id')
+            ->where('gp_reservas.user_ingreso_reserva_id', $userId);
 
         if ($fecha_desde && $fecha_hasta) {
             $query->where('subquery.created_at', '>=', $fecha_desde)
@@ -402,7 +405,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $query->where('gp_cotizacions.CLI_RUC', $clienteRuc);
         }
         if ($estado) {
-            $query->where('gp_cotizacions.st_solResInv', $estado);
+            $query->where('gp_reservas.estado', $estado);
         }
         if ($ptoVtaId) {
             $query->where('gp_cotizacions.PTO_VTA_ID', $ptoVtaId);
@@ -774,12 +777,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         GpCotizacion::whereKey($payload['cotizacion_id'])->update(['estado' => 'procesado']);
         return GpReserva::whereKey($reservedId)
             ->update([
-                'estado_autorizacion_reserva' => 1,
+                'estado_autorizacion_reserva' => true,
                 'fe_autorizacion_reserva' => $payload['fe_autorizacion_reserva'],
                 'obs_autorizacion_reserva' => $payload['obs_autorizacion_reserva'],
                 'user_autorizacion_reserva_id' => $user->id,
                 'fe_ingreso_autorizacion_reserva' => Carbon::now()->format('Y-m-d H:i:s'),
-                'estado' => 'procesado',
+                'estado' => 'facturado',
                 'updated_at' => now()
             ]);
     }

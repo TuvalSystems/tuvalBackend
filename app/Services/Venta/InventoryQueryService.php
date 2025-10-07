@@ -126,7 +126,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         ]);
         $data = data_get($response, 'data', []);
         return is_array($data) ? $data : (array) $data;
-
     }
 
     public function getConsultClientSegment($ruc)
@@ -210,7 +209,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             'bodega' => $bodegaDestino,
             'pendiente' => max(0, $items)
         ];
-
     }
 
 
@@ -231,7 +229,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->orderBy('bodega')
             ->orderBy('codigo')
             ->get();
-
     }
 
 
@@ -279,55 +276,88 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->where('p.aprobado_crediticio', 'yes');
         $unionOrders = $pA->unionAll($pB)->unionAll($pC)->unionAll($pD);
 
-     $traslados = DB::table('gp_traslados_reposicions as t')
-        ->join('gp_articulos as a', 'a.ART_CODIGO', '=', 't.ART_CODIGO')
-        ->whereNull('t.completado')
-        ->selectRaw(
-            "
+        $traslados = DB::table('gp_traslados_reposicions as t')
+            ->join('gp_articulos as a', 'a.ART_CODIGO', '=', 't.ART_CODIGO')
+            ->whereNull('t.completado')
+            ->selectRaw(
+                "
             t.ART_CODIGO as codigo,
             t.bodega_destino AS bodega,
             t.cantidad AS reservado,
             'traslado' as tipo"
-        );
+            );
 
-         // ----- UNION final y ordenamiento -----
+        // ----- UNION final y ordenamiento -----
 
-          $unionAll = DB::query()->fromSub($unionOrders, 'ped')
-          ->unionAll($traslados);
-         $response = DB::query()->fromSub($unionAll, 'u')
-         -> where('u.reservado', '>', 0)
-         ->orderBy('u.codigo')
-         ->orderBy('u.bodega')
-         ->get()
-         ->map(function ($item) {
-             $item->reservado = (float)$item->reservado;
-             return $item;
-         });
-        $response2 = $this->listReservedInventoryByQuotation();
-        return $response->merge($response2);
-
+        $unionAll = DB::query()->fromSub($unionOrders, 'ped')
+            ->unionAll($traslados);
+        $response = DB::query()->fromSub($unionAll, 'u')
+            ->where('u.reservado', '>', 0)
+            ->orderBy('u.codigo')
+            ->orderBy('u.bodega')
+            ->get()
+            ->map(function ($item) {
+                $item->reservado = (float)$item->reservado;
+                return $item;
+            });
+        $response2 = $this->listReservedInventoryByPendingUse();
+        $response3 = $this->listReservedInventoryByQuotation();
+        return $response->merge([$response2, $response3]);
     }
 
-    public function listReservedInventoryByQuotation(){
+    public function listReservedInventoryByPendingUse()
+    {
         $baseQuotation  = DB::table('gp_cotizacion_detalle_stocks as st')
-        ->join('gp_cotizacion_detalles as d', 'd.id', 'st.detalle_id')
-        ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
-        ->where('st.seleccionado', '>', 0)
-        ->whereIn('p.st_solResInv', ['aprobado'])
-        ->selectRaw("
+            ->join('gp_cotizacion_detalles as d', 'd.id', 'st.detalle_id')
+            ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
+            ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
+            ->where('st.seleccionado', '>', 0)
+            ->whereIn('r.estado', ['aprobado'])
+            ->selectRaw(
+                "
             d.ART_CODIGO as codigo,
             st.STO_ART_BODEGA AS bodega,
             st.seleccionado AS reservado,
-            'cotizacion' as tipo"
-        );
+            p.cotizacion as cotizacion,
+            'reserva' as tipo",
+
+            );
         return DB::query()->fromSub($baseQuotation, 'u')
-        -> where('u.reservado', '>', 0)
-        ->orderBy('u.codigo')
-        ->orderBy('u.bodega')
-        ->get()
-        ->map(function ($item) {
-            $item->reservado = (float)$item->reservado;
-            return $item;
-        });
+            ->where('u.reservado', '>', 0)
+            ->orderBy('u.codigo')
+            ->orderBy('u.bodega')
+            ->get()
+            ->map(function ($item) {
+                $item->reservado = (float)$item->reservado;
+                return $item;
+            });
+    }
+
+    public function listReservedInventoryByQuotation()
+    {
+        $baseQuotation  = DB::table('gp_cotizacion_detalle_stocks as st')
+            ->join('gp_cotizacion_detalles as d', 'd.id', 'st.detalle_id')
+            ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
+            ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
+            ->where('st.cantidad_cotizada', '>', 0)
+            ->whereIn('r.estado', ['aprobado'])
+            ->selectRaw(
+                "
+            d.ART_CODIGO as codigo,
+            st.STO_ART_BODEGA AS bodega,
+            st.cantidad_cotizada AS reservado,
+            p.cotizacion as cotizacion,
+            'cotizacion' as tipo",
+
+            );
+        return DB::query()->fromSub($baseQuotation, 'u')
+            ->where('u.reservado', '>', 0)
+            ->orderBy('u.codigo')
+            ->orderBy('u.bodega')
+            ->get()
+            ->map(function ($item) {
+                $item->reservado = (float)$item->reservado;
+                return $item;
+            });
     }
 }

@@ -16,7 +16,7 @@ class SendApprovalReservationNotification implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-   public function __construct(public int $cotizacionId, public int $autorizadoId)
+    public function __construct(public int $cotizacionId, public int $autorizadoId)
     {
         $this->onQueue('notifications');   // cola por defecto de este Job
         $this->afterCommit = true;
@@ -25,16 +25,17 @@ class SendApprovalReservationNotification implements ShouldQueue
 
     public function handle()
     {
-        $cotizacion = GpCotizacion::select('id', 'cotizacion','co_usrIngSolResInv')->whereKey($this->cotizacionId)
+        $cotizacion = GpCotizacion::with(['reserva' =>  function ($q) {
+            $q->select('id', 'cotizacion_id', 'fe_solicitud_reserva', 'tipo_reserva_id', 'tipo_traslado_reserva_id', 'user_ingreso_reserva_id');
+        }])->select('id', 'cotizacion')->whereKey($this->cotizacionId)
             ->first();
         if (!$cotizacion) {
             return;
         }
-        $user = GpUsuario::find($cotizacion->co_usrIngSolResInv);
+        $user = GpUsuario::find($cotizacion->reserva->user_ingreso_reserva_id);
         $userAutorizado = GpUsuario::find($this->autorizadoId);
         $user->notify(new ApprovalReservationNotification('Reserva Aprobada', $cotizacion->cotizacion, $userAutorizado));
 
         event(new ReservedListAuthorizedChanged('refresh', $cotizacion->id, $user->USERID));
-
     }
 }

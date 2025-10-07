@@ -172,27 +172,28 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         //sumar reservados de cotizaciones
         // 2) Traslados de reposición pendientes (agrupado por bodega_origen)
         $reservasTraslados = $this->getReservedStockByWarehousesForTransfer($articulo, $bodegas);
-        // 4) Reserva de Cotizaciones aprobadas
-        $reservaCotizaciones = $this->getReservedStockByWarehousesForQuotation($articulo, $bodegas, $excludeQuotationId);
 
+        // 4) Reservas pendientes de uso para cotizar
+        $reservasPendientes = $this->getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId);
+        // 5) Reservas ya cotizadas pero si uso
+        $reservasCotizadas = $this->getReservedStockByWarehousesToQuotation($articulo, $bodegas, $excludeQuotationId);
         $out = [];
         foreach ($bodegas as $b) {
-            $out[$b] =  (float) ($reservaCotizaciones[$b] ?? 0) +
+            $out[$b] =  (float) ($reservasPendientes[$b] ?? 0) +(float) ($reservasCotizadas[$b] ?? 0) +
                 (float)($reservasPedidos[$b] ?? 0) +
                 (float)($reservasTraslados[$b] ?? 0);
         }
-
-
         return $out;
     }
 
-    public function getReservedStockByWarehousesForQuotation($articulo, $bodegas, $excludeQuotationId = null)
+    public function getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId = null)
     {
         if (empty($bodegas)) return [];
         return  DB::table('gp_cotizacion_detalle_stocks as st')
             ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
-            ->whereIn('c.st_solResInv', ['aprobado'])
+            ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'c.id')
+            ->whereIn('r.estado', ['aprobado'])
             ->where('d.ART_CODIGO', $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
             ->where('st.seleccionado', '>', 0)
@@ -201,6 +202,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
+                'c.cotizacion as cotizacion',
                 DB::raw('SUM(st.seleccionado) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
@@ -208,6 +210,31 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->map(fn($v) => (float) ($v ?? 0))
             ->all();
     }
+
+    public function getReservedStockByWarehousesToQuotation($articulo, $bodegas, $excludeQuotationId = null){
+        if (empty($bodegas)) return [];
+        return  DB::table('gp_cotizacion_detalle_stocks as st')
+            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
+            ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
+            ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'c.id')
+            ->whereIn('r.estado', ['aprobado'])
+            ->where('d.ART_CODIGO', $articulo)
+            ->whereIn('st.STO_ART_BODEGA', $bodegas)
+            ->where('st.cantidad_cotizada', '>', 0)
+            ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
+                $query->where('c.id', '!=', $excludeQuotationId);
+            })
+            ->select(
+                'st.STO_ART_BODEGA as bodega',
+                'c.cotizacion as cotizacion',
+                DB::raw('SUM(st.cantidad_cotizada) as total')
+            )
+            ->groupBy('st.STO_ART_BODEGA')
+            ->pluck('total', 'bodega')
+            ->map(fn($v) => (float) ($v ?? 0))
+            ->all();
+    }
+
     public function getReservedStockByWarehousesForTransfer($articulo, $bodegas)
     {
         return GpTrasladosReposicion::query()
