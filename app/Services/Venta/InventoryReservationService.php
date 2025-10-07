@@ -173,7 +173,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         }, 'detallecotizacion.stock' => function ($q) {
             $q->select(['id', 'detalle_id', 'cotizacion_id', 'STO_ART_BODEGA', 'seleccionado'])
                 ->where('seleccionado', '>', 0);
-        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO'])->find($reserva->id);
+        }, 'detallecotizacion.articulo:id,ART_CODIGO_ZAFIRO'])->find($reserva->cotizacion_id);
         $rows = $cotizacion->detallecotizacion->flatMap(function ($detalle) use ($cotizacion) {
             if (in_array($detalle->ART_TIPO_COMPRA, ['SERV', 'L'])) {
                 return [[
@@ -388,8 +388,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('gp_reservas.user_ingreso_reserva_id', $userId);
 
         if ($fecha_desde && $fecha_hasta) {
-            $query->where('subquery.created_at', '>=', $fecha_desde)
-                ->where('subquery.created_at', '<=', $fecha_hasta);
+            $query->where('gp_cotizacions.created_at', '>=', $fecha_desde)
+                ->where('gp_cotizacions.created_at', '<=', $fecha_hasta);
         }
 
         if ($search) {
@@ -462,12 +462,26 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 if ($decrease <= 0) {
                     continue;
                 }
-                $affected = DB::table($row->getTable())->where('id', $row->id)->decrement('seleccionado', $decrease);
-                if ($affected === 0) {
+                $currentSelected = (float) $row->seleccionado;
+                if ($currentSelected < $decrease) {
                     throw ValidationException::withMessages([
-                        "stock:{$itm['stock_id']}" => "Cantidad solicitada ({$decrease}) excede lo seleccionado ({$row->seleccionado})."
+                        "stock:{$itm['stock_id']}" => "Cantidad solicitada ({$decrease}) excede lo seleccionado ({$currentSelected})."
                     ]);
                 }
+
+                $affected = DB::table($row->getTable())
+                    ->where('id', $row->id)
+                    ->where('seleccionado', '>=', $decrease)
+                    ->decrement('seleccionado', $decrease);
+
+                if ($affected === 0) {
+                    $freshSelected = (float) DB::table($row->getTable())->where('id', $row->id)->value('seleccionado');
+                    throw ValidationException::withMessages([
+                        "stock:{$itm['stock_id']}" => "Cantidad solicitada ({$decrease}) excede lo seleccionado ({$freshSelected})."
+                    ]);
+                }
+
+                $row->seleccionado = $currentSelected - $decrease;
                 if ($itm['to_cancel'] > 0) {
                     $this->toCancelStockQuotationReserved($row, $itm, $user);
                     $totalLiberado += $itm['to_cancel'];
