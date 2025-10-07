@@ -30,7 +30,7 @@ class CreateGpReservasTable extends Migration
             $table->dateTime('fe_ingreso_autorizacion_reserva')->nullable();
             $table->string('obs_autorizacion_reserva', 400)->nullable();
             $table->boolean('estado_autorizacion_reserva')->default(false);
-            $table->enum('estado', ['pendiente', 'aprobado', 'rechazada', 'cancelado', 'facturado', 'traslado'])
+            $table->enum('estado', ['pendiente', 'aprobado', 'rechazada', 'cancelado','traslado', 'procesado'])
                 ->nullable()
                 ->default(null)
                 ->index();
