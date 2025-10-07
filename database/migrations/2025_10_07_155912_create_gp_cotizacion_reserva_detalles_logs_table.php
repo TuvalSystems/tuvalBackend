@@ -35,7 +35,7 @@ class CreateGpCotizacionReservaDetallesLogsTable extends Migration
     public function down()
     {
         Schema::table('gp_cotizacion_reserva_detalles_logs', function (Blueprint $table) {
-            $table->dropColumn(['cotizacion_reserva_id', 'stock_id', 'ART_CODIGO', 'STO_ART_BODEGA', 'STO_ART_CANTIDAD']);
+            $table->dropColumn(['ct_reserva_id', 'stock_id', 'ART_CODIGO', 'STO_ART_BODEGA', 'STO_ART_CANTIDAD']);
         });
     }
 }

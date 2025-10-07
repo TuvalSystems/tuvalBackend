@@ -565,7 +565,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $cotizacion = $this->createHeaderQuotationReserve($payload, $user);
         $this->createDetailAndStockQuotationReserve($cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails);
         //al final por si acaso xd
-        $this->storeQuotationReservedLogs($cotizacion->id, $payload['id'], $payload['BOD_BODEGA'], $linesToQuote, $user);
+        $this->storeQuotationReservedLogs($payload['id'], $payload['cotizacion']['id'], $cotizacion->id,  $payload['BOD_BODEGA'], $linesToQuote, $user);
         return $cotizacion;
     }
 
@@ -608,17 +608,24 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function storeQuotationReservedLogs($quotationIdNew, $quotationIdOld, $bodega, $linesToQuote, $user)
+    public function storeQuotationReservedLogs($reservedId, $quotationIdOld, $quotationIdNew, $bodega, $linesToQuote, $user)
     {
+        DB::table('gp_cotizacion_reserva_logs')->insert([
+            'reserva_id' => $reservedId,
+            'cotizacion_origen_id' => $quotationIdOld,
+            'cotizacion_destino_id' => $quotationIdNew,
+            'user_id' => $user->id,
+        ]);
+
         foreach ($linesToQuote as  $value) {
             DB::table('gp_cotizacion_reserva_logs')->insert([
                 'cotizacion_origen_id' => $quotationIdOld,
                 'cotizacion_destino_id' => $quotationIdNew,
                 'user_id' => $user->id,
                 'STO_BODEGA' => $bodega,
-                'ART_CODIGO' => $value['ART_CODIGO'],
-                'STO_ART_BODEGA' => $value['STO_ART_BODEGA'],
-                'STO_ART_CANTIDAD' => $value['cantidad'],
+                // 'ART_CODIGO' => $value['ART_CODIGO'],
+                // 'STO_ART_BODEGA' => $value['STO_ART_BODEGA'],
+                // 'STO_ART_CANTIDAD' => $value['cantidad'],
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
