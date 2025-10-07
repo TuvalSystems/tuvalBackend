@@ -252,11 +252,22 @@ class PedidosController extends Controller
 
     public function facturarexistente(Request $request)
     {
-        $facturarExistente = $request->all();
-        $data = $facturarExistente['pedido'];
-        $detalle = $facturarExistente['detalle'];
-        $user = Auth::user();
-        return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
+        try {
+            $facturarExistente = $request->all();
+            $data = $facturarExistente['pedido'];
+            $detalle = $facturarExistente['detalle'];
+            $user = Auth::user();
+            $pedido = DB::transaction(function () use ($data, $detalle, $user) {
+                return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
+            });
+            return $this->buildSuccessResponse('Pedido Generado Correctamente' . ' ' . $pedido->pedido . ' ' . ' en Facturar Existente', 200);
+        } catch (\Throwable $e) {
+            Log::error('Error in facturarexistente', [
+                'error' => $e->getMessage(),
+                'data' => $data['id'],
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
 
