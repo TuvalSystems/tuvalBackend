@@ -80,132 +80,132 @@ class TransferenciasController extends Controller
         }
     }
 
-    public function transferenciasventa2($id, $pedido = null, $compartimiento = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
+    // public function transferenciasventa2($id, $pedido = null, $compartimiento = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // {
 
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->first();
-        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
+    //     $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->first();
+    //     $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 
-        $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
-            ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
-            ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_ventas.ART_CODIGO')
-            ->where('bodega_origen', $bodega)
-            ->where(function ($q) {
-                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
-            })
-            // ->whereNull('completado')
-            // ->where('completado', 0)
-            // ->where('gp_pedidos.estado', '!=', 'eliminado');
-            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'anulada']);
-        if ($pedido && $pedido != 'null') {
-            $trasladosventas = $trasladosventas->where('gp_pedidos.pedido', $pedido);
-        }
-        $trasladosventas = $trasladosventas->select(
-            'gp_traslados_ventas.*',
-            'gp_pedidos.pedido',
-            'gp_bodegas.BOD_DESCRIPCION',
-            'gp_bodegas.BOD_BODEGA',
-            'gp_pedidos.created_at AS fecha',
-            'gp_pedidos.USERID AS usuario',
-            'gp_articulos.ART_DECIMAL_CANTIDAD'
-        )
-            ->get();
+    //     $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
+    //         ->join('gp_bodegas', 'gp_traslados_ventas.bodega_destino', 'gp_bodegas.BOD_BODEGA')
+    //         ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_ventas.ART_CODIGO')
+    //         ->where('bodega_origen', $bodega)
+    //         ->where(function ($q) {
+    //             $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
+    //         })
+    //         // ->whereNull('completado')
+    //         // ->where('completado', 0)
+    //         // ->where('gp_pedidos.estado', '!=', 'eliminado');
+    //         ->whereNotIn('gp_pedidos.estado', ['eliminado', 'anulada']);
+    //     if ($pedido && $pedido != 'null') {
+    //         $trasladosventas = $trasladosventas->where('gp_pedidos.pedido', $pedido);
+    //     }
+    //     $trasladosventas = $trasladosventas->select(
+    //         'gp_traslados_ventas.*',
+    //         'gp_pedidos.pedido',
+    //         'gp_bodegas.BOD_DESCRIPCION',
+    //         'gp_bodegas.BOD_BODEGA',
+    //         'gp_pedidos.created_at AS fecha',
+    //         'gp_pedidos.USERID AS usuario',
+    //         'gp_articulos.ART_DECIMAL_CANTIDAD'
+    //     )
+    //         ->get();
 
-        $bodegas = array();
+    //     $bodegas = array();
 
-        foreach ($trasladosventas as $traslado) {
-
-
-
-            if (!$traslado->reservado)
-                $traslado->reservado = 0;
-
-            if (!$traslado->trasladado)
-                $traslado->trasladado = 0;
-            $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado, 2, '.', '');
-
-            $traslado->fecha = substr($traslado->fecha, 0, -3);
-
-            $params = array(
-                'articulo' => $traslado->ART_CODIGO,
-                'bodega' => $bodega,
-                'compartimento' => '',
-            );
+    //     foreach ($trasladosventas as $traslado) {
 
 
-            $compartimento = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
-            $traslado->compartimiento = $compartimento['COMPARTIMIENTO'] ?? '';
 
-            $funciones = new FuncionesController();
+    //         if (!$traslado->reservado)
+    //             $traslado->reservado = 0;
 
-            if ($compartimiento && $compartimiento != 'null') {
-                if (!$funciones->like_match($compartimiento . '%', $traslado->compartimiento)) {
-                    continue;
-                }
-            }
+    //         if (!$traslado->trasladado)
+    //             $traslado->trasladado = 0;
+    //         $traslado->pendiente = number_format($traslado->cantidad - $traslado->reservado - $traslado->trasladado, 2, '.', '');
 
-            $letra_compartimiento = explode('-', $traslado->compartimiento);
-            $letra_compartimiento = $letra_compartimiento[0];
-            $bodegas[$traslado->bodega_destino]['bodega'] = $traslado->BOD_DESCRIPCION;
-            $bodegas[$traslado->bodega_destino]['BOD_BODEGA'] = $traslado->BOD_BODEGA;
-            $bodegas[$traslado->bodega_destino]['generar'] = false;
-            $bodegas[$traslado->bodega_destino]['traslados'][] = $traslado;
-            $bodegas[$traslado->bodega_destino]['pedidos'][$traslado->pedido] = $traslado->pedido;
-            $bodegas[$traslado->bodega_destino]['compartimientos'][$letra_compartimiento] = $letra_compartimiento;
-            $bodegas[$traslado->bodega_destino]['tipo'] = 'transferencia';
-        }
+    //         $traslado->fecha = substr($traslado->fecha, 0, -3);
 
-        foreach ($bodegas as $key => &$bod) {
-            $guias = GpGuiaRemision::join('gp_bodegas', 'gp_guia_remisions.bodega_destino', 'gp_bodegas.BOD_BODEGA')
-                ->where('bodega_origen', $bodega)
-                ->where('bodega_destino', $key)
-                ->where('estado', 'pendiente')
-                ->where('tipo', 'transferencia')
-                ->select('gp_guia_remisions.*', 'gp_bodegas.BOD_DESCRIPCION', 'gp_bodegas.BOD_BODEGA')
-                ->orderBy('created_at')
-                ->get()->toArray();
-            $bod['guias'] = $guias;
+    //         $params = array(
+    //             'articulo' => $traslado->ART_CODIGO,
+    //             'bodega' => $bodega,
+    //             'compartimento' => '',
+    //         );
 
-            $guias = GpGuiaRemision::join('gp_bodegas', 'gp_guia_remisions.bodega_destino', 'gp_bodegas.BOD_BODEGA')
-                ->where('bodega_origen', $bodega)
-                ->where('bodega_destino', $key)
-                ->where('estado', 'pendiente')
-                ->where('tipo', 'transferencia')
-                ->select('gp_guia_remisions.*', 'gp_bodegas.BOD_DESCRIPCION', 'gp_bodegas.BOD_BODEGA')
-                ->orderBy('created_at', 'DESC')
-                ->first();
-            $bod['ultimaguia'] = $guias;
 
-            $bod['pedidos'] = array_values($bod['pedidos']);
-            $bod['compartimientos'] = array_values($bod['compartimientos']);
-            $peso_total = 0;
-            foreach ($bod['traslados'] as $traslado) {
-                $peso_total += $traslado->ART_PESO * $traslado->pendiente;
-            }
-            $bod['peso_total'] = $peso_total;
-        }
+    //         $compartimento = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+    //         $traslado->compartimiento = $compartimento['COMPARTIMIENTO'] ?? '';
 
-        $bodegas = array_values($bodegas);
+    //         $funciones = new FuncionesController();
 
-        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
-        if (!isset($bodegas[0])) {
-            return response([
-                'error' => 'No existen resultados'
-            ], 401);
-        }
+    //         if ($compartimiento && $compartimiento != 'null') {
+    //             if (!$funciones->like_match($compartimiento . '%', $traslado->compartimiento)) {
+    //                 continue;
+    //             }
+    //         }
 
-        if ($pedido) {
-            return response([
-                'success' => true,
-                'traslados' => $bodegas[0]['traslados'],
-            ]);
-        }
+    //         $letra_compartimiento = explode('-', $traslado->compartimiento);
+    //         $letra_compartimiento = $letra_compartimiento[0];
+    //         $bodegas[$traslado->bodega_destino]['bodega'] = $traslado->BOD_DESCRIPCION;
+    //         $bodegas[$traslado->bodega_destino]['BOD_BODEGA'] = $traslado->BOD_BODEGA;
+    //         $bodegas[$traslado->bodega_destino]['generar'] = false;
+    //         $bodegas[$traslado->bodega_destino]['traslados'][] = $traslado;
+    //         $bodegas[$traslado->bodega_destino]['pedidos'][$traslado->pedido] = $traslado->pedido;
+    //         $bodegas[$traslado->bodega_destino]['compartimientos'][$letra_compartimiento] = $letra_compartimiento;
+    //         $bodegas[$traslado->bodega_destino]['tipo'] = 'transferencia';
+    //     }
 
-        return response([
-            'success' => true,
-            'bodegas' => $bodegas,
-        ]);
-    }
+    //     foreach ($bodegas as $key => &$bod) {
+    //         $guias = GpGuiaRemision::join('gp_bodegas', 'gp_guia_remisions.bodega_destino', 'gp_bodegas.BOD_BODEGA')
+    //             ->where('bodega_origen', $bodega)
+    //             ->where('bodega_destino', $key)
+    //             ->where('estado', 'pendiente')
+    //             ->where('tipo', 'transferencia')
+    //             ->select('gp_guia_remisions.*', 'gp_bodegas.BOD_DESCRIPCION', 'gp_bodegas.BOD_BODEGA')
+    //             ->orderBy('created_at')
+    //             ->get()->toArray();
+    //         $bod['guias'] = $guias;
+
+    //         $guias = GpGuiaRemision::join('gp_bodegas', 'gp_guia_remisions.bodega_destino', 'gp_bodegas.BOD_BODEGA')
+    //             ->where('bodega_origen', $bodega)
+    //             ->where('bodega_destino', $key)
+    //             ->where('estado', 'pendiente')
+    //             ->where('tipo', 'transferencia')
+    //             ->select('gp_guia_remisions.*', 'gp_bodegas.BOD_DESCRIPCION', 'gp_bodegas.BOD_BODEGA')
+    //             ->orderBy('created_at', 'DESC')
+    //             ->first();
+    //         $bod['ultimaguia'] = $guias;
+
+    //         $bod['pedidos'] = array_values($bod['pedidos']);
+    //         $bod['compartimientos'] = array_values($bod['compartimientos']);
+    //         $peso_total = 0;
+    //         foreach ($bod['traslados'] as $traslado) {
+    //             $peso_total += $traslado->ART_PESO * $traslado->pendiente;
+    //         }
+    //         $bod['peso_total'] = $peso_total;
+    //     }
+
+    //     $bodegas = array_values($bodegas);
+
+    //     $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
+    //     if (!isset($bodegas[0])) {
+    //         return response([
+    //             'error' => 'No existen resultados'
+    //         ], 401);
+    //     }
+
+    //     if ($pedido) {
+    //         return response([
+    //             'success' => true,
+    //             'traslados' => $bodegas[0]['traslados'],
+    //         ]);
+    //     }
+
+    //     return response([
+    //         'success' => true,
+    //         'bodegas' => $bodegas,
+    //     ]);
+    // }
 
     public function recibosventa($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
