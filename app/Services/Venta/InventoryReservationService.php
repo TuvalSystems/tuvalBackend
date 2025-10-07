@@ -848,9 +848,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 'pedido_destino_id'    => $value['pedido_id'],
                 'user_id'              => $value['user_id'],
                 'STO_BODEGA'           => $value['STO_BODEGA'],
-                'ART_CODIGO'           => $value['ART_CODIGO'],
-                'STO_ART_BODEGA'       => $value['STO_ART_BODEGA'],
-                'STO_ART_CANTIDAD'     => $value['STO_ART_CANTIDAD'],
+                // 'ART_CODIGO'           => $value['ART_CODIGO'],
+                // 'STO_ART_BODEGA'       => $value['STO_ART_BODEGA'],
+                // 'STO_ART_CANTIDAD'     => $value['STO_ART_CANTIDAD'],
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

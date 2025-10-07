@@ -16,7 +16,7 @@ class CreateGpTipoReservasTable extends Migration
         Schema::create('gp_tipo_reservas', function (Blueprint $table) {
             $table->id();
             $table->string('descripcion', 100);
-            $table->unsignedTinyInteger('dias_max_reserva')->nullable()->comment('Cantidad máxima de días para la reserva');
+            // $table->unsignedTinyInteger('dias_max_reserva')->nullable()->comment('Cantidad máxima de días para la reserva');
             $table->boolean('estado')->default(1);
             $table->timestamps();
         });
