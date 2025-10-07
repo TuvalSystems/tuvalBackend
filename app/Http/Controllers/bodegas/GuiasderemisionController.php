@@ -601,15 +601,15 @@ class GuiasderemisionController extends Controller
 
         try {
             return DB::transaction(function () use ($user, $id) {
-                 $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
+                $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
 
-            // Re-chequea después del lock (otro proceso pudo enviarla)
-            if ($guia->estado === 'enviada') {
-                return response([
-                    'success' => true,
-                    'message' => 'Guía de remisión despachada por otro usuario',
-                ]);
-            }
+                // Re-chequea después del lock (otro proceso pudo enviarla)
+                if ($guia->estado === 'enviada') {
+                    return response([
+                        'success' => true,
+                        'message' => 'Guía de remisión despachada por otro usuario',
+                    ]);
+                }
                 $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)->get();
                 $response = null;
 
@@ -1236,6 +1236,18 @@ class GuiasderemisionController extends Controller
                 'linea' => $e->getLine()
             ]);
             return $this->buildErrorResponse('Error al consultar detalle de guia', 500);
+        }
+    }
+
+
+    public function verificarYAsignarAjusteGuiaDespacho($id)
+    {
+        try {
+            $guia = $this->deliveryNoteService->reassignDispatchGuideAdjustment($id);
+            $msg = "Ajuste Reasignado para la guia {$guia->id} del pedido {$guia->pedido}";
+            return $this->buildSuccessResponse($msg, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
 }

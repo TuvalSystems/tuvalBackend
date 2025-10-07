@@ -90,6 +90,8 @@ return [
 
             //reservas
             'obtener_notificaciones_local'              => 'api/reservas/obtener-notificaciones-local',
+            //guias de remision correcciones procesos
+            'guia.despacho.check.ajuste'                => 'api/inventario/validar-existencia-guia-despacho'
         ],
     ],
     'api_sales' => [

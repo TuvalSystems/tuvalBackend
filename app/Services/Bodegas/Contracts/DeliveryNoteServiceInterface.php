@@ -17,4 +17,8 @@ interface DeliveryNoteServiceInterface
     public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user);
     // reposicion
     public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user);
+
+
+
+    public function reassignDispatchGuideAdjustment($id);
 }
