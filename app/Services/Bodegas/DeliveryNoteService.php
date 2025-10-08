@@ -126,7 +126,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $traslados = GpTrasladosVentas::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
             ->whereIn('gp_traslados_ventas.id', $itemsIds)
-            // ->whereNull('gp_traslados_ventas.completado')
             ->where(function ($q) {
                 $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
             })
