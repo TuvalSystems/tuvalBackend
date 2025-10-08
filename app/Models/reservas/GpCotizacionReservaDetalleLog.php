@@ -11,10 +11,10 @@ class GpCotizacionReservaDetalleLog extends Model
 
     protected $table = 'gp_cotizacion_detalle_stocks_logs';
     protected $fillable = [
-        'creserva_id',
+        'ct_reserva_id',
         'stock_id',
-        'user_id',
-        'tipo',
+        'art_code',
+        'bodega',
         'cantidad',
     ];
 }

@@ -48,11 +48,11 @@ class FanoutReservationRequest implements ShouldQueue
         $actor      = GpUsuario::find($this->actorId);
         if (!$cotizacion || !$actor) return;
 
+        event(new ReservationApprovalsChanged('solicitud', $cotizacion->id, $actor->USERID));
         $this->sendNotifyUsersApproval($cotizacion, $actor);
         $this->sendNotifyUsersWarehouse($cotizacion, $actor);
         $this->sendEmailsByReservationType($cotizacion, $actor, $apiGpService);
         // Broadcast global para refrescar grillas de aprobaciones
-        event(new ReservationApprovalsChanged('solicitud', $cotizacion->id, $actor->USERID));
     }
 
 

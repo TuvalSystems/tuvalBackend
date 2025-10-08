@@ -3,6 +3,10 @@
 namespace App\Services\Builders\Venta;
 
 use App\Models\GpUsuario;
+use App\Models\reservas\GpCotizacionReservaDetalleLog;
+use App\Models\reservas\GpCotizacionReservaLog;
+use App\Models\reservas\GpPedidoReservaDetalleLog;
+use App\Models\reservas\GpPedidoReservaLog;
 use App\Models\reservas\GpReserva;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use Carbon\Carbon;
@@ -32,4 +36,59 @@ class ReservedBuilder implements ReservedBuilderInterface
         ]);
         return $new;
     }
+
+
+
+    public function fromPayloadQuoteReservedLog($reserveId, $oldQuoteId, $newQuoteId, $userId ,$warehouse){
+        $new = new GpCotizacionReservaLog();
+
+        $new->fill([
+            'cotizacion_id' => $reserveId,
+            'cotizacion_id_anterior' => $oldQuoteId,
+            'cotizacion_id_nueva' => $newQuoteId,
+            'user_id' => $userId,
+            'bodega' => $warehouse,
+        ]);
+        return $new;
+    }
+
+
+    public function fromPayloadQuoteReservedDetailLog($ctRsLogId, $stockId, $artCode, $warehouse, $qty){
+        $new  = new GpCotizacionReservaDetalleLog();
+
+        $new->fill([
+            'ct_reserva_id' => $ctRsLogId,
+            'stock_id' => $stockId,
+            'art_code' => $artCode,
+            'bodega' => $warehouse,
+            'cantidad' => $qty
+        ]);
+        return $new;
+    }
+
+
+    public function fromPayloadOrderReservedLog($reserveId, $oldQuoteId, $newQuoteId, $userId ,$warehouse){
+        $new = new GpPedidoReservaLog();
+        $new->fill([
+            'reserva_id' => $reserveId,
+            'cotizacion_origen_id' => $oldQuoteId,
+            'pedido_destino_id' => $newQuoteId,
+            'user_id' => $userId,
+            'bodega' => $warehouse,
+        ]);
+        return $new;
+    }
+
+    public function formPayloadOrderReservedDetailLog($ctRsLogId, $stockId, $artCode, $warehouse, $qty){
+        $new  = new GpPedidoReservaDetalleLog();
+        $new->fill([
+            'pedido_reserva_id' => $ctRsLogId,
+            'stock_id' => $stockId,
+            'art_code' => $artCode,
+            'bodega' => $warehouse,
+            'cantidad' => $qty
+        ]);
+        return $new;
+    }
+
 }

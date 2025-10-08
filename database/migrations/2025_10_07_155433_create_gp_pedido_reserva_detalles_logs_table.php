@@ -17,12 +17,10 @@ class CreateGpPedidoReservaDetallesLogsTable extends Migration
             $table->id();
             $table->unsignedBigInteger('pedido_reserva_id');
             $table->unsignedBigInteger('stock_id')->nullable();
-            $table->string('ART_CODIGO', 40);
-            $table->string('STO_ART_BODEGA', 40);
-            $table->decimal('STO_ART_CANTIDAD', 18, 2);
-            // $table->string('tipo', 40);
-            // $table->decimal('cantidad', 18, 2);
-            $table->foreign('pedido_reserva_id')->references('id')->on('gp_pedidos_reserva_logs');
+            $table->string('art_code', 40);
+            $table->string('bodega', 40);
+            $table->decimal('cantidad', 18, 2);
+            $table->foreign('pedido_reserva_id')->references('id')->on('gp_pedido_reserva_logs');
             $table->foreign('stock_id')->references('id')->on('gp_cotizacion_detalle_stocks');
             $table->timestamps();
         });

@@ -270,7 +270,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         if ($quotation->co_tipTrasResInv === 2) { //consolidar cantidades
             $this->updateQuotationDetatilStockMovements($quotation, $type);
         } else {
-            $this->updateQuotationStocksAuthorizedDontConsolidate($quotation);
+            $this->updateQuotationStocksAuthorizedDontConsolidate($quotation->id);
         }
     }
 
@@ -334,9 +334,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function updateQuotationStocksAuthorizedDontConsolidate(GpCotizacion $quotation)
+    public function updateQuotationStocksAuthorizedDontConsolidate(int $quotationId)
     {
-        $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotation->id)
+        $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
             ->lockForUpdate()
             ->get();
         foreach ($stocks as $stock) {
@@ -610,25 +610,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function storeQuotationReservedLogs($reservedId, $quotationIdOld, $quotationIdNew, $bodega, $linesToQuote, $user)
     {
-        DB::table('gp_cotizacion_reserva_logs')->insert([
-            'reserva_id' => $reservedId,
-            'cotizacion_origen_id' => $quotationIdOld,
-            'cotizacion_destino_id' => $quotationIdNew,
-            'user_id' => $user->id,
-        ]);
+        $ctRsLog = $this->reservaBuilder->fromPayloadQuoteReservedLog($reservedId, $quotationIdOld, $quotationIdNew, $user->id, $bodega);
+        $ctRsLog->save();
 
         foreach ($linesToQuote as  $value) {
-            DB::table('gp_cotizacion_reserva_logs')->insert([
-                'cotizacion_origen_id' => $quotationIdOld,
-                'cotizacion_destino_id' => $quotationIdNew,
-                'user_id' => $user->id,
-                'STO_BODEGA' => $bodega,
-                // 'ART_CODIGO' => $value['ART_CODIGO'],
-                // 'STO_ART_BODEGA' => $value['STO_ART_BODEGA'],
-                // 'STO_ART_CANTIDAD' => $value['cantidad'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $detail = $this->reservaBuilder->fromPayloadQuoteReservedDetailLog($ctRsLog->id, $value['stock_id'], $value['ART_CODIGO'], $value['STO_ART_BODEGA'], $value['cantidad']);
+            $detail->save();
         }
     }
 
@@ -689,10 +676,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function processReservedQuotationInvoiceDemand($payload, $user)
     {
+        $this->updateQuotationStocksAuthorizedDontConsolidate($payload['cotizacion']['id']);
         // $this->generateMovementsQuotationToStock($payload['id'], 'demanda');
         $order = $this->storeReservedHeaderOrder($payload['cotizacion'], $user, $payload['fe_autorizacion_reserva']);
         $this->storeReservedDetailOrder($payload['cotizacion']['detallecotizacion'], $order);
-        $rows = $this->formPayloadReservedQuotationLog($payload['id'],$payload['cotizacion'],  $order, $user->id);
+        $rows = $this->formPayloadReservedQuotationLog($payload['id'], $payload['cotizacion'],  $order, $user->id);
 
         $this->insertReservedOrderLogs($rows);
         $this->updateQuotationReservedStatus($payload['id'], $payload, $user);
@@ -812,55 +800,55 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function formPayloadReservedQuotationLog($reservedId,$quotation,  $order, $userId)
+    public function formPayloadReservedQuotationLog($reservedId, $quotation,  $order, $userId)
     {
+        $header =[
+            'reserva_id'              => $reservedId,
+            'cotizacion_origen_id'           => data_get($quotation, 'id'),
+            'pedido_destino_id'            => data_get($order, 'id'),
+            'user_id'                 => $userId,
+            'bodega'              => data_get($quotation, 'BOD_BODEGA'),
+        ];
         $detalleQuotation = GpCotizacionDetalle::with('stock')->where('cotizacion_id', $quotation['id'])->get();
-        return collect($detalleQuotation)->flatMap(function ($detalle) use ($reservedId,$quotation, $order, $userId) {
+        $detalles = collect($detalleQuotation)->flatMap(function ($detalle) use ($reservedId, $quotation, $order, $userId) {
             $tipo = data_get($detalle, 'ART_TIPO_COMPRA');
 
             if (in_array($tipo, ['SERV', 'L'], true)) {
                 return [[
-                    'reserva_id'              => $reservedId,
-                    'cotizacion_id'           => data_get($quotation, 'id'),
-                    'pedido_id'               => data_get($order, 'id'),
-                    'user_id'                 => $userId,
-                    'STO_BODEGA'              => data_get($quotation, 'BOD_BODEGA'),
+                    'stock_id'                => null,
+                    // 'STO_BODEGA'              => data_get($quotation, 'BOD_BODEGA'),
                     'ART_CODIGO'              => data_get($detalle, 'ART_CODIGO'),
                     'STO_ART_BODEGA'          => data_get($quotation, 'BOD_BODEGA'),
                     'STO_ART_CANTIDAD'        => (float) data_get($detalle, 'ART_CANTIDAD', 0),
                 ]];
             }
 
-            return collect(data_get($detalle, 'stock', []))->map(function ($stock) use ($reservedId ,$detalle, $quotation, $order, $userId) {
+            return collect(data_get($detalle, 'stock', []))->map(function ($stock) use ($reservedId, $detalle, $quotation, $order, $userId) {
                 return [
-                    'reserva_id'              => $reservedId,
-                    'cotizacion_id'           => data_get($quotation, 'id'),
-                    'pedido_id'               => data_get($order, 'id'),
-                    'user_id'                 => $userId,
-                    'STO_BODEGA'              => data_get($quotation, 'BOD_BODEGA'),
+
+                    'stock_id'                => data_get($stock, 'id'),
+                    // 'STO_BODEGA'              => data_get($quotation, 'BOD_BODEGA'),
                     'ART_CODIGO'              => data_get($detalle, 'ART_CODIGO'),
                     'STO_ART_BODEGA'          => data_get($stock, 'STO_ART_BODEGA', data_get($quotation, 'BOD_BODEGA')),
                     'STO_ART_CANTIDAD'        => (float) data_get($stock, 'seleccionado', 0),
                 ];
             });
         })->values()->all();
+
+       return [
+  'header'   => $header,
+  'detalles' => $detalles,
+];
     }
 
     public function insertReservedOrderLogs($rows)
     {
+        $haderOrderLog = $rows['header'];
+        $odRsLog= $this->reservaBuilder->fromPayloadOrderReservedLog($haderOrderLog['reserva_id'], $haderOrderLog['cotizacion_origen_id'], $haderOrderLog['pedido_destino_id'], $haderOrderLog['user_id'], $haderOrderLog['bodega']);
+        $odRsLog->save();
         foreach ($rows as  $value) {
-            DB::table('gp_pedidos_reserva_logs')->insert([
-                'reserva_id'           => $value['reserva_id'],
-                'cotizacion_origen_id' => $value['cotizacion_id'],
-                'pedido_destino_id'    => $value['pedido_id'],
-                'user_id'              => $value['user_id'],
-                'STO_BODEGA'           => $value['STO_BODEGA'],
-                // 'ART_CODIGO'           => $value['ART_CODIGO'],
-                // 'STO_ART_BODEGA'       => $value['STO_ART_BODEGA'],
-                // 'STO_ART_CANTIDAD'     => $value['STO_ART_CANTIDAD'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $detail = $this->reservaBuilder->formPayloadOrderReservedDetailLog($odRsLog->id, $value['stock_id'], $value['ART_CODIGO'], $value['STO_ART_BODEGA'], $value['STO_ART_CANTIDAD']);
+            $detail->save();
         }
     }
 
