@@ -131,6 +131,7 @@ Route::prefix('bodegas')->group(function () {
 
     Route::get('/guiasderemision/crear-ajuste-guia-remision/{id}', [GuiasderemisionController::class, 'creacionAjusteGpGuiaRemision']);
 
+    Route::get('/guiasderemision/reserva-stock-pedidos', [GuiasderemisionController::class, 'reservarStock']);
 
 
 });
