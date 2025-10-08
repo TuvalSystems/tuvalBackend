@@ -297,11 +297,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $guia->update(['procesando' => null]);
                 throw new \Exception($response['message']);
             }
-            $docGp = data_get($response, 'data.docGp'); // null si no existe
-            if (blank($docGp)) {
-                throw new \RuntimeException('No se ha generado el documento de ajuste de guía.');
-            }
-
+           
             if ($guia->rebajado) {
                 $wsOk = true;
             }
