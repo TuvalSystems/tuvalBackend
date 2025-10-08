@@ -142,6 +142,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if ($response['success'] === false) {
                 throw new \Exception($response['message']);
             }
+            $docGp = data_get($response, 'data.docGp'); // null si no existe
+            if (blank($docGp)) {
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+            }
             foreach ($grupo['items'] as $key => $item) {
                 $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
                 $this->decrementOriginWarehouseReservedStock($item->traslado, $item->GUI_REM_CANTIDAD);
@@ -299,7 +303,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             }
             $docGp = data_get($response, 'data.docGp'); // null si no existe
             if (blank($docGp)) {
-                throw new \RuntimeException('No se ha generado el documento de ajuste de guía.');
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
             }
 
             if ($guia->rebajado) {
@@ -421,6 +425,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $response = $this->apiDeliveryNote->createReplacementShipmentGuideVta($params);
             if ($response['success'] === false) {
                 throw new \Exception($response['message']);
+            }
+            $docGp = data_get($response, 'data.docGp'); // null si no existe
+            if (blank($docGp)) {
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
             }
             foreach ($grupo['items'] as $key => $item) {
                 $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
