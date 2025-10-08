@@ -39,7 +39,7 @@ class ReservedReleaseNotification extends Notification implements ShouldQueue
     public function toDatabase($notifiable)
     {
         return [
-            'titulo' => $this->title,
+            'title' => $this->title,
             'message' => "El stock de la reserva de la cotización {$this->reservation} ha sido liberado.",
 
         ];
@@ -48,7 +48,7 @@ class ReservedReleaseNotification extends Notification implements ShouldQueue
     public function toBroadcast($notifiable)
     {
         return new BroadcastMessage([
-            'titulo'  => $this->title,
+            'title'  => $this->title,
             'message' => "El stock de la reserva de la cotización {$this->reservation} ha sido liberado.",
         ]);
     }

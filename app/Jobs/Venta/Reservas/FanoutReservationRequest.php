@@ -7,11 +7,9 @@ use App\Mail\Reservas\DemandaMail;
 use App\Mail\Reservas\ReservaMail;
 use App\Models\GpCotizacion;
 use App\Models\GpUsuario;
-use App\Notifications\Venta\Reservas\ReservationRequestNotification;
-use App\Notifications\Venta\Reservas\WarehouseRequestNotificaction;
+use App\Notifications\Venta\Reservas\UserReservedNotification;
 use App\Services\Api\ApiGpService;
 use Illuminate\Bus\Queueable;
-
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -58,7 +56,9 @@ class FanoutReservationRequest implements ShouldQueue
 
     public function sendNotifyUsersApproval($cotizacion, $actor)
     {
-        // Destinatarios: perfil 9/2 activos (ajusta campos según tu schema)
+        $title = 'Nueva solicitud de reserva de inventario';
+        $mensaje =  "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion}";
+
         $usersApproval = GpUsuario::query()
             ->whereIn('perfil_id', [9, 2])
             ->where('status', 1)
@@ -67,10 +67,9 @@ class FanoutReservationRequest implements ShouldQueue
         if ($usersApproval->isNotEmpty()) {
             Notification::send(
                 $usersApproval,
-                (new ReservationRequestNotification(
-                    'Nueva solicitud de reserva de inventario',
-                    $cotizacion->cotizacion,
-                    $actor
+                (new UserReservedNotification(
+                    $title,
+                    $mensaje
                 )
                 )->onQueue('notifications')
             );
@@ -80,19 +79,22 @@ class FanoutReservationRequest implements ShouldQueue
 
     public function sendNotifyUsersWarehouse($cotizacion, $actor)
     {
+        $title = 'Reserva de inventario';
+        $mensaje =  "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion}";
+
         GpUsuario::query()
             ->whereIn('perfil_id', [13, 2])
             ->where('status', 1)
             //    ->where('id', '!=', $actor->id)  //comentado para que a mi mismo me llegue la notificación
             ->orderBy('id')
-            ->chunkById(200, function ($chunk) use ($cotizacion, $actor) {
+            ->chunkById(200, function ($chunk) use ($title, $mensaje) {
 
                 Notification::send(
                     $chunk,
-                    (new WarehouseRequestNotificaction(
-                        'Reserva de inventario',
-                        $cotizacion->cotizacion,
-                        $actor
+                    (new UserReservedNotification(
+                        $title,
+                        $mensaje
+
                     ))->onQueue('notifications')
                 );
             }, 'id');

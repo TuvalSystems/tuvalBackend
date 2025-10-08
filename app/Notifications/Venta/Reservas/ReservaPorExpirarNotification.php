@@ -36,8 +36,8 @@ class ReservaPorExpirarNotification extends Notification implements ShouldQueue
     public function toDatabase($notifiable)
     {
         return [
-            'titulo' => $this->title,
-            'mensaje' => "Tu reserva para la cotizacion {$this->reservation} expira mañana y se liberará el stock.",
+            'title' => $this->title,
+            'message' => "Tu reserva para la cotizacion {$this->reservation} expira mañana y se liberará el stock.",
 
         ];
     }
@@ -45,7 +45,7 @@ class ReservaPorExpirarNotification extends Notification implements ShouldQueue
     public function toBroadcast($notifiable)
     {
         return new BroadcastMessage([
-            'titulo'  => $this->title,
+            'title'  => $this->title,
             'message' => "Tu reserva para la cotizacion {$this->reservation} expira mañana y se liberará el stock.",
         ]);
     }

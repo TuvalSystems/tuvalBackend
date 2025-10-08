@@ -34,8 +34,8 @@ class UserReservedNotification extends Notification implements ShouldQueue
     public function toDatabase($notifiable)
     {
         return [
-            'titulo' => $this->title,
-            'mensaje' => $this->message,
+            'title' => $this->title,
+            'message' => $this->message,
 
         ];
     }
@@ -43,7 +43,7 @@ class UserReservedNotification extends Notification implements ShouldQueue
     public function toBroadcast($notifiable)
     {
         return new BroadcastMessage([
-            'titulo' => $this->title,
+            'title' => $this->title,
             'message' => $this->message,
         ]);
     }

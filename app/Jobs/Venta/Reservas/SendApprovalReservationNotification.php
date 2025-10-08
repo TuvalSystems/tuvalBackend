@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use App\Notifications\Venta\Reservas\ApprovalReservationNotification;
+use App\Notifications\Venta\Reservas\UserReservedNotification;
 
 class SendApprovalReservationNotification implements ShouldQueue
 {
@@ -34,8 +35,11 @@ class SendApprovalReservationNotification implements ShouldQueue
         }
         $user = GpUsuario::find($cotizacion->reserva->user_ingreso_reserva_id);
         $userAutorizado = GpUsuario::find($this->autorizadoId);
-        $user->notify(new ApprovalReservationNotification('Reserva Aprobada', $cotizacion->cotizacion, $userAutorizado));
 
         event(new ReservedListAuthorizedChanged('refresh', $cotizacion->id, $user->USERID));
+
+        $title = 'Reserva Aprobada';
+        $mensaje = "Solicitude de reserva aprovada por {$userAutorizado->USERID} para la cotización {$cotizacion->cotizacion}";
+        $user->notify(new UserReservedNotification($title,  $mensaje));
     }
 }
