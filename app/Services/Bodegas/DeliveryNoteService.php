@@ -293,13 +293,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         foreach ($groups as $grupo) {
             $params =  $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
             $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
-            $dataGuia = data_get($response, 'data', []);
             if ($response['success'] === false) {
                 $guia->update(['procesando' => null]);
                 throw new \Exception($response['message']);
             }
-            if ($dataGuia['docGp'] == null || $dataGuia['docGp'] == '') {
-                throw new \Exception('No se ha generado el documento de ajuste de guia');
+            $docGp = data_get($response, 'data.docGp'); // null si no existe
+            if (blank($docGp)) {
+                throw new \RuntimeException('No se ha generado el documento de ajuste de guía.');
             }
 
             if ($guia->rebajado) {
