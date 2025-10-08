@@ -193,13 +193,13 @@ class ReservasController extends Controller
         $data = $request->all();
         $gpUser = GpUsuario::find(Auth::user()->id);
         try {
-            return DB::transaction(function () use ($data, $gpUser) {
-                $response =  $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
-                $msg = "Reserva procesada correctamente, cotización generada:  {$response['pedido']}";
-                return  $this->buildSuccessResponse($msg,  200);
+            $response = DB::transaction(function () use ($data, $gpUser) {
+               return  $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
             });
+            $msg = "Reserva procesada correctamente. Pedido {$response['pedido']} generado.";
+            return  $this->buildSuccessResponse($msg,  200);
         } catch (\Throwable $e) {
-            Log::error('Error al procesar la reserva de la cotizacion: ', [
+            Log::error('Error en la funcion procesarReservaFacturaDemandaCotizacion -ReservasController: ', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),

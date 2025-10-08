@@ -44,7 +44,7 @@ class UserReservedNotification extends Notification implements ShouldQueue
     {
         return new BroadcastMessage([
             'titulo' => $this->title,
-            'mensaje' => $this->message,
+            'message' => $this->message,
         ]);
     }
 }
