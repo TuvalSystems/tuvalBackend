@@ -1174,98 +1174,88 @@ class OrderService implements OrderServiceInterface
 
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
+        $deteleArticle = [];
+        $detailIdsWithLOrSERV = GpPedidoDetalle::where('pedido_id', $data['id'])
+            ->whereIn('ART_TIPO_COMPRA', ['SERV', 'L'])
+            ->get();
+        $detailIdsWithoutLOrSERV = GpPedidoDetalle::where('pedido_id', $data['id'])
+            ->whereNotIn('ART_TIPO_COMPRA', ['SERV', 'L'])
+            ->get();
 
-        try {
-            DB::beginTransaction();
-            $deteleArticle = [];
-            $detailIdsWithLOrSERV = GpPedidoDetalle::where('pedido_id', $data['id'])
-                ->whereIn('ART_TIPO_COMPRA', ['SERV', 'L'])
-                ->get();
-            $detailIdsWithoutLOrSERV = GpPedidoDetalle::where('pedido_id', $data['id'])
-                ->whereNotIn('ART_TIPO_COMPRA', ['SERV', 'L'])
-                ->get();
-
-            $stockByDetalle = GpPedidoDetalleStock::whereIn('detalle_id', $detailIdsWithoutLOrSERV->pluck('id'))
-                ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])->get()
-                ->keyBy('detalle_id');
+        $stockByDetalle = GpPedidoDetalleStock::whereIn('detalle_id', $detailIdsWithoutLOrSERV->pluck('id'))
+            ->where('STO_ART_BODEGA', $data['BOD_BODEGA'])->get()
+            ->keyBy('detalle_id');
 
 
-            // eliminacion de item con stock->selecccionado == cantidad y sin L o SERV
-            foreach ($detailIdsWithoutLOrSERV as  $articulo) {
-                $stock = $stockByDetalle->get($articulo->id);
+        // eliminacion de item con stock->selecccionado == cantidad y sin L o SERV
+        foreach ($detailIdsWithoutLOrSERV as  $articulo) {
+            $stock = $stockByDetalle->get($articulo->id);
 
-                // si no tiene stock lo almacena en array sigue
-                if (!$stock) {
-                    // $skippedDetails[] = $articulo->id;
-                    continue;
-                }
-
-                // // Si seleccionado == cantidad -> omitir (no eliminar la línea original)
-                if ((int)$stock->seleccionado === (int)$articulo->ART_CANTIDAD) {
-                    $this->clearStockArticleOrderExistence($data['id'], $articulo->id);
-                    $articulo->delete();
-                    continue;
-                }
-
-                // si el seleccionado es mayor a 0 y si es menor que ART_CANTIDAD RESTA para actualizar el nuevo detalle
-                if ($stock->seleccionado > 0 && $stock->seleccionado < $articulo->ART_CANTIDAD) {
-                    $articulo->ART_CANTIDAD = $articulo->ART_CANTIDAD - $stock->seleccionado;
-                    $stock->seleccionado = 0;
-                    $stock->reservado = 0;
-                    $articulo->save();
-                    $stock->save();
-                }
+            // si no tiene stock lo almacena en array sigue
+            if (!$stock) {
+                // $skippedDetails[] = $articulo->id;
+                continue;
             }
 
-            //eliminacion de items SERV y L de pedido original
-            foreach ($detailIdsWithLOrSERV as  $artL) {
-                if ($artL->ART_TIPO_COMPRA == 'SERV') {
-                    $artL->delete();
-                    continue;
-                }
-                $providers = $this->functionsService->getItemProviders($data['id'], $artL, false);
-                $provList  = $providers['proveedores'] ?? collect();
-                if ($provList->isEmpty()) {
-                    continue;
-                }
-
-                foreach ($provList as  $prov) {
-                    $pendiente = max(0, (int)$prov->ingresado - (int)$prov->ejecutado);
-                    if ($pendiente <= 0) continue;
-
-                    $toDeduct = min((int)$artL->ART_CANTIDAD, $pendiente);
-                    if ($toDeduct <= 0) break;
-
-                    $artL->ART_CANTIDAD = (int)$artL->ART_CANTIDAD - $toDeduct;
-                }
-
-                if ($provList->isNotEmpty()) {
-                    if ($artL->ART_CANTIDAD == 0) {
-                        $deteleArticle['articulos'][] = $artL;
-                    } else {
-                        $artL->save();
-                    }
-                }
+            // // Si seleccionado == cantidad -> omitir (no eliminar la línea original)
+            if ((int)$stock->seleccionado === (int)$articulo->ART_CANTIDAD) {
+                $this->clearStockArticleOrderExistence($data['id'], $articulo->id);
+                $articulo->delete();
+                continue;
             }
 
-            $newOrder = $this->prepareToStoreOrderHeaderExistence($data, $user);
-            $this->storeFillDetailOrderExistence($detalle, $newOrder);
-            $this->deleteArticlesForNewOrder($deteleArticle);
-            $this->recalculateOldAndNewOrder($data['id'], $newOrder->id);
-            $this->invoiceService->checkSendInvoice($newOrder, true);
-            DB::commit();
-            Log::info('Pedido desde Facturar Existente Generado Correctamente en generateInvoiceFromExistingOrder', [
-                'pedido' => $newOrder->pedido
-            ]);
-            return $this->buildSuccessResponse('Pedido Generado Correctamente' . ' ' . $newOrder->pedido . ' ' . ' en Facturar Existente', 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in generateInvoiceFromExistingOrder', [
-                'error' => $e->getMessage(),
-                'data' => $data['id'],
-            ]);
-            return $this->buildErrorResponse('Error al generar el pedido, contacte al administrador', 400);
+            // si el seleccionado es mayor a 0 y si es menor que ART_CANTIDAD RESTA para actualizar el nuevo detalle
+            if ($stock->seleccionado > 0 && $stock->seleccionado < $articulo->ART_CANTIDAD) {
+                $articulo->ART_CANTIDAD = $articulo->ART_CANTIDAD - $stock->seleccionado;
+                $stock->seleccionado = 0;
+                $stock->reservado = 0;
+                $articulo->save();
+                $stock->save();
+            }
         }
+
+        //eliminacion de items SERV y L de pedido original
+        foreach ($detailIdsWithLOrSERV as  $artL) {
+            if ($artL->ART_TIPO_COMPRA == 'SERV') {
+                $artL->delete();
+                continue;
+            }
+            $providers = $this->functionsService->getItemProviders($data['id'], $artL, false);
+            $provList  = $providers['proveedores'] ?? collect();
+            if ($provList->isEmpty()) {
+                continue;
+            }
+
+            foreach ($provList as  $prov) {
+                $pendiente = max(0, (int)$prov->ingresado - (int)$prov->ejecutado);
+                if ($pendiente <= 0) continue;
+
+                $toDeduct = min((int)$artL->ART_CANTIDAD, $pendiente);
+                if ($toDeduct <= 0) break;
+
+                $artL->ART_CANTIDAD = (int)$artL->ART_CANTIDAD - $toDeduct;
+            }
+
+            if ($provList->isNotEmpty()) {
+                if ($artL->ART_CANTIDAD == 0) {
+                    $deteleArticle['articulos'][] = $artL;
+                } else {
+                    $artL->save();
+                }
+            }
+        }
+
+        $newOrder = $this->prepareToStoreOrderHeaderExistence($data, $user);
+        $this->storeFillDetailOrderExistence($detalle, $newOrder);
+        $this->deleteArticlesForNewOrder($deteleArticle);
+        $this->recalculateOldAndNewOrder($data['id'], $newOrder->id);
+        DB::afterCommit(function () use ($newOrder) {
+            $this->invoiceService->checkSendInvoice($newOrder, true);
+        });
+        Log::info('Pedido desde Facturar Existente Generado Correctamente en generateInvoiceFromExistingOrder', [
+            'pedido' => $newOrder->pedido
+        ]);
+        return $newOrder;
     }
 
 
