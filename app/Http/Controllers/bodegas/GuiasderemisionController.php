@@ -1250,4 +1250,17 @@ class GuiasderemisionController extends Controller
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
+
+
+    public function creacionAjusteGpGuiaRemision($id)
+    {
+        try {
+            $guia = $this->deliveryNoteService->createAdjustmentDeliveryNote($id);
+            $msg = "Ajuste creado para la guia {$guia->id} del pedido {$guia->pedido}";
+            return $this->buildSuccessResponse($msg, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
 }
