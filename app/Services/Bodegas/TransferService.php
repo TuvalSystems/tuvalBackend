@@ -84,7 +84,7 @@ class TransferService implements TransferServiceInterface
                     'generar' => false,
                     'traslados' => [],
                     'pedidos' => [],
-                    'compartimentos' => [],
+                    'compartimientos' => [],
                     'tipo' => 'transferencia'
                 ];
             }
