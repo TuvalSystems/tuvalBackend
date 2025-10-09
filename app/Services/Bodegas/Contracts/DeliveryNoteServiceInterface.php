@@ -22,4 +22,6 @@ interface DeliveryNoteServiceInterface
 
     public function reassignDispatchGuideAdjustment($id);
     public function createAdjustmentDeliveryNote($id);
+
+    public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id);
 }

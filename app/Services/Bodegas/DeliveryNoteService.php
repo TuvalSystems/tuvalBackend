@@ -607,4 +607,30 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         });
         return $guia;
     }
+
+
+
+
+
+    public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id)
+    {
+        $guia = GpGuiaRemision::select('id', 'pedido','tipo','estado')->where('tipo', 'despacho')->find($id);
+        $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)->where('codigo', '!=', null)
+        ->select('id_movimiento', 'pedido', 'codigo')->first();
+        //$detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+        $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
+        $order = GpPedido::select('id','pedido','estado')->where('pedido', $guia->pedido)->first();
+        $stock = GpPedidoDetalleStock::where('pedido_id', $order->id)->get();
+        $ajustes =[
+            'ajusteGp' => $dataAjuste,
+            'ajusteWeb' => $ajusteWebGuia
+        ];
+        return [
+            'guia' => $guia,
+            'ajustes' => $ajustes,
+           // 'detalle' => $detalle,
+            'order' => $order,
+            'stock' => $stock,
+        ];
+    }
 }
