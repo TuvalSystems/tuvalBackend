@@ -1240,4 +1240,14 @@ class GuiasderemisionController extends Controller
         }
     }
 
+
+    public function procesarPedidoDespachoPorGuia($id){
+        try {
+            $pedido = $this->deliveryNoteService->processAjusteWevOrderGUideRemision($id);
+            return $this->successResponse('Información obtenida', $pedido, 200);
+        } catch (\Throwable $e) {
+          return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
 }

@@ -537,6 +537,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $guia->update(['estado' => 'enviada']);
             }
         }
+        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
         $guia->refresh();
         return $guia;
     }
@@ -603,6 +604,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                     $guia->update(['estado' => 'enviada']);
                 }
             }
+            $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
             return $guia;
         });
         return $guia;
@@ -614,23 +616,31 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id)
     {
-        $guia = GpGuiaRemision::select('id', 'pedido','tipo','estado')->where('tipo', 'despacho')->find($id);
+        $guia = GpGuiaRemision::select('id', 'pedido', 'tipo', 'estado')->where('tipo', 'despacho')->find($id);
         $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)->where('codigo', '!=', null)
-        ->select('id_movimiento', 'pedido', 'codigo')->first();
+            ->select('id_movimiento', 'pedido', 'codigo')->first();
         //$detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
         $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
-        $order = GpPedido::select('id','pedido','estado')->where('pedido', $guia->pedido)->first();
+        $order = GpPedido::select('id', 'pedido', 'estado')->where('pedido', $guia->pedido)->first();
         $stock = GpPedidoDetalleStock::where('pedido_id', $order->id)->get();
-        $ajustes =[
+        $ajustes = [
             'ajusteGp' => $dataAjuste,
             'ajusteWeb' => $ajusteWebGuia
         ];
         return [
             'guia' => $guia,
             'ajustes' => $ajustes,
-           // 'detalle' => $detalle,
+            // 'detalle' => $detalle,
             'order' => $order,
             'stock' => $stock,
         ];
+    }
+
+
+    public function processAjusteWevOrderGUideRemision($id)
+    {
+        $guia = GpGuiaRemision::find(232407);
+        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+        return $pedido;
     }
 }
