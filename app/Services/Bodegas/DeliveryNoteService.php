@@ -574,17 +574,54 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $guia = GpGuiaRemision::find($id);
             $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
 
+
+            $ids = $detalle->pluck('detalle_id')->filter()->unique()->values();
+            if ($ids->isEmpty()) {
+                return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems válidos');
+            }
+
+            $articulos = $this->getAllDetailordersByGuideDetailsIds($ids);
+
+            $tocoServ = false;
+            foreach ($detalle->groupBy('detalle_id') as $detalleId => $row) {
+                $art = $articulos->get($detalleId);
+                if (!$art) {
+                    continue;
+                }
+                if ($art->ART_TIPO_COMPRA == 'SERV') {
+                    $qty = (float) $row->sum('GUI_REM_CANTIDAD');
+                    $qty = max(0.0, $qty);
+                    $nuevoReservado   = max(0.0, (float) ($art->reservado ?? 0) - $qty);
+                    $nuevoTrasladado  = (float)($art->trasladado ?? 0) + $qty;
+                    $cap = (float) ($art->ART_CANTIDAD ?? 0);
+                    if ($cap > 0) $nuevoTrasladado = min($nuevoTrasladado, $cap);
+                    $art->fill([
+                        'reservado' => $nuevoReservado,
+                        'trasladado' => $nuevoTrasladado
+                    ])->save();
+                    $tocoServ = true;
+                }
+            }
+
+            if ($tocoServ && $guia->estado != 'enviada') {
+                $guia->update(['estado' => 'enviada']);
+            }
+
             $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
             if (count($groups) === 0) {
                 return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
             }
+            $wsOk = false;
             foreach ($groups as $grupo) {
                 $params =  $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
                 $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
-
                 if ($response['success'] === false) {
                     $guia->update(['procesando' => null]);
                     throw new \Exception($response['message']);
+                }
+                $docGp = data_get($response, 'data.docGp'); // null si no existe
+                if (blank($docGp)) {
+                    throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
                 }
 
                 if ($guia->rebajado) {
@@ -605,7 +642,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 }
             }
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-            return $guia;
+          return $guia;
         });
         return $guia;
     }
@@ -619,9 +656,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $guia = GpGuiaRemision::select('id', 'pedido', 'tipo', 'estado')->where('tipo', 'despacho')->find($id);
         $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)->where('codigo', '!=', null)
             ->select('id_movimiento', 'pedido', 'codigo')->first();
-        //$detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+        $detalleguia = GpGuiaRemisionDetalle::select('GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD')->where('guia_remision_id', $guia->id)->get();
         $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
-        $order = GpPedido::select('id', 'pedido', 'estado')->where('pedido', $guia->pedido)->first();
+        $order = GpPedido::select('id', 'pedido', 'despachado', 'estado')->where('pedido', $guia->pedido)->first();
         $stock = GpPedidoDetalleStock::where('pedido_id', $order->id)->get();
         $ajustes = [
             'ajusteGp' => $dataAjuste,
@@ -629,6 +666,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         ];
         return [
             'guia' => $guia,
+            'detalleguia' => $detalleguia,
             'ajustes' => $ajustes,
             // 'detalle' => $detalle,
             'order' => $order,
