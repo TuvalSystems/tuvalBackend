@@ -112,8 +112,6 @@ class GpGuiaRemision extends Model
         'rebajado',
         'procesado',
         'GUI_REM_CODIGO',
-
-
     ];
 
     public function guiadetalle()

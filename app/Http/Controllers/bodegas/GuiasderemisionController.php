@@ -562,38 +562,6 @@ class GuiasderemisionController extends Controller
         ]);
     }
 
-    // public function despacharguia($id)
-    // {
-    //     try {
-    //         $guia = GpGuiaRemision::where('id', $id)->first();
-
-    //     if ($guia->estado == 'enviada') {
-    //         return response([
-    //             'success' => true,
-    //             'message' => 'Guía de remisión despachada por otro usuario',
-    //         ]);
-    //     }
-
-    //     $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
-
-    //     if ($guia->tipo == 'transferencia') {
-    //         return $this->despacharguiatransferencia($guia, $detalle);
-    //     }
-    //     if ($guia->tipo == 'despacho') {
-    //         return $this->despacharguiadespacho($guia, $detalle);
-    //     }
-
-    //     if ($guia->tipo == 'reposicion') {
-    //         return $this->despacharguiareposicion($guia, $detalle);
-    //     }
-    //     } catch (\Throwable $e) {
-    //        return response([
-    //            'success' => false,
-    //            'message' => $e->getMessage(),
-    //        ]);
-    //     }
-
-    // }
 
     public function despacharguia($id)
     {
@@ -605,10 +573,7 @@ class GuiasderemisionController extends Controller
 
                 // Re-chequea después del lock (otro proceso pudo enviarla)
                 if ($guia->estado === 'enviada') {
-                    return response([
-                        'success' => true,
-                        'message' => 'Guía de remisión despachada por otro usuario',
-                    ]);
+                    return $this->buildSuccessResponse('Guía de remisión despachada por otro usuario', 200);
                 }
                 $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)->get();
                 $response = null;
@@ -623,24 +588,23 @@ class GuiasderemisionController extends Controller
                         break;
                     case 'reposicion':
                         $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle,  $user);
-
                         break;
                     default:
                         throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
                 }
-
                 return $response;
-            }, 5);
+            });
         } catch (\Throwable $e) {
             Log::error('Error en despachar guia de remision (despacharguia)', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'guia_id' => $id
             ]);
-            return response([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                500
+            );
         }
     }
 
@@ -1266,191 +1230,24 @@ class GuiasderemisionController extends Controller
 
 
 
-    public function reservarStock()
+    public function obtenerInfoGUiaRemisionAjustePedido($id)
     {
         try {
-            $stocks = DB::transaction(function () {
-                $stock = GpPedidoDetalleStock::where('seleccionado', '>', 0)
-                    ->whereIn('pedido_id', [
-                        348894,
-                        349674,
-                        350563,
-                        350754,
-                        351136,
-                        351600,
-                        351612,
-                        351617,
-                        351672,
-                        351723,
-                        351852,
-                        351861,
-                        351948,
-                        352025,
-                        352053,
-                        352118,
-                        352179,
-                        352207,
-                        352274,
-                        352297,
-                        352317,
-                        352328,
-                        352365,
-                        352440,
-                        352443,
-                        352468,
-                        352475,
-                        352485,
-                        352604,
-                        352608,
-                        352621,
-                        352637,
-                        352685,
-                        352694,
-                        352716,
-                        352722,
-                        352735,
-                        352762,
-                        352805,
-                        352809,
-                        352825,
-                        352829,
-                        352852,
-                        352862,
-                        352879,
-                        352892,
-                        352894,
-                        352898,
-                        352921,
-                        352923,
-                        352924,
-                        352925,
-                        352931,
-                        352944,
-                        352958,
-                        352968,
-                        352976,
-                        352985,
-                        353001,
-                        353014,
-                        353017,
-                        353019,
-                        353025,
-                        353026,
-                        353043,
-                        353047,
-                        353060,
-                        353076,
-                        353077,
-                        353087,
-                        353097,
-                        353099,
-                        353106,
-                        353107,
-                        353108,
-                        353112,
-                        353131,
-                        353139,
-                        353142,
-                        353153,
-                        353156,
-                        353159,
-                        353160,
-                        353163,
-                        353164,
-                        353166,
-                        353169,
-                        353170,
-                        353178,
-                        353188,
-                        353189,
-                        353195,
-                        353198,
-                        353202,
-                        353205,
-                        353214,
-                        353224,
-                        353227,
-                        353232,
-                        353247,
-                        353253,
-                        353261,
-                        353267,
-                        353278,
-                        353281,
-                        353282,
-                        353283,
-                        353291,
-                        353295,
-                        353298,
-                        353299,
-                        353303,
-                        353304,
-                        353305,
-                        353309,
-                        353313,
-                        353315,
-                        353317,
-                        353319,
-                        353323,
-                        353325,
-                        353332,
-                        353335,
-                        353336,
-                        353337,
-                        353341,
-                        353342,
-                        353343,
-                        353344,
-                        353346,
-                        353348,
-                        353352,
-                        353353,
-                        353354,
-                        353356,
-                        353357,
-                        353360,
-                        353364,
-                        353367,
-                        353370,
-                        353376,
-                        353381,
-                        353385,
-                        353392,
-                        353393,
-                        353397,
-                        353400,
-                        353403,
-                        353404,
-                        353406,
-                        353411,
-                        353413,
-                        353414,
-                        353419,
-                        353427,
-                        353440,
-                        353442,
-                        353453,
-                        353457,
-                        353459,
-                        353460,
-                        353463,
-                        353465,
-                        353471,
-                        353476,
-                        353479,
-                        353486,
-                        353489
-                    ])->get();
-
-                foreach ($stock as $articulo) {
-                    $articulo->reservado = $articulo->seleccionado;
-                    $articulo->save();
-                }
-                return $stock;
-            });
-            return $this->successResponse('Stock reservado correctamente', $stocks, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
+            $data = $this->deliveryNoteService->getDeliveryNoteAdjustmentInfoByDeliveryNoteId($id);
+            return $this->successResponse('Información obtenida', $data, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
+
+    public function procesarPedidoDespachoPorGuia($id){
+        try {
+            $pedido = $this->deliveryNoteService->processAjusteWevOrderGUideRemision($id);
+            return $this->successResponse('Información obtenida', $pedido, 200);
+        } catch (\Throwable $e) {
+          return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
 }
