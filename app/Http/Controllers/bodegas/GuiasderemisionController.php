@@ -1221,8 +1221,7 @@ class GuiasderemisionController extends Controller
     {
         try {
             $guia = $this->deliveryNoteService->createAdjustmentDeliveryNote($id);
-            $msg = "Ajuste creado para la guia {$guia->id} del pedido {$guia->pedido}";
-            return $this->buildSuccessResponse($msg, 200);
+            return $this->buildSuccessResponse('Ajuste de guia creado exitosamente', 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
