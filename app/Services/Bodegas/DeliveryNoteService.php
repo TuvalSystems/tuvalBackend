@@ -569,7 +569,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function createAdjustmentDeliveryNote($id)
     {
-        $guia = DB::transaction(function () use ($id) {
+       return  DB::transaction(function () use ($id) {
             $user = GpUsuario::find(6);
             $guia = GpGuiaRemision::find($id);
             $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
@@ -642,36 +642,128 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 }
             }
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-          return $guia;
+
+              return $guia->fresh();
         });
-        return $guia;
     }
 
 
 
 
 
-    public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id)
+    public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id, bool $debug = true)
     {
-        $guia = GpGuiaRemision::select('id', 'pedido', 'tipo', 'estado')->where('tipo', 'despacho')->find($id);
-        $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)->where('codigo', '!=', null)
+        // 1) Cabecera guía (solo tipo despacho)
+        $guia = GpGuiaRemision::select('id', 'pedido', 'estado')
+            ->where('tipo', 'despacho')
+            ->find($id);
+
+        $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)
+            ->whereNotNull('codigo')
+            ->where('codigo', '!=', '')
             ->select('id_movimiento', 'pedido', 'codigo')->first();
-        $detalleguia = GpGuiaRemisionDetalle::select('GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD')->where('guia_remision_id', $guia->id)->get();
         $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
-        $order = GpPedido::select('id', 'pedido', 'despachado', 'estado')->where('pedido', $guia->pedido)->first();
-        $stock = GpPedidoDetalleStock::where('pedido_id', $order->id)->get();
-        $ajustes = [
-            'ajusteGp' => $dataAjuste,
-            'ajusteWeb' => $ajusteWebGuia
+
+        if (!$guia) {
+            return ['error' => "Guía $id no encontrada o no es de tipo 'despacho'."];
+        }
+
+        // 2) Pedido (mínimo necesario)
+        $order = GpPedido::select('id', 'pedido', 'despachado', 'estado')
+            ->where('pedido', $guia->pedido)
+            ->first();
+
+        if (!$order) {
+            return ['error' => "Pedido {$guia->pedido} no encontrado.", 'guia' => $guia];
+        }
+
+        // 3) Traer solo las columnas necesarias para el cruce
+        $detalleguia = GpGuiaRemisionDetalle::select('GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD')
+            ->where('guia_remision_id', $guia->id)
+            ->get();
+
+        $detallepedido = GpPedidoDetalle::select('ART_CODIGO', 'ART_CANTIDAD', 'reservado', 'trasladado', 'devuelto')
+            ->where('pedido_id', $order->id)
+            ->get();
+        $stocks = GpPedidoDetalleStock::select('detalle_id', 'seleccionado', 'reservado')
+            ->where('pedido_id', $order->id)
+            ->get();
+
+        // 4) Agrupar/sumar por código
+        $pedidoQtyByCode = $detallepedido
+            ->groupBy('ART_CODIGO')
+            ->map(fn($rows) => (float) $rows->sum('ART_CANTIDAD'));
+
+        $guiaQtyByCode = $detalleguia
+            ->groupBy('GUI_REM_CODI_INTERNO')
+            ->map(fn($rows) => (float) $rows->sum('GUI_REM_CANTIDAD'));
+
+        $allCodes = $pedidoQtyByCode->keys()
+            ->merge($guiaQtyByCode->keys())
+            ->unique()
+            ->values();
+
+        $despachados = [];
+        $pendientes  = [];
+
+        foreach ($allCodes as $codigo) {
+            $cantPedido = (float) ($pedidoQtyByCode[$codigo] ?? 0.0);
+            $cantGuia   = (float) ($guiaQtyByCode[$codigo]   ?? 0.0);
+
+            $despachadoQty = min($cantGuia, $cantPedido);
+            $pendienteQty  = max($cantPedido - $cantGuia, 0.0);
+
+            $row = [
+                'codigo'         => $codigo,
+                'pedido_qty'     => $cantPedido,
+                'guia_qty'       => $cantGuia,
+                'despachado_qty' => $despachadoQty,
+                'pendiente_qty'  => $pendienteQty,
+            ];
+
+            if ($despachadoQty > 0) $despachados[] = $row;
+            if ($pendienteQty > 0)  $pendientes[]  = $row;
+        }
+
+        $resumen = [
+            'lineas_pedido'   => $pedidoQtyByCode->count(),
+            'lineas_guia'     => $guiaQtyByCode->count(),
+            'total_despachado' => array_sum(array_column($despachados, 'despachado_qty')),
+            'total_pendiente' => array_sum(array_column($pendientes,  'pendiente_qty')),
         ];
-        return [
-            'guia' => $guia,
-            'detalleguia' => $detalleguia,
-            'ajustes' => $ajustes,
-            // 'detalle' => $detalle,
-            'order' => $order,
-            'stock' => $stock,
+
+        // 5) Respuesta SLIM (solo lo útil)
+        $response = [
+            'ajusteWebGuia' => [
+                'ajusteWebGuia' => $ajusteWebGuia,
+                'ajusteGp' => $dataAjuste
+            ],
+            'guia' => [
+                'id'     => $guia->id,
+                'pedido' => $guia->pedido,
+                'estado' => $guia->estado,
+            ],
+            'pedido' => [
+                'id'         => $order->id,
+                'pedido'     => $order->pedido,
+                'estado'     => $order->estado,
+                'despachado' => (bool) $order->despachado,
+            ],
+            'stocks'                 => $stocks,
+            'despachados_por_guia'   => $despachados,
+            'pendientes_de_despacho' => $pendientes,
+            'resumen'                => $resumen,
         ];
+
+        // Si necesitas depurar, activa $debug para incluir materia prima
+        if ($debug) {
+            $response['debug'] = [
+                'detalle_guia'   => $detalleguia,
+                'detalle_pedido' => $detallepedido,
+            ];
+        }
+
+        return $response;
     }
 
 
