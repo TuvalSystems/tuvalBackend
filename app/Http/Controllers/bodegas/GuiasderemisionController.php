@@ -1240,33 +1240,40 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function procesarPedidoDespachoPorGuia($id){
+    public function procesarPedidoDespachoPorGuia($id)
+    {
         try {
             $pedido = $this->deliveryNoteService->processAjusteWevOrderGUideRemision($id);
             return $this->successResponse('Información obtenida', $pedido, 200);
         } catch (\Throwable $e) {
-          return $this->buildErrorResponse($e->getMessage(), 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
 
-    public function listaGuiaDespachoConAjuste(){
-         try {
-            $pedido = $this->deliveryNoteService->getDeliveryNoteDispatchWithAjustment();
+    public function listaGuiaDespachoConAjuste(Request $request)
+    {
+        try {
+            $fechaInicio = $request->get('fechaInicio');
+            $fechaFin = $request->get('fechaFin');
+            $pedido = $this->deliveryNoteService->getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin);
             return $this->successResponse('Información obtenida', $pedido, 200);
         } catch (\Throwable $e) {
-          return $this->buildErrorResponse($e->getMessage(), 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
 
-    public function listaGuiaTransferenciaReposicionConAjuste(){
-         try {
-            $pedido = $this->deliveryNoteService->getDeliveryNoteTransferAndRepositionAjustment();
+    public function listaGuiaTransferenciaReposicionConAjuste(Request $request)
+    {
+        try {
+            $fechaInicio = $request->get('fechaInicio');
+            $fechaFin = $request->get('fechaFin');
+            $estado = $request->get('estado');
+            $pedido = $this->deliveryNoteService->getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado);
             return $this->successResponse('Información obtenida', $pedido, 200);
         } catch (\Throwable $e) {
-          return $this->buildErrorResponse($e->getMessage(), 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
-
 }
