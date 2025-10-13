@@ -191,7 +191,8 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
     {
         $providerDetail = GpPedidoDetalleProveedores::find($item['detalle_proveedores_id']);
         if (!$providerDetail) {
-            throw new \Exception('El detalle del proveedor no existe');
+            return;
+            // throw new \Exception('El detalle del proveedor no existe');
         }
         $providerDetail->ingresado = ($providerDetail->ingresado ?? 0) + $item['seleccionado'];
         $providerDetail->recibido = $providerDetail->CANTIDAD == $providerDetail->ingresado ? 'yes' : 'no';
@@ -207,7 +208,8 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
     {
         $orderDetail = GpOrdenDeCompraGeneradoDetalle::find($item['id']);
         if (!$orderDetail) {
-            throw new \Exception('El detalle del proveedor no existe');
+            return;
+            // throw new \Exception('El detalle del proveedor no existe');
         }
         $orderDetail->recibido = ($orderDetail->recibido ?? 0) + $item['seleccionado'];
         $orderDetail->save();
