@@ -1249,4 +1249,24 @@ class GuiasderemisionController extends Controller
         }
     }
 
+
+    public function listaGuiaDespachoConAjuste(){
+         try {
+            $pedido = $this->deliveryNoteService->getDeliveryNoteDispatchWithAjustment();
+            return $this->successResponse('Información obtenida', $pedido, 200);
+        } catch (\Throwable $e) {
+          return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function listaGuiaTransferenciaReposicionConAjuste(){
+         try {
+            $pedido = $this->deliveryNoteService->getDeliveryNoteTransferAndRepositionAjustment();
+            return $this->successResponse('Información obtenida', $pedido, 200);
+        } catch (\Throwable $e) {
+          return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
 }

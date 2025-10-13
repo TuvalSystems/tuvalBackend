@@ -773,4 +773,20 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
         return $pedido;
     }
+
+
+
+    public function getDeliveryNoteDispatchWithAjustment(){
+        return GpGuiaRemision::query()->where('estado', 'enviada')->whereIn('tipo', ['despacho'])
+            ->join('gp_guia_remision_despachos as grd', 'gp_guia_remisions.id', '=', 'grd.guia_remision_id')
+            ->select('gp_guia_remisions.id', 'grd.codigo', 'grd.pedido','gp_guia_remisions.tipo')
+            ->get();
+    }
+
+     public function getDeliveryNoteTransferAndRepositionAjustment(){
+        return GpGuiaRemision::query()->where('estado', 'enviada')->whereIn('tipo', ['transferencia', 'reposicion'])
+            ->join('gp_guia_remision_transferencias as grt', 'gp_guia_remisions.id', '=', 'grt.guia_remision_id')
+            ->select('gp_guia_remisions.id', 'grt.codigo', 'grt.pedido','gp_guia_remisions.tipo')
+            ->get();
+    }
 }
