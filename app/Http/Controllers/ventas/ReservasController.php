@@ -111,10 +111,11 @@ class ReservasController extends Controller
         try {
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
-            return DB::transaction(function () use ($data, $gpUser) {
-                $this->reserveService->denyApplicationReservedQuotation($data['data'], $gpUser);
-                return $this->buildSuccessResponse('Cotización rechazada correctamente', 200);
+            $reserva = DB::transaction(function () use ($data, $gpUser) {
+                return  $this->reserveService->denyApplicationReservedQuotation($data['data'], $gpUser);
             });
+            $msg = "Reserva rechazada correctamente:  {$reserva['id']}";
+            return $this->buildSuccessResponse($msg, 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->buildErrorResponse('Cotización no encontrada', 404);
         } catch (\DomainException $e) { // por si tu service valida estados
@@ -130,10 +131,11 @@ class ReservasController extends Controller
         try {
             $gpUser = GpUsuario::find(Auth::user()->id);
             $data = $request->all();
-            return DB::transaction(function () use ($data, $gpUser) {
-                $this->reserveService->approvalApplicationReservedQuotation($data['data'], $gpUser);
-                return $this->buildSuccessResponse('Cotización autorizada correctamente', 200);
+            $reserva =   DB::transaction(function () use ($data, $gpUser) {
+                return $this->reserveService->approvalApplicationReservedQuotation($data['data'], $gpUser);
             });
+            $msg = "Reserva autorizada correctamente:  {$reserva['reserva_id']}";
+            return $this->buildSuccessResponse($msg, 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->buildErrorResponse('Cotización no encontrada', 404);
         } catch (\DomainException $e) {
@@ -194,7 +196,7 @@ class ReservasController extends Controller
         $gpUser = GpUsuario::find(Auth::user()->id);
         try {
             $response = DB::transaction(function () use ($data, $gpUser) {
-               return  $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
+                return  $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
             });
             $msg = "Reserva procesada correctamente. Pedido {$response['pedido']} generado.";
             return  $this->buildSuccessResponse($msg,  200);

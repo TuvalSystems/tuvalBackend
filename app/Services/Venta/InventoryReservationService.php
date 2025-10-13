@@ -26,7 +26,8 @@ use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
 use App\Models\reservas\GpReserva;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
-
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
 {
@@ -244,108 +245,154 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         DB::afterCommit(function () use ($reserva, $gpUser) {
             SendDenyReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
         });
+
+        return $reserva;
     }
 
 
     public function approvalApplicationReservedQuotation(array $data, $gpUser)
     {
-        GpReserva::find($data['id'])->update([
-            'estado' => 'aprobado',
-            'estado_autorizacion_reserva' => 1,
-            'fe_autorizacion_reserva' => $data['fe_autorizacion_reserva'],
-            'obs_autorizacion_reserva' => $data['obs_autorizacion_reserva'],
-            'user_autorizacion_reserva' => $gpUser->id,
-            'fe_ingreso_autorizacion_reserva' => Carbon::now()->format('Y-m-d H:i:s'),
-        ]);
         $reserva = GpReserva::find($data['id']);
-        // $this->generateMovementsQuotationToStock($data['id'], 'reserva');
+        $estado = ($reserva->tipo_traslado_reserva_id == 1) ? 'aprobado' : 'traslado';
+
+
+        // UPDATE idempotente (solo si aún no fue autorizada)
+        $affected = GpReserva::query()
+            ->whereKey($reserva->id)
+            ->where('estado_autorizacion_reserva', '=', 0)
+            ->update([
+                'estado' => $estado,
+                'estado_autorizacion_reserva' => 1,
+                'fe_autorizacion_reserva' => Arr::get($data, 'fe_autorizacion_reserva'),
+                'obs_autorizacion_reserva' => Arr::get($data, 'obs_autorizacion_reserva'),
+                'user_autorizacion_reserva_id' => $gpUser->id,
+                'fe_ingreso_autorizacion_reserva' => now()->format('Y-m-d H:i:s'),
+            ]);
+
+        if ($affected > 0) {
+            if ($reserva->tipo_traslado_reserva_id == 1) {
+                $this->syncSelectedToAuthorizedAndInvoicedForQuotationAnyTraslated($reserva->cotizacion_id);
+            } else {
+                $this->syncSelectedToAuthorizedAndInvoicedForQuotation($reserva->cotizacion_id);
+            }
+        }
+
         DB::afterCommit(callback: function () use ($reserva, $gpUser) {
             SendApprovalReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
         });
+
+        return [
+            'reserva_id' => $reserva->id,
+            'cotizacion_id' => $reserva->cotizacion_id,
+            'updated' => (bool) $affected,
+            'tipo_traslado_reserva_id' => $reserva->tipo_traslado_reserva_id,
+            'estado_set' => $estado,
+        ];
     }
 
-    public function generateMovementsQuotationToStock($quotationId, $type)
+    public function syncSelectedToAuthorizedAndInvoicedForQuotationAnyTraslated(int $quotationId)
     {
-        $quotation = GpCotizacion::find($quotationId);
-        if ($quotation->co_tipTrasResInv === 2) { //consolidar cantidades
-            $this->updateQuotationDetatilStockMovements($quotation, $type);
-        } else {
-            $this->updateQuotationStocksAuthorizedDontConsolidate($quotation->id);
-        }
-    }
-
-
-    public function updateQuotationDetatilStockMovements(GpCotizacion $quotation, $type)
-    {
-        $bodegaDespacho = $quotation->BOD_BODEGA;
-        $detailIds = GpCotizacionDetalle::where('cotizacion_id', $quotation->id)
-            ->pluck('id');
-
-        $stocksByDetail = GpCotizacionDetalleStock::whereIn('detalle_id', $detailIds)
-            ->lockForUpdate()
-            ->get()
-            ->groupBy('detalle_id');
-
-        foreach ($stocksByDetail as $detailId => $rows) {
-
-            //bodega despacho
-            $own = $rows->firstWhere('STO_ART_BODEGA', $bodegaDespacho);
-            if (!$own) {
-                throw new \DomainException(
-                    "No existe fila de stock en bodega de despacho [$bodegaDespacho] para detalle $detailId"
-                );
-            }
-            //otras bodegas
-            $others = $rows->where('STO_ART_BODEGA', '!=', $bodegaDespacho)
-                ->filter(fn($r) => (float)$r->seleccionado > 0);
-
-
-            // Suma exacta a 2 decimales (si tus datos son enteros igual aplica)
-            $cents = 0;
-            foreach ($others as $r) {
-                $cents += (int) round(((float)$r->seleccionado) * 100);
-            }
-            $moveQty = number_format($cents / 100, 2, '.', '');
-
-            //actualizar los seleccionado de otras bodegas a 0
-            $othersIds = $others->pluck('id')->all();
-            if (!empty($othersIds)) {
-                if ($type === 'reserva') {
-                    GpCotizacionDetalleStock::whereIn('id', $othersIds)
-                        ->update([
-                            'seleccionado' => 0,
-                            'cantidad_autorizada_reserva' => 0
-                        ]);
-                } else {
-                    GpCotizacionDetalleStock::whereIn('id', $othersIds)
-                        ->update([
-                            'seleccionado' => 0,
-                        ]);
-                }
-            }
-            $ownSelected = (float) ($own->seleccionado ?? 0);
-            $finalSelected = $ownSelected + $moveQty;
-            //sumar el consolidado al seleccionado de la bodega de despacho
-            GpCotizacionDetalleStock::where('id', $own->id)->update([
-                'seleccionado'                => $finalSelected,
-                'cantidad_autorizada_reserva' => $finalSelected,
+        $sameWhaAffected = GpCotizacionDetalleStock::query()
+            ->where('cotizacion_id', $quotationId)
+            ->where('seleccionado', '>', 0)
+            ->update([
+                'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
+                'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
-        }
+        Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' para cotización ID {$quotationId}");
     }
 
-
-    public function updateQuotationStocksAuthorizedDontConsolidate(int $quotationId)
+    public function syncSelectedToAuthorizedAndInvoicedForQuotation(int $quotationId)
     {
-        $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
+        $warehouse = GpCotizacion::whereKey($quotationId)
             ->lockForUpdate()
-            ->get();
-        foreach ($stocks as $stock) {
-            $stock->update([
-                'cantidad_autorizada_reserva' => $stock->seleccionado,
-                'cantidad_facturada' => $stock->seleccionado
+            ->value('BOD_BODEGA');
+        $sameWhaAffected = GpCotizacionDetalleStock::query()
+            ->where('cotizacion_id', $quotationId)
+            ->where('seleccionado', '>', 0)
+            ->where('STO_ART_BODEGA', $warehouse)
+            ->update([
+                'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
+                'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
-        }
+
+        $otherWhaAffected = GpCotizacionDetalleStock::query()
+            ->where('cotizacion_id', $quotationId)
+            ->where('seleccionado', '>', 0)
+            ->where('STO_ART_BODEGA', '!=', $warehouse)
+            ->update([
+                'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
+                'cantidad_trasladada' => DB::raw('seleccionado'),
+                'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
+            ]);
+
+        Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' y {$otherWhaAffected} en 'cantidad_trasladada' para cotización ID {$quotationId}");
     }
+
+
+
+
+    /** funciones para la consolidacion y movimiento de stock a bodegas, comentadas porque aun no se usan por ahora */
+    // public function updateQuotationDetatilStockMovements(GpCotizacion $quotation, $type)
+    // {
+    //     $bodegaDespacho = $quotation->BOD_BODEGA;
+    //     $detailIds = GpCotizacionDetalle::where('cotizacion_id', $quotation->id)
+    //         ->pluck('id');
+
+    //     $stocksByDetail = GpCotizacionDetalleStock::whereIn('detalle_id', $detailIds)
+    //         ->lockForUpdate()
+    //         ->get()
+    //         ->groupBy('detalle_id');
+
+    //     foreach ($stocksByDetail as $detailId => $rows) {
+
+    //         //bodega despacho
+    //         $own = $rows->firstWhere('STO_ART_BODEGA', $bodegaDespacho);
+    //         if (!$own) {
+    //             throw new \DomainException(
+    //                 "No existe fila de stock en bodega de despacho [$bodegaDespacho] para detalle $detailId"
+    //             );
+    //         }
+    //         //otras bodegas
+    //         $others = $rows->where('STO_ART_BODEGA', '!=', $bodegaDespacho)
+    //             ->filter(fn($r) => (float)$r->seleccionado > 0);
+
+
+    //         // Suma exacta a 2 decimales (si tus datos son enteros igual aplica)
+    //         $cents = 0;
+    //         foreach ($others as $r) {
+    //             $cents += (int) round(((float)$r->seleccionado) * 100);
+    //         }
+    //         $moveQty = number_format($cents / 100, 2, '.', '');
+
+    //         //actualizar los seleccionado de otras bodegas a 0
+    //         $othersIds = $others->pluck('id')->all();
+    //         if (!empty($othersIds)) {
+    //             if ($type === 'reserva') {
+    //                 GpCotizacionDetalleStock::whereIn('id', $othersIds)
+    //                     ->update([
+    //                         'seleccionado' => 0,
+    //                         'cantidad_autorizada_reserva' => 0
+    //                     ]);
+    //             } else {
+    //                 GpCotizacionDetalleStock::whereIn('id', $othersIds)
+    //                     ->update([
+    //                         'seleccionado' => 0,
+    //                     ]);
+    //             }
+    //         }
+    //         $ownSelected = (float) ($own->seleccionado ?? 0);
+    //         $finalSelected = $ownSelected + $moveQty;
+    //         //sumar el consolidado al seleccionado de la bodega de despacho
+    //         GpCotizacionDetalleStock::where('id', $own->id)->update([
+    //             'seleccionado'                => $finalSelected,
+    //             'cantidad_autorizada_reserva' => $finalSelected,
+    //         ]);
+    //     }
+    // }
+
+
+
 
     public function cleanStockQuotationForDeny($quotationId)
     {
@@ -698,6 +745,19 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return $order;
     }
 
+
+    public function updateQuotationStocksAuthorizedDontConsolidate(int $quotationId)
+    {
+        $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
+            ->lockForUpdate()
+            ->get();
+        foreach ($stocks as $stock) {
+            $stock->update([
+                'cantidad_autorizada_reserva' => $stock->seleccionado,
+                'cantidad_facturada' => $stock->seleccionado
+            ]);
+        }
+    }
 
 
     public function storeReservedHeaderOrder($payload, $user, $dateAuthoReserved)
