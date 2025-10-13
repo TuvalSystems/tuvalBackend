@@ -569,7 +569,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function createAdjustmentDeliveryNote($id)
     {
-       return  DB::transaction(function () use ($id) {
+        return  DB::transaction(function () use ($id) {
             $user = GpUsuario::find(6);
             $guia = GpGuiaRemision::find($id);
             $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
@@ -643,7 +643,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             }
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
 
-              return $guia->fresh();
+            return $guia->fresh();
         });
     }
 
@@ -776,17 +776,38 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
 
-    public function getDeliveryNoteDispatchWithAjustment(){
-        return GpGuiaRemision::query()->where('estado', 'enviada')->whereIn('tipo', ['despacho'])
-            ->join('gp_guia_remision_despachos as grd', 'gp_guia_remisions.id', '=', 'grd.guia_remision_id')
-            ->select('gp_guia_remisions.id', 'grd.codigo', 'grd.pedido','gp_guia_remisions.tipo')
-            ->get();
+    public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin)
+    {
+        $query = DB::table('gp_guia_remisions as gr')
+            ->join('gp_guia_remision_despachos as grd', 'gr.id', '=', 'grd.guia_remision_id')
+            ->where('gr.tipo', 'despacho')->whereNotNull('grd.codigo')->where('grd.codigo', '!=', '')
+            ->where('gr.estado', 'enviada');
+        if ($fechaInicio && $fechaFin) {
+            $query->where('gr.created_at', '>=', $fechaInicio)->where('gr.created_at', '<=', $fechaFin);
+        }
+        return $query->select('gr.id', 'grd.codigo', 'grd.pedido', 'gr.tipo', 'gr.estado')->get();
     }
 
-     public function getDeliveryNoteTransferAndRepositionAjustment(){
-        return GpGuiaRemision::query()->where('estado', 'enviada')->whereIn('tipo', ['transferencia', 'reposicion'])
-            ->join('gp_guia_remision_transferencias as grt', 'gp_guia_remisions.id', '=', 'grt.guia_remision_id')
-            ->select('gp_guia_remisions.id', 'grt.codigo', 'grt.pedido','gp_guia_remisions.tipo')
+    public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null)
+    {
+        $query = DB::table('gp_guia_remisions as gr')
+            ->join('gp_guia_remision_transferencias as grt', 'gr.id', '=', 'grt.guia_remision_id')
+            ->whereIn('gr.tipo', ['transferencia', 'reposicion']);
+        if ($estado) {
+            $query->where('gr.estado', $estado);
+        }
+        if ($fechaInicio && $fechaFin) {
+            $query->where('gr.created_at', '>=', $fechaInicio)->where('gr.created_at', '<=', $fechaFin);
+        }
+        return $query
+            ->select([
+                'gr.id',
+                'grt.pedido',
+                'gr.tipo',
+                'gr.estado',
+                DB::raw("GROUP_CONCAT(DISTINCT grt.codigo ORDER BY grt.codigo SEPARATOR ', ') AS codigos"),
+            ])
+            ->groupBy('gr.id', 'grt.pedido', 'gr.tipo', 'gr.estado')
             ->get();
     }
 }
