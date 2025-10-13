@@ -569,7 +569,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function createAdjustmentDeliveryNote($id)
     {
-       return  DB::transaction(function () use ($id) {
+        return  DB::transaction(function () use ($id) {
             $user = GpUsuario::find(6);
             $guia = GpGuiaRemision::find($id);
             $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
@@ -643,7 +643,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             }
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
 
-              return $guia->fresh();
+            return $guia->fresh();
         });
     }
 
@@ -772,5 +772,42 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $guia = GpGuiaRemision::find(232407);
         $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
         return $pedido;
+    }
+
+
+
+    public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin)
+    {
+        $query = DB::table('gp_guia_remisions as gr')
+            ->join('gp_guia_remision_despachos as grd', 'gr.id', '=', 'grd.guia_remision_id')
+            ->where('gr.tipo', 'despacho')->whereNotNull('grd.codigo')->where('grd.codigo', '!=', '')
+            ->where('gr.estado', 'enviada');
+        if ($fechaInicio && $fechaFin) {
+            $query->where('gr.created_at', '>=', $fechaInicio)->where('gr.created_at', '<=', $fechaFin);
+        }
+        return $query->select('gr.id', 'grd.codigo', 'grd.pedido', 'gr.tipo', 'gr.estado')->get();
+    }
+
+    public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null)
+    {
+        $query = DB::table('gp_guia_remisions as gr')
+            ->join('gp_guia_remision_transferencias as grt', 'gr.id', '=', 'grt.guia_remision_id')
+            ->whereIn('gr.tipo', ['transferencia', 'reposicion']);
+        if ($estado) {
+            $query->where('gr.estado', $estado);
+        }
+        if ($fechaInicio && $fechaFin) {
+            $query->where('gr.created_at', '>=', $fechaInicio)->where('gr.created_at', '<=', $fechaFin);
+        }
+        return $query
+            ->select([
+                'gr.id',
+                'grt.pedido',
+                'gr.tipo',
+                'gr.estado',
+                DB::raw("GROUP_CONCAT(DISTINCT grt.codigo ORDER BY grt.codigo SEPARATOR ', ') AS codigos"),
+            ])
+            ->groupBy('gr.id', 'grt.pedido', 'gr.tipo', 'gr.estado')
+            ->get();
     }
 }
