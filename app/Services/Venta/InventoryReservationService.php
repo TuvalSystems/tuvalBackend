@@ -488,26 +488,26 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                         'STO_ART_BODEGA' => $s['STO_ART_BODEGA'],
                         'ART_CODIGO'     => $d['ART_CODIGO'],
                         'to_cancel'      => $s['a_cancelar'],
-                        'to_invoice'     => $s['a_facturar'],
+                        'to_quote'     => $s['a_cotizar'],
                     ];
                 });
-            })->filter(fn($i) => $i['to_cancel'] > 0 || $i['to_invoice'] > 0)->values();
+            })->filter(fn($i) => $i['to_cancel'] > 0 || $i['to_quote'] > 0)->values();
 
             if ($items->isEmpty()) {
-                throw new \Exception('No se encontraron items para liberar o facturar');
+                throw new \Exception('No se encontraron items para liberar o cotizar');
             }
 
             $stocksIds = $items->pluck('stock_id')->toArray();
             $rows = GpCotizacionDetalleStock::whereIn('id', $stocksIds)->lockForUpdate()->get()->keyBy('id');
             $toQuote = [];
             $totalLiberado = 0.0;
-            $totalFacturar = 0.0;
+            $totalCotizar = 0.0;
             foreach ($items as $itm) {
                 $row = $rows[$itm['stock_id']];
                 if (!$row) {
                     throw ValidationException::withMessages(["stock:{$itm['stock_id']}" => 'Stock no existe.']);
                 }
-                $decrease = $itm['to_cancel'] + $itm['to_invoice'];
+                $decrease = $itm['to_cancel'] + $itm['to_quote'];
                 if ($decrease <= 0) {
                     continue;
                 }
@@ -536,15 +536,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     $totalLiberado += $itm['to_cancel'];
                 }
 
-                if ($itm['to_invoice'] > 0) {
+                if ($itm['to_quote'] > 0) {
                     $this->toInvoiceStockQuotationReserved($row, $itm, $user);
-                    $totalFacturar += $itm['to_invoice'];
+                    $totalCotizar += $itm['to_quote'];
                     $toQuote[] = [
-                        'detalle_id'        =>  $itm['detalle_id'],
+                        'detalle_id'        => $itm['detalle_id'],
                         'stock_id'          => $itm['stock_id'],
                         'STO_ART_BODEGA'    => $itm['STO_ART_BODEGA'],
                         'ART_CODIGO'        => $itm['ART_CODIGO'],
-                        'cantidad'          => $itm['to_invoice'],
+                        'cantidad'          => $itm['to_quote'],
                     ];
                 }
             }
@@ -558,11 +558,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             return [
                 'cotizacion' => $new->cotizacion ?? null,
                 'liberado_total' => $totalLiberado,
-                'facturado_total' => $totalFacturar,
+                'facturado_total' => $totalCotizar,
                 'lineas_facturar' => count($toQuote)
             ];
         });
     }
+
 
 
     public function toCancelStockQuotationReserved($row, $itm, $user)
@@ -577,10 +578,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function toInvoiceStockQuotationReserved($row, $itm, $user)
     {
         DB::table($row->getTable())->where('id', $row->id)->increment(
-            'cantidad_facturada',
-            $itm['to_invoice']
+            'cantidad_cotizada',
+            $itm['to_quote']
         );
-        $this->storeQuotationReservedStockLogs($row, $user, 'facturar', $itm['to_invoice']);
+        $this->storeQuotationReservedStockLogs($row, $user, 'cotizar', $itm['to_invoice']);
     }
 
     public function storeQuotationReservedStockLogs($row,  $user, $type, $qty)

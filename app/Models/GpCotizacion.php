@@ -179,18 +179,6 @@ class GpCotizacion extends Model
         'fecha_entrega',
         'facturado',
         'user_ing_recordatorio',
-        'st_solResInv',
-        'co_tipSolResInv',
-        'co_tipTrasResInv',
-        'fe_solResInv',
-        'tx_obsSolResInv',
-        'fe_ingSolResInv',
-        'co_usrIngSolResInv',
-        'st_autSolResInv',
-        'fe_autSolResInv',
-        'tx_obsAutSolResInv',
-        'co_usrIngAutSolResInv',
-        'fe_ingAutSolResInv',
         'origen',
         'pedido_reserva_id',
         'pedido_generado_at',
@@ -228,10 +216,6 @@ class GpCotizacion extends Model
         return $this->belongsTo(GpUsuario::class, 'user_ing_recordatorio');
     }
 
-    public function reservaTraslado()
-    {
-        return $this->belongsTo(GpReservaTipoTraslado::class, 'co_tipTrasResInv', 'id');
-    }
 
 
     public function detallecotizacionstock()
@@ -239,10 +223,7 @@ class GpCotizacion extends Model
         return $this->hasMany(GpCotizacionDetalleStock::class, 'cotizacion_id', 'id');
     }
 
-    public function tiporeserva()
-    {
-        return $this->belongsTo(GpTipoReservas::class, 'co_tipSolResInv', 'id');
-    }
+
 
 
 
@@ -271,11 +252,6 @@ class GpCotizacion extends Model
             : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'SERV')->exists();
     }
 
-
-     public function usuariosolicitudreserva()
-    {
-        return $this->belongsTo(GpUsuario::class, 'co_usrIngSolResInv');
-    }
 
 
     public function reserva()
