@@ -12,11 +12,13 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpUsuario;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DeliveryNoteService implements DeliveryNoteServiceInterface
 {
@@ -124,7 +126,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $traslados = GpTrasladosVentas::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
             ->whereIn('gp_traslados_ventas.id', $itemsIds)
-            // ->whereNull('gp_traslados_ventas.completado')
             ->where(function ($q) {
                 $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
             })
@@ -139,6 +140,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $response = $this->apiDeliveryNote->createTransferGuideVta($params);
             if ($response['success'] === false) {
                 throw new \Exception($response['message']);
+            }
+            $docGp = data_get($response, 'data.docGp'); // null si no existe
+            if (blank($docGp)) {
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
             }
             foreach ($grupo['items'] as $key => $item) {
                 $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
@@ -295,6 +300,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $guia->update(['procesando' => null]);
                 throw new \Exception($response['message']);
             }
+            $docGp = data_get($response, 'data.docGp'); // null si no existe
+            if (blank($docGp)) {
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+            }
 
             if ($guia->rebajado) {
                 $wsOk = true;
@@ -416,6 +425,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if ($response['success'] === false) {
                 throw new \Exception($response['message']);
             }
+            $docGp = data_get($response, 'data.docGp'); // null si no existe
+            if (blank($docGp)) {
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+            }
             foreach ($grupo['items'] as $key => $item) {
                 $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
                 $checkList = true;
@@ -475,7 +488,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
 
-        
+
         $ids = $detalle->pluck('detalle_id')->filter()->unique()->values();
         $articulos = $this->getAllDetailordersByGuideDetailsIds($ids);
         $tocoServ = false;
@@ -524,6 +537,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $guia->update(['estado' => 'enviada']);
             }
         }
+        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
         $guia->refresh();
         return $guia;
     }
@@ -548,5 +562,215 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             throw new \Exception($response['message']);
         }
         return  data_get($response, 'data', []);
+    }
+
+
+
+
+    public function createAdjustmentDeliveryNote($id)
+    {
+       return  DB::transaction(function () use ($id) {
+            $user = GpUsuario::find(6);
+            $guia = GpGuiaRemision::find($id);
+            $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+
+
+            $ids = $detalle->pluck('detalle_id')->filter()->unique()->values();
+            if ($ids->isEmpty()) {
+                return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems válidos');
+            }
+
+            $articulos = $this->getAllDetailordersByGuideDetailsIds($ids);
+
+            $tocoServ = false;
+            foreach ($detalle->groupBy('detalle_id') as $detalleId => $row) {
+                $art = $articulos->get($detalleId);
+                if (!$art) {
+                    continue;
+                }
+                if ($art->ART_TIPO_COMPRA == 'SERV') {
+                    $qty = (float) $row->sum('GUI_REM_CANTIDAD');
+                    $qty = max(0.0, $qty);
+                    $nuevoReservado   = max(0.0, (float) ($art->reservado ?? 0) - $qty);
+                    $nuevoTrasladado  = (float)($art->trasladado ?? 0) + $qty;
+                    $cap = (float) ($art->ART_CANTIDAD ?? 0);
+                    if ($cap > 0) $nuevoTrasladado = min($nuevoTrasladado, $cap);
+                    $art->fill([
+                        'reservado' => $nuevoReservado,
+                        'trasladado' => $nuevoTrasladado
+                    ])->save();
+                    $tocoServ = true;
+                }
+            }
+
+            if ($tocoServ && $guia->estado != 'enviada') {
+                $guia->update(['estado' => 'enviada']);
+            }
+
+            $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
+            if (count($groups) === 0) {
+                return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
+            }
+            $wsOk = false;
+            foreach ($groups as $grupo) {
+                $params =  $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
+                $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
+                if ($response['success'] === false) {
+                    $guia->update(['procesando' => null]);
+                    throw new \Exception($response['message']);
+                }
+                $docGp = data_get($response, 'data.docGp'); // null si no existe
+                if (blank($docGp)) {
+                    throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+                }
+
+                if ($guia->rebajado) {
+                    $wsOk = true;
+                }
+                foreach ($grupo['items'] as $item) {
+                    $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
+                    $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
+                }
+                $guia->update(['rebajado' => 1]);
+                $this->createDocumentDispatchTrfv($guia, $response['data'], $grupo['pedido']);
+                $wsOk = true;
+            }
+
+            if ($wsOk) {
+                if ($guia->estado !== 'enviada') {
+                    $guia->update(['estado' => 'enviada']);
+                }
+            }
+            $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+
+              return $guia->fresh();
+        });
+    }
+
+
+
+
+
+    public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id, bool $debug = true)
+    {
+        // 1) Cabecera guía (solo tipo despacho)
+        $guia = GpGuiaRemision::select('id', 'pedido', 'estado')
+            ->where('tipo', 'despacho')
+            ->find($id);
+
+        $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)
+            ->whereNotNull('codigo')
+            ->where('codigo', '!=', '')
+            ->select('id_movimiento', 'pedido', 'codigo')->first();
+        $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
+
+        if (!$guia) {
+            return ['error' => "Guía $id no encontrada o no es de tipo 'despacho'."];
+        }
+
+        // 2) Pedido (mínimo necesario)
+        $order = GpPedido::select('id', 'pedido', 'despachado', 'estado')
+            ->where('pedido', $guia->pedido)
+            ->first();
+
+        if (!$order) {
+            return ['error' => "Pedido {$guia->pedido} no encontrado.", 'guia' => $guia];
+        }
+
+        // 3) Traer solo las columnas necesarias para el cruce
+        $detalleguia = GpGuiaRemisionDetalle::select('GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD')
+            ->where('guia_remision_id', $guia->id)
+            ->get();
+
+        $detallepedido = GpPedidoDetalle::select('ART_CODIGO', 'ART_CANTIDAD', 'reservado', 'trasladado', 'devuelto')
+            ->where('pedido_id', $order->id)
+            ->get();
+        $stocks = GpPedidoDetalleStock::select('detalle_id', 'seleccionado', 'reservado')
+            ->where('pedido_id', $order->id)
+            ->get();
+
+        // 4) Agrupar/sumar por código
+        $pedidoQtyByCode = $detallepedido
+            ->groupBy('ART_CODIGO')
+            ->map(fn($rows) => (float) $rows->sum('ART_CANTIDAD'));
+
+        $guiaQtyByCode = $detalleguia
+            ->groupBy('GUI_REM_CODI_INTERNO')
+            ->map(fn($rows) => (float) $rows->sum('GUI_REM_CANTIDAD'));
+
+        $allCodes = $pedidoQtyByCode->keys()
+            ->merge($guiaQtyByCode->keys())
+            ->unique()
+            ->values();
+
+        $despachados = [];
+        $pendientes  = [];
+
+        foreach ($allCodes as $codigo) {
+            $cantPedido = (float) ($pedidoQtyByCode[$codigo] ?? 0.0);
+            $cantGuia   = (float) ($guiaQtyByCode[$codigo]   ?? 0.0);
+
+            $despachadoQty = min($cantGuia, $cantPedido);
+            $pendienteQty  = max($cantPedido - $cantGuia, 0.0);
+
+            $row = [
+                'codigo'         => $codigo,
+                'pedido_qty'     => $cantPedido,
+                'guia_qty'       => $cantGuia,
+                'despachado_qty' => $despachadoQty,
+                'pendiente_qty'  => $pendienteQty,
+            ];
+
+            if ($despachadoQty > 0) $despachados[] = $row;
+            if ($pendienteQty > 0)  $pendientes[]  = $row;
+        }
+
+        $resumen = [
+            'lineas_pedido'   => $pedidoQtyByCode->count(),
+            'lineas_guia'     => $guiaQtyByCode->count(),
+            'total_despachado' => array_sum(array_column($despachados, 'despachado_qty')),
+            'total_pendiente' => array_sum(array_column($pendientes,  'pendiente_qty')),
+        ];
+
+        // 5) Respuesta SLIM (solo lo útil)
+        $response = [
+            'ajusteWebGuia' => [
+                'ajusteWebGuia' => $ajusteWebGuia,
+                'ajusteGp' => $dataAjuste
+            ],
+            'guia' => [
+                'id'     => $guia->id,
+                'pedido' => $guia->pedido,
+                'estado' => $guia->estado,
+            ],
+            'pedido' => [
+                'id'         => $order->id,
+                'pedido'     => $order->pedido,
+                'estado'     => $order->estado,
+                'despachado' => (bool) $order->despachado,
+            ],
+            'stocks'                 => $stocks,
+            'despachados_por_guia'   => $despachados,
+            'pendientes_de_despacho' => $pendientes,
+            'resumen'                => $resumen,
+        ];
+
+        // Si necesitas depurar, activa $debug para incluir materia prima
+        if ($debug) {
+            $response['debug'] = [
+                'detalle_guia'   => $detalleguia,
+                'detalle_pedido' => $detallepedido,
+            ];
+        }
+
+        return $response;
+    }
+
+
+    public function processAjusteWevOrderGUideRemision($id)
+    {
+        $guia = GpGuiaRemision::find(232407);
+        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+        return $pedido;
     }
 }

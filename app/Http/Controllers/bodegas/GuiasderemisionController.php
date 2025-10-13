@@ -562,38 +562,6 @@ class GuiasderemisionController extends Controller
         ]);
     }
 
-    // public function despacharguia($id)
-    // {
-    //     try {
-    //         $guia = GpGuiaRemision::where('id', $id)->first();
-
-    //     if ($guia->estado == 'enviada') {
-    //         return response([
-    //             'success' => true,
-    //             'message' => 'Guía de remisión despachada por otro usuario',
-    //         ]);
-    //     }
-
-    //     $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
-
-    //     if ($guia->tipo == 'transferencia') {
-    //         return $this->despacharguiatransferencia($guia, $detalle);
-    //     }
-    //     if ($guia->tipo == 'despacho') {
-    //         return $this->despacharguiadespacho($guia, $detalle);
-    //     }
-
-    //     if ($guia->tipo == 'reposicion') {
-    //         return $this->despacharguiareposicion($guia, $detalle);
-    //     }
-    //     } catch (\Throwable $e) {
-    //        return response([
-    //            'success' => false,
-    //            'message' => $e->getMessage(),
-    //        ]);
-    //     }
-
-    // }
 
     public function despacharguia($id)
     {
@@ -605,10 +573,7 @@ class GuiasderemisionController extends Controller
 
                 // Re-chequea después del lock (otro proceso pudo enviarla)
                 if ($guia->estado === 'enviada') {
-                    return response([
-                        'success' => true,
-                        'message' => 'Guía de remisión despachada por otro usuario',
-                    ]);
+                    return $this->buildSuccessResponse('Guía de remisión despachada por otro usuario', 200);
                 }
                 $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)->get();
                 $response = null;
@@ -623,24 +588,23 @@ class GuiasderemisionController extends Controller
                         break;
                     case 'reposicion':
                         $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle,  $user);
-
                         break;
                     default:
                         throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
                 }
-
                 return $response;
-            }, 5);
+            });
         } catch (\Throwable $e) {
             Log::error('Error en despachar guia de remision (despacharguia)', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'guia_id' => $id
             ]);
-            return response([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                500
+            );
         }
     }
 
@@ -1250,4 +1214,39 @@ class GuiasderemisionController extends Controller
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
+
+
+    public function creacionAjusteGpGuiaRemision($id)
+    {
+        try {
+            $guia = $this->deliveryNoteService->createAdjustmentDeliveryNote($id);
+            return $this->buildSuccessResponse('Ajuste de guia creado exitosamente', 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+
+
+    public function obtenerInfoGUiaRemisionAjustePedido($id)
+    {
+        try {
+            $data = $this->deliveryNoteService->getDeliveryNoteAdjustmentInfoByDeliveryNoteId($id);
+            return $this->successResponse('Información obtenida', $data, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+
+    public function procesarPedidoDespachoPorGuia($id){
+        try {
+            $pedido = $this->deliveryNoteService->processAjusteWevOrderGUideRemision($id);
+            return $this->successResponse('Información obtenida', $pedido, 200);
+        } catch (\Throwable $e) {
+          return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
 }
