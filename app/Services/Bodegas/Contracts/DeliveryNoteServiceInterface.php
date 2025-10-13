@@ -26,4 +26,7 @@ interface DeliveryNoteServiceInterface
     public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id);
 
      public function processAjusteWevOrderGUideRemision($id);
+
+      public function getDeliveryNoteDispatchWithAjustment();
+      public function getDeliveryNoteTransferAndRepositionAjustment();
 }
