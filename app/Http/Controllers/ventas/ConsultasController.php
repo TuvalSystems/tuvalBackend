@@ -424,7 +424,11 @@ class ConsultasController extends Controller
         }
 
         $trasladosreposicion = GpTrasladosReposicion::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
-            ->whereNull('gp_traslados_reposicions.completado')
+            // ->whereNull('gp_traslados_reposicions.completado')
+            ->where(function ($q){
+                $q->whereNull('gp_traslados_reposicions.completado')
+                    ->orWhere('gp_traslados_reposicions.completado', 0);
+            })
             ->select(
                 'gp_articulos.ART_CODIGO as codigo',
                 'gp_traslados_reposicions.cantidad',
