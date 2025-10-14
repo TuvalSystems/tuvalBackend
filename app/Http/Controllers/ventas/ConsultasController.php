@@ -570,7 +570,10 @@ class ConsultasController extends Controller
         }
 
         $trasladosreposicion = GpTrasladosReposicion::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
-            ->whereNull('gp_traslados_reposicions.completado');
+             ->where(function ($q){
+                $q->whereNull('gp_traslados_reposicions.completado')
+                    ->orWhere('gp_traslados_reposicions.completado', 0);
+            });
         if ($item) {
             $trasladosreposicion = $trasladosreposicion->where('gp_traslados_reposicions.ART_CODIGO', $item);
         }
@@ -672,7 +675,10 @@ class ConsultasController extends Controller
         $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_origen', 'gp_bodegas.BOD_BODEGA')
             //            ->where('bodega_origen', $bodega)
-            ->whereNull('completado')
+              ->where(function ($q){
+                $q->whereNull('gp_traslados_ventas.completado')
+                    ->orWhere('gp_traslados_ventas.completado', 0);
+            })
             ->where('gp_pedidos.estado', '!=', 'eliminado');
         $trasladosventas = $trasladosventas->select(
             'gp_traslados_ventas.ART_CODIGO',
@@ -715,7 +721,10 @@ class ConsultasController extends Controller
 
         $trasladosreposicion = GpTrasladosReposicion::join('gp_bodegas', 'gp_traslados_reposicions.bodega_origen', 'gp_bodegas.BOD_BODEGA')
             //            ->where('bodega_origen', $bodega)
-            ->whereNull('completado')
+             ->where(function ($q){
+                $q->whereNull('gp_traslados_reposicions.completado')
+                    ->orWhere('gp_traslados_reposicions.completado', 0);
+            })
             ->select(
                 'gp_traslados_reposicions.ART_CODIGO',
                 'gp_traslados_reposicions.cantidad',
