@@ -31,7 +31,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $cantidad_autorizada_reserva
  * @property int|null $cantidad_facturada
  * @property int|null $cantidad_cancelada
- * @property int|null $cantidad_cotizado
+ * @property int|null $cantidad_cotizada
  * @property int|null $cantidad_traslado
  *
  */
@@ -40,8 +40,8 @@ class GpCotizacionDetalleStock extends Model
     use HasFactory;
 
     protected $table = 'gp_cotizacion_detalle_stocks';
-    protected $appends = ['disable_movimiento', 'pendiente'];
-    protected $casts = ['disable_movimiento' => 'boolean', 'pendiente' => 'integer'];
+    protected $appends = ['disable_movimiento', 'pendiente', 'disable_traslado'];
+    protected $casts = ['disable_movimiento' => 'boolean', 'pendiente' => 'integer', 'disable_traslado' => 'boolean'];
     protected $fillable = [
         'cotizacion_id',
         'detalle_id',
@@ -50,7 +50,7 @@ class GpCotizacionDetalleStock extends Model
         'seleccionado',
         'cantidad_autorizada_reserva',
         'cantidad_facturada',
-        'cantidad_cotizado',
+        'cantidad_cotizada',
         'cantidad_traslado',
         'user_id_facturacion',
         'cantidad_cancelada',
@@ -69,7 +69,7 @@ class GpCotizacionDetalleStock extends Model
         $aut = $this->getAutorizada();
         $fact = $this->cantidad_facturada   ?? 0;
         $can = $this->cantidad_cancelada    ?? 0;
-        $cot = $this->cantidad_cotizado     ?? 0;
+        $cot = $this->cantidad_cotizada     ?? 0;
         $tras = $this->cantidad_traslado    ?? 0;
         return max(0, $aut - $fact - $can - $cot - $tras);
     }
@@ -77,5 +77,10 @@ class GpCotizacionDetalleStock extends Model
     public function getDisableMovimientoAttribute(): bool
     {
         return $this->pendiente  === 0;
+    }
+
+    public function getDisableTrasladoAttribute(): bool
+    {
+        return $this->cantidad_traslado > 0;
     }
 }

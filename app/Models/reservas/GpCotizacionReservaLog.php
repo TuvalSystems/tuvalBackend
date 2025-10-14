@@ -9,13 +9,13 @@ class GpCotizacionReservaLog extends Model
 {
     use HasFactory;
 
-    protected $table = 'gp_cotizacion_reserva_log';
+    protected $table = 'gp_cotizacion_reserva_logs';
 
     protected $fillable = [
         'reserva_id',
         'cotizacion_origen_id',
         'cotizacion_destino_id',
         'user_id',
-        'STO_BODEGA',
+        'bodega',
     ];
 }

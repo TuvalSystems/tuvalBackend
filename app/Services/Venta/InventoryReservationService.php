@@ -271,9 +271,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
         if ($affected > 0) {
             if ($reserva->tipo_traslado_reserva_id == 1) {
-                $this->syncSelectedToAuthorizedAndInvoicedForQuotationAnyTraslated($reserva->cotizacion_id);
+                $this->syncSelectedToAuthorizedForQuotation($reserva->cotizacion_id);
             } else {
-                $this->syncSelectedToAuthorizedAndInvoicedForQuotation($reserva->cotizacion_id);
+                $this->syncSelectedToAuthorizedAndTransferredForQuotation($reserva->cotizacion_id);
             }
         }
 
@@ -290,19 +290,22 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
-    public function syncSelectedToAuthorizedAndInvoicedForQuotationAnyTraslated(int $quotationId)
+    //sin traslado
+
+    public function syncSelectedToAuthorizedForQuotation(int $quotationId)
     {
         $sameWhaAffected = GpCotizacionDetalleStock::query()
             ->where('cotizacion_id', $quotationId)
             ->where('seleccionado', '>', 0)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
+                'updated_at' => now(),
             ]);
         Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' para cotización ID {$quotationId}");
     }
 
-    public function syncSelectedToAuthorizedAndInvoicedForQuotation(int $quotationId)
+    //con traslado
+    public function syncSelectedToAuthorizedAndTransferredForQuotation(int $quotationId)
     {
         $warehouse = GpCotizacion::whereKey($quotationId)
             ->lockForUpdate()
@@ -322,11 +325,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('STO_ART_BODEGA', '!=', $warehouse)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'cantidad_trasladada' => DB::raw('seleccionado'),
+                'cantidad_traslado' => DB::raw('seleccionado'),
                 'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
 
-        Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' y {$otherWhaAffected} en 'cantidad_trasladada' para cotización ID {$quotationId}");
+        Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' y {$otherWhaAffected} en 'cantidad_traslado' para cotización ID {$quotationId}");
     }
 
 
@@ -478,7 +481,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function processReservedQuotation(array $payload, $user)
     {
         return DB::transaction(function () use ($payload, $user) {
-            $items = collect(data_get($payload, 'detallecotizacion', []))->flatMap(function ($det) {
+            $items = collect(data_get($payload, 'cotizacion.detallecotizacion', []))->flatMap(function ($det) {
                 $d = is_array($det) ? $det : (array) $det;
                 return collect(data_get($d, 'stock', []))->map(function ($st) use ($d) {
                     $s = is_array($st) ? $st : (array) $st;
@@ -488,7 +491,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                         'STO_ART_BODEGA' => $s['STO_ART_BODEGA'],
                         'ART_CODIGO'     => $d['ART_CODIGO'],
                         'to_cancel'      => $s['a_cancelar'],
-                        'to_quote'     => $s['a_cotizar'],
+                        'to_quote'       => $s['a_cotizar'],
                     ];
                 });
             })->filter(fn($i) => $i['to_cancel'] > 0 || $i['to_quote'] > 0)->values();
@@ -554,7 +557,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 $new = $this->createQuotationReserveWithDetailAndStock($payload, $toQuote, $user);
                 $this->recalculateQuotation($new->id); // para recacular la cotizacion
             }
-            $this->closeReservationIfEmpty($payload['id']);
+            $this->closeReservationIfEmpty(Arr::get($payload, 'id'));
             return [
                 'cotizacion' => $new->cotizacion ?? null,
                 'liberado_total' => $totalLiberado,
@@ -581,7 +584,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'cantidad_cotizada',
             $itm['to_quote']
         );
-        $this->storeQuotationReservedStockLogs($row, $user, 'cotizar', $itm['to_invoice']);
+        $this->storeQuotationReservedStockLogs($row, $user, 'cotizar', $itm['to_quote']);
     }
 
     public function storeQuotationReservedStockLogs($row,  $user, $type, $qty)
@@ -614,7 +617,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $cotizacion = $this->createHeaderQuotationReserve($payload, $user);
         $this->createDetailAndStockQuotationReserve($cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails);
         //al final por si acaso xd
-        $this->storeQuotationReservedLogs($payload['id'], $payload['cotizacion']['id'], $cotizacion->id,  $payload['BOD_BODEGA'], $linesToQuote, $user);
+        $this->storeQuotationReservedLogs($payload['id'], $payload['cotizacion']['id'], $cotizacion->id,  $payload['cotizacion']['BOD_BODEGA'], $linesToQuote, $user);
         return $cotizacion;
     }
 
@@ -622,13 +625,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function createHeaderQuotationReserve(array $payload, GpUsuario $user)
     {
         $cotOld = [];
-        $cotOld = $payload;
+        $cotOld = Arr::get($payload, 'cotizacion') ?? [];
         $cotOld['registro_copia'] = null;
-        $cotOld['cotizacion'] = $payload['detallecotizacion'];
+        $cotOld['cotizacion'] =  Arr::get($payload, 'cotizacion.detallecotizacion');
         $requiereAprobacionComercial = $this->approvalService->checkOutApprovalCommercial($cotOld, 'cotizacion');
         $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
         $requiereAprobacionComercial['aprobado'] = 'no';
-        $cotizacion = $this->quotationBuilder->fromPayloadReservedToQuotation($payload, $requiereAprobacionComercial, $user, 'reserva');
+        $cotizacion = $this->quotationBuilder->fromPayloadReservedToQuotation($cotOld, $requiereAprobacionComercial, $user, 'reserva');
         $cotizacion->save();
         return $cotizacion;
     }
@@ -714,11 +717,35 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function closeReservationIfEmpty($oldQuotationId)
+    public function closeReservationIfEmpty($reserveId)
     {
-        $affected = GpCotizacion::whereKey($oldQuotationId)->whereDoesntHave('detallecotizacionstock', function ($q) {
-            $q->where('seleccionado', '>', 0);
-        })->update(['estado' => 'procesado', 'st_solResInv' => 'procesado']);
+        $reserve = GpReserva::find($reserveId);
+        if (empty($reserve)) {
+            return false;
+        }
+        $hayPendientes  = GpCotizacionDetalleStock::where('cotizacion_id', $reserve->cotizacion_id)
+            ->where('seleccionado', '>', 0)
+            ->exists();
+        if ($hayPendientes) {
+            return false;
+        }
+
+        $affected = GpCotizacion::query()
+            ->whereKey($reserve->cotizacion_id)
+            ->where('estado', '!=', 'procesado')
+            ->update([
+                'estado'     => 'procesado',
+                'updated_at' => now(),
+            ]);
+
+        // Idempotente para la reserva
+        if ($reserve->estado !== 'procesado') {
+            $reserve->update([
+                'estado'     => 'procesado',
+                'updated_at' => now(),
+            ]);
+        }
+
         return $affected > 0;
     }
 

@@ -19,7 +19,7 @@ class CreateTableGpCotizacionReservaLogsTable extends Migration
             $table->unsignedBigInteger('cotizacion_origen_id')->nullable();
             $table->unsignedBigInteger('cotizacion_destino_id')->nullable();
             $table->unsignedBigInteger('user_id');
-            $table->string('STO_BODEGA', 40);
+            $table->string('bodega', 40);
             $table->timestamps();
 
             $table->foreign('cotizacion_origen_id')->references('id')->on('gp_cotizacions');

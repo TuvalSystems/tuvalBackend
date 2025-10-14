@@ -41,13 +41,12 @@ class ReservedBuilder implements ReservedBuilderInterface
 
     public function fromPayloadQuoteReservedLog($reserveId, $oldQuoteId, $newQuoteId, $userId ,$warehouse){
         $new = new GpCotizacionReservaLog();
-
         $new->fill([
-            'cotizacion_id' => $reserveId,
-            'cotizacion_id_anterior' => $oldQuoteId,
-            'cotizacion_id_nueva' => $newQuoteId,
-            'user_id' => $userId,
+            'reserva_id' => $reserveId,
+            'cotizacion_origen_id' => $oldQuoteId,
+            'cotizacion_destino_id' => $newQuoteId,
             'bodega' => $warehouse,
+            'user_id' => $userId,
         ]);
         return $new;
     }

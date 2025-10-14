@@ -178,14 +178,14 @@ class ReservasController extends Controller
 
             return  $this->buildSuccessResponse($msg,  200);
         } catch (\Throwable $e) {
-            Log::error('Error al procesar la reserva de la cotizacion: ', [
+            Log::channel('reservas_log')->error('Error al procesar la reserva de la cotizacion: ', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'data' => $data
             ]);
-            return $this->buildErrorResponse('Error al procesar la reserva de la cotizacion', 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 
@@ -201,7 +201,7 @@ class ReservasController extends Controller
             $msg = "Reserva procesada correctamente. Pedido {$response['pedido']} generado.";
             return  $this->buildSuccessResponse($msg,  200);
         } catch (\Throwable $e) {
-            Log::error('Error en la funcion procesarReservaFacturaDemandaCotizacion -ReservasController: ', [
+            Log::channel('reservas_log')->error('Error en la funcion procesarReservaFacturaDemandaCotizacion -ReservasController: ', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),

@@ -9,7 +9,7 @@ class GpCotizacionReservaDetalleLog extends Model
 {
     use HasFactory;
 
-    protected $table = 'gp_cotizacion_detalle_stocks_logs';
+    protected $table = 'gp_cotizacion_reserva_detalles_logs';
     protected $fillable = [
         'ct_reserva_id',
         'stock_id',
