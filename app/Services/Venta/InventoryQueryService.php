@@ -239,7 +239,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->join('gp_pedido_detalles as d', 'd.id', 'st.detalle_id')
             ->join('gp_pedidos as p', 'p.id', '=', 'st.pedido_id')
             ->where('st.reservado', '>', 0)
-            ->whereIn('p.estado', ['eliminado', 'rechazado', 'anulada'])
+            ->whereNotIn('p.estado', ['eliminado', 'rechazado', 'anulada'])
             ->where(function ($q) {
                 $q->whereNull('p.despachado')->orWhere('p.despachado', 0);
             })
@@ -303,8 +303,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 return $item;
             });
         $response2 = $this->listReservedInventoryByPendingUse();
-        $response3 = $this->listReservedInventoryByQuotation();
-        return $response->merge([$response2, $response3]);
+        // $response3 = $this->listReservedInventoryByQuotation();
+        return $response->merge([$response2]);
     }
 
     public function listReservedInventoryByPendingUse()

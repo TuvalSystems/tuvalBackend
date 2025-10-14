@@ -30,6 +30,7 @@ use App\Models\GpRegistroCopia;
 use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
+use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
@@ -777,31 +778,27 @@ class QuotationService implements QuotationServiceInterface
      *  Ya se manda filtrado los items L desde el Front End
      */
 
-    public function getStockItemForWarehouse($article, $warehouse)
+    public function getStockItemForWarehouse($article, $warehouse, $cotizacionId)
     {
-        try {
-            $warehouses = $this->functionService->getBodegas($warehouse, 1);
-            $arrArticulos = ['articulo' => $article['ART_CODIGO']];
-            $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
-            $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
-            $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
-            $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article);
-            $availableArticulos = [];
-            if (!$artFormat['disponible']) {
-                $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
-                $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
-                $availableArticulos[] = $article['ART_CODIGO'];
-            }
-            $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
-            $newStock = $this->reassignStockIds($article, $artFormat['stock']);
-            $article['stock'] = $newStock;
-            $article['ART_STOCK'] = $artFormat['ART_STOCK'];
-            $article['stockListo'] = true;
-            return $this->successResponse('Stock obtenido correctamente', $article, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al obtener stock', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'data' => $article]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
+        $quoteReservedOriginId = $this->validateExistsReserve($cotizacionId);
+        $warehouses = $this->functionService->getBodegas($warehouse, 1);
+        $arrArticulos = ['articulo' => $article['ART_CODIGO']];
+        $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
+        $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+        $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
+        $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article, $quoteReservedOriginId);
+        $availableArticulos = [];
+        if (!$artFormat['disponible']) {
+            $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
+            $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+            $availableArticulos[] = $article['ART_CODIGO'];
         }
+        $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
+        $newStock = $this->reassignStockIds($article, $artFormat['stock']);
+        $article['stock'] = $newStock;
+        $article['ART_STOCK'] = $artFormat['ART_STOCK'];
+        $article['stockListo'] = true;
+        return $article;
     }
 
 
@@ -868,6 +865,20 @@ class QuotationService implements QuotationServiceInterface
         return $result;
     }
 
+
+    /** proceso para omitir reservas de cotizacion  */
+    public function validateExistsReserve($quotationId)
+    {
+         $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
+         if (!$quoteReserve) {
+            return ;
+         }
+         $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
+         if (!$logReserve) {
+            return ;
+         }
+         return $logReserve?->cotizacion_origen_id;
+    }
 
     /***
      *
@@ -1458,5 +1469,4 @@ class QuotationService implements QuotationServiceInterface
         ];
         return  $this->stockSqlService->consultStockWarehouseSql($params);
     }
-
 }

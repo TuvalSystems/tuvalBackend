@@ -12,7 +12,7 @@ interface StockWarehouseServiceInterface
     /**
      *  funciones en prueba para remplazo de newFormatStock y stockReservado
      */
-    public function computeAvailableStockForArticle(array $stockResults, array $articulo);
+    public function computeAvailableStockForArticle(array $stockResults, array $articulo, ?int $quotationId = null);
     public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null, ?int $quotationId = null);
 
     /**

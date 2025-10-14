@@ -72,7 +72,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return $articulo;
     }
 
-    public function computeAvailableStockForArticle(array $stockResults, array $articulo)
+    public function computeAvailableStockForArticle(array $stockResults, array $articulo, ?int $quotationId = null)
     {
         $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
         $articulo['stock'] = [];
@@ -92,7 +92,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // Bodegas involucradas (para agrupar y traer reservas en una sola pasada)
         $bodegas = array_values(array_unique(array_map(static fn($i) => (string)$i['STO_ART_BODEGA'], $filtered)));
         // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
-        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas);
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, $quotationId);
 
         $total = 0;
         $normalizados = [];
@@ -176,7 +176,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // 4) Reservas pendientes de uso para cotizar
         $reservasPendientes = $this->getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId);
         // 5) Reservas ya cotizadas pero si uso
-        $reservasCotizadas = $this->getReservedStockByWarehousesToQuotation($articulo, $bodegas, $excludeQuotationId);
+        // $reservasCotizadas = $this->getReservedStockByWarehousesToQuotation($articulo, $bodegas, $excludeQuotationId);
         $out = [];
         foreach ($bodegas as $b) {
             $out[$b] =  (float) ($reservasPendientes[$b] ?? 0) + (float) ($reservasCotizadas[$b] ?? 0) +

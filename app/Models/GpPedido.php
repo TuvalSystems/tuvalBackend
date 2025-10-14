@@ -220,4 +220,15 @@ class GpPedido extends Model
     }
 
 
+    public function detallepedido ()
+    {
+        return $this->hasMany(GpPedidoDetalle::class, 'pedido_id');
+    }
+
+    public function pedidostock ()
+    {
+        return $this->hasMany(GpPedidoDetalleStock::class, 'pedido_id');
+    }
+
+
 }

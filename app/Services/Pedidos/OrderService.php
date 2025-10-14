@@ -6,6 +6,7 @@ use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -17,11 +18,14 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
+use App\Models\GpCotizacionDetalle;
+use App\Models\GpCotizacionDetalleStock;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
+use App\Models\reservas\GpCotizacionReservaDetalleLog;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
@@ -246,7 +250,9 @@ class OrderService implements OrderServiceInterface
             $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
         }
         $newOrder->refresh();
+        /** proceso de limpieza de stock para reservas  de cotizacion */
         DB::afterCommit(function () use ($newOrder) {
+            $this->cleanStockReservedQuotation($newOrder->cotizacion_id, $newOrder->id, $newOrder->BOD_BODEGA);
             $this->invoiceService->checkSendInvoice($newOrder);
         });
         return $newOrder;
@@ -349,6 +355,85 @@ class OrderService implements OrderServiceInterface
     public function updateValueInvoiceQuotation($orderId)
     {
         GpCotizacion::where('id', $orderId)->update(['estado' => 'procesado', 'facturado' => 1]);
+    }
+
+
+
+
+    public function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
+    {
+        $order = GpPedido::with('detallepedido.pedidodetallestocks')->find($orderId);
+        if (!$order) return;
+
+
+        $cotResLog = GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)->first();
+        if (!$cotResLog) return;
+
+
+        $quoteOriginId = $cotResLog->cotizacion_origen_id ?? null;
+        if (!$quoteOriginId) return;
+
+        // 1) Consumo del PEDIDO por (ART_CODIGO|BODEGA)
+        $pedidoPorClave = []; // clave = ART_CODIGO|BODEGA
+        foreach ($order->detallepedido as $det) {
+            foreach ($det->pedidodetallestocks as $stk) {
+                if ($warehouse && $stk->STO_ART_BODEGA !== $warehouse) {
+                    continue;
+                }
+                $clave = $det->ART_CODIGO . '|' . $stk->STO_ART_BODEGA;
+                $pedidoPorClave[$clave] = ($pedidoPorClave[$clave] ?? 0) + (int) $stk->seleccionado;
+            }
+        }
+
+        if (empty($pedidoPorClave)) {
+            return; // nada que descontar
+        }
+        // 2) Stock IDs registrados en el LOG (pivote real)
+        $stockIds = GpCotizacionReservaDetalleLog::where('ct_reserva_id', $cotResLog->id)
+            ->pluck('stock_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($stockIds->isEmpty()) return;
+
+        $quoteStockRows = GpCotizacionDetalleStock::query()
+            ->select('id','STO_ART_BODEGA', 'seleccionado', 'cotizacion_id')
+            ->whereIn('id', $stockIds)
+            ->when($warehouse, fn($q) => $q->where('STO_ART_BODEGA', $warehouse))
+            ->get();
+
+        if ($quoteStockRows->isEmpty()) return;
+
+        $cotizacionPorClave = $quoteStockRows->keyBy(fn($row) => $row->ART_CODIGO . '|' . $row->STO_ART_BODEGA);
+        $clavesAfectadas = array_values(array_intersect(array_keys($pedidoPorClave), $cotizacionPorClave->keys()->all()));
+        if (empty($clavesAfectadas)) return;
+
+        $idsParaLock = array_map(fn($k) => $cotizacionPorClave[$k]->id, $clavesAfectadas);
+        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->lockForUpdate()->get();
+        // Lock real de filas para evitar race conditions
+        foreach ($clavesAfectadas as $k) {
+            $row         = $cotizacionPorClave[$k];
+            $pedidoQty   = (int) $pedidoPorClave[$k];
+
+               // a) Reducir seleccionado en la cotización origen: max(origen - pedido, 0)
+            $origenQty   = (int) $row->seleccionado;
+            $nuevoSelect = max($origenQty - $pedidoQty, 0);
+
+              // b) Aumentar facturado pero sin lo facturado - lo cancelado - seleccionado
+              $authorizado = (int) $row->cantidad_autorizada_reserva;
+              $facturado   = (int) $row->cantidad_facturada;
+              $limite = $authorizado - $facturado;
+              $nuevoFacturado = min($facturado + $pedidoQty, $limite);
+
+
+            if ($nuevoSelect !== $origenQty) {
+                // Si solo quieres marcar en memoria y guardar luego, puedes batch; aquí guardamos inmediato
+                $row->seleccionado = $nuevoSelect;
+                $row->cantidad_facturada = $nuevoFacturado;
+                $row->save();
+            }
+        }
     }
 
     /**
@@ -678,7 +763,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-     public function generateNextMonthInvoice()
+    public function generateNextMonthInvoice()
     {
         $now = now('America/Guayaquil');
         $prev = $now->copy()->subMonthNoOverflow();

@@ -1179,7 +1179,24 @@ class CotizacionesController extends Controller
         ]);
         $articulo =  $request->get('articulo', null);
         $bodega = $request->get('bodega', null);
-        return $this->quotationService->getStockItemForWarehouse($articulo, $bodega);
+        $cotizacionId = $request->get('cotizacion_id', null);
+        try {
+
+            $response =  $this->quotationService->getStockItemForWarehouse($articulo, $bodega, $cotizacionId);
+            return $this->successResponse('Stock obtenido correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::error(
+                'Error al obtener stock',
+                [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'data' => $articulo
+                ]
+            );
+            return $this->buildErrorResponse('Stock insuficiente', 500);
+        }
     }
 
     public function obteneMargenItemlL(Request $request)
@@ -1227,5 +1244,4 @@ class CotizacionesController extends Controller
 
         return $this->quotationService->consultaStockPrueba($articulo, $bodega);
     }
-
 }

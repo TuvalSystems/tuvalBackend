@@ -510,14 +510,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 if (!$row) {
                     throw ValidationException::withMessages(["stock:{$itm['stock_id']}" => 'Stock no existe.']);
                 }
-                $decrease = $itm['to_cancel'] + $itm['to_quote'];
-                if ($decrease <= 0) {
+                $validatedQty = $itm['to_cancel'] + $itm['to_quote'];
+                $decrease = $itm['to_cancel'];
+                if ($validatedQty <= 0) {
                     continue;
                 }
                 $currentSelected = (float) $row->seleccionado;
-                if ($currentSelected < $decrease) {
+                if ($currentSelected < $validatedQty) {
                     throw ValidationException::withMessages([
-                        "stock:{$itm['stock_id']}" => "Cantidad solicitada ({$decrease}) excede lo seleccionado ({$currentSelected})."
+                        "stock:{$itm['stock_id']}" => "Cantidad solicitada ({$validatedQty}) excede lo seleccionado ({$currentSelected})."
                     ]);
                 }
 
@@ -526,7 +527,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     ->where('seleccionado', '>=', $decrease)
                     ->decrement('seleccionado', $decrease);
 
-                if ($affected === 0) {
+                if ($affected === 0 && $decrease > 0) {
                     $freshSelected = (float) DB::table($row->getTable())->where('id', $row->id)->value('seleccionado');
                     throw ValidationException::withMessages([
                         "stock:{$itm['stock_id']}" => "Cantidad solicitada ({$decrease}) excede lo seleccionado ({$freshSelected})."
