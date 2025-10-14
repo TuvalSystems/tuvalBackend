@@ -278,7 +278,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
         $traslados = DB::table('gp_traslados_reposicions as t')
             ->join('gp_articulos as a', 'a.ART_CODIGO', '=', 't.ART_CODIGO')
-            ->whereNull('t.completado')
+            ->where( function ($q) {
+                $q->whereNull('t.completado')->orWhere('t.completado', 0);
+            })
             ->selectRaw(
                 "
             t.ART_CODIGO as codigo,
