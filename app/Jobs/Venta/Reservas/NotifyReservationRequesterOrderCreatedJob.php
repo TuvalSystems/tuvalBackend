@@ -3,13 +3,13 @@
 namespace App\Jobs\Venta\Reservas;
 
 use App\Models\GpUsuario;
-use App\Notifications\Venta\Reservas\UserReservedNotification;
 use Illuminate\Bus\Queueable;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use App\Notifications\User\UserNotification;
 
 class NotifyReservationRequesterOrderCreatedJob implements ShouldQueue
 {
@@ -36,8 +36,8 @@ class NotifyReservationRequesterOrderCreatedJob implements ShouldQueue
         $title = 'Pedido Creado';
         $mensaje = "Se ha autorizado la reserva y se ha generado el Pedido {$this->orderNumber}";
         $user->notify(
-            (new UserReservedNotification($title, $mensaje))
-                ->onQueue('notifications')
+            (new UserNotification($title, $mensaje))
+                // ->onQueue('notifications')
         );
     }
 }

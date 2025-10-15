@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Notifications\Venta\Reservas;
+namespace App\Notifications\User;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
-class UserReservedNotification extends Notification implements ShouldQueue
+class UserNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 

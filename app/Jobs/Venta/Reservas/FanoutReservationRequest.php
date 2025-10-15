@@ -2,21 +2,22 @@
 
 namespace App\Jobs\Venta\Reservas;
 
-use App\Events\Venta\Reservas\ReservationApprovalsChanged;
+use App\Models\GpUsuario;
+use App\Models\GpCotizacion;
+use Illuminate\Bus\Queueable;
 use App\Mail\Reservas\DemandaMail;
 use App\Mail\Reservas\ReservaMail;
-use App\Models\GpCotizacion;
-use App\Models\GpUsuario;
-use App\Notifications\Venta\Reservas\UserReservedNotification;
 use App\Services\Api\ApiGpService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use App\Notifications\User\UserNotification;
 use Illuminate\Support\Facades\Notification;
+use App\Events\Venta\Reservas\ReservationApprovalsChanged;
+
 
 class FanoutReservationRequest implements ShouldQueue
 {
@@ -35,7 +36,7 @@ class FanoutReservationRequest implements ShouldQueue
         Log::channel('redis_log')->info('FanoutReservationRequest boot', [
             'env_host' => config('database.redis.default.host'),
             'env_port' => config('database.redis.default.port'),
-            'client'   => config('database.redis.client'),
+            'client' => config('database.redis.client'),
             'queue_connection' => config('queue.default'),
         ]);
 
@@ -43,8 +44,9 @@ class FanoutReservationRequest implements ShouldQueue
             ->with([
                 'reserva:id,cotizacion_id,fe_solicitud_reserva,tipo_reserva_id'
             ])->find($this->cotizacionId);
-        $actor      = GpUsuario::find($this->actorId);
-        if (!$cotizacion || !$actor) return;
+        $actor = GpUsuario::find($this->actorId);
+        if (!$cotizacion || !$actor)
+            return;
 
         event(new ReservationApprovalsChanged('solicitud', $cotizacion->id, $actor->USERID));
         $this->sendNotifyUsersApproval($cotizacion, $actor);
@@ -57,7 +59,7 @@ class FanoutReservationRequest implements ShouldQueue
     public function sendNotifyUsersApproval($cotizacion, $actor)
     {
         $title = 'Nueva solicitud de reserva de inventario';
-        $mensaje =  "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion}";
+        $mensaje = "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion}";
 
         $usersApproval = GpUsuario::query()
             ->whereIn('perfil_id', [9, 2])
@@ -67,11 +69,11 @@ class FanoutReservationRequest implements ShouldQueue
         if ($usersApproval->isNotEmpty()) {
             Notification::send(
                 $usersApproval,
-                (new UserReservedNotification(
+                (new UserNotification(
                     $title,
                     $mensaje
                 )
-                )->onQueue('notifications')
+                )
             );
         }
     }
@@ -80,7 +82,7 @@ class FanoutReservationRequest implements ShouldQueue
     public function sendNotifyUsersWarehouse($cotizacion, $actor)
     {
         $title = 'Reserva de inventario';
-        $mensaje =  "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion}";
+        $mensaje = "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion}";
 
         GpUsuario::query()
             ->whereIn('perfil_id', [13, 2])
@@ -91,11 +93,12 @@ class FanoutReservationRequest implements ShouldQueue
 
                 Notification::send(
                     $chunk,
-                    (new UserReservedNotification(
+                    (new UserNotification(
                         $title,
                         $mensaje
 
-                    ))->onQueue('notifications')
+                    ))
+                    // ->onQueue('notifications')
                 );
             }, 'id');
     }
@@ -119,7 +122,7 @@ class FanoutReservationRequest implements ShouldQueue
             //     return;
             // }
             $info = $this->computedFormatQuotationDetailStock($cotizacion->id);
-            $asunto = trim((string)($cfg['txAsu'] ?? '')) ?: 'Solicitud de reserva de inventario';
+            $asunto = trim((string) ($cfg['txAsu'] ?? '')) ?: 'Solicitud de reserva de inventario';
             $mailable = $typeR['type'] === 'RESERVA' ?
                 (new ReservaMail($cotizacion, $info, $actor, $asunto))->onConnection('redis')->onQueue('emails') : (new DemandaMail($cotizacion, $info, $actor, $asunto))->onConnection('redis')->onQueue('emails');
             Mail::to('sistemas6@tuvalsa.com')->queue($mailable); //pruebas
@@ -128,7 +131,7 @@ class FanoutReservationRequest implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('FanoutReservationRequest: error enviando email', [
                 'cotizacionId' => $cotizacion->id ?? null,
-                'error'        => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -138,10 +141,10 @@ class FanoutReservationRequest implements ShouldQueue
     {
         $map = [
             1 => ['conot' => 37, 'type' => 'RESERVA'],
-            2 => ['conot' => 1,  'type' => 'DEMANDA'],
+            2 => ['conot' => 1, 'type' => 'DEMANDA'],
         ];
 
-        $key = (int)($cotizacion->reserva?->tipo_reserva_id ?? 0);
+        $key = (int) ($cotizacion->reserva?->tipo_reserva_id ?? 0);
         return $map[$key] ?? null;
     }
 
@@ -152,7 +155,7 @@ class FanoutReservationRequest implements ShouldQueue
 
     public function fetchRecipientsForApiGp($type, $ptoVta, $apiGpService)
     {
-        $resp =  $apiGpService->fetchReservedNotifyLocal([
+        $resp = $apiGpService->fetchReservedNotifyLocal([
             'ptovta' => $ptoVta,
             'conot' => $type
         ]);
@@ -210,34 +213,36 @@ class FanoutReservationRequest implements ShouldQueue
 
         $rows = $cotizacion->detallecotizacion->flatMap(function ($detalle) use ($cotizacion) {
             if (in_array($detalle->ART_TIPO_COMPRA, ['SERV', 'L'])) {
-                return [[
-                    'detalle_id'                => $detalle->id,
-                    'stock_id'                  => null,
-                    'ART_CODIGO'                => $detalle->ART_CODIGO,
-                    'ART_CODIGO_TRES_LETRAS'    => $detalle->ART_CODIGO_TRES_LETRAS,
-                    'ART_DESCRIPCION'           => $detalle->ART_DESCRIPCION,
-                    'ART_PLAN_UMEDIDA'          => $detalle->ART_PLAN_UMEDIDA,
-                    'ART_PESO'                  => $detalle->ART_PESO,
-                    'STO_ART_BODEGA'            => $cotizacion->BOD_BODEGA,
-                    'ART_TIPO_COMPRA'           => $detalle->ART_TIPO_COMPRA,
-                    'ART_CANTIDAD'              => $detalle->ART_CANTIDAD,
-                ]];
+                return [
+                    [
+                        'detalle_id' => $detalle->id,
+                        'stock_id' => null,
+                        'ART_CODIGO' => $detalle->ART_CODIGO,
+                        'ART_CODIGO_TRES_LETRAS' => $detalle->ART_CODIGO_TRES_LETRAS,
+                        'ART_DESCRIPCION' => $detalle->ART_DESCRIPCION,
+                        'ART_PLAN_UMEDIDA' => $detalle->ART_PLAN_UMEDIDA,
+                        'ART_PESO' => $detalle->ART_PESO,
+                        'STO_ART_BODEGA' => $cotizacion->BOD_BODEGA,
+                        'ART_TIPO_COMPRA' => $detalle->ART_TIPO_COMPRA,
+                        'ART_CANTIDAD' => $detalle->ART_CANTIDAD,
+                    ]
+                ];
             }
             return $detalle->stock->map(function ($stock) use ($detalle) {
                 return [
-                    'detalle_id'               => $detalle->id,
-                    'stock_id'                 => $stock->id,
-                    'ART_CODIGO'               => $detalle->ART_CODIGO,
-                    'ART_CODIGO_TRES_LETRAS'   => $detalle->ART_CODIGO_TRES_LETRAS,
-                    'ART_DESCRIPCION'          => $detalle->ART_DESCRIPCION,
-                    'ART_PLAN_UMEDIDA'         => $detalle->ART_PLAN_UMEDIDA,
-                    'ART_PESO'                 => $detalle->ART_PESO,
-                    'STO_ART_BODEGA'           => $stock->STO_ART_BODEGA,
-                    'ART_TIPO_COMPRA'          => $detalle->ART_TIPO_COMPRA,
-                    'ART_CANTIDAD'             => $stock->seleccionado,
+                    'detalle_id' => $detalle->id,
+                    'stock_id' => $stock->id,
+                    'ART_CODIGO' => $detalle->ART_CODIGO,
+                    'ART_CODIGO_TRES_LETRAS' => $detalle->ART_CODIGO_TRES_LETRAS,
+                    'ART_DESCRIPCION' => $detalle->ART_DESCRIPCION,
+                    'ART_PLAN_UMEDIDA' => $detalle->ART_PLAN_UMEDIDA,
+                    'ART_PESO' => $detalle->ART_PESO,
+                    'STO_ART_BODEGA' => $stock->STO_ART_BODEGA,
+                    'ART_TIPO_COMPRA' => $detalle->ART_TIPO_COMPRA,
+                    'ART_CANTIDAD' => $stock->seleccionado,
                 ];
             });
         })->values();
-        return  $rows->all();
+        return $rows->all();
     }
 }

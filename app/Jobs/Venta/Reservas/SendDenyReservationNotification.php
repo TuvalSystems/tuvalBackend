@@ -3,9 +3,9 @@
 namespace App\Jobs\Venta\Reservas;
 
 use App\Events\Venta\Reservas\ReservedListAuthorizedChanged;
-use App\Models\GpCotizacion;
 use App\Models\GpUsuario;
-use App\Notifications\Venta\Reservas\DenyReservationNotification;
+use App\Models\reservas\GpReserva;
+use App\Notifications\User\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,7 +17,7 @@ class SendDenyReservationNotification implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
 
-    public function __construct(public int $cotizacionId, public int $autorizadoId)
+    public function __construct(public int $reserveId, public int $autorizadoId)
     {
         $this->onQueue('notifications');   // cola por defecto de este Job
         $this->afterCommit = true;
@@ -26,15 +26,18 @@ class SendDenyReservationNotification implements ShouldQueue
 
     public function handle()
     {
-        $cotizacion = GpCotizacion::select('id', 'cotizacion', 'co_usrIngSolResInv')->whereKey($this->cotizacionId)
-            ->first();
-        if (!$cotizacion) {
+        $reserva = GpReserva::with('cotizacion')->find($this->reserveId);
+        if (!$reserva) {
             return;
         }
-        $user = GpUsuario::find($cotizacion->co_usrIngSolResInv);
+        $quote = $reserva?->cotizacion;
+        $userSolicitante = GpUsuario::find($reserva->user_ingreso_reserva_id);
         $userAutorizado = GpUsuario::find($this->autorizadoId);
-        $user->notify(new DenyReservationNotification('Reserva Rechazada', $cotizacion->cotizacion, $userAutorizado));
 
-        event(new ReservedListAuthorizedChanged('refresh', $cotizacion->id, $user->USERID));
+        event(new ReservedListAuthorizedChanged('refresh', $quote->id, $userSolicitante->USERID));
+        $title = 'Reserva Rechazada';
+        $msg = "Solicitude de reserva denegada por {$userAutorizado->USERNAME} para la cotización {$quote->cotizacion}";
+        $notification = (new UserNotification($title, $msg));
+        $userSolicitante->notify($notification);
     }
 }

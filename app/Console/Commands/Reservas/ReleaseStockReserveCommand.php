@@ -5,7 +5,7 @@ namespace App\Console\Commands\Reservas;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpReserva;
-use App\Notifications\Venta\Reservas\UserReservedNotification;
+use App\Notifications\User\UserNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +46,7 @@ class ReleaseStockReserveCommand extends Command
                 $res->update(['estado' => 'procesado']);
                 $title = "Reserva liberada";
                 $msg = "Se liberó el stock reservado para la cotización {$quote->cotizacion}.";
-                $userSolicita->notify((new UserReservedNotification($title, $msg))->onQueue('notifications'));
+                $userSolicita->notify((new UserNotification($title, $msg)));
                 $total++;
                 Log::info("reservas:release-stock => $quote->cotizacion");
             }

@@ -243,7 +243,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->cleanStockQuotationForDeny($reserva->cotizacion_id);
 
         DB::afterCommit(function () use ($reserva, $gpUser) {
-            SendDenyReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
+            SendDenyReservationNotification::dispatch($reserva->id, $gpUser->id);
         });
 
         return $reserva;

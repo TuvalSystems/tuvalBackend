@@ -2,12 +2,11 @@
 
 namespace App\Console\Commands\Reservas;
 
-use App\Models\GpCotizacion;
-use App\Models\reservas\GpReserva;
-use App\Notifications\Venta\Reservas\UserReservedNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use App\Models\reservas\GpReserva;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\User\UserNotification;
 
 class NotifyExpiringReservations extends Command
 {
@@ -57,7 +56,7 @@ class NotifyExpiringReservations extends Command
                 $total++;
                 $title = "Reserva por expirar";
                 $msg = "Tu reserva para la cotizacion {$quote->cotizacion} expira mañana y se liberara el stock.";
-                $creator->notify((new UserReservedNotification($title,  $msg))->onQueue('notifications'));
+                $creator->notify((new UserNotification($title,  $msg)));
             }
         });
         $this->info("Reservas avisadas: {$total}");

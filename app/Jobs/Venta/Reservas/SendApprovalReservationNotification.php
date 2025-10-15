@@ -5,13 +5,12 @@ namespace App\Jobs\Venta\Reservas;
 use App\Events\Venta\Reservas\ReservedListAuthorizedChanged;
 use App\Models\GpUsuario;
 use App\Models\GpCotizacion;
+use App\Notifications\User\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Notifications\Venta\Reservas\ApprovalReservationNotification;
-use App\Notifications\Venta\Reservas\UserReservedNotification;
 
 class SendApprovalReservationNotification implements ShouldQueue
 {
@@ -40,6 +39,6 @@ class SendApprovalReservationNotification implements ShouldQueue
 
         $title = 'Reserva Aprobada';
         $mensaje = "Solicitude de reserva aprovada por {$userAutorizado->USERID} para la cotización {$cotizacion->cotizacion}";
-        $user->notify(new UserReservedNotification($title,  $mensaje));
+        $user->notify(new UserNotification($title,  $mensaje));
     }
 }
