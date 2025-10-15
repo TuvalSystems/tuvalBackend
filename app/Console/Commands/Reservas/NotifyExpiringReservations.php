@@ -3,7 +3,8 @@
 namespace App\Console\Commands\Reservas;
 
 use App\Models\GpCotizacion;
-use App\Notifications\Venta\Reservas\ReservaPorExpirarNotification;
+use App\Models\reservas\GpReserva;
+use App\Notifications\Venta\Reservas\UserReservedNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -45,15 +46,18 @@ class NotifyExpiringReservations extends Command
         $tz = 'America/Guayaquil';
         $manana = Carbon::tomorrow($tz)->toDateString();
 
-        $reservas = GpCotizacion::query()->with('usuariosolicitudreserva')->where('st_solResInv', 'aprobado')->where('co_tipSolResInv', 1)
-            ->where('fe_autSolResInv', $manana);
+
+        $reservas = GpReserva::query()->with('usuarioingreso','cotizacion')->where('tipo_reserva_id', 1)->where('estado', 'aprobado')->where('fe_autorizacion_reserva', $manana);
         $total = 0;
 
         $reservas->chunkById(100, function ($lote) use (&$total) {
             foreach ($lote as $key => $cot) {
-                $creator = $cot->usuariosolicitudreserva;
+                $creator = $cot->usuarioingreso;
+                $quote = $cot->cotizacion;
                 $total++;
-                $creator->notify((new ReservaPorExpirarNotification('Reserva por expirar', $cot->cotizacion))->onQueue('notifications'));
+                $title = "Reserva por expirar";
+                $msg = "Tu reserva para la cotizacion {$quote->cotizacion} expira mañana y se liberara el stock.";
+                $creator->notify((new UserReservedNotification($title,  $msg))->onQueue('notifications'));
             }
         });
         $this->info("Reservas avisadas: {$total}");

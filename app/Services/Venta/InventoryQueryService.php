@@ -304,7 +304,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             });
         $response2 = $this->listReservedInventoryByPendingUse();
         // $response3 = $this->listReservedInventoryByQuotation();
-        return $response->merge([$response2]);
+        return $response->merge($response2);
     }
 
     public function listReservedInventoryByPendingUse()

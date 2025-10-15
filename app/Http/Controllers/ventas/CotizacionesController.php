@@ -1181,7 +1181,6 @@ class CotizacionesController extends Controller
         $bodega = $request->get('bodega', null);
         $cotizacionId = $request->get('cotizacion_id', null);
         try {
-
             $response =  $this->quotationService->getStockItemForWarehouse($articulo, $bodega, $cotizacionId);
             return $this->successResponse('Stock obtenido correctamente', $response, 200);
         } catch (\Throwable $e) {

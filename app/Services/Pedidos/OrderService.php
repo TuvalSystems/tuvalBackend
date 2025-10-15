@@ -250,8 +250,8 @@ class OrderService implements OrderServiceInterface
         }
         $newOrder->refresh();
         /** proceso de limpieza de stock para reservas  de cotizacion */
+        $this->cleanStockReservedQuotation($newOrder->cotizacion_id, $newOrder->id, $newOrder->BOD_BODEGA);
         DB::afterCommit(function () use ($newOrder) {
-            $this->cleanStockReservedQuotation($newOrder->cotizacion_id, $newOrder->id, $newOrder->BOD_BODEGA);
             $this->invoiceService->checkSendInvoice($newOrder);
         });
         return $newOrder;
@@ -397,10 +397,19 @@ class OrderService implements OrderServiceInterface
         if ($stockIds->isEmpty()) return;
 
         $quoteStockRows = GpCotizacionDetalleStock::query()
-            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'gp_cotizacion_detalle_stocks.detalle_id')
-            ->select('gp_cotizacion_detalle_stocks.id', 'd.ART_CODIGO','gp_cotizacion_detalle_stocks.STO_ART_BODEGA', 'gp_cotizacion_detalle_stocks.seleccionado')
-            ->whereIn('id', $stockIds)
-            ->when($warehouse, fn($q) => $q->where('STO_ART_BODEGA', $warehouse))
+            ->from('gp_cotizacion_detalle_stocks as s')
+            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 's.detalle_id')
+            ->select(
+                's.id',
+                'd.ART_CODIGO',
+                's.STO_ART_BODEGA',
+                's.seleccionado',
+                's.cantidad_autorizada_reserva',
+                's.cantidad_facturada',
+                's.cantidad_cancelada'
+            )
+            ->whereIn('s.id',  $stockIds->all())
+            ->when($warehouse, fn($q) => $q->where('s.STO_ART_BODEGA', $warehouse))
             ->get();
 
         if ($quoteStockRows->isEmpty()) return;
@@ -410,26 +419,38 @@ class OrderService implements OrderServiceInterface
         if (empty($clavesAfectadas)) return;
 
         $idsParaLock = array_map(fn($k) => $cotizacionPorClave[$k]->id, $clavesAfectadas);
-        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->lockForUpdate()->get();
+        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->lockForUpdate()->get(); // lo comento por ahora
         // Lock real de filas para evitar race conditions
         foreach ($clavesAfectadas as $k) {
             $row         = $cotizacionPorClave[$k];
             $pedidoQty   = (int) $pedidoPorClave[$k];
 
-               // a) Reducir seleccionado en la cotización origen: max(origen - pedido, 0)
-            $origenQty   = (int) $row->seleccionado;
-            $nuevoSelect = max($origenQty - $pedidoQty, 0);
+            // a) Reducir seleccionado en la cotización origen: max(origen - pedido, 0)
+            $selActual      = (int) $row->seleccionado;
 
-              // b) Aumentar facturado pero sin lo facturado - lo cancelado - seleccionado
-              $authorizado = (int) $row->cantidad_autorizada_reserva;
-              $facturado   = (int) $row->cantidad_facturada;
-              $limite = $authorizado - $facturado;
-              $nuevoFacturado = min($facturado + $pedidoQty, $limite);
+            // b) Aumentar facturado pero sin lo facturado - lo cancelado - seleccionado
+            $authorizado    = (int) ($row->cantidad_autorizada_reserva ?? 0);
+            $facturado      = (int) ($row->cantidad_facturada ?? 0);
+            $cancelado      = (int) ($row->cantidad_cancelada ?? 0);
+
+            // 1) Tope total permitido por política (NO incluye seleccionado)
+            $limite = max(0, $authorizado -  $cancelado);
 
 
-            if ($nuevoSelect !== $origenQty) {
+            // 2) ¿Cuánto puedo incrementar el facturado SIN pasarme del tope?
+            $remanenteFact = max(0, $limite - $facturado);
+            $incFacturable = min($pedidoQty, $remanenteFact); //incremento real de factura
+
+            // 3) Limpio seleccionado hasta donde el pedido consuma (prioriza consumir reserva)
+            $consumoReserva = min($incFacturable, $selActual);
+            $nuevoSelect      = $selActual - $consumoReserva;
+
+            // 4) Nuevo total facturado (sin exceder tope)
+            $nuevoFacturado   = $facturado + $incFacturable;
+
+            if ($nuevoSelect !== $selActual) {
                 // Si solo quieres marcar en memoria y guardar luego, puedes batch; aquí guardamos inmediato
-                $row->seleccionado = $nuevoSelect;
+                $row->seleccionado = $nuevoSelect; // nunca debe ser negativo
                 $row->cantidad_facturada = $nuevoFacturado;
                 $row->save();
             }
