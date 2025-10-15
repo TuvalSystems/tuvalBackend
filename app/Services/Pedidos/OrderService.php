@@ -18,7 +18,6 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleStock;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
@@ -398,7 +397,8 @@ class OrderService implements OrderServiceInterface
         if ($stockIds->isEmpty()) return;
 
         $quoteStockRows = GpCotizacionDetalleStock::query()
-            ->select('id','STO_ART_BODEGA', 'seleccionado', 'cotizacion_id')
+            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'gp_cotizacion_detalle_stocks.detalle_id')
+            ->select('gp_cotizacion_detalle_stocks.id', 'd.ART_CODIGO','gp_cotizacion_detalle_stocks.STO_ART_BODEGA', 'gp_cotizacion_detalle_stocks.seleccionado')
             ->whereIn('id', $stockIds)
             ->when($warehouse, fn($q) => $q->where('STO_ART_BODEGA', $warehouse))
             ->get();
