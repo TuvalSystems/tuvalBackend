@@ -349,10 +349,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function groupDispatchItemsBySourceOrder(GpGuiaRemision $guia, Collection $detalle): array
     {
 
-        $order  = GpPedido::where('pedido', $guia->pedido)->first();
-        $pedidoOrigen = $order?->pedido_origen;
-        $documento = $pedidoOrigen ?: $guia->pedido;
-        $pedidonuevo = $pedidoOrigen ? $guia->pedido : '';
+        $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
+        $documento   = $pedidoOrigen ?: $guia->pedido;
+        $pedidonuevo = $pedidoOrigen ?  $guia->pedido : ''; 
         $groups = [];
         foreach ($detalle as $item) {
             $detallePedido = GpPedidoDetalle::where('id', $item->detalle_id)->first();
