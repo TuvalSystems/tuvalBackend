@@ -351,7 +351,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
         $documento   = $pedidoOrigen ?: $guia->pedido;
-        $pedidonuevo = $pedidoOrigen ?  $guia->pedido : ''; 
+        $pedidonuevo = $pedidoOrigen ?  $guia->pedido : '';
         $groups = [];
         foreach ($detalle as $item) {
             $detallePedido = GpPedidoDetalle::where('id', $item->detalle_id)->first();
@@ -485,7 +485,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $guia = GpGuiaRemision::find($id);
         $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)->get();
 
-        $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
+        $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
+        $documento   = $pedidoOrigen ?: $guia->pedido;
+        $pedidoNuevo = $pedidoOrigen ?  $guia->pedido : '';
+        $dataAjuste = $this->fecthAjustmentGuideDispatch($documento, $pedidoNuevo);
 
 
         $ids = $detalle->pluck('detalle_id')->filter()->unique()->values();
@@ -552,10 +555,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     }
 
 
-    public function fecthAjustmentGuideDispatch($orderNumber)
+    public function fecthAjustmentGuideDispatch($orderNumber, $newOrderNumber)
     {
         $response = $this->apiDeliveryNote->checkAdjustmentGuideDispatch([
-            'orderNumber' => $orderNumber
+            'orderNumber' => $orderNumber,
+            'newOrderNumber' => $newOrderNumber
         ]);
         if ($response['success'] === false) {
             throw new \Exception($response['message']);
@@ -656,12 +660,15 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $guia = GpGuiaRemision::select('id', 'pedido', 'estado')
             ->where('tipo', 'despacho')
             ->find($id);
+        $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
+        $pedido   = $pedidoOrigen ?: $guia->pedido;
+        $pedidoNuevo = $pedidoOrigen ?  $guia->pedido : '';
 
         $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)
             ->whereNotNull('codigo')
             ->where('codigo', '!=', '')
             ->select('id_movimiento', 'pedido', 'codigo')->first();
-        $dataAjuste = $this->fecthAjustmentGuideDispatch($guia->pedido);
+        $dataAjuste = $this->fecthAjustmentGuideDispatch($pedido, $pedidoNuevo);
 
         if (!$guia) {
             return ['error' => "Guía $id no encontrada o no es de tipo 'despacho'."];
