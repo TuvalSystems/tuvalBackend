@@ -27,4 +27,10 @@ interface InventoryReservationServiceInterface
     public function recalculateQuotation($quotationId);
 
     public function fetchListTypeReservations();
+
+
+    /** proceso para lista de transferencias por reservas */
+
+    public function fetchReservedTransferSummaries($ptoVtaId);
+    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOringen, $ptoVtaDestino): array;
 }

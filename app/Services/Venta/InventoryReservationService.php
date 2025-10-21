@@ -23,11 +23,16 @@ use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Validation\ValidationException;
 use App\Jobs\Venta\Reservas\SendDenyReservationNotification;
 use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
+use App\Models\GpBodega;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\reservas\GpCotizacionReservaLog;
 use App\Models\reservas\GpReserva;
+use App\Models\reservas\GpTrasladosReservas;
+use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
@@ -40,6 +45,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     protected $stockWarehouseService;
     protected $reservaBuilder;
 
+    protected $reservaRepository;
+
 
     public function __construct(
         ApprovalServiceInterface $approvalService,
@@ -48,7 +55,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         OrderBuilderInterface $orderBuilderInterface,
         InvoiceServiceInterface $invoiceServiceInterface,
         StockWarehouseServiceInterface $stockWarehouseService,
-        ReservedBuilderInterface $reservedBuilderInterface
+        ReservedBuilderInterface $reservedBuilderInterface,
+        InventoryReservationRepositoryInterface $reservaRepository
     ) {
         $this->approvalService = $approvalService;
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
@@ -57,6 +65,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->invoiceService = $invoiceServiceInterface;
         $this->stockWarehouseService = $stockWarehouseService;
         $this->reservaBuilder = $reservedBuilderInterface;
+        $this->reservaRepository = $reservaRepository;
     }
 
 
@@ -135,8 +144,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         } else {
             $query->orderByDesc('gp_cotizacions.cotizacion');
         }
-
-        return $query->paginate($perpage);
+        // return $query->paginate($perpage);
+        return $query->paginate($perpage)->through(function ($row) {
+            $row->cot_created_at = Carbon::parse($row->created_at)->timezone('America/Guayaquil')
+                ->format('Y-m-d H:i:s');
+            return $row;
+        });
     }
 
 
@@ -280,15 +293,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function approvalApplicationReservedQuotation(array $data, $gpUser)
     {
         $reserva = GpReserva::find($data['id']);
-        $estado = ($reserva->tipo_traslado_reserva_id == 1) ? 'aprobado' : 'traslado';
-
 
         // UPDATE idempotente (solo si aún no fue autorizada)
         $affected = GpReserva::query()
             ->whereKey($reserva->id)
             ->where('estado_autorizacion_reserva', '=', 0)
             ->update([
-                'estado' => $estado,
+                'estado' => 'aprobado',
                 'estado_autorizacion_reserva' => 1,
                 'fe_autorizacion_reserva' => Arr::get($data, 'fe_autorizacion_reserva'),
                 'obs_autorizacion_reserva' => Arr::get($data, 'obs_autorizacion_reserva'),
@@ -303,7 +314,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 $this->syncSelectedToAuthorizedAndTransferredForQuotation($reserva->cotizacion_id);
             }
         }
-
+        $this->createReservationTransferIfValid($reserva);
         DB::afterCommit(callback: function () use ($reserva, $gpUser) {
             SendApprovalReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
         });
@@ -313,7 +324,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'cotizacion_id' => $reserva->cotizacion_id,
             'updated' => (bool) $affected,
             'tipo_traslado_reserva_id' => $reserva->tipo_traslado_reserva_id,
-            'estado_set' => $estado,
         ];
     }
 
@@ -358,6 +368,37 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
         Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' y {$otherWhaAffected} en 'cantidad_traslado' para cotización ID {$quotationId}");
     }
+
+
+    public function createReservationTransferIfValid(GpReserva $reserved)
+    {
+        $quotation = GpCotizacion::find($reserved->cotizacion_id);
+        $hayTraslado = $this->reservaRepository->checkExistingReservationTransfer($quotation);
+        $newStatus = $hayTraslado ? 'traslado' : 'aprobado';
+        if ($newStatus === 'traslado') {
+            $detail = $this->reservaRepository->getDetailsForTransferReservation($quotation);
+            $this->createTransferReservation($detail);
+        }
+        $reserved->update(['estado' => $newStatus]);
+    }
+
+
+
+
+
+    public function createTransferReservation($details)
+    {
+        foreach ($details as $det) {
+            // if ($this->itemRequiredTransfer($det->bodega, $warehouse)) {
+            $tr = $this->reservaBuilder->formPayloadTransferReserved($det);
+            $tr->save();
+            // }
+        }
+    }
+
+    // public function itemRequiredTransfer($wrhItem, $warehouse){
+    //     return $wrhItem != $warehouse;
+    // }
 
 
 
@@ -559,6 +600,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     ->where('seleccionado', '>=', $decrease)
                     ->decrement('seleccionado', $decrease);
 
+                if ($row->cantidad_traslado >= 0) {
+                    DB::table($row->getTable())
+                        ->where('id', $row->id)
+                        ->where('seleccionado', '>=', $decrease)
+                        ->decrement('cantidad_traslado', $decrease);
+                    $this->updateQtyTransferReserved($row, $decrease);
+                }
+
                 if ($affected === 0 && $decrease > 0) {
                     $freshSelected = (float) DB::table($row->getTable())->where('id', $row->id)->value('seleccionado');
                     throw ValidationException::withMessages([
@@ -600,6 +649,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         });
     }
 
+    public function updateQtyTransferReserved($row, $qty)
+    {
+        GpTrasladosReservas::where('stock_id', $row->id)->where('cantidad', '>=', $qty)->decrement('cantidad', $qty);
+    }
 
 
     public function toCancelStockQuotationReserved($row, $itm, $user)
@@ -986,4 +1039,59 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         return GpTipoReservas::where('estado', 1)->get();
     }
+
+
+
+    /**
+     *
+     *         PROCESO PARA TRNASFERENCIAS DE RESERVAS
+     *
+     */
+
+    public function fetchReservedTransferSummaries($ptoVtaId): array
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
+        $traslados = $this->reservaRepository->getAllTransferReservedByWarehouses($bodega);
+        $items = $traslados->filter(fn($t) => $t->pending_transfer >= 0)->values();
+        return collect($items)->groupBy('bodega_destino')->map(function ($item) {
+            return [
+                'bodega' => $item[0]['bodega_destino_desc'],
+                'ptovtaId' => $item[0]['ptovtaId'],
+                'pesoTon' => round(collect($item)->sum('art_peso') / 1000, 2),
+                'totalItems' => $item->count()
+            ];
+        })->filter()->values()->all();
+    }
+
+
+    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOringen, $ptoVtaDestino): array
+    {
+        $waOrigin = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaOringen)->value('PTO_VTA_BOD_BODEGA');
+        $waDestination = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaDestino)->value('PTO_VTA_BOD_BODEGA');
+        $bodegaDestinoDescripcion = GpBodega::where('BOD_BODEGA', $waDestination)->value('BOD_DESCRIPCION');
+        $traslados = $this->reservaRepository->getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination);
+        $items = $traslados->filter(fn($t) => $t->pending_transfer > 0)->values();
+        $listQuotations = $this->getfilterListQuotationsByTransfered($items);
+        $pesoTotal = round($items->sum('art_peso') / 1000, 2);
+        return [
+            'origin' => $waOrigin,
+            'destination' => $bodegaDestinoDescripcion,
+            'traslados' => $items,
+            'pesoTotal' => $pesoTotal,
+            'listaQuotations' => $listQuotations
+        ];
+    }
+
+    public function getfilterListQuotationsByTransfered($items)
+    {
+        return collect($items)
+            ->pluck('cotizacion')     // toma solo el campo cotizacion
+            ->filter()                // quita null/'' si los hubiera
+            ->unique()                // deja únicos
+            ->values()                // reindexa 0..n
+            ->map(fn($c) => ['cotizacion' => $c]);
+    }
+
+
+
 }

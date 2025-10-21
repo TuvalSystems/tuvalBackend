@@ -8,6 +8,7 @@ use App\Models\reservas\GpCotizacionReservaLog;
 use App\Models\reservas\GpPedidoReservaDetalleLog;
 use App\Models\reservas\GpPedidoReservaLog;
 use App\Models\reservas\GpReserva;
+use App\Models\reservas\GpTrasladosReservas;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use Carbon\Carbon;
 
@@ -88,6 +89,28 @@ class ReservedBuilder implements ReservedBuilderInterface
             'cantidad' => $qty
         ]);
         return $new;
+    }
+
+
+    /** aqui funcion de traslado reservas formPayload */
+
+    public function formPayloadTransferReserved($detail){
+        $tr = new GpTrasladosReservas();
+        $tr->fill([
+            'reserva_id' => $detail->reserva_id,
+            'cotizacion_id' => $detail->cotizacion_id,
+            'detalle_id' => $detail->id,
+            'stock_id' => $detail->stock_id,
+            'art_code' => $detail->ART_CODIGO,
+            'art_descripcion' => $detail->ART_DESCRIPCION,
+            'art_cod_tres_letras' => $detail->ART_CODIGO_TRES_LETRAS,
+            'art_plan_umedida' => $detail->ART_PLAN_UMEDIDA,
+            'art_peso' => $detail->ART_PESO,
+            'cantidad' => $detail->seleccionado,
+            'bodega_origen' => $detail->bodega_origen,
+            'bodega_destino' => $detail->bodega_destino
+        ]);
+        return $tr;
     }
 
 }

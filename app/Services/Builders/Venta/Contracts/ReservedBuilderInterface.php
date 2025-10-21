@@ -12,4 +12,5 @@ interface ReservedBuilderInterface
     public function fromPayloadQuoteReservedDetailLog($ctRsLogId, $stockId, $artCode, $warehouse, $qty);
     public function fromPayloadOrderReservedLog($reserveId, $oldQuoteId, $newQuoteId, $userId ,$warehouse);
     public function formPayloadOrderReservedDetailLog($ctRsLogId, $stockId, $artCode, $warehouse, $qty);
+    public function formPayloadTransferReserved($detail);
 }

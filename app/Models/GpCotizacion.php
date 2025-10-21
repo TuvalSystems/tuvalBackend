@@ -224,6 +224,11 @@ class GpCotizacion extends Model
     }
 
 
+    public function bodega(){
+        return $this->belongsTo(GpBodega::class, 'BOD_BODEGA', 'BOD_BODEGA');
+    }
+
+
 
 
 

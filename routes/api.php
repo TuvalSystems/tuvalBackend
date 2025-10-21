@@ -275,6 +275,12 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('lista-reserva-aprobadas', [ReservasController::class, 'obtenerListaCotizacionesAprobadas']);
         Route::post('procesar-reserva', [ReservasController::class, 'procesarReservaCotizacion']);
         Route::post('procesar-reserva-factura-demanda', [ReservasController::class, 'procesarReservaFacturaDemandaCotizacion']);
+
+        /** transferencias de reservas apis */
+
+        Route::get('transferencias/traslados-por-reserva-dashboard/{ptovta}', [ReservasController::class, 'TransferenciasPorReservaDashboard']);
+        Route::post('transferencias/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListatransferenciasReservaPorBodega']);
+
     });
 
     Route::group(['prefix' => 'pedidos'], function () {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\reservas\GpTrasladosReservas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -40,8 +41,13 @@ class GpCotizacionDetalleStock extends Model
     use HasFactory;
 
     protected $table = 'gp_cotizacion_detalle_stocks';
-    protected $appends = ['disable_movimiento', 'pendiente', 'disable_traslado'];
-    protected $casts = ['disable_movimiento' => 'boolean', 'pendiente' => 'integer', 'disable_traslado' => 'boolean'];
+    protected $appends = ['disable_movimiento', 'pendiente', 'disable_traslado', 'picking'];
+    protected $casts = [
+        'disable_movimiento' => 'boolean',
+        'pendiente' => 'integer',
+        'disable_traslado' => 'boolean',
+        'picking' => 'boolean'
+    ];
     protected $fillable = [
         'cotizacion_id',
         'detalle_id',
@@ -58,29 +64,38 @@ class GpCotizacionDetalleStock extends Model
     ];
 
 
+    public function trasladoreserva()
+    {
+        return $this->hasMany(GpTrasladosReservas::class, 'stock_id');
+    }
 
     protected function getAutorizada()
     {
-        return (int)  $this->cantidad_autorizada_reserva ?? 0;
+        return (int) $this->cantidad_autorizada_reserva ?? 0;
     }
 
     public function getPendienteAttribute(): int
     {
         $aut = $this->getAutorizada();
-        $fact = $this->cantidad_facturada   ?? 0;
-        $can = $this->cantidad_cancelada    ?? 0;
+        $fact = $this->cantidad_facturada ?? 0;
+        $can = $this->cantidad_cancelada ?? 0;
         // $cot = $this->cantidad_cotizada     ?? 0;
-        $tras = $this->cantidad_traslado    ?? 0;
-        return max(0, $aut - $fact - $can  - $tras);
+        // $tras = $this->cantidad_traslado ?? 0;
+        return max(0, $aut - $fact - $can);
     }
 
     public function getDisableMovimientoAttribute(): bool
     {
-        return $this->pendiente  === 0;
+        return $this->pendiente === 0;
     }
 
     public function getDisableTrasladoAttribute(): bool
     {
         return $this->cantidad_traslado > 0;
+    }
+
+    public function getPickingAttribute(): bool
+    {
+        return $this->trasladoreserva()->where('picking', 1)->exists();
     }
 }

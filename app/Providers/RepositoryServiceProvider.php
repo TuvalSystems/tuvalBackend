@@ -16,6 +16,8 @@ use App\Repositories\Bodegas\TransferRepository;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\SqlServer\Venta\ClientSqlRepository;
 use App\Repositories\SqlServer\Venta\Contracts\ClientSqlRepositoryInterface;
+use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
+use App\Repositories\Venta\InventoryReservationRepository;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -32,6 +34,8 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->singleton(QuotationRepositoryInterface::class, QuotationRepository::class);
         $this->app->singleton(ClientSqlRepositoryInterface::class, ClientSqlRepository::class);
         $this->app->singleton(TransferRepositoryInterface::class, TransferRepository::class);
+        $this->app->singleton(InventoryReservationRepositoryInterface::class, InventoryReservationRepository::class);
+
     }
 
 

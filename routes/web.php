@@ -14,7 +14,7 @@ use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\bodegas\TransferenciasController;
-
+use App\Http\Controllers\ventas\ReservasController;
 
 /*
 |--------------------------------------------------------------------------
@@ -154,14 +154,21 @@ Route::prefix('bodegas')->group(function () {
 //     return 'Ping enviado';
 // });
 
-Route::get('/debug/demo-broadcast', function () {
-    event(new DemoMessage(request('msg', 'hola')));
-    return 'ok';
-});
+// Route::get('/debug/demo-broadcast', function () {
+//     event(new DemoMessage(request('msg', 'hola')));
+//     return 'ok';
+// });
 
 
 Route::prefix('consultas')->group(function () {
     Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
 });
 
+Route::prefix('consultas')->group(function () {
+    Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+});
 
+Route::group(['prefix' => 'reservas-web'], function () {
+    Route::get('transferencias-web/traslados-por-reserva-dashboard/{ptovta}', [ReservasController::class, 'TransferenciasPorReservaDashboard']);
+    Route::get('transferencias-web/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListatransferenciasReservaPorBodega']);
+});
