@@ -39,11 +39,11 @@ class ReposicionController extends Controller
         try {
             $soapRequest = $request->all();
             $this->transferRepositionService->validateRequest($soapRequest);
-            $transferHeader =  $this->transferRepositionService->fectchTransferHeader($request);
+            $transferHeader = $this->transferRepositionService->fectchTransferHeader($request);
             if (empty($transferHeader)) {
                 return $this->buildErrorResponse('No existen transferencias que sincronizar', 404);
             }
-            $proccessDocument =  $this->transferRepositionService->processDocumentsInBatches($soapRequest, $transferHeader);
+            $proccessDocument = $this->transferRepositionService->processDocumentsInBatches($soapRequest, $transferHeader);
 
             return $this->transferRepositionService->buildResponse($proccessDocument);
         } catch (\Throwable $th) {
@@ -61,7 +61,7 @@ class ReposicionController extends Controller
         $trasladosreposicion = GpTrasladosReposicion::join('gp_bodegas', 'gp_traslados_reposicions.bodega_destino', 'gp_bodegas.BOD_BODEGA')
             ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
             ->where('bodega_origen', $bodega)
-            ->where(function($q){
+            ->where(function ($q) {
                 $q->where('gp_traslados_reposicions.completado', 0)->orWhereNull('gp_traslados_reposicions.completado');
             });
         if ($documento) {
@@ -130,7 +130,7 @@ class ReposicionController extends Controller
         // $deliveryNote = app(DeliveryNoteServiceInterface::class);
         // $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
         // $guias->checkguiaremision();
-         $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
+        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
 
         if ($documento) {
             return response([
@@ -244,6 +244,9 @@ class ReposicionController extends Controller
 
     public function detallereciboreposicion($id)
     {
+        ini_set('max_execution_time', -1);
+        set_time_limit(-1);
+        ini_set('memory_limit', '-1');
 
         $guia = GpGuiaRemision::where('id', $id)
             ->first();
