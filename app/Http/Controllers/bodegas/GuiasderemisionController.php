@@ -1276,4 +1276,14 @@ class GuiasderemisionController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
+
+    /** proceso para reajuste de guia de transferencias  */
+    public function procesarReajusteGuiaTransferencia($id){
+        try {
+        $guia = $this->deliveryNoteService->processTransferGuideAdjustment($id);
+            return $this->successResponse('Reajuste procesado exitosamente', $guia, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

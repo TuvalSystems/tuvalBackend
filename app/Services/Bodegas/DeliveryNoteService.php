@@ -31,7 +31,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     protected $logisticsOperationsService;
 
     // protected $invoiceService;
-    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote,  LogisticsOperationsServiceInterface $logisticsOperationsService)
+    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote, LogisticsOperationsServiceInterface $logisticsOperationsService)
     {
         // $this->invoiceService = $invoiceService;
         $this->deliveryNoteBuilder = $deliveryNoteBuilder;
@@ -47,7 +47,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function getDeliveryNoteDetailByType(int|string $guiaId): array
     {
         $guia = GpGuiaRemision::findOrFail($guiaId);
-        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)
+        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)
             ->get(['id', 'guia_remision_id', 'detalle_id', 'GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD', 'GUI_REM_CODI_ADICIONAL', 'GUI_REM_UNIDAD_MEDIDA', 'GUI_REM_DESCRIPCION']);
         $pesoTotal = 0.0;
         if ($detalle->isNotEmpty()) {
@@ -57,7 +57,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $detalle = $detalle->map(function ($det) use ($pedidoDetalle, $checksAlternativos, &$pesoTotal) {
                 $art = $pedidoDetalle->get($det->detalle_id);
 
-                if (($art->ART_TIPO_COMPRA ?? null) == 'SERV') return null;
+                if (($art->ART_TIPO_COMPRA ?? null) == 'SERV')
+                    return null;
 
                 $cantidad = (float) $det->GUI_REM_CANTIDAD;
                 $peso = ($art == null || $art->ART_PESO == null) ? 0.0 : (float) $art->ART_PESO;
@@ -75,7 +76,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         return [
             'detalle' => $detalle,
             'transferencias' => $transferencias,
-            'peso_total' =>  round($pesoTotal, 2),
+            'peso_total' => round($pesoTotal, 2),
         ];
     }
 
@@ -117,7 +118,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
     //transferencia
-    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle,  $user)
+    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle, $user)
     {
         $itemsIds = collect($detalle)->pluck('detalle_id')->toArray();
         if (empty($itemsIds)) {
@@ -166,22 +167,22 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function moveReservedToTransferredForTrfvLine($trl, $qty)
     {
-        $cantidad    = (float) ($trl->cantidad ?? 0);
-        $trasladado  = (float) ($trl->trasladado ?? 0);
-        $reservado   = (float) ($trl->reservado ?? 0);
+        $cantidad = (float) ($trl->cantidad ?? 0);
+        $trasladado = (float) ($trl->trasladado ?? 0);
+        $reservado = (float) ($trl->reservado ?? 0);
 
-        $restante = max(0.0,  $cantidad - $trasladado);
-        $delta = max(0.0, min((float)$qty, $restante));
+        $restante = max(0.0, $cantidad - $trasladado);
+        $delta = max(0.0, min((float) $qty, $restante));
         if ($delta <= 0) {
             $trl->completado = (int) (($trasladado) >= $cantidad);
             $trl->save();
             return;
         }
         $nuevoTrasladado = min($cantidad, $trasladado + $delta);
-        $nuevoReservado  = max(0.0, $reservado - $delta);
+        $nuevoReservado = max(0.0, $reservado - $delta);
 
         $trl->trasladado = $nuevoTrasladado;
-        $trl->reservado =  $nuevoReservado;
+        $trl->reservado = $nuevoReservado;
         $trl->completado = (int) (($nuevoTrasladado) >= $cantidad);
         $trl->save();
     }
@@ -199,7 +200,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $stock->save();
         }
     }
-    public function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse,  $qty)
+    public function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse, $qty)
     {
         $det = GpPedidoDetalle::find($detalleId);
         if ($det->ART_TIPO_COMPRA != 'L') {
@@ -272,10 +273,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if ($art->ART_TIPO_COMPRA == 'SERV') {
                 $qty = (float) $row->sum('GUI_REM_CANTIDAD');
                 $qty = max(0.0, $qty);
-                $nuevoReservado   = max(0.0, (float) ($art->reservado ?? 0) - $qty);
-                $nuevoTrasladado  = (float)($art->trasladado ?? 0) + $qty;
+                $nuevoReservado = max(0.0, (float) ($art->reservado ?? 0) - $qty);
+                $nuevoTrasladado = (float) ($art->trasladado ?? 0) + $qty;
                 $cap = (float) ($art->ART_CANTIDAD ?? 0);
-                if ($cap > 0) $nuevoTrasladado = min($nuevoTrasladado, $cap);
+                if ($cap > 0)
+                    $nuevoTrasladado = min($nuevoTrasladado, $cap);
                 $art->fill([
                     'reservado' => $nuevoReservado,
                     'trasladado' => $nuevoTrasladado
@@ -294,7 +296,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         }
         $wsOk = false;
         foreach ($groups as $grupo) {
-            $params =  $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
+            $params = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
             $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
             if ($response['success'] === false) {
                 $guia->update(['procesando' => null]);
@@ -327,12 +329,12 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         return [
             'success' => true,
             'message' => 'Guía de remisión despachada',
-            'pedido'  => $pedido,
+            'pedido' => $pedido,
         ];
     }
 
 
-    public function  markGuideSentAndUpdateOrder(GpGuiaRemision $guia, $why)
+    public function markGuideSentAndUpdateOrder(GpGuiaRemision $guia, $why)
     {
         if ($guia->estado != 'enviada') {
             $guia->update(['estado' => 'enviada']);
@@ -340,7 +342,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             return [
                 'success' => true,
                 'message' => 'Guía de remisión despachada (' . $why . ')',
-                'pedido'  => $pedido,
+                'pedido' => $pedido,
             ];
         }
     }
@@ -350,8 +352,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
 
         $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
-        $documento   = $pedidoOrigen ?: $guia->pedido;
-        $pedidonuevo = $pedidoOrigen ?  $guia->pedido : '';
+        $documento = $pedidoOrigen ?: $guia->pedido;
+        $pedidonuevo = $pedidoOrigen ? $guia->pedido : '';
         $groups = [];
         foreach ($detalle as $item) {
             $detallePedido = GpPedidoDetalle::where('id', $item->detalle_id)->first();
@@ -381,13 +383,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $cantac = (float) ($dt->ART_CANTIDAD ?? 0);
 
         $newRsvd = max(0.0, $rsvdac - $qty);
-        $newTrls =  $trlsac + $qty;
+        $newTrls = $trlsac + $qty;
 
         if ($cantac != null) {
             $newTrls = min($newTrls, $cantac);
         }
 
-        $dt->reservado  = $newRsvd;
+        $dt->reservado = $newRsvd;
         $dt->trasladado = $newTrls;
         $dt->save();
 
@@ -418,7 +420,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             })->get()->keyBy('id');
         $grupos = $this->groupItemsByOrderReplacementShipment($detalle, $traslados);
         $checkList = false;
-        foreach ($grupos as  $grupo) {
+        foreach ($grupos as $grupo) {
             $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['documento'], $grupo['ws_items'], $user);
             $response = $this->apiDeliveryNote->createReplacementShipmentGuideVta($params);
             if ($response['success'] === false) {
@@ -483,11 +485,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function reassignDispatchGuideAdjustment($id)
     {
         $guia = GpGuiaRemision::find($id);
-        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)->get();
+        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
 
         $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
-        $documento   = $pedidoOrigen ?: $guia->pedido;
-        $pedidoNuevo = $pedidoOrigen ?  $guia->pedido : '';
+        $documento = $pedidoOrigen ?: $guia->pedido;
+        $pedidoNuevo = $pedidoOrigen ? $guia->pedido : '';
         $dataAjuste = $this->fecthAjustmentGuideDispatch($documento, $pedidoNuevo);
 
 
@@ -502,10 +504,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if ($art->ART_TIPO_COMPRA == 'SERV') {
                 $qty = (float) $row->sum('GUI_REM_CANTIDAD');
                 $qty = max(0.0, $qty);
-                $nuevoReservado   = max(0.0, (float) ($art->reservado ?? 0) - $qty);
-                $nuevoTrasladado  = (float)($art->trasladado ?? 0) + $qty;
+                $nuevoReservado = max(0.0, (float) ($art->reservado ?? 0) - $qty);
+                $nuevoTrasladado = (float) ($art->trasladado ?? 0) + $qty;
                 $cap = (float) ($art->ART_CANTIDAD ?? 0);
-                if ($cap > 0) $nuevoTrasladado = min($nuevoTrasladado, $cap);
+                if ($cap > 0)
+                    $nuevoTrasladado = min($nuevoTrasladado, $cap);
                 $art->fill([
                     'reservado' => $nuevoReservado,
                     'trasladado' => $nuevoTrasladado
@@ -547,7 +550,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function getAllDetailordersByGuideDetailsIds($ids)
     {
-        return  GpPedidoDetalle::query()->whereIn('id', $ids)
+        return GpPedidoDetalle::query()->whereIn('id', $ids)
             ->where('reservado', '>', 0)
             ->lockForUpdate()
             ->get()
@@ -564,7 +567,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         if ($response['success'] === false) {
             throw new \Exception($response['message']);
         }
-        return  data_get($response, 'data', []);
+        return data_get($response, 'data', []);
     }
 
 
@@ -572,7 +575,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function createAdjustmentDeliveryNote($id)
     {
-        return  DB::transaction(function () use ($id) {
+        return DB::transaction(function () use ($id) {
             $user = GpUsuario::find(6);
             $guia = GpGuiaRemision::find($id);
             $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
@@ -594,10 +597,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 if ($art->ART_TIPO_COMPRA == 'SERV') {
                     $qty = (float) $row->sum('GUI_REM_CANTIDAD');
                     $qty = max(0.0, $qty);
-                    $nuevoReservado   = max(0.0, (float) ($art->reservado ?? 0) - $qty);
-                    $nuevoTrasladado  = (float)($art->trasladado ?? 0) + $qty;
+                    $nuevoReservado = max(0.0, (float) ($art->reservado ?? 0) - $qty);
+                    $nuevoTrasladado = (float) ($art->trasladado ?? 0) + $qty;
                     $cap = (float) ($art->ART_CANTIDAD ?? 0);
-                    if ($cap > 0) $nuevoTrasladado = min($nuevoTrasladado, $cap);
+                    if ($cap > 0)
+                        $nuevoTrasladado = min($nuevoTrasladado, $cap);
                     $art->fill([
                         'reservado' => $nuevoReservado,
                         'trasladado' => $nuevoTrasladado
@@ -616,7 +620,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             }
             $wsOk = false;
             foreach ($groups as $grupo) {
-                $params =  $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
+                $params = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
                 $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
                 if ($response['success'] === false) {
                     $guia->update(['procesando' => null]);
@@ -661,8 +665,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             ->where('tipo', 'despacho')
             ->find($id);
         $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
-        $pedido   = $pedidoOrigen ?: $guia->pedido;
-        $pedidoNuevo = $pedidoOrigen ?  $guia->pedido : '';
+        $pedido = $pedidoOrigen ?: $guia->pedido;
+        $pedidoNuevo = $pedidoOrigen ? $guia->pedido : '';
 
         $ajusteWebGuia = DB::table('gp_guia_remision_despachos')->where('guia_remision_id', $guia->id)
             ->whereNotNull('codigo')
@@ -710,32 +714,34 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             ->values();
 
         $despachados = [];
-        $pendientes  = [];
+        $pendientes = [];
 
         foreach ($allCodes as $codigo) {
             $cantPedido = (float) ($pedidoQtyByCode[$codigo] ?? 0.0);
-            $cantGuia   = (float) ($guiaQtyByCode[$codigo]   ?? 0.0);
+            $cantGuia = (float) ($guiaQtyByCode[$codigo] ?? 0.0);
 
             $despachadoQty = min($cantGuia, $cantPedido);
-            $pendienteQty  = max($cantPedido - $cantGuia, 0.0);
+            $pendienteQty = max($cantPedido - $cantGuia, 0.0);
 
             $row = [
-                'codigo'         => $codigo,
-                'pedido_qty'     => $cantPedido,
-                'guia_qty'       => $cantGuia,
+                'codigo' => $codigo,
+                'pedido_qty' => $cantPedido,
+                'guia_qty' => $cantGuia,
                 'despachado_qty' => $despachadoQty,
-                'pendiente_qty'  => $pendienteQty,
+                'pendiente_qty' => $pendienteQty,
             ];
 
-            if ($despachadoQty > 0) $despachados[] = $row;
-            if ($pendienteQty > 0)  $pendientes[]  = $row;
+            if ($despachadoQty > 0)
+                $despachados[] = $row;
+            if ($pendienteQty > 0)
+                $pendientes[] = $row;
         }
 
         $resumen = [
-            'lineas_pedido'   => $pedidoQtyByCode->count(),
-            'lineas_guia'     => $guiaQtyByCode->count(),
+            'lineas_pedido' => $pedidoQtyByCode->count(),
+            'lineas_guia' => $guiaQtyByCode->count(),
             'total_despachado' => array_sum(array_column($despachados, 'despachado_qty')),
-            'total_pendiente' => array_sum(array_column($pendientes,  'pendiente_qty')),
+            'total_pendiente' => array_sum(array_column($pendientes, 'pendiente_qty')),
         ];
 
         // 5) Respuesta SLIM (solo lo útil)
@@ -745,26 +751,26 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 'ajusteGp' => $dataAjuste
             ],
             'guia' => [
-                'id'     => $guia->id,
+                'id' => $guia->id,
                 'pedido' => $guia->pedido,
                 'estado' => $guia->estado,
             ],
             'pedido' => [
-                'id'         => $order->id,
-                'pedido'     => $order->pedido,
-                'estado'     => $order->estado,
+                'id' => $order->id,
+                'pedido' => $order->pedido,
+                'estado' => $order->estado,
                 'despachado' => (bool) $order->despachado,
             ],
-            'stocks'                 => $stocks,
-            'despachados_por_guia'   => $despachados,
+            'stocks' => $stocks,
+            'despachados_por_guia' => $despachados,
             'pendientes_de_despacho' => $pendientes,
-            'resumen'                => $resumen,
+            'resumen' => $resumen,
         ];
 
         // Si necesitas depurar, activa $debug para incluir materia prima
         if ($debug) {
             $response['debug'] = [
-                'detalle_guia'   => $detalleguia,
+                'detalle_guia' => $detalleguia,
                 'detalle_pedido' => $detallepedido,
             ];
         }
@@ -815,5 +821,40 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             ])
             ->groupBy('gr.id', 'grt.pedido', 'gr.tipo', 'gr.estado')
             ->get();
+    }
+
+
+
+    /***
+     *
+     *
+     *
+     *  procesos de reajuste de guias de transferencias y reposiciones -JGMS
+     *
+     *
+     *
+     * */
+
+
+    public function processTransferGuideAdjustment($id, $orderNumber = null)
+    {
+        $order = $orderNumber ? GpPedido::where('pedido', $orderNumber)->first() : null;
+        $guia = GpGuiaRemision::find($id);
+        $detalles = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+        $itemsIds = collect($detalles)->pluck('detalle_id')->toArray();
+        $transferSales = $this->getTransferSales($itemsIds, $order->id ?? null);
+        // $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+        return $transferSales;
+    }
+
+    public function getTransferSales($itemsIds, $orderId = null): Collection{
+        return GpTrasladosVentas::query()
+            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
+            ->whereIn('gp_traslados_ventas.id', $itemsIds)
+            ->where(function ($q) {
+                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
+            })->when(!is_null($orderId) , fn ($q) => $q->where('gp_traslados_ventas.pedido_id', $orderId))
+            ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
+            ->keyBy('id');
     }
 }

@@ -29,4 +29,8 @@ interface DeliveryNoteServiceInterface
 
       public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin);
       public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null);
+
+
+
+      public function processTransferGuideAdjustment($id, $orderNumber = null);
 }
