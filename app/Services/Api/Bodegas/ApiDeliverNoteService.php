@@ -34,4 +34,11 @@ class ApiDeliverNoteService  extends ApiGpService
     public function checkAdjustmentGuideDispatch(array $params){
         return $this->httpClient->makeRequest($this->endpoints["guia.despacho.check.ajuste"], 'GET', $params, 'json');
     }
+
+     public function checkTransferGuideAdjustment(array $params){
+        return $this->httpClient->makeRequest($this->endpoints["guia.transferencia.check.ajuste"], 'GET', $params, 'json');
+    }
+
+
+
 }

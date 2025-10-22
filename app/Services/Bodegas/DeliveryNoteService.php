@@ -20,6 +20,7 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+
 class DeliveryNoteService implements DeliveryNoteServiceInterface
 {
     /**
@@ -838,23 +839,100 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function processTransferGuideAdjustment($id, $orderNumber = null)
     {
+        $processed = false;
+        $user = GpUsuario::find(6); //adminweb
         $order = $orderNumber ? GpPedido::where('pedido', $orderNumber)->first() : null;
+        $orderId = $order ? $order->id : null;
         $guia = GpGuiaRemision::find($id);
         $detalles = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
         $itemsIds = collect($detalles)->pluck('detalle_id')->toArray();
-        $transferSales = $this->getTransferSales($itemsIds, $order->id ?? null);
-        // $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-        return $transferSales;
+        $transferSales = $this->getTransferSales($itemsIds, $orderId);
+        $grupos = $this->groupItemsByOrderTransferVta($detalles, $transferSales);
+        foreach ($grupos as $grupo) {
+            $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
+            $processed = $this->validateExistenceTransferGuideAdjustment($guia, $params, $grupo['items'], $grupo['pedido']);
+        }
+        if ($processed) {
+            $guia->update(['estado' => 'enviada']);
+        } else {
+            throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
+        }
+        return $guia->fresh();
     }
 
-    public function getTransferSales($itemsIds, $orderId = null): Collection{
+    public function getTransferSales($itemsIds, $orderId = null): Collection
+    {
         return GpTrasladosVentas::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
             ->whereIn('gp_traslados_ventas.id', $itemsIds)
             ->where(function ($q) {
                 $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
-            })->when(!is_null($orderId) , fn ($q) => $q->where('gp_traslados_ventas.pedido_id', $orderId))
+            })->when(!is_null($orderId), fn($q) => $q->where('gp_traslados_ventas.pedido_id', $orderId))
             ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
             ->keyBy('id');
     }
+
+    public function validateExistenceTransferGuideAdjustment($guia, $params, $groupItems, $pedido)
+    {
+        $processed = false;
+        $cabecera = data_get($params, 'cabecera', []);
+        $payloadHeader = $this->deliveryNoteBuilder->buildingTransferGuideAdjustmentPayload($cabecera);
+        $responseHeaderValidate = $this->apiDeliveryNote->checkTransferGuideAdjustment($payloadHeader);
+        $resHeader = data_get($responseHeaderValidate, 'data');
+
+        $docGp = data_get($resHeader, 'docGp', null);
+        if (!empty($resHeader) && !blank($docGp)) {
+            $already = $this->validateGuideTransferendMovementsWeb($guia, $docGp, $pedido);
+            if (!$already) {
+                DB::transaction(function () use ($groupItems, $guia, $resHeader, $pedido) {
+                    $this->processReservedTransferedAndDecrementStock($groupItems);
+                    $this->createDocumentGuideTrfv($guia, $resHeader, $pedido);
+                });
+                // $this->processReservedTransferedAndDecrementStock($groupItems);
+                // $this->createDocumentGuideTrfv($guia, $resHeader['data'], $pedido);
+                return true;
+            }
+            // $this->processReservedTransferedAndDecrementStock($groupItems);
+            // $processed = true;
+        }
+        /** en caso de que no exista la guia de transferencia debe crearla */
+        if (empty($resHeader) && $responseHeaderValidate['success'] === false) {
+            $response = $this->apiDeliveryNote->createTransferGuideVta($params);
+            if ($response['success'] === false) {
+                throw new \Exception($response['message']);
+            }
+            $docGp = data_get($response, 'data.docGp'); // null si no existe
+            if (blank($docGp)) {
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+            }
+              DB::transaction(function () use ($guia, $pedido, $docGp, $response, $groupItems) {
+                $this->processReservedTransferedAndDecrementStock($groupItems);
+                $this->createDocumentGuideTrfv($guia, $response['data'], $pedido);
+            });
+            // $this->processReservedTransferedAndDecrementStock($groupItems);
+            // $this->createDocumentGuideTrfv($guia, $response['data'], $pedido);
+            $processed = true;
+        }
+
+        return $processed;
+    }
+
+    public function validateGuideTransferendMovementsWeb($guia, $docGp, $pedido)
+    {
+        return GpGuiaRemisionTransferencia::where([
+            ['guia_remision_id', $guia->id],
+            ['pedido', $pedido],
+            ['codigo', trim((string) $docGp)],
+        ])->exists();
+    }
+    public function processReservedTransferedAndDecrementStock($groupItems)
+    {
+        foreach ($groupItems as $item) {
+            $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
+            $this->decrementOriginWarehouseReservedStock($item->traslado, $item->GUI_REM_CANTIDAD);
+        }
+    }
+
+
+
 }

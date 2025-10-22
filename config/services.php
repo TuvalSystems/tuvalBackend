@@ -89,7 +89,8 @@ return [
             'guia.obtener.clave_acceso'                 => 'api/inventario/guia-remision-obtener-claveacceso',
 
             //guias de remision correcciones procesos
-            'guia.despacho.check.ajuste'                => 'api/inventario/validar-existencia-guia-despacho'
+            'guia.despacho.check.ajuste'                => 'api/inventario/validar-existencia-guia-despacho',
+            'guia.transferencia.check.ajuste'           => 'api/inventario/validar-existencia-guia-transferencia'
         ],
     ],
     'api_sales' => [

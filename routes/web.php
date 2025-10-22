@@ -140,7 +140,7 @@ Route::prefix('bodegas')->group(function () {
     Route::get('guiasderemision/lista-guia-reposicion-transferencia', [GuiasderemisionController::class, 'listaGuiaTransferenciaReposicionConAjuste']);
 
 
-    Route::get('/guiasderemision/verificar-ajuste-guia-transferencia/{id}', [GuiasderemisionController::class, 'procesarReajusteGuiaTransferencia']);
+    Route::get('/guiasderemision/verificar-ajuste-guia-transferencia', [GuiasderemisionController::class, 'procesarReajusteGuiaTransferencia']);
 
 
 });
