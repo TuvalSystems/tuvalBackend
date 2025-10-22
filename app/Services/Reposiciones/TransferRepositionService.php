@@ -2,10 +2,13 @@
 
 namespace App\Services\Reposiciones;
 
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpArticulo;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -14,13 +17,18 @@ use Illuminate\Support\Facades\Log;
 
 class TransferRepositionService implements TransferRepositionServiceInterface
 {
- use JsonResponseTrait;
-    protected ApiGpService $apiGp;
+    use JsonResponseTrait;
+    protected $apiGp;
     protected $stockWarehouseService;
-    public function __construct(ApiGpService $apiGp, StockWarehouseServiceInterface $stockWarehouseService)
-    {
+    protected $apiGpReturnsIntegrationService;
+    public function __construct(
+        ApiGpService $apiGp,
+        StockWarehouseServiceInterface $stockWarehouseService,
+        ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+    ) {
         $this->apiGp = $apiGp;
         $this->stockWarehouseService = $stockWarehouseService;
+        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
     }
 
     public function validateRequest($request)
@@ -37,7 +45,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'fecha' => date('Y-m-d', timestamp: strtotime($request->fecha)),
             'numDoc' => $request->numDoc,
         ];
-        return  $this->apiGp->getTransferHeader($params) ?? [];
+        return $this->apiGp->getTransferHeader($params) ?? [];
     }
 
 
@@ -47,7 +55,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'idCompany' => config('services.api_gp.company'),
             'numDoc' => $numDoc,
         ];
-        return  $this->apiGp->getTransferDetail($params) ?? [];
+        return $this->apiGp->getTransferDetail($params) ?? [];
     }
 
 
@@ -57,7 +65,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         $processedDocuments = [];
         $documentFilter = $request['numDoc'];
         $batchSize = 100;
-        $batch  = [];
+        $batch = [];
         $errors = [];
 
         foreach ($transferHeader as $header) {
@@ -147,11 +155,11 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         return GpTrasladosReposicionCabecera::updateOrCreate(
             ['Documento' => $document['numdoc']],
             [
-                'Bodega_Origen'     => $document['origen'],
-                'Bodega_Destino'    => $document['destino'],
-                'Codigo_Motivo'     => $document['codmotivo'],
-                'Motivo'            => $document['motivo'],
-                'Fecha_Documento'   => substr($document['fecha'], 0, 10),
+                'Bodega_Origen' => $document['origen'],
+                'Bodega_Destino' => $document['destino'],
+                'Codigo_Motivo' => $document['codmotivo'],
+                'Motivo' => $document['motivo'],
+                'Fecha_Documento' => substr($document['fecha'], 0, 10),
             ]
         );
     }
@@ -230,7 +238,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 'cantidad' => $detail['cantidad'],
                 'bodega_origen' => $transferHeader->Bodega_Origen,
                 'bodega_destino' => $transferHeader->Bodega_Destino,
-                 'compartimiento' =>  $detail['trd_ubic'] ?? '', // $compartment['compartimento'], ya me devuelve en el detalle
+                'compartimiento' => $detail['trd_ubic'] ?? '', // $compartment['compartimento'], ya me devuelve en el detalle
                 // 'compartimiento' => $compartment ?? '',
                 'Fecha_Documento' => $transferHeader->Fecha_Documento,
                 'updated_at' => now()
@@ -266,7 +274,40 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'compartimento' => '',
         ];
         // MST_Stock_Articulo_Bodega_CompartimientoResult
-         $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
         return $response['COMPARTIMIENTO'] ?? null;
+    }
+
+
+    public function getDetailReceivedReposition($guideId)
+    {
+        $guia = GpGuiaRemision::find($guideId);
+        $detalle = GpGuiaRemisionDetalle::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
+            ->where('guia_remision_id', $guia->id)
+            ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
+            ->get();
+        $items = collect($detalle)
+            ->pluck('GUI_REM_CODI_INTERNO')
+            ->toArray();
+
+        $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
+        $response = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
+            $compartimento = collect($responseCompartimentos)
+                ->first(function ($response) use ($item) {
+                    // 🔍 Verificar dentro de 'data' si existe el item
+                    return $response['data']['Item'] === $item['GUI_REM_CODI_INTERNO'];
+                });
+            $lista = data_get($compartimento, 'lista', []);
+            $compart = data_get($compartimento, 'data', []);
+            $item->pendiente = number_format(round($item->GUI_REM_CANTIDAD - $item->recibido, 2), 2, '.', '');
+            $item->recibido = $item->pendiente;
+            $item->compartimientos = $lista;
+            // $item->compartimiento = $compart['bin'] ?? null;
+            $item->compartimiento =  null;
+
+            return $item;
+        })->values()->all();
+
+        return $response;
     }
 }
