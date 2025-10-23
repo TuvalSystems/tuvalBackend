@@ -770,7 +770,7 @@ class GuiasderemisionController extends Controller
 
     public function recibirguiareposicion($data): Response|Application|ResponseFactory
     {
-        ini_set('max_execution_time', -1);
+        // ini_set('max_execution_time', -1);
         set_time_limit(-1);
         ini_set('memory_limit', '-1');
 

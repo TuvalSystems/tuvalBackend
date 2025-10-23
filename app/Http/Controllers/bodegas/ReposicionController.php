@@ -18,7 +18,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
-
+use Illuminate\Support\Facades\Log;
 
 class ReposicionController extends Controller
 {
@@ -254,6 +254,12 @@ class ReposicionController extends Controller
                 'detalle' => $detalle,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Error al obtener el detalle del recibo de reposición: ', [
+                'guideId' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+            ]);
             return $this->errorResponse('Error al obtener el detalle del recibo de reposición', $e->getMessage(), 500);
         }
 
@@ -292,4 +298,22 @@ class ReposicionController extends Controller
     //         'detalle' => $detalle,
     //     ]);
     // }
+
+
+    public function procesarRecibirReposicionWeb($id)
+    {
+        ini_set('max_execution_time', -1);
+        try {
+            $guia = $this->transferRepositionService->processReceivedRepositionWeb($id);
+            return $this->successResponse('Recibo de reposición procesado con éxito', $guia, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al recibir el recibo de reposición: ', [
+                'guideId' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+            ]);
+            return $this->errorResponse('Error al recibir la reposicion', $e->getMessage(), 500);
+        }
+    }
 }
