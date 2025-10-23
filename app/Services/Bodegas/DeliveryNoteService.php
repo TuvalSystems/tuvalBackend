@@ -125,41 +125,24 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         if (empty($itemsIds)) {
             return;
         }
-        $traslados = GpTrasladosVentas::query()
-            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
-            ->whereIn('gp_traslados_ventas.id', $itemsIds)
-            ->where(function ($q) {
-                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
-            })
-            ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
-            ->keyBy('id');
-
+        $traslados = $this->getTransferSales($itemsIds);
+        if (!$traslados || $traslados->isEmpty()) {
+            throw new \RuntimeException(
+                'No hay traslados de ventas pendientes para procesar el ajuste de la guía de transferencia'
+            );
+        }
         $grupos = $this->groupItemsByOrderTransferVta($detalle, $traslados);
 
         $almenos_uno = false;
         foreach ($grupos as $grupo) {
             $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
-            $response = $this->apiDeliveryNote->createTransferGuideVta($params);
-            if ($response['success'] === false) {
-                throw new \Exception($response['message']);
-            }
-            $docGp = data_get($response, 'data.docGp'); // null si no existe
-            if (blank($docGp)) {
-                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
-            }
-            foreach ($grupo['items'] as $key => $item) {
-                $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
-                $this->decrementOriginWarehouseReservedStock($item->traslado, $item->GUI_REM_CANTIDAD);
-                $almenos_uno = true;
-            }
-            $this->createDocumentGuideTrfv($guia, $response['data'], $grupo['pedido']);
+            $almenos_uno = $this->validateExistenceTransferGuideAdjustment($guia, $params, $grupo['items'], $grupo['pedido']);
         }
         if ($almenos_uno) {
             $guia->update(['estado' => 'enviada']);
         } else {
             throw new \Exception('No se pudo generar el despacho');
         }
-
         return response([
             'success' => true,
             'message' => 'Guía de remisión despachada',
@@ -415,34 +398,23 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             return;
         }
 
-        $traslados = GpTrasladosReposicion::whereIn('id', $itemsIds)
-            ->where(function ($q) {
-                $q->where('gp_traslados_reposicions.completado', 0)->orWhereNull('gp_traslados_reposicions.completado');
-            })->get()->keyBy('id');
-        $grupos = $this->groupItemsByOrderReplacementShipment($detalle, $traslados);
+        $repositionSales = $this->getRepositionSales($itemsIds);
+        if (!$repositionSales || $repositionSales->isEmpty()) {
+            throw new \RuntimeException(
+                'No hay items para procesar el ajuste de la guía de reposición'
+            );
+        }
+        $grupos = $this->groupItemsByOrderReplacementShipment($detalle, $repositionSales);
         $checkList = false;
         foreach ($grupos as $grupo) {
             $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['documento'], $grupo['ws_items'], $user);
-            $response = $this->apiDeliveryNote->createReplacementShipmentGuideVta($params);
-            if ($response['success'] === false) {
-                throw new \Exception($response['message']);
-            }
-            $docGp = data_get($response, 'data.docGp'); // null si no existe
-            if (blank($docGp)) {
-                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
-            }
-            foreach ($grupo['items'] as $key => $item) {
-                $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
-                $checkList = true;
-            }
-            $this->createDocumentGuideTrfv($guia, $response['data'], $grupo['documento']);
+            $checkList = $this->validateExistsRepositionGuideAjustment($guia, $grupo['documento'], $params, $grupo['items']);
         }
         if ($checkList) {
             $guia->update(['estado' => 'enviada']);
         } else {
             throw new \Exception('No se pudo despachar la guia de reposición');
         }
-
         return response([
             'success' => true,
             'message' => 'Guía de remisión despachada',
@@ -782,7 +754,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function processAjusteWevOrderGUideRemision($id)
     {
-        $guia = GpGuiaRemision::find(232407);
+        $guia = GpGuiaRemision::find($id);
         $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
         return $pedido;
     }
@@ -912,7 +884,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 $this->processReservedTransferedAndDecrementStock($groupItems);
                 $this->createDocumentGuideTrfv($guia, $response['data'], $pedido);
             });
-         
+
             $processed = true;
         }
 

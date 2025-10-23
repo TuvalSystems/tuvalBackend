@@ -568,7 +568,7 @@ class GuiasderemisionController extends Controller
         $user = Auth::user();
 
         try {
-            return DB::transaction(function () use ($user, $id) {
+            // return DB::transaction(function () use ($user, $id) {
                 $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
 
                 // Re-chequea después del lock (otro proceso pudo enviarla)
@@ -593,7 +593,7 @@ class GuiasderemisionController extends Controller
                         throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
                 }
                 return $response;
-            });
+            // });
         } catch (\Throwable $e) {
             Log::error('Error en despachar guia de remision (despacharguia)', [
                 'error' => $e->getMessage(),
