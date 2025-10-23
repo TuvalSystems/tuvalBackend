@@ -141,6 +141,7 @@ Route::prefix('bodegas')->group(function () {
 
 
     Route::get('guiasderemision/verificar-ajuste-guia-transferencia', [GuiasderemisionController::class, 'procesarReajusteGuiaTransferencia']);
+    Route::get('guiasderemision/verificar-ajuste-guia-reposicion', [GuiasderemisionController::class, 'procesarReajusteGuiaReposicion']);
     Route::get('reposicion/procesar-reposicion-web/{id}', [ReposicionController::class, 'procesarRecibirReposicionWeb']);
 
 

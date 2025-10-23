@@ -322,7 +322,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     {
         $guia = GpGuiaRemision::find($guideId);
         $detalle = $this->getDataDetailReceivedReposition($guia);
-        //  return $detalle;
+        //   return $detalle;
         $traslados = $this->receivedGuideRepositionWeb($guia, $detalle);
         return $traslados;
     }
@@ -334,29 +334,83 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->where('guia_remision_id', $guia->id)
             ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
             ->whereIn('GUI_REM_CODI_INTERNO', [
-                '025-000161-I',
-                '021-000177-I',
-                '021-000130-I',
-                '870-000064-I',
-                '029-000084-I',
-                '023-000089-I',
-                '038-000040-I',
-                '021-000072-I',
-                '026-000091-I',
-                '026-000037-I',
-                '029-000238-I',
-                '125-000052-I',
-                '029-000120-I',
-                '038-000054-I',
-                '021-000186-I',
-                '520-000026-I',
-                '520-000026-I',
-                '029-000140-I',
-                '026-000011-I',
-                '688-000043-I',
-                '125-000056-I',
-                '521-000074-I'
+                '021-000162-I',
+                '021-000185-I',
+                '029-000129-I',
+                '029-000090-I',
+                '029-000149-I',
+                '029-000336-I',
+                '029-000032-I',
+                '029-000033-I',
+                '029-000034-I',
+                '029-000321-I',
+                '029-000145-I',
+                '029-000114-I',
+                '029-000233-I',
+                '029-000124-I',
+                '029-000019-I',
+                '029-000016-I',
+                '029-000014-I',
+                '029-000080-I',
+                '029-000109-I',
+                '029-000262-I',
+                '029-000105-I',
+                '029-000100-I',
+                '029-000098-I',
+                '037-000018-I',
+                '029-000101-I',
+                '029-000112-I',
+                '029-000144-I',
+                '029-000156-I',
+                '029-000236-I',
+                '029-000319-I',
+                '029-000088-I',
+                '026-000079-I',
+                '026-000075-I',
+                '038-000049-I',
+                '038-000103-I',
+                '029-000227-I',
+                '029-000150-I',
+                '260-000003-I',
+                '028-000169-I',
+                '026-000087-I',
+                '026-000020-I',
+                '026-000022-I',
+                '691-000021-I',
+                '520-000001-S',
+                '021-000162-I',
+                '125-000053-I',
+                '521-000019-I',
+                '521-000091-I',
+                '875-000007-I',
+                '125-000051-I',
+                '520-000052-S',
+                '870-000047-I'
             ])
+            // ->whereNotIn('GUI_REM_CODI_INTERNO', [
+            //     '025-000161-I',
+            //     '021-000177-I',
+            //     '021-000130-I',
+            //     '870-000064-I',
+            //     '029-000084-I',
+            //     '023-000089-I',
+            //     '038-000040-I',
+            //     '021-000072-I',
+            //     '026-000091-I',
+            //     '026-000037-I',
+            //     '029-000238-I',
+            //     '125-000052-I',
+            //     '029-000120-I',
+            //     '038-000054-I',
+            //     '021-000186-I',
+            //     '520-000026-I',
+            //     '520-000026-I',
+            //     '029-000140-I',
+            //     '026-000011-I',
+            //     '688-000043-I',
+            //     '125-000056-I',
+            //     '521-000074-I'
+            // ])
             ->get();
         $items = $detalle->pluck('GUI_REM_CODI_INTERNO')->all();
         $resp = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
@@ -516,15 +570,15 @@ class TransferRepositionService implements TransferRepositionServiceInterface
 
     public function checkguiacompleta($guia): bool
     {
-        $listo = true;
-        $recibidos = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+        $epsilon = 0.0001;
 
-        foreach ($recibidos as $recibido) {
-            if ($recibido->recibido < $recibido->GUI_REM_CANTIDAD) {
-                $listo = false;
-            }
-        }
-        return $listo;
+        // Si tus cantidades están en DECIMAL en BD, esto será muy preciso;
+        // si son FLOAT, el epsilon ayuda.
+        $hayPendientes = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)
+            ->whereRaw('COALESCE(recibido,0) + ? < GUI_REM_CANTIDAD', [$epsilon])
+            ->exists();
+
+        return !$hayPendientes;
     }
 
 }

@@ -54,4 +54,16 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
         ];
         return $payloadHeader;
     }
+
+
+    public function buildingRepositionGuideAdjustmentPayload($params)
+    {
+        $payloadHeader = [
+            'orderNumber' => data_get($params, 'pedido'),
+            'origen' => data_get($params, 'bodegaOrigen'),
+            'idMovimiento' => "",
+
+        ];
+        return $payloadHeader;
+    }
 }

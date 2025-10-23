@@ -1289,4 +1289,18 @@ class GuiasderemisionController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
+
+    /** proceso para reajuste de guia de reposiciones */
+
+    public function procesarReajusteGuiaReposicion(Request $request)
+    {
+        try {
+            $id = $request->get('guiaId');
+            $documento = $request->get('documento');
+            $guia = $this->deliveryNoteService->processRepositionGuideAdjustment($id, $documento);
+            return $this->successResponse('Reajuste procesado exitosamente para la guia de reposición', $guia, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

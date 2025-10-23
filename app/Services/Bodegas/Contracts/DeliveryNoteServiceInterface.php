@@ -33,4 +33,6 @@ interface DeliveryNoteServiceInterface
 
 
       public function processTransferGuideAdjustment($id, $orderNumber = null);
+
+      public function processRepositionGuideAdjustment($id, $documento = null);
 }
