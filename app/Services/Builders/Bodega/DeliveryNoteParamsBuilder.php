@@ -8,7 +8,7 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
 {
 
-    public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $documento, array $items,  $user): array
+    public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $documento, array $items, $user): array
     {
         $header = [
             'idCompany' => config('services.api_gp.company'),
@@ -25,7 +25,8 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
     }
 
 
-    public function buildParameterHeaderAndDetailDispatchShipment(GpGuiaRemision $guia, string $documento, string $newOrder, array $items, $user): array{
+    public function buildParameterHeaderAndDetailDispatchShipment(GpGuiaRemision $guia, string $documento, string $newOrder, array $items, $user): array
+    {
         $header = [
             'idCompany' => config('services.api_gp.company'),
             'pedido' => $documento,
@@ -38,5 +39,31 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'cabecera' => $header,
             'detalle' => $items
         ];
+    }
+
+
+    /** api para proceso de reajuste de transferencia */
+
+    public function buildingTransferGuideAdjustmentPayload($params)
+    {
+        $payloadHeader = [
+            'orderNumber' => data_get($params, 'pedido'),
+            'newOrderNumber' => "",
+            'origen' => data_get($params, 'bodegaOrigen'),
+
+        ];
+        return $payloadHeader;
+    }
+
+
+    public function buildingRepositionGuideAdjustmentPayload($params)
+    {
+        $payloadHeader = [
+            'orderNumber' => data_get($params, 'pedido'),
+            'origen' => data_get($params, 'bodegaOrigen'),
+            'idMovimiento' => "",
+
+        ];
+        return $payloadHeader;
     }
 }

@@ -2,10 +2,16 @@
 
 namespace App\Services\Reposiciones;
 
+use App\Http\Controllers\bodegas\IngresosController;
+use App\Http\Controllers\WebserviceController;
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpArticulo;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -14,13 +20,18 @@ use Illuminate\Support\Facades\Log;
 
 class TransferRepositionService implements TransferRepositionServiceInterface
 {
- use JsonResponseTrait;
-    protected ApiGpService $apiGp;
+    use JsonResponseTrait;
+    protected $apiGp;
     protected $stockWarehouseService;
-    public function __construct(ApiGpService $apiGp, StockWarehouseServiceInterface $stockWarehouseService)
-    {
+    protected $apiGpReturnsIntegrationService;
+    public function __construct(
+        ApiGpService $apiGp,
+        StockWarehouseServiceInterface $stockWarehouseService,
+        ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+    ) {
         $this->apiGp = $apiGp;
         $this->stockWarehouseService = $stockWarehouseService;
+        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
     }
 
     public function validateRequest($request)
@@ -37,7 +48,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'fecha' => date('Y-m-d', timestamp: strtotime($request->fecha)),
             'numDoc' => $request->numDoc,
         ];
-        return  $this->apiGp->getTransferHeader($params) ?? [];
+        return $this->apiGp->getTransferHeader($params) ?? [];
     }
 
 
@@ -47,7 +58,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'idCompany' => config('services.api_gp.company'),
             'numDoc' => $numDoc,
         ];
-        return  $this->apiGp->getTransferDetail($params) ?? [];
+        return $this->apiGp->getTransferDetail($params) ?? [];
     }
 
 
@@ -57,7 +68,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         $processedDocuments = [];
         $documentFilter = $request['numDoc'];
         $batchSize = 100;
-        $batch  = [];
+        $batch = [];
         $errors = [];
 
         foreach ($transferHeader as $header) {
@@ -147,11 +158,11 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         return GpTrasladosReposicionCabecera::updateOrCreate(
             ['Documento' => $document['numdoc']],
             [
-                'Bodega_Origen'     => $document['origen'],
-                'Bodega_Destino'    => $document['destino'],
-                'Codigo_Motivo'     => $document['codmotivo'],
-                'Motivo'            => $document['motivo'],
-                'Fecha_Documento'   => substr($document['fecha'], 0, 10),
+                'Bodega_Origen' => $document['origen'],
+                'Bodega_Destino' => $document['destino'],
+                'Codigo_Motivo' => $document['codmotivo'],
+                'Motivo' => $document['motivo'],
+                'Fecha_Documento' => substr($document['fecha'], 0, 10),
             ]
         );
     }
@@ -230,7 +241,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 'cantidad' => $detail['cantidad'],
                 'bodega_origen' => $transferHeader->Bodega_Origen,
                 'bodega_destino' => $transferHeader->Bodega_Destino,
-                 'compartimiento' =>  $detail['trd_ubic'] ?? '', // $compartment['compartimento'], ya me devuelve en el detalle
+                'compartimiento' => $detail['trd_ubic'] ?? '', // $compartment['compartimento'], ya me devuelve en el detalle
                 // 'compartimiento' => $compartment ?? '',
                 'Fecha_Documento' => $transferHeader->Fecha_Documento,
                 'updated_at' => now()
@@ -266,7 +277,308 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             'compartimento' => '',
         ];
         // MST_Stock_Articulo_Bodega_CompartimientoResult
-         $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
         return $response['COMPARTIMIENTO'] ?? null;
     }
+
+
+    public function getDetailReceivedReposition($guideId)
+    {
+        $guia = GpGuiaRemision::find($guideId);
+        $detalle = GpGuiaRemisionDetalle::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
+            ->where('guia_remision_id', $guia->id)
+            ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
+            ->get();
+        $items = collect($detalle)
+            ->pluck('GUI_REM_CODI_INTERNO')
+            ->toArray();
+
+        $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
+        $response = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
+            $compartimento = collect($responseCompartimentos)
+                ->first(function ($response) use ($item) {
+                    // 🔍 Verificar dentro de 'data' si existe el item
+                    $codigo = data_get($response, 'data.Item');
+                    return $codigo && $codigo === $item['GUI_REM_CODI_INTERNO'];
+                });
+            $lista = data_get($compartimento, 'lista', []);
+            // $compart = data_get($compartimento, 'data', []) ?? [];
+            $item->pendiente = number_format(round($item->GUI_REM_CANTIDAD - $item->recibido, 2), 2, '.', '');
+            $item->recibido = $item->pendiente;
+            $item->compartimientos = $lista;
+            // $item->compartimiento = $compart['bin'] ?? null;
+            $item->compartimiento = null;
+
+            return $item;
+        })->values()->all();
+
+        return $response;
+    }
+
+
+    /** proceso de recibir reposicion web * */
+
+    public function processReceivedRepositionWeb($guideId)
+    {
+        $guia = GpGuiaRemision::find($guideId);
+        $detalle = $this->getDataDetailReceivedReposition($guia);
+        //   return $detalle;
+        $traslados = $this->receivedGuideRepositionWeb($guia, $detalle);
+        return $traslados;
+    }
+
+
+    public function getDataDetailReceivedReposition($guia)
+    {
+        $detalle = GpGuiaRemisionDetalle::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
+            ->where('guia_remision_id', $guia->id)
+            ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
+            ->whereIn('GUI_REM_CODI_INTERNO', [
+                '021-000162-I',
+                '021-000185-I',
+                '029-000129-I',
+                '029-000090-I',
+                '029-000149-I',
+                '029-000336-I',
+                '029-000032-I',
+                '029-000033-I',
+                '029-000034-I',
+                '029-000321-I',
+                '029-000145-I',
+                '029-000114-I',
+                '029-000233-I',
+                '029-000124-I',
+                '029-000019-I',
+                '029-000016-I',
+                '029-000014-I',
+                '029-000080-I',
+                '029-000109-I',
+                '029-000262-I',
+                '029-000105-I',
+                '029-000100-I',
+                '029-000098-I',
+                '037-000018-I',
+                '029-000101-I',
+                '029-000112-I',
+                '029-000144-I',
+                '029-000156-I',
+                '029-000236-I',
+                '029-000319-I',
+                '029-000088-I',
+                '026-000079-I',
+                '026-000075-I',
+                '038-000049-I',
+                '038-000103-I',
+                '029-000227-I',
+                '029-000150-I',
+                '260-000003-I',
+                '028-000169-I',
+                '026-000087-I',
+                '026-000020-I',
+                '026-000022-I',
+                '691-000021-I',
+                '520-000001-S',
+                '021-000162-I',
+                '125-000053-I',
+                '521-000019-I',
+                '521-000091-I',
+                '875-000007-I',
+                '125-000051-I',
+                '520-000052-S',
+                '870-000047-I'
+            ])
+            // ->whereNotIn('GUI_REM_CODI_INTERNO', [
+            //     '025-000161-I',
+            //     '021-000177-I',
+            //     '021-000130-I',
+            //     '870-000064-I',
+            //     '029-000084-I',
+            //     '023-000089-I',
+            //     '038-000040-I',
+            //     '021-000072-I',
+            //     '026-000091-I',
+            //     '026-000037-I',
+            //     '029-000238-I',
+            //     '125-000052-I',
+            //     '029-000120-I',
+            //     '038-000054-I',
+            //     '021-000186-I',
+            //     '520-000026-I',
+            //     '520-000026-I',
+            //     '029-000140-I',
+            //     '026-000011-I',
+            //     '688-000043-I',
+            //     '125-000056-I',
+            //     '521-000074-I'
+            // ])
+            ->get();
+        $items = $detalle->pluck('GUI_REM_CODI_INTERNO')->all();
+        $resp = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
+
+        $binsByItem = [];
+        foreach ($resp as $r) {
+            $itemCode = (string) data_get($r, 'data.Item', '');
+            if ($itemCode === '' || isset($binsByItem[$itemCode])) {
+                continue;
+            }
+            $bin = trim((string) data_get($r, 'lista.0.bin', ''));
+            $binsByItem[$itemCode] = $bin === '' ? 'GENERAL' : $bin;
+        }
+        // return $binsByItem;
+        $response = [];
+
+        foreach ($detalle as $item) {
+            $decimalPlaces = (int) $item->ART_DECIMAL_CANTIDAD;
+            $pendiente = round((float) $item->GUI_REM_CANTIDAD - (float) $item->recibido, $decimalPlaces);
+            if ($pendiente < 0) {
+                $pendiente = 0.0;
+            }
+            $item->pendiente = round($pendiente, 2);
+            $item->recibido = round($item->pendiente, 2);
+            $bin = $binsByItem[$item->GUI_REM_CODI_INTERNO] ?? 'GENERAL';
+            $item->compartimiento = $bin;
+            $response[] = $item;
+        }
+        return $response;
+    }
+
+
+    public function receivedGuideRepositionWeb($guia, $detalle)
+    {
+        $itemsInput = collect($detalle)
+            ->filter(fn($i) => ($i['recibido'] ?? 0) > 0)
+            ->values();
+        if ($itemsInput->isEmpty()) {
+            throw new \InvalidArgumentException('No hay items para procesar en la reposición');
+        }
+
+        $trasladoIds = $itemsInput->pluck('detalle_id')->unique()->all();
+        $traslados = GpTrasladosReposicion::query()
+            ->whereIn('id', $trasladoIds)
+            ->get(['id', 'Documento'])
+            ->keyBy('id'); // id => traslado
+        $pedidos = $traslados->pluck('Documento')->unique()->all();
+        $transferencias = GpGuiaRemisionTransferencia::query()
+            ->where('guia_remision_id', $guia->id)
+            ->whereIn('pedido', $pedidos)
+            ->get(['pedido', 'codigo'])
+            ->keyBy('pedido'); // pedido => transferencia
+
+        $documentos = [];
+
+        foreach ($itemsInput as $it) {
+            $tras = $traslados->get($it['detalle_id']);
+            if (!$tras) {
+                continue;
+            }
+            $doc = $tras->Documento;
+            $codigoTransfer = optional($transferencias->get($doc))->codigo;
+            if (!isset($documentos[$doc])) {
+                $documentos[$doc] = [
+                    'Documento' => $doc,
+                    'transferencia' => $codigoTransfer,
+                    'items' => [],
+                ];
+            }
+
+            $documentos[$doc]['items'][] = [
+                'id' => $it['id'],
+                'Item' => $it['GUI_REM_CODI_INTERNO'],
+                'Compartimento' => $it['compartimiento'] ?: 'GENERAL',
+                'Cantidad' => (float) $it['recibido'], // numérico
+            ];
+        }
+        $ws = app(WebserviceController::class);
+
+        foreach ($documentos as $doc => $pack) {
+            $itemsWs = [];
+            foreach ($pack['items'] as $it) {
+                if ($it['Cantidad'] > 0) {
+                    $itemsWs[] = [
+                        'Item' => $it['Item'],
+                        'Compartimento' => $it['Compartimento'],
+                        'Cantidad' => $it['Cantidad'],
+                    ];
+                }
+            }
+            if (empty($itemsWs)) {
+                continue;
+            }
+            $params = [
+                'IDCompania' => env('ID_COMPANIA'),
+                'Documento' => $pack['Documento'],
+                'NumeroTransferOri' => $pack['transferencia'],
+                'BodegaOrigen' => $guia['bodega_origen'],
+                'BodegaDestino' => $guia['bodega_destino'],
+                'Observacion' => $guia['GUI_REM_OBSERVACION'],
+                'Usuario' => 'adminWeb',//$user->USERID ,
+                'Items' => array_values($itemsWs),
+            ];
+
+            $resp = $ws->inventario('GeneraRecepcionTransferenciaReposicon', $params);
+            $ret = data_get($resp, 'GeneraRecepcionTransferenciaReposiconResult.Retorno.0');
+            Log::info('Respuesta WS Recepción Reposición Web', [
+                'documento' => $pack['Documento'],
+                'response' => $resp,
+            ]);
+            if (!isset($ret['Codigo']) || (string) $ret['Codigo'] !== '0') {
+                throw new \RuntimeException('Error al procesar la recepción de la reposición para el documento ' . $pack['Documento'] . ': ' . ($ret['Mensaje'] ?? 'Error desconocido'));
+            }
+            $ids = collect($pack['items'])->pluck('id')->all();
+            $case = [];
+            $idList = [];
+
+            foreach ($pack['items'] as $it) {
+                $id = (int) $it['id'];
+                $val = (float) $it['Cantidad'];
+                if ($val <= 0)
+                    continue;
+
+                $idList[] = $id;
+                // recibido = recibido + X (seguro contra inyección: casteado y sin comillas)
+                $case[] = "WHEN {$id} THEN {$val}";
+            }
+
+            if ($idList && $case) {
+                $idIn = implode(',', $idList);
+                $caseSql = implode(' ', $case);
+
+                // Usa transacción local solo para las escrituras en MySQL
+                DB::transaction(function () use ($idIn, $caseSql) {
+                    DB::statement("
+                    UPDATE gp_guia_remision_detalles
+                     SET recibido = COALESCE(recibido, 0) + CASE id {$caseSql} ELSE 0 END
+                    WHERE id IN ({$idIn})
+                ");
+                });
+            }
+        }
+        $guia = GpGuiaRemision::find($guia->id);
+        $listo = $this->checkguiacompleta($guia);
+        $data = $guia->toArray();
+
+        // Idealmente: después de commit
+        (new IngresosController())->ingreso('traslado_reposicion', $data, $detalle);
+
+        if ($listo) {
+            $guia->estado = 'recibida';
+            $guia->save();
+        }
+        return $guia->refresh();
+    }
+
+
+    public function checkguiacompleta($guia): bool
+    {
+        $epsilon = 0.0001;
+
+        // Si tus cantidades están en DECIMAL en BD, esto será muy preciso;
+        // si son FLOAT, el epsilon ayuda.
+        $hayPendientes = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)
+            ->whereRaw('COALESCE(recibido,0) + ? < GUI_REM_CANTIDAD', [$epsilon])
+            ->exists();
+
+        return !$hayPendientes;
+    }
+
 }

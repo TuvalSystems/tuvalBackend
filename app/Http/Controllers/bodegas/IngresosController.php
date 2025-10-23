@@ -5,6 +5,7 @@ namespace App\Http\Controllers\bodegas;
 use App\Http\Controllers\Controller;
 use App\Models\GpIngreso;
 use App\Models\GpIngresosDetalle;
+use App\Models\GpUsuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,9 +28,7 @@ class IngresosController extends Controller
                 break;
         }
 
-
-        $user = Auth::user();
-
+        $user = Auth::user() ?: GpUsuario::find( 6);
         $ingreso = new GpIngreso();
         $ingreso->user_id = $user->id;
         $ingreso->USERID = $user->USERID;
