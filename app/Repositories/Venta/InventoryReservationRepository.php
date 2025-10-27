@@ -57,25 +57,33 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
             ])->get();
     }
 
-    public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination)
+public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination,$quotation = null)
     {
         return GpTrasladosReservas::query()->from('gp_traslados_reservas as tr')
             ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
+            ->join('gp_reservas as r', 'r.id', '=', 'tr.reserva_id')
+            ->join('gp_usuarios as u', 'u.id', '=', 'r.user_ingreso_reserva_id')
+            ->join('gp_articulos as a', 'a.ART_CODIGO', '=', 'tr.art_code')
             ->leftJoin('gp_bodegas as b', 'b.BOD_BODEGA', '=', 'c.BOD_BODEGA')
             ->where('tr.bodega_origen', $waOrigin)
             ->where('tr.bodega_destino', $waDestination)
             ->where(function ($q) {
                 $q->whereNull('tr.completado')->orWhere('tr.completado', 0);
             })
+            ->when($quotation, function ($q) use ($quotation) {
+                $q->where('c.cotizacion', $quotation);
+            })
             ->select([
                 'tr.*',
                 'b.BOD_DESCRIPCION as bodega_destino_desc',
+                'u.USERID as user_solicitud_reserva',
+                'a.ART_DECIMAL_CANTIDAD as art_decimal_cantidad',
                 'c.cotizacion',
             ])->get();
     }
 
 
-   
+
 
 
 

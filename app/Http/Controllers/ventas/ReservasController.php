@@ -249,13 +249,13 @@ class ReservasController extends Controller
         }
     }
 
-
-    public function ListatransferenciasReservaPorBodega(Request $request){
+    public function obtenerDetalleCabeceraTransferenciasReservaPorBodega(Request $request)
+    {
         try {
-            $ptoVtaOringen = $request->input('origen', null);
+            $ptoVtaOrigen = $request->input('origen', null);
             $ptoVtaDestino = $request->input('destino', null);
-            $data = $this->reserveService->fetchReservedTransfersByDestinationWarehouses($ptoVtaOringen, $ptoVtaDestino);
-            return $this->successResponse('Cotizaciones obtenidas correctamente', $data, 200);
+            $data = $this->reserveService->fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino);
+            return $this->successResponse('Cabeceras transferencias obtenidas correctamente', $data, 200);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion transferenciasReservaPorBodega -ReservasController: ', [
                 'message' => $e->getMessage(),
@@ -263,7 +263,98 @@ class ReservasController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
-              return $this->buildErrorResponse($e->getMessage(), 500);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function ListaTransferenciasReservaPorBodega(Request $request)
+    {
+        try {
+            $ptoVtaOrigen = $request->input('origen', null);
+            $ptoVtaDestino = $request->input('destino', null);
+            $quotation = $request->input('cotizacion', null);
+            $data = $this->reserveService->fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation);
+            return $this->successResponse('Lista transferencias obtenidas correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion transferenciasReservaPorBodega -ReservasController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+
+
+    public function actualizacionPickingItemsTraslados(Request $request)
+    {
+        try {
+
+            $items = $request->input('items', null);
+            $affected = $this->reserveService->updatePickingItemsSelected($items);
+            if ($affected === 0) {
+                // No hubo cambios (ya estaban seleccionados, por ejemplo)
+                return $this->successResponse('No hubo cambios en el picking.', 0, 200);
+            }
+            return $this->successResponse('Picking actualizado correctamente', $affected, 200);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion actualizacionPickingItemsTraslados -ReservasController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function cancelacionPickingItemTraslados(Request $request)
+    {
+        try {
+            $item = $request->input('row', null);
+            $affected = $this->reserveService->cancelPickingOneItemSelected($item);
+            if ($affected === 0) {
+                // No hubo cambios (ya estaban seleccionados, por ejemplo)
+                return $this->buildSuccessResponse('No hubo cambios en el picking.', 200);
+            }
+            return $this->buildSuccessResponse('Picking actualizado correctamente', 200);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion cancelacionPickingItemTraslados -ReservasController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function generarPdfPickingReserva(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'origen' => ['required', 'string', 'min:1'],
+                'destino' => ['required', 'string', 'min:1'],
+                'pesototal' => ['nullable', 'string'], // o 'string' si lo envías formateado
+                'items' => ['required', 'array', 'min:1'],
+                'items.*.id' => ['required', 'integer', 'distinct', 'exists:gp_traslados_reservas,id'],
+                'items.*.seleccionado' => ['required', 'numeric', 'min:1'],
+            ]);
+            $data = $this->reserveService->generatePickingPdf($validated);
+            return $this->buildPdfResponse($data);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            return $this->errorResponse('validation error', $ve->errors(), 500);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion generarPdfPickingReserva -ReservasController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 }

@@ -175,5 +175,6 @@ Route::prefix('consultas')->group(function () {
 
 Route::group(['prefix' => 'reservas-web'], function () {
     Route::get('transferencias-web/traslados-por-reserva-dashboard/{ptovta}', [ReservasController::class, 'TransferenciasPorReservaDashboard']);
-    Route::get('transferencias-web/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListatransferenciasReservaPorBodega']);
+    Route::get('transferencias-web/cabecera-traslados-por-reserva-bodega', [ReservasController::class, 'obtenerDetalleCabeceraTransferenciasReservaPorBodega']);
+    Route::get('transferencias-web/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListaTransferenciasReservaPorBodega']);
 });

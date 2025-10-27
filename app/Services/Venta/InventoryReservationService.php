@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\GpCotizacionDetalle;
 use App\Models\reservas\GpTipoReservas;
 use App\Models\GpCotizacionDetalleStock;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use App\Jobs\Venta\Reservas\SendDenyReservationNotification;
 use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
@@ -44,7 +45,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     protected $invoiceService;
     protected $stockWarehouseService;
     protected $reservaBuilder;
-
     protected $reservaRepository;
 
 
@@ -1063,23 +1063,58 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         })->filter()->values()->all();
     }
 
-
-    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOringen, $ptoVtaDestino): array
+    public function fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino): array
     {
-        $waOrigin = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaOringen)->value('PTO_VTA_BOD_BODEGA');
-        $waDestination = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaDestino)->value('PTO_VTA_BOD_BODEGA');
+        $map = GpRelacionPuntoVentaBodega::query()
+            ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$ptoVtaOrigen, $ptoVtaDestino])
+            ->pluck('PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA');
+        $waOrigin = $map[$ptoVtaOrigen] ?? null;
+        $waDestination = $map[$ptoVtaDestino] ?? null;
+        if (!$waOrigin || !$waDestination) {
+
+            return [];
+        }
         $bodegaDestinoDescripcion = GpBodega::where('BOD_BODEGA', $waDestination)->value('BOD_DESCRIPCION');
         $traslados = $this->reservaRepository->getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination);
+        if (!$traslados) {
+            return [];
+        }
         $items = $traslados->filter(fn($t) => $t->pending_transfer > 0)->values();
         $listQuotations = $this->getfilterListQuotationsByTransfered($items);
         $pesoTotal = round($items->sum('art_peso') / 1000, 2);
         return [
             'origin' => $waOrigin,
             'destination' => $bodegaDestinoDescripcion,
-            'traslados' => $items,
             'pesoTotal' => $pesoTotal,
             'listaQuotations' => $listQuotations
         ];
+    }
+
+    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation = null): array
+    {
+        $map = GpRelacionPuntoVentaBodega::query()
+            ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$ptoVtaOrigen, $ptoVtaDestino])
+            ->pluck('PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA');
+        $waOrigin = $map[$ptoVtaOrigen] ?? null;
+        $waDestination = $map[$ptoVtaDestino] ?? null;
+        if (!$waOrigin || !$waDestination) {
+            return [];
+        }
+        $traslados = $this->reservaRepository->getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination, $quotation);
+        if (!$traslados) {
+            return [];
+        }
+        return $traslados->filter(function ($t) {
+            return (float) ($t->pending_transfer) > 0;
+        })->values()
+            ->map(function ($item) use ($waOrigin) {
+                $createdAt = $item->created_at instanceof Carbon ? $item->created_at : Carbon::parse($item->created_at);
+                $item->fecha = $createdAt->timezone('America/Guayaquil')->format('Y-m-d H:i:s');
+                $artApi = $this->fetchItemCompartmentByWarehouse($item->art_code, $waOrigin);
+                $item->compartimiento = Arr::get($artApi, 'COMPARTIMIENTO', '');
+                $item->existencia = round(Arr::get($artApi, 'STOCK_DISPONIBLE', 0), 2);
+                return $item;
+            })->toArray();
     }
 
     public function getfilterListQuotationsByTransfered($items)
@@ -1089,9 +1124,79 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->filter()                // quita null/'' si los hubiera
             ->unique()                // deja únicos
             ->values()                // reindexa 0..n
-            ->map(fn($c) => ['cotizacion' => $c]);
+            ->map(fn($c) => $c);
     }
 
 
+    public function fetchItemCompartmentByWarehouse($artCode, $warehouse)
+    {
+        $params = ['articulo' => $artCode, 'bodega' => $warehouse, 'compartimento' => ''];
+        $resp = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        return $resp;
+    }
+
+
+    /** proceso de actualizacion de pickign de items seleccionados  */
+
+
+    public function updatePickingItemsSelected($items): int
+    {
+        $ids = collect($items)->pluck('id')->filter()->unique();
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+        return GpTrasladosReservas::whereIn('id', $ids)->update(['picking' => 1]);
+    }
+
+
+    public function cancelPickingOneItemSelected($item): int
+    {
+        $id = (int) Arr::get($item, 'id', 0);
+        if ($id <= 0) {
+            return 0;
+        }
+        return GpTrasladosReservas::whereKey($id)->update([
+            'picking' => 0,
+            'updated_at' => now(),
+        ]);
+    }
+
+
+
+    public function generatePickingPdf($payload): array
+    {
+        $itemsPayload = collect($payload['items']);
+        $puntodeventa = GpPuntoVenta::join('gp_relacion_punto_venta_bodegas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
+            ->where('gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_BODEGA', $payload['origen'])->first()->toarray();
+
+        $viewData = [
+            'origen' => $payload['origen'],
+            'destino' => $payload['destino'],
+            'pesototal' => (float) str_replace(',', '.', (string) ($payload['pesototal'] ?? 0))?? 0,
+            'rows' => $itemsPayload->map(function ($item) {
+                $pesoUnitGr = (float) str_replace(',', '.', (string) ($item['art_peso'] ?? 0));
+                $qty = (int) ($item['seleccionado'] ?? 0);
+                $item['peso_kg'] = round(($pesoUnitGr * $qty), 2);
+                return $item;
+            })->values()
+                ->all(),
+            'direccion' => $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'],
+        ];
+
+        // 3) Render Blade → PDF (Dompdf)
+        $html = view('pdf.picking-reserva', $viewData)->render();
+        $pdf = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+
+        $filename = 'picking-' . Str::slug($payload['destino'], '-') . '-' . now()->format('Ymd-His') . '.pdf';
+
+        return [
+            'binary' => $binary,
+            'filename' => $filename,
+            'content_type' => 'application/pdf',
+        ];
+    }
 
 }

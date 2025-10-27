@@ -279,7 +279,12 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         /** transferencias de reservas apis */
 
         Route::get('transferencias/traslados-por-reserva-dashboard/{ptovta}', [ReservasController::class, 'TransferenciasPorReservaDashboard']);
-        Route::post('transferencias/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListatransferenciasReservaPorBodega']);
+        Route::post('transferencias/cabecera-traslados-por-reserva-bodega', [ReservasController::class, 'obtenerDetalleCabeceraTransferenciasReservaPorBodega']);
+        Route::post('transferencias/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListaTransferenciasReservaPorBodega']);
+        Route::post('transferencias/actualizar-picking-items', [ReservasController::class, 'actualizacionPickingItemsTraslados']);
+        Route::post('transferencias/cancelar-picking-item-reserva', [ReservasController::class, 'cancelacionPickingItemTraslados']);
+        Route::post('transferencias/pdf-picking-reserva', [ReservasController::class, 'generarPdfPickingReserva']);
+
 
     });
 

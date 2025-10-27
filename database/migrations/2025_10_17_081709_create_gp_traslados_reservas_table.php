@@ -27,8 +27,8 @@ class CreateGpTrasladosReservasTable extends Migration
             $table->decimal('cantidad', 11, 2)->nullable()->index();
             $table->string('bodega_origen', 60)->nullable()->index();
             $table->string('bodega_destino', 60)->nullable()->index();
-            $table->decimal('reservado', 11, 2)->nullable()->index();
-            $table->decimal('trasladado', 11, 2)->nullable()->index();
+            $table->decimal('reservado', 11, 2)->nullable()->default(0)->index();
+            $table->decimal('trasladado', 11, 2)->nullable()->default(0)->index();
             $table->boolean('completado')->default(0);
             $table->boolean('picking')->default(0);
             $table->timestamps();
