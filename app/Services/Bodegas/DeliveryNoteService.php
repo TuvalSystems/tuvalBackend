@@ -859,10 +859,14 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $resHeader = data_get($responseHeaderValidate, 'data');
 
         $docGp = data_get($resHeader, 'docGp', null);
+        $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
         if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->validateGuideTransferendMovementsWeb($guia, $docGp, $pedido);
+            $already = $this->validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido);
             if ($already) {
-                return true;
+                return DB::transaction(function () use ($groupItems) {
+                    $this->processReservedTransferedAndDecrementStock($groupItems);
+                    return true;
+                });
             }
             return DB::transaction(function () use ($groupItems, $guia, $resHeader, $pedido) {
                 $this->processReservedTransferedAndDecrementStock($groupItems);
@@ -891,10 +895,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         return $processed;
     }
 
-    public function validateGuideTransferendMovementsWeb($guia, $docGp, $pedido)
+    public function validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido)
     {
         return GpGuiaRemisionTransferencia::where([
-            ['guia_remision_id', $guia->id],
+            ['guia_remision_id', $$idGuiaRemision],
             ['pedido', $pedido],
             ['codigo', trim((string) $docGp)],
         ])->exists();
@@ -959,11 +963,15 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $responseHeaderValidate = $this->apiDeliveryNote->checkRepositionGuideAdjustment($payloadHeader);
         $resHeader = data_get($responseHeaderValidate, 'data');
         $docGp = data_get($resHeader, 'docGp', null);
+        $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
 
         if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->validateGuideTransferendMovementsWeb($guia, $docGp, $documento);
+            $already = $this->validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $documento);
             if ($already) {
-                return true; // skipped
+                return DB::transaction(function () use ($groupItems) {
+                    $this->generateMovementRepositionAdjustment($groupItems);
+                    return true;
+                });
             }
             // A2: Existe en GP pero no local: aplica ambos pasos en TX
             return DB::transaction(function () use ($groupItems, $guia, $resHeader, $documento) {
