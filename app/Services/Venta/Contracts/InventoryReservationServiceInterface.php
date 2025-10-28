@@ -40,4 +40,5 @@ interface InventoryReservationServiceInterface
      public function cancelPickingOneItemSelected($item) : int;
 
      public function generatePickingPdf($payload);
+     public function fetchTransportedWithVehicles();
 }

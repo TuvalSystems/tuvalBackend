@@ -3,38 +3,40 @@
 namespace App\Services\Venta;
 
 
-use App\Jobs\Venta\Reservas\FanoutReservationRequest;
-use App\Jobs\Venta\Reservas\NotifyReservationRequesterOrderCreatedJob;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
-use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Carbon\Carbon;
+use App\Models\GpBodega;
 use App\Models\GpUsuario;
 use App\Models\GpArticulo;
+use App\Models\GpVehiculo;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
+use App\Models\GpTransportista;
+use App\Models\reservas\GpReserva;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Models\GpCotizacionDetalle;
+use Illuminate\Support\Facades\Log;
 use App\Models\reservas\GpTipoReservas;
 use App\Models\GpCotizacionDetalleStock;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
-use App\Jobs\Venta\Reservas\SendDenyReservationNotification;
-use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
-use App\Models\GpBodega;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\reservas\GpCotizacionReservaLog;
-use App\Models\reservas\GpReserva;
 use App\Models\reservas\GpTrasladosReservas;
-use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
+use Illuminate\Validation\ValidationException;
+use App\Models\reservas\GpCotizacionReservaLog;
+use App\Jobs\Venta\Reservas\FanoutReservationRequest;
+use App\Jobs\Venta\Reservas\SendDenyReservationNotification;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Jobs\Venta\Reservas\SendApprovalReservationNotification;
+use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
+use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
+use App\Jobs\Venta\Reservas\NotifyReservationRequesterOrderCreatedJob;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
 {
@@ -1130,7 +1132,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function getfilterListQuotationsByTransfered($items)
     {
         return collect($items)
-            ->pluck('cotizacion')     // toma solo el campo cotizacion
+            ->pluck('cotizacion')
             ->filter()                // quita null/'' si los hubiera
             ->unique()                // deja únicos
             ->values()                // reindexa 0..n
@@ -1146,7 +1148,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    /** proceso de actualizacion de pickign de items seleccionados  */
+    /**
+     *
+     *
+     *  proceso de actualizacion de pickign de items seleccionados
+     *
+     *
+     *
+     * */
 
 
     public function updatePickingItemsSelected($items): int
@@ -1206,6 +1215,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'binary' => $binary,
             'filename' => $filename,
             'content_type' => 'application/pdf',
+        ];
+    }
+
+
+    public function fetchTransportedWithVehicles(){
+        return [
+            'transportistas' => GpTransportista::get(),
+            'vehiculos' => GpVehiculo::get(),
         ];
     }
 

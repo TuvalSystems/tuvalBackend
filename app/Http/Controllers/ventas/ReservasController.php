@@ -357,4 +357,21 @@ class ReservasController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
+
+
+    public function listaTransportesYVehiculos()
+    {
+        try {
+            $data = $this->reserveService->fetchTransportedWithVehicles();
+            return $this->successResponse('Transportes y vehiculos obtenidos correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            log::channel('reservas_log')->error('Error en la funcion listaTransportesYVehiculos -ReservasController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }
