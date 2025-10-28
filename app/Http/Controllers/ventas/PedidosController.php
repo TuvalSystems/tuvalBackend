@@ -1146,7 +1146,7 @@ class PedidosController extends Controller
 
         // $funciones = new FuncionesController();
         // $funciones->recalcularpedido($nuevo_pedido);
-        $this->functionService->recalculateOrder($pedido->id);
+        $this->functionService->recalculateOrder($nuevo_pedido->id);
 
 
         // $this->checkenviarfactura($nuevo_pedido);
