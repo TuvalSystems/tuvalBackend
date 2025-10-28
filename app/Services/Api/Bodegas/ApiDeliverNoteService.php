@@ -31,7 +31,7 @@ class ApiDeliverNoteService extends ApiGpService
 
 
 
-    public function checkAdjustmentGuideDispatch(array $params)
+    public function checkDispatchGuideAdjustment(array $params)
     {
         return $this->httpClient->makeRequest($this->endpoints["guia.despacho.check.ajuste"], 'GET', $params, 'json');
     }

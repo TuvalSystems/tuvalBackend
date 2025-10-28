@@ -73,4 +73,16 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
         ];
         return $payloadHeader;
     }
+
+
+    public function buildingDispatchGuideAdjustmentPayload($params)
+    {
+        $payloadHeader = [
+            'orderNumber' => data_get($params, 'pedido'),
+            'newOrderNumber' => data_get($params, 'pedidoNuevo' ?? ''),
+            'idGuiaRemision' => data_get($params, 'idGuiaRemision'),
+            'guiaRemision' => data_get($params, 'guiaRemision'),
+        ];
+        return $payloadHeader;
+    }
 }
