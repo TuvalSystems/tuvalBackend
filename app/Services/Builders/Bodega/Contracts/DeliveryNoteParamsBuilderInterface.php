@@ -16,4 +16,5 @@ interface DeliveryNoteParamsBuilderInterface
 
     public function buildingTransferGuideAdjustmentPayload($params);
     public function buildingRepositionGuideAdjustmentPayload($params);
+      public function buildingDispatchGuideAdjustmentPayload($params);
 }

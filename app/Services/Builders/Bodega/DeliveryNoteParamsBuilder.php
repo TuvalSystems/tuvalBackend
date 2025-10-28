@@ -17,6 +17,8 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'bodegaDestino' => $guia->bodega_destino,
             'observacion' => $guia->GUI_REM_OBSERVACION,
             'usuario' => $user->USERID ?? 'adminWeb',
+            'idGuiaRemision' => $guia->id,
+            'guiaRemision' => $guia->GUI_REM_GUIA_REMISION
         ];
         return [
             'cabecera' => $header,
@@ -34,6 +36,8 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'bodegaOrigen' => $guia->bodega_origen,
             'observacion' => $guia->GUI_REM_OBSERVACION,
             'usuario' => $user->USERID ?? 'adminWeb',
+            'idGuiaRemision' => $guia->id,
+            'guiaRemision' => $guia->GUI_REM_GUIA_REMISION
         ];
         return [
             'cabecera' => $header,
@@ -50,7 +54,8 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'orderNumber' => data_get($params, 'pedido'),
             'newOrderNumber' => "",
             'origen' => data_get($params, 'bodegaOrigen'),
-
+            'idGuiaRemision' => data_get($params, 'idGuiaRemision'),
+            'guiaRemision' => data_get($params, 'guiaRemision'),
         ];
         return $payloadHeader;
     }
@@ -62,7 +67,21 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'orderNumber' => data_get($params, 'pedido'),
             'origen' => data_get($params, 'bodegaOrigen'),
             'idMovimiento' => "",
+            'idGuiaRemision' => data_get($params, 'idGuiaRemision'),
+            'guiaRemision' => data_get($params, 'guiaRemision'),
 
+        ];
+        return $payloadHeader;
+    }
+
+
+    public function buildingDispatchGuideAdjustmentPayload($params)
+    {
+        $payloadHeader = [
+            'orderNumber' => data_get($params, 'pedido'),
+            'newOrderNumber' => data_get($params, 'pedidoNuevo' ?? ''),
+            'idGuiaRemision' => data_get($params, 'idGuiaRemision'),
+            'guiaRemision' => data_get($params, 'guiaRemision'),
         ];
         return $payloadHeader;
     }
