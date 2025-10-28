@@ -1052,12 +1052,17 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
         $traslados = $this->reservaRepository->getAllTransferReservedByWarehouses($bodega);
-        $items = $traslados->filter(fn($t) => $t->pending_transfer >= 0)->values();
+        $items = $traslados->filter(fn($t) => $t->pending_transfer >= 0)->map(function ($item) {
+            $qty = (float) $item->pending_transfer;
+            $kg = (float) $item->art_peso;
+            $item->art_pesoKg = $qty * $kg;
+            return $item;
+        })->values();
         return collect($items)->groupBy('bodega_destino')->map(function ($item) {
             return [
                 'bodega' => $item[0]['bodega_destino_desc'],
                 'ptovtaId' => $item[0]['ptovtaId'],
-                'pesoTon' => round(collect($item)->sum('art_peso') / 1000, 2),
+                'pesoTon' => round(collect($item)->sum('art_pesoKg') / 1000, 2),
                 'totalItems' => $item->count()
             ];
         })->filter()->values()->all();
@@ -1079,9 +1084,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         if (!$traslados) {
             return [];
         }
-        $items = $traslados->filter(fn($t) => $t->pending_transfer > 0)->values();
+        $items = $traslados->filter(fn($t) => $t->pending_transfer > 0)->map(function ($item) {
+            $qty = (float) $item->pending_transfer;
+            $kg = (float) $item->art_peso;
+            $item->art_pesoKg = $qty * $kg;
+            return $item;
+        })->values();
         $listQuotations = $this->getfilterListQuotationsByTransfered($items);
-        $pesoTotal = round($items->sum('art_peso') / 1000, 2);
+        $pesoTotal = round($items->sum('art_pesoKg') / 1000, 2);
         return [
             'origin' => $waOrigin,
             'destination' => $bodegaDestinoDescripcion,
@@ -1172,7 +1182,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $viewData = [
             'origen' => $payload['origen'],
             'destino' => $payload['destino'],
-            'pesototal' => (float) str_replace(',', '.', (string) ($payload['pesototal'] ?? 0))?? 0,
+            'pesototal' => (float) str_replace(',', '.', (string) ($payload['pesototal'] ?? 0)) ?? 0,
             'rows' => $itemsPayload->map(function ($item) {
                 $pesoUnitGr = (float) str_replace(',', '.', (string) ($item['art_peso'] ?? 0));
                 $qty = (int) ($item['seleccionado'] ?? 0);

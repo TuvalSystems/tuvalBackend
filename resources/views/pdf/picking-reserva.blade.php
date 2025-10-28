@@ -91,32 +91,7 @@
         vertical-align: top;
     }
 
-    .table2>tbody>tr>td,
-    .table2>tbody>tr>th,
-    .table2>tfoot>tr>td,
-    .table2>tfoot>tr>th,
-    .table2>thead>tr>td,
-    .table2>thead>tr>th {
-        font-size: 11px;
-        line-height: 1.8;
-        padding: 6px;
-        vertical-align: top;
-    }
 
-    .table3>tbody>tr>td,
-    .table2>tbody>tr>th,
-    .table2>tfoot>tr>td,
-    .table2>tfoot>tr>th,
-    .table2>thead>tr>td,
-    .table2>thead>tr>th {
-        font-size: 11px;
-        line-height: 1.42857;
-        vertical-align: top;
-    }
-
-    .table3>thead>tr>th {
-        text-align: left;
-    }
 
     .container {
         max-width: 1000px;
@@ -198,7 +173,7 @@
     <div class="container">
         <div class="bordered">
             <h4>Detalle: </h4>
-            <table class="table table-striped tablacarrito">
+            <table class="table table-sm table-striped tablacarrito">
                 <thead>
                     <tr>
                         <th class="nowrap">Compartimiento / Existencia </th>
@@ -225,7 +200,7 @@
                     @endforeach
                 </tbody>
             </table>
-            <p class="text-right"><strong>Peso total: {{ number_format($pesototal, 2, '.', '') }} Tn</strong></p>
+            <p class="text-right"><strong>Peso total: {{ number_format(($pesototal / 1000), 2, '.', '') }} Tn</strong></p>
         </div>
     </div>
 </body>
