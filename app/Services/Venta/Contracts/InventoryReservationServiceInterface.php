@@ -9,7 +9,7 @@ interface InventoryReservationServiceInterface
     // Define los métodos que debe implementar el servicio
 
     public function hasAnyReserveState(int $quotationId);
-    public function saveQuotationHeaderReserved(array $reserva,  GpUsuario $user);
+    public function saveQuotationHeaderReserved(array $reserva, GpUsuario $user);
     public function fetchListTipeReserved();
 
     public function fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc);
@@ -20,7 +20,7 @@ interface InventoryReservationServiceInterface
     public function getQuotationWithDetailsAndActiveStockById(int $id);
     public function denyApplicationReservedQuotation(array $data, $gpUser);
     public function approvalApplicationReservedQuotation(array $data, $gpUser);
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId,  $clienteRuc, $userId);
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, $userId);
 
     public function processReservedQuotation(array $data, $user);
     public function processReservedQuotationInvoiceDemand($payload, $user);
@@ -33,12 +33,15 @@ interface InventoryReservationServiceInterface
 
     public function fetchReservedTransferSummaries($ptoVtaId);
     public function fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino): array;
-    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino , $quotation = null): array;
+    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation = null): array;
 
-     public function updatePickingItemsSelected($items) : int;
+    public function updatePickingItemsSelected($items): int;
 
-     public function cancelPickingOneItemSelected($item) : int;
+    public function cancelPickingOneItemSelected($item): int;
 
-     public function generatePickingPdf($payload);
-     public function fetchTransportedWithVehicles();
+    public function generatePickingPdf($payload);
+
+    public function fetchVehicles();
+    public function fetchTransportistas($vehicleId);
+
 }

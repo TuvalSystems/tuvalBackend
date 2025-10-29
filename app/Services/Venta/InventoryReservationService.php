@@ -1095,7 +1095,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $listQuotations = $this->getfilterListQuotationsByTransfered($items);
         $pesoTotal = round($items->sum('art_pesoKg') / 1000, 2);
         return [
+            'bodOrigin' => $waOrigin,
+            'ptoOrigin' => $ptoVtaOrigen,
             'origin' => $waOrigin,
+            'bodDestination' => $waDestination,
+            'ptoDestination' => $ptoVtaDestino,
             'destination' => $bodegaDestinoDescripcion,
             'pesoTotal' => $pesoTotal,
             'listaQuotations' => $listQuotations
@@ -1219,11 +1223,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function fetchTransportedWithVehicles(){
-        return [
-            'transportistas' => GpTransportista::get(),
-            'vehiculos' => GpVehiculo::get(),
-        ];
+    public function fetchVehicles(){
+        return GpVehiculo::get();
     }
+
+    public function fetchTransportistas($vehicleId){
+        $vehicles = GpVehiculo::find($vehicleId);
+        return GpTransportista::where('id', $vehicles->transportista_id)->get();
+    }
+
+
 
 }
