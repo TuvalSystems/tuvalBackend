@@ -117,6 +117,9 @@ Route::prefix('pedidos')->group(function () {
     Route::get('/generar-orden-despacho/{id}', [PedidosController::class, 'generarOrdenDeDespacho']);
     Route::get('/recalcular-pedido/{id}', [PedidosController::class, 'recalcularPedidoTest']);
     Route::get('/actualizar-pedido-y-recalcular/{id}', [PedidosController::class, 'actualizarPedidoYRecalcular']);
+
+    Route::get('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
+
 });
 
 

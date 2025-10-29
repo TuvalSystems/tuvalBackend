@@ -1275,4 +1275,22 @@ class PedidosController extends Controller
     {
         return $this->orderService->updateOrderAndRecalculate($id);
     }
+
+    /** funcion para el cambio de orden de compra y nota cliente por pediod */
+    public function actualizarOrdenCompraYNotaCliente(Request $request)
+    {
+        $id = $request->input('id');
+        $newOrd = $request->input('orden_de_compra');
+        $newNote = $request->input('nota_cliente');
+        try {
+            $data = $this->orderService->syncPurchaseOrderAndNoteByOrder($id, $newOrd, $newNote);
+            return $this->successResponse('Datos actualizados Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al actualizar los datos del pedido: ', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->buildErrorResponse('Opps! Error al actualizar los datos del pedido', 500);
+        }
+    }
 }
