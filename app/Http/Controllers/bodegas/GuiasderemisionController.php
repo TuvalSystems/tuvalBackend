@@ -569,30 +569,30 @@ class GuiasderemisionController extends Controller
 
         try {
             // return DB::transaction(function () use ($user, $id) {
-                $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
+            $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
 
-                // Re-chequea después del lock (otro proceso pudo enviarla)
-                if ($guia->estado === 'enviada') {
-                    return $this->buildSuccessResponse('Guía de remisión despachada por otro usuario', 200);
-                }
-                $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
-                $response = null;
+            // Re-chequea después del lock (otro proceso pudo enviarla)
+            if ($guia->estado === 'enviada') {
+                return $this->buildSuccessResponse('Guía de remisión despachada por otro usuario', 200);
+            }
+            $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+            $response = null;
 
-                switch ($guia->tipo) {
-                    case 'transferencia':
-                        $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle, $user);
-                        break;
-                    case 'despacho':
-                        $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle, $user);
+            switch ($guia->tipo) {
+                case 'transferencia':
+                    $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle, $user);
+                    break;
+                case 'despacho':
+                    $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle, $user);
 
-                        break;
-                    case 'reposicion':
-                        $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle, $user);
-                        break;
-                    default:
-                        throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
-                }
-                return $response;
+                    break;
+                case 'reposicion':
+                    $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle, $user);
+                    break;
+                default:
+                    throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
+            }
+            return $response;
             // });
         } catch (\Throwable $e) {
             Log::error('Error en despachar guia de remision (despacharguia)', [
@@ -1303,4 +1303,21 @@ class GuiasderemisionController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
+
+
+
+    /***
+     *
+     *
+     *
+     *
+     * proceso de generacion de guia de remision de reservas
+     *
+     *
+     *
+     *
+     * */
+
+
+    
 }
