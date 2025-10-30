@@ -132,13 +132,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cobranzas/aprobardeposito', [CobranzasController::class, 'aprobardeposito']);
     Route::post('/cobranzas/rechazardeposito', [CobranzasController::class, 'rechazardeposito']);
     Route::get('/cobranzas/getcajausuario/{puntodeventa}/{USERID}', [CobranzasController::class, 'getcajausuario']);
-    Route::post('/bodegas/dashboard', [DashboardController::class, 'dashboard']);
-    Route::post('/bodegas/recibosdecompra/bandeja', [RecibosdecompraeleController::class, 'bandeja']);
-    Route::post('/bodegas/recibosdecompra/detalle', [RecibosdecompraeleController::class, 'detalle']);
-    Route::post('/bodegas/recibosdecompra/recibir', [RecibosdecompraeleController::class, 'recibir']);
-    Route::post('/bodegas/recibosdecompra/imprimirrecibol', [RecibosdecompraeleController::class, 'imprimirrecibol']);
-    Route::post('/bodegas/recibosdecompra/eliminar', [RecibosdecompraeleController::class, 'eliminar']);
-    Route::get('/bodegas/recibosdecompra/imprimir/{id}', [RecibosdecompraeleController::class, 'imprimir']);
+
     Route::get('/cotizaciones/imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
     Route::get('/cotizaciones/imprimircotizacionimagenes/{id}', [CotizacionesController::class, 'imprimircotizacionimagenes']);
     Route::get('/cotizaciones/imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
@@ -166,20 +160,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/consultas/cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
     Route::post('/cobranzas/consultacierrecajausuario', [CobranzasController::class, 'consultacierrecajausuario']);
     Route::post('/cobranzas/consultacobroscliente', [CobranzasController::class, 'consultacobroscliente']);
-    Route::get('/bodegas/transportes/transportistas', [TransportesController::class, 'transportistas']);
-    Route::post('/bodegas/transportes/savetransportista', [TransportesController::class, 'savetransportista']);
-    Route::post('/bodegas/transportes/savevehiculo', [TransportesController::class, 'savevehiculo']);
-    Route::delete('/bodegas/transportes/deletetransportista/{id}', [TransportesController::class, 'deletetransportista']);
-    Route::delete('/bodegas/transportes/deletevehiculo/{id}', [TransportesController::class, 'deletevehiculo']);
-    Route::get('/bodegas/transferencias/transferenciasventa/{id}/{pedido?}/{compartimiento?}', [TransferenciasController::class, 'transferenciasVentas']);
-    Route::post('/bodegas/transferencias/picking', [TransferenciasController::class, 'picking']);
-    Route::post('/bodegas/transferencias/imprimirpicking', [TransferenciasController::class, 'imprimirpicking']);
-    Route::post('/bodegas/transferencias/cancelarpicking', [TransferenciasController::class, 'cancelarpicking']);
 
-    Route::get('/bodegas/reposicion/transferenciasreposicion/{id}/{pedido?}', [ReposicionController::class, 'transferenciasreposicion']);
-    Route::get('/bodegas/reposicion/recibosreposicion/{id}', [ReposicionController::class, 'recibosreposicion']);
-    Route::get('/bodegas/reposicion/recibosreposicionindividual/{id}', [ReposicionController::class, 'recibosreposicionindividual']);
-    Route::get('/bodegas/reposicion/detallereciboreposicion/{id}', [ReposicionController::class, 'detallereciboreposicion']);
 
     Route::get('/despachos/ordenespendientes/{puntodeventa_id}', [DespachosController::class, 'ordenespendientes']);
     Route::post('/despachos/liberarordendespacho', [DespachosController::class, 'liberarordendespacho']);
@@ -204,16 +185,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/despachos/reposicionesEnviadas/{id}', [DespachosController::class, 'getDispatchedRepositions']);
     Route::get('/despachos/reposicionesRecibidas/{id}', [DespachosController::class, 'getReceivedRepositions']);
 
-    Route::post('/bodegas/guiasderemision/generarguiatraslado', [GuiasderemisionController::class, 'generarguiatraslado']);
-    Route::post('/bodegas/guiasderemision/consultarguiagenerada', [GuiasderemisionController::class, 'consultarguiagenerada']);
-    Route::get('/bodegas/guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
-    Route::delete('/bodegas/guiasderemision/eliminarguia/{id}', [GuiasderemisionController::class, 'eliminarguia']);
-    Route::get('/bodegas/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
-    Route::post('/bodegas/guiasderemision/recibirguia', [GuiasderemisionController::class, 'recibirguia']);
 
-    Route::get('/bodegas/transferencias/recibosventa/{id}', [TransferenciasController::class, 'recibosventa']);
-
-    Route::post('/bodegas/guiasderemision/generarguiaventa', [GuiasderemisionController::class, 'generarguiaventa']);
 
     Route::get('/devoluciones/pedidoscliente/{cliente_id}/{puntodeventa_id}', [DevolucionesController::class, 'pedidoscliente']);
     Route::post('/devoluciones/detallepedidodevolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
@@ -223,10 +195,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/devoluciones/recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);
     Route::get('/pedidos/sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
     Route::post('/pedidos/cancelarpedido', [PedidosController::class, 'cancelarpedido']);
-    Route::post('/bodegas/guiasderemision/imprimirordenalmacenamiento', [GuiasderemisionController::class, 'imprimirordenalmacenamiento']);
-    Route::post('/bodegas/guiasderemision/imprimirordenalmacenamientodevolucion', [GuiasderemisionController::class, 'imprimirordenalmacenamientodevolucion']);
 
-    Route::post('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
 
     Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
     Route::get('/devoluciones/procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
@@ -289,6 +258,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
 
+
+
     });
 
     Route::group(['prefix' => 'pedidos'], function () {
@@ -302,10 +273,53 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 
     Route::group(['prefix' => 'bodegas'], function () {
+
+        Route::post('dashboard', [DashboardController::class, 'dashboard']);
+        Route::post('recibosdecompra/bandeja', [RecibosdecompraeleController::class, 'bandeja']);
+        Route::post('recibosdecompra/detalle', [RecibosdecompraeleController::class, 'detalle']);
+        Route::post('recibosdecompra/recibir', [RecibosdecompraeleController::class, 'recibir']);
+        Route::post('recibosdecompra/imprimirrecibol', [RecibosdecompraeleController::class, 'imprimirrecibol']);
+        Route::post('recibosdecompra/eliminar', [RecibosdecompraeleController::class, 'eliminar']);
+        Route::get('recibosdecompra/imprimir/{id}', [RecibosdecompraeleController::class, 'imprimir']);
+
         Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
         Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
-        Route::post('/guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
+        Route::post('guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
         Route::get('puntos-venta/reservas/limites', [DespachosController::class, 'indexPuntosVentaReservaLimits']);
+
+
+        Route::post('guiasderemision/generarguiatraslado', [GuiasderemisionController::class, 'generarguiatraslado']);
+        Route::post('guiasderemision/consultarguiagenerada', [GuiasderemisionController::class, 'consultarguiagenerada']);
+        Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
+        Route::delete('guiasderemision/eliminarguia/{id}', [GuiasderemisionController::class, 'eliminarguia']);
+        Route::get('guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
+        Route::post('guiasderemision/recibirguia', [GuiasderemisionController::class, 'recibirguia']);
+        Route::get('transferencias/recibosventa/{id}', [TransferenciasController::class, 'recibosventa']);
+        Route::post('guiasderemision/generarguiaventa', [GuiasderemisionController::class, 'generarguiaventa']);
+
+        Route::get('transportes/transportistas', [TransportesController::class, 'transportistas']);
+        Route::post('transportes/savetransportista', [TransportesController::class, 'savetransportista']);
+        Route::post('transportes/savevehiculo', [TransportesController::class, 'savevehiculo']);
+        Route::delete('transportes/deletetransportista/{id}', [TransportesController::class, 'deletetransportista']);
+        Route::delete('transportes/deletevehiculo/{id}', [TransportesController::class, 'deletevehiculo']);
+        Route::get('transferencias/transferenciasventa/{id}/{pedido?}/{compartimiento?}', [TransferenciasController::class, 'transferenciasVentas']);
+        Route::post('transferencias/picking', [TransferenciasController::class, 'picking']);
+        Route::post('transferencias/imprimirpicking', [TransferenciasController::class, 'imprimirpicking']);
+        Route::post('transferencias/cancelarpicking', [TransferenciasController::class, 'cancelarpicking']);
+
+        Route::get('reposicion/transferenciasreposicion/{id}/{pedido?}', [ReposicionController::class, 'transferenciasreposicion']);
+        Route::get('reposicion/recibosreposicion/{id}', [ReposicionController::class, 'recibosreposicion']);
+        Route::get('reposicion/recibosreposicionindividual/{id}', [ReposicionController::class, 'recibosreposicionindividual']);
+        Route::get('reposicion/detallereciboreposicion/{id}', [ReposicionController::class, 'detallereciboreposicion']);
+
+        Route::post('guiasderemision/imprimirordenalmacenamiento', [GuiasderemisionController::class, 'imprimirordenalmacenamiento']);
+        Route::post('guiasderemision/imprimirordenalmacenamientodevolucion', [GuiasderemisionController::class, 'imprimirordenalmacenamientodevolucion']);
+
+        Route::post('getreposicion', [ReposicionController::class, 'getreposicion']);
+
+          //generacion de guia de remision de reservas
+        Route::post('reservas/guia-remision/crear-guia-reserva', [GuiasderemisionController::class, 'crearGuiaRemisionReserva']);
+
     });
 
     Route::group(['prefix' => 'consultas'], function () {

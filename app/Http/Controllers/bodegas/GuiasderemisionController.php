@@ -29,6 +29,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -40,15 +41,18 @@ class GuiasderemisionController extends Controller
     protected $deliveryNoteService;
     protected $invoiceService;
     protected $notifyService;
+    protected $reservedDeliveryNoteService;
     public function __construct(
         DeliveryNoteServiceInterface $deliveryNoteService,
         InvoiceServiceInterface $invoiceServiceInterface,
         NotificationServiceInterface $notificacionService,
+        ReservationDeliveryNoteServiceInterface $reservedDeliveryNoteService
 
     ) {
         $this->deliveryNoteService = $deliveryNoteService;
         $this->invoiceService = $invoiceServiceInterface;
         $this->notifyService = $notificacionService;
+        $this->reservedDeliveryNoteService = $reservedDeliveryNoteService;
     }
     public function generarguiaventa(Request $request): Response|Application|ResponseFactory
     {
@@ -1319,5 +1323,20 @@ class GuiasderemisionController extends Controller
      * */
 
 
-    
+    public function crearGuiaRemisionReserva(Request $request)
+    {
+        $payload = $request->all();
+        try {
+            $response = $this->reservedDeliveryNoteService->createDeliveryNoteFromReservation($payload);
+            return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion generarGuiaReserva -GuiasderemisionController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }
