@@ -6,28 +6,44 @@ use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
 use App\Models\GpTransportista;
+use App\Models\GpUsuario;
 use App\Models\GpVehiculo;
+use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpGuiaRemisionReservaDetalle;
+use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceInterface
 {
 
-    public function __construct()
-    {
-        // Inyecta dependencias si es necesario
+    protected $common;
+    protected $builder;
+    public function __construct(
+        DeliveryNoteCommonServiceInterface $common,
+        ReservationDeliveryNoteParamsBuilderInterface $builder
+    ) {
+        $this->common = $common;
+        $this->builder = $builder;
     }
 
 
     public function createDeliveryNoteFromReservation($payload)
     {
         $this->validateItemsTransferReserved($payload['detalle']);
-        $datavehicle = $this->getinfoVehicle($payload);
-        $dirDestination = $this->getDirectionDestination($payload['pto_destino']);
-        // return $datavehicle;
-        $guia = DB::transaction(function () use ($payload) {
-            $guia = [];
+        $user = GpUsuario::find(Auth::user()->id);
+        $datavehicle = $this->getVehicleAndCarrierInfo($payload);
+        $secuencial = $this->common->getNextGuideSequential($payload['pto_origen'], '001');
+        $dirOrigin = $this->getDirection($payload['pto_origen']);
+        $dirDestination = $this->getDirection($payload['pto_destino']);
+        $numGuide = $this->formatGuideNumber($payload['pto_origen'], '001', $secuencial);
+        $bodGuide = $this->getWarehouseDescriptionOrigin($payload['pto_origen']);
+        $guia = DB::transaction(function () use ($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin) {
+            $guia = $this->saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin);
+            $guia->save();
+            $this->saveDetailGuideRemisionReservation($payload['detalle'], $guia->id);
             // procesos web mysql
             DB::afterCommit(function () use ($payload) {
                 //execute sps
@@ -35,7 +51,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             return $guia;
         });
 
-        return $dirDestination;
+        return $guia;
     }
 
     public function validateItemsTransferReserved($items)
@@ -96,39 +112,72 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             ->groupBy('traslado_id');
     }
 
-    public function getDirectionDestination($ptoWarehouse)
+     public function getDirection($ptoWarehouse)
     {
         $pto = GpPuntoVenta::where('PTO_VTA_ID', $ptoWarehouse)->select('PTO_VTA_DIRECCION_1', 'PTO_VTA_DIRECCION_2')->first();
         return $pto ? trim($pto->PTO_VTA_DIRECCION_1 . ' ' . $pto->PTO_VTA_DIRECCION_2) : '';
     }
 
 
-    public function getinfoVehicle($payload)
+
+    public function getWarehouseDescriptionOrigin($ptoWarehouse)
     {
-        $datos = [];
+       return GpPuntoVenta::where('PTO_VTA_ID', $ptoWarehouse)->value('PTO_VTA_DESCRIPCION');
+
+    }
+
+
+    public function getVehicleAndCarrierInfo($payload)
+    {
+        $datos = [
+            'vehiculo' => [],
+            'transportista' => [],
+        ];
+
         if ($payload['modo'] === 'local') {
             $transportista = GpTransportista::where('id', $payload['transporte_id'])->first();
             $vehiculo = GpVehiculo::where('id', $payload['vehiculo_id'])->first();
             $datos['vehiculo'] = [
-                'placa' => $vehiculo->placa,
+                'placa' => $vehiculo?->placa,
             ];
             $datos['transportista'] = [
-                'nombre' => $transportista->nombre,
-                'identificacion' => $transportista->identificacion,
-                'tipo_identificacion' => $transportista->tipo_identificacion
+                'nombre' => $transportista?->nombre,
+                'identificacion' => $transportista?->identificacion,
+                'tipo_identificacion' => $transportista?->tipo_identificacion
             ];
-        } else {
-            $datos['vehiculo'] = [
-                'placa' => $payload['placa'],
-            ];
-            $datos['transportista'] = [
-                'nombre' => $payload['nombre_transporte'],
-                'identificacion' => $payload['identificacion'],
-                'tipo_identificacion' => $payload['tipo_identificacion']
-            ];
+            return $datos;
         }
+        $datos['vehiculo'] = [
+            'placa' => $payload['placa'],
+        ];
+        $datos['transportista'] = [
+            'nombre' => $payload['nombre_transporte'],
+            'identificacion' => $payload['identificacion'],
+            'tipo_identificacion' => $payload['tipo_identificacion']
+        ];
+
         return $datos;
 
+    }
+
+    public function formatGuideNumber($ptoVta, $ptoEmision, $secuencia): string
+    {
+        return (string) trim($ptoVta . '-' . $ptoEmision . '-' . $secuencia);
+    }
+
+
+    public function saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin): GpGuiaRemisionReserva
+    {
+        $guia = $this->builder->buildReservationGuideHeader($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin);
+        $guia->save();
+        return $guia;
+    }
+
+    public function saveDetailGuideRemisionReservation($items, $guiaId){
+        foreach ($items as $value) {
+            $detail = $this->builder->buildReservationGuideDetails($value, $guiaId);
+            $detail->save();
+        }
     }
 
 }

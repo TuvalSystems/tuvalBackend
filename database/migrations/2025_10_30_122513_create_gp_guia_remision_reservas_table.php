@@ -15,13 +15,13 @@ class CreateGpGuiaRemisionReservasTable extends Migration
     {
         Schema::create('gp_guia_remision_reservas', function (Blueprint $table) {
             $table->id();
-            $table->string('clave_acceso', 250);
-            $table->string('numero_guia', 30);
+            $table->string('clave_acceso', 250)->nullable();
+            $table->string('numero_guia', 30)->nullable();
             $table->unsignedBigInteger('user_id')->nullable()->unsigned()->index();
             $table->enum('estado', ['pendiente', 'enviada', 'recibida', 'eliminada'])->default('pendiente');
             $table->string('bodega_origen', 30)->nullable();
             $table->string('bodega_destino', 30)->nullable();
-            $table->string('guia_bodeha', 50)->nullable();
+            $table->string('guia_bodega', 50)->nullable();
             $table->string('establecimiento', 3)->nullable();
             $table->string('pto_emision', 3)->nullable();
             $table->string('secuencial', 9)->nullable();
@@ -32,7 +32,7 @@ class CreateGpGuiaRemisionReservasTable extends Migration
             $table->string('placa', 30)->nullable();
             $table->dateTime('fecha_salida')->nullable();
             $table->dateTime('fecha_llegada')->nullable();
-            $table->string('observaciones', 300)->nullable();
+            $table->string('observacion', 300)->nullable();
             $table->string('direccion_destinatario', 200)->nullable();
             $table->string('identificacion_destinatario', 30)->nullable();
             $table->string('razon_social_destinatario', 300)->nullable();
@@ -42,7 +42,7 @@ class CreateGpGuiaRemisionReservasTable extends Migration
             $table->string('num_auto_doc_sustento', 50)->nullable();
             $table->dateTime('fecha_emision_doc_sustento')->nullable();
             $table->boolean('rebajado')->nullable()->default(0);
-            
+
             $table->foreign('user_id')->references('id')->on('gp_usuarios');
             $table->timestamps();
         });
