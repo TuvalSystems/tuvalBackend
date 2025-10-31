@@ -103,7 +103,7 @@ class OrderService implements OrderServiceInterface
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $id)
             ->first()
-            ?->toArray();
+                ?->toArray();
     }
     public function isPedidoBlocked(array $pedido): bool
     {
@@ -124,10 +124,10 @@ class OrderService implements OrderServiceInterface
             $pesoItem = $item['ART_PESO'] * $item['ART_CANTIDAD'];
             $item['ART_PESO_TOTAL'] = number_format($pesoItem, 2, '.', '');
             $peso += $pesoItem;
-            $type = strtoupper(trim((string)($item['ART_TIPO_COMPRA'] ?? '')));
+            $type = strtoupper(trim((string) ($item['ART_TIPO_COMPRA'] ?? '')));
             $item['compartimiento'] = match ($type) {
                 '', 'L', 'SERV' => '',
-                default     => $this->getCompartimento($item['ART_CODIGO'] ?? null, $pedido['BOD_BODEGA'] ?? null),
+                default => $this->getCompartimento($item['ART_CODIGO'] ?? null, $pedido['BOD_BODEGA'] ?? null),
             };
             $impKey = $item['ART_IMP_VTA'];
             $tipoImpuesto[$impKey] = ($tipoImpuesto[$impKey] ?? 0) + round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
@@ -238,7 +238,7 @@ class OrderService implements OrderServiceInterface
         $newOrder = $this->prepareOrderStoreFill($order, $user);
         $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
         $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
-        if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id  != '') {
+        if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id != '') {
             $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
         }
         $newOrder->refresh();
@@ -338,7 +338,7 @@ class OrderService implements OrderServiceInterface
             // $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
             $hasStock = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
             if ($isTypeL && !$hasStock) {
-                $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item,  $usedItemLExcluded);
+                $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
                 if (!$replacementCodeL) {
                     Log::warning('No se encontró un item L disponible para el pedido', [
                         'pedido_id' => $newOrder->id,
@@ -349,7 +349,8 @@ class OrderService implements OrderServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
-            $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
+
+
 
             $newOrderDetail = new GpPedidoDetalle([
                 'pedido_id' => $newOrder->id,
@@ -359,13 +360,13 @@ class OrderService implements OrderServiceInterface
                 'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
                 'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
                 'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-                'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
+                'ART_DECIMAL_CANTIDAD' => (int) $item['ART_DECIMAL_CANTIDAD'],
                 'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
                 'ART_MARCA' => $item['ART_MARCA'],
                 'ART_MATERIAL' => $item['ART_MATERIAL'],
                 'ART_PESO' => $item['ART_PESO'],
                 'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
-                'ART_VALOR' =>  $item['ART_VALOR'],
+                'ART_VALOR' => $item['ART_VALOR'],
                 'ART_VALOR_ORIGINAL' => $item['ART_VALOR_ORIGINAL'],
                 'ART_DESCUENTO' => $item['ART_DESCUENTO'],
                 'ART_IVA' => $item['ART_IVA'],
@@ -383,6 +384,11 @@ class OrderService implements OrderServiceInterface
             }
             if ($item['stock']) {
                 $this->storeDetailStock($item['stock'], $newOrderDetail, $newOrder);
+            }
+
+            if ($isTypeL) {
+                // si te daba deadlock aquí, muévelo más abajo (ver comentario)
+                $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
             }
         }
     }
@@ -500,7 +506,7 @@ class OrderService implements OrderServiceInterface
         $enrichedDetails = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
 
         // 🔍 4. Obtener órdenes de compra optimizadas
-        $ordenes =  $this->getPurchaseOrdersWithReceipts($data['pedido']);
+        $ordenes = $this->getPurchaseOrdersWithReceipts($data['pedido']);
 
         $trasladosVentas = $this->getTransferWithGuides($data['id']);
 
@@ -557,10 +563,10 @@ class OrderService implements OrderServiceInterface
 
     public function getPurchaseOrdersWithReceipts($orderNumber)
     {
-        return  $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
+        return $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
             ->map(function ($orden) {
-                $receipt  = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
-                return count($receipt->detalle) > 0 ? $receipt  : null;
+                $receipt = $this->purchaseReceiptService->setPurcharseOrderdetails($orden);
+                return count($receipt->detalle) > 0 ? $receipt : null;
             })
             ->filter()
             ->values();
@@ -733,7 +739,7 @@ class OrderService implements OrderServiceInterface
             $data['pedido']['sucursal_id'] = $data['sucursal_id'];
             $data['pedido']['cliente_id'] = $data['cliente_id'];
             $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
-            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy,  $typeRegisterCopy);
+            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy, $typeRegisterCopy);
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
 
             $this->functionsService->recalculateIva($detalle);
@@ -785,7 +791,7 @@ class OrderService implements OrderServiceInterface
         $now = now('America/Guayaquil');
         $prev = $now->copy()->subMonthNoOverflow();
         $year = (int) $prev->year;
-        $mes  = (int) $prev->month;
+        $mes = (int) $prev->month;
 
         if ($this->shouldAbortBilling($mes)) {
             Log::channel('cron_process')->warning("⚠️ No se ejecuta facturación: Aún no llega el mes: {$mes}");
@@ -800,7 +806,7 @@ class OrderService implements OrderServiceInterface
         }
         $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
         $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
-            foreach ($pedidos as  $pedido) {
+            foreach ($pedidos as $pedido) {
                 $resultados['total']++;
 
                 // Éxito idempotente si ya está facturado
@@ -810,7 +816,7 @@ class OrderService implements OrderServiceInterface
                 }
 
                 $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
-                if (! $lock->get()) {
+                if (!$lock->get()) {
                     // Otro proceso ya está facturando → no lo cuentes como error
                     Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
                     continue;
@@ -842,13 +848,13 @@ class OrderService implements OrderServiceInterface
                     $resultados['fallidos']++;
                     $resultados['errores'][] = [
                         'pedido_id' => $pedido->id,
-                        'pedido'    => $pedido->pedido,
-                        'error'     => $e->getMessage(),
+                        'pedido' => $pedido->pedido,
+                        'error' => $e->getMessage(),
                     ];
                     Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->pedido}", [
                         'pedido_id' => $pedido->id,
-                        'error'     => $e->getMessage(),
-                        'trace'     => $e->getTraceAsString(),
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
                     ]);
                 } finally {
                     optional($lock)->release();
@@ -886,16 +892,16 @@ class OrderService implements OrderServiceInterface
                 $detail = GpPedidoDetalle::where('pedido_id', $orderId)->where('ART_CODIGO', $item['ART_CODIGO'])
                     ->where('ART_CANTIDAD', $item['ART_CANTIDAD'])->first();
                 if (!$detail) { //crea
-                    $detail =  $this->prepareOrderDetailToCreate($newOrder, $item, $i);
+                    $detail = $this->prepareOrderDetailToCreate($newOrder, $item, $i);
                     $detail->save();
                 } else {
                     //actualiza
-                    $fields  =  $this->prepareOrderDetailToUpdate($newOrder, $item,  $detail, $i);
+                    $fields = $this->prepareOrderDetailToUpdate($newOrder, $item, $detail, $i);
                     $detail->fill($fields);
                     $detail->save();
                 }
                 $this->syncDetailProvidersUpdateOrCreate($newOrder, $detail->id, $item['proveedores'] ?? []);
-                $this->syncDetailStockUpdateOrCreate($newOrder, $detail,     $item['stock']      ?? []);
+                $this->syncDetailStockUpdateOrCreate($newOrder, $detail, $item['stock'] ?? []);
             }
             $this->functionsService->recalculateOrder($orderId);
             DB::commit();
@@ -943,7 +949,7 @@ class OrderService implements OrderServiceInterface
         $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
         $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
         if ($isTypeL && !$hasStock) {
-            $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item,  $usedItemLExcluded);
+            $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             if (!$replacementCodeL) {
                 Log::warning('No se encontró un item L disponible para el pedido ', [
                     'pedido_id' => $newOrder->id,
@@ -954,7 +960,7 @@ class OrderService implements OrderServiceInterface
             $item['ART_CODIGO'] = $replacementCodeL;
             $usedItemLExcluded[] = $replacementCodeL;
         }
-        return  new GpPedidoDetalle($this->mapDetailFielsToUpdateOrCreated($newOrder, $item, $index));
+        return new GpPedidoDetalle($this->mapDetailFielsToUpdateOrCreated($newOrder, $item, $index));
     }
 
     public function prepareOrderDetailToUpdate($newOrder, $item, $detail, $index)
@@ -964,7 +970,7 @@ class OrderService implements OrderServiceInterface
         $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
         $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
         if ($isTypeL && !$hasStock) {
-            $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item,  $usedItemLExcluded);
+            $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             if (!$replacementCodeL) {
                 Log::warning('No se encontró un item L disponible para el pedido ', [
                     'pedido_id' => $newOrder->id,
@@ -975,12 +981,12 @@ class OrderService implements OrderServiceInterface
             $item['ART_CODIGO'] = $replacementCodeL;
             $usedItemLExcluded[] = $replacementCodeL;
         }
-        return   $this->mapDetailFielsToUpdateOrCreated($newOrder, $item, $index);
+        return $this->mapDetailFielsToUpdateOrCreated($newOrder, $item, $index);
     }
 
     public function mapDetailFielsToUpdateOrCreated($newOrder, $item, $i)
     {
-        return  [
+        return [
             'pedido_id' => $newOrder->id,
             'orden' => $i + 1,
             'ART_CODIGO' => $item['ART_CODIGO'],
@@ -988,23 +994,23 @@ class OrderService implements OrderServiceInterface
             'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
             'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
             'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-            'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
+            'ART_DECIMAL_CANTIDAD' => (int) $item['ART_DECIMAL_CANTIDAD'],
             'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
             'ART_MARCA' => $item['ART_MARCA'],
             'ART_MATERIAL' => $item['ART_MATERIAL'],
             'ART_PESO' => $item['ART_PESO'],
             'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
             'ART_VALOR' => (float) $item['ART_VALOR'],
-            'ART_VALOR_ORIGINAL' => (float)$item['ART_VALOR_ORIGINAL'],
-            'ART_DESCUENTO' => (float)$item['ART_DESCUENTO'],
-            'ART_IVA' => (float)$item['ART_IVA'],
-            'ART_CANTIDAD' => (float)$item['ART_CANTIDAD'],
-            'ART_STOCK' => (float)$item['ART_STOCK'],
-            'ART_IMP_VTA' => (float)$item['ART_IMP_VTA'],
-            'ART_COSTO_PROMEDIO' => (float)$item['ART_COSTO_PROMEDIO'],
-            'descuento' => (float)$item['descuento'],
-            'descuento_original' => (float)$item['descuento_original'],
-            'modificador' => (float)$item['modificador'],
+            'ART_VALOR_ORIGINAL' => (float) $item['ART_VALOR_ORIGINAL'],
+            'ART_DESCUENTO' => (float) $item['ART_DESCUENTO'],
+            'ART_IVA' => (float) $item['ART_IVA'],
+            'ART_CANTIDAD' => (float) $item['ART_CANTIDAD'],
+            'ART_STOCK' => (float) $item['ART_STOCK'],
+            'ART_IMP_VTA' => (float) $item['ART_IMP_VTA'],
+            'ART_COSTO_PROMEDIO' => (float) $item['ART_COSTO_PROMEDIO'],
+            'descuento' => (float) $item['descuento'],
+            'descuento_original' => (float) $item['descuento_original'],
+            'modificador' => (float) $item['modificador'],
         ];
     }
 
@@ -1013,7 +1019,7 @@ class OrderService implements OrderServiceInterface
         $incoming = [];
         foreach ($providers as $prov) {
             $recibido = isset($prov['recibido']) ? $prov['recibido'] : 'no';
-            $model =  GpPedidoDetalleProveedores::updateOrCreate(
+            $model = GpPedidoDetalleProveedores::updateOrCreate(
                 [
                     'pedido_id' => $newOrder->id,
                     'pedido_detalle_id' => $detailOrderId,
@@ -1021,15 +1027,15 @@ class OrderService implements OrderServiceInterface
                 ],
                 [
                     'DESCRIPCION_ARTICULO' => $prov['DESCRIPCION_ARTICULO'],
-                    'FECHA_ENTREGA'        => $prov['FECHA_ENTREGA'],
-                    'CANTIDAD'             => $prov['CANTIDAD'],
-                    'COSTO_UNITARIO'       => $prov['COSTO_UNITARIO'],
-                    'IMPUESTO'             => $prov['IMPUESTO'],
-                    'TOTAL'                => $prov['TOTAL'],
-                    'TOTALCONIMPUESTO'     => $prov['TOTALCONIMPUESTO'],
-                    'NOTA'                 => $prov['NOTA'],
-                    'recibido'             => $recibido,
-                    'MARGEN'               => $prov['MARGEN'],
+                    'FECHA_ENTREGA' => $prov['FECHA_ENTREGA'],
+                    'CANTIDAD' => $prov['CANTIDAD'],
+                    'COSTO_UNITARIO' => $prov['COSTO_UNITARIO'],
+                    'IMPUESTO' => $prov['IMPUESTO'],
+                    'TOTAL' => $prov['TOTAL'],
+                    'TOTALCONIMPUESTO' => $prov['TOTALCONIMPUESTO'],
+                    'NOTA' => $prov['NOTA'],
+                    'recibido' => $recibido,
+                    'MARGEN' => $prov['MARGEN'],
                 ]
             );
             $incoming[] = $model->id;
@@ -1040,7 +1046,7 @@ class OrderService implements OrderServiceInterface
             ->whereNotIn('id', $incoming)
             ->delete();
     }
-    public function syncDetailStockUpdateOrCreate(GpPedido $newOrder,  GpPedidoDetalle $detailOrder, array $stock)
+    public function syncDetailStockUpdateOrCreate(GpPedido $newOrder, GpPedidoDetalle $detailOrder, array $stock)
     {
 
         $incoming = [];
@@ -1053,7 +1059,7 @@ class OrderService implements OrderServiceInterface
             ], [
                 'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'], // me devuelve el stock disponile
                 'seleccionado' => $item['seleccionado'],
-                'reservado' =>  $item['seleccionado'],
+                'reservado' => $item['seleccionado'],
             ]);
             // Añado su ID a la lista de entrantes
             $incoming[] = $model->id;
@@ -1083,12 +1089,12 @@ class OrderService implements OrderServiceInterface
             $totalIva = 0.0;
 
             $detailOrder = $this->orderRepository->getAllDetailsOrderById($data['id']);
-            $stocks =  $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
+            $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
             $impVtaByCodigo = GpArticulo::query()
                 ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
                 ->pluck('ART_IMP_VTA', 'ART_CODIGO');
 
-            $processed  = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks,  &$subtotal,  &$totalDiscount,  &$netSubtotal,  &$totalIva) {
+            $processed = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks, &$subtotal, &$totalDiscount, &$netSubtotal, &$totalIva) {
                 $stock = $stocks->get($item->id);
                 $cantidad = 0;
 
@@ -1116,18 +1122,18 @@ class OrderService implements OrderServiceInterface
                     return null;
                 }
 
-                $item->stocks         = $stock;
-                $item->proveedores    = $validProviders;
+                $item->stocks = $stock;
+                $item->proveedores = $validProviders;
 
                 //CALCULOS
-                $valorUnitario = (float)$item->ART_VALOR;
+                $valorUnitario = (float) $item->ART_VALOR;
                 $item->ART_CANTIDAD = (float) $cantidad;
                 $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
                 $lineaSubtotal = $valorUnitario * (float) $cantidad;
                 $lineaDiscount = $descuentoUnitario * (float) $cantidad;
-                $lineNet = round(($valorUnitario - $descuentoUnitario) * (float)$cantidad, 2);
-                $impuestoPorcentaje   = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
+                $lineNet = round(($valorUnitario - $descuentoUnitario) * (float) $cantidad, 2);
+                $impuestoPorcentaje = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
                 $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
 
                 // calculos monetarios
@@ -1136,20 +1142,20 @@ class OrderService implements OrderServiceInterface
                 $netSubtotal += $lineNet;
                 $totalIva += $lineaIva;
 
-                $item->subtotal       = $lineaSubtotal;
-                $item->ART_IMP_VTA    = $impuestoPorcentaje;
-                $item->ART_IVA        = round($lineaIva, 2);
+                $item->subtotal = $lineaSubtotal;
+                $item->ART_IMP_VTA = $impuestoPorcentaje;
+                $item->ART_IVA = round($lineaIva, 2);
                 return $item;
             })
                 ->filter()
                 ->values();
-            $total                          = round($netSubtotal + $totalIva, 3);
-            $data['subtotal']               = round($subtotal, 3);
-            $data['descuento']              = round($totalDiscount, 3);
+            $total = round($netSubtotal + $totalIva, 3);
+            $data['subtotal'] = round($subtotal, 3);
+            $data['descuento'] = round($totalDiscount, 3);
             $data['subtotalmenosdescuento'] = round($netSubtotal, 3);
-            $data['iva']                    = round($totalIva, 3);
+            $data['iva'] = round($totalIva, 3);
 
-            $data['total']                  = $total;
+            $data['total'] = $total;
 
 
             $facturarExistente = [];
@@ -1188,7 +1194,7 @@ class OrderService implements OrderServiceInterface
 
 
         // eliminacion de item con stock->selecccionado == cantidad y sin L o SERV
-        foreach ($detailIdsWithoutLOrSERV as  $articulo) {
+        foreach ($detailIdsWithoutLOrSERV as $articulo) {
             $stock = $stockByDetalle->get($articulo->id);
 
             // si no tiene stock lo almacena en array sigue
@@ -1198,7 +1204,7 @@ class OrderService implements OrderServiceInterface
             }
 
             // // Si seleccionado == cantidad -> omitir (no eliminar la línea original)
-            if ((int)$stock->seleccionado === (int)$articulo->ART_CANTIDAD) {
+            if ((int) $stock->seleccionado === (int) $articulo->ART_CANTIDAD) {
                 $this->clearStockArticleOrderExistence($data['id'], $articulo->id);
                 $articulo->delete();
                 continue;
@@ -1215,25 +1221,27 @@ class OrderService implements OrderServiceInterface
         }
 
         //eliminacion de items SERV y L de pedido original
-        foreach ($detailIdsWithLOrSERV as  $artL) {
+        foreach ($detailIdsWithLOrSERV as $artL) {
             if ($artL->ART_TIPO_COMPRA == 'SERV') {
                 $artL->delete();
                 continue;
             }
             $providers = $this->functionsService->getItemProviders($data['id'], $artL, false);
-            $provList  = $providers['proveedores'] ?? collect();
+            $provList = $providers['proveedores'] ?? collect();
             if ($provList->isEmpty()) {
                 continue;
             }
 
-            foreach ($provList as  $prov) {
-                $pendiente = max(0, (int)$prov->ingresado - (int)$prov->ejecutado);
-                if ($pendiente <= 0) continue;
+            foreach ($provList as $prov) {
+                $pendiente = max(0, (int) $prov->ingresado - (int) $prov->ejecutado);
+                if ($pendiente <= 0)
+                    continue;
 
-                $toDeduct = min((int)$artL->ART_CANTIDAD, $pendiente);
-                if ($toDeduct <= 0) break;
+                $toDeduct = min((int) $artL->ART_CANTIDAD, $pendiente);
+                if ($toDeduct <= 0)
+                    break;
 
-                $artL->ART_CANTIDAD = (int)$artL->ART_CANTIDAD - $toDeduct;
+                $artL->ART_CANTIDAD = (int) $artL->ART_CANTIDAD - $toDeduct;
             }
 
             if ($provList->isNotEmpty()) {
@@ -1295,7 +1303,7 @@ class OrderService implements OrderServiceInterface
             'subtotalmenosdescuento' => number_format((float) $data['subtotal'], 2, '.', ''),
             'iva' => number_format((float) $data['iva'], 2, '.', ''),
             'total' => number_format((float) $data['total'], 2, '.', ''),
-            'requiere_aprobacion_comercial' =>  $data['requiere_aprobacion_comercial'],
+            'requiere_aprobacion_comercial' => $data['requiere_aprobacion_comercial'],
             // 'motivo_aprobacion_comercial' => $data['motivo'],
             'aprobado_comercial' => $data['aprobado_comercial'],
             'aprobador_comercial_id' => $data['aprobador_comercial_id'],
@@ -1334,7 +1342,7 @@ class OrderService implements OrderServiceInterface
                 'ART_MATERIAL' => $item['ART_MATERIAL'],
                 'ART_PESO' => $item['ART_PESO'],
                 'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
-                'ART_VALOR' =>  $item['ART_VALOR'],
+                'ART_VALOR' => $item['ART_VALOR'],
                 'ART_VALOR_ORIGINAL' => $item['ART_VALOR_ORIGINAL'],
                 'ART_DESCUENTO' => $item['ART_DESCUENTO'],
                 'ART_IVA' => $item['ART_IVA'],
@@ -1379,7 +1387,7 @@ class OrderService implements OrderServiceInterface
             $newProv->save();
 
             if ($provider['orden_detalle']) {
-                $this->storeOrUpdateOrderSalesProvider($provider['orden_detalle'],  $oldDetailOrder, $provider);
+                $this->storeOrUpdateOrderSalesProvider($provider['orden_detalle'], $oldDetailOrder, $provider);
             }
         }
     }
@@ -1388,7 +1396,7 @@ class OrderService implements OrderServiceInterface
     public function storeOrUpdateOrderSalesProvider($orderSales, $oldDetailOrder, $oldProvider)
     {
         foreach ($orderSales as $ordC) {
-            $ordenCompra  = GpOrdenDeCompra::where('DOC_GENERADO', $ordC['ORDEN_COMPRA_DOCUMENTO'])
+            $ordenCompra = GpOrdenDeCompra::where('DOC_GENERADO', $ordC['ORDEN_COMPRA_DOCUMENTO'])
                 ->where('detalle_id', $oldDetailOrder['id'])
                 ->where('detalle_proveedores_id', $oldProvider['id'])
                 ->lockForUpdate()
@@ -1412,7 +1420,7 @@ class OrderService implements OrderServiceInterface
                 break;
             }
             $prev = (int) ($oldProv->ejecutado ?? 0);
-            $cap  = (int) ($oldProv->CANTIDAD ?? 0);
+            $cap = (int) ($oldProv->CANTIDAD ?? 0);
 
             if ($cap <= 0 || $prev >= $cap) {
                 break; // ya completo o sin cantidad base
@@ -1450,7 +1458,7 @@ class OrderService implements OrderServiceInterface
 
     public function deleteArticlesForNewOrder($deleteItems)
     {
-        $deleteItems['articulos']   = $deleteItems['articulos'] ?? [];
+        $deleteItems['articulos'] = $deleteItems['articulos'] ?? [];
         if (!empty($deleteItems['articulos'])) {
             $this->deleteArticlesOldOrder($deleteItems['articulos']);
         }
