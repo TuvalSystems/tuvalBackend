@@ -44,7 +44,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // Bodegas involucradas (para agrupar y traer reservas en una sola pasada)
         $bodegas = array_values(array_unique(array_map(static fn($i) => (string) $i['STO_ART_BODEGA'], $filtered)));
         // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
-        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas);
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, false, null);
 
         $total = 0;
         $normalizados = [];
@@ -92,7 +92,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // Bodegas involucradas (para agrupar y traer reservas en una sola pasada)
         $bodegas = array_values(array_unique(array_map(static fn($i) => (string) $i['STO_ART_BODEGA'], $filtered)));
         // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
-        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, $quotationId);
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, false,$quotationId);
 
         $total = 0;
         $normalizados = [];
@@ -617,7 +617,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->values()
             ->map(fn($i) => (string) $i)
             ->toArray();
-        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId);
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId, false, null);
 
         return collect($stockFormatted)
             ->filter(function ($item) use ($articulo) {
