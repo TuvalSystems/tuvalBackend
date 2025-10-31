@@ -35,6 +35,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $cantidad_cotizada
  * @property int|null $cantidad_traslado
  *
+ *
+ *
+ * @property mixed $pendiente
+ *
  */
 class GpCotizacionDetalleStock extends Model
 {

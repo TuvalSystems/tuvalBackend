@@ -74,6 +74,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalle whereTrasladado($value)
  * @property boolean  $CHECK_ALTERNATIVO
  * @property int $traslado
+ * @property array $proveedores
  *
  */
 class GpPedidoDetalle extends Model

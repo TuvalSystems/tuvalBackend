@@ -47,6 +47,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAPROVINCIA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereUpdatedAt($value)
  * @mixin \Eloquent
+ *
+ * @property mixed $cajas
  */
 class GpPuntoVenta extends Model
 {

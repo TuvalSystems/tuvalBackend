@@ -77,6 +77,11 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMIDENTIFICACIONDESTINATARIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMRAZONSOCIALDESTINATARIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision wherePedido($value)
+ *
+ * propiedades de la guia que no se almacenan
+ * @property string  $orden
+ * @property string $factura
+ * @property  string $Documentos
  */
 class GpGuiaRemision extends Model
 {
