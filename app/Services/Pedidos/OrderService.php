@@ -300,7 +300,6 @@ class OrderService implements OrderServiceInterface
                 $item['ART_CODIGO'] = $replacementCodeL;
                 $usedItemLExcluded[] = $replacementCodeL;
             }
-            $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
             $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($newOrder->id, $item, $i);
             $newOrderDetail->save();
 
@@ -310,6 +309,11 @@ class OrderService implements OrderServiceInterface
             }
             if ($item['stock']) {
                 $this->storeDetailStock($item['stock'], $newOrderDetail, $newOrder);
+            }
+
+            if ($isTypeL) {
+                // si te daba deadlock aquí, muévelo más abajo (ver comentario)
+                $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
             }
         }
     }
@@ -854,11 +858,13 @@ class OrderService implements OrderServiceInterface
                         'pedido_id' => $pedido->id,
                         'pedido' => $pedido->pedido,
                         'error' => $e->getMessage(),
+
                     ];
                     Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->pedido}", [
                         'pedido_id' => $pedido->id,
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
+
                     ]);
                 } finally {
                     optional($lock)->release();
@@ -975,6 +981,7 @@ class OrderService implements OrderServiceInterface
         $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
         $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
         if ($isTypeL && !$hasStock) {
+            $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             if (!$replacementCodeL) {
                 Log::warning('No se encontró un item L disponible para el pedido ', [

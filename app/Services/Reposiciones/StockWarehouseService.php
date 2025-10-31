@@ -123,12 +123,10 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return $articulo;
     }
 
-    public function getReservedStockByWarehouses(string $articulo, array $bodegas, ?int $pedidoId = null, ?int $excludeQuotationId = null): array
+    public function getReservedStockByWarehouses(string $articulo, array $bodegas, ?int $pedidoId = null,  bool $forUpdate = false, ?int $excludeQuotationId = null): array
     {
 
-
-        if (empty($bodegas))
-            return [];
+        if (empty($bodegas)) return [];
         $q = GpPedidoDetalleStock::query()
             ->join('gp_pedido_detalles', 'gp_pedido_detalle_stocks.detalle_id', '=', 'gp_pedido_detalles.id')
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
@@ -159,6 +157,10 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             });
         if ($pedidoId) {
             $q->where('gp_pedidos.id', '!=', $pedidoId);
+        }
+
+        if ($forUpdate) {
+            $q->lockForUpdate();
         }
 
         $reservasPedidos = $q->select(
@@ -260,7 +262,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             $stockResults,
             fn($item) =>
             isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
-                $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
+            $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
         ));
 
         if (empty($filteredStock)) {
@@ -314,17 +316,17 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 // Aprobación comercial
                 $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no')
                     ->orWhere(function ($q) {
-                        $q->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
-                            ->where('gp_pedidos.aprobado_comercial', 'yes');
-                    });
+                    $q->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
+                        ->where('gp_pedidos.aprobado_comercial', 'yes');
+                });
             })
             ->where(function ($query) {
                 // Aprobación crediticia
                 $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no')
                     ->orWhere(function ($q) {
-                        $q->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes')
-                            ->where('gp_pedidos.aprobado_crediticio', 'yes');
-                    });
+                    $q->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes')
+                        ->where('gp_pedidos.aprobado_crediticio', 'yes');
+                });
             });
 
         if ($pedidoId) {
@@ -646,7 +648,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     {
         $bodega = (string) $stock['STO_ART_BODEGA'];
         $bodegas = [$bodega];
-        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId, $quotationId);
+        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId, true,$quotationId);
 
         if (
             isset($stock['STO_ART_STOCK_DISPONIBLE'], $stock['STO_ART_BODEGA'], $stock['STO_ART_ARTICULO']) &&
