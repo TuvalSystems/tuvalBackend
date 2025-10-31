@@ -117,7 +117,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function updateNonSaleAndReminderData($data)
     {
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio' => $data['fecha_recordatorio'],
             'cotizacion_venta_motivo_id' => $data['motivo_id'],

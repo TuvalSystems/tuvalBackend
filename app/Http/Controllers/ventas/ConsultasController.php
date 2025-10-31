@@ -44,7 +44,7 @@ class ConsultasController extends Controller
         $this->InventoryQueryService = $InventoryQueryService;
     }
 
-    public function buscararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function buscararticulo(Request $request): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         $busqueda = $request->validate([
             'puntodeventaselect' => '',
@@ -236,7 +236,7 @@ class ConsultasController extends Controller
 
 
 
-    public function consultastockarticulopuntodeventa($articulo, $puntodeventa): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function consultastockarticulopuntodeventa($articulo, $puntodeventa): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
 
         $funciones = new FuncionesController();
@@ -257,7 +257,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function buscarcliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function buscarcliente(Request $request): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         $data = $request->validate([
             'busqueda' => '',
@@ -320,7 +320,7 @@ class ConsultasController extends Controller
         return $this->InventoryQueryService->getAvailableSpace($ruc);
     }
 
-    public function territorios(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function territorios(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         $territorios = GpTerritorio::get()->toArray();
 
@@ -356,7 +356,7 @@ class ConsultasController extends Controller
         ]);
     }
 
-    public function puntodeventacaja(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function puntodeventacaja(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         $puntosdeventa = GpPuntoVenta::get();
 
@@ -389,7 +389,7 @@ class ConsultasController extends Controller
         }
     }
 
-    public function transferenciaspendientes(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function transferenciaspendientes(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
 
         $pedidos = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
@@ -446,7 +446,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function reservasweb($item = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function reservasweb($item = null): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
 
         $articulos = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalles.id', 'gp_pedido_detalle_stocks.detalle_id')
@@ -545,7 +545,7 @@ class ConsultasController extends Controller
         ]);
     }
 
-    public function transferencias_pendientes_ingreso(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function transferencias_pendientes_ingreso(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         $pendientes = GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
             //->whereNull('completado')
@@ -605,7 +605,7 @@ class ConsultasController extends Controller
             'guias' => $response,
         ]);
     }
-    public function items_transferencia_venta($item = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function items_transferencia_venta($item = null): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
         //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
@@ -652,7 +652,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function items_transferencia_reposicion($item = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function items_transferencia_reposicion($item = null): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
         //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
@@ -694,7 +694,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function reposiciones_pendientes(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function reposiciones_pendientes(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
         //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
@@ -743,7 +743,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function pendientes_despachar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function pendientes_despachar(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         $pedidos = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', 'gp_pedido_detalles.pedido_id')
             ->join('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
@@ -773,7 +773,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function notificaciones(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function notificaciones(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
         $user = Auth::user();
         $notificaciones = Notificaciones::where('user_id', $user->id)

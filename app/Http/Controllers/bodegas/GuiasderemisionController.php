@@ -25,6 +25,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\GpUsuario;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
@@ -614,7 +615,7 @@ class GuiasderemisionController extends Controller
 
     public function despacharguiadespacho(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
     {
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $listo = false;
 
         foreach ($detalle as $key => $det) {
@@ -778,7 +779,7 @@ class GuiasderemisionController extends Controller
         set_time_limit(-1);
         ini_set('memory_limit', '-1');
 
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $documentos = array();
 
         foreach ($data['detalle'] as $item) {
@@ -881,7 +882,7 @@ class GuiasderemisionController extends Controller
     public function recibirguiatransferencia($data): Response|Application|ResponseFactory
     {
 
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $documentos = array();
 
         foreach ($data['detalle'] as $item) {

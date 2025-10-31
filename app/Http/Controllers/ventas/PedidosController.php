@@ -32,6 +32,7 @@ use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -426,7 +427,7 @@ class PedidosController extends Controller
 
         $articulos = $facturarDespachado['detalle'];
 
-        $user = Auth::user();
+         $user = GpUsuario::where('id', Auth::user()->id)->first();
         $pedido = new GpPedido;
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
@@ -798,7 +799,7 @@ class PedidosController extends Controller
     public function facturarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
+         $user = GpUsuario::where('id', Auth::user()->id)->first();
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get()->toArray();
         foreach ($detalle as $key => $det) {
@@ -904,6 +905,7 @@ class PedidosController extends Controller
      */
     public function setguardarpedido(array $data, GpPedido $pedido, $PTO_VTA_DESCRIPCION, \App\Models\User|\Illuminate\Contracts\Auth\Authenticatable|null $user, array $requiere_aprobacion_comercial, string $requiere_aprobacion_crediticia): void
     {
+         $user = GpUsuario::where('id', Auth::user()->id)->first();
         $pedido->PTO_VTA_ID = $data['PTO_VTA_ID'];
         $pedido->PTO_VTA_DESCRIPCION = $PTO_VTA_DESCRIPCION;
         $pedido->USERID = $user->USERID;
@@ -1192,7 +1194,7 @@ class PedidosController extends Controller
     function cancelarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
+         $user = GpUsuario::where('id', Auth::user()->id)->first();
 
         $pedido = GpPedido::where('id', $data['id'])->get()->first();
 

@@ -51,7 +51,7 @@ class CotizacionesController extends Controller
             'articulo' => []
         ]);
 
-        $user = Auth::user();
+         $user = GpUsuario::where('id', Auth::user()->id)->first();
 
         if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
@@ -310,8 +310,7 @@ class CotizacionesController extends Controller
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
-
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         if (isset($data['prospecto']['id']) && $data['prospecto']['id'] != '') {
             $prospecto = GpProspecto::where('id', $data['prospecto']['id'])->first();
         } else {
@@ -614,7 +613,7 @@ class CotizacionesController extends Controller
     public function guardarcliente(Request $request)
     {
         $data = $request->all();
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         return $this->quotationService->storeClientQuotation($data,  $user);
     }
 
