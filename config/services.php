@@ -82,6 +82,9 @@ return [
             'obtener_tipo_vendedor' => 'api/cliente/obtener-tipo-vendedor',
             'obtener_segmento_cliente' => 'api/cliente/obtener-segmento-cliente',
 
+            //guias de remision -general
+            'guia.remision.crear' => 'api/inventario/crear-guia-remision',
+            'guia.remision.existe' => 'api/inventario/validar-existencia-guia-remision',
             // guia de remision - despacho
             'guia.trfv.movimientos.generar' => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
             'guia.reposicion.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-reposicion',

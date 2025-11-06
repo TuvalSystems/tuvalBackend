@@ -44,4 +44,6 @@ interface InventoryReservationServiceInterface
     public function fetchVehicles();
     public function fetchTransportistas($vehicleId);
 
+     public function fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
+
 }

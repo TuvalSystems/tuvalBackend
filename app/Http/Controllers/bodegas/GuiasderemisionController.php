@@ -4,6 +4,7 @@ namespace App\Http\Controllers\bodegas;
 
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Traits\JsonResponseTrait;
+use RuntimeException;
 use stdClass;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
@@ -26,6 +27,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
+use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
@@ -35,6 +37,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class GuiasderemisionController extends Controller
 {
@@ -613,152 +616,152 @@ class GuiasderemisionController extends Controller
         }
     }
 
-    public function despacharguiadespacho(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
-    {
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
-        $listo = false;
+    // public function despacharguiadespacho(GpGuiaRemision $guia, $detalle): Response|Application|ResponseFactory
+    // {
+    //     $user = GpUsuario::where('id', Auth::user()->id)->first();
+    //     $listo = false;
 
-        foreach ($detalle as $key => $det) {
-            $articulo = GpPedidoDetalle::where('id', $det->detalle_id)->first();
+    //     foreach ($detalle as $key => $det) {
+    //         $articulo = GpPedidoDetalle::where('id', $det->detalle_id)->first();
 
-            if ($articulo->ART_TIPO_COMPRA == 'SERV') {
-                $articulo->reservado = $articulo->reservado - $det->GUI_REM_CANTIDAD;
-                $articulo->trasladado = $articulo->trasladado + $det->GUI_REM_CANTIDAD;
-                $guia->estado = 'enviada';
-                $articulo->save();
-                $guia->save();
-            }
+    //         if ($articulo->ART_TIPO_COMPRA == 'SERV') {
+    //             $articulo->reservado = $articulo->reservado - $det->GUI_REM_CANTIDAD;
+    //             $articulo->trasladado = $articulo->trasladado + $det->GUI_REM_CANTIDAD;
+    //             $guia->estado = 'enviada';
+    //             $articulo->save();
+    //             $guia->save();
+    //         }
 
-            if ($articulo->reservado == 0) {
-                unset($detalle[$key]);
-            }
-        }
-        if (count($detalle) == 0 && $guia->estado !== 'enviada') {
-            $guia->estado = 'enviada';
-            $guia->save();
-        }
+    //         if ($articulo->reservado == 0) {
+    //             unset($detalle[$key]);
+    //         }
+    //     }
+    //     if (count($detalle) == 0 && $guia->estado !== 'enviada') {
+    //         $guia->estado = 'enviada';
+    //         $guia->save();
+    //     }
 
-        if (count($detalle) == 0) {
-            //$guia->delete();
-            $order = app(OrderServiceInterface::class);
-            $dispatch = app(DispatchServiceInterface::class);
-            $logistics = app(LogisticsOperationsServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch, $logistics);
-            $pedido = $despachos->checkdespacho($guia);
-            return response([
-                'success' => true,
-                'message' => 'Guía de remisión despachada',
-                'pedido' => $pedido
-            ]);
-        }
+    //     if (count($detalle) == 0) {
+    //         //$guia->delete();
+    //         $order = app(OrderServiceInterface::class);
+    //         $dispatch = app(DispatchServiceInterface::class);
+    //         $logistics = app(LogisticsOperationsServiceInterface::class);
+    //         $despachos = new DespachosController($order, $dispatch, $logistics);
+    //         $pedido = $despachos->checkdespacho($guia);
+    //         return response([
+    //             'success' => true,
+    //             'message' => 'Guía de remisión despachada',
+    //             'pedido' => $pedido
+    //         ]);
+    //     }
 
-        $item_arr = array();
-        foreach ($detalle as $key => $item) {
-            if ($item->ART_TIPO_COMPRA == 'SERV') {
-                unset($detalle[$key]);
-            }
-            $item_arr[$key]['Item'] = $item->GUI_REM_CODI_INTERNO;
-            $item_arr[$key]['Compartimento'] = '';
-            $item_arr[$key]['Cantidad'] = $item->GUI_REM_CANTIDAD;
-        }
+    //     $item_arr = array();
+    //     foreach ($detalle as $key => $item) {
+    //         if ($item->ART_TIPO_COMPRA == 'SERV') {
+    //             unset($detalle[$key]);
+    //         }
+    //         $item_arr[$key]['Item'] = $item->GUI_REM_CODI_INTERNO;
+    //         $item_arr[$key]['Compartimento'] = '';
+    //         $item_arr[$key]['Cantidad'] = $item->GUI_REM_CANTIDAD;
+    //     }
 
-        if (count($item_arr) > 0) {
+    //     if (count($item_arr) > 0) {
 
-            $item_arr = array_values($item_arr);
+    //         $item_arr = array_values($item_arr);
 
-            $numero_pedido = $guia->pedido;
-            $pedido_nuevo = '';
-            $pedido = GpPedido::where('pedido', $guia->pedido)->first();
-            if ($pedido->pedido_origen) {
-                $numero_pedido = $pedido->pedido_origen;
-                $pedido_nuevo = $guia->pedido;
-            }
+    //         $numero_pedido = $guia->pedido;
+    //         $pedido_nuevo = '';
+    //         $pedido = GpPedido::where('pedido', $guia->pedido)->first();
+    //         if ($pedido->pedido_origen) {
+    //             $numero_pedido = $pedido->pedido_origen;
+    //             $pedido_nuevo = $guia->pedido;
+    //         }
 
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Pedido' => $numero_pedido,
-                'PedidoNuevo' => $pedido_nuevo,
-                'BodegaOrigen' => $guia->bodega_origen,
-                'Observacion' => $guia->GUI_REM_OBSERVACION,
-                'Usuario' => $user->USERID ?? 'adminWeb',
-                'Items' => $item_arr
-            );
-
-
-
-            $webservices = new WebserviceController();
-            $respuesta = $webservices->inventario('GeneraDespachoVenta', $parameters);
-            Log::channel('soap_errors')->info(
-                'Respuesta al generar la guía de despacho',
-                [
-                    'Guia' => $guia->id,
-                    'Respuesta' => $respuesta,
-                ]
-            );
-            if ($respuesta == 'Error') {
-                $guia->procesando = null;
-                $guia->save();
-                throw new \Exception('Error al generar la guía de despacho, intente de nuevo en un minuto');
-                // return response([
-                //     'error' => 'Intente de nuevo en un minuto',
-                // ], 401);
-            }
+    //         $parameters = array(
+    //             'IDCompania' => env('ID_COMPANIA'),
+    //             'Pedido' => $numero_pedido,
+    //             'PedidoNuevo' => $pedido_nuevo,
+    //             'BodegaOrigen' => $guia->bodega_origen,
+    //             'Observacion' => $guia->GUI_REM_OBSERVACION,
+    //             'Usuario' => $user->USERID ?? 'adminWeb',
+    //             'Items' => $item_arr
+    //         );
 
 
-            if (isset($respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Codigo']) && $respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Codigo'] == '0') {
-                if (!$guia->rebajado) {
-                    foreach ($detalle as $item) {
-                        $traslado = GpPedidoDetalle::where('id', $item->detalle_id)->first();
-                        $traslado->reservado = $traslado->reservado - $item->GUI_REM_CANTIDAD;
-                        $traslado->trasladado = $traslado->trasladado + $item->GUI_REM_CANTIDAD;
-                        $traslado->save();
 
-                        $stock = GpPedidoDetalleStock::where('detalle_id', $item->detalle_id)
-                            ->where('STO_ART_BODEGA', $guia->bodega_origen)
-                            ->first();
-
-                        if ($stock) {
-                            if (!$stock->reservado)
-                                $stock->reservado = 0;
-
-                            $stock->reservado = $stock->reservado - $item->GUI_REM_CANTIDAD;
-                            $stock->save();
-                        }
-                    }
-                    $guia->rebajado = 1;
-                    $guia->save();
-                }
-                $listo = true;
-            } else {
-                $mensaje = $respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Mensaje']
-                    ?? 'Error desconocido al generar la guía de despacho';
-                Log::error("Error al generar la guía de despacho (despacharguiadespacho): {$mensaje}");
-                if ($mensaje !== 'Guía ya despachada por otro usuario') {
-                    throw new \Exception($mensaje);
-                }
-                return response([
-                    'success' => false,
-                    'message' => $mensaje
-                ]);
-            }
-        }
-        if ($listo) {
-            $guia->estado = 'enviada';
-            $guia->save();
-        }
-        $order = app(OrderServiceInterface::class);
-        $dispatch = app(DispatchServiceInterface::class);
-        $logistics = app(LogisticsOperationsServiceInterface::class);
-        $despachos = new DespachosController($order, $dispatch, $logistics);
-        $pedido = $despachos->checkdespacho($guia);
+    //         $webservices = new WebserviceController();
+    //         $respuesta = $webservices->inventario('GeneraDespachoVenta', $parameters);
+    //         Log::channel('soap_errors')->info(
+    //             'Respuesta al generar la guía de despacho',
+    //             [
+    //                 'Guia' => $guia->id,
+    //                 'Respuesta' => $respuesta,
+    //             ]
+    //         );
+    //         if ($respuesta == 'Error') {
+    //             $guia->procesando = null;
+    //             $guia->save();
+    //             throw new \Exception('Error al generar la guía de despacho, intente de nuevo en un minuto');
+    //             // return response([
+    //             //     'error' => 'Intente de nuevo en un minuto',
+    //             // ], 401);
+    //         }
 
 
-        return response([
-            'success' => true,
-            'message' => 'Guía de remisión despachada',
-            'pedido' => $pedido,
-        ]);
-    }
+    //         if (isset($respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Codigo']) && $respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Codigo'] == '0') {
+    //             if (!$guia->rebajado) {
+    //                 foreach ($detalle as $item) {
+    //                     $traslado = GpPedidoDetalle::where('id', $item->detalle_id)->first();
+    //                     $traslado->reservado = $traslado->reservado - $item->GUI_REM_CANTIDAD;
+    //                     $traslado->trasladado = $traslado->trasladado + $item->GUI_REM_CANTIDAD;
+    //                     $traslado->save();
+
+    //                     $stock = GpPedidoDetalleStock::where('detalle_id', $item->detalle_id)
+    //                         ->where('STO_ART_BODEGA', $guia->bodega_origen)
+    //                         ->first();
+
+    //                     if ($stock) {
+    //                         if (!$stock->reservado)
+    //                             $stock->reservado = 0;
+
+    //                         $stock->reservado = $stock->reservado - $item->GUI_REM_CANTIDAD;
+    //                         $stock->save();
+    //                     }
+    //                 }
+    //                 $guia->rebajado = 1;
+    //                 $guia->save();
+    //             }
+    //             $listo = true;
+    //         } else {
+    //             $mensaje = $respuesta['GeneraDespachoVentaResult']['Retorno'][0]['Mensaje']
+    //                 ?? 'Error desconocido al generar la guía de despacho';
+    //             Log::error("Error al generar la guía de despacho (despacharguiadespacho): {$mensaje}");
+    //             if ($mensaje !== 'Guía ya despachada por otro usuario') {
+    //                 throw new \Exception($mensaje);
+    //             }
+    //             return response([
+    //                 'success' => false,
+    //                 'message' => $mensaje
+    //             ]);
+    //         }
+    //     }
+    //     if ($listo) {
+    //         $guia->estado = 'enviada';
+    //         $guia->save();
+    //     }
+    //     $order = app(OrderServiceInterface::class);
+    //     $dispatch = app(DispatchServiceInterface::class);
+    //     $logistics = app(LogisticsOperationsServiceInterface::class);
+    //     $despachos = new DespachosController($order, $dispatch, $logistics);
+    //     $pedido = $despachos->checkdespacho($guia);
+
+
+    //     return response([
+    //         'success' => true,
+    //         'message' => 'Guía de remisión despachada',
+    //         'pedido' => $pedido,
+    //     ]);
+    // }
 
     public function recibirguia(Request $request)
     {
@@ -1330,8 +1333,71 @@ class GuiasderemisionController extends Controller
         try {
             $response = $this->reservedDeliveryNoteService->createDeliveryNoteFromReservation($payload);
             return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
+        } catch (RuntimeException $r) {
+            return $this->buildErrorResponse($r->getMessage(), 409);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion generarGuiaReserva -GuiasderemisionController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function enviarGuiaRemisionReservaAGp($id)
+    {
+        try {
+            $guia = GpGuiaRemisionReserva::where('id', $id)->first();
+            $response = $this->reservedDeliveryNoteService->sendReservationDeliveryNoteToGp($guia);
+            return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion enviarGuiaRemisionReservaAGp -GuiasderemisionController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function generarPdfGuiaRemisionReserva(Request $request)
+    {
+          $id = $request->input('id', null);
+        try {
+            $validate = $request->validate([
+                'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
+            ]);
+            $data = $this->reservedDeliveryNoteService->generatePdfReservedDeliveryNote($validate);
+            return $this->buildPdfResponse($data);
+         } catch (ValidationException $ve) {
+            return $this->errorResponse('validation error', $ve->errors(), 422);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion generarPdfGuiaRemisionReserva -GuiasderemisionController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function despacharGuiaRemisionReserva(Request $request)
+    {
+        $id = $request->get('guiaId');
+        try {
+
+            $guia = GpGuiaRemisionReserva::where('id', $id)->first();
+            $response = $this->reservedDeliveryNoteService->sendReservationDeliveryNoteToGp($guia);
+            return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion enviarGuiaRemisionReservaAGp -GuiasderemisionController: ', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'linea' => $e->getLine(),

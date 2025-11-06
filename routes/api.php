@@ -255,7 +255,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('transferencias/pdf-picking-reserva', [ReservasController::class, 'generarPdfPickingReserva']);
         Route::post('transferencias/lista-vehiculos', [ReservasController::class, 'listaVehiculos']);
         Route::post('transferencias/lista-transportistas', [ReservasController::class, 'listaTransportistas']);
-
+        Route::post('transferencias/lista-guias-remision-reservas-pendientes', [ReservasController::class, 'listaGuiaRemisionReservasPendientes']);
 
 
 
@@ -283,7 +283,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('recibosdecompra/imprimir/{id}', [RecibosdecompraeleController::class, 'imprimir']);
 
         Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
-        Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
         Route::post('guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
         Route::get('puntos-venta/reservas/limites', [DespachosController::class, 'indexPuntosVentaReservaLimits']);
 
@@ -319,6 +318,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
           //generacion de guia de remision de reservas
         Route::post('reservas/guia-remision/crear-guia-reserva', [GuiasderemisionController::class, 'crearGuiaRemisionReserva']);
+        Route::post('reservas/guia-remision/generar-pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionReserva']);
+        Route::post('reservas/guia-remision/despachar-guia', [GuiasderemisionController::class, 'despacharGuiaRemisionReserva']);
 
     });
 

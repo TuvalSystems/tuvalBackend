@@ -4,9 +4,10 @@ namespace App\Repositories\Venta;
 
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
+use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
-use Illuminate\Support\Facades\DB;
+
 
 class InventoryReservationRepository implements InventoryReservationRepositoryInterface
 {
@@ -57,7 +58,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
             ])->get();
     }
 
-public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination,$quotation = null)
+    public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination, $quotation = null)
     {
         return GpTrasladosReservas::query()->from('gp_traslados_reservas as tr')
             ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
@@ -85,6 +86,16 @@ public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDesti
 
 
 
-
-
+    public function findGuidesPendingsByOriginWarehouse($bodOrigin, $destId)
+    {
+        return GpGuiaRemisionReserva::query()
+        ->from('gp_guia_remision_reservas as gpgr')
+            ->join('gp_bodegas', 'gpgr.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
+            ->where('gpgr.bodega_origen', $bodOrigin)
+            ->where('gpgr.bodega_destino', $destId)
+            ->where('gpgr.estado', 'pendiente')
+            ->select('gpgr.id', 'gpgr.numero_guia','gpgr.fecha_salida', 'gpgr.razon_social_transportista' ,'gpgr.placa')
+            ->orderByDesc('gpgr.created_at')
+            ->get();
+    }
 }

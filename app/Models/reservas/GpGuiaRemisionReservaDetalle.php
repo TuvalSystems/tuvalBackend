@@ -2,6 +2,8 @@
 
 namespace App\Models\reservas;
 
+use App\Models\GpCotizacion;
+use App\Models\GpCotizacionDetalle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,4 +24,18 @@ class GpGuiaRemisionReservaDetalle extends Model
         'art_plan_umedida',
         'recibido'
     ];
+
+
+    public function traslado()
+    {
+        return $this->belongsTo(GpTrasladosReservas::class, 'traslado_id');
+    }
+
+    public function cotizacion(){
+        return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
+    }
+
+    public function detallecotizacion(){
+        return $this->belongsTo(GpCotizacionDetalle::class, 'detalle_id' , 'id');
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models\reservas;
 
+use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -34,7 +35,9 @@ class GpTrasladosReservas extends Model
     ];
 
 
-
+    public function detalleCotizacion() {
+        return $this->belongsTo(GpCotizacionDetalle::class, 'detalle_id');
+    }
     public function stock(){
         return $this->belongsTo(GpCotizacionDetalleStock::class, 'stock_id');
     }

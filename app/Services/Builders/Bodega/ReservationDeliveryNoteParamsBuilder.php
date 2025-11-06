@@ -6,6 +6,7 @@ use App\Models\GpUsuario;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpGuiaRemisionReservaDetalle;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
+use Carbon\Carbon;
 
 class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNoteParamsBuilderInterface
 {
@@ -62,5 +63,67 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'art_plan_umedida'      => $data['art_plan_umedida']
         ]);
         return $d;
+    }
+
+
+
+
+    public function buildReservationHeaderToGp($guia): array
+    {
+        return [
+            'guiaRemision'                    => $guia->numero_guia,
+            'establecimiento'                 => $guia->establecimiento,
+            'ptoEmision'                      => $guia->pto_emision,
+            'secuencial'                      => $guia->secuencial,
+            'direccionPartida'                => $guia->direccion_partida,
+            'razonSocialTransportista'        => $guia->razon_social_transportista,
+            'identificacionTransportista'     => $guia->identificacion_transportista,
+            'tipoIdentificacionTransportista' => $guia->tipo_identificacion_transportista,
+            'rise'                            => '',
+            'fechaInicio'                     => $guia->fecha_salida,
+            'fechaFin'                        => $guia->fecha_llegada,
+            'placa'                           => $guia->placa,
+            'correoElectronico'               => 'guias@tuvalsa.com',
+            'observacion'                     => $guia->observacion,
+            'fechaEmisionSustento'            => Carbon::parse('1900-01-01 00:00:00')->format('Y-m-d H:i:s'),
+        ];
+    }
+
+
+    public function buildReservationDestinationToGp($guia): array
+    {
+        return [
+            'guiaRemision'               => $guia->numero_guia,
+            'secuencialDestinatario'     => 1,
+            'identificacionDestinatario' => $guia->identificacion_destinatario,
+            'razonSocialDestinatario'    => $guia->razon_social_destinatario,
+            'direccionDestinatario'      => trim($guia->direccion_destinatario),
+            'motivoTraslado'             => 'transferencia_reserva',
+            'docAduanero'                => '',
+            'codEstablecimientoDestino'  => '',
+            'descEstablecimientoDestino' => '',
+            'ruta'                       => $guia->ruta,
+            'docSustento'                => $guia->cod_sustento,
+            'numDocSustento'             => $guia->doc_sustento,
+            'numAutoDocSustento'         => $guia->num_auto_doc_sustento,
+            'fechaEmisionDocSustento'    => Carbon::parse($guia->fecha_emision_doc_sustento)->format('Y-m-d H:i:s'),
+        ];
+    }
+
+
+    public function builReservationDetailToGp(GpGuiaRemisionReserva $header,GpGuiaRemisionReservaDetalle $detail, int $indice): array{
+        return [
+            'guiaRemision'                  => $header->numero_guia,
+            'secuencialDestinatario'         => 1,
+            'secuenciaDetalle'              => $indice,
+            'identificacionDestinatario'    => $header->identificacion_destinatario,
+            'docSustento'                   => $header->doc_sustento,
+            'codInterno'                    => $detail->art_code,
+            'codAdicional'                  =>'',
+            'descripcion'                   => $detail->art_descripcion,
+            'cantidad'                      => (int) $detail->cantidad,
+            'unidadMedida'                  => $detail->art_plan_umedida,
+            'guiaBodega'                    => $header->guia_bodega
+        ];
     }
 }

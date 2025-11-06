@@ -10,5 +10,11 @@ interface ReservationDeliveryNoteParamsBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
     public function buildReservationGuideHeader($payload, GpUsuario $user, array $datavehicle, string $secuencial, string $dirDestination, string $numGuide, string $bodGuide, string $dirOrigin): GpGuiaRemisionReserva;
-    public function buildReservationGuideDetails($data, int $guiaId) : GpGuiaRemisionReservaDetalle;
+    public function buildReservationGuideDetails($data, int $guiaId): GpGuiaRemisionReservaDetalle;
+
+    //header to send GP Guide Remision
+
+    public function buildReservationHeaderToGp($guia): array;
+    public function buildReservationDestinationToGp($guia): array;
+    public function builReservationDetailToGp(GpGuiaRemisionReserva $header, GpGuiaRemisionReservaDetalle $detail, int $indice): array;
 }

@@ -37,6 +37,7 @@ class GpGuiaRemisionReserva extends Model
         'num_auto_doc_sustento',
         'fecha_emision_doc_sustento',
         'rebajado',
+        'idempotency_key',
     ];
 
 

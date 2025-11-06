@@ -1223,15 +1223,33 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function fetchVehicles(){
+    public function fetchVehicles()
+    {
         return GpVehiculo::get();
     }
 
-    public function fetchTransportistas($vehicleId){
+    public function fetchTransportistas($vehicleId)
+    {
         $vehicles = GpVehiculo::find($vehicleId);
         return GpTransportista::where('id', $vehicles->transportista_id)->get();
     }
 
+
+
+    /** proceso de listado de guias de remision Reservas - pendientes */
+    public function fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino)
+    {
+        $map = GpRelacionPuntoVentaBodega::query()
+            ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$ptoVtaOrigen, $ptoVtaDestino])
+            ->pluck('PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA');
+        $waOrigin = $map[$ptoVtaOrigen] ?? null;
+        $waDestination = $map[$ptoVtaDestino] ?? null;
+        if (!$waOrigin || !$waDestination) {
+
+            return [];
+        }
+        return $this->reservaRepository->findGuidesPendingsByOriginWarehouse($waOrigin, $waDestination);
+    }
 
 
 }

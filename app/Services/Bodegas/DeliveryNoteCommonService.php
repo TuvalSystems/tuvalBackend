@@ -49,4 +49,5 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
         $base = $enum?->baseSequential() ?? '000000';
         return (int) ltrim($base, '0');
     }
+    
 }

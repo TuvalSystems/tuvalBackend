@@ -9,6 +9,14 @@ use App\Services\Api\ApiGpService;
 class ApiDeliverNoteService extends ApiGpService
 {
 
+    public function createDeliveryNote(array $params){
+        return $this->httpClient->makeRequest($this->endpoints["guia.remision.crear"], 'POST', $params, 'json');
+    }
+
+    public function checkExistenceDeliveryNote(array $params){
+        return $this->httpClient->makeRequest($this->endpoints["guia.remision.existe"], 'GET', $params, 'json');
+    }
+
     public function createTransferGuideVta(array $params)
     {
         return $this->httpClient->makeRequest($this->endpoints["guia.trfv.movimientos.generar"], 'POST', $params, 'json');

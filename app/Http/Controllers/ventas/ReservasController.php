@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\GpUsuario;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class ReservasController extends Controller
 {
@@ -346,7 +348,7 @@ class ReservasController extends Controller
             $data = $this->reserveService->generatePickingPdf($validated);
             return $this->buildPdfResponse($data);
         } catch (\Illuminate\Validation\ValidationException $ve) {
-            return $this->errorResponse('validation error', $ve->errors(), 500);
+            return $this->errorResponse('validation error', $ve->errors(), 422);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion generarPdfPickingReserva -ReservasController: ', [
                 'message' => $e->getMessage(),
@@ -387,6 +389,29 @@ class ReservasController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+
+    /** listado de guias de remision pendientes para realizar el Ej:TRA000 */
+    public function listaGuiaRemisionReservasPendientes(Request $request): JsonResponse
+    {
+        $ptoVtaOrigen = $request->input('origen', null);
+        $ptoVtaDestino = $request->input('destino', null);
+        try {
+            $response = $this->reserveService->fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
+            return $this->successResponse('Datos obtenidos correctamente', $response, 200);
+        } catch (RuntimeException $r) {
+            return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (\Throwable $e) {
+            Log::channel('reservas_log')->error('Error en la funcion listaGuiaRemisionReservasPendientes: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+                'file' => $e->getFile()
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
