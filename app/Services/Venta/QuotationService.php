@@ -742,7 +742,7 @@ class QuotationService implements QuotationServiceInterface
             ->get()
             ->map(function ($st) use ($artTemp) {
                 $st->STO_ART_STOCK_DISPONIBLE = $artTemp->ART_DECIMAL_CANTIDAD == 0 ? (int) $st->STO_ART_STOCK_DISPONIBLE : $st->STO_ART_STOCK_DISPONIBLE;
-                $st->seleccionado =  round($st->seleccionado, $artTemp->ART_DECIMAL_CANTIDAD);
+                 $st->seleccionado =  round($st->seleccionado, $artTemp->ART_DECIMAL_CANTIDAD);
                 return $st;
             })->toArray();
     }
