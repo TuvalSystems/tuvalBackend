@@ -61,4 +61,12 @@ trait JsonResponseTrait
             'Pragma' => 'no-cache',
         ]);
     }
+
+
+    /** para respuestas estandar para errores de validaciones */
+
+    protected function validationErrorResponse($errors, string $message= 'validation errors', int $code = 422): JsonResponse
+    {
+        
+    }
 }

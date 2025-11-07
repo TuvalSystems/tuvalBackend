@@ -1367,7 +1367,6 @@ class GuiasderemisionController extends Controller
 
     public function generarPdfGuiaRemisionReserva(Request $request)
     {
-          $id = $request->input('id', null);
         try {
             $validate = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
