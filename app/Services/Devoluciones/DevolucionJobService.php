@@ -14,6 +14,7 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Models\GpUsuario;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -24,6 +25,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -331,7 +333,8 @@ class DevolucionJobService
 
     public function generarDevolucionVenta($devolucion)
     {
-        $userId = 'adminWeb';
+        $user = GpUsuario::find(Auth::user()->id);
+        $userId = $user->USERID ?? 'adminWeb';
 
         // Obtener el pedido y los detalles
         $pedido = GpPedido::find($devolucion->pedido_id);
@@ -376,7 +379,7 @@ class DevolucionJobService
         // 🚀 Llamada al servicio
         $res1 = $this->apiGpReturnsIntegrationService->generateSalesReturn($params);
         if ($res1['success'] === false) {
-            Log::error("Error al realizar el Ajuste de la devolucion ",[
+            Log::error("Error al realizar el Ajuste de la devolucion ", [
                 'res1' => $res1
             ]);
             $devolucion->AJ_VTA_MENSAJE = $res1['message'];
@@ -391,7 +394,8 @@ class DevolucionJobService
         $devolucion->save();
     }
 
-    public function createDocumentDevolution($devolucion, $responseApi, $userId){
+    public function createDocumentDevolution($devolucion, $responseApi, $userId)
+    {
         $devDoc = new GpDevolucionDocument();
         $devDoc->devolucion_id = $devolucion->id;
         $devDoc->devolucion = $devolucion->devolucion;
