@@ -386,8 +386,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
         }
         $guia->update(['estado' => 'enviada']);
-        $guia->fresh();
-        return ['guia' => $guia, 'detalle' => $details, 'groups' => $groups, 'params' => $arrayParams, 'processed' => $processed];
+        return $guia->fresh();
     }
 
 
