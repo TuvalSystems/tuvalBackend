@@ -9,6 +9,7 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
+use App\Models\GpIngreso;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
@@ -333,8 +334,8 @@ class DevolucionJobService
 
     public function generarDevolucionVenta($devolucion)
     {
-        $user = GpUsuario::find(Auth::user()->id);
-        $userId = $user->USERID ?? 'adminWeb';
+        $userIngreso = $this->getUserIngreso($devolucion);
+        $userId =filled($userIngreso) ? trim($userIngreso) : 'adminWeb';
 
         // Obtener el pedido y los detalles
         $pedido = GpPedido::find($devolucion->pedido_id);
@@ -392,6 +393,11 @@ class DevolucionJobService
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
         $devolucion->save();
+    }
+
+    public function getUserIngreso(GpDevoluciones $devolucion): ?string
+    {
+        return GpIngreso::where('tipo', 'devolucion')->where('documento', $devolucion->devolucion)->value('USERID');
     }
 
     public function createDocumentDevolution($devolucion, $responseApi, $userId)
