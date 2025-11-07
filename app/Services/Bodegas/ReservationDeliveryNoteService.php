@@ -379,7 +379,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $arrayParams = [];
         foreach ($groups as $quote => $group) {
             $arrayParams[] = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user);
-            $processed = $this->validateExistenceReservationGuideAjustment($guia, $arrayParams, $group['items'], $quote);
+            $processed = $this->validateExistenceReservationGuideAdjustment($guia, $arrayParams, $group['items'], $quote);
         }
         // if (!$processed) {
         //     throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
@@ -407,27 +407,46 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
 
 
-    public function validateExistenceReservationGuideAjustment($guia, $params, $groupItems, $quote): bool
+    public function validateExistenceReservationGuideAdjustment(GpGuiaRemisionReserva $guia, array $params, array $groupItems, string $quote): bool
     {
-        $processed = false;
-        $already = false;
-        $cabecera = data_get($params, 'cabecera', []);
-        $payloadValidate = $this->builder->buildReservationGuideValidationPayload($cabecera);
-        $resValidate = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+        $already            = false;
+        $cabecera           = data_get($params, 'cabecera', []);
+        $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera);
+        $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
         $headerRespValidate = data_get($resValidate, 'data');
-        $validateSuccess = data_get($resValidate, 'success');
-        $docGpValidate = data_get($headerRespValidate, 'docGp', null);
-        $idGuiaRemision = data_get($headerRespValidate, 'idGuiaRemision', null);
+        $validateSuccess    = data_get($resValidate, 'success');
+        $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
 
         /** cuando existe y solo necesita reasignar y procesar los movimientos de entrada y salida */
-        if (!empty($headerRespValidate) && !blank($docGpValidate)) {
-            $already = $this->movementExistsWeb($idGuiaRemision, $quote, $docGpValidate);
-            if ($already) {
-
-            }
+        if (!empty($headerRespValidate) && filled($docGpValidate)) {
+            $already = $this->movementExistsWeb($guia->id, $quote, $docGpValidate);
+            DB::transaction(function () use ($groupItems, $guia, $headerRespValidate, $quote, $already) {
+                $this->processReservationGuideDecrementStock($groupItems);
+                if (!$already) {
+                    $this->createMovementReservation($guia, $headerRespValidate, $quote);
+                }
+            });
+            return true;
         }
         /** en caso de que no exista la guia de reserva debe crearla */
         if (empty($headerRespValidate) && $validateSuccess === false) {
+            $resp       = $this->apiDelivery->createReservationGuideAjustment($params);
+            $success    = data_get($resp, 'success', false);
+            $data       = data_get($resp, 'data', []);
+            $msg        = data_get($resp, 'message');
+            $docGp      = trim(data_get($resp, 'data.docGp', '')); // null si no existe
+            if (!$success) {
+                throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
+            }
+            if ($docGp === '') {
+                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+            }
+
+            DB::transaction(function () use ($groupItems, $guia, $data, $quote) {
+                $this->processReservationGuideDecrementStock($groupItems);
+                $this->createMovementReservation($guia, $data, $quote);
+            });
+            return true;
         }
         return false;
     }
@@ -441,4 +460,21 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             ->where('codigo', trim((string) $docGp))
             ->exists();
     }
+
+    public function processReservationGuideDecrementStock($groupItems)
+    {
+        foreach ($groupItems as $item) {
+            $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->cantidad);
+        }
+    }
+
+    public function createMovementReservation($guia, $responseApi, $quote): GpGuiaRemisionReservaMovimiento
+    {
+        return GpGuiaRemisionReservaMovimiento::firstOrCreate([
+            'guia_id' => $guia->id,
+            'cotizacion' => $quote,
+            'codigo' => trim((string) data_get($responseApi, 'docGp', '')),
+        ]);
+    }
+
 }

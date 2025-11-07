@@ -69,12 +69,37 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 
             //items para enviar al webservice de la guia de reserva
             $groups[$cot]['ws_items'][] = [
-                'item'              => $det->art_code,
-                'compartimiento'    => '',
-                'cantidad'          => (float) $det->cantidad,
+                'item' => $det->art_code,
+                'compartimiento' => '',
+                'cantidad' => (float) $det->cantidad,
             ];
         }
         return $groups;
+    }
+
+
+
+
+    public function moveReservedToTransferredForTrfvLine($trl, $qty)
+    {
+        $cantidad = (float) ($trl->cantidad ?? 0);
+        $trasladado = (float) ($trl->trasladado ?? 0);
+        $reservado = (float) ($trl->reservado ?? 0);
+
+        $restante = max(0.0, $cantidad - $trasladado);
+        $delta = max(0.0, min((float) $qty, $restante));
+        if ($delta <= 0) {
+            $trl->completado = (int) (($trasladado) >= $cantidad);
+            $trl->save();
+            return;
+        }
+        $nuevoTrasladado = min($cantidad, $trasladado + $delta);
+        $nuevoReservado = max(0.0, $reservado - $delta);
+
+        $trl->trasladado = $nuevoTrasladado;
+        $trl->reservado = $nuevoReservado;
+        $trl->completado = (int) (($nuevoTrasladado) >= $cantidad);
+        $trl->save();
     }
 
 }

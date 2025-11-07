@@ -89,6 +89,7 @@ return [
             'guia.trfv.movimientos.generar' => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
             'guia.reposicion.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-reposicion',
             'guia.despacho.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-despacho',
+            'guia.reserva.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-reserva',
             'guia.obtener.clave_acceso' => 'api/inventario/guia-remision-obtener-claveacceso',
 
             //reservas

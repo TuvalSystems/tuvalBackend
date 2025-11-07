@@ -61,4 +61,10 @@ class ApiDeliverNoteService extends ApiGpService
     }
 
 
+    public function createReservationGuideAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reserva.movimientos.generar"], 'POST', $params, 'json');
+    }
+
+
 }
