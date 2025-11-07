@@ -93,10 +93,12 @@ return [
 
             //reservas
             'obtener_notificaciones_local'              => 'api/reservas/obtener-notificaciones-local',
+
             //guias de remision correcciones procesos
             'guia.despacho.check.ajuste' => 'api/inventario/validar-existencia-guia-despacho',
             'guia.transferencia.check.ajuste' => 'api/inventario/validar-existencia-guia-transferencia',
-            'guia.reposicion.check.ajuste' => 'api/inventario/validar-existencia-guia-reposicion'
+            'guia.reposicion.check.ajuste' => 'api/inventario/validar-existencia-guia-reposicion',
+            'guia.reserva.check.ajuste' => 'api/inventario/validar-existencia-guia-reserva',
         ],
     ],
     'api_sales' => [

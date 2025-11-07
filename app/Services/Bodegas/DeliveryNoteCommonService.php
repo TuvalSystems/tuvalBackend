@@ -6,6 +6,7 @@ use App\Enums\EstablishmentGuideSequential;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use Illuminate\Support\Collection;
 
 class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 {
@@ -49,5 +50,31 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
         $base = $enum?->baseSequential() ?? '000000';
         return (int) ltrim($base, '0');
     }
-    
+
+
+
+    public function groupItemsByOrderReservation(Collection $details): array
+    {
+
+        $groups = [];
+        foreach ($details as $det) {
+            $trr = $det->traslado;
+            if (!$trr || !$trr->cotizacion) {
+                continue;
+            }
+            $cot = $trr->cotizacion->cotizacion;
+            $groups[$cot] ??= ['cotizacion' => $cot, 'items' => [], 'ws_items' => []];
+
+            $groups[$cot]['items'][] = $det;
+
+            //items para enviar al webservice de la guia de reserva
+            $groups[$cot]['ws_items'][] = [
+                'item'              => $det->art_code,
+                'compartimiento'    => '',
+                'cantidad'          => (float) $det->cantidad,
+            ];
+        }
+        return $groups;
+    }
+
 }

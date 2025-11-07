@@ -11,11 +11,14 @@ use App\Models\GpUsuario;
 use App\Models\GpVehiculo;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpGuiaRemisionReservaDetalle;
+use App\Models\reservas\GpGuiaRemisionReservaMovimiento;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -308,7 +311,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
         $binary = $pdf->output();
-        $filename = 'guia-remision-' . Str::slug($guia->numero_guia ). '.pdf';
+        $filename = 'guia-remision-' . Str::slug($guia->numero_guia) . '.pdf';
         return [
             'binary' => $binary,
             'filename' => $filename,
@@ -347,5 +350,95 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     public function getDescriptionWarehouse($warehouse)
     {
         return GpPuntoVenta::where('PTO_VTA_ID', $warehouse)->value('PTO_VTA_DESCRIPCION');
+    }
+
+
+    /***
+     *
+     *
+     *
+     * funcion para enviar a gp para generar el TRA de la guia de reservas
+     *
+     *
+     *
+     * */
+    public function dispatchGuideReservation($payload): array|Collection|GpGuiaRemisionReserva|Model|null
+    {
+        $processed = false;
+        $user = GpUsuario::whereKey(Auth::id())->value('USERID') ?: 'adminWeb';
+        $id = (int) data_get($payload, 'id');
+        $guia = GpGuiaRemisionReserva::find($id);
+        $details = $this->getDetailsGuideWithTransfers($guia->id);
+        if ($details->isEmpty()) {
+            throw new \RuntimeException('No hay items para procesar el ajuste de la guía de reserva');
+        }
+        $groups = $this->common->groupItemsByOrderReservation($details);
+        if (empty($groups)) {
+            throw new \RuntimeException('No hay items para procesar el ajuste de la guía de reserva');
+        }
+        $arrayParams = [];
+        foreach ($groups as $quote => $group) {
+            $arrayParams[] = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user);
+            $processed = $this->validateExistenceReservationGuideAjustment($guia, $arrayParams, $group['items'], $quote);
+        }
+        // if (!$processed) {
+        //     throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
+
+        // }
+        // $guia->update(['estado' => 'enviada']);
+        // $guia->fresh();
+        return ['guia' => $guia, 'detalle' => $details, 'groups' => $groups, 'params' => $arrayParams, 'processed' => $processed];
+    }
+
+
+    public function getDetailsGuideWithTransfers(int $guiaId, ?int $quoteId = null): Collection
+    {
+        return GpGuiaRemisionReservaDetalle::query()
+            ->where('guia_id', $guiaId)
+            ->whereHas('traslado', fn($q) => $q->pending())
+            ->when($quoteId !== null, fn($q) => $q->whereHas('traslado', fn($q) => $q->where('cotizacion_id', $quoteId)))
+            ->whereHas('traslado.cotizacion')
+            ->with([
+                'traslado' => fn($q) => $q->pending(),
+                'traslado.cotizacion:id,cotizacion'
+            ])
+            ->get();
+    }
+
+
+
+    public function validateExistenceReservationGuideAjustment($guia, $params, $groupItems, $quote): bool
+    {
+        $processed = false;
+        $already = false;
+        $cabecera = data_get($params, 'cabecera', []);
+        $payloadValidate = $this->builder->buildReservationGuideValidationPayload($cabecera);
+        $resValidate = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+        $headerRespValidate = data_get($resValidate, 'data');
+        $validateSuccess = data_get($resValidate, 'success');
+        $docGpValidate = data_get($headerRespValidate, 'docGp', null);
+        $idGuiaRemision = data_get($headerRespValidate, 'idGuiaRemision', null);
+
+        /** cuando existe y solo necesita reasignar y procesar los movimientos de entrada y salida */
+        if (!empty($headerRespValidate) && !blank($docGpValidate)) {
+            $already = $this->movementExistsWeb($idGuiaRemision, $quote, $docGpValidate);
+            if ($already) {
+
+            }
+        }
+        /** en caso de que no exista la guia de reserva debe crearla */
+        if (empty($headerRespValidate) && $validateSuccess === false) {
+        }
+        return false;
+    }
+
+
+    public function movementExistsWeb($guiaId, $quote, $docGp): bool
+    {
+        return GpGuiaRemisionReservaMovimiento::query()
+            ->where('guia_id', $guiaId)
+            ->where('cotizacion', $quote)
+            ->where('codigo', trim((string) $docGp))
+            ->exists();
     }
 }

@@ -1368,7 +1368,7 @@ class GuiasderemisionController extends Controller
     public function generarPdfGuiaRemisionReserva(Request $request)
     {
         try {
-            $validated  = $request->validate([
+            $validated = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
             ]);
             $data = $this->reservedDeliveryNoteService->generatePdfReservedDeliveryNote($validated);
@@ -1390,12 +1390,14 @@ class GuiasderemisionController extends Controller
 
     public function despacharGuiaRemisionReserva(Request $request)
     {
-        $id = $request->get('guiaId');
         try {
-
-            $guia = GpGuiaRemisionReserva::where('id', $id)->first();
-            $response = $this->reservedDeliveryNoteService->sendReservationDeliveryNoteToGp($guia);
+            $validated = $request->validate([
+                'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
+            ]);
+            $response = $this->reservedDeliveryNoteService->dispatchGuideReservation($validated);
             return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
+        } catch (RuntimeException $r) {
+            return $this->buildErrorResponse($r->getMessage(), 409);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion enviarGuiaRemisionReservaAGp -GuiasderemisionController: ', [
                 'message' => $e->getMessage(),

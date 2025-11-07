@@ -852,7 +852,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $docGp = data_get($resHeader, 'docGp', null);
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
         if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido);
+            $already = $this->transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido);
             if ($already) {
                 return DB::transaction(function () use ($groupItems) {
                     $this->processReservedTransferedAndDecrementStock($groupItems);
@@ -886,13 +886,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         return $processed;
     }
 
-    public function validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido)
+    public function transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido)
     {
-        return GpGuiaRemisionTransferencia::where([
-            ['guia_remision_id', $$idGuiaRemision],
-            ['pedido', $pedido],
-            ['codigo', trim((string) $docGp)],
-        ])->exists();
+        return GpGuiaRemisionTransferencia::query()
+        ->where('guia_remision_id', $idGuiaRemision) // ← sin doble $
+        ->where('pedido', $pedido)
+        ->where('codigo', trim((string) $docGp))
+        ->exists();
     }
 
     public function hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido)
@@ -966,7 +966,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
 
         if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $documento);
+            $already = $this->transferMovementExistsWeb($docGp, $idGuiaRemision, $documento);
             if ($already) {
                 return DB::transaction(function () use ($groupItems) {
                     $this->generateMovementRepositionAdjustment($groupItems);

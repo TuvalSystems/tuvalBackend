@@ -2,6 +2,7 @@
 
 namespace App\Models\reservas;
 
+use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +12,7 @@ class GpTrasladosReservas extends Model
 {
     use HasFactory;
 
+    protected $table = 'gp_traslados_reservas';
     protected $appends = ['pending_transfer'];
     protected $casts = [
         'pending_transfer' => 'int',
@@ -35,19 +37,39 @@ class GpTrasladosReservas extends Model
     ];
 
 
-    public function detalleCotizacion() {
+    public function cotizacion ()
+    {
+        return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
+    }
+
+    public function detalleCotizacion()
+    {
         return $this->belongsTo(GpCotizacionDetalle::class, 'detalle_id');
     }
-    public function stock(){
+    public function stock()
+    {
         return $this->belongsTo(GpCotizacionDetalleStock::class, 'stock_id');
+    }
+
+    public function detalleguia(){
+        return $this->hasOne(GpGuiaRemisionReservaDetalle::class, 'traslado_id');
     }
 
 
     public function getPendingTransferAttribute()
     {
-       $cant = $this->cantidad ?? 0;
-       $res = $this->reservado ?? 0;
-       $tras = $this->trasladado ?? 0;
-       return max(0, $cant - $res - $tras);
+        $cant = $this->cantidad ?? 0;
+        $res = $this->reservado ?? 0;
+        $tras = $this->trasladado ?? 0;
+        return max(0, $cant - $res - $tras);
+    }
+
+
+    public function scopePending($q)
+    {
+        return $q->where(
+            fn($q) =>
+            $q->whereNull('completado')->orWhere('completado', 0)
+        );
     }
 }

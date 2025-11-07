@@ -17,4 +17,9 @@ interface ReservationDeliveryNoteParamsBuilderInterface
     public function buildReservationHeaderToGp($guia): array;
     public function buildReservationDestinationToGp($guia): array;
     public function builReservationDetailToGp(GpGuiaRemisionReserva $header, GpGuiaRemisionReservaDetalle $detail, int $indice): array;
+
+
+    //functions to send GP Ajustment Reservation
+    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user): array;
+     public function buildReservationGuideValidationPayload(array $params): array;
 }
