@@ -5,7 +5,9 @@ namespace App\Traits;
 use Illuminate\Http\Response;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\JsonResponse;
-
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
+use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 trait JsonResponseTrait
 {
     protected function successResponse($message, $data = [], int $code): JsonResponse
@@ -22,7 +24,7 @@ trait JsonResponseTrait
     {
         return response()->json([
             'success' => false,
-            'message' => $message,
+            'error' => $message,
             'errors' => $errors,
         ], $code);
     }
@@ -30,7 +32,7 @@ trait JsonResponseTrait
 
     protected function buildErrorResponse(string $message, int $statusCode): JsonResponse
     {
-        return response()->json(['success' => false, 'error' => $message], $statusCode);
+        return response()->json(['success' => false, 'error' => $message , 'errors' => []], $statusCode);
     }
 
     protected function buildSuccessResponse(string $message, int $statusCode): JsonResponse
@@ -65,8 +67,24 @@ trait JsonResponseTrait
 
     /** para respuestas estandar para errores de validaciones */
 
-    protected function validationErrorResponse($errors, string $message= 'validation errors', int $code = 422): JsonResponse
+    protected function validationErrorResponse($errors, string $message = 'validation errors', int $code = 422): JsonResponse
     {
-        
+
+        if ($errors instanceof ValidatorContract) {
+            $errors = $errors->errors();
+        }
+          if ($errors instanceof ViewErrorBag) {
+            $errors = $errors->getBag('default');
+        }
+        if ($errors instanceof MessageBag) {
+            $errors = $errors->toArray();
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'errors'  => $errors,
+        ], $code);
+
     }
 }

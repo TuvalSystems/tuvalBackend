@@ -1368,13 +1368,14 @@ class GuiasderemisionController extends Controller
     public function generarPdfGuiaRemisionReserva(Request $request)
     {
         try {
-            $validate = $request->validate([
+            $validated  = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
             ]);
-            $data = $this->reservedDeliveryNoteService->generatePdfReservedDeliveryNote($validate);
+            $data = $this->reservedDeliveryNoteService->generatePdfReservedDeliveryNote($validated);
             return $this->buildPdfResponse($data);
-         } catch (ValidationException $ve) {
-            return $this->errorResponse('validation error', $ve->errors(), 422);
+        } catch (ValidationException $ve) {
+            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
+
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion generarPdfGuiaRemisionReserva -GuiasderemisionController: ', [
                 'message' => $e->getMessage(),
