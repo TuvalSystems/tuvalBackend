@@ -888,11 +888,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido)
     {
-        return GpGuiaRemisionTransferencia::where([
-            ['guia_remision_id', $$idGuiaRemision],
-            ['pedido', $pedido],
-            ['codigo', trim((string) $docGp)],
-        ])->exists();
+         return GpGuiaRemisionTransferencia::query()
+        ->where('guia_remision_id', $idGuiaRemision) // ← sin doble $
+        ->where('pedido', $pedido)
+        ->where('codigo', trim((string) $docGp))
+        ->exists();
     }
 
     public function hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido)
