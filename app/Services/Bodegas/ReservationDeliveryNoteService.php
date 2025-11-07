@@ -381,12 +381,12 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             $arrayParams[] = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user);
             $processed = $this->validateExistenceReservationGuideAdjustment($guia, $arrayParams, $group['items'], $quote);
         }
-        // if (!$processed) {
-        //     throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
+        if (!$processed) {
+            throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
 
-        // }
-        // $guia->update(['estado' => 'enviada']);
-        // $guia->fresh();
+        }
+        $guia->update(['estado' => 'enviada']);
+        $guia->fresh();
         return ['guia' => $guia, 'detalle' => $details, 'groups' => $groups, 'params' => $arrayParams, 'processed' => $processed];
     }
 
