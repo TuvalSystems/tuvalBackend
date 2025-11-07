@@ -376,10 +376,9 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         if (empty($groups)) {
             throw new \RuntimeException('No hay items para procesar el ajuste de la guía de reserva');
         }
-        $arrayParams = [];
         foreach ($groups as $quote => $group) {
-            $arrayParams[] = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user);
-            $processed = $this->validateExistenceReservationGuideAdjustment($guia, $arrayParams, $group['items'], $quote);
+            $params = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user);
+            $processed = $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote);
         }
         if (!$processed) {
             throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
@@ -472,6 +471,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         return GpGuiaRemisionReservaMovimiento::firstOrCreate([
             'guia_id' => $guia->id,
             'cotizacion' => $quote,
+            'id_movimiento' => data_get($responseApi, 'idMovimiento'),
             'codigo' => trim((string) data_get($responseApi, 'docGp', '')),
         ]);
     }

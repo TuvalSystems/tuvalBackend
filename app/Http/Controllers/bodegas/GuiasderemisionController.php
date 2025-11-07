@@ -1395,7 +1395,7 @@ class GuiasderemisionController extends Controller
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
             ]);
             $response = $this->reservedDeliveryNoteService->dispatchGuideReservation($validated);
-            return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
+            return $this->successResponse('Guia de reserva Despachada', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
         } catch (\Throwable $e) {
