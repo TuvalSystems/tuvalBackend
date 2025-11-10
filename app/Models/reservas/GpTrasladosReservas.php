@@ -52,7 +52,7 @@ class GpTrasladosReservas extends Model
     }
 
     public function detalleguia(){
-        return $this->hasOne(GpGuiaRemisionReservaDetalle::class, 'traslado_id');
+        return $this->hasMany(GpGuiaRemisionReservaDetalle::class, 'traslado_id');
     }
 
 
