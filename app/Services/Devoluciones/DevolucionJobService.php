@@ -9,11 +9,13 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
+use App\Models\GpIngreso;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Models\GpUsuario;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -24,6 +26,7 @@ use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -331,7 +334,8 @@ class DevolucionJobService
 
     public function generarDevolucionVenta($devolucion)
     {
-        $userId = 'adminWeb';
+        $userIngreso = $this->getUserIngreso($devolucion);
+        $userId =filled($userIngreso) ? trim($userIngreso) : 'adminWeb';
 
         // Obtener el pedido y los detalles
         $pedido = GpPedido::find($devolucion->pedido_id);
@@ -376,7 +380,7 @@ class DevolucionJobService
         // 🚀 Llamada al servicio
         $res1 = $this->apiGpReturnsIntegrationService->generateSalesReturn($params);
         if ($res1['success'] === false) {
-            Log::error("Error al realizar el Ajuste de la devolucion ",[
+            Log::error("Error al realizar el Ajuste de la devolucion ", [
                 'res1' => $res1
             ]);
             $devolucion->AJ_VTA_MENSAJE = $res1['message'];
@@ -391,7 +395,13 @@ class DevolucionJobService
         $devolucion->save();
     }
 
-    public function createDocumentDevolution($devolucion, $responseApi, $userId){
+    public function getUserIngreso(GpDevoluciones $devolucion): ?string
+    {
+        return GpIngreso::where('tipo', 'devolucion')->where('documento', $devolucion->devolucion)->value('USERID');
+    }
+
+    public function createDocumentDevolution($devolucion, $responseApi, $userId)
+    {
         $devDoc = new GpDevolucionDocument();
         $devDoc->devolucion_id = $devolucion->id;
         $devDoc->devolucion = $devolucion->devolucion;

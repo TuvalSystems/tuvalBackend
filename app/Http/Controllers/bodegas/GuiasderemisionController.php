@@ -429,7 +429,7 @@ class GuiasderemisionController extends Controller
             DB::beginTransaction();
             $this->deliveryNoteService->mapAssigmentNumberGuideRemision();
             DB::commit();
-            return $this->buildSuccessResponse('Guias de remision actualizadas',  200);
+            return $this->buildSuccessResponse('Guias de remision actualizadas', 200);
         } catch (\Throwable $e) {
             Log::error('Error en la funcion de checkGuiaRemision', [
                 'error' => $e->getMessage(),
@@ -568,32 +568,32 @@ class GuiasderemisionController extends Controller
         $user = Auth::user();
 
         try {
-            return DB::transaction(function () use ($user, $id) {
+            // return DB::transaction(function () use ($user, $id) {
                 $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
 
                 // Re-chequea después del lock (otro proceso pudo enviarla)
                 if ($guia->estado === 'enviada') {
                     return $this->buildSuccessResponse('Guía de remisión despachada por otro usuario', 200);
                 }
-                $detalle = GpGuiaRemisionDetalle::where('guia_remision_id',  $guia->id)->get();
+                $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
                 $response = null;
 
                 switch ($guia->tipo) {
                     case 'transferencia':
-                        $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle,  $user);
+                        $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle, $user);
                         break;
                     case 'despacho':
-                        $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle,  $user);
+                        $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle, $user);
 
                         break;
                     case 'reposicion':
-                        $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle,  $user);
+                        $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle, $user);
                         break;
                     default:
                         throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
                 }
                 return $response;
-            });
+            // });
         } catch (\Throwable $e) {
             Log::error('Error en despachar guia de remision (despacharguia)', [
                 'error' => $e->getMessage(),
@@ -686,8 +686,8 @@ class GuiasderemisionController extends Controller
             Log::channel('soap_errors')->info(
                 'Respuesta al generar la guía de despacho',
                 [
-                    'Guia'      => $guia->id,
-                    'Respuesta' =>  $respuesta,
+                    'Guia' => $guia->id,
+                    'Respuesta' => $respuesta,
                 ]
             );
             if ($respuesta == 'Error') {
@@ -770,7 +770,7 @@ class GuiasderemisionController extends Controller
 
     public function recibirguiareposicion($data): Response|Application|ResponseFactory
     {
-        ini_set('max_execution_time', -1);
+        // ini_set('max_execution_time', -1);
         set_time_limit(-1);
         ini_set('memory_limit', '-1');
 
@@ -1272,6 +1272,33 @@ class GuiasderemisionController extends Controller
             $estado = $request->get('estado');
             $pedido = $this->deliveryNoteService->getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado);
             return $this->successResponse('Información obtenida', $pedido, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /** proceso para reajuste de guia de transferencias  */
+    public function procesarReajusteGuiaTransferencia(Request $request)
+    {
+        try {
+            $id = $request->get('guiaId');
+            $pedido = $request->get('pedido');
+            $guia = $this->deliveryNoteService->processTransferGuideAdjustment($id, $pedido);
+            return $this->successResponse('Reajuste procesado exitosamente para la guia de transferencia', $guia, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /** proceso para reajuste de guia de reposiciones */
+
+    public function procesarReajusteGuiaReposicion(Request $request)
+    {
+        try {
+            $id = $request->get('guiaId');
+            $documento = $request->get('documento');
+            $guia = $this->deliveryNoteService->processRepositionGuideAdjustment($id, $documento);
+            return $this->successResponse('Reajuste procesado exitosamente para la guia de reposición', $guia, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }

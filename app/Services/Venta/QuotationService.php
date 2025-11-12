@@ -597,7 +597,7 @@ class QuotationService implements QuotationServiceInterface
 
             foreach ($detalle as $det) {
                 $this->castDecimalValuesTemp($det);
-                $this->loadProviderDetailQuotation($data['id'], $det,  $descuentoGeneral);
+                $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
             }
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             return response([
@@ -613,7 +613,7 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function loadProviderDetailQuotation($quotationId, &$detalle,  $descuentoGeneral)
+    public function loadProviderDetailQuotation($quotationId, &$detalle, $descuentoGeneral)
     {
         $margenBruto = 0;
         if ($detalle->ART_TIPO_COMPRA == 'L') {
@@ -621,7 +621,7 @@ class QuotationService implements QuotationServiceInterface
             $margenBruto = $ItemL->DATOS_ITEMS_L_MARGEN;
             $proveedores = $this->getAllProvidersQuotation($quotationId, $detalle->id);
             $detalle->proveedores = $proveedores->map(function ($prov) use ($detalle, $margenBruto, $descuentoGeneral) {
-                $prov->margen =  number_format($this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO), 4, '.', '');
+                $prov->margen = number_format($this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO), 4, '.', '');
                 $prov->CANTIDAD = $detalle->ART_DECIMAL_CANTIDAD == 0 ? (int) $prov->CANTIDAD : $prov->CANTIDAD;
                 return $prov;
             })->toArray();
@@ -717,7 +717,7 @@ class QuotationService implements QuotationServiceInterface
         $artTemp->proveedores = GpTempCartProveedores::where('id_tempcart', $artTemp->id)
             ->get()
             ->map(function ($prov) use ($artTemp) {
-                $prov->CANTIDAD = $artTemp->ART_DECIMAL_CANTIDAD == 0 ? (int) $prov->CANTIDAD : $prov->CANTIDAD;
+                $prov->CANTIDAD = round($prov->CANTIDAD, $artTemp->ART_DECIMAL_CANTIDAD);
                 return $prov;
             })->toArray();
     }
@@ -728,7 +728,7 @@ class QuotationService implements QuotationServiceInterface
             ->get()
             ->map(function ($st) use ($artTemp) {
                 $st->STO_ART_STOCK_DISPONIBLE = $artTemp->ART_DECIMAL_CANTIDAD == 0 ? (int) $st->STO_ART_STOCK_DISPONIBLE : $st->STO_ART_STOCK_DISPONIBLE;
-                $st->seleccionado = (int) $st->seleccionado;
+                $st->seleccionado = round($st->seleccionado, $artTemp->ART_DECIMAL_CANTIDAD);
                 return $st;
             })->toArray();
     }
@@ -802,7 +802,7 @@ class QuotationService implements QuotationServiceInterface
             foreach ($article['stock'] as $st) {
                 $artSt = is_array($st) ? $st : $st->toArray();
                 $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
-                $artSt['seleccionado'] =  (int) $artSt['seleccionado'];
+                $artSt['seleccionado'] = (int) $artSt['seleccionado'];
                 $result[] = $artSt;
             }
             return $result;
@@ -849,7 +849,7 @@ class QuotationService implements QuotationServiceInterface
             $tempStock = GpTempCartStock::where('id_tempcart', $article['id'])
                 ->where('STO_ART_BODEGA', $item['STO_ART_BODEGA'])->first();
             $item['id'] = $tempStock->id;
-            $item['seleccionado'] =  (int) $tempStock->seleccionado;
+            $item['seleccionado'] = (int) $tempStock->seleccionado;
             $result[] = $item;
         }
         return $result;
@@ -1011,7 +1011,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function saveQuotationDetail($items, $cotizacionId)
     {
-        foreach ($items as  $item) {
+        foreach ($items as $item) {
             $detalle = new GpCotizacionDetalle([
                 'cotizacion_id' => $cotizacionId,
                 'ART_CODIGO' => $item['ART_CODIGO'],
@@ -1019,23 +1019,23 @@ class QuotationService implements QuotationServiceInterface
                 'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
                 'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
                 'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-                'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
+                'ART_DECIMAL_CANTIDAD' => (int) $item['ART_DECIMAL_CANTIDAD'],
                 'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
                 'ART_MARCA' => $item['ART_MARCA'],
                 'ART_MATERIAL' => $item['ART_MATERIAL'],
                 'ART_PESO' => $item['ART_PESO'],
                 'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
                 'ART_VALOR' => (float) $item['ART_VALOR'],
-                'ART_VALOR_ORIGINAL' => (float)$item['ART_VALOR_ORIGINAL'],
-                'ART_DESCUENTO' => (float)$item['ART_DESCUENTO'],
-                'ART_IVA' => (float)$item['ART_IVA'],
-                'ART_CANTIDAD' => (float)$item['ART_CANTIDAD'],
-                'ART_STOCK' => (float)$item['ART_STOCK'],
-                'ART_IMP_VTA' => (float)$item['ART_IMP_VTA'],
-                'ART_COSTO_PROMEDIO' => (float)$item['ART_COSTO_PROMEDIO'],
-                'descuento' => (float)$item['descuento'],
-                'descuento_original' => (float)$item['descuento_original'],
-                'modificador' => (float)$item['modificador'],
+                'ART_VALOR_ORIGINAL' => (float) $item['ART_VALOR_ORIGINAL'],
+                'ART_DESCUENTO' => (float) $item['ART_DESCUENTO'],
+                'ART_IVA' => (float) $item['ART_IVA'],
+                'ART_CANTIDAD' => (float) $item['ART_CANTIDAD'],
+                'ART_STOCK' => (float) $item['ART_STOCK'],
+                'ART_IMP_VTA' => (float) $item['ART_IMP_VTA'],
+                'ART_COSTO_PROMEDIO' => (float) $item['ART_COSTO_PROMEDIO'],
+                'descuento' => (float) $item['descuento'],
+                'descuento_original' => (float) $item['descuento_original'],
+                'modificador' => (float) $item['modificador'],
             ]);
             $detalle->save();
             if ($item['proveedores']) {
@@ -1059,9 +1059,9 @@ class QuotationService implements QuotationServiceInterface
                 'FECHA_ENTREGA' => $prov['FECHA_ENTREGA'],
                 'CANTIDAD' => (float) $prov['CANTIDAD'],
                 'COSTO_UNITARIO' => (float) $prov['COSTO_UNITARIO'],
-                'IMPUESTO' => (float)$prov['IMPUESTO'],
-                'TOTAL' => (float)$prov['TOTAL'],
-                'TOTALCONIMPUESTO' => (float)$prov['TOTALCONIMPUESTO'],
+                'IMPUESTO' => (float) $prov['IMPUESTO'],
+                'TOTAL' => (float) $prov['TOTAL'],
+                'TOTALCONIMPUESTO' => (float) $prov['TOTALCONIMPUESTO'],
                 'NOTA' => $prov['NOTA'],
                 'MARGEN' => $prov['MARGEN']
             ]);
@@ -1158,13 +1158,13 @@ class QuotationService implements QuotationServiceInterface
 
     public function saveProviderQuotationItemTemp($providers, $idTempCart)
     {
-        foreach ($providers as  $provider) {
+        foreach ($providers as $provider) {
             GpTempCartProveedores::create([
                 'id_tempcart' => $idTempCart,
                 'ID_PROVEEDOR' => $provider['ID_PROVEEDOR'],
                 'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', $provider['DESCRIPCION_ARTICULO'])),
                 'FECHA_ENTREGA' => $provider['FECHA_ENTREGA'],
-                'CANTIDAD' =>  $provider['CANTIDAD'],
+                'CANTIDAD' => $provider['CANTIDAD'],
                 'COSTO_UNITARIO' => (float) $provider['COSTO_UNITARIO'],
                 'IMPUESTO' => (float) $provider['IMPUESTO'],
                 'TOTAL' => (float) $provider['TOTAL'],
@@ -1187,7 +1187,7 @@ class QuotationService implements QuotationServiceInterface
     public function getSegmentosSqlServer()
     {
         try {
-            $segmentos =  $this->clienTSqlService->getListSegments();
+            $segmentos = $this->clienTSqlService->getListSegments();
             return $this->successResponse('Segmentos obtenidos correctamente', $segmentos, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
@@ -1200,7 +1200,7 @@ class QuotationService implements QuotationServiceInterface
     public function getSubSegmentosSqlServer($segmento)
     {
         try {
-            $subsegmentos =  $this->clienTSqlService->getLisSubSegmentos($segmento);
+            $subsegmentos = $this->clienTSqlService->getLisSubSegmentos($segmento);
             return $this->successResponse('Segmentos obtenidos correctamente', $subsegmentos, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
@@ -1256,7 +1256,7 @@ class QuotationService implements QuotationServiceInterface
         $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'] = isset($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) ? mb_strtoupper($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) : strtolower($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
     }
 
-    public function getParametersToSendSqlServer($data, string  $nivelPrecio)
+    public function getParametersToSendSqlServer($data, string $nivelPrecio)
     {
         $lines = str_split($data['CLI_DIRECCION'], 61);
         $line1 = $lines[0] ?? '';
@@ -1266,10 +1266,10 @@ class QuotationService implements QuotationServiceInterface
             'CLI_RUC' => $data['CLI_RUC'],
             'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
             'CLI_NOMBRE_CORTO' => $data['CLI_NOMBRE_CORTO'],
-            'CLI_CLASE' =>  'LOCAL',
+            'CLI_CLASE' => 'LOCAL',
             'CLI_COND_PAGO' => 'CONTADO',
             'CLI_DESC_COMERCIAL' => '25',
-            'CLI_NIVEL_PRECIO' =>  $nivelPrecio,
+            'CLI_NIVEL_PRECIO' => $nivelPrecio,
             'CLI_PRIORIDAD' => '1',
             'CLI_CONTACTO' => $data['CLI_CONTACTO'],
             'CLI_DIRECCION_1' => $line1,
@@ -1292,7 +1292,7 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function createClientWeb(array $data, string  $nivelPrecio)
+    public function createClientWeb(array $data, string $nivelPrecio)
     {
         $attrs = $this->getDataFormatClient($data, $nivelPrecio);
         Log::info('GpCliente creará con attrs:', $attrs);
@@ -1301,49 +1301,49 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function getDataFormatClient(array $data, string  $nivelPrecio)
+    public function getDataFormatClient(array $data, string $nivelPrecio)
     {
         $now = now()->toDateTimeString();
         return [
-            'CLI_RUC'                               => $data['CLI_RUC'],
-            'CLI_RAZON_SOCIAL'                      => $data['CLI_RAZON_SOCIAL'],
-            'CLI_NOMBRE_CORTO'                      => $data['CLI_NOMBRE_CORTO'],
-            'CLI_CLASE'                             => 'LOCAL',
-            'CLI_PRIORIDAD'                         => '1',
-            'CLI_ID_DIRECCION'                      => 'PRINCIPAL',
-            'CLI_CONTACTO'                          => $data['CLI_CONTACTO'],
-            'CLI_DIRECCION'                         => $data['CLI_DIRECCION'],
-            'CLI_CIUDAD'                            => $data['CLI_CIUDAD'],
-            'CLI_PROVINCIA'                         => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_TERRITORIO'                        => $data['CLI_TERRITORIO'],
-            'CLI_ESTADO'                            => 'ACTIVO',
-            'CLI_SUSPENDIDO'                        => 'NO',
-            'CLI_TELEFONO_1'                        => $data['CLI_TELEFONO_1'],
-            'CLI_TELEFONO_2'                        => $data['CLI_TELEFONO_2'],
-            'CLI_TELEFONO_3'                        => $data['CLI_TELEFONO_3'],
-            'CLI_TELEFONO_4'                        => $data['CLI_TELEFONO_4'],
-            'CLI_FECHA_MODIFICACION'                => $now,
-            'CLI_FECHA_CREACION'                    => $now,
-            'CLI_CORREO_ELECT_SRI'                  => $data['CLI_CORREO_ELECT_SRI'],
+            'CLI_RUC' => $data['CLI_RUC'],
+            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
+            'CLI_NOMBRE_CORTO' => $data['CLI_NOMBRE_CORTO'],
+            'CLI_CLASE' => 'LOCAL',
+            'CLI_PRIORIDAD' => '1',
+            'CLI_ID_DIRECCION' => 'PRINCIPAL',
+            'CLI_CONTACTO' => $data['CLI_CONTACTO'],
+            'CLI_DIRECCION' => $data['CLI_DIRECCION'],
+            'CLI_CIUDAD' => $data['CLI_CIUDAD'],
+            'CLI_PROVINCIA' => $data['CLI_PROVINCIA_NOMBRE'],
+            'CLI_TERRITORIO' => $data['CLI_TERRITORIO'],
+            'CLI_ESTADO' => 'ACTIVO',
+            'CLI_SUSPENDIDO' => 'NO',
+            'CLI_TELEFONO_1' => $data['CLI_TELEFONO_1'],
+            'CLI_TELEFONO_2' => $data['CLI_TELEFONO_2'],
+            'CLI_TELEFONO_3' => $data['CLI_TELEFONO_3'],
+            'CLI_TELEFONO_4' => $data['CLI_TELEFONO_4'],
+            'CLI_FECHA_MODIFICACION' => $now,
+            'CLI_FECHA_CREACION' => $now,
+            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
             'CLI_CORREO_ELECT_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'CLI_IMPUESTO'                          => env('IVA_IMPUESTO'),
-            'CLI_DIRECCION_ENVIO'                   => 'PRINCIPAL',
-            'CLI_DIRECCION_FACTURA'                 => 'PRINCIPAL',
-            'CLI_VENDEDOR'                          => $data['CLI_VENDEDOR'],
-            'CLI_DSTO_COMERCIAL'                    => 25,
-            'CLI_CONDICION_PAGO'                    => 'CONTADO',
-            'CLI_DIA_GRACIA_VTA_CREDITO'            => 0,
-            'CLI_DIA_GRACIA_CHEQUE_A_FECHA'         => 0,
-            'CLI_NIVEL_PRECIO'                      =>  $nivelPrecio,
-            'CLI_TIPO_CREDITO'                      => 'SIN CREDITO',
-            'CLI_MONTO_CREDITO'                     => 0,
-            'CLI_GRUPO_ECONOMICO'                   => '',
-            'CLI_GRUPO'                             => $data['CLI_GRUPO_NOMBRE'],
-            'CLI_SUBGRUPO'                          => $data['CLI_SUBGRUPO'] ?? '',
-            'CLI_DIA_MAXIMO_MES_FACTURACION'        => 0,
-            'CLI_FACTURA_POSTERIOR_AL_DESPACHO'    => 'NO',
-            'CLI_SEGMENTO_ID'                       => $data['CLI_SEGMENTO_ID'] ?? null,
-            'CLI_SUBSEGMENTO_ID'                    => $data['CLI_SUBSEGMENTO_ID'] ?? null,
+            'CLI_IMPUESTO' => env('IVA_IMPUESTO'),
+            'CLI_DIRECCION_ENVIO' => 'PRINCIPAL',
+            'CLI_DIRECCION_FACTURA' => 'PRINCIPAL',
+            'CLI_VENDEDOR' => $data['CLI_VENDEDOR'],
+            'CLI_DSTO_COMERCIAL' => 25,
+            'CLI_CONDICION_PAGO' => 'CONTADO',
+            'CLI_DIA_GRACIA_VTA_CREDITO' => 0,
+            'CLI_DIA_GRACIA_CHEQUE_A_FECHA' => 0,
+            'CLI_NIVEL_PRECIO' => $nivelPrecio,
+            'CLI_TIPO_CREDITO' => 'SIN CREDITO',
+            'CLI_MONTO_CREDITO' => 0,
+            'CLI_GRUPO_ECONOMICO' => '',
+            'CLI_GRUPO' => $data['CLI_GRUPO_NOMBRE'],
+            'CLI_SUBGRUPO' => $data['CLI_SUBGRUPO'] ?? '',
+            'CLI_DIA_MAXIMO_MES_FACTURACION' => 0,
+            'CLI_FACTURA_POSTERIOR_AL_DESPACHO' => 'NO',
+            'CLI_SEGMENTO_ID' => $data['CLI_SEGMENTO_ID'] ?? null,
+            'CLI_SUBSEGMENTO_ID' => $data['CLI_SUBSEGMENTO_ID'] ?? null,
         ];
     }
 
@@ -1356,20 +1356,20 @@ class QuotationService implements QuotationServiceInterface
     public function getDataFormatClientSucursal(array $data)
     {
         return [
-            'CLI_SUC_RUC'                                        => $data['CLI_RUC'],
-            'CLI_SUC_DESCRIPCION'                               => $data['CLI_RAZON_SOCIAL'],
-            'CLI_SUC_ID_DIRECCION'                              => 'PRINCIPAL',
-            'CLI_SUC_DIRECCION'                                 => $data['CLI_DIRECCION'],
-            'CLI_SUC_CONTACTO'                                  => $data['CLI_CONTACTO'],
-            'CLI_SUC_REFERENCIA'                                => $data['CLI_CONTACTO'],
-            'CLI_SUC_VENDEDOR'                                  => $data['CLI_VENDEDOR'],
-            'CLI_SUC_TERRITORIO'                                => $data['CLI_TERRITORIO'],
-            'CLI_SUC_CIUDAD'                                    => $data['CLI_CIUDAD'],
-            'CLI_SUC_PROVINCIA'                                 => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_SUC_PAIS'                                      => 'Ecuador',
-            'CLI_SUC_TELEFONO'                                  => $data['CLI_TELEFONO_1'],
-            'CLI_SUC_CORREO_ELECTRONICO_SRI'                    => $data['CLI_CORREO_ELECT_SRI'],
-            'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA'   => $data['CLI_CORREO_ELECT_SRI'],
+            'CLI_SUC_RUC' => $data['CLI_RUC'],
+            'CLI_SUC_DESCRIPCION' => $data['CLI_RAZON_SOCIAL'],
+            'CLI_SUC_ID_DIRECCION' => 'PRINCIPAL',
+            'CLI_SUC_DIRECCION' => $data['CLI_DIRECCION'],
+            'CLI_SUC_CONTACTO' => $data['CLI_CONTACTO'],
+            'CLI_SUC_REFERENCIA' => $data['CLI_CONTACTO'],
+            'CLI_SUC_VENDEDOR' => $data['CLI_VENDEDOR'],
+            'CLI_SUC_TERRITORIO' => $data['CLI_TERRITORIO'],
+            'CLI_SUC_CIUDAD' => $data['CLI_CIUDAD'],
+            'CLI_SUC_PROVINCIA' => $data['CLI_PROVINCIA_NOMBRE'],
+            'CLI_SUC_PAIS' => 'Ecuador',
+            'CLI_SUC_TELEFONO' => $data['CLI_TELEFONO_1'],
+            'CLI_SUC_CORREO_ELECTRONICO_SRI' => $data['CLI_CORREO_ELECT_SRI'],
+            'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_SRI'],
         ];
     }
 
@@ -1387,7 +1387,7 @@ class QuotationService implements QuotationServiceInterface
             return 'GENERAL';
         }
         $payload = $nivelPrecioApi['data'];
-        return ((int)$payload['coTipVen'] === 1) ? 'TIENDA' : 'GENERAL';
+        return ((int) $payload['coTipVen'] === 1) ? 'TIENDA' : 'GENERAL';
     }
     public function sendToSegmentAndRucToSqlServer($data)
     {
@@ -1403,13 +1403,13 @@ class QuotationService implements QuotationServiceInterface
             ]);
             if ($hasSegment['success'] === true) {
                 return response()->json([
-                    'exists'  => true,
+                    'exists' => true,
                     'message' => 'Segmento encontrado',
                 ], 200);
             }
 
             return response()->json([
-                'exists'  => false,
+                'exists' => false,
                 'message' => 'Segmento no encontrado',
             ], 202);
         } catch (\Throwable $th) {
@@ -1443,6 +1443,6 @@ class QuotationService implements QuotationServiceInterface
             'articulo' => $articulo,
             'bodega' => $bodega
         ];
-        return  $this->stockSqlService->consultStockWarehouseSql($params);
+        return $this->stockSqlService->consultStockWarehouseSql($params);
     }
 }

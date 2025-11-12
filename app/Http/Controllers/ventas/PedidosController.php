@@ -35,6 +35,8 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use DomainException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -65,21 +67,55 @@ class PedidosController extends Controller
     //en proceso de mejora
     public function guardarpedido(Request $request)
     {
-        try {
-            $orderData = $request->all();
-            $user = Auth::user();
-            $pedido = DB::transaction(function () use ($orderData, $user) {
-                return $this->orderService->storeOrder($orderData, $user);
-            });
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
-        } catch (\Throwable $e) {
-            Log::error('Error in storeOrder (guardar pedido )', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
+        $orderData = $request->all();
+        $user = Auth::user();
+        $maxRetries = 3;
+        $attempt = 0;
+        while (true) {
+            try {
+                $pedido = DB::transaction(function () use ($orderData, $user) {
+                    return $this->orderService->storeOrder($orderData, $user);
+                }, 5);
+                return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
+            } catch (QueryException $e) {
+                $mysqlCode = $e->errorInfo[1] ?? null;
+                // ¿es un error de concurrencia y aún puedo reintentar?
+                if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
+                    $attempt++;
+
+                    Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
+                        'attempt' => $attempt,
+                        'mysqlCode' => $mysqlCode,
+                        'msg' => $e->getMessage(),
+                    ]);
+
+                    // pasa al siguiente ciclo del while
+                    continue;
+                }
+
+                // si no es 1213/1205 o ya superó los reintentos, lo tratamos como error real
+                Log::error('Error in storeOrder (guardar pedido)', [
+                    'error' => $e->getMessage(),
+                    'line' => $e->getLine(),
+                    'file' => $e->getFile(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
+
+            } catch (DomainException $e) {
+                // 👈 este es el que puede lanzar tu flujo de stock
+                return $this->buildErrorResponse($e->getMessage(), 422);
+            } catch (\Throwable $e) {
+                // cualquier otra excepción que no sea de SQL
+                Log::error('Error in storeOrder (guardar pedido)', [
+                    'error' => $e->getMessage(),
+                    'line' => $e->getLine(),
+                    'file' => $e->getFile(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                return $this->buildErrorResponse($e->getMessage(), 500);
+            }
         }
     }
 

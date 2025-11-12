@@ -11,4 +11,10 @@ interface DeliveryNoteParamsBuilderInterface
 
     public function buildParamsHeaderTransfer(GpGuiaRemision $guia, string $documento, array $items, GpUsuario $user): array;
     public function buildParameterHeaderAndDetailDispatchShipment(GpGuiaRemision $guia, string $documento, string $newOrder, array $items, $user): array;
+
+
+
+    public function buildingTransferGuideAdjustmentPayload($params);
+    public function buildingRepositionGuideAdjustmentPayload($params);
+      public function buildingDispatchGuideAdjustmentPayload($params);
 }

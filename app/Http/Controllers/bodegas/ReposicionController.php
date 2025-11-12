@@ -18,7 +18,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
-
+use Illuminate\Support\Facades\Log;
 
 class ReposicionController extends Controller
 {
@@ -247,35 +247,73 @@ class ReposicionController extends Controller
         ini_set('max_execution_time', -1);
         set_time_limit(-1);
         ini_set('memory_limit', '-1');
-
-        $guia = GpGuiaRemision::where('id', $id)
-            ->first();
-
-        $webservices = new WebserviceController();
-
-        $detalle = GpGuiaRemisionDetalle::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
-            ->where('guia_remision_id', $guia->id)
-            ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
-            ->get();
-
-        foreach ($detalle as $item) {
-
-            $item->pendiente = number_format($item->GUI_REM_CANTIDAD - $item->recibido, 2, '.', '');
-            $item->recibido = $item->pendiente;
-
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Bodega' => $guia->bodega_destino,
-                'Item' => $item->GUI_REM_CODI_INTERNO,
-            );
-            $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
-            $item->compartimientos = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'];
-            $item->compartimiento = null;
+        try {
+            $detalle = $this->transferRepositionService->getDetailReceivedReposition($id);
+            return response([
+                'success' => true,
+                'detalle' => $detalle,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al obtener el detalle del recibo de reposición: ', [
+                'guideId' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+            ]);
+            return $this->errorResponse('Error al obtener el detalle del recibo de reposición', $e->getMessage(), 500);
         }
 
-        return response([
-            'success' => true,
-            'detalle' => $detalle,
-        ]);
+    }
+
+    //  public function detallereciboreposicion($id)
+    // {
+
+    //     $guia = GpGuiaRemision::where('id', $id)
+    //         ->first();
+
+    //     $webservices = new WebserviceController();
+
+    //     $detalle = GpGuiaRemisionDetalle::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
+    //         ->where('guia_remision_id', $guia->id)
+    //         ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
+    //         ->get();
+
+    //     foreach ($detalle as $item) {
+
+    //         $item->pendiente = number_format($item->GUI_REM_CANTIDAD - $item->recibido, 2, '.', '');
+    //         $item->recibido = $item->pendiente;
+
+    //         $parameters = array(
+    //             'IDCompania' => env('ID_COMPANIA'),
+    //             'Bodega' => $guia->bodega_destino,
+    //             'Item' => $item->GUI_REM_CODI_INTERNO,
+    //         );
+    //         $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
+    //         $item->compartimientos = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'];
+    //         $item->compartimiento = null;
+    //     }
+
+    //     return response([
+    //         'success' => true,
+    //         'detalle' => $detalle,
+    //     ]);
+    // }
+
+
+    public function procesarRecibirReposicionWeb($id)
+    {
+        ini_set('max_execution_time', -1);
+        try {
+            $guia = $this->transferRepositionService->processReceivedRepositionWeb($id);
+            return $this->successResponse('Recibo de reposición procesado con éxito', $guia, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al recibir el recibo de reposición: ', [
+                'guideId' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+            ]);
+            return $this->errorResponse('Error al recibir la reposicion', $e->getMessage(), 500);
+        }
     }
 }

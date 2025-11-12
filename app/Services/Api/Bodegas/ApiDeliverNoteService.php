@@ -6,7 +6,7 @@ use App\Services\Api\ApiGpService;
 
 
 
-class ApiDeliverNoteService  extends ApiGpService
+class ApiDeliverNoteService extends ApiGpService
 {
 
     public function createTransferGuideVta(array $params)
@@ -14,9 +14,9 @@ class ApiDeliverNoteService  extends ApiGpService
         return $this->httpClient->makeRequest($this->endpoints["guia.trfv.movimientos.generar"], 'POST', $params, 'json');
     }
 
-     public function getAccessCodeByNumberDocDelivery(array $params)
+    public function getAccessCodeByNumberDocDelivery(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.obtener.clave_acceso"], 'GET', $params );
+        return $this->httpClient->makeRequest($this->endpoints["guia.obtener.clave_acceso"], 'GET', $params);
     }
 
     public function createReplacementShipmentGuideVta(array $params)
@@ -31,7 +31,21 @@ class ApiDeliverNoteService  extends ApiGpService
 
 
 
-    public function checkAdjustmentGuideDispatch(array $params){
+    public function checkDispatchGuideAdjustment(array $params)
+    {
         return $this->httpClient->makeRequest($this->endpoints["guia.despacho.check.ajuste"], 'GET', $params, 'json');
     }
+
+    public function checkTransferGuideAdjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.transferencia.check.ajuste"], 'GET', $params, 'json');
+    }
+
+    public function checkRepositionGuideAdjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reposicion.check.ajuste"], 'GET', $params, 'json');
+    }
+
+
+
 }

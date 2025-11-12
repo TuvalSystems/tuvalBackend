@@ -36,75 +36,77 @@ return [
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'company' => env('ID_COMPANIA'),
         'endpoints' => [
-            'validar_usuario'                            => 'api/validar-usuario',
-            'consultar_transferencia_cabecera'           => 'api/consultar-cabecera-transferencia',
-            'consultar_transferencia_detalle'            => 'api/consultar-detalle-transferencia',
-            'consultar_sucursales_cliente'               => 'api/consultar-sucursales-clientes',
-            'consultar_coordenadas'                      => 'api/consultar-listado-coordenadas',
-            'consultar_stock_bodega'                     => 'api/consultar-stock-bodega',
-            'consultar_stock_bodega_async'               => 'api/consultar-stock-bodega-lotes',
-            'consultar_articulo_bodega_compartimento'    => 'api/consultar-stock-articulo-bodega-compartimento',
-            'transferencia_compartimento'                => 'api/transferencia-compartimento',
+            'validar_usuario' => 'api/validar-usuario',
+            'consultar_transferencia_cabecera' => 'api/consultar-cabecera-transferencia',
+            'consultar_transferencia_detalle' => 'api/consultar-detalle-transferencia',
+            'consultar_sucursales_cliente' => 'api/consultar-sucursales-clientes',
+            'consultar_coordenadas' => 'api/consultar-listado-coordenadas',
+            'consultar_stock_bodega' => 'api/consultar-stock-bodega',
+            'consultar_stock_bodega_async' => 'api/consultar-stock-bodega-lotes',
+            'consultar_articulo_bodega_compartimento' => 'api/consultar-stock-articulo-bodega-compartimento',
+            'transferencia_compartimento' => 'api/transferencia-compartimento',
 
             //devoluciones - recibir devolucion
-            'generar_nota_credito'                       => 'api/devoluciones/generar-nota-credito',
-            'respuesta_nota_credito'                     => 'api/devoluciones/respuesta-nota-credito',
-            'generar_devolucion_venta'                   => 'api/devoluciones/generar-devolucion-venta',
-            'consultar_item_compartimento'               => 'api/devoluciones/consulta-item-compartimento-bin',
-            'consultar_grupo_economico_cliente'          => 'api/devoluciones/consultar-grupo-economico-cliente',
+            'generar_nota_credito' => 'api/devoluciones/generar-nota-credito',
+            'respuesta_nota_credito' => 'api/devoluciones/respuesta-nota-credito',
+            'generar_devolucion_venta' => 'api/devoluciones/generar-devolucion-venta',
+            'consultar_item_compartimento' => 'api/devoluciones/consulta-item-compartimento-bin',
+            'consultar_grupo_economico_cliente' => 'api/devoluciones/consultar-grupo-economico-cliente',
 
             //cobros
-            'consultar_cupo_disponible_cliente'          => 'api/cobros/consultar-cupo-disponible-cliente',
-            'consulta_documentos_vencidos_cliente'       => 'api/cobros/consultar-documentos-vencidos-cliente',
-            'consulta_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-documentos-sin-soporte-cliente',
-            'consulta_lista_documentos_vencidos_cliente'       => 'api/cobros/consultar-lista-documentos-vencidos-cliente',
-            'consulta_lista_documentos_sin_soporte_cliente'    => 'api/cobros/consultar-lista-documentos-sin-soporte-cliente',
+            'consultar_cupo_disponible_cliente' => 'api/cobros/consultar-cupo-disponible-cliente',
+            'consulta_documentos_vencidos_cliente' => 'api/cobros/consultar-documentos-vencidos-cliente',
+            'consulta_documentos_sin_soporte_cliente' => 'api/cobros/consultar-documentos-sin-soporte-cliente',
+            'consulta_lista_documentos_vencidos_cliente' => 'api/cobros/consultar-lista-documentos-vencidos-cliente',
+            'consulta_lista_documentos_sin_soporte_cliente' => 'api/cobros/consultar-lista-documentos-sin-soporte-cliente',
 
             //cotizaciones
-            'guardar_cotizacion_recordatorio'            => 'api/cotizaciones/guardar-cotizacion-recordatorio',
-            'lista_items_alternativos'                   => 'api/cotizaciones/lista-items-alternativos',
+            'guardar_cotizacion_recordatorio' => 'api/cotizaciones/guardar-cotizacion-recordatorio',
+            'lista_items_alternativos' => 'api/cotizaciones/lista-items-alternativos',
 
 
             //transacciones
-            'validar_recibo_item_l'                     => 'api/transacciones/validar-generacion-documento-recibo-compra-l',
-            'eliminar_recibo_item_l'                    => 'api/transacciones/eliminar-documento-recibo-compra-l',
-            'guardar_recibo_item_l'                     => 'api/transacciones/guardar-documento-recibo-compra-l',
-            'generar_recibo_item_l'                     => 'api/transacciones/generar-documento-recibo-compra-l',
-            'respuesta_recibo_item_l'                   => 'api/transacciones/respuesta-documento-recibo-compra-l',
+            'validar_recibo_item_l' => 'api/transacciones/validar-generacion-documento-recibo-compra-l',
+            'eliminar_recibo_item_l' => 'api/transacciones/eliminar-documento-recibo-compra-l',
+            'guardar_recibo_item_l' => 'api/transacciones/guardar-documento-recibo-compra-l',
+            'generar_recibo_item_l' => 'api/transacciones/generar-documento-recibo-compra-l',
+            'respuesta_recibo_item_l' => 'api/transacciones/respuesta-documento-recibo-compra-l',
 
             //transacciones - facturacion
-            'guarda_documento_factura_vta'              => 'api/transacciones/guardar-documento-factura-vta',
-            'respuesta_documento_factura_vta'           => 'api/transacciones/respuesta-documento-factura-vta',
-            'eliminar_documento_factura_vta'            => 'api/transacciones/eliminar-documento-factura-vta',
+            'guarda_documento_factura_vta' => 'api/transacciones/guardar-documento-factura-vta',
+            'respuesta_documento_factura_vta' => 'api/transacciones/respuesta-documento-factura-vta',
+            'eliminar_documento_factura_vta' => 'api/transacciones/eliminar-documento-factura-vta',
 
 
             //cliente
-            'obtener_tipo_vendedor'                     => 'api/cliente/obtener-tipo-vendedor',
-            'obtener_segmento_cliente'                  => 'api/cliente/obtener-segmento-cliente',
+            'obtener_tipo_vendedor' => 'api/cliente/obtener-tipo-vendedor',
+            'obtener_segmento_cliente' => 'api/cliente/obtener-segmento-cliente',
 
             // guia de remision - despacho
-            'guia.trfv.movimientos.generar'             => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
-            'guia.reposicion.movimiento.generar'        => 'api/inventario/guardar-generar-movimiento-reposicion',
-            'guia.despacho.movimiento.generar'          => 'api/inventario/guardar-generar-movimiento-despacho',
-            'guia.obtener.clave_acceso'                 => 'api/inventario/guia-remision-obtener-claveacceso',
+            'guia.trfv.movimientos.generar' => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
+            'guia.reposicion.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-reposicion',
+            'guia.despacho.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-despacho',
+            'guia.obtener.clave_acceso' => 'api/inventario/guia-remision-obtener-claveacceso',
 
             //guias de remision correcciones procesos
-            'guia.despacho.check.ajuste'                => 'api/inventario/validar-existencia-guia-despacho'
+            'guia.despacho.check.ajuste' => 'api/inventario/validar-existencia-guia-despacho',
+            'guia.transferencia.check.ajuste' => 'api/inventario/validar-existencia-guia-transferencia',
+            'guia.reposicion.check.ajuste' => 'api/inventario/validar-existencia-guia-reposicion'
         ],
     ],
     'api_sales' => [
         'url' => env('API_SALES_URL'),
-        'timeout' => env('API_GP_TIMEOUT',  150),
+        'timeout' => env('API_GP_TIMEOUT', 150),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'endpoints' => [
-            'obtener_clave_acceso'            => 'api/obtener-clave-acceso',
-            'anular_comprobante_gp'           => 'api/anularfactura',
-            'actualizar_estado_factura'       => 'api/actualizar-estado-factura',
-            'obtener_datos_factura'           => 'api/obtener-datos-factura',
+            'obtener_clave_acceso' => 'api/obtener-clave-acceso',
+            'anular_comprobante_gp' => 'api/anularfactura',
+            'actualizar_estado_factura' => 'api/actualizar-estado-factura',
+            'obtener_datos_factura' => 'api/obtener-datos-factura',
 
             //validar si tiene pago o no la factura para anular
-            'validar_pago_factura'            => 'api/validar-pago-factura',
+            'validar_pago_factura' => 'api/validar-pago-factura',
 
         ],
     ],
