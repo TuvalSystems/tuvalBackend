@@ -348,7 +348,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('seleccionado', '>', 0)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'cantidad_reserva' => DB::raw('seleccionado'),
+                'cantidad_reservada' => DB::raw('seleccionado'),
                 'updated_at' => now(),
             ]);
         Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' para cotización ID {$quotationId}");
@@ -366,7 +366,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('STO_ART_BODEGA', $warehouse)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'cantidad_reserva' => DB::raw('seleccionado'),
+                'cantidad_reservada' => DB::raw('seleccionado'),
                 'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
 
@@ -376,7 +376,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('STO_ART_BODEGA', '!=', $warehouse)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'cantidad_reserva' => DB::raw('seleccionado'),
+                'cantidad_reservada' => DB::raw('seleccionado'),
                 'cantidad_traslado' => DB::raw('seleccionado'),
                 'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
@@ -1288,7 +1288,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 'art_plan_umedida',
                 'recibido',
             ])
-            ->orderBy('id')->get()->filter(fn ($item) => $item->pending_received > 0)->values(); 
+            ->orderBy('id')->get()->filter(fn ($item) => $item->pending_received > 0)->values();
     }
 
 
