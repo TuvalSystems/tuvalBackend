@@ -1288,7 +1288,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 'art_plan_umedida',
                 'recibido',
             ])
-            ->orderBy('id')->get();
+            ->orderBy('id')->get()->filter(fn ($item) => $item->pending_received > 0)->values(); 
     }
 
 

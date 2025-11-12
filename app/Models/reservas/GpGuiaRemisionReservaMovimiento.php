@@ -12,6 +12,7 @@ class GpGuiaRemisionReservaMovimiento extends Model
     protected $fillable = [
         'guia_id',
         'id_movimiento',
+        'tipo_movimiento',
         'cotizacion',
         'codigo'
     ];
