@@ -277,7 +277,7 @@ class GuiasderemisionController extends Controller
         $guiaderemision->GUI_REM_BODEGA = $bodega['BOD_DESCRIPCION'];
         $guiaderemision->GUI_REM_ESTABLECIMIENTO = $bodega['PTO_VTA_ID'];
         $guiaderemision->GUI_REM_PTO_EMISION = '001';
-        $guiaderemision->GUI_REM_SECUENCIAL = $this->getsecuencial($bodega['PTO_VTA_ID'], $guiaderemision->GUI_REM_PTO_EMISION);
+        $guiaderemision->GUI_REM_SECUENCIAL = $this->deliveryNoteService->getSecuencialCommon($bodega['PTO_VTA_ID'], $guiaderemision->GUI_REM_PTO_EMISION);
         $guiaderemision->GUI_REM_GUIA_REMISION = $guiaderemision->GUI_REM_ESTABLECIMIENTO . '-' . $guiaderemision->GUI_REM_PTO_EMISION . '-' . $guiaderemision->GUI_REM_SECUENCIAL;
         $guiaderemision->GUI_REM_DIRECCION_PARTIDA = $bodega['PTO_VTA_DIRECCION_1'] . ' ' . $bodega['PTO_VTA_DIRECCION_2'];
         $guiaderemision->GUI_REM_RAZON_SOCIAL_TRANSPORTISTA = $datosguia['GUI_REM_RAZON_SOCIAL_TRANSPORTISTA'];
@@ -316,34 +316,7 @@ class GuiasderemisionController extends Controller
         return $guiaderemision;
     }
 
-    public function getsecuencial($GUI_REM_ESTABLECIMIENTO, $GUI_REM_PTO_EMISION): string
-    {
-        $ultima = GpGuiaRemision::where('GUI_REM_ESTABLECIMIENTO', $GUI_REM_ESTABLECIMIENTO)
-            ->where('GUI_REM_PTO_EMISION', $GUI_REM_PTO_EMISION)
-            ->orderBy('GUI_REM_SECUENCIAL', 'DESC')
-            ->first();
 
-        if (!$ultima) {
-            $ultima = new stdClass();
-
-            $ultima->GUI_REM_SECUENCIAL = match ($GUI_REM_ESTABLECIMIENTO) {
-                '006' => env('SECUENCIAL_GUIA_INMACONSA'),
-                '005' => env('SECUENCIAL_GUIA_CALIFORNIA'),
-                '008' => env('SECUENCIAL_GUIA_CUENCA'),
-                '009' => env('SECUENCIAL_GUIA_MANTA'),
-                '010' => env('SECUENCIAL_GUIA_SANTO_DOMINGO'),
-                '011' => env('SECUENCIAL_GUIA_VIA_A_DAULE'),
-                '012' => env('SECUENCIAL_GUIA_DURAN'),
-                '013' => env('SECUENCIAL_GUIA_QUITO_NORTE'),
-                '014' => env('SECUENCIAL_GUIA_QUITO_SUR'),
-                default => '000000',
-            };
-        }
-
-        $numero = (int) $ultima->GUI_REM_SECUENCIAL;
-
-        return str_pad($numero + 1, 9, "0", STR_PAD_LEFT);
-    }
 
     public function getguiaremision(GpGuiaRemision $guiaderemision)
     {

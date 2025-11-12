@@ -44,6 +44,18 @@ interface InventoryReservationServiceInterface
     public function fetchVehicles();
     public function fetchTransportistas($vehicleId);
 
-     public function fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
+    public function fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
+
+    /**
+     *
+     * Proceso para recibir reservas
+     *
+     */
+
+    public function paginateTransfersToReceive(string $ptoVta, int $perpage = 10, ?string $search = null, string $sortBy = 'created_at', string $sortOrder = 'desc');
+    public function getTransferToReceiveDetails(int $id);
+
+    public function printOrderStorageReceivedTranfered(array $payload);
+    public function receiveItemsFromTransferred(int $guiaId, array $items);
 
 }

@@ -17,6 +17,7 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'bodegaDestino' => $guia->bodega_destino,
             'observacion' => $guia->GUI_REM_OBSERVACION,
             'usuario' => $user->USERID ?? 'adminWeb',
+            'numTranferencia' => '',
             'idGuiaRemision' => $guia->id,
             'guiaRemision' => $guia->GUI_REM_GUIA_REMISION
         ];

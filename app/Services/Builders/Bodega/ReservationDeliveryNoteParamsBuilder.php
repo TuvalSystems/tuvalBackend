@@ -139,6 +139,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'bodegaDestino' => $guia->bodega_destino,
             'observacion' => preg_replace('/\s+/', ' ', $guia->observacion),
             'usuario' => $user,
+            'numTranferencia' => '',
             'idGuiaRemision' => $guia->id,
             'guiaRemision' => $guia->numero_guia
         ];

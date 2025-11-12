@@ -407,7 +407,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function validateExistenceReservationGuideAdjustment(GpGuiaRemisionReserva $guia, array $params, array $groupItems, string $quote): bool
     {
-        $already            = false;
         $cabecera           = data_get($params, 'cabecera', []);
         $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera);
         $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
@@ -454,6 +453,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     {
         return GpGuiaRemisionReservaMovimiento::query()
             ->where('guia_id', $guiaId)
+            ->where('tipo_movimiento', 'TRC')
             ->where('cotizacion', $quote)
             ->where('codigo', trim((string) $docGp))
             ->exists();
@@ -470,6 +470,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     {
         return GpGuiaRemisionReservaMovimiento::firstOrCreate([
             'guia_id' => $guia->id,
+            'tipo_movimiento' => 'TRC',
             'cotizacion' => $quote,
             'id_movimiento' => data_get($responseApi, 'idMovimiento'),
             'codigo' => trim((string) data_get($responseApi, 'docGp', '')),

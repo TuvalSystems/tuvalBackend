@@ -89,17 +89,23 @@ return [
             'guia.trfv.movimientos.generar' => 'api/inventario/guardar-generar-movimiento-transferencia-venta',
             'guia.reposicion.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-reposicion',
             'guia.despacho.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-despacho',
-            'guia.reserva.movimiento.generar' => 'api/inventario/guardar-generar-movimiento-reserva',
+            'guia.reserva.movimiento.generar' => 'api/inventario/reservas/guardar-generar-movimiento/transferencia',
             'guia.obtener.clave_acceso' => 'api/inventario/guia-remision-obtener-claveacceso',
 
             //reservas
             'obtener_notificaciones_local'              => 'api/reservas/obtener-notificaciones-local',
 
-            //guias de remision correcciones procesos
+            //apis para validar existencia de guias de remision
             'guia.despacho.check.ajuste' => 'api/inventario/validar-existencia-guia-despacho',
             'guia.transferencia.check.ajuste' => 'api/inventario/validar-existencia-guia-transferencia',
             'guia.reposicion.check.ajuste' => 'api/inventario/validar-existencia-guia-reposicion',
-            'guia.reserva.check.ajuste' => 'api/inventario/validar-existencia-guia-reserva',
+            'guia.reserva.check.ajuste' => 'api/inventario/reservas/validar-existencia-guia',
+
+            //api para valdiar existencia de guia de remision de reserva - recibidas
+            'guia.reserva.recibido.check.ajuste' => 'api/inventario/reservas/validar-existencia-ajuste-recibir',
+
+            //recibir guias de remision
+            'guia.reserva.recibir.items' => 'api/inventario/reservas/guardar-generar-movimiento/recibir',
         ],
     ],
     'api_sales' => [

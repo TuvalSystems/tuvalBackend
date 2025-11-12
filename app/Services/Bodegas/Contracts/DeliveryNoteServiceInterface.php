@@ -36,4 +36,9 @@ interface DeliveryNoteServiceInterface
 
     public function processRepositionGuideAdjustment($id, $documento = null);
 
+
+    /** funciones common */
+
+     public function getSecuencialCommon($establecimiento, $ptoEmision): string;
+
 }

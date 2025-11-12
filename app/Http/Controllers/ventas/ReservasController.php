@@ -416,4 +416,70 @@ class ReservasController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
+
+
+
+
+    /*** proceso de recibir traslados de reservas */
+
+    public function listaTransferenciasReservasPorRecibir(Request $request)
+    {
+        $ptoVta = $request->input('ptovta', null);
+        $perpage = $request->input('perpage', 10);
+        $search = $request->input('search', "");
+        $sortBy = $request->filled('sortBy') ? $request->input('sortBy') : 'fecha_salida';
+        $sortOrder = $request->filled('sortOrder') ? $request->input('sortOrder') : 'desc';
+        try {
+            $data = $this->reserveService->paginateTransfersToReceive($ptoVta, $perpage, $search, $sortBy, $sortOrder);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
+        }
+    }
+
+
+    public function detalleTransferenciaReservasPorRecibir(Request $request)
+    {
+        $id = $request->input('id', null);
+        try {
+            $data = $this->reserveService->getTransferToReceiveDetails($id);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
+        }
+    }
+
+    /** proceso de detalle Imprimir Orden de almacenamiento de recibir una gua de reserva */
+
+    public function imprimirOrdAlmacenamiento(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
+        ]);
+        try {
+            $data = $this->reserveService->printOrderStorageReceivedTranfered($validated);
+            return $this->buildPdfResponse($data);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
+        }
+    }
+
+
+
+    /**
+     * proceso para recibir items de una guia de reserva
+     */
+
+    public function recibirItemsGuiaReserva(Request $request)
+    {
+        $guiaId = $request->input('guiaId', null);
+        $items = $request->input('items', null);
+        try {
+            $data = $this->reserveService->receiveItemsFromTransferred($guiaId, $items);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
+
+        }
+    }
 }

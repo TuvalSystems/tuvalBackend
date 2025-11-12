@@ -55,6 +55,10 @@ class GpTrasladosReservas extends Model
         return $this->hasMany(GpGuiaRemisionReservaDetalle::class, 'traslado_id');
     }
 
+    public function reserva(){
+        return $this->belongsTo(GpReserva::class, 'reserva_id');
+    }
+
 
     public function getPendingTransferAttribute()
     {

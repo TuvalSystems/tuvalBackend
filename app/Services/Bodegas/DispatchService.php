@@ -17,7 +17,7 @@ class DispatchService implements DispatchServiceInterface
         $this->invoiceService = $invoiceService;
     }
 
-    public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc)
+    public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $query = GpGuiaRemision::select([
@@ -72,7 +72,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function transferenciasEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
+    public function transferenciasEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -129,7 +129,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function transferenciasRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
+    public function transferenciasRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -181,7 +181,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function reposicionesEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
+    public function reposicionesEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -236,7 +236,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function reposicionesRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
+    public function reposicionesRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -309,7 +309,7 @@ class DispatchService implements DispatchServiceInterface
 
     public function getAllPtoVtaReserved()
     {
-        
+
         return DB::table('gp_relacion_punto_venta_bodegas as rpv')
             ->join('gp_punto_ventas as pv', 'rpv.PTO_VTA_BOD_PUNTO_VENTA', '=', 'pv.PTO_VTA_ID')
             ->select(

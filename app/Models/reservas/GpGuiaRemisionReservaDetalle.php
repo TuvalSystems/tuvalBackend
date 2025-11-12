@@ -11,6 +11,10 @@ class GpGuiaRemisionReservaDetalle extends Model
 {
     use HasFactory;
 
+    protected $appends = ['pending_received'];
+    protected $cast = [
+        'pending_received' => 'float'
+    ];
     protected $fillable = [
         'guia_id',
         'traslado_id',
@@ -38,4 +42,13 @@ class GpGuiaRemisionReservaDetalle extends Model
     public function detallecotizacion(){
         return $this->belongsTo(GpCotizacionDetalle::class, 'detalle_id' , 'id');
     }
+
+
+    public function getpendingReceivedAttribute(): float{
+        $cant = $this->cantidad ?? 0;
+        $rec = $this->recibido ?? 0;
+        return max(0, $cant - $rec);
+    }
+
+
 }

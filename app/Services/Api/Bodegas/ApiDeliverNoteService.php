@@ -67,4 +67,17 @@ class ApiDeliverNoteService extends ApiGpService
     }
 
 
+    /** proceso de recibir guia de reserva */
+
+    public function checkReceiveGuideReservationAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["gguia.reserva.recibido.check.ajuste"], 'GET', $params, 'json');
+    }
+
+
+       public function createReceiveGuideReservationAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reserva.recibir.items"], 'POST', $params, 'json');
+    }
+
 }

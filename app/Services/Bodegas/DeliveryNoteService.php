@@ -158,7 +158,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         ]);
     }
 
-    
+
     public function decrementOriginWarehouseReservedStock($trl, $qty)
     {
         $dtP = GpPedidoDetalle::find($trl->detalle_id);
@@ -1053,5 +1053,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
 
+    public function getSecuencialCommon($establecimiento, $ptoEmision): string{
+       return $this->common->getNextGuideSequential($establecimiento,  $ptoEmision);
+    }
 
 }

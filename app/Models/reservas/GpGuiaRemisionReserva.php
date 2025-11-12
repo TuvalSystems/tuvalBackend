@@ -2,12 +2,14 @@
 
 namespace App\Models\reservas;
 
+use App\Models\GpCotizacion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class GpGuiaRemisionReserva extends Model
 {
     use HasFactory;
+    protected $appends = ['quotes'];
 
     protected $fillable = [
         'clave_acceso',
@@ -43,6 +45,22 @@ class GpGuiaRemisionReserva extends Model
 
     public function detalleGuiaReservas()
     {
-        return $this->hasMany(GpGuiaRemisionReservaDetalle::class, 'guia_remision_reserva_id', 'id');
+        return $this->hasMany(GpGuiaRemisionReservaDetalle::class, 'guia_id', 'id');
+    }
+
+    public function getQuotesAttribute(): array
+    {
+        if (!$this->relationLoaded('cotizaciones')) {
+            $this->load('cotizaciones:id,cotizacion');
+        }
+        return $this->cotizaciones->pluck('cotizacion')->unique()->values()->all();
+    }
+
+    /** relaciuib con GpCotizacion basada en el detalle de la guia tomada como pivot */
+
+    public function cotizaciones()
+    {
+        return $this->belongsToMany(GpCotizacion::class, 'gp_guia_remision_reserva_detalles', 'guia_id', 'cotizacion_id')
+            ->select(['gp_cotizacions.id', 'gp_cotizacions.cotizacion']);
     }
 }

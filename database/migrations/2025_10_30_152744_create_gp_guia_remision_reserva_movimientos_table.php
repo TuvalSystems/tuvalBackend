@@ -16,6 +16,7 @@ class CreateGpGuiaRemisionReservaMovimientosTable extends Migration
         Schema::create('gp_guia_remision_reserva_movimientos', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('guia_id')->nullable()->unsigned()->index();
+            $table->string('tipo_movimiento', 4)->nullable();
             $table->bigInteger('id_movimiento')->unsigned()->nullable();
             $table->string('cotizacion', 20)->nullable();
             $table->string('codigo', 50);
