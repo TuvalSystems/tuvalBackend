@@ -5,7 +5,6 @@ namespace App\Jobs\Venta\Reservas;
 use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;

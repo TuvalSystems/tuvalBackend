@@ -42,7 +42,7 @@ class CreateGpGuiaRemisionReservasTable extends Migration
             $table->string('num_auto_doc_sustento', 50)->nullable();
             $table->dateTime('fecha_emision_doc_sustento')->nullable();
             $table->boolean('rebajado')->nullable()->default(0);
-
+            $table->string('idempotency_key', 64)->nullable()->unique();
             $table->foreign('user_id')->references('id')->on('gp_usuarios');
             $table->timestamps();
         });

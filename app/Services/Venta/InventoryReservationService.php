@@ -1405,11 +1405,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function getMovimentsByGuiaId(int $guiaId, array $quotes)
     {
-        return GpGuiaRemisionReservaMovimiento::where('guia_id', $guiaId)->whereIn('cotizacion', $quotes)->get()->keyBy('cotizacion');
+        return GpGuiaRemisionReservaMovimiento::where('guia_id', $guiaId)->where('tipo_movimiento', 'TRC')->whereIn('cotizacion', $quotes)->get()->keyBy('cotizacion');
     }
 
 
-    public function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, $params, $items, $quote, GpUsuario $user)
+    public function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, $params, $items, $quote, GpUsuario $user): bool
     {
         $cabecera = data_get($params, 'cabecera', []);
         $pyValidate = $this->reservaBuilder->buildRecievedDeliveryNoteValidationPayload($cabecera);
@@ -1484,6 +1484,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         foreach ($items as $itm) {
             $this->updateQtyReceivedDetailGuide($itm);
             $this->updateQtyStockQuotationTransferred($guia, $itm);
+            $this->updateStatusReservation($itm);
         }
     }
 
@@ -1515,8 +1516,28 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $stockOrigen->save();
 
         // En destino sumas lo recibido a "seleccionado" (ajusta si tu modelo espera otro campo)
+        $stockDestino->cantidad_autorizada_reserva = (float) $stockDestino->cantidad_autorizada_reserva + $qty;
         $stockDestino->seleccionado = (float) $stockDestino->seleccionado + $qty;
         $stockDestino->save();
+    }
+
+    public function updateStatusReservation($itm)
+    {
+        $trasladoId = data_get($itm, 'traslado_id');
+        $tras = GpTrasladosReservas::find($trasladoId);
+        $reserva = GpReserva::find($tras->reserva_id);
+        if (!$reserva)
+            return;
+        $existePendiente = GpCotizacionDetalleStock::query()
+            ->from('gp_cotizacion_detalle_stocks as ds')
+            ->join('gp_traslados_reservas as tr', 'tr.cotizacion_id', '=', 'ds.cotizacion_id')
+            ->where('tr.reserva_id', $reserva->id)
+            ->where('ds.cantidad_traslado', '>', 0)
+            ->exists();
+         if (!$existePendiente && $reserva->estado !== 'aprobado') {
+            $reserva->update(['estado' => 'aprobado']); // GpReserva
+        }
+
     }
 
 
@@ -1536,7 +1557,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         $completa = !GpGuiaRemisionReservaDetalle::where('guia_id', $guia->id)
             ->whereColumn('recibido', '<', 'cantidad')->exists();
-
         if ($completa) {
             $guia->update(['estado' => 'recibida']);
             return true;
@@ -1546,30 +1566,25 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function sendNotificacionReceivedItems(GpGuiaRemisionReserva $guia, bool $exists, array $items, GpUsuario $userReceived): array
+    public function sendNotificacionReceivedItems(GpGuiaRemisionReserva $guia, bool $exists, array $items, GpUsuario $userReceived)
     {
-
-        $arrNotify = [];
         $idsItems = collect($items)->pluck('id')->toArray();
         $detalles = GpGuiaRemisionReservaDetalle::with(['cotizacion:id,cotizacion', 'traslado.reserva:id,user_ingreso_reserva_id'])->whereIn('id', $idsItems)->where('guia_id', $guia->id)->get()->keyBy('id');
         foreach ($items as $dt) {
             $detGuia = $detalles->get($dt['id']);
             $qtyFmt = number_format((float) $dt['recibir'], 2, '.', '');
-             $title = $exists ? 'Articulo recibido completo' : 'Articulo recibido parcial';
-            $msg  = sprintf(
-                    'Se ha recibido la cantidad de %s del artículo %s en la bodega %s (cotización %s) por parte de %s.',
-                    $qtyFmt,
-                    $detGuia->art_code,
-                    $guia->bodega_destino,
-                    $detGuia->cotizacion?->cotizacion ?? '-',
-                    $userReceived->USERID ?? '-'
+            $title = $exists ? 'Articulo recibido completo' : 'Articulo recibido parcial';
+            $msg = sprintf(
+                'Se ha recibido la cantidad de %s del artículo %s en la bodega %s (cotización %s) por parte de %s.',
+                $qtyFmt,
+                $detGuia->art_code,
+                $guia->bodega_destino,
+                $detGuia->cotizacion?->cotizacion ?? '-',
+                $userReceived->USERID ?? '-'
             );
+            /** notificacion al usuario que su item fue recibido */
             NotifyReceivedReservationsJob::dispatch($title, $msg, $detGuia->traslado->reserva->user_ingreso_reserva_id);
         }
-        return [
-            'idsItems' => $idsItems,
-            'arrNotify' => $arrNotify
-        ];
     }
 
 

@@ -476,7 +476,7 @@ class ReservasController extends Controller
         $items = $request->input('items', null);
         try {
             $data = $this->reserveService->receiveItemsFromTransferred($guiaId, $items);
-            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+            return $this->successResponse('Proceso realizado correctamente', $data, 200);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);
 

@@ -83,10 +83,10 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         } catch (\Throwable $e) {
             Log::error('Error al consultar Stock (getConsultStockOthers)', [
                 'error' => $e->getMessage(),
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
-                'data'  => $data,
+                'data' => $data,
             ]);
             return response()->json([
                 'success' => false,
@@ -106,7 +106,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             $segmento = $this->getSegmentoCliente($ruc);
             $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
 
-            $cliente->suspendido = (float)$cupoDisponible['suspendido'] ?? 0;
+            $cliente->suspendido = (float) $cupoDisponible['suspendido'] ?? 0;
             $cliente->cupo_disponible = number_format($cupoDisponible['cupoDisponibleGp'], 2, '.', ',');
             $cliente->cupo_asignado = number_format($cupoDisponible['cupoAsignado'], 2, '.', ',');
             return response([
@@ -192,9 +192,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     public function getConsultItemTransito($data): array
     {
         $articuloCodigo = data_get($data, 'articulo.ART_CODIGO');
-        $ptoVentaId     = data_get($data, 'puntodeventa_id');
+        $ptoVentaId = data_get($data, 'puntodeventa_id');
 
-        $bodegaDestino  = GpRelacionPuntoVentaBodega::query()
+        $bodegaDestino = GpRelacionPuntoVentaBodega::query()
             ->where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVentaId)
             ->value('PTO_VTA_BOD_BODEGA');
 
@@ -278,7 +278,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
         $traslados = DB::table('gp_traslados_reposicions as t')
             ->join('gp_articulos as a', 'a.ART_CODIGO', '=', 't.ART_CODIGO')
-            ->where( function ($q) {
+            ->where(function ($q) {
                 $q->whereNull('t.completado')->orWhere('t.completado', 0);
             })
             ->selectRaw(
@@ -299,17 +299,20 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->orderBy('u.bodega')
             ->get()
             ->map(function ($item) {
-                $item->reservado = (float)$item->reservado;
+                $item->reservado = (float) $item->reservado;
                 return $item;
             });
         $response2 = $this->listReservedInventoryByPendingUse();
-        // $response3 = $this->listReservedInventoryByQuotation();
-        return $response->merge($response2);
+        $response3 = $this->listReservedInventoryByTransfers();
+        return collect($response)
+            ->concat($response2)
+            ->concat($response3)
+            ->values();
     }
 
     public function listReservedInventoryByPendingUse()
     {
-        $baseQuotation  = DB::table('gp_cotizacion_detalle_stocks as st')
+        $baseQuotation = DB::table('gp_cotizacion_detalle_stocks as st')
             ->join('gp_cotizacion_detalles as d', 'd.id', 'st.detalle_id')
             ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
@@ -330,27 +333,26 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->orderBy('u.bodega')
             ->get()
             ->map(function ($item) {
-                $item->reservado = (float)$item->reservado;
+                $item->reservado = (float) $item->reservado;
                 return $item;
             });
     }
 
-    public function listReservedInventoryByQuotation()
+    public function listReservedInventoryByTransfers()
     {
-        $baseQuotation  = DB::table('gp_cotizacion_detalle_stocks as st')
+        $baseQuotation = DB::table('gp_cotizacion_detalle_stocks as st')
             ->join('gp_cotizacion_detalles as d', 'd.id', 'st.detalle_id')
             ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
-            ->where('st.cantidad_cotizada', '>', 0)
-            ->whereIn('r.estado', ['aprobado'])
+            ->where('st.cantidad_traslado', '>', 0)
+            ->whereIn('r.estado', ['traslado'])
             ->selectRaw(
                 "
             d.ART_CODIGO as codigo,
             st.STO_ART_BODEGA AS bodega,
-            st.cantidad_cotizada AS reservado,
+            st.cantidad_traslado AS reservado,
             p.cotizacion as cotizacion,
-            'cotizacion' as tipo",
-
+            'traslado_reservas' as tipo",
             );
         return DB::query()->fromSub($baseQuotation, 'u')
             ->where('u.reservado', '>', 0)
@@ -358,7 +360,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->orderBy('u.bodega')
             ->get()
             ->map(function ($item) {
-                $item->reservado = (float)$item->reservado;
+                $item->reservado = (float) $item->reservado;
                 return $item;
             });
     }

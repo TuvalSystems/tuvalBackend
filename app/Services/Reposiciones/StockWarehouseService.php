@@ -179,10 +179,10 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // 4) Reservas pendientes de uso para cotizar
         $reservasPendientes = $this->getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId);
         // 5) Reservas ya cotizadas pero si uso
-        // $reservasCotizadas = $this->getReservedStockByWarehousesToQuotation($articulo, $bodegas, $excludeQuotationId);
+        $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId);
         $out = [];
         foreach ($bodegas as $b) {
-            $out[$b] = (float) ($reservasPendientes[$b] ?? 0) + (float) ($reservasPedidos[$b] ?? 0) + (float) ($reservasTraslados[$b] ?? 0);
+            $out[$b] = (float) ($reservasPendientes[$b] ?? 0) + (float) ($reservasPedidos[$b] ?? 0) + (float) ($reservasTraslados[$b] ?? 0) + (float) ($reservasTrasladosCotizacion[$b] ?? 0);
         }
         return $out;
     }
@@ -213,7 +213,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->all();
     }
 
-    public function getReservedStockByWarehousesToQuotation($articulo, $bodegas, $excludeQuotationId = null)
+    public function getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId = null)
     {
         if (empty($bodegas))
             return [];
@@ -221,17 +221,17 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'c.id')
-            ->whereIn('r.estado', ['aprobado'])
+            ->whereIn('r.estado', ['traslado'])
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
-            ->where('st.cantidad_cotizada', '>', 0)
+            ->where('st.cantidad_traslado', '>', 0)
             ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
                 $query->where('c.id', '!=', $excludeQuotationId);
             })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
                 'c.cotizacion',
-                DB::raw('SUM(st.cantidad_cotizada) as total')
+                DB::raw('SUM(st.cantidad_traslado) as total')
             )
             ->groupBy('st.STO_ART_BODEGA', 'c.cotizacion')
             ->pluck('total', 'bodega')
