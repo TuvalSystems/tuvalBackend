@@ -138,6 +138,14 @@ return [
             'path' => storage_path('logs/sql_errors.log'),
             // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
+        'redis_log' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/redis_log.log'),
+        ],
+         'reservas_log' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/reservas_log.log'),
+        ],
     ],
 
 ];

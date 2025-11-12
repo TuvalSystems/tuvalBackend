@@ -9,6 +9,14 @@ use App\Services\Api\ApiGpService;
 class ApiDeliverNoteService extends ApiGpService
 {
 
+    public function createDeliveryNote(array $params){
+        return $this->httpClient->makeRequest($this->endpoints["guia.remision.crear"], 'POST', $params, 'json');
+    }
+
+    public function checkExistenceDeliveryNote(array $params){
+        return $this->httpClient->makeRequest($this->endpoints["guia.remision.existe"], 'GET', $params, 'json');
+    }
+
     public function createTransferGuideVta(array $params)
     {
         return $this->httpClient->makeRequest($this->endpoints["guia.trfv.movimientos.generar"], 'POST', $params, 'json');
@@ -47,5 +55,29 @@ class ApiDeliverNoteService extends ApiGpService
     }
 
 
+    public function checkReservationGuideAdjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reserva.check.ajuste"], 'GET', $params, 'json');
+    }
+
+
+    public function createReservationGuideAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reserva.movimiento.generar"], 'POST', $params, 'json');
+    }
+
+
+    /** proceso de recibir guia de reserva */
+
+    public function checkReceiveGuideReservationAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reserva.recibido.check.ajuste"], 'GET', $params, 'json');
+    }
+
+
+       public function createReceiveGuideReservationAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["guia.reserva.recibir.items"], 'POST', $params, 'json');
+    }
 
 }

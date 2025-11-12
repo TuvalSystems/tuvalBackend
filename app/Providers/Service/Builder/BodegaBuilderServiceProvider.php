@@ -3,10 +3,18 @@
 namespace App\Providers\Service\Builder;
 
 use Illuminate\Support\ServiceProvider;
+use App\Services\Builders\Venta\OrderBuilder;
+use App\Services\Builders\Venta\ReservedBuilder;
+use App\Services\Builders\Venta\QuotationBuilder;
 use App\Services\Builders\Bodega\DeliveryNoteParamsBuilder;
 use App\Services\Builders\Devolucion\DevolucionParamsBuilder;
+use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
+use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
+use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
+use App\Services\Builders\Bodega\ReservationDeliveryNoteParamsBuilder;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
+use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
 
 class BodegaBuilderServiceProvider extends ServiceProvider
 {
@@ -22,10 +30,25 @@ class BodegaBuilderServiceProvider extends ServiceProvider
             DeliveryNoteParamsBuilder::class
         );
 
-         $this->app->singleton(
+        $this->app->singleton(
             DevolucionParamsBuilderInterface::class,
             DevolucionParamsBuilder::class
         );
+
+        /** venta */
+        $this->app->singleton(
+            QuotationBuilderInterface::class,
+            QuotationBuilder::class
+        );
+
+
+        $this->app->singleton(
+            OrderBuilderInterface::class,
+            OrderBuilder::class
+        );
+
+        $this->app->singleton(ReservedBuilderInterface::class, ReservedBuilder::class);
+        $this->app->singleton(ReservationDeliveryNoteParamsBuilderInterface::class, ReservationDeliveryNoteParamsBuilder::class);
     }
 
 
@@ -33,5 +56,4 @@ class BodegaBuilderServiceProvider extends ServiceProvider
     public function boot()
     {
     }
-
 }

@@ -17,6 +17,7 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'bodegaDestino' => $guia->bodega_destino,
             'observacion' => $guia->GUI_REM_OBSERVACION,
             'usuario' => $user->USERID ?? 'adminWeb',
+            'numTranferencia' => '',
             'idGuiaRemision' => $guia->id,
             'guiaRemision' => $guia->GUI_REM_GUIA_REMISION
         ];
@@ -63,7 +64,7 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
 
     public function buildingRepositionGuideAdjustmentPayload($params)
     {
-        $payloadHeader = [
+        return  [
             'orderNumber' => data_get($params, 'pedido'),
             'origen' => data_get($params, 'bodegaOrigen'),
             'idMovimiento' => "",
@@ -71,18 +72,16 @@ class DeliveryNoteParamsBuilder implements DeliveryNoteParamsBuilderInterface
             'guiaRemision' => data_get($params, 'guiaRemision'),
 
         ];
-        return $payloadHeader;
     }
 
 
     public function buildingDispatchGuideAdjustmentPayload($params)
     {
-        $payloadHeader = [
+        return [
             'orderNumber' => data_get($params, 'pedido'),
             'newOrderNumber' => data_get($params, 'pedidoNuevo' ?? ''),
             'idGuiaRemision' => data_get($params, 'idGuiaRemision'),
             'guiaRemision' => data_get($params, 'guiaRemision'),
         ];
-        return $payloadHeader;
     }
 }

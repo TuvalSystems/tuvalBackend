@@ -11,7 +11,6 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;

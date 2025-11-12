@@ -100,11 +100,11 @@ class UserService
     public function formatUserData($user): array
     {
         return [
+            'id' => $user->id,
             'USERID' => $user->USERID,
             'USERNAME' => $user->USERNAME,
             'perfil_id' => $user->perfil_id,
             'status' => $user->status,
-
         ];
     }
 

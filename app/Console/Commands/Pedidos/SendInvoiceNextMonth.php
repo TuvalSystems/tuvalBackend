@@ -3,9 +3,12 @@
 namespace App\Console\Commands\Pedidos;
 
 use App\Services\Pedidos\OrderJobService;
+use App\Supports\DbUtils;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Console\Command\Command as Cmd;
+
 
 class SendInvoiceNextMonth extends Command
 {
@@ -39,7 +42,7 @@ class SendInvoiceNextMonth extends Command
      *
      * @return int
      */
-    public function handle(OrderJobService $orderJobService)
+   public function handle(OrderJobService $orderJobService)
     {
         Log::channel('cron_process')->info('✅ [SendInvoiceNextMonthJob] - Command executed at ' . now());
         $this->info('🔄 Enviando Pedidos a Facturar...');

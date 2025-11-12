@@ -16,6 +16,7 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\JsonResponseTrait;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceService implements InvoiceServiceInterface
@@ -334,8 +335,29 @@ class InvoiceService implements InvoiceServiceInterface
             $pedido->save();
         }
 
-        // 🚫 Validación final antes de facturar
 
+        // validacion si pedido nace de reserva o cotizacion
+        if (!$this->isInvoiceDateValidForReservedOrder($pedido)) {
+            Log::warning(
+                'Pedido no cumple validación de origen/fecha',
+                [
+                    'pedido_id'   => $pedido->id,
+                    'numero'      => $pedido->pedido ?? null,
+                    'origen'      => $pedido->origen,
+                    'fe_fact_res' => $pedido->fe_facturacion_reserva,
+                    'today'       => now()->toDateString(),
+                    'estado_prev' => $pedido->estado,
+                ]
+            );
+
+            if ($pedido->estado !== 'espera') { // evita writes innecesarios
+                $pedido->estado = 'espera';
+                $pedido->save();
+            }
+            return;
+        }
+
+        // 🚫 Validación final antes de facturar
         if (!$this->checkFinalInvoiceValidation($pedido)) {
             Log::warning("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual: {$pedido->estado}");
             return;
@@ -457,6 +479,25 @@ class InvoiceService implements InvoiceServiceInterface
             return false;
         }
         return true;
+    }
+
+
+    public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
+    {
+        if ($pedido->origen !== 'reserva') {
+            return true;
+        }
+
+        if (empty($pedido->fe_facturacion_reserva)) {
+            return false;
+        }
+
+        $today = now()->toDateString();
+        $invoiceDate = $pedido->fe_facturacion_reserva instanceof Carbon
+            ? $pedido->fe_facturacion_reserva->toDateString()
+            : Carbon::parse($pedido->fe_facturacion_reserva)->toDateString();
+
+        return $invoiceDate === $today;
     }
 
 

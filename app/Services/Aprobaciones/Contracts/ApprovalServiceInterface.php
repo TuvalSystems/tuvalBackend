@@ -10,6 +10,9 @@ interface ApprovalServiceInterface
 
     public function checkoutApprovalDevoluciones($data);
 
+
+    public function checkOutApprovalCommercialReservedOrder($data);
+
     /**
      *
      * funciones para las aprobaciones crediticias

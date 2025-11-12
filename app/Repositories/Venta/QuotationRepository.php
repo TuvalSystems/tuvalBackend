@@ -35,4 +35,9 @@ class QuotationRepository implements QuotationRepositoryInterface
             ->orderBy('orden', 'asc')
             ->get();
     }
+
+    public function getQuotationHeaderById(int $id)
+    {
+        return GpCotizacion::where('id', $id)->first();
+    }
 }

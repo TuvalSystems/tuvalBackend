@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+
 use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -11,6 +12,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
 use App\Models\GpClienteSucursal;
+
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
@@ -28,12 +30,16 @@ use App\Models\GpRegistroCopia;
 use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
+use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
+use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
@@ -41,7 +47,6 @@ use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-
 
 class QuotationService implements QuotationServiceInterface
 {
@@ -57,6 +62,9 @@ class QuotationService implements QuotationServiceInterface
     protected $orderAndQuotationService;
     protected $clienTSqlService;
     protected $stockSqlService;
+    protected $quotationBuilder;
+    protected $orderBuilder;
+    protected $invoiceService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -69,6 +77,9 @@ class QuotationService implements QuotationServiceInterface
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
         ClientServiceInterface $clienTSqlService,
         StockSqlServiceInterface $stockSqlService,
+        QuotationBuilderInterface $quotationBuilderInterface,
+        OrderBuilderInterface $orderBuilderInterface,
+        InvoiceServiceInterface $invoiceServiceInterface
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -81,6 +92,9 @@ class QuotationService implements QuotationServiceInterface
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
         $this->clienTSqlService = $clienTSqlService;
         $this->stockSqlService = $stockSqlService;
+        $this->quotationBuilder = $quotationBuilderInterface;
+        $this->orderBuilder = $orderBuilderInterface;
+        $this->invoiceService = $invoiceServiceInterface;
     }
 
 
@@ -103,7 +117,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function updateNonSaleAndReminderData($data)
     {
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio' => $data['fecha_recordatorio'],
             'cotizacion_venta_motivo_id' => $data['motivo_id'],
@@ -764,31 +778,27 @@ class QuotationService implements QuotationServiceInterface
      *  Ya se manda filtrado los items L desde el Front End
      */
 
-    public function getStockItemForWarehouse($article, $warehouse)
+    public function getStockItemForWarehouse($article, $warehouse, $cotizacionId)
     {
-        try {
-            $warehouses = $this->functionService->getBodegas($warehouse, 1);
-            $arrArticulos = ['articulo' => $article['ART_CODIGO']];
-            $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
-            $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
-            $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
-            $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article);
-            $availableArticulos = [];
-            if (!$artFormat['disponible']) {
-                $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
-                $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
-                $availableArticulos[] = $article['ART_CODIGO'];
-            }
-            $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
-            $newStock = $this->reassignStockIds($article, $artFormat['stock']);
-            $article['stock'] = $newStock;
-            $article['ART_STOCK'] = $artFormat['ART_STOCK'];
-            $article['stockListo'] = true;
-            return $this->successResponse('Stock obtenido correctamente', $article, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al obtener stock', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'data' => $article]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
+        $quoteReservedOriginId = $this->validateExistsReserve($cotizacionId);
+        $warehouses = $this->functionService->getBodegas($warehouse, 1);
+        $arrArticulos = ['articulo' => $article['ART_CODIGO']];
+        $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
+        $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+        $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
+        $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article, $quoteReservedOriginId);
+        $availableArticulos = [];
+        if (!$artFormat['disponible']) {
+            $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
+            $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+            $availableArticulos[] = $article['ART_CODIGO'];
         }
+        $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
+        $newStock = $this->reassignStockIds($article, $artFormat['stock']);
+        $article['stock'] = $newStock;
+        $article['ART_STOCK'] = $artFormat['ART_STOCK'];
+        $article['stockListo'] = true;
+        return $article;
     }
 
 
@@ -855,6 +865,20 @@ class QuotationService implements QuotationServiceInterface
         return $result;
     }
 
+
+    /** proceso para omitir reservas de cotizacion  */
+    public function validateExistsReserve($quotationId)
+    {
+         $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
+         if (!$quoteReserve) {
+            return ;
+         }
+         $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
+         if (!$logReserve) {
+            return ;
+         }
+         return $logReserve?->cotizacion_origen_id;
+    }
 
     /***
      *

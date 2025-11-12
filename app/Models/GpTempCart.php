@@ -75,6 +75,9 @@ use Illuminate\Database\Eloquent\Model;
  * @mixin \Eloquent
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCart whereARTPESO($value)
  * @property  boolean|null  $CHECK_ALTERNATIVO
+ *
+ *
+ * @property mixed $imagenes
  */
 class GpTempCart extends Model
 {

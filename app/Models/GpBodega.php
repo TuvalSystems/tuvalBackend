@@ -30,4 +30,9 @@ use Illuminate\Database\Eloquent\Model;
 class GpBodega extends Model
 {
     use HasFactory;
+
+
+    public function cotizacion(){
+        return $this->hasMany(GpCotizacion::class, 'BOD_BODEGA', 'BOD_BODEGA');
+    }
 }

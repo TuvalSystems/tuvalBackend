@@ -6,6 +6,7 @@ use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
+use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -38,6 +39,38 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
         }
     }
 
+    public function assignAccessCodeForPendingGuide($guia)
+    {
+        if (!empty($guia->clave_acceso)) {
+            return $guia->clave_acceso;
+        }
+        try {
+            $res = $this->apiDeliveryNote->getAccessCodeByNumberDocDelivery([
+                'numDoc' => $guia->numero_guia,
+            ]);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('No se pudo consultar la clave de acceso: ' . $e->getMessage(), 0, $e);
+        }
+        $ok = data_get($res, 'success') === true;
+        $msg = data_get($res, 'message', 'Error desconocido');
+        $code = data_get($res, 'data.claveAcceso');
+
+        if (!$ok) {
+            throw new \DomainException($msg);
+        }
+        if (!is_string($code) || $code === '') {
+            throw new \UnexpectedValueException('La API no retornó una claveAcceso válida.');
+        }
+
+        // Evita carrera: solo escribe si sigue NULL
+        $updated = GpGuiaRemisionReserva::whereKey($guia->getKey())
+            ->whereNull('clave_acceso')
+            ->update(['clave_acceso' => $code]);
+
+        // Si otro proceso la puso primero, devuelve la actual del modelo
+        return $updated ? $code : (string) $guia->fresh()->clave_acceso;
+    }
+
     //remplaza la funcion de checkdespacho - DespachoController
     public function updateOrderDispatchStatus(GpGuiaRemision $guia)
     {
@@ -45,7 +78,7 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
         if (!$pedido) {
             Log::warning('Pedido no encontrado al verificar despacho', [
                 'guia_id' => $guia->id,
-                'pedido'  => $guia->pedido,
+                'pedido' => $guia->pedido,
             ]);
             return null;
         }

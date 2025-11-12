@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Pedidos\Contracts;
 
+
 interface OrderRepositoryInterface
 {
     public function getAllDetailsOrderById($id);
@@ -26,4 +27,9 @@ interface OrderRepositoryInterface
 
 
     public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder);
+
+
+
+    /** funcion para obtener todos los pedidos en estado de espera para facturar */
+     public function queryInvoiceReservedOrdersForDate($date);
 }

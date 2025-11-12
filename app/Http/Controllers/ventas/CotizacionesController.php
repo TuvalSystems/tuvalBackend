@@ -21,11 +21,14 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
 use App\Models\GpPedido;
+use App\Models\GpUsuario;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CotizacionesController extends Controller
 {
@@ -48,7 +51,7 @@ class CotizacionesController extends Controller
             'articulo' => []
         ]);
 
-        $user = Auth::user();
+         $user = GpUsuario::where('id', Auth::user()->id)->first();
 
         if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
@@ -307,8 +310,7 @@ class CotizacionesController extends Controller
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
-
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         if (isset($data['prospecto']['id']) && $data['prospecto']['id'] != '') {
             $prospecto = GpProspecto::where('id', $data['prospecto']['id'])->first();
         } else {
@@ -426,7 +428,7 @@ class CotizacionesController extends Controller
             'fecha_hasta' => '',
         ]);
 
-        $cotizaciones = GpCotizacion::where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
+        $cotizaciones = GpCotizacion::with('reserva')->where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
             ->join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
 
@@ -611,7 +613,7 @@ class CotizacionesController extends Controller
     public function guardarcliente(Request $request)
     {
         $data = $request->all();
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         return $this->quotationService->storeClientQuotation($data,  $user);
     }
 
@@ -657,7 +659,7 @@ class CotizacionesController extends Controller
         return $this->quotationService->requestQuotationAgain($data, $user);
     }
 
-   
+
     public function llenarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
@@ -1176,7 +1178,23 @@ class CotizacionesController extends Controller
         ]);
         $articulo =  $request->get('articulo', null);
         $bodega = $request->get('bodega', null);
-        return $this->quotationService->getStockItemForWarehouse($articulo, $bodega);
+        $cotizacionId = $request->get('cotizacion_id', null);
+        try {
+            $response =  $this->quotationService->getStockItemForWarehouse($articulo, $bodega, $cotizacionId);
+            return $this->successResponse('Stock obtenido correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::error(
+                'Error al obtener stock',
+                [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'data' => $articulo
+                ]
+            );
+            return $this->buildErrorResponse('Stock insuficiente', 500);
+        }
     }
 
     public function obteneMargenItemlL(Request $request)
@@ -1192,22 +1210,26 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    public function obtenerListaSegmentos(){
+    public function obtenerListaSegmentos()
+    {
 
         return $this->quotationService->getSegmentosSqlServer();
     }
 
-    public function obtenerListaSubSegmentos(Request $request){
+    public function obtenerListaSubSegmentos(Request $request)
+    {
         $segmento = $request->get('segmento', null);
         return $this->quotationService->getSubSegmentosSqlServer($segmento);
     }
 
-    public function validarSegmentoCliente(Request $request){
+    public function validarSegmentoCliente(Request $request)
+    {
         $cliente = $request->get('cliente', null);
-            return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+        return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
     }
 
-    public function actualizarSegmentoCliente(Request $request){
+    public function actualizarSegmentoCliente(Request $request)
+    {
         $cliente = $request->get('cliente', null);
         $segmento = $request->get('segmento', null);
         $subsegmento = $request->get('subsegmento', null);
@@ -1215,7 +1237,8 @@ class CotizacionesController extends Controller
     }
 
 
-    public function obtenerStockPrueba ($articulo, $bodega){
+    public function obtenerStockPrueba($articulo, $bodega)
+    {
 
         return $this->quotationService->consultaStockPrueba($articulo, $bodega);
     }

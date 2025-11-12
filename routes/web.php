@@ -1,5 +1,7 @@
 <?php
 
+use App\Events\DemoMessage;
+use App\Events\PingArrived;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\PedidosController;
@@ -12,7 +14,7 @@ use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\bodegas\TransferenciasController;
-
+use App\Http\Controllers\ventas\ReservasController;
 
 /*
 |--------------------------------------------------------------------------
@@ -115,11 +117,15 @@ Route::prefix('pedidos')->group(function () {
     Route::get('/generar-orden-despacho/{id}', [PedidosController::class, 'generarOrdenDeDespacho']);
     Route::get('/recalcular-pedido/{id}', [PedidosController::class, 'recalcularPedidoTest']);
     Route::get('/actualizar-pedido-y-recalcular/{id}', [PedidosController::class, 'actualizarPedidoYRecalcular']);
+
+    Route::get('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
+
 });
 
 
 Route::prefix('cotizaciones')->group(function () {
     Route::get('/consulta-stock-web/{articulo}/{bodega}', [CotizacionesController::class, 'obtenerStockPrueba']);
+    Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -142,18 +148,50 @@ Route::prefix('bodegas')->group(function () {
 
     Route::get('guiasderemision/verificar-ajuste-guia-transferencia', [GuiasderemisionController::class, 'procesarReajusteGuiaTransferencia']);
     Route::get('guiasderemision/verificar-ajuste-guia-reposicion', [GuiasderemisionController::class, 'procesarReajusteGuiaReposicion']);
-    Route::get('reposicion/procesar-reposicion-web/{id}', [ReposicionController::class, 'procesarRecibirReposicionWeb']);
 
 
 });
+
+
+
+/** para pruebas  */
+
+// Route::get('/ping', function () {
+//     broadcast(new PingArrived('pong ' . now()->toDateTimeString()));
+//     return 'Ping enviado';
+// });
+
+// Route::get('/debug/demo-broadcast', function () {
+//     event(new DemoMessage(request('msg', 'hola')));
+//     return 'ok';
+// });
 
 
 Route::prefix('consultas')->group(function () {
     Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
 });
 
+Route::prefix('consultas')->group(function () {
+    Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+});
+
+Route::group(['prefix' => 'reservas-web'], function () {
+    Route::get('transferencias-web/traslados-por-reserva-dashboard/{ptovta}', [ReservasController::class, 'TransferenciasPorReservaDashboard']);
+    Route::get('transferencias-web/cabecera-traslados-por-reserva-bodega', [ReservasController::class, 'obtenerDetalleCabeceraTransferenciasReservaPorBodega']);
+    Route::get('transferencias-web/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListaTransferenciasReservaPorBodega']);
+
+    Route::get('enviar-guia-gp/{id}', [GuiasderemisionController::class, 'enviarGuiaRemisionReservaAGp']);
+    Route::get('transferencias-web/lista-guias-remision-pendientes', [ReservasController::class, 'listaGuiaRemisionReservasPendientes']);
+
+    Route::get('generar-pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionReserva']);
+    Route::get('despachar-guia-reserva', [GuiasderemisionController::class, 'despacharGuiaRemisionReserva']);
+
+    Route::get('transferencias-web/lista-transferencias-por-recibir', [ReservasController::class, 'listaTransferenciasReservasPorRecibir']);
+    Route::get('transferencias-web/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
+    Route::get('transferencias-web/imprimir-ord-almacenamiento', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
+    Route::get('transferencias-web/recibir-items-guia-reserva', [ReservasController::class, 'recibirItemsGuiaReserva']);
 
 
 
 
-
+});

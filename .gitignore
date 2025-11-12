@@ -25,6 +25,9 @@ _ide_helper_models.php
 /public/images/ventas/
 /vue
 /public/images/fotos/
-.env.dev
-.env.local
-.env.prod
+/detect-service-dependencies.php
+/service-dependencies.dot
+/service-dependencies.png
+/.env.dev
+/.env.local
+/.env.prod
