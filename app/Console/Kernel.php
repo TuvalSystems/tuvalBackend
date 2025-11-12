@@ -12,9 +12,11 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->job(new EnqueueDevoluciones(200))
-        ->everyMinute()
-        ->withoutOverlapping(60)
-        ->runInBackground();
+            ->onConnection('redis')
+            ->onQueue('devoluciones')
+            ->everyMinute()
+            ->withoutOverlapping(60)
+            ->runInBackground();
         // $schedule->command('devoluciones:procesar')
         //     ->everyMinute()
         //     ->withoutOverlapping(60)
@@ -53,7 +55,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(30)
             ->runInBackground();
 
-            $schedule->command('reservas:release-stock')
+        $schedule->command('reservas:release-stock')
             ->timezone('America/Guayaquil')
             ->dailyAt('09:00')
             ->withoutOverlapping(30)
