@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 
 class EnqueueDevoluciones implements ShouldQueue
 {
@@ -28,7 +29,7 @@ class EnqueueDevoluciones implements ShouldQueue
           // 1) Trae las devoluciones aplicables (tu método actual)
         $devoluciones = $service->listarTodasLasDevolucionesAplicables();
         $devoluciones->chunk($this->chunkSize)->each(function ($chunk){
-            logger()->info("EnqueueDevoluciones: {$chunk->count()}");
+           Log::channel('devolucion')->info("Se encontraron {$chunk->count()} devoluciones para procesar");
             $batch = [];
             foreach ($chunk as $dev) {
                 $batch[] = (new ProcessDevolucion($dev->id))->onQueue('devoluciones');
