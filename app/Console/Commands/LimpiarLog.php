@@ -24,7 +24,8 @@ class LimpiarLog extends Command
             'apiservice.log',
             'devolucion.log',
             'sql_errors.log',
-            'reservas_log.log'
+            'reservas_log.log',
+            'redis_log.log',
         ];
 
         // Obtener propietario real del directorio storage
