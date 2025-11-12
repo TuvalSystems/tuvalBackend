@@ -65,6 +65,7 @@ class GpCotizacionDetalleStock extends Model
         'user_id_facturacion',
         'cantidad_cancelada',
         'user_id_cancelacion',
+        'cantidad_reservada',
     ];
 
 
@@ -73,19 +74,19 @@ class GpCotizacionDetalleStock extends Model
         return $this->hasMany(GpTrasladosReservas::class, 'stock_id');
     }
 
-    protected function getAutorizada()
+    protected function getReservada()
     {
-        return (int) $this->cantidad_autorizada_reserva ?? 0;
+        return (int) $this->cantidad_reservada ?? 0;
     }
 
     public function getPendienteAttribute(): int
     {
-        $aut = $this->getAutorizada();
+        $res = $this->getReservada();
         $fact = $this->cantidad_facturada ?? 0;
         $can = $this->cantidad_cancelada ?? 0;
         // $cot = $this->cantidad_cotizada     ?? 0;
         // $tras = $this->cantidad_traslado ?? 0;
-        return max(0, $aut - $fact - $can);
+        return max(0, $res - $fact - $can);
     }
 
     public function getDisableMovimientoAttribute(): bool

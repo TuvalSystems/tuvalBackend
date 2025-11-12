@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Models\reservas\GpReserva;
-use App\Models\reservas\GpReservaTipoTraslado;
-use App\Models\reservas\GpTipoReservas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;

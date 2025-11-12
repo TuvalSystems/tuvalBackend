@@ -7,12 +7,12 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
-
+use Illuminate\Database\Eloquent\Collection;
 
 class InventoryReservationRepository implements InventoryReservationRepositoryInterface
 {
 
-    public function getDetailsForTransferReservation(GpCotizacion $quote)
+    public function getDetailsForTransferReservation(GpCotizacion $quote): Collection
     {
         return GpCotizacionDetalle::query()->from('gp_cotizacion_detalles as cd')->where('cd.cotizacion_id', $quote->id)
             ->join('gp_cotizacions as c', 'c.id', '=', 'cd.cotizacion_id')

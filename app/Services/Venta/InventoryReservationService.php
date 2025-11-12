@@ -42,6 +42,7 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
@@ -347,6 +348,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('seleccionado', '>', 0)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
+                'cantidad_reserva' => DB::raw('seleccionado'),
                 'updated_at' => now(),
             ]);
         Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' para cotización ID {$quotationId}");
@@ -364,6 +366,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('STO_ART_BODEGA', $warehouse)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
+                'cantidad_reserva' => DB::raw('seleccionado'),
                 'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
 
@@ -373,6 +376,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('STO_ART_BODEGA', '!=', $warehouse)
             ->update([
                 'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
+                'cantidad_reserva' => DB::raw('seleccionado'),
                 'cantidad_traslado' => DB::raw('seleccionado'),
                 'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
@@ -381,16 +385,29 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function createReservationTransferIfValid(GpReserva $reserved)
+    public function createReservationTransferIfValid(GpReserva $reserved): void
     {
-        $quotation = GpCotizacion::find($reserved->cotizacion_id);
-        $hayTraslado = $this->reservaRepository->checkExistingReservationTransfer($quotation);
-        $newStatus = $hayTraslado ? 'traslado' : 'aprobado';
-        if ($newStatus === 'traslado') {
-            $detail = $this->reservaRepository->getDetailsForTransferReservation($quotation);
-            $this->createTransferReservation($detail);
+        if ((int) $reserved->tipo_traslado_reserva_id !== 2) {
+            return;
         }
-        $reserved->update(['estado' => $newStatus]);
+        $quotation = GpCotizacion::find($reserved->cotizacion_id);
+        if (!$quotation) {
+            return;
+        }
+
+        $hayTraslado = $this->reservaRepository->checkExistingReservationTransfer($quotation);
+        $newStatus = 'aprobado';
+        if ($hayTraslado) {
+            $detail = $this->reservaRepository->getDetailsForTransferReservation($quotation);
+            $hasDetail = $detail->isNotEmpty();
+            if ($hasDetail) {
+                $this->createTransferReservation($detail);
+                $newStatus = 'traslado';
+            }
+        }
+        if ($reserved->estado !== $newStatus) {
+            $reserved->update(['estado' => $newStatus]);
+        }
     }
 
 
@@ -400,78 +417,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function createTransferReservation($details)
     {
         foreach ($details as $det) {
-            // if ($this->itemRequiredTransfer($det->bodega, $warehouse)) {
             $tr = $this->reservaBuilder->formPayloadTransferReserved($det);
             $tr->save();
-            // }
         }
     }
 
-    // public function itemRequiredTransfer($wrhItem, $warehouse){
-    //     return $wrhItem != $warehouse;
-    // }
-
-
-
-
-    /** funciones para la consolidacion y movimiento de stock a bodegas, comentadas porque aun no se usan por ahora */
-    // public function updateQuotationDetatilStockMovements(GpCotizacion $quotation, $type)
-    // {
-    //     $bodegaDespacho = $quotation->BOD_BODEGA;
-    //     $detailIds = GpCotizacionDetalle::where('cotizacion_id', $quotation->id)
-    //         ->pluck('id');
-
-    //     $stocksByDetail = GpCotizacionDetalleStock::whereIn('detalle_id', $detailIds)
-    //         ->lockForUpdate()
-    //         ->get()
-    //         ->groupBy('detalle_id');
-
-    //     foreach ($stocksByDetail as $detailId => $rows) {
-
-    //         //bodega despacho
-    //         $own = $rows->firstWhere('STO_ART_BODEGA', $bodegaDespacho);
-    //         if (!$own) {
-    //             throw new \DomainException(
-    //                 "No existe fila de stock en bodega de despacho [$bodegaDespacho] para detalle $detailId"
-    //             );
-    //         }
-    //         //otras bodegas
-    //         $others = $rows->where('STO_ART_BODEGA', '!=', $bodegaDespacho)
-    //             ->filter(fn($r) => (float)$r->seleccionado > 0);
-
-
-    //         // Suma exacta a 2 decimales (si tus datos son enteros igual aplica)
-    //         $cents = 0;
-    //         foreach ($others as $r) {
-    //             $cents += (int) round(((float)$r->seleccionado) * 100);
-    //         }
-    //         $moveQty = number_format($cents / 100, 2, '.', '');
-
-    //         //actualizar los seleccionado de otras bodegas a 0
-    //         $othersIds = $others->pluck('id')->all();
-    //         if (!empty($othersIds)) {
-    //             if ($type === 'reserva') {
-    //                 GpCotizacionDetalleStock::whereIn('id', $othersIds)
-    //                     ->update([
-    //                         'seleccionado' => 0,
-    //                         'cantidad_autorizada_reserva' => 0
-    //                     ]);
-    //             } else {
-    //                 GpCotizacionDetalleStock::whereIn('id', $othersIds)
-    //                     ->update([
-    //                         'seleccionado' => 0,
-    //                     ]);
-    //             }
-    //         }
-    //         $ownSelected = (float) ($own->seleccionado ?? 0);
-    //         $finalSelected = $ownSelected + $moveQty;
-    //         //sumar el consolidado al seleccionado de la bodega de despacho
-    //         GpCotizacionDetalleStock::where('id', $own->id)->update([
-    //             'seleccionado'                => $finalSelected,
-    //             'cantidad_autorizada_reserva' => $finalSelected,
-    //         ]);
-    //     }
-    // }
 
 
 
@@ -879,6 +829,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         foreach ($stocks as $stock) {
             $stock->update([
                 'cantidad_autorizada_reserva' => $stock->seleccionado,
+                'cantidad_reservada' => $stock->seleccionado,
                 'cantidad_facturada' => $stock->seleccionado
             ]);
         }
@@ -1511,12 +1462,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         // Evita negativos: limita lo que vas a descontar
         $decTras = min($qty, (float) $stockOrigen->cantidad_traslado);
         $decSel = min($qty, (float) $stockOrigen->seleccionado);
+        $stockOrigen->cantidad_reservada = max(0, (float) $stockOrigen->cantidad_reservada - $decTras);
         $stockOrigen->cantidad_traslado = max(0, (float) $stockOrigen->cantidad_traslado - $decTras);
         $stockOrigen->seleccionado = max(0, (float) $stockOrigen->seleccionado - $decSel);
         $stockOrigen->save();
 
         // En destino sumas lo recibido a "seleccionado" (ajusta si tu modelo espera otro campo)
-        $stockDestino->cantidad_autorizada_reserva = (float) $stockDestino->cantidad_autorizada_reserva + $qty;
+        $stockDestino->cantidad_reservada = (float) $stockDestino->cantidad_reservada + $qty;
         $stockDestino->seleccionado = (float) $stockDestino->seleccionado + $qty;
         $stockDestino->save();
     }
@@ -1534,7 +1486,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('tr.reserva_id', $reserva->id)
             ->where('ds.cantidad_traslado', '>', 0)
             ->exists();
-         if (!$existePendiente && $reserva->estado !== 'aprobado') {
+        if (!$existePendiente && $reserva->estado !== 'aprobado') {
             $reserva->update(['estado' => 'aprobado']); // GpReserva
         }
 

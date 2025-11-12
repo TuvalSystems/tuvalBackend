@@ -233,7 +233,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('validar-reserva-cotizacion/{id}', [ReservasController::class, 'validarGeneracionReservaCotizacion']);
         Route::post('guardar-solicitud-reserva', [ReservasController::class, 'guardarReservaCotización']);
         Route::get('lista-tipo-reservas', [ReservasController::class, 'obtenerListaTipoReservas']);
-        Route::get('lista-solicitudes-reserva', [ReservasController::class, 'obtenerListaReservasPendientes']);
+        Route::post('lista-solicitudes-reserva', [ReservasController::class, 'obtenerListaReservasPendientes']);
 
         Route::get('cotizacion-con-detalle/{id}', [ReservasController::class, 'obtenerCotizacionConDetalle']);
         Route::get('cotizacion-detalle-stock/{id}', [ReservasController::class, 'obtenerCotizacionDetalleConStock']);
@@ -241,7 +241,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('rechazar-solicitud-reserva', [ReservasController::class, 'rechazarSolicitudReservaCotizacion']);
         Route::post('aprobar-solicitud-reserva', [ReservasController::class, 'aprobarSolicitudReservaCotizacion']);
 
-        Route::get('lista-reserva-aprobadas', [ReservasController::class, 'obtenerListaCotizacionesAprobadas']);
+        Route::post('lista-reserva-aprobadas', [ReservasController::class, 'obtenerListaCotizacionesAprobadas']);
         Route::post('procesar-reserva', [ReservasController::class, 'procesarReservaCotizacion']);
         Route::post('procesar-reserva-factura-demanda', [ReservasController::class, 'procesarReservaFacturaDemandaCotizacion']);
 
