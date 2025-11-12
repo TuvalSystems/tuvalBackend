@@ -12,8 +12,6 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->job(new EnqueueDevoluciones(200))
-            ->onConnection('redis')
-            ->onQueue('devoluciones')
             ->everyMinute()
             ->withoutOverlapping(60)
             ->runInBackground();
