@@ -15,11 +15,11 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://tuvalweb.cosenco.ec', 'https://tuvalweb.cosenco.ec'],
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 
