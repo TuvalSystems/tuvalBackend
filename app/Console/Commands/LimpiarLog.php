@@ -7,12 +7,12 @@ use Symfony\Component\Process\Process;
 
 class LimpiarLog extends Command
 {
-    protected $signature = 'limpiar:log
-        {--sessions : Elimina todos los archivos de sesión}
-        {--cache : Elimina archivos de caché}
-        {--views : Elimina vistas compiladas}';
+   protected $signature = 'limpiar:log
+        {--sessions : Elimina todos los archivos de sesión (recursivo)}
+        {--cache : Elimina archivos de caché (recursivo)}
+        {--views : Elimina vistas compiladas (recursivo)}';
 
-    protected $description = 'Vacia el archivo laravel.log y opcionalmente limpia sesiones, caché y vistas compiladas, restaurando permisos';
+    protected $description = 'Vacia laravel.log y otros logs; opcionalmente limpia sesiones, caché y vistas. Ajusta permisos (chmod/chgrp) sin requerir sudo.';
 
     public function handle(): int
     {
@@ -28,96 +28,131 @@ class LimpiarLog extends Command
             'redis_log.log',
         ];
 
-        // Obtener propietario real del directorio storage
-        $owner = $this->getStorageOwner();
-        if (!$owner)
-            return 1;
+        // Detectamos grupo del directorio storage para alinear los archivos
+        [$storageUser, $storageGroup] = $this->getStorageOwnerAndGroup();
 
         foreach ($logFiles as $fileName) {
+            $path = storage_path("logs/{$fileName}");
 
-            $path = storage_path("logs/$fileName");
-
-            if (!file_exists($path)) {
-                file_put_contents($path, '');
-                $this->info("📄 El archivo $fileName fue creado porque no existía.");
-
+            // Crear si no existe
+            if (!is_file($path)) {
+                // crear con permisos razonables respetando umask
+                touch($path);
+                $this->info("📄 Creado: {$fileName}");
             }
 
-            // Vaciar archivo
-            file_put_contents($path, '');
+            // Truncar de forma segura
+            $ok = $this->truncateFile($path);
+            if (!$ok) {
+                $this->warn("⚠️  No se pudo truncar: {$fileName}");
+                continue;
+            }
 
-            $this->setPermissions($path, $owner);
+            // Ajustar permisos (rw-rw-r--)
+            $this->applyPermissions($path, $storageGroup);
 
-            $this->info("🧹 $fileName vaciado y permisos restaurados (propietario: $owner).");
+            $ownerShown = $storageUser && $storageGroup ? "{$storageUser}:{$storageGroup}" : 'desconocido';
+            // $this->info("🧹 {$fileName} vaciado y permisos ajustados (grupo: {$storageGroup ?? 'n/a'} | ref storage: {$ownerShown}).");
         }
 
-
-
-        // Opcional: sesiones
+        // Opcionales
         if ($this->option('sessions')) {
-            $this->deleteFilesIn(storage_path('framework/sessions'), 'archivos de sesión');
+            $this->deleteFilesRecursively(storage_path('framework/sessions'), 'archivos de sesión');
         }
-
-        // Opcional: cache
         if ($this->option('cache')) {
-            $this->deleteFilesIn(storage_path('framework/cache/data'), 'archivos de caché');
+            // en Laravel, los archivos están bajo framework/cache/data (subdirs)
+            $this->deleteFilesRecursively(storage_path('framework/cache/data'), 'archivos de caché');
         }
-
-        // Opcional: vistas compiladas
         if ($this->option('views')) {
-            $this->deleteFilesIn(storage_path('framework/views'), 'vistas compiladas');
+            $this->deleteFilesRecursively(storage_path('framework/views'), 'vistas compiladas');
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 
-    protected function getStorageOwner(): ?string
+    /**
+     * Obtiene usuario y grupo del directorio storage usando funciones POSIX si existen.
+     */
+    protected function getStorageOwnerAndGroup(): array
     {
-        $process = Process::fromShellCommandline("stat -c '%U:%G' " . storage_path());
-        $process->run();
+        $dir = storage_path();
 
-        if (!$process->isSuccessful()) {
-            $this->warn("⚠️ No se pudo obtener el propietario del directorio storage.");
-            $this->warn($process->getErrorOutput());
-            return null;
+        $uid = @fileowner($dir);
+        $gid = @filegroup($dir);
+
+        $user = function_exists('posix_getpwuid') && $uid !== false
+            ? (posix_getpwuid($uid)['name'] ?? null)
+            : null;
+
+        $group = function_exists('posix_getgrgid') && $gid !== false
+            ? (posix_getgrgid($gid)['name'] ?? null)
+            : null;
+
+        return [$user, $group];
+    }
+
+    /**
+     * Trunca el archivo a tamaño 0 de forma segura.
+     */
+    protected function truncateFile(string $path): bool
+    {
+        $h = @fopen($path, 'c+'); // c+ crea si no existe, no trunca; abrimos y truncamos
+        if (!$h) {
+            return false;
+        }
+        $ok = @ftruncate($h, 0);
+        @fclose($h);
+        return $ok;
+    }
+
+    /**
+     * Aplica permisos al archivo:
+     * - chmod 0664
+     * - chgrp al grupo del storage si está disponible (cambiar owner requiere root, no se intenta)
+     */
+    protected function applyPermissions(string $file, ?string $desiredGroup): void
+    {
+        // chmod: rw-rw-r--
+        if (!@chmod($file, 0664)) {
+            $this->warn("⚠️  chmod 0664 falló: {$file}");
         }
 
-        return trim($process->getOutput());
-    }
-
-    protected function setPermissions(string $file, string $owner): void
-    {
-        $commands = [
-            ['chown', $owner, $file],
-            ['chmod', '664', $file],
-        ];
-
-        foreach ($commands as $cmd) {
-            $process = new Process($cmd);
-            $process->run();
-
-            if (!$process->isSuccessful()) {
-                $this->warn("⚠️ Falló: " . implode(' ', $cmd));
-                $this->warn($process->getErrorOutput());
+        // chgrp solo si sabemos el grupo y el proceso tiene permiso para cambiarlo
+        if ($desiredGroup) {
+            if (!@chgrp($file, $desiredGroup)) {
+                // No es crítico (depende de membresía de grupos)
+                $this->warn("⚠️  chgrp {$desiredGroup} falló: {$file}");
             }
         }
     }
 
-    protected function deleteFilesIn(string $path, string $label): void
+    /**
+     * Elimina **archivos** recursivamente dentro de $path (deja los directorios).
+     */
+    protected function deleteFilesRecursively(string $path, string $label): void
     {
         if (!is_dir($path)) {
-            $this->warn("⚠️ El directorio $label no existe: $path");
+            $this->warn("⚠️  El directorio $label no existe: {$path}");
             return;
         }
 
         $deleted = 0;
-        foreach (glob("$path/*") as $file) {
-            if (is_file($file)) {
-                unlink($file);
-                $deleted++;
+
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($it as $item) {
+            /** @var \SplFileInfo $item */
+            if ($item->isFile()) {
+                if (@unlink($item->getPathname())) {
+                    $deleted++;
+                }
             }
         }
 
-        $this->info("🗑️  Se eliminaron $deleted $label.");
+        $this->info("🗑️  Se eliminaron {$deleted} {$label} en {$path}.");
     }
 }
+
