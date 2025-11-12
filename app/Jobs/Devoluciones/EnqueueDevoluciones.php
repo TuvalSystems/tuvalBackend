@@ -28,6 +28,7 @@ class EnqueueDevoluciones implements ShouldQueue
           // 1) Trae las devoluciones aplicables (tu método actual)
         $devoluciones = $service->listarTodasLasDevolucionesAplicables();
         $devoluciones->chunk($this->chunkSize)->each(function ($chunk){
+            logger()->info("EnqueueDevoluciones: {$chunk->count()}");
             $batch = [];
             foreach ($chunk as $dev) {
                 $batch[] = (new ProcessDevolucion($dev->id))->onQueue('devoluciones');
