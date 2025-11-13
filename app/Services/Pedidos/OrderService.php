@@ -428,7 +428,7 @@ class OrderService implements OrderServiceInterface
                 's.cantidad_reservada'
             )
             ->whereIn('s.id', $stockIds->all())
-            ->when($warehouse, fn($q) => $q->where('s.STO_ART_BODEGA', $warehouse))
+            // ->when($warehouse, fn($q) => $q->where('s.STO_ART_BODEGA', $warehouse))
             ->get();
 
         if ($quoteStockRows->isEmpty())
