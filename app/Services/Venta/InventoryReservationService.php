@@ -900,7 +900,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function storeReservedDetailOrderStock($stock, $order, $detailOrder)
     {
-
+        
         $requiereAprobacion = $order->requiere_aprobacion_crediticia === 'yes'
             || $order->requiere_aprobacion_comercial === 'yes';
         foreach ($stock as $sto) {

@@ -329,6 +329,8 @@ class OrderService implements OrderServiceInterface
     {
         $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes'
             || $newOrder->requiere_aprobacion_comercial === 'yes';
+        $quoteReservedId = $this->getReservedOriginQuote($newOrder->cotizacion_id);
+
 
         foreach ($stock as $item) {
             /** aplicar validacion de stock y actualizar el stock disponible en el pedidodetalles+tock
@@ -338,7 +340,7 @@ class OrderService implements OrderServiceInterface
                 'STO_ART_STOCK_DISPONIBLE' => $item['STO_ART_STOCK_DISPONIBLE'],
             ];
             if ($item['seleccionado'] > 0) {
-                $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id, null);
+                $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $item, $newOrder->id, $quoteReservedId);
                 if (!$newFormatStock) {
                     throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder['ART_CODIGO']} en la bodega {$item['STO_ART_BODEGA']}");
                 }
@@ -350,6 +352,14 @@ class OrderService implements OrderServiceInterface
             $newStock = $this->orderBuilder->formPayloadOrderDetailStock($item, $newOrder->id, $detailOrder->id, $newFormatStock['STO_ART_STOCK_DISPONIBLE'], $reservado);
             $newStock->save();
         }
+    }
+
+    public function getReservedOriginQuote($quoteId): ?int
+    {
+        if (!$quoteId) {
+            return null;
+        }
+        return GpCotizacion::where('id', $quoteId)->where('origen', 'reserva')->value('id') ?? null;
     }
 
 
