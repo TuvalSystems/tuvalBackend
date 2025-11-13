@@ -354,7 +354,7 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function getReservedOriginQuote($quoteId): ?int
+    public function getReservedOriginQuote(?int $quoteId): ?int
     {
         if (!$quoteId) {
             return null;
