@@ -359,7 +359,7 @@ class OrderService implements OrderServiceInterface
         if (!$quoteId) {
             return null;
         }
-        return GpCotizacion::where('id', $quoteId)->where('origen', 'reserva')->value('id') ?? null;
+        return GpCotizacion::where('id', $quoteId)->where('origen', 'reserva')->value('id');
     }
 
 
