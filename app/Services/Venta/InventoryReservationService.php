@@ -900,7 +900,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function storeReservedDetailOrderStock($stock, $order, $detailOrder)
     {
-        
+
         $requiereAprobacion = $order->requiere_aprobacion_crediticia === 'yes'
             || $order->requiere_aprobacion_comercial === 'yes';
         foreach ($stock as $sto) {
@@ -913,7 +913,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 if (!$newFormatStock) {
                     throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder->ART_CODIGO} en la bodega {$sto['STO_ART_BODEGA']}");
                 }
-                if ($newFormatStock['STO_ART_STOCK_DISPONIBLE'] < $sto['seleccionado']) {
+                if ($sto['STO_ART_STOCK_DISPONIBLE'] < $sto['seleccionado']) {
                     throw new \DomainException("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$sto['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
                 }
             }
