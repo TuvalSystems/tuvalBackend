@@ -156,7 +156,6 @@ class OrderService implements OrderServiceInterface
             'compartimento' => '',
         );
         $response = $this->apiGpService->getStockByWarehouseAndCompartment($params);
-        // $response = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
         $data = data_get($response, 'data', []);
         return $data['COMPARTIMIENTO'] ?? null;
     }
