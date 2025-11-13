@@ -438,7 +438,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
         // 2) Update masivo solo a esas filas
         $affected = GpCotizacionDetalleStock::whereIn('id', $ids)
-            ->update(['seleccionado' => 0]);
+            ->update(['seleccionado' => 0,'cantidad_reservada' => 0]);
         return $affected;
     }
 
@@ -464,7 +464,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'gp_reservas.fe_autorizacion_reserva',
         ])->from('gp_reservas')
             ->join('gp_tipo_reservas', 'gp_reservas.tipo_reserva_id', '=', 'gp_tipo_reservas.id')
-            ->join('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
+            ->leftJoin('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
             ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
             ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id')
             ->where('gp_reservas.user_ingreso_reserva_id', $userId);
