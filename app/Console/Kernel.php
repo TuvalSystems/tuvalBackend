@@ -11,7 +11,8 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
-        $schedule->job(new EnqueueDevoluciones(200))
+        $schedule->job(new EnqueueDevoluciones(10))
+            ->timezone('America/Guayaquil')
             ->everyMinute()
             ->withoutOverlapping(60)
             ->runInBackground();
