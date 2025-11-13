@@ -10,7 +10,6 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpVendedor;
 use App\Services\Api\ApiSalesService;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use Illuminate\Support\Arr;
 use App\Models\GpPedidoDetalle;
 use App\Traits\JsonResponseTrait;
@@ -39,14 +38,12 @@ class DevolucionService implements DevolucionServiceInterface
     use DevolucionesCriteriosTrait,
         JsonResponseTrait;
 
-
-    protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
-    protected ApiSalesService $apiSales;
-    protected ApiSeedBellingService $apiSeedBelling;
-    protected ApprovalServiceInterface $approvalService;
-    protected DevolucionRepositoryInterface $devolucionRepository;
-    protected OrderRepositoryInterface $orderRepository;
-    protected NotificationServiceInterface $notificationService;
+    protected $apiGpReturnsIntegrationService;
+    protected $apiSales;
+    protected $apiSeedBelling;
+    protected $approvalService;
+    protected $devolucionRepository;
+    protected $orderRepository;
     protected $devolucionBuilder;
     protected $apiGpService;
 
@@ -118,7 +115,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function validateItemLDetailInvoice($devolucion)
     {
-        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion,);
+        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion, );
     }
 
     public function validateItemPartialDispatch($devolucion)
@@ -141,7 +138,7 @@ class DevolucionService implements DevolucionServiceInterface
         }
         $diaLimite = $ptoVta->PTO_VTA_DIAS_MAXIMO_PARA_ANULACION;
 
-        $fechaLimite  =  Carbon::parse($fechaFactura)
+        $fechaLimite = Carbon::parse($fechaFactura)
             ->addMonth()
             ->startOfMonth()
             ->day($diaLimite);
@@ -603,7 +600,7 @@ class DevolucionService implements DevolucionServiceInterface
         ]);
     }
 
-     public function getSegmentoCliente($ruc)
+    public function getSegmentoCliente($ruc)
     {
         $response = $this->apiGpService->fetchClientSegment([
             'ruc' => $ruc,
@@ -1150,7 +1147,7 @@ class DevolucionService implements DevolucionServiceInterface
             return $resultado;
         } catch (\Throwable $e) {
             Log::error('Error al generar la nota de crédito: ' . $e->getMessage());
-            return  $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito de la devolucion' . $e->getMessage(), 500);
+            return $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito de la devolucion' . $e->getMessage(), 500);
         }
     }
 }

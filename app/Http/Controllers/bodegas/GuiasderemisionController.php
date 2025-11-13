@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Traits\JsonResponseTrait;
 use RuntimeException;
-use stdClass;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpPuntoVenta;
@@ -49,13 +47,11 @@ class GuiasderemisionController extends Controller
     public function __construct(
         DeliveryNoteServiceInterface $deliveryNoteService,
         InvoiceServiceInterface $invoiceServiceInterface,
-        NotificationServiceInterface $notificacionService,
         ReservationDeliveryNoteServiceInterface $reservedDeliveryNoteService
 
     ) {
         $this->deliveryNoteService = $deliveryNoteService;
         $this->invoiceService = $invoiceServiceInterface;
-        $this->notifyService = $notificacionService;
         $this->reservedDeliveryNoteService = $reservedDeliveryNoteService;
     }
     public function generarguiaventa(Request $request): Response|Application|ResponseFactory

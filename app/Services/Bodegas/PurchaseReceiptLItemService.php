@@ -2,6 +2,7 @@
 
 namespace App\Services\Bodegas;
 
+use App\Jobs\Bodegas\NotifyPurchaseReceiptItemLJob;
 use App\Models\GpCliente;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleProveedores;
@@ -13,7 +14,6 @@ use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 
@@ -28,7 +28,6 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
     protected $entryService;
     public function __construct(
         InvoiceServiceInterface $invoiceServiceInterface,
-        NotificationServiceInterface $notificacionService,
         PurchaseReceiptServiceInterface $purechaseReceiptService,
         PurchaseReceipRepositoryInterface $purchaseReceipRepositoryInterface,
         ApiGpReceivedItemL $apiGpReceiptService,
@@ -36,7 +35,6 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
     ) {
         $this->apiGpReceiptService = $apiGpReceiptService;
         $this->invoiceService = $invoiceServiceInterface;
-        $this->notificacionService = $notificacionService;
         $this->purechaseReceiptService = $purechaseReceiptService;
         $this->purchaseReceipRepository = $purchaseReceipRepositoryInterface;
         $this->entryService = $entryService;
@@ -183,7 +181,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             $this->invoiceService->checkSendInvoice($orderModel, true);
         }
         $message = 'Artículo/s L del pedido ' . $orderModel->pedido . ' han sido recibidos en la bodega ' . $orderModel->BOD_BODEGA;
-        $this->notificacionService->sendNotification($user->user_id, 'Artículo/s L recibidos', $message);
+        NotifyPurchaseReceiptItemLJob::dispatch('Articulo/s L recibidos', $message, $user->user_id);
     }
 
 

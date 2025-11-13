@@ -28,7 +28,6 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
@@ -53,8 +52,7 @@ class DespachosController extends Controller
     protected $logisticsOperationsService;
     public function __construct(
         OrderServiceInterface $orderService,
-        DispatchServiceInterface
-        $dispatchService,
+        DispatchServiceInterface $dispatchService,
         LogisticsOperationsServiceInterface $logisticsOperationsService
     ) {
         $this->orderService = $orderService;

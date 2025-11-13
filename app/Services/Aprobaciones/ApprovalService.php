@@ -2,6 +2,7 @@
 
 namespace App\Services\Aprobaciones;
 
+use App\Jobs\Aprobaciones\NotifyApprovalOrdersJob;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpTempCart;
 use DateTime;
@@ -25,28 +26,24 @@ use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class ApprovalService implements ApprovalServiceInterface
 {
     use JsonResponseTrait;
     protected $functionService;
-    protected $notificationService;
     protected $invoiceService;
     protected $mswService;
     protected $apiGpService;
     protected $stockWarehouseService;
     public function __construct(
         FunctionsServiceInterface $functionService,
-        NotificationServiceInterface $notificationService,
         InvoiceServiceInterface $invoiceService,
         MswService $mswService,
         ApiGpService $apiGpService,
         StockWarehouseServiceInterface $stockWarehouseServiceInterface
     ) {
         $this->functionService = $functionService;
-        $this->notificationService = $notificationService;
         $this->invoiceService = $invoiceService;
         $this->mswService = $mswService;
         $this->apiGpService = $apiGpService;
@@ -488,7 +485,7 @@ class ApprovalService implements ApprovalServiceInterface
                 }
 
                 if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL']) {
-                     $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto es diferente al valor original");
+                    $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto es diferente al valor original");
                 }
 
                 /** proceso para calculo de porcetaje maximo de precio de venta */
@@ -503,31 +500,31 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($precioActual > $precioLimite) {
                     $exceso = $precioActual - $precioLimite;
                     $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
-                     $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                    $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
                         . "(límite: {$precioLimite}), excede en {$exceso} "
                         . "({$excesoPct}% sobre el valor original).");
                 }
             }
 
             // validaciones para tipo L
-           if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                        $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
-                        if (!$porcentajeMargen) {
-                             $detailMotivos[] = $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
-                        }
+            if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+                $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+                if (!$porcentajeMargen) {
+                    $detailMotivos[] = $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
+                }
 
-                        foreach ($detalle['proveedores'] as $proveedor) {
+                foreach ($detalle['proveedores'] as $proveedor) {
 
-                            $valor = number_format(($proveedor['COSTO_UNITARIO'] /
-                                (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
-                            if ($valor > $detalle['ART_VALOR']) {
-                                 $detailMotivos[] = $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
-                            }
-                            if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
-                                 $detailMotivos[] = $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
-                            }
-                        }
+                    $valor = number_format(($proveedor['COSTO_UNITARIO'] /
+                        (1 - ($porcentajeMargen->DATOS_ITEMS_L_MARGEN / 100))) / (1 - $detalle['descuento'] / 100), 4, '.', '');
+                    if ($valor > $detalle['ART_VALOR']) {
+                        $detailMotivos[] = $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
                     }
+                    if ($proveedor['MARGEN'] < $porcentajeMargen->DATOS_ITEMS_L_MARGEN) {
+                        $detailMotivos[] = $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+                    }
+                }
+            }
         }
 
         return $detailMotivos;
@@ -863,7 +860,7 @@ class ApprovalService implements ApprovalServiceInterface
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         DB::afterCommit(function () use ($pedido, $data) {
-            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+            NotifyApprovalOrdersJob::dispatch('Pedido rechazado por falta de stock', $data['alert'], $pedido->user_id);
         });
         return [
             'pedido' => $pedido,
@@ -918,7 +915,7 @@ class ApprovalService implements ApprovalServiceInterface
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         DB::afterCommit(function () use ($pedido, $data) {
-            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado por falta de stock', $data['alert']);
+            NotifyApprovalOrdersJob::dispatch('Pedido rechazado por falta de stock', $data['alert'], $pedido->user_id);
         });
         return [
             'pedido' => $pedido,
@@ -945,7 +942,7 @@ class ApprovalService implements ApprovalServiceInterface
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         DB::afterCommit(function () use ($pedido, $data) {
-            $this->notificationService->sendNotification($pedido->user_id, 'Pedido rechazado', 'El pedido ha sido rechazado');
+            NotifyApprovalOrdersJob::dispatch('Pedido rechazado', 'El pedido ha sido rechazado', $pedido->user_id);
         });
         return $pedido;
     }
