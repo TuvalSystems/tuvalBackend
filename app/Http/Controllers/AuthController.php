@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GpUsuario;
 use App\Models\Notificaciones;
 use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -44,13 +45,18 @@ class AuthController extends Controller
      * Función de salida del sistema
      */
 
-    public function logout(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function logout(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = $request->user('sanctum');
+
         if (!$user) {
             return response(['success' => false, 'message' => 'Not authenticated'], 401);
         }
-        $user->currentAccessToken()->delete();
+
+        if ($token = $user->currentAccessToken()) {
+            $token->delete();
+        }
+
         return response(['success' => true]);
     }
 
@@ -105,7 +111,7 @@ class AuthController extends Controller
     }
 
 
-    public function changeStatusGpUser (Request $request)
+    public function changeStatusGpUser(Request $request)
     {
         $userId = $request->all();
         return $this->userService->changeStatusGpUser($userId);

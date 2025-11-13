@@ -1014,7 +1014,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
         $traslados = $this->reservaRepository->getAllTransferReservedByWarehouses($bodega);
-        $items = $traslados->filter(fn($t) => $t->pending_transfer >= 0)->map(function ($item) {
+        $items = $traslados->filter(fn($t) => $t->pending_transfer > 0)->map(function ($item) {
             $qty = (float) $item->pending_transfer;
             $kg = (float) $item->art_peso;
             $item->art_pesoKg = $qty * $kg;
