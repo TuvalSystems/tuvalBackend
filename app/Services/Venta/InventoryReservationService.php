@@ -438,7 +438,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
         // 2) Update masivo solo a esas filas
         $affected = GpCotizacionDetalleStock::whereIn('id', $ids)
-            ->update(['seleccionado' => 0,'cantidad_reservada' => 0]);
+            ->update(['seleccionado' => 0]);
         return $affected;
     }
 

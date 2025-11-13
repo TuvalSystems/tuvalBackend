@@ -393,9 +393,9 @@ class OrderService implements OrderServiceInterface
         $pedidoPorClave = []; // clave = ART_CODIGO|BODEGA
         foreach ($order->detallepedido as $det) {
             foreach ($det->pedidodetallestocks as $stk) {
-                if ($warehouse && $stk->STO_ART_BODEGA !== $warehouse) {
-                    continue;
-                }
+                // if ($warehouse && $stk->STO_ART_BODEGA !== $warehouse) {
+                //     continue;
+                // }
                 $clave = $det->ART_CODIGO . '|' . $stk->STO_ART_BODEGA;
                 $pedidoPorClave[$clave] = ($pedidoPorClave[$clave] ?? 0) + (int) $stk->seleccionado;
             }
@@ -488,7 +488,7 @@ class OrderService implements OrderServiceInterface
         $tienePendientes = $stocks->contains(function (GpCotizacionDetalleStock $stock) {
             return $stock->pendiente > 0;   // usa tu accessor
         });
-        
+
         if (!$tienePendientes) {
             // Ajusta el nombre de la columna/valor según tu modelo (estado, estado_reserva, etc.)
             $reserva->estado = 'procesado';
