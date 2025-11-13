@@ -25,6 +25,7 @@ use App\Models\GpDescuentoFormaPago;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\reservas\GpCotizacionReservaDetalleLog;
+use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
@@ -383,8 +384,8 @@ class OrderService implements OrderServiceInterface
         if (!$cotResLog)
             return;
 
-
-        $quoteOriginId = $cotResLog->cotizacion_origen_id ?? null;
+        $reservedId = data_get($cotResLog, 'reserva_id', null);
+        $quoteOriginId = data_get($cotResLog, 'cotizacion_origen_id', null);
         if (!$quoteOriginId)
             return;
 
@@ -410,8 +411,9 @@ class OrderService implements OrderServiceInterface
             ->unique()
             ->values();
 
-        if ($stockIds->isEmpty())
+        if ($stockIds->isEmpty()) {
             return;
+        }
 
         $quoteStockRows = GpCotizacionDetalleStock::query()
             ->from('gp_cotizacion_detalle_stocks as s')
@@ -421,9 +423,9 @@ class OrderService implements OrderServiceInterface
                 'd.ART_CODIGO',
                 's.STO_ART_BODEGA',
                 's.seleccionado',
-                's.cantidad_autorizada_reserva',
                 's.cantidad_facturada',
-                's.cantidad_cancelada'
+                's.cantidad_cancelada',
+                's.cantidad_reservada'
             )
             ->whereIn('s.id', $stockIds->all())
             ->when($warehouse, fn($q) => $q->where('s.STO_ART_BODEGA', $warehouse))
@@ -448,9 +450,9 @@ class OrderService implements OrderServiceInterface
             $selActual = (int) $row->seleccionado;
 
             // b) Aumentar facturado pero sin lo facturado - lo cancelado - seleccionado
-            $authorizado = (int) ($row->cantidad_autorizada_reserva ?? 0);
             $facturado = (int) ($row->cantidad_facturada ?? 0);
             $cancelado = (int) ($row->cantidad_cancelada ?? 0);
+            $authorizado = (int) ($row->cantidad_reservada ?? 0);
 
             // 1) Tope total permitido por política (NO incluye seleccionado)
             $limite = max(0, $authorizado - $cancelado);
@@ -473,6 +475,24 @@ class OrderService implements OrderServiceInterface
                 $row->cantidad_facturada = $nuevoFacturado;
                 $row->save();
             }
+        }
+        $this->updateCheckStatusReservation($reservedId);
+    }
+
+    public function updateCheckStatusReservation(int $reserveId)
+    {
+        $reserva = GpReserva::lockForUpdate()->find($reserveId);
+        $stocks = GpCotizacionDetalleStock::query()
+            ->where('cotizacion_id', $reserva->cotizacion_id)
+            ->get();
+        $tienePendientes = $stocks->contains(function (GpCotizacionDetalleStock $stock) {
+            return $stock->pendiente > 0;   // usa tu accessor
+        });
+        
+        if (!$tienePendientes) {
+            // Ajusta el nombre de la columna/valor según tu modelo (estado, estado_reserva, etc.)
+            $reserva->estado = 'procesado';
+            $reserva->save();
         }
     }
 
