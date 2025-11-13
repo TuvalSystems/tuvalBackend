@@ -31,4 +31,10 @@ interface UserServiceInterface
       * Cambio de status
       */
      public function changeStatusGpUser($userId);
+
+     /**notificaciones */
+
+      public function getAllNotifications(int $userId, int $perPage = 10, $search, $sortBy, $sortOrder);
+      public function markAsReadNotify(string $notifyId, int $userId);
+      public function markAllReadNotify(int $userId);
 }

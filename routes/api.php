@@ -18,6 +18,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
+use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
 
 /*
@@ -38,6 +39,13 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+
+    /**notify laravel  */
+
+    Route::post('notifications/all', [UserNotificationController::class, 'index']);
+    Route::post('notifications/mark-as-read', [UserNotificationController::class, 'marcarNotificacion']);
+    Route::post('notifications/mark-all-as-read', [UserNotificationController::class, 'marcarTodasNotificaciones']);
+
     Route::post('/resetpassword', [AuthController::class, 'resetPassword']);
     Route::post('/change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('/logout', [AuthController::class, 'logout']);
@@ -316,14 +324,14 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('getreposicion', [ReposicionController::class, 'getreposicion']);
 
-          //generacion de guia de remision de reservas
+        //generacion de guia de remision de reservas
         Route::post('reservas/guia-remision/crear-guia-reserva', [GuiasderemisionController::class, 'crearGuiaRemisionReserva']);
         Route::post('reservas/guia-remision/generar-pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionReserva']);
         Route::post('reservas/guia-remision/despachar-guia', [GuiasderemisionController::class, 'despacharGuiaRemisionReserva']);
-        Route::post('reservas/guia-remision/lista-transferencias-por-recibir',[ReservasController::class, 'listaTransferenciasReservasPorRecibir']);
-        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir',[ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
-        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/pdf',[ReservasController::class, 'imprimirOrdAlmacenamiento']);
-        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir',[ReservasController::class, 'recibirItemsGuiaReserva']);
+        Route::post('reservas/guia-remision/lista-transferencias-por-recibir', [ReservasController::class, 'listaTransferenciasReservasPorRecibir']);
+        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
+        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/pdf', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
+        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [ReservasController::class, 'recibirItemsGuiaReserva']);
 
 
 

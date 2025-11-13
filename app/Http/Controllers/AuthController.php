@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notificaciones;
-use App\Services\User\UserService;
+use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +13,7 @@ class AuthController extends Controller
     use JsonResponseTrait;
     protected $userService;
 
-    public function __construct(UserService $userService)
+    public function __construct(UserServiceInterface $userService)
     {
         $this->userService = $userService;
     }

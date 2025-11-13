@@ -14,6 +14,7 @@ use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
 
 /*
@@ -190,8 +191,8 @@ Route::group(['prefix' => 'reservas-web'], function () {
     Route::get('transferencias-web/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
     Route::get('transferencias-web/imprimir-ord-almacenamiento', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
     Route::get('transferencias-web/recibir-items-guia-reserva', [ReservasController::class, 'recibirItemsGuiaReserva']);
-
-
-
-
 });
+
+Route::get('notifications-web/all', [UserNotificationController::class, 'index']);
+Route::get('notifications-web/mark-as-read', [UserNotificationController::class, 'marcarNotificacion']);
+Route::get('notifications-web/mark-all-as-read', [UserNotificationController::class, 'marcarNotificacion']);
