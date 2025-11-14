@@ -704,11 +704,10 @@ class QuotationService implements QuotationServiceInterface
                 if (!$precio) {
                     continue;
                 }
-                $nuevoPrecio = data_get($precio, 'LST_PRC_PRECIO', null);
-                $nuevoValor = data_get($precio, 'LST_PRC_VALOR', 0);
+                $nuevoPrecio = data_get($precio, 'valor', 0);
                 if (!is_null($precio) && $artTemp->ART_VALOR_ORIGINAL != $nuevoPrecio) {
                     $artTemp->ART_VALOR_ORIGINAL = $nuevoPrecio;
-                    $artTemp->ART_VALOR = $nuevoValor;
+                    $artTemp->ART_VALOR = $nuevoPrecio;
                     $artTemp->modificador = 0;
                 }
             }
@@ -769,34 +768,34 @@ class QuotationService implements QuotationServiceInterface
     public function getPricesByClient($articulos): array
     {
         $listaPreciosAll = [];
-        //pendiente de migrar
-        // $allPricesGp = [];
-        // foreach ($articulos as $articulo) {
-        //     $art = data_get($articulo, 'ART_CODIGO', null);
-        //    $allPricesGp[$art] = $this->stockWarehouseService->fetchListPricesArticle($art);
+        foreach ($articulos as $articulo) {
+            $art = data_get($articulo, 'ART_CODIGO');
 
-        // }
-
-        $precios = $this->MsWebservice->listaprecios($articulos);
-        if (empty($prices) || !is_iterable($prices)) {
-            return [];
-        }
-
-        foreach ($precios as $price) {
-            if (
-                !isset($price['LST_PRC_ARTICULO'], $price['LST_PRC_ID'])
-            ) {
+            if (!$art) {
                 continue;
             }
-            // $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
-            $articleCode = $price['LST_PRC_ARTICULO'];
-            $priceListId = $price['LST_PRC_ID'];
 
-            $listaPreciosAll[$articleCode][$priceListId] = $price;
+            // Esto devuelve: array de filas de precios para ese artículo
+            $prices = $this->stockWarehouseService->fetchListPricesArticle($art);
+
+            if (empty($prices) || !is_iterable($prices)) {
+                continue;
+            }
+
+            foreach ($prices as $price) {
+                $articleCode = data_get($price, 'item');
+                $priceListId = data_get($price, 'idLista');
+
+                if (!$articleCode || !$priceListId) {
+                    continue;
+                }
+
+                // Queda: [ART_CODIGO][ID_LISTA] = fila precio
+                $listaPreciosAll[$articleCode][$priceListId] = $price;
+            }
         }
 
         return $listaPreciosAll;
-        // return [];
     }
 
 
