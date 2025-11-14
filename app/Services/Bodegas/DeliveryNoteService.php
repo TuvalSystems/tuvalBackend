@@ -833,7 +833,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $responseHeaderValidate = $this->apiDeliveryNote->checkTransferGuideAdjustment($payloadHeader);
         $resHeader = data_get($responseHeaderValidate, 'data');
 
-        $docGp = data_get($resHeader, 'docGp', null);
+        $docGp = data_get($resHeader, 'docGp', '');
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
         if (!empty($resHeader) && !blank($docGp)) {
             $already = $this->transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido);
@@ -946,7 +946,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $payloadHeader = $this->deliveryNoteBuilder->buildingRepositionGuideAdjustmentPayload($cabecera);
         $responseHeaderValidate = $this->apiDeliveryNote->checkRepositionGuideAdjustment($payloadHeader);
         $resHeader = data_get($responseHeaderValidate, 'data');
-        $docGp = data_get($resHeader, 'docGp', null);
+        $docGp = data_get($resHeader, 'docGp', '');
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
 
         if (!empty($resHeader) && !blank($docGp)) {
@@ -1001,7 +1001,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $payloadHeader = $this->deliveryNoteBuilder->buildingDispatchGuideAdjustmentPayload($cabecera);
         $checkResp = $this->apiDeliveryNote->checkDispatchGuideAdjustment($payloadHeader);
         $resHeader = data_get($checkResp, 'data');
-        $docGp = data_get($resHeader, 'docGp', null);
+        $docGp = data_get($resHeader, 'docGp', '');
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
         $existLocal = $this->hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido);
         if (!empty($resHeader) && !blank($docGp)) {
@@ -1038,7 +1038,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 return true;
             });
         }
-        return (bool) $guia->rebajado;
+        return false;
     }
 
 
