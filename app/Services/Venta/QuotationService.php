@@ -700,9 +700,14 @@ class QuotationService implements QuotationServiceInterface
             $cliente = GpCliente::find($data['cliente_id']);
             foreach ($articulosTemp as $artTemp) {
                 $precio = $listaPrecios[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO] ?? null;
-                if ($precio && $artTemp->ART_VALOR_ORIGINAL != $precio['LST_PRC_PRECIO']) {
-                    $artTemp->ART_VALOR_ORIGINAL = $precio['LST_PRC_PRECIO'];
-                    $artTemp->ART_VALOR = $precio['LST_PRC_VALOR'];
+                if (!$precio) {
+                    continue;
+                }
+                $nuevoPrecio = data_get($precio, 'LST_PRC_PRECIO', null);
+                $nuevoValor = data_get($precio, 'LST_PRC_VALOR', 0);
+                if (!is_null($precio) && $artTemp->ART_VALOR_ORIGINAL != $nuevoPrecio) {
+                    $artTemp->ART_VALOR_ORIGINAL = $nuevoPrecio;
+                    $artTemp->ART_VALOR = $nuevoValor;
                     $artTemp->modificador = 0;
                 }
             }
@@ -760,13 +765,25 @@ class QuotationService implements QuotationServiceInterface
         $artTemp->imagenes = $imagenes;
     }
 
-    public function getPricesByClient($articulos)
+    public function getPricesByClient($articulos): array
     {
         $listaPreciosAll = [];
         $precios = $this->MsWebservice->listaprecios($articulos);
+        if (empty($prices) || !is_iterable($prices)) {
+            return [];
+        }
 
-        foreach ($precios as $pr) {
-            $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
+        foreach ($precios as $price) {
+            if (
+                !isset($price['LST_PRC_ARTICULO'], $price['LST_PRC_ID'])
+            ) {
+                continue;
+            }
+            // $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
+            $articleCode = $price['LST_PRC_ARTICULO'];
+            $priceListId = $price['LST_PRC_ID'];
+
+            $listaPreciosAll[$articleCode][$priceListId] = $price;
         }
 
         return $listaPreciosAll;
@@ -869,15 +886,15 @@ class QuotationService implements QuotationServiceInterface
     /** proceso para omitir reservas de cotizacion  */
     public function validateExistsReserve($quotationId)
     {
-         $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
-         if (!$quoteReserve) {
-            return ;
-         }
-         $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
-         if (!$logReserve) {
-            return ;
-         }
-         return $logReserve?->cotizacion_origen_id;
+        $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
+        if (!$quoteReserve) {
+            return;
+        }
+        $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
+        if (!$logReserve) {
+            return;
+        }
+        return $logReserve?->cotizacion_origen_id;
     }
 
     /***
