@@ -109,4 +109,11 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest($this->endpoints["obtener_notificaciones_local"], 'GET', $params );
     }
+
+
+
+    public function fetchItemPriceListFromGp(array $params = [])
+    {
+        return $this->httpClient->makeRequest($this->endpoints["consultar_lista_precio_articulo"], 'GET', $params );
+    }
 }

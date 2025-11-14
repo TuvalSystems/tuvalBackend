@@ -45,6 +45,7 @@ return [
             'consultar_stock_bodega_async' => 'api/consultar-stock-bodega-lotes',
             'consultar_articulo_bodega_compartimento' => 'api/consultar-stock-articulo-bodega-compartimento',
             'transferencia_compartimento' => 'api/transferencia-compartimento',
+            'consultar_lista_precio_articulo' => 'api/consultar-lista-precio-articulo',
 
             //devoluciones - recibir devolucion
             'generar_nota_credito' => 'api/devoluciones/generar-nota-credito',

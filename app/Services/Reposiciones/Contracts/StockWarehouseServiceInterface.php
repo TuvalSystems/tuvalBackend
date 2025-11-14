@@ -42,4 +42,7 @@ interface StockWarehouseServiceInterface
 
     /** funcion para el formateo de stock para almacenaral momento de guardar un pedido */
     public function applyReservedQtyToAvailableStock(&$stock, $article, $orderId, $quotationId = null);
+
+
+     public function fetchListPricesArticle(string $article): array;
 }

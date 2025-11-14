@@ -685,6 +685,7 @@ class QuotationService implements QuotationServiceInterface
         $artPrecios = [];
         $articulosTemp = $this->quotationRepository->getGpTempCartFillQuotation($data['sucursal_id'], $data['puntodeventa_id'], $data['cliente_id'], $user->id);
         $isCopy = ($data['test'] ?? '') === 'copiarpedido';
+        $serial = data_get($data, 'serial', null);
         foreach ($articulosTemp as $artTemp) {
             $artTemp->CHECK_ALTERNATIVO = $isCopy ? 0 : $this->syncAndGetCheckAlternativo($data, $artTemp);
 
@@ -695,7 +696,7 @@ class QuotationService implements QuotationServiceInterface
             $this->loadImagesTemp($artTemp);
         }
 
-        if (($data['serial'] ?? '') === '' && empty($data['registro_copia'])) {
+        if (($serial === null || $serial === '') && empty($data['registro_copia'])) {
             $listaPrecios = $this->getPricesByClient($artPrecios);
             $cliente = GpCliente::find($data['cliente_id']);
             foreach ($articulosTemp as $artTemp) {
@@ -768,6 +769,14 @@ class QuotationService implements QuotationServiceInterface
     public function getPricesByClient($articulos): array
     {
         $listaPreciosAll = [];
+        //pendiente de migrar
+        // $allPricesGp = [];
+        // foreach ($articulos as $articulo) {
+        //     $art = data_get($articulo, 'ART_CODIGO', null);
+        //    $allPricesGp[$art] = $this->stockWarehouseService->fetchListPricesArticle($art);
+
+        // }
+
         $precios = $this->MsWebservice->listaprecios($articulos);
         if (empty($prices) || !is_iterable($prices)) {
             return [];
@@ -787,6 +796,7 @@ class QuotationService implements QuotationServiceInterface
         }
 
         return $listaPreciosAll;
+        // return [];
     }
 
 

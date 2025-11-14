@@ -92,7 +92,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // Bodegas involucradas (para agrupar y traer reservas en una sola pasada)
         $bodegas = array_values(array_unique(array_map(static fn($i) => (string) $i['STO_ART_BODEGA'], $filtered)));
         // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
-        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, false,$quotationId);
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, false, $quotationId);
 
         $total = 0;
         $normalizados = [];
@@ -123,10 +123,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return $articulo;
     }
 
-    public function getReservedStockByWarehouses(string $articulo, array $bodegas, ?int $pedidoId = null,  bool $forUpdate = false, ?int $excludeQuotationId = null): array
+    public function getReservedStockByWarehouses(string $articulo, array $bodegas, ?int $pedidoId = null, bool $forUpdate = false, ?int $excludeQuotationId = null): array
     {
 
-        if (empty($bodegas)) return [];
+        if (empty($bodegas))
+            return [];
         $q = GpPedidoDetalleStock::query()
             ->join('gp_pedido_detalles', 'gp_pedido_detalle_stocks.detalle_id', '=', 'gp_pedido_detalles.id')
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
@@ -648,7 +649,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     {
         $bodega = (string) $stock['STO_ART_BODEGA'];
         $bodegas = [$bodega];
-        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId, true,$quotationId);
+        $reservas = $this->getReservedStockByWarehouses($article['ART_CODIGO'], $bodegas, $orderId, true, $quotationId);
 
         if (
             isset($stock['STO_ART_STOCK_DISPONIBLE'], $stock['STO_ART_BODEGA'], $stock['STO_ART_ARTICULO']) &&
@@ -663,5 +664,22 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             $resta = (float) ($reservas[$bodega] ?? 0);
             $stock['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockValue - $resta);
         }
+    }
+
+
+
+
+    /** funcion de api para consulta de lista de precio de articulos  */
+
+
+    public function fetchListPricesArticle(string $article): array
+    {
+        $response = $this->apiGpService->fetchItemPriceListFromGp(
+            [
+                'articulo' => $article . ','
+            ]
+        );
+        $data = data_get($response, 'data', []);
+        return (array) $data;
     }
 }

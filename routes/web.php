@@ -127,6 +127,10 @@ Route::prefix('pedidos')->group(function () {
 Route::prefix('cotizaciones')->group(function () {
     Route::get('/consulta-stock-web/{articulo}/{bodega}', [CotizacionesController::class, 'obtenerStockPrueba']);
     Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
+    Route::get('llenar-cotizacion', [CotizacionesController::class, 'llenarcotizacion']);
+
+
+
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -149,7 +153,6 @@ Route::prefix('bodegas')->group(function () {
 
     Route::get('guiasderemision/verificar-ajuste-guia-transferencia', [GuiasderemisionController::class, 'procesarReajusteGuiaTransferencia']);
     Route::get('guiasderemision/verificar-ajuste-guia-reposicion', [GuiasderemisionController::class, 'procesarReajusteGuiaReposicion']);
-
 
 });
 
