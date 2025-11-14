@@ -1054,7 +1054,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 return true;
             });
         }
-        return (bool) $guia->rebajado;
+        return false;
     }
 
 
