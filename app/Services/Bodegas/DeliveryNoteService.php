@@ -1031,7 +1031,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if (blank($docGp)) {
                 throw new \Exception('No se ha generado el documento de ajuste de guía en GP.');
             }
-            DB::transaction(function () use ($groupItems, $guia, $response, $pedido) {
+           return DB::transaction(function () use ($groupItems, $guia, $response, $pedido) {
                 $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
                 $this->createDocumentDispatchTrfv($guia, $response['data'], $pedido);
                 $guia->update(['rebajado' => 1]);
