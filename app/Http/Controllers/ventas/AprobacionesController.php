@@ -88,20 +88,20 @@ class AprobacionesController extends Controller
             ->select('gp_pedidos.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
-            ->whereNotIn('estado',['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
+            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
 
             ->orderBy('created_at', 'ASC')->get();
 
         foreach ($pedidos as $key => $pedido) {
             $res = $this->getSegmentoCliente($pedido->CLI_RUC);
             $pedido->segmento = data_get($res, 'segmento', null);
-            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
+            $pedido->subsegmento = data_get($res, 'subsegmento', null);
         }
         //where('PTO_VTA_ID', $data['puntodeventa_id'])
 
         $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO')
-            ->whereNotIn('estado',['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
+            ->whereNotIn('estado', ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->orderBy('created_at', 'ASC')->get();
@@ -109,7 +109,7 @@ class AprobacionesController extends Controller
 
             $res2 = $this->getSegmentoCliente($cot->CLI_RUC);
             $cot->segmento = data_get($res2, 'segmento', null);
-            $cot->subsegmento =  data_get($res2, 'subsegmento', null);
+            $cot->subsegmento = data_get($res2, 'subsegmento', null);
         }
 
         //where('PTO_VTA_ID', $data['puntodeventa_id'])
@@ -144,13 +144,13 @@ class AprobacionesController extends Controller
                     ->orWhere('requiere_aprobacion_comercial', 'yes')
                     ->where('aprobado_comercial', 'yes');
             })
-            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
+            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
             ->orderBy('created_at', 'DESC')->get();
 
         foreach ($pedidos as $key => $pedido) {
             $res = $this->getSegmentoCliente($pedido->CLI_RUC);
             $pedido->segmento = data_get($res, 'segmento', null);
-            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
+            $pedido->subsegmento = data_get($res, 'subsegmento', null);
         }
 
         return response([
@@ -166,7 +166,7 @@ class AprobacionesController extends Controller
             $gpuser = GpUsuario::where('id', $user->id)->first();
             $data = $request->all();
             $pedido = DB::transaction(function () use ($data, $gpuser) {
-                return  $this->approvalService->approveComercialOrder($data, $gpuser);
+                return $this->approvalService->approveComercialOrder($data, $gpuser);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
         } catch (\Throwable $e) {
@@ -380,5 +380,30 @@ class AprobacionesController extends Controller
             'success' => true,
             'devoluciones' => $devoluciones,
         ]);
+    }
+
+
+    /** proceso nuevo de rechazar cotizacion cuando esta en espera */
+    public function recharCotizacionEstadoEspera(Request $request)
+    {
+        $id = data_get($request->all(), 'id');
+        try {
+            $quote = $this->approvalService->denyQuotationBeenWaiting($id);
+            return $this->successResponse('Cotización rechazada', $quote, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar la cotización: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function rechazarPedidoEstadoEspera(Request $request)
+    {
+        $id = data_get($request->all(), 'id');
+        try {
+            $order = $this->approvalService->denyOrderBeenWaiting($id);
+            return $this->successResponse('Pedido rechazado', $order, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
+        }
+
     }
 }

@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 class GpReglaAprobacion extends Model
 {
     use HasFactory;
-
-     protected $fillable = [
+    protected $table = 'gp_regla_aprobacions';
+    protected $fillable = [
         'regla_negocio_id',
         'descuento_min',
         'descuento_max',
@@ -20,12 +20,12 @@ class GpReglaAprobacion extends Model
     ];
 
     protected $casts = [
-        'descuento_min' => 'float',
-        'descuento_max' => 'float'
+        'descuento_min' => 'decimal:4',
+        'descuento_max' => 'decimal:4',
     ];
 
 
-     protected function serializeDate(DateTimeInterface $date): string
+    protected function serializeDate(DateTimeInterface $date): string
     {
         return $date->format('Y-m-d H:i:s');
     }

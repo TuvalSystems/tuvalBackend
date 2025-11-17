@@ -10,6 +10,8 @@ class GpReglaNegocio extends Model
 {
     use HasFactory;
 
+    protected $table =  'gp_regla_negocios';
+
     protected $casts = [
         'fecha_ingreso' => 'datetime:Y-m-d H:i:s',
     ];

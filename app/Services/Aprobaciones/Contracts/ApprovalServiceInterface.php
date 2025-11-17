@@ -38,4 +38,7 @@ interface ApprovalServiceInterface
 
     public function accountStatusClient($ruc);
 
+
+    public function denyQuotationBeenWaiting(int $id);
+    public function denyOrderBeenWaiting(int $id);
 }
