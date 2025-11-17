@@ -1114,7 +1114,7 @@ class DevolucionService implements DevolucionServiceInterface
         $devDoc->devolucion = $devolucion->devolucion;
         $devDoc->id_movimiento = $responseApi['idMovimiento'];
         $devDoc->documento_gp = $responseApi['docGp'];
-        $devDoc->user_id = $userId;
+        // $devDoc->user_id = $userId;
         $devDoc->save();
     }
 
