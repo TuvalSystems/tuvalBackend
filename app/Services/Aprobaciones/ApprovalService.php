@@ -1149,12 +1149,12 @@ class ApprovalService implements ApprovalServiceInterface
         $orders = $this->mapClientSegmentData($orders, $segmentDataByRuc);
         $quotes = $this->mapClientSegmentData($quotes, $segmentDataByRuc);
 
-        //aplicacion de reglas de aprobaciones
-        $rules = $this->getApprovalrRulesForUser($userId);
-        if ($rules->isNotEmpty()) {
-            $orders = $this->filterOrderByRules($orders, $rules);
-            $quotes = $this->filterQuoteByRules($quotes, $rules);
-        }
+        // //aplicacion de reglas de aprobaciones
+        // $rules = $this->getApprovalrRulesForUser($userId);
+        // if ($rules->isNotEmpty()) {
+        //     $orders = $this->filterOrderByRules($orders, $rules);
+        //     $quotes = $this->filterQuoteByRules($quotes, $rules);
+        // }
 
         return [
             'pedidos' => $orders->values(),
