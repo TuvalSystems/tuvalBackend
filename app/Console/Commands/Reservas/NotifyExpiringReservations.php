@@ -60,7 +60,7 @@ class NotifyExpiringReservations extends Command
             }
         });
         $this->info("Reservas avisadas: {$total}");
-        Log::channel('reservas')->info("reservas:notify-expiring => {$total}");
+        Log::channel('reservas_log')->info("reservas:notify-expiring => {$total}");
         return self::SUCCESS;
     }
 }
