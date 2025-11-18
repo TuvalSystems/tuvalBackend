@@ -378,7 +378,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         }
         foreach ($groups as $quote => $group) {
             $params = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user);
-            $processed = $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote);
+            $ok = $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote);
+            if ($ok) {
+                $processed = true;
+            }
         }
         if (!$processed) {
             throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
@@ -407,31 +410,32 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function validateExistenceReservationGuideAdjustment(GpGuiaRemisionReserva $guia, array $params, array $groupItems, string $quote): bool
     {
-        $cabecera           = data_get($params, 'cabecera', []);
-        $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera);
-        $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+        $cabecera = data_get($params, 'cabecera', []);
+        $payloadValidate = $this->builder->buildReservationGuideValidationPayload($cabecera);
+        $resValidate = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
         $headerRespValidate = data_get($resValidate, 'data');
-        $validateSuccess    = data_get($resValidate, 'success');
-        $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
+        $validateSuccess = data_get($resValidate, 'success');
+        $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
 
         /** cuando existe y solo necesita reasignar y procesar los movimientos de entrada y salida */
         if (!empty($headerRespValidate) && filled($docGpValidate)) {
             $already = $this->movementExistsWeb($guia->id, $quote, $docGpValidate);
-            DB::transaction(function () use ($groupItems, $guia, $headerRespValidate, $quote, $already) {
+            if ($already) {
+                return true;
+            }
+            return DB::transaction(function () use ($groupItems, $guia, $headerRespValidate, $quote, $already) {
                 $this->processReservationGuideDecrementStock($groupItems);
-                if (!$already) {
-                    $this->createMovementReservation($guia, $headerRespValidate, $quote);
-                }
+                $this->createMovementReservation($guia, $headerRespValidate, $quote);
+                return true;
             });
-            return true;
         }
         /** en caso de que no exista la guia de reserva debe crearla */
         if (empty($headerRespValidate) && $validateSuccess === false) {
-            $resp       = $this->apiDelivery->createReservationGuideAjustment($params);
-            $success    = data_get($resp, 'success', false);
-            $data       = data_get($resp, 'data', []);
-            $msg        = data_get($resp, 'message');
-            $docGp      = trim(data_get($resp, 'data.docGp', '')); // null si no existe
+            $resp = $this->apiDelivery->createReservationGuideAjustment($params);
+            $success = data_get($resp, 'success', false);
+            $data = data_get($resp, 'data', []);
+            $msg = data_get($resp, 'message');
+            $docGp = trim(data_get($resp, 'data.docGp', '')); // null si no existe
             if (!$success) {
                 throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
             }
@@ -439,11 +443,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
                 throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
             }
 
-            DB::transaction(function () use ($groupItems, $guia, $data, $quote) {
+            return DB::transaction(function () use ($groupItems, $guia, $data, $quote) {
                 $this->processReservationGuideDecrementStock($groupItems);
                 $this->createMovementReservation($guia, $data, $quote);
+                return true;
             });
-            return true;
         }
         return false;
     }
