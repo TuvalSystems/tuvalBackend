@@ -384,7 +384,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             }
         }
         if (!$processed) {
-            throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
+             throw new \Exception('No se pudo procesar el ajuste de la guía de Reserva');
 
         }
         $guia->update(['estado' => 'enviada']);
