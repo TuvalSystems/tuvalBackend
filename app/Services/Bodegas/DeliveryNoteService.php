@@ -19,7 +19,7 @@ use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Log;
 
 class DeliveryNoteService implements DeliveryNoteServiceInterface
 {
@@ -242,7 +242,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
      *
      *   DESPACHO AJUSTE DE GUIA
      */
-    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
+   public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
     {
         if ($detalle->isEmpty()) {
             return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
@@ -286,20 +286,55 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
         }
         $processed = false;
-        foreach ($groups as $grupo) {
-            $params = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
-            $processed = $this->validateExistsDispatchGuideAdjustment($guia, $grupo['pedido'], $params, $grupo['items']);
+        $results = [];
+        $errors = [];
+        foreach ($groups as $index => $grupo) {
+            try {
+                $params = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
+                $processed = $this->validateExistsDispatchGuideAdjustment($guia, $grupo['pedido'], $params, $grupo['items']);
+
+                if (!$processed) {
+                    $errors[] = "Grupo {$index} (Pedido: {$grupo['pedido']}): No se pudo procesar";
+                } else {
+                    $results[] = "Grupo {$index} procesado exitosamente";
+                }
+
+            } catch (\Throwable $e) {
+                $errorMsg = "Grupo {$index} (Pedido: {$grupo['pedido']}): {$e->getMessage()}";
+                $errors[] = $errorMsg;
+                Log::error('Error procesando grupo de despacho', [
+                    'guia_id' => $guia->id,
+                    'grupo_index' => $index,
+                    'pedido' => $grupo['pedido'] ?? null,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
         }
 
-        if ($processed && $guia->estado != 'enviada') {
+        $successCount = count($results);
+        $totalGroups = count($groups);
+        if ($successCount === 0) {
+            $errorDetail = implode("\n", $errors);
+            throw new \Exception("No se pudo procesar ningún grupo de despacho:\n{$errorDetail}");
+        }
+        if ($guia->estado != 'enviada') {
             $guia->update(['estado' => 'enviada']);
-        }else{
-            throw new \Exception('No se pudo generar el despacho');
         }
         $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+        if (!empty($errors)) {
+            Log::warning('Guía despachada con errores parciales', [
+                'guia_id' => $guia->id,
+                'success_count' => $successCount,
+                'total_groups' => $totalGroups,
+                'errors' => $errors
+            ]);
+        }
         return [
             'success' => true,
-            'message' => 'Guía de remisión despachada',
+            'message' => $successCount === $totalGroups
+                ? 'Guía de remisión despachada completamente'
+                : "Guía despachada parcialmente: {$successCount} de {$totalGroups} grupos procesados",
             'pedido' => $pedido,
         ];
     }
@@ -1037,7 +1072,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             }
         }
 
-        if (empty($resHeader) && ($checkResp['success'] ?? null) === false) {
+        if (empty($resHeader) || ($checkResp['success'] ?? null) === false) {
             $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
             if (($response['success'] ?? null) === false) {
                 throw new \Exception($response['message'] ?? 'Error creando ajuste de guía en GP.');
@@ -1053,7 +1088,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 return true;
             });
         }
-        return false;
+        throw new \Exception('Estado inesperado al validar ajuste de despacho. Response: ' . json_encode($checkResp));
     }
 
 
