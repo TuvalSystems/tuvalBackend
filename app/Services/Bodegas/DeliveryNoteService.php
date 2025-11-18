@@ -886,7 +886,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             });
         }
         /** en caso de que no exista la guia de transferencia debe crearla */
-        if (empty($resHeader) && ($responseHeaderValidate['success'] ?? null) === false) {
+        if (empty($resHeader) && (($responseHeaderValidate['success'] ?? null) === false)) {
             $response = $this->apiDeliveryNote->createTransferGuideVta($params);
             if ($response['success'] === false) {
                 throw new \Exception($response['message']);

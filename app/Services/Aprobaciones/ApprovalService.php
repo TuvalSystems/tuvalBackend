@@ -27,6 +27,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use Carbon\Carbon;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -1091,4 +1092,26 @@ class ApprovalService implements ApprovalServiceInterface
         $detalle['documentosSinSoporte'] = $this->functionService->getListClientDocumentWithoutSupport($ruc);
         return $detalle;
     }
+
+
+    public function denyQuotationBeenWaiting(int $id){
+        $quote = GpCotizacion::find($id);
+        $quote->estado = 'rechazado';
+        $quote->fe_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $quote->user_rechazo_id = auth()->user()->id;
+        $quote->save();
+        return $quote;
+    }
+
+
+    public function denyOrderBeenWaiting(int $id){
+        $order = GpPedido::find($id);
+        $order->estado = 'rechazado';
+        $order->user_rechazo_id = auth()->user()->id;
+        $order->fecha_hora_rechazado = Carbon::now()->format('Y-m-d H:i:s');
+        $order->rechazado = 1;
+        $order->save();
+        return $order;
+    }
+
 }
