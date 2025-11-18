@@ -145,4 +145,11 @@ class GpCliente extends Model
         'CLI_SEGMENTO_ID',
         'CLI_SUBSEGMENTO_ID'
     ];
+
+
+
+
+    public function gpvendedor(){
+        return $this->belongsTo(GpVendedor::class, 'CLI_VENDEDOR');
+    }
 }

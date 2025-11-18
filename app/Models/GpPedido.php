@@ -230,5 +230,10 @@ class GpPedido extends Model
         return $this->hasMany(GpPedidoDetalleStock::class, 'pedido_id');
     }
 
+    public function gpcliente()
+    {
+        return $this->belongsTo(GpCliente::class, 'cliente_id');
+    }
+
 
 }
