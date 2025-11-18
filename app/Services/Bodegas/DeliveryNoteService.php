@@ -843,7 +843,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     /** validar existencia de guia de transferencia */
     public function validateExistenceTransferGuideAdjustment($guia, $params, $groupItems, $pedido)
     {
-        $processed = false;
         $cabecera = data_get($params, 'cabecera', []);
         $payloadHeader = $this->deliveryNoteBuilder->buildingTransferGuideAdjustmentPayload($cabecera);
         $responseHeaderValidate = $this->apiDeliveryNote->checkTransferGuideAdjustment($payloadHeader);
@@ -875,15 +874,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if (blank($docGp)) {
                 throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
             }
-            DB::transaction(function () use ($guia, $pedido, $response, $groupItems) {
+           return  DB::transaction(function () use ($guia, $pedido, $response, $groupItems) {
                 $this->processReservedTransferedAndDecrementStock($groupItems);
                 $this->createDocumentGuideTrfv($guia, $response['data'], $pedido);
+                return true;
             });
-
-            $processed = true;
         }
-
-        return $processed;
+        return false;
     }
 
     public function validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido)
