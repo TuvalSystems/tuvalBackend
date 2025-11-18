@@ -180,6 +180,8 @@ class GpCotizacion extends Model
         'origen',
         'pedido_reserva_id',
         'pedido_generado_at',
+        'fe_rechazo',
+        'user_rechazo_id',
     ];
 
     /**

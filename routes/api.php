@@ -335,23 +335,23 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
     });
 
-    Route::group(['prefix'=> 'aprobaciones'], function (){
+    Route::group(['prefix' => 'aprobaciones'], function () {
 
-            Route::post('aprobarpedido', [AprobacionesController::class, 'aprobarpedido']);
-    Route::post('aprobarcotizacion', [AprobacionesController::class, 'aprobarcotizacion']);
-    Route::post('rechazarcotizacion', [AprobacionesController::class, 'rechazarcotizacion']);
-    Route::post('rechazarpedido', [AprobacionesController::class, 'rechazarpedido']);
-    Route::post('consultaparaaprobarpedido', [AprobacionesController::class, 'consultaparaaprobarpedido']);
-    Route::post('aprobarpedidocrediticio', [AprobacionesController::class, 'aprobarpedidocrediticio']);
-    Route::post('rechazarpedidocrediticio', [AprobacionesController::class, 'rechazarpedidocrediticio']);
-    Route::post('rechazarpedidocrediticioporstock', [AprobacionesController::class, 'rechazarpedidocrediticioporstock']);
-    Route::post('rechazarpedidoporstock', [AprobacionesController::class, 'rechazarpedidoporstock']);
-    Route::post('estadodecuenta', [AprobacionesController::class, 'estadodecuenta']);
-    Route::post('aprobardevolucion', [AprobacionesController::class, 'aprobardevolucion']);
-    Route::post('rechazardevolucion', [AprobacionesController::class, 'rechazardevolucion']);
+        Route::post('aprobarpedido', [AprobacionesController::class, 'aprobarpedido']);
+        Route::post('aprobarcotizacion', [AprobacionesController::class, 'aprobarcotizacion']);
+        Route::post('rechazarcotizacion', [AprobacionesController::class, 'rechazarcotizacion']);
+        Route::post('rechazarpedido', [AprobacionesController::class, 'rechazarpedido']);
+        Route::post('consultaparaaprobarpedido', [AprobacionesController::class, 'consultaparaaprobarpedido']);
+        Route::post('aprobarpedidocrediticio', [AprobacionesController::class, 'aprobarpedidocrediticio']);
+        Route::post('rechazarpedidocrediticio', [AprobacionesController::class, 'rechazarpedidocrediticio']);
+        Route::post('rechazarpedidocrediticioporstock', [AprobacionesController::class, 'rechazarpedidocrediticioporstock']);
+        Route::post('rechazarpedidoporstock', [AprobacionesController::class, 'rechazarpedidoporstock']);
+        Route::post('estadodecuenta', [AprobacionesController::class, 'estadodecuenta']);
+        Route::post('aprobardevolucion', [AprobacionesController::class, 'aprobardevolucion']);
+        Route::post('rechazardevolucion', [AprobacionesController::class, 'rechazardevolucion']);
 
-    Route::post('cotizacion/rechazar-estado-espera', [AprobacionesController::class, 'recharCotizacionEstadoEspera']);
-    Route::post('pedido/rechazar-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
+        Route::post('cotizacion/rechazar-estado-espera', [AprobacionesController::class, 'recharCotizacionEstadoEspera']);
+        Route::post('pedido/rechazar-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
 
 
     });
