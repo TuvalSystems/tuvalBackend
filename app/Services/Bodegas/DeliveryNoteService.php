@@ -858,7 +858,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if (blank($docGp)) {
                 throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
             }
-           return  DB::transaction(function () use ($guia, $pedido, $response, $groupItems) {
+            return DB::transaction(function () use ($guia, $pedido, $response, $groupItems) {
                 $this->processReservedTransferedAndDecrementStock($groupItems);
                 $this->createDocumentGuideTrfv($guia, $response['data'], $pedido);
                 return true;
@@ -870,10 +870,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido)
     {
         return GpGuiaRemisionTransferencia::query()
-        ->where('guia_remision_id', $idGuiaRemision) // ← sin doble $
-        ->where('pedido', $pedido)
-        ->where('codigo', trim((string) $docGp))
-        ->exists();
+            ->where('guia_remision_id', $idGuiaRemision) // ← sin doble $
+            ->where('pedido', $pedido)
+            ->where('codigo', trim((string) $docGp))
+            ->exists();
     }
 
     public function hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido)
@@ -936,8 +936,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             ->get()->keyBy('id');
     }
 
-    public function validateExistsRepositionGuideAjustment($guia, $documento, $params, $groupItems) : bool
+    public function validateExistsRepositionGuideAjustment($guia, $documento, $params, $groupItems): bool
     {
+
         $cabecera = data_get($params, 'cabecera', []);
         $payloadHeader = $this->deliveryNoteBuilder->buildingRepositionGuideAdjustmentPayload($cabecera);
         $responseHeaderValidate = $this->apiDeliveryNote->checkRepositionGuideAdjustment($payloadHeader);
@@ -971,7 +972,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
             }
 
-           return  DB::transaction(function () use ($groupItems, $guia, $response, $documento) {
+            return DB::transaction(function () use ($groupItems, $guia, $response, $documento) {
                 $this->generateMovementRepositionAdjustment($groupItems);
                 $this->createDocumentGuideTrfv($guia, $response['data'], $documento);
                 return true;
@@ -1018,7 +1019,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             }
         }
 
-        if (empty($resHeader) && $checkResp['success'] === false) {
+        if (empty($resHeader) && ($checkResp['success'] ?? null) === false) {
             $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
             if (($response['success'] ?? null) === false) {
                 throw new \Exception($response['message'] ?? 'Error creando ajuste de guía en GP.');
@@ -1027,7 +1028,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             if (blank($docGp)) {
                 throw new \Exception('No se ha generado el documento de ajuste de guía en GP.');
             }
-           return DB::transaction(function () use ($groupItems, $guia, $response, $pedido) {
+            return DB::transaction(function () use ($groupItems, $guia, $response, $pedido) {
                 $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
                 $this->createDocumentDispatchTrfv($guia, $response['data'], $pedido);
                 $guia->update(['rebajado' => 1]);
