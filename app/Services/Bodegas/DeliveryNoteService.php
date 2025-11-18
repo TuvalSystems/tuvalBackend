@@ -277,6 +277,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         if ($processed && $guia->estado != 'enviada') {
             $guia->update(['estado' => 'enviada']);
+        }else{
+            throw new \Exception('No se pudo generar el despacho');
         }
         $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
         return [
