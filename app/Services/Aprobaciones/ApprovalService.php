@@ -3,6 +3,7 @@
 namespace App\Services\Aprobaciones;
 
 use App\Jobs\Aprobaciones\NotifyApprovalOrdersJob;
+use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpTempCart;
 use DateTime;
@@ -22,12 +23,15 @@ use App\Models\GpCotizacionDetalle;
 use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpUsuario;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -458,7 +462,7 @@ class ApprovalService implements ApprovalServiceInterface
             $motivosAprovacionComercial[] = $this->requiredApprovalResponse("La cotización  {$cotizacion->cotizacion} requiere aprobación comercial previa. Pedido en estado pendiente de aprobación comercial.");
         }
         $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-        $motivosDetalle  = $this->validateReservedDetailQuotationType($data['detallecotizacion'], $ptoVenta);
+        $motivosDetalle = $this->validateReservedDetailQuotationType($data['detallecotizacion'], $ptoVenta);
 
 
         if (!empty($motivosDetalle)) {
@@ -536,11 +540,13 @@ class ApprovalService implements ApprovalServiceInterface
         // 1) Aplanar un nivel (evita arrays anidados)
         $flat = [];
         foreach ($reasons as $r) {
-            if (empty($r)) continue;
+            if (empty($r))
+                continue;
 
             if (is_array($r) && array_is_list($r)) {
                 foreach ($r as $rr) {
-                    if (!empty($rr)) $flat[] = $rr;
+                    if (!empty($rr))
+                        $flat[] = $rr;
                 }
             } else {
                 $flat[] = $r;
@@ -578,8 +584,10 @@ class ApprovalService implements ApprovalServiceInterface
         $seen = [];
         foreach ($normalized as $item) {
             $motivo = (string) ($item['motivo'] ?? '');
-            if ($motivo === '') continue;
-            if (isset($seen[$motivo])) continue;
+            if ($motivo === '')
+                continue;
+            if (isset($seen[$motivo]))
+                continue;
             $seen[$motivo] = true;
             $unique[] = $item;
         }
@@ -611,7 +619,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$cupoDisponible) {
             return 'no';
         }
-        if ($data['total'] >  $cupoDisponible['cupoDisponibleGp']) {
+        if ($data['total'] > $cupoDisponible['cupoDisponibleGp']) {
             return 'Cupo';
         }
 
@@ -1029,7 +1037,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function getStockWarehouseAsyncAndFormantter($parmas)
     {
         $stocksResult = $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
-        Log::info("Resultado de stock para aprobacion: ",  [
+        Log::info("Resultado de stock para aprobacion: ", [
             'stocksResult' => $stocksResult
         ]);
         return $this->stockWarehouseService->transformStockResponse($stocksResult);
@@ -1094,7 +1102,8 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function denyQuotationBeenWaiting(int $id){
+    public function denyQuotationBeenWaiting(int $id)
+    {
         $quote = GpCotizacion::find($id);
         $quote->estado = 'rechazado';
         $quote->fe_rechazo = Carbon::now()->format('Y-m-d H:i:s');
@@ -1104,7 +1113,8 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function denyOrderBeenWaiting(int $id){
+    public function denyOrderBeenWaiting(int $id)
+    {
         $order = GpPedido::find($id);
         $order->estado = 'rechazado';
         $order->user_rechazo_id = auth()->user()->id;
@@ -1112,6 +1122,148 @@ class ApprovalService implements ApprovalServiceInterface
         $order->rechazado = 1;
         $order->save();
         return $order;
+    }
+
+
+
+
+    /** listado de aprobaciones de pedidos y cotizaciones */
+
+    public function getAllPendingApprovals(int $ptoVta)
+    {
+        $userId = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
+
+        // 1. Fetch Orders (Pedidos)
+        $orders = $this->fetchPendingOrders($ptoVta);
+
+        // 2. Fetch Quotes (Cotizaciones)
+        $quotes = $this->fetchPendingQuotes($ptoVta);
+
+
+        $allRucs = $orders->pluck('CLI_RUC')
+            ->merge($quotes->pluck('CLI_RUC'))
+            ->unique()
+            ->toArray();
+
+        $segmentDataByRuc = $this->getClientSegments($allRucs);
+        $orders = $this->mapClientSegmentData($orders, $segmentDataByRuc);
+        $quotes = $this->mapClientSegmentData($quotes, $segmentDataByRuc);
+
+        //aplicacion de reglas de aprobaciones
+        $rules = $this->getApprovalrRulesForUser($userId);
+        if ($rules->isNotEmpty()) {
+            $orders = $this->filterOrderByRules($orders, $rules);
+            $quotes = $this->filterQuoteByRules($quotes, $rules);
+        }
+
+        return [
+            'pedidos' => $orders->values(),
+            'cotizaciones' => $quotes->values(),
+        ];
+    }
+
+
+    public function fetchPendingOrders(int $ptoVta): Collection
+    {
+        $excludedStates = ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'];
+        return GpPedido::query()
+            ->with(['detallepedido', 'gpcliente.gpvendedor'])
+            ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
+            ->join('gp_punto_ventas as pv', 'pv.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')
+            ->select(
+                'gp_pedidos.*',
+                'dfp.DESC_FORMA_PAGO_TIPO_CREDITO', // Renombrado para claridad
+                'pv.PTO_VTA_DESCRIPCION'      // Renombrado para claridad
+            )
+            ->where('gp_pedidos.PTO_VTA_ID', $ptoVta) // Si es necesario, descomentar
+            ->where('requiere_aprobacion_comercial', 'yes')
+            ->where('aprobado_comercial', 'no')
+            ->whereNotIn('estado', $excludedStates)
+            ->orderBy('created_at', 'ASC')
+            ->get();
+    }
+
+    public function fetchPendingQuotes(int $ptoVta): Collection
+    {
+        $excludedStates = ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'];
+
+        return GpCotizacion::query()
+            ->with('detallecotizacion')
+            ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
+            ->select(
+                'gp_cotizacions.*',
+                'dfp.DESC_FORMA_PAGO_TIPO_CREDITO' // Renombrado para claridad
+            )
+            // Agregamos la condición al Punto de Venta (si es requerida)
+            // ->where('gp_cotizacions.PTO_VTA_ID', $ptoVta)
+            ->where('requiere_aprobacion_comercial', 'yes')
+            ->where('aprobado_comercial', 'no')
+            ->whereNotIn('estado', $excludedStates)
+            ->orderBy('created_at', 'ASC')
+            ->get();
+    }
+
+    public function getClientSegments(array $rucs): array
+    {
+        if (empty($rucs)) {
+            return [];
+        }
+
+        $segments = [];
+
+        // Realiza N llamadas individuales a la API, pero de forma centralizada.
+        foreach ($rucs as $ruc) {
+            $response = $this->apiGpService->fetchClientSegment([
+                'ruc' => $ruc,
+            ]);
+
+            // Mapea y limpia la respuesta de la API
+            $data = data_get($response, 'data', []);
+            $cleanData = is_array($data) ? $data : (array) $data;
+
+            // Almacena el resultado con el RUC como clave
+            $segments[$ruc] = [
+                // Usamos 'segment' y 'subsegment' como claves internas estandarizadas
+                'segmento' => data_get($cleanData, 'segmento', null),
+                'subsegmento' => data_get($cleanData, 'subsegmento', null),
+            ];
+        }
+
+        return $segments;
+    }
+
+    public function mapClientSegmentData(Collection $items, array $segmentDataByRuc): Collection
+    {
+        return $items->map(function ($item) use ($segmentDataByRuc) {
+            $ruc = $item->CLI_RUC;
+            // Busca los datos pre-obtenidos
+            $segmentData = $segmentDataByRuc[$ruc] ?? ['segmento' => null, 'subsegmento' => null];
+
+            // Asigna las nuevas propiedades en Camel Case para la respuesta
+            $item->segmento = data_get($segmentData, 'segmento');
+            $item->subsegmento = data_get($segmentData, 'subsegmento');
+
+            return $item;
+        });
+    }
+
+    public function getApprovalrRulesForUser($userId){
+        return GpReglaAprobacion::where('user_autorizador_id', $userId)->get();
+    }
+
+
+    public function filterOrderByRules(Collection $orders, Collection $rules) : Collection{
+        return $orders->filter(function (GpPedido $ord) use($rules){
+            $orderRules = $rules->filter(function(GpReglaAprobacion $rule) use($ord){
+
+            });
+        });
+        return collect();
+    }
+
+    public function filterQuoteByRules(Collection $quotes, Collection $rules){
+        return collect();
+
     }
 
 }

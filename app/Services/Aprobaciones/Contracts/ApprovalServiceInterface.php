@@ -41,4 +41,6 @@ interface ApprovalServiceInterface
 
     public function denyQuotationBeenWaiting(int $id);
     public function denyOrderBeenWaiting(int $id);
+
+    public function getAllPendingApprovals(int $ptoVta);
 }
