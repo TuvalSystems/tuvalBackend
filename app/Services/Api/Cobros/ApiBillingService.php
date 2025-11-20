@@ -2,37 +2,38 @@
 namespace App\Services\Api\Cobros;
 
 use App\Services\Api\ApiGpService;
+use App\Services\Api\Endpoints\ApiGpEndpoints;
 
 class   ApiBillingService extends ApiGpService {
 
 
     public function consultCheckAvailableQuotaClient(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['consultar_cupo_disponible_cliente'], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTAR_CUPO_DISPONIBLE, 'GET', $params);
 
     }
 
     public function consultDocumentExpiredClient(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['consulta_documentos_vencidos_cliente'], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTAR_DOCUMENTOS_VENCIDOS, 'GET', $params);
 
     }
 
     public function consultDocumentWithoutSupportClient(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['consulta_documentos_sin_soporte_cliente'], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTAR_DOCUMENTOS_SIN_SOPORTE, 'GET', $params);
 
     }
 
     public function consultListDocumentExpiredClient(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['consulta_lista_documentos_vencidos_cliente'], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTAR_LISTA_VENCIDOS, 'GET', $params);
 
     }
 
     public function consultListDocumentWithoutSupportClient(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['consulta_lista_documentos_sin_soporte_cliente'], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTAR_LISTA_SIN_SOPORTE, 'GET', $params);
 
     }
 

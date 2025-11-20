@@ -42,4 +42,11 @@ use Illuminate\Database\Eloquent\Model;
 class GpVendedor extends Model
 {
     use HasFactory;
+
+    protected $table = 'gp_vendedors';
+
+    public function clientes()
+    {
+        return $this->hasMany(GpCliente::class, 'CLI_VENDEDOR');
+    }
 }

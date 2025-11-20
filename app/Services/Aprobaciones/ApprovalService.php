@@ -1131,8 +1131,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getAllPendingApprovals(int $ptoVta)
     {
-        $userId = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
-
+        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         // 1. Fetch Orders (Pedidos)
         $orders = $this->fetchPendingOrders($ptoVta);
 
@@ -1150,11 +1149,12 @@ class ApprovalService implements ApprovalServiceInterface
         $quotes = $this->mapClientSegmentData($quotes, $segmentDataByRuc);
 
         // //aplicacion de reglas de aprobaciones
-        // $rules = $this->getApprovalrRulesForUser($userId);
-        // if ($rules->isNotEmpty()) {
-        //     $orders = $this->filterOrderByRules($orders, $rules);
-        //     $quotes = $this->filterQuoteByRules($quotes, $rules);
-        // }
+        // $tipovendedor = 'v_externo';
+        $rules = $this->getApprovalrRulesForUser($user->id);
+        if ($rules->isNotEmpty()) {
+            $orders = $this->filterOrderByRules($orders, $rules);
+            $quotes = $this->filterQuoteByRules($quotes, $rules);
+        }
 
         return [
             'pedidos' => $orders->values(),
@@ -1167,7 +1167,12 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $excludedStates = ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'];
         return GpPedido::query()
-            ->with(['detallepedido', 'gpcliente.gpvendedor'])
+            ->with([
+                'detallepedido',
+                'gpcliente' => function ($query) {
+                    $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
+                }
+            ])
             ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
             ->join('gp_punto_ventas as pv', 'pv.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')
             ->select(
@@ -1188,7 +1193,12 @@ class ApprovalService implements ApprovalServiceInterface
         $excludedStates = ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'];
 
         return GpCotizacion::query()
-            ->with('detallecotizacion')
+            ->with([
+                'detallecotizacion',
+                'gpcliente' => function ($query) {
+                    $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
+                }
+            ])
             ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select(
                 'gp_cotizacions.*',
@@ -1247,23 +1257,162 @@ class ApprovalService implements ApprovalServiceInterface
         });
     }
 
-    public function getApprovalrRulesForUser($userId){
+    public function getApprovalrRulesForUser($userId)
+    {
         return GpReglaAprobacion::where('user_autorizador_id', $userId)->get();
     }
 
 
-    public function filterOrderByRules(Collection $orders, Collection $rules) : Collection{
-        return $orders->filter(function (GpPedido $ord) use($rules){
-            $orderRules = $rules->filter(function(GpReglaAprobacion $rule) use($ord){
+    public function filterOrderByRules(Collection $orders, Collection $rules): Collection
+    {
 
-            });
+        $orders->loadMissing(['gpcliente', 'detallepedido']);
+        if ($rules->isEmpty()) {
+            return collect();
+        }
+
+        $hasFullAccessRule = $rules->contains(function (GpReglaAprobacion $rule) {
+            return data_get($rule, 'zona') === "ALL" && data_get($rule, 'tipo_vendedor') === "ALL";//&& $rule->descuento_min == 0.000 && $rule->descuento_max == 0.000;
         });
-        return collect();
+
+        // Si existe esa regla, el usuario ve todos los pedidos pendientes
+        if ($hasFullAccessRule) {
+            return $orders;
+        }
+
+
+        return $orders->filter(function (GpPedido $ord) use ($rules) {
+            $cliente = $ord->gpcliente; // relación Cliente del pedido
+            $typeSeller = $this->getTypeSellerByUser($ord->USERID);
+
+            if (!$cliente) {
+                return false;
+            }
+            $orderRules = $rules->filter(function (GpReglaAprobacion $rule) use ($cliente, $typeSeller) {
+                $matchsTipoVendedor = data_get($rule, 'tipo_vendedor') === "ALL" || data_get($rule, 'tipo_vendedor') == $typeSeller;
+                $matchZone = data_get($rule, 'zona') === "ALL" || data_get($rule, 'zona') === trim(strtoupper($cliente->CLI_TERRITORIO));
+                return $matchsTipoVendedor && $matchZone;
+            });
+
+            if ($orderRules->isEmpty()) {
+                return false;
+            }
+            if ($ord->detallepedido->isEmpty()) {
+                return false;
+            }
+
+
+            return $ord->detallepedido->contains(function ($detail) use ($orderRules) {
+
+                //lo calculas desde precios
+                $priceChange = $this->calculateDiscountFraction($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+
+                $discountChange = $this->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+                Log::info('pedido -filterOrderByRules', [
+                    'pedido_id' => $detail->pedido_id,
+                    'priceChange' => $priceChange,
+                    'discountChange' => $discountChange
+                ]);
+                return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
+                    $matchesPrice = $priceChange >= (float) $rule->descuento_min
+                        && $priceChange <= (float) $rule->descuento_max;
+
+                    $matchesDiscount = $discountChange >= (float) $rule->descuento_min
+                        && $discountChange <= (float) $rule->descuento_max;
+
+                    return $matchesPrice && $matchesDiscount;
+                });
+            });
+
+        });
     }
 
-    public function filterQuoteByRules(Collection $quotes, Collection $rules){
-        return collect();
-
+    public function calculateDiscountFraction(float $originalPrice, float $currentPrice)
+    {
+        if ($originalPrice == 0.0) {
+            return 0.0;
+        }
+        return ($currentPrice - $originalPrice) / $originalPrice;
     }
 
+    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount)
+    {
+        $original = $originalDiscount / 100;
+        $current = $currentDiscount / 100;
+        return $current - $original;
+    }
+
+    public function filterQuoteByRules(Collection $quotes, Collection $rules)
+    {
+        $quotes->loadMissing(['gpcliente', 'detallecotizacion']);
+        if ($rules->isEmpty()) {
+            return collect();
+        }
+
+        $hasFullAccessRule = $rules->contains(function (GpReglaAprobacion $rule) {
+            return data_get($rule, 'zona') === "ALL" && data_get($rule, 'tipo_vendedor') === "ALL"; //&& $rule->descuento_min == 0.000 && $rule->descuento_max == 0.000;
+        });
+
+        if ($hasFullAccessRule) {
+            return $quotes;
+        }
+
+        return $quotes->filter(function (GpCotizacion $ord) use ($rules) {
+            $cliente = $ord->gpcliente; // relación Cliente del pedido
+            $typeSeller = $this->getTypeSellerByUser($ord->USERID);
+
+            if (!$cliente) {
+                return false;
+            }
+            $orderRules = $rules->filter(function (GpReglaAprobacion $rule) use ($cliente, $typeSeller) {
+
+                $matchsTipoVendedor = data_get($rule, 'tipo_vendedor') === "ALL" || data_get($rule, 'tipo_vendedor') == $typeSeller;
+                $matchZone = data_get($rule, 'zona') === "ALL" || data_get($rule, 'zona') == trim(strtoupper($cliente->CLI_TERRITORIO));
+                return $matchsTipoVendedor && $matchZone;
+            });
+
+            if ($orderRules->isEmpty()) {
+                return false;
+            }
+            if ($ord->detallecotizacion->isEmpty()) {
+                return false;
+            }
+
+
+            return $ord->detallecotizacion->contains(function ($detail) use ($orderRules) {
+
+                //lo calculas desde precios
+                $priceChange = $this->calculateDiscountFraction($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+
+                $discountChange = $this->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+
+                Log::info('cotizacion -filterQuoteByRules', [
+                    'cotizacion_id' => $detail->cotizacion_id,
+                    'priceChange' => $priceChange,
+                    'discountChange' => $discountChange
+                ]);
+                return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
+                    $matchesPrice = $priceChange >= (float) $rule->descuento_min
+                        && $priceChange <= (float) $rule->descuento_max;
+
+                    $matchesDiscount = $discountChange >= (float) $rule->descuento_min
+                        && $discountChange <= (float) $rule->descuento_max;
+
+                    return $matchesPrice && $matchesDiscount;
+                });
+            });
+
+        });
+    }
+
+
+    public function getTypeSellerByUser($userName)
+    {
+        $resp = $this->apiGpService->fetchDetailsTypeSellerFromGp([
+            'username' => $userName
+        ]);
+        $data = data_get($resp, 'data', []);
+        $typeSeller = data_get($data, 'txDescor', null);
+        return $typeSeller;
+    }
 }
