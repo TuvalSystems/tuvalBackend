@@ -65,12 +65,31 @@ class ApiGpEndpoints
     // ---
     // 📜 7. Endpoints de Guías de Remisión ( General y Movimientos )
     // ---
+    // General
+    public const GUIA_REMISION_CREAR = 'api/inventario/crear-guia-remision';
+    public const GUIA_REMISION_EXISTE = 'api/inventario/validar-existencia-guia-remision';
+    public const GUIA_OBTENER_CLAVE_ACCESO = 'api/inventario/guia-remision-obtener-claveacceso';
+    // Movimientos
+    public const GUIA_TRFV_MOVIMIENTOS_GENERAR = 'api/inventario/guardar-generar-movimiento-transferencia-venta';
+    public const GUIA_REPOSICION_MOVIMIENTO_GENERAR = 'api/inventario/guardar-generar-movimiento-reposicion';
+    public const GUIA_DESPACHO_MOVIMIENTO_GENERAR = 'api/inventario/guardar-generar-movimiento-despacho';
+    public const GUIA_RESERVA_MOVIMIENTO_GENERAR = 'api/inventario/reservas/guardar-generar-movimiento/transferencia';
+    public const GUIA_RESERVA_RECIBIR_ITEMS = 'api/inventario/reservas/guardar-generar-movimiento/recibir';
+    // Validaciones
+    public const GUIA_DESPACHO_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-despacho';
+    public const GUIA_TRANSFERENCIA_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-transferencia';
+    public const GUIA_REPOSICION_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-reposicion';
+    public const GUIA_RESERVA_CHECK_AJUSTE = 'api/inventario/reservas/validar-existencia-guia';
+    public const GUIA_RESERVA_RECIBIDO_CHECK_AJUSTE = 'api/inventario/reservas/validar-existencia-ajuste-recibir';
 
     // ---
     // 🔔 8. Endpoints de Reservas y Notificaciones
     // ---
+    public const RESERVAS_OBTENER_NOTIFICACIONES_LOCAL = 'api/reservas/obtener-notificaciones-local';
 
     // ---
     // 🏷️ 9. Endpoints de Cotizaciones
     // ---
+    public const COTIZACIONES_GUARDAR_RECORDATORIO = 'api/cotizaciones/guardar-cotizacion-recordatorio';
+    public const COTIZACIONES_LISTA_ITEMS_ALTERNATIVOS = 'api/cotizaciones/lista-items-alternativos';
 }

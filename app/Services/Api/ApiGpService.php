@@ -67,14 +67,14 @@ class ApiGpService
 
     public function storeQuoteReminderGp(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["guardar_cotizacion_recordatorio"], 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COTIZACIONES_GUARDAR_RECORDATORIO, 'POST', $params, 'json');
     }
 
 
 
     public function getListQuotationItemsAlternatives(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["lista_items_alternativos"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COTIZACIONES_LISTA_ITEMS_ALTERNATIVOS, 'GET', $params);
     }
 
 
@@ -109,7 +109,7 @@ class ApiGpService
 
     public function fetchReservedNotifyLocal(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["obtener_notificaciones_local"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::RESERVAS_OBTENER_NOTIFICACIONES_LOCAL, 'GET', $params);
     }
 
 
