@@ -3,9 +3,11 @@
 namespace App\Services\Api\Core;
 
 use GuzzleHttp\Client;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use GuzzleHttp\Promise\Utils;
+use Illuminate\Http\Client\RequestException;
 
 class GpHttpClient
 {
@@ -43,7 +45,21 @@ class GpHttpClient
             $client = method_exists($client, 'connectTimeout')
                 ? $client->connectTimeout(3)
                 : $client->withOptions(['connect_timeout' => 3]);
-            $client = $client->retry(0) // 3 intentos, 200ms backoff
+            $client = $client->retry(3, 200, function ($exception) {
+                // Reintentar SI es error de conexión (cURL 28, DNS, Host down)
+                if ($exception instanceof ConnectionException) {
+                    return true;
+                }
+                // Reintentar SI el servidor devuelve 5xx (Spring Boot está saturado o reiniciando)
+                if ($exception instanceof RequestException && $exception->response) {
+                    // Si el servidor spring boot se murió (500, 502, 503, 504), reintentamos
+                    if ($exception->response->status() > 500) {
+                        return true;
+                    }
+                }
+                // 3. Para cualquier otra cosa (ej: 400 Bad Request, 404, o error lógico), NO reintentar
+                return false;
+            }) // 3 intentos, 200ms backoff
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'X-Correlation-Id' => $cid,
@@ -99,7 +115,7 @@ class GpHttpClient
 
             // Log para warnings (4xx/5xx)
             if (!$response->successful()) {
-                Log::channel('apiservice')->warning("API Request Warning", [
+                Log::channel('apiservice')->warning("Response Api (4xx/5xx)", [
                     'url' => $url,
                     'method' => $method,
                     'status' => $status,
@@ -154,20 +170,22 @@ class GpHttpClient
             Log::channel('apiservice')->warning("Invalid API Request", $errorResponse);
             return $errorResponse;
 
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             // Errores de red / timeout
             $errorResponse = [
                 'success' => false,
-                'status' => 0,
-                'error' => $e->getMessage(),
-                'message' => 'Connection error: ' . $e->getMessage(),
+                'status' => 408,
+                'error' => 'Time out',
+                // 'message' => 'Connection error: ' . $e->getMessage(),
+                'message' => 'El servicio externo no responde. Por favor intente más tarde.',
                 'url' => $url,
                 'method' => $method,
             ];
+
             Log::channel('apiservice')->error("API Connection Error", $errorResponse);
             return $errorResponse;
 
-        } catch (\Illuminate\Http\Client\RequestException $e) {
+        } catch (RequestException $e) {
             // Si usas ->throw(), aquí puedes extraer el response y respetar el mensaje de la API
             $resp = $e->response;
             $status = optional($resp)->status();
@@ -183,7 +201,7 @@ class GpHttpClient
             $payload['url'] = $url;
             $payload['method'] = $method;
 
-            Log::channel('apiservice')->error("API Request Exception", [
+            Log::channel('apiservice')->error("API RequestException Error", [
                 'url' => $url,
                 'method' => $method,
                 'status' => $status,
@@ -202,7 +220,7 @@ class GpHttpClient
                 'url' => $url,
                 'method' => $method,
             ];
-            Log::channel('apiservice')->error("API Request Error", $errorResponse);
+            Log::channel('apiservice')->error("API Exception Error", $errorResponse);
             return $errorResponse;
         }
     }
