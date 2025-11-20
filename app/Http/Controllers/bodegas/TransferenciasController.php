@@ -235,7 +235,12 @@ class TransferenciasController extends Controller
             }
 
             foreach ($detalle as $articulo) {
-                $articulo->pendiente = number_format($articulo->GUI_REM_CANTIDAD - $articulo->recibido, 2, '.', '');
+                $articulo->pendiente = number_format(
+                    (float) $articulo->GUI_REM_CANTIDAD - (float) ($articulo->recibido ?? 0),
+                    2,
+                    '.',
+                    ''
+                );
                 $articulo->recibido = $articulo->pendiente;
             }
 
