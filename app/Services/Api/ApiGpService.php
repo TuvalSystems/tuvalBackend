@@ -3,7 +3,7 @@
 namespace App\Services\Api;
 
 use App\Services\Api\Core\GpHttpClient;
-
+use App\Services\Api\Endpoints\ApiGpEndpoints;
 
 class ApiGpService
 {
@@ -21,45 +21,47 @@ class ApiGpService
 
     public function validateUser(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["validar_usuario"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_VALIDAR_USUARIO, 'GET', $params);
+    }
+
+    public function getTransferHeader(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_TRANSFERENCIA_CABECERA, 'GET', $params);
+    }
+
+    public function getTransferDetail(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE, 'GET', $params);
     }
 
     public function getBranchesClientsList(array $params)
     {
 
-        return $this->httpClient->makeRequest($this->endpoints["consultar_sucursales_cliente"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_SUCURSALES_CLIENTE, 'GET', $params);
     }
 
     public function getCoordinatesList(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_coordenadas"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_COORDENADAS, 'GET', $params);
     }
 
 
     public function getStockWarehouse(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_stock_bodega"], 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_CONSULTAR_STOCK_BODEGA, 'POST', $params, 'json');
     }
 
 
-    public function getTransferHeader(array $params = [])
-    {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_transferencia_cabecera"], 'GET', $params);
-    }
 
-    public function getTransferDetail(array $params = [])
-    {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_transferencia_detalle"], 'GET', $params);
-    }
 
     public function getStockByWarehouseAndCompartment(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_articulo_bodega_compartimento"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_CONSULTAR_ARTICULO_COMPARTIMENTO, 'GET', $params);
     }
 
     public function transferCompartment(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["transferencia_compartimento"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_TRANSFERENCIA_COMPARTIMENTO, 'GET', $params);
     }
 
 
@@ -81,39 +83,45 @@ class ApiGpService
 
     public function getStockWarehouseAsync(array $params = [])
     {
-        $request =  collect($params)->map(function ($item) {
+        $request = collect($params)->map(function ($item) {
             return [
                 'articulo' => $item['articulo'],
                 'bodega' => $item['bodega']
             ];
         })->toArray();
 
-        return $this->httpClient->makeBatchRequest($this->endpoints["consultar_stock_bodega_async"],  $request);
+        return $this->httpClient->makeBatchRequest($this->endpoints["consultar_stock_bodega_async"], $request);
     }
 
 
 
-     public function getTypeBySeller(array $params = [])
+    public function getTypeBySeller(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["obtener_tipo_vendedor"], 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TIPO_VENDEDOR, 'POST', $params, 'json');
     }
 
-     public function fetchClientSegment(array $params = [])
+    public function fetchClientSegment(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["obtener_segmento_cliente"], 'GET', $params );
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_SEGMENTO, 'GET', $params);
     }
 
 
 
-     public function fetchReservedNotifyLocal(array $params = [])
+    public function fetchReservedNotifyLocal(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["obtener_notificaciones_local"], 'GET', $params );
+        return $this->httpClient->makeRequest($this->endpoints["obtener_notificaciones_local"], 'GET', $params);
     }
 
 
 
     public function fetchItemPriceListFromGp(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_lista_precio_articulo"], 'GET', $params );
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_LISTA_PRECIO_ARTICULO, 'GET', $params);
+    }
+
+
+    public function fetchDetailsTypeSellerFromGp(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TIPO_VENDEDOR_DETALLE, 'GET', $params);
     }
 }

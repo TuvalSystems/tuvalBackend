@@ -229,6 +229,12 @@ class GpCotizacion extends Model
     }
 
 
+    public function gpcliente(){
+        return $this->belongsTo(GpCliente::class, 'cliente_id');
+
+    }
+
+
 
 
 

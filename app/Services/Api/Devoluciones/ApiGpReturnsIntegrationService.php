@@ -3,6 +3,7 @@
 namespace App\Services\Api\Devoluciones;
 
 use App\Services\Api\ApiGpService;
+use App\Services\Api\Endpoints\ApiGpEndpoints;
 
 class ApiGpReturnsIntegrationService extends ApiGpService
 {
@@ -10,22 +11,22 @@ class ApiGpReturnsIntegrationService extends ApiGpService
 
     public function generateCreditNote($params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['generar_nota_credito'], 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::DEVOLUCIONES_GENERAR_NOTA_CREDITO, 'POST', $params, 'json');
     }
 
     public function responseCreditNote($params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['respuesta_nota_credito'], 'POST', $params,);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::DEVOLUCIONES_RESPUESTA_NOTA_CREDITO, 'POST', $params,);
     }
 
     public function generateSalesReturn($params)
     {
-        return $this->httpClient->makeRequest($this->endpoints['generar_devolucion_venta'], 'POST', $params,  'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::DEVOLUCIONES_GENERAR_DEVOLUCION_VENTA, 'POST', $params,  'json');
     }
 
     public function consultItemBin(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_item_compartimento"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_CONSULTAR_ITEM_COMPARTIMENTO, 'GET', $params);
     }
 
     // test - probando en paralelo con consultMultipleItemsBin
@@ -41,7 +42,7 @@ class ApiGpReturnsIntegrationService extends ApiGpService
 
         // 🔄 Hacer las llamadas en paralelo usando makeAsyncRequest
         return $this->httpClient->makeAsyncRequest(
-            $this->endpoints["consultar_item_compartimento"],
+            ApiGpEndpoints::INVENTARIO_CONSULTAR_ITEM_COMPARTIMENTO,
             'GET',
             $requests
         );
@@ -50,6 +51,6 @@ class ApiGpReturnsIntegrationService extends ApiGpService
 
     public function consultGroupEconomicByClient(array $params = [])
     {
-        return $this->httpClient->makeRequest($this->endpoints["consultar_grupo_economico_cliente"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::DEVOLUCIONES_CONSULTAR_GRUPO_ECONOMICO_CLIENTE, 'GET', $params);
     }
 }

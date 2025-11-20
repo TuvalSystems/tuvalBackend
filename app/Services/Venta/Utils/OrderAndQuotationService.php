@@ -226,4 +226,27 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $stock['STO_ART_STOCK_DISPONIBLE'] = $stockResponseFormatted['STOCK_DISPONIBLE'] ?? 0;
         $stock['STO_ART_ARTICULO'] = $detailOrder->ART_CODIGO;
     }
+
+
+    /** funciones
+     *  para visualizar el porcentaje de cambio de precio y descuento de un articulo
+     */
+
+     public function calculateDiscountFraction(float $originalPrice, float $currentPrice)
+    {
+        if ($originalPrice == 0.0) {
+            return 0.0;
+        }
+        return ($currentPrice - $originalPrice) / $originalPrice;
+    }
+
+    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount)
+    {
+        $original = $originalDiscount / 100;
+        $current = $currentDiscount / 100;
+        return $current - $original;
+    }
+
+
+
 }

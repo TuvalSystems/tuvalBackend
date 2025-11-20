@@ -19,7 +19,7 @@ class CreateGpReglaAprobacionsTable extends Migration
             $t->unsignedBigInteger('user_autorizador_id')->nullable()->unsigned()->index();
             $t->decimal('descuento_min', 8, 2)->default(0)->nullable();
             $t->decimal('descuento_max', 8, 2)->default(0)->nullable();
-            $t->enum('tipo_vendedor', ['v_externo', 'v_interno', 'mostrador', 'all'])->default('v_externo');
+            $t->enum('tipo_vendedor', ['EXTERNO', 'MOSTRADOR', 'TECNICO', 'ALL'])->default('EXTERNO');
             $t->enum('zona', ['costa', 'sierra', 'all'])->default('costa');
             $t->foreign('user_autorizador_id')->references('id')->on('gp_usuarios');
             $t->foreign('regla_negocio_id')->references('id')->on('gp_regla_negocios');

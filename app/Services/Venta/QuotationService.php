@@ -612,6 +612,7 @@ class QuotationService implements QuotationServiceInterface
             foreach ($detalle as $det) {
                 $this->castDecimalValuesTemp($det);
                 $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
+                $this->calculatePorcentilDiscountAndPrice($det);
             }
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             return response([
@@ -673,6 +674,11 @@ class QuotationService implements QuotationServiceInterface
     public function calculateMargen($margenBruto, $descuentoGeneral, $costo)
     {
         return ($costo / (1 - ($margenBruto / 100))) / (1 - ($descuentoGeneral / 100));
+    }
+
+    public function calculatePorcentilDiscountAndPrice(&$detalle){
+        $detalle->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($detalle->ART_VALOR_ORIGINAL, $detalle->ART_VALOR), 3);
+        $detalle->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($detalle->descuento_original, $detalle->descuento),3);
     }
 
 
