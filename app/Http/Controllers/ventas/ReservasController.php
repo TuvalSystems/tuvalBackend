@@ -206,8 +206,8 @@ class ReservasController extends Controller
             $response = DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
             });
-            $msg = "Reserva procesada correctamente. Pedido {$response['pedido']} generado.";
-            return $this->buildSuccessResponse($msg, 200);
+            $msg = "Pedido {$response['pedido']} generado.";
+            return $this->successResponse($msg, $response, 200);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion procesarReservaFacturaDemandaCotizacion -ReservasController: ', [
                 'message' => $e->getMessage(),

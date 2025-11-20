@@ -1193,7 +1193,7 @@ class CotizacionesController extends Controller
                     'data' => $articulo
                 ]
             );
-            return $this->buildErrorResponse('Stock insuficiente', 500);
+            return $this->buildErrorResponse('Error al obtener stock', 500);
         }
     }
 
