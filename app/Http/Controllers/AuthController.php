@@ -37,7 +37,8 @@ class AuthController extends Controller
             if (!$user) {
                 return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
             }
-            return $this->userService->buildSuccessResponseUser($user);
+            $data = $this->userService->buildSuccessResponseUser($user);
+            return $this->successResponse("Login successful", $data, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }

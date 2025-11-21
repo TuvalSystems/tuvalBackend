@@ -16,7 +16,7 @@ interface UserServiceInterface
     public function isValidUserWeb(array $credentials): bool;
     public function getActiveUser($username): ?Model;
 
-    public function buildSuccessResponseUser($user): JsonResponse;
+    public function buildSuccessResponseUser($user): array;
 
     // cambio de contraseña
     public function changePassword($data);

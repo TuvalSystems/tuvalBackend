@@ -91,9 +91,9 @@ class UserService implements UserServiceInterface
 
 
 
-    public function buildSuccessResponseUser($user): JsonResponse
+    public function buildSuccessResponseUser($user): array
     {
-        return response()->json([
+        return [
             'user' => $this->formatuserData($user),
             'token' => $this->generateAuthToken($user),
             'menu' => $this->getUserMenu($user->perfil_id)['arbol'],
@@ -104,7 +104,7 @@ class UserService implements UserServiceInterface
             'condiciondepago' => $this->getPaymentConditions(),
             'proveedores' => $this->getSuppliers(),
             'must_change_password' => $user->must_change_password
-        ]);
+        ];
     }
 
     public function formatUserData($user): array
