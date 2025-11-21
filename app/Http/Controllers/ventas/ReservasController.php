@@ -182,9 +182,10 @@ class ReservasController extends Controller
         $gpUser = GpUsuario::find(Auth::user()->id);
         try {
             $response = $this->reserveService->processReservedQuotation($data['data'], $gpUser);
-            $msg = $response['cotizacion'] === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$response['cotizacion']}";
+            $cot = data_get($response, 'cotizacion', null);
+            $msg = $cot === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$response['cotizacion']}";
 
-            return $this->buildSuccessResponse($msg, 200);
+            return $this->successResponse($msg,  $cot, 200);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error al procesar la reserva de la cotizacion: ', [
                 'message' => $e->getMessage(),

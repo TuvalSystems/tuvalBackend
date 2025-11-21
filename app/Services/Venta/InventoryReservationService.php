@@ -561,7 +561,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     ->where('seleccionado', '>=', $decrease)
                     ->decrement('seleccionado', $decrease);
 
-                if ($row->cantidad_traslado >= 0) {
+                if ($row->cantidad_traslado > 0) {
                     DB::table($row->getTable())
                         ->where('id', $row->id)
                         ->where('seleccionado', '>=', $decrease)
