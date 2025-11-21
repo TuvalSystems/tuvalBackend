@@ -21,7 +21,7 @@ class ApiGpService
 
     public function validateUser(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_VALIDAR_USUARIO, 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_VALIDAR_USUARIO, 'POST', $params, 'json');
     }
 
     public function getTransferHeader(array $params = [])
