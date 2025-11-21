@@ -108,7 +108,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function fetchListReservedPending($perpage, $search, $sortBy = 'created_at', $sortOrder = 'desc', $tipoReserva = null, $ptoVtaId = null, $clienteRuc)
+    public function fetchListReservedPending($perpage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $tipoReserva = null, $ptoVtaId = null, $clienteRuc)
     {
         $query = GpReserva::select([
             'gp_reservas.id',
@@ -125,6 +125,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
             'gp_reservas.obs_solicitud_reserva',
             'gp_usuarios.USERID as usuario_solicita',
+            // 1. AGREGAMOS LA SUBCONSULTA REUTILIZABLE
+            DB::raw($this->getWarehouseUsageSubqueryPending()),
         ])->from('gp_reservas')
             ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id')
             ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
@@ -160,11 +162,29 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return $query->paginate($perpage)->through(function ($row) {
             $row->cot_created_at = Carbon::parse($row->created_at)->timezone('America/Guayaquil')
                 ->format('Y-m-d H:i:s');
+            $row->bodegas_uso = collect(explode(',', (string) $row->bodegas_usadas))
+                ->filter()
+                ->unique()
+                ->values();
+
+            // Limpiamos la variable temporal
+            unset($row->bodegas_usadas);
             return $row;
         });
     }
 
 
+
+     public function getWarehouseUsageSubqueryPending(): string
+    {
+        return "(
+              SELECT GROUP_CONCAT(DISTINCT s.STO_ART_BODEGA ORDER BY s.STO_ART_BODEGA SEPARATOR ',')
+              FROM gp_cotizacion_detalle_stocks s
+                INNER JOIN gp_cotizacion_detalles d ON d.id = s.detalle_id
+                WHERE d.cotizacion_id = gp_cotizacions.id
+                AND s.seleccionado > 0
+            ) as bodegas_usadas";
+    }
 
 
 
@@ -445,8 +465,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null, $clienteRuc, $userId)
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null, $clienteRuc, $userId)
     {
+
 
         $query = GpReserva::select([
             'gp_reservas.id',
@@ -462,6 +483,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
             'gp_reservas.obs_solicitud_reserva',
             'gp_reservas.fe_autorizacion_reserva',
+            DB::raw($this->getWarehouseUsageSubquery()),
         ])->from('gp_reservas')
             ->join('gp_tipo_reservas', 'gp_reservas.tipo_reserva_id', '=', 'gp_tipo_reservas.id')
             ->leftJoin('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
@@ -502,10 +524,27 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return $query->paginate($perPage)->through(function ($row) {
             $row->cot_created_at = Carbon::parse($row->created_at)->timezone('America/Guayaquil')
                 ->format('Y-m-d H:i:s');
+            $row->bodegas_uso = collect(explode(',', (string) $row->bodegas_usadas))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            unset($row->bodegas_usadas);
             return $row;
         });
     }
 
+
+    public function getWarehouseUsageSubquery()
+    {
+        return "(
+              SELECT GROUP_CONCAT(DISTINCT s.STO_ART_BODEGA ORDER BY s.STO_ART_BODEGA SEPARATOR ',')
+              FROM gp_cotizacion_detalle_stocks s
+                INNER JOIN gp_cotizacion_detalles d ON d.id = s.detalle_id
+                WHERE d.cotizacion_id = gp_cotizacions.id
+                AND s.cantidad_autorizada_reserva > 0
+            ) as bodegas_usadas";
+    }
 
 
     /**
@@ -1288,7 +1327,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 'art_plan_umedida',
                 'recibido',
             ])
-            ->orderBy('id')->get()->filter(fn ($item) => $item->pending_received > 0)->values();
+            ->orderBy('id')->get()->filter(fn($item) => $item->pending_received > 0)->values();
     }
 
 
