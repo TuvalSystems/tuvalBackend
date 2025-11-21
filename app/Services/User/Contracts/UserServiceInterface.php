@@ -19,7 +19,7 @@ interface UserServiceInterface
     public function buildSuccessResponseUser($user): JsonResponse;
 
     // cambio de contraseña
-    public function changePassword(Request $request);
+    public function changePassword($data);
 
     /**
      * Reset password

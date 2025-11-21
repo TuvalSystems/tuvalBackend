@@ -72,13 +72,21 @@ class UserService implements UserServiceInterface
         $params = array(
             'idCompany' => config('services.api_gp.company'),
             'username' => $credentials['username'],
+            'password' => $credentials['password']
         );
-        return $this->apiGp->validateUser($params);
+
+        $resp = $this->apiGp->validateUser($params);
+        $rSuccess = data_get($resp, 'success', false);
+        if (!$rSuccess) {
+            throw ValidationException::withMessages(['username' => 'El usuario no existe o la contraseña es incorrecta.']);
+        }
+        $data = data_get($resp, 'data', []);
+        return $data;
     }
 
     public function isValidUser(array $validationResponse): bool
     {
-        return isset($validationResponse['codret']) && $validationResponse['codret'] == '0';
+        return isset($validationResponse['codRet']) && $validationResponse['codRet'] == '0';
     }
 
 

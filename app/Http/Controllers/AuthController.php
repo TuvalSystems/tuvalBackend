@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\GpUsuario;
 use App\Models\Notificaciones;
 use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -21,23 +20,28 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $this->userService->validateCredentials($request);
-        $validationResponse = $this->userService->validateuserCredentials($credentials);
+        try {
+            $credentials = $this->userService->validateCredentials($request);
+            $validationResponse = $this->userService->validateuserCredentials($credentials);
 
-        if (!$this->userService->isValidUser($validationResponse)) {
-            return $this->buildErrorResponse($validationResponse['msj'] ?? 'Usuario no encontrado', 404);
+            if (!$this->userService->isValidUser($validationResponse)) {
+                return $this->buildErrorResponse($validationResponse['msj'] ?? 'Usuario no encontrado', 404);
+            }
+            if (!$this->userService->isValidUserWeb($credentials)) {
+                return $this->buildErrorResponse('Las credenciales no son validas', 401);
+            }
+            if (!$this->userService->validateStatusGpUser($credentials)) {
+                return $this->buildErrorResponse('El usuario ingresado se encuentra inactivo', 404);
+            }
+            $user = $this->userService->getActiveUser($credentials['username']);
+            if (!$user) {
+                return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
+            }
+            return $this->userService->buildSuccessResponseUser($user);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
-        if (!$this->userService->isValidUserWeb($credentials)) {
-            return $this->buildErrorResponse('Las credenciales no son validas', 401);
-        }
-        if (!$this->userService->validateStatusGpUser($credentials)) {
-            return $this->buildErrorResponse('El usuario ingresado se encuentra inactivo', 404);
-        }
-        $user = $this->userService->getActiveUser($credentials['username']);
-        if (!$user) {
-            return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
-        }
-        return $this->userService->buildSuccessResponseUser($user);
+
     }
 
 
