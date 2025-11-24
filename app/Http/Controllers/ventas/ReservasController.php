@@ -44,7 +44,7 @@ class ReservasController extends Controller
         try {
             return DB::transaction(function () use ($reserva, $gpUser) {
                 $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
-                return $this->buildSuccessResponse('Reserva Generada Correctamente', 200);
+                return $this->buildSuccessResponse('Solicitud de reserva guardada correctamente', 200);
             });
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
