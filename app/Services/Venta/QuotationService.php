@@ -676,9 +676,10 @@ class QuotationService implements QuotationServiceInterface
         return ($costo / (1 - ($margenBruto / 100))) / (1 - ($descuentoGeneral / 100));
     }
 
-    public function calculatePorcentilDiscountAndPrice(&$detalle){
+    public function calculatePorcentilDiscountAndPrice(&$detalle)
+    {
         $detalle->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($detalle->ART_VALOR_ORIGINAL, $detalle->ART_VALOR), 3);
-        $detalle->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($detalle->descuento_original, $detalle->descuento),3);
+        $detalle->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($detalle->descuento_original, $detalle->descuento), 3);
     }
 
 
@@ -983,8 +984,7 @@ class QuotationService implements QuotationServiceInterface
     public function prepareQuotationStoreFill($data, $user)
     {
         $cotizacion = isset($data['cotizacion_id']) ? GpCotizacion::find($data['cotizacion_id']) : new GpCotizacion();
-        // $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
-        $requiereAprobacionComercial = $this->approvalService->checkOutApprovalCommercial($data, 'cotizacion');
+        $requiereAprobacionComercial = $this->approvalService->checkoutApprovalCommercialQuotations($data);
         if ($data['cotizacion_id'] && $cotizacion->id) {
             $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
         } else {
@@ -1044,22 +1044,50 @@ class QuotationService implements QuotationServiceInterface
         return $cotizacion;
     }
 
-    private function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
+    public function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
     {
-        $aprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
-        $mismoMensaje = $requiereAprobacionComercial['requiere'] === 'yes' &&
-            $requiereAprobacionComercial['motivo'];
-        $mensajecotizacion = $cotizacion->motivo_aprobacion_comercial;
-        $mensajeActual = $requiereAprobacionComercial['motivo'];
+        $estabaAprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
 
-        if ($aprobada && $mismoMensaje && $mensajecotizacion === $mensajeActual) {
+        if (!$estabaAprobada) {
+            // Si no estaba aprobada antes, no hay nada que mantener.
+            // Se aplica el estado que diga la nueva validación.
+            $this->resetToPending($requiereAprobacionComercial);
+            return;
+        }
+        // 2. Extraer motivos para comparar
+        $motivoNuevo = $requiereAprobacionComercial['motivo'] ?? '';
+        $motivoGuardado = $cotizacion->motivo_aprobacion_comercial ?? '';
+
+        // 3. Comparación Estricta
+        // Si la nueva validación dice que NO requiere aprobación, genial (aunque raro si antes requería).
+        if (($requiereAprobacionComercial['requiere'] ?? 'no') !== 'yes') {
+            $requiereAprobacionComercial['estado'] = 'aprobado';
+            $requiereAprobacionComercial['aprobado'] = 'yes';
+            return; // Dejamos que pase como 'no requiere'
+        }
+
+        if ($motivoNuevo === $motivoGuardado) {
+            // ... RESTAURAMOS el estado de aprobación de la BD
             $requiereAprobacionComercial['requiere'] = $cotizacion->requiere_aprobacion_comercial;
-            $requiereAprobacionComercial['motivo'] = $cotizacion->motivo_aprobacion_comercial;
-            $requiereAprobacionComercial['estado'] = $cotizacion->estado;
-            $requiereAprobacionComercial['aprobado'] = $cotizacion->aprobado_comercial;
+            $requiereAprobacionComercial['motivo'] = $cotizacion->motivo_aprobacion_comercial; // Redundante pero seguro
+            $requiereAprobacionComercial['estado'] = $cotizacion->estado; // Ojo: Asegúrate que 'estado' sea el campo correcto (aprobado/espera)
+            $requiereAprobacionComercial['aprobado'] = $cotizacion->aprobado_comercial; // 'yes'
         } else {
-            $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
-            $requiereAprobacionComercial['aprobado'] = 'no';
+            // Si el motivo cambió (ej: pasaste de 20% a 25%), se pierde la aprobación
+            $this->resetToPending($requiereAprobacionComercial);
+        }
+    }
+
+    public function resetToPending(&$data)
+    {
+        // Si requiere aprobación, pasa a 'espera', si no, 'aprobado' (u otro status default)
+        $req = $data['requiere'] ?? 'no';
+        if ($req === 'yes') {
+            $data['estado'] = 'espera';
+            $data['aprobado'] = 'no';
+        } else {
+            $data['estado'] = 'aprobado';
+            $data['aprobado'] = 'yes';
         }
     }
 

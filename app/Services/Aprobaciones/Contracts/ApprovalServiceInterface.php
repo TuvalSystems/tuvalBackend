@@ -4,7 +4,7 @@ namespace App\Services\Aprobaciones\Contracts;
 interface ApprovalServiceInterface
 {
 
-
+    public function checkoutApprovalCommercialQuotations($data);
     public function checkOutApprovalCommercial($data, $type);
     public function checkoutApprovalCredit($data);
 
@@ -24,9 +24,9 @@ interface ApprovalServiceInterface
     //function cuando cumple las condiciones para la aprobación
     public function approveCreditOrder($data, $user);
     // cuando se rechaza un pedido - credito
-    public function denyCreditApproval ($data, $user);
+    public function denyCreditApproval($data, $user);
     // cuando se rechaza de forma automatica en caso de que el stock sea insuficiente
-    public function rejectCreditOrderForInsufficientStock ($data, $user);
+    public function rejectCreditOrderForInsufficientStock($data, $user);
 
     /** funciones para aprobacion comercial  */
 
@@ -43,7 +43,7 @@ interface ApprovalServiceInterface
     public function denyOrderBeenWaiting(int $id);
 
     public function getAllPendingApprovals(int $ptoVta);
-     public function getAllQuotesPendingApprovals($ptoVta);
-     public function getAllOrdersPendingApprovals($ptoVta);
+    public function getAllQuotesPendingApprovals($ptoVta);
+    public function getAllOrdersPendingApprovals($ptoVta);
 
 }

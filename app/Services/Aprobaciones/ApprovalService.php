@@ -58,6 +58,192 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
     // aprobacion comercial tanto de pedido como de cotizaciones
+
+    public function checkoutApprovalCommercialQuotations($data)
+    {
+        $quoteId = data_get($data, 'cotizacion_id', null);
+
+        $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
+        $motivosAprobacionComercial = [];
+
+
+
+        $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
+        if ($registroVolverAPedir) {
+            $esPedido = !empty($registroVolverAPedir->pedido_origen);
+            $idOrigen = $esPedido ? $registroVolverAPedir->pedido_origen : $registroVolverAPedir->cotizacion_origen;
+
+            $origenEntidad = $esPedido ? GpPedido::find($idOrigen) : GpCotizacion::find($idOrigen);
+            $desde = $esPedido ? 'pedido' : 'cotizacion';
+            $prefijo = $esPedido ? 'PED' : 'COT';
+            $codigoVisual = $prefijo . str_pad($idOrigen, 8, "0", STR_PAD_LEFT);
+
+            $fechaTxt = optional($origenEntidad)->created_at
+                ? optional($origenEntidad)->created_at->format('Y-m-d')
+                : 'S/F';
+
+            if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial === 'yes' && $origenEntidad->aprobado_comercial !== 'yes') {
+                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                    "Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt"
+                );
+            }
+
+            // 2. Motivo por ser copia (siempre se agrega si existe el registro)
+            $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
+            );
+
+        }
+
+        $nivelCliente = $this->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
+        if (!$nivelCliente) {
+            $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
+        }
+
+        $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
+        if (!$nivelCotizacion) {
+            $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion no encontrada en la base de datos.");
+        }
+        if ($nivelCotizacion > $nivelCliente) {
+            $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
+        }
+
+        if ($quoteOrigin) {
+
+            // 0. VALIDACIÓN DE ESTADO PREVIO (Persistencia)
+            // Si la cotización guardada YA requiere aprobación y NO ha sido aprobada aún,
+            // forzamos la aprobación de nuevo. Esto evita que al "Guardar" y "Recuperar" se salte el check.
+            if ($quoteOrigin->requiere_aprobacion_comercial === 'yes' && $quoteOrigin->aprobado_comercial !== 'yes') {
+                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                    "La cotización recuperada se encuentra pendiente de aprobación previa (ID: $quoteId)."
+                );
+            }
+
+            // 3. Validación Descuento General (Comparación de Valores)
+            // Ahora comparamos valores. Incluso si son iguales (20% vs 20%),
+            // el bloque de arriba (0) ya habrá atrapado la solicitud.
+            $pctOriginalRef = $quoteOrigin->porcentage_descuento;
+
+            // Nota: Mantenemos el != si quieres que sea estricto, o > si quieres que sea solo por pérdida
+            if ((float) $data['porcentage_descuento'] != (float) $pctOriginalRef) {
+                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                    "Porcentaje de descuento general modificado respecto al guardado. Nuevo: {$data['porcentage_descuento']}% vs Guardado: $pctOriginalRef%"
+                );
+            }
+        } else {
+            // Si NO hay quoteOrigin (es una cotización NUEVA desde cero),
+            // comparamos contra el original que envió el front (el default del sistema)
+            if ((float) $data['porcentage_descuento'] != (float) $data['porcentage_descuentooriginal']) {
+                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                    "Porcentaje de descuento modificado. Nuevo: {$data['porcentage_descuento']}% vs Original: {$data['porcentage_descuentooriginal']}%"
+                );
+            }
+        }
+
+
+
+
+        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
+        $motivosDetalle = $this->validateQuotationDetailToApprove($data['cotizacion'], $ptoVenta);
+        if (!empty($motivosDetalle)) {
+            $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
+        }
+
+        return $this->finalizeApprovalReasons($motivosAprobacionComercial);
+    }
+
+    public function validateQuotationDetailToApprove($detalles, $ptoVenta): array
+    {
+        $detailMotivos = [];
+        $ids = collect($detalles)->pluck('detalle_id')->filter();
+        $dbDetails = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+
+        foreach ($detalles as $detalle) {
+            $detailId = data_get($detalle, 'detalle_id');
+            $detailOrigin = $detailId ? $dbDetails->get($detailId) : null;
+
+
+            // ---------------------------------------------------------
+            // NORMALIZACIÓN DE VALORES (El secreto para no duplicar código)
+            // ---------------------------------------------------------
+
+            // 1. Descuento de Referencia
+            $refDescuento = $detailOrigin ? $detailOrigin->descuento : $detalle['descuento_original'];
+
+            // 2. Descripción de Referencia
+            $refDescripcion = $detailOrigin ? $detailOrigin->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
+
+            // 3. Valor de Referencia
+            $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
+
+            if ($detalle['descuento'] != $refDescuento) {
+                $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$refDescuento}%");
+            }
+
+            // validacion de descripcion difernete a tipo L
+            if ($detalle['ART_TIPO_COMPRA'] != 'L') {
+                if ($detalle['ART_DESCRIPCION'] != $refDescripcion) {
+                    $descNueva = substr($detalle['ART_DESCRIPCION'], 0, 20);
+                    $descRef = substr($refDescripcion, 0, 20);
+                    $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva...' vs Original: '$descRef...'");
+                }
+
+                if ($detalle['ART_VALOR'] != (float) $refValor) {
+                    $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $refValor");
+                }
+
+                /** proceso para calculo de porcetaje maximo de precio de venta */
+                $exceso = 0;
+                $excesoPct = 0;
+                $valorOriginal = (float) $refValor;
+                $porcMaxSubida = (float) $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
+                // $factor = 1 + ($porcMaxSubida / 100);
+                // $precioLimite = $valorOriginal * $factor;
+                $precioLimite = $valorOriginal * (1 + ($porcMaxSubida / 100));
+                $precioActual = (float) $detalle['ART_VALOR'];
+
+                if ($precioActual > $precioLimite) {
+                    $exceso = $precioActual - $precioLimite;
+                    $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
+                    $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                        . "(límite: {$precioLimite}), excede en {$exceso} "
+                        . "({$excesoPct}% sobre el valor original).");
+                }
+            }
+        }
+
+        // validaciones para tipo L
+        if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+            $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+            if (!$porcentajeMargen) {
+                $detailMotivos[] = $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
+            }
+            $margenConfigurado = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
+            foreach ($detalle['proveedores'] as $proveedor) {
+
+                $denominadorMargen = 1 - ($margenConfigurado / 100);
+                $denominadorDesc = 1 - ($detalle['descuento'] / 100);
+                // Evitar división por cero
+                if ($denominadorMargen == 0 || $denominadorDesc == 0) {
+                    $detailMotivos[] = $this->requiredApprovalResponse("Error en cálculo de márgenes (división por cero).");
+                    continue;
+                }
+
+                $valorMinimoCalculado = ($proveedor['COSTO_UNITARIO'] / $denominadorMargen) / $denominadorDesc;
+                $valorMinimoCalculado = round($valorMinimoCalculado, 4);
+
+                if ($valorMinimoCalculado > $detalle['ART_VALOR']) {
+                    $detailMotivos[] = $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
+                }
+                if ($proveedor['MARGEN'] < $margenConfigurado) {
+                    $detailMotivos[] = $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+                }
+            }
+        }
+
+        return $detailMotivos;
+    }
+
     public function checkOutApprovalCommercial($data, $type)
     {
         $return = ['requiere' => 'no', 'motivo' => null];
@@ -438,14 +624,14 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function checkOutApprovalCommercialReservedOrder($data, string $pick = 'first')
+    public function checkOutApprovalCommercialReservedOrder($data)
     {
         $motivosAprovacionComercial = [];
         $cotizacion = GpCotizacion::find($data['id']);
 
         $nivelCliente = $this->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
         if (!$nivelCliente) {
-            $motivosAprovacionComercial = $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
+            $motivosAprovacionComercial[] = $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
         }
 
         $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
@@ -470,7 +656,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!empty($motivosDetalle)) {
             $motivosAprovacionComercial = array_merge($motivosAprovacionComercial, $motivosDetalle);
         }
-        return $this->finalizeApprovalReasons($motivosAprovacionComercial, $pick);
+        return $this->finalizeApprovalReasons($motivosAprovacionComercial);
     }
 
 
@@ -537,77 +723,78 @@ class ApprovalService implements ApprovalServiceInterface
         return $detailMotivos;
     }
 
-    public function finalizeApprovalReasons(array $reasons, string $pick = 'first')
+    public function finalizeApprovalReasons(array $reasons)
     {
-        // 1) Aplanar un nivel (evita arrays anidados)
-        $flat = [];
-        foreach ($reasons as $r) {
-            if (empty($r))
-                continue;
+        // 1. Aplanar y filtrar vacíos usando Helpers de Laravel
+        // flatten() convierte arrays anidados multidimensionales en uno solo nivel
+        $collection = collect($reasons)->flatMap(function ($item) {
+            // Si es un array y tiene llaves numéricas consecutivas (0, 1, 2...), es una lista anidada
+            if (is_array($item) && !empty($item) && array_keys($item) === range(0, count($item) - 1)) {
+                return $item;
+            }
+            // Si es asociativo o string, lo devolvemos envuelto en un array para que flatMap lo integre
+            return [$item];
+        })->filter();
 
-            if (is_array($r) && array_is_list($r)) {
-                foreach ($r as $rr) {
-                    if (!empty($rr))
-                        $flat[] = $rr;
+        if ($collection->isEmpty()) {
+            return $this->requiredNotApprovalResponse('No requiere aprobación comercial.');
+        }
+
+
+        // 2. Normalizar datos
+        $normalized = $collection->map(function ($item) {
+            if (is_string($item)) {
+                return $this->requiredApprovalResponse($item);
+            }
+            // Si ya es un array estructurado
+            if (is_array($item)) {
+                // Intentamos obtener el mensaje
+                $msg = $item['motivo'] ?? $item['message'] ?? null;
+
+                // Si no hay mensaje y tampoco es un array con estructura correcta, lo forzamos a string
+                if (!$msg && !isset($item['requiere'])) {
+                    $msg = json_encode($item, JSON_UNESCAPED_UNICODE);
                 }
-            } else {
-                $flat[] = $r;
-            }
-        }
 
-        // 2) Normalizar a la forma de tus helpers
-        $normalized = [];
-        foreach ($flat as $r) {
-            // Si viene string, lo convertimos a "requiere = yes"
-            if (is_string($r)) {
-                $normalized[] = $this->requiredApprovalResponse($r);
-                continue;
-            }
-
-            if (is_array($r)) {
-                // Si ya está en forma de helper y tiene 'motivo', lo usamos tal cual
-                if (array_key_exists('motivo', $r)) {
-                    // Si no trae 'requiere', lo asumimos como que requiere aprobación
-                    if (!array_key_exists('requiere', $r)) {
-                        $normalized[] = $this->requiredApprovalResponse((string) $r['motivo']);
-                    } else {
-                        $normalized[] = $r;
-                    }
-                } else {
-                    // Intento de extracción de mensaje común ('message' u otros)
-                    $msg = $r['message'] ?? $r['motivo'] ?? json_encode($r, JSON_UNESCAPED_UNICODE);
-                    $normalized[] = $this->requiredApprovalResponse((string) $msg);
+                // Si ya tiene el formato correcto (tiene motivo y requiere), lo retornamos tal cual
+                if (isset($item['motivo']) && isset($item['requiere'])) {
+                    return $item;
                 }
+
+                return $this->requiredApprovalResponse((string) $msg);
             }
+            return null;
+        })->filter();
+
+        // 3. Deduplicar por el texto del motivo
+        $unique = $normalized->unique('motivo')->values();
+
+        if ($unique->isEmpty()) {
+            return $this->requiredNotApprovalResponse('No requiere aprobación comercial.');
         }
 
-        // 3) Deduplicar por 'motivo'
-        $unique = [];
-        $seen = [];
-        foreach ($normalized as $item) {
-            $motivo = (string) ($item['motivo'] ?? '');
-            if ($motivo === '')
-                continue;
-            if (isset($seen[$motivo]))
-                continue;
-            $seen[$motivo] = true;
-            $unique[] = $item;
-        }
+        // ========================================================================
+        // CAMBIO CRÍTICO: CONCATENACIÓN EN LUGAR DE SELECCIÓN
+        // ========================================================================
 
-        // 4) Elegir primera/última si hay razones; si la elegida no marca 'yes', forzarla
-        if (!empty($unique)) {
-            $chosen = ($pick === 'last') ? end($unique) : $unique[0];
-
-            if (($chosen['requiere'] ?? null) !== 'yes') {
-                // Normalizamos a "requiere = yes" si la razón elegida no lo trae
-                $chosen = $this->requiredApprovalResponse((string) ($chosen['motivo'] ?? 'Requiere aprobación'));
+        // Si hay un solo motivo, devolvemos ese tal cual
+        if ($unique->count() === 1) {
+            $single = $unique->first();
+            // Aseguramos que marque 'yes'
+            if (($single['requiere'] ?? 'no') !== 'yes') {
+                $single['requiere'] = 'yes';
             }
-
-            return $chosen;
+            return $single;
         }
 
-        // 5) Si no hay razones → no requiere aprobación
-        return $this->requiredNotApprovalResponse('No requiere aprobación comercial.');
+        $combinedMessage = $unique->map(function ($item, $key) {
+            return ($key + 1) . '. ' . ($item['motivo'] ?? 'Error desconocido');
+        })->implode(' || ');
+
+        // Si hay múltiples, los unimos en un solo string separándolos
+        // Ejemplo: "1. Descuento modificado | 2. Precio bajo mínimos"
+        // Retornamos un ÚNICO objeto de aprobación que contiene TODOS los problemas
+        return $this->requiredApprovalResponse($combinedMessage);
     }
     /*** aprovacion crediciticia *** */
 
@@ -1214,7 +1401,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function fetchPendingOrders(int $ptoVta): Builder
     {
         $excludedStates = ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'];
-       $query = GpPedido::query()
+        $query = GpPedido::query()
             ->with([
                 'detallepedido',
                 'gpcliente' => function ($query) {
@@ -1258,7 +1445,7 @@ class ApprovalService implements ApprovalServiceInterface
             ->where('aprobado_comercial', 'no')
             ->whereNotIn('estado', $excludedStates)
             ->orderBy('created_at', 'ASC');
-            return $query;
+        return $query;
     }
 
     public function getClientSegments(array $rucs): array
