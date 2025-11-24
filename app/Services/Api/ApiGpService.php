@@ -90,7 +90,7 @@ class ApiGpService
             ];
         })->toArray();
 
-        return $this->httpClient->makeBatchRequest($this->endpoints["consultar_stock_bodega_async"], $request);
+        return $this->httpClient->makeBatchRequest( ApiGpEndpoints::INVENTARIO_CONSULTAR_STOCK_BODEGA_ASYNC, $request);
     }
 
 
