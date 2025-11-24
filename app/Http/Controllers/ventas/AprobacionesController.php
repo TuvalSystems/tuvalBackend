@@ -127,6 +127,36 @@ class AprobacionesController extends Controller
         // ]);
     }
 
+    public function listaCotizacionesPendientesPorAprobar(Request $request) : JsonResponse
+    {
+        $data = $request->validate([
+            'puntodeventa_id' => 'required',
+        ]);
+        $ptoVta = data_get($data, 'puntodeventa_id');
+        try {
+            $data = $this->approvalService->getAllQuotesPendingApprovals($ptoVta);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    public function listaPedidosPendientesPorAprobar(Request $request) : JsonResponse
+    {
+        $data = $request->validate([
+            'puntodeventa_id' => 'required',
+        ]);
+        $ptoVta = data_get($data, 'puntodeventa_id');
+        try {
+            $data = $this->approvalService->getAllOrdersPendingApprovals($ptoVta);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+
+
     public function getSegmentoCliente($ruc)
     {
         $response = $this->apiGpService->fetchClientSegment([

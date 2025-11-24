@@ -31,6 +31,8 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
 class ApprovalService implements ApprovalServiceInterface
@@ -1133,11 +1135,12 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         // 1. Fetch Orders (Pedidos)
-        $orders = $this->fetchPendingOrders($ptoVta);
+        $query1 = $this->fetchPendingOrders($ptoVta);
 
         // 2. Fetch Quotes (Cotizaciones)
-        $quotes = $this->fetchPendingQuotes($ptoVta);
-
+        $query2 = $this->fetchPendingQuotes($ptoVta);
+         $orders = $query1->get();
+        $quotes = $query2->get();
 
         $allRucs = $orders->pluck('CLI_RUC')
             ->merge($quotes->pluck('CLI_RUC'))
@@ -1145,6 +1148,8 @@ class ApprovalService implements ApprovalServiceInterface
             ->toArray();
 
         $segmentDataByRuc = $this->getClientSegments($allRucs);
+        // $orders = $query1->get();
+        // $quotes = $query2->get();
         $orders = $this->mapClientSegmentData($orders, $segmentDataByRuc);
         $quotes = $this->mapClientSegmentData($quotes, $segmentDataByRuc);
 
@@ -1162,11 +1167,54 @@ class ApprovalService implements ApprovalServiceInterface
         ];
     }
 
+    /** listado de las cotizaciones pendiente de aprobaciones */
+    public function getAllQuotesPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
+    {
+        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
+        $query = $this->fetchPendingQuotes($ptoVta);
+        $rules = $this->getApprovalrRulesForUser($user->id);
+        if ($rules->isNotEmpty()) {
+            $quotes = $query->get();
+            $quotes = $this->filterQuoteByRules($quotes, $rules);
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+            $currentItems = $quotes->slice(($currentPage - 1) * $perPage, $perPage)->all();
+            return new LengthAwarePaginator(
+                $currentItems,
+                $quotes->count(),
+                $perPage,
+                $currentPage,
+                ['path' => LengthAwarePaginator::resolveCurrentPath()]
+            );
+        }
+        return $query->paginate($perPage);
+    }
 
-    public function fetchPendingOrders(int $ptoVta): Collection
+    public function getAllOrdersPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
+    {
+        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
+        $query = $this->fetchPendingOrders($ptoVta);
+        $rules = $this->getApprovalrRulesForUser($user->id);
+        if ($rules->isNotEmpty()) {
+            $orders = $query->get();
+            $orders = $this->filterOrderByRules($orders, $rules);
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+            $currentItems = $orders->slice(($currentPage - 1) * $perPage, $perPage)->all();
+            return new LengthAwarePaginator(
+                $currentItems,
+                $orders->count(),
+                $perPage,
+                $currentPage,
+                ['path' => LengthAwarePaginator::resolveCurrentPath()]
+            );
+        }
+        return $query->paginate($perPage);
+    }
+
+
+    public function fetchPendingOrders(int $ptoVta): Builder
     {
         $excludedStates = ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'];
-        return GpPedido::query()
+       return GpPedido::query()
             ->with([
                 'detallepedido',
                 'gpcliente' => function ($query) {
@@ -1184,11 +1232,10 @@ class ApprovalService implements ApprovalServiceInterface
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->whereNotIn('estado', $excludedStates)
-            ->orderBy('created_at', 'ASC')
-            ->get();
+            ->orderBy('created_at', 'ASC');
     }
 
-    public function fetchPendingQuotes(int $ptoVta): Collection
+    public function fetchPendingQuotes(int $ptoVta): Builder
     {
         $excludedStates = ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'];
 
@@ -1209,8 +1256,7 @@ class ApprovalService implements ApprovalServiceInterface
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->whereNotIn('estado', $excludedStates)
-            ->orderBy('created_at', 'ASC')
-            ->get();
+            ->orderBy('created_at', 'ASC');
     }
 
     public function getClientSegments(array $rucs): array
@@ -1266,7 +1312,6 @@ class ApprovalService implements ApprovalServiceInterface
     public function filterOrderByRules(Collection $orders, Collection $rules): Collection
     {
 
-        $orders->loadMissing(['gpcliente', 'detallepedido']);
         if ($rules->isEmpty()) {
             return collect();
         }
@@ -1314,11 +1359,11 @@ class ApprovalService implements ApprovalServiceInterface
                     'discountChange' => $discountChange
                 ]);
                 return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
-                    $matchesPrice = $priceChange >= (float) $rule->descuento_min
-                        && $priceChange <= (float) $rule->descuento_max;
+                    $matchesPrice = $priceChange >=  $rule->descuento_min
+                        && $priceChange <=  $rule->descuento_max;
 
-                    $matchesDiscount = $discountChange >= (float) $rule->descuento_min
-                        && $discountChange <= (float) $rule->descuento_max;
+                    $matchesDiscount = $discountChange >=  $rule->descuento_min
+                        && $discountChange <=  $rule->descuento_max;
 
                     return $matchesPrice && $matchesDiscount;
                 });
@@ -1327,7 +1372,7 @@ class ApprovalService implements ApprovalServiceInterface
         });
     }
 
-    public function calculateDiscountFraction(float $originalPrice, float $currentPrice)
+    public function calculateDiscountFraction( $originalPrice,  $currentPrice)
     {
         if ($originalPrice == 0.0) {
             return 0.0;
@@ -1335,7 +1380,7 @@ class ApprovalService implements ApprovalServiceInterface
         return ($currentPrice - $originalPrice) / $originalPrice;
     }
 
-    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount)
+    public function calculateDiscountChange( $originalDiscount,  $currentDiscount)
     {
         $original = $originalDiscount / 100;
         $current = $currentDiscount / 100;
@@ -1344,7 +1389,6 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function filterQuoteByRules(Collection $quotes, Collection $rules)
     {
-        $quotes->loadMissing(['gpcliente', 'detallecotizacion']);
         if ($rules->isEmpty()) {
             return collect();
         }
@@ -1392,11 +1436,11 @@ class ApprovalService implements ApprovalServiceInterface
                     'discountChange' => $discountChange
                 ]);
                 return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
-                    $matchesPrice = $priceChange >= (float) $rule->descuento_min
-                        && $priceChange <= (float) $rule->descuento_max;
+                    $matchesPrice = $priceChange >=  $rule->descuento_min
+                        && $priceChange <=  $rule->descuento_max;
 
-                    $matchesDiscount = $discountChange >= (float) $rule->descuento_min
-                        && $discountChange <= (float) $rule->descuento_max;
+                    $matchesDiscount = $discountChange >=  $rule->descuento_min
+                        && $discountChange <=  $rule->descuento_max;
 
                     return $matchesPrice && $matchesDiscount;
                 });
@@ -1415,4 +1459,8 @@ class ApprovalService implements ApprovalServiceInterface
         $typeSeller = data_get($data, 'txDescor', null);
         return $typeSeller;
     }
+
+
+
+
 }
