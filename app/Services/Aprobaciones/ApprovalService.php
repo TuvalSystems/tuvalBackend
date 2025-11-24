@@ -30,8 +30,8 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
@@ -1139,7 +1139,7 @@ class ApprovalService implements ApprovalServiceInterface
 
         // 2. Fetch Quotes (Cotizaciones)
         $query2 = $this->fetchPendingQuotes($ptoVta);
-         $orders = $query1->get();
+        $orders = $query1->get();
         $quotes = $query2->get();
 
         $allRucs = $orders->pluck('CLI_RUC')
@@ -1214,7 +1214,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function fetchPendingOrders(int $ptoVta): Builder
     {
         $excludedStates = ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'];
-       return GpPedido::query()
+       $query = GpPedido::query()
             ->with([
                 'detallepedido',
                 'gpcliente' => function ($query) {
@@ -1233,13 +1233,14 @@ class ApprovalService implements ApprovalServiceInterface
             ->where('aprobado_comercial', 'no')
             ->whereNotIn('estado', $excludedStates)
             ->orderBy('created_at', 'ASC');
+        return $query;
     }
 
     public function fetchPendingQuotes(int $ptoVta): Builder
     {
         $excludedStates = ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'];
 
-        return GpCotizacion::query()
+        $query = GpCotizacion::query()
             ->with([
                 'detallecotizacion',
                 'gpcliente' => function ($query) {
@@ -1257,6 +1258,7 @@ class ApprovalService implements ApprovalServiceInterface
             ->where('aprobado_comercial', 'no')
             ->whereNotIn('estado', $excludedStates)
             ->orderBy('created_at', 'ASC');
+            return $query;
     }
 
     public function getClientSegments(array $rucs): array
@@ -1359,11 +1361,11 @@ class ApprovalService implements ApprovalServiceInterface
                     'discountChange' => $discountChange
                 ]);
                 return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
-                    $matchesPrice = $priceChange >=  $rule->descuento_min
-                        && $priceChange <=  $rule->descuento_max;
+                    $matchesPrice = $priceChange >= $rule->descuento_min
+                        && $priceChange <= $rule->descuento_max;
 
-                    $matchesDiscount = $discountChange >=  $rule->descuento_min
-                        && $discountChange <=  $rule->descuento_max;
+                    $matchesDiscount = $discountChange >= $rule->descuento_min
+                        && $discountChange <= $rule->descuento_max;
 
                     return $matchesPrice && $matchesDiscount;
                 });
@@ -1372,7 +1374,7 @@ class ApprovalService implements ApprovalServiceInterface
         });
     }
 
-    public function calculateDiscountFraction( $originalPrice,  $currentPrice)
+    public function calculateDiscountFraction($originalPrice, $currentPrice)
     {
         if ($originalPrice == 0.0) {
             return 0.0;
@@ -1380,7 +1382,7 @@ class ApprovalService implements ApprovalServiceInterface
         return ($currentPrice - $originalPrice) / $originalPrice;
     }
 
-    public function calculateDiscountChange( $originalDiscount,  $currentDiscount)
+    public function calculateDiscountChange($originalDiscount, $currentDiscount)
     {
         $original = $originalDiscount / 100;
         $current = $currentDiscount / 100;
@@ -1436,11 +1438,11 @@ class ApprovalService implements ApprovalServiceInterface
                     'discountChange' => $discountChange
                 ]);
                 return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
-                    $matchesPrice = $priceChange >=  $rule->descuento_min
-                        && $priceChange <=  $rule->descuento_max;
+                    $matchesPrice = $priceChange >= $rule->descuento_min
+                        && $priceChange <= $rule->descuento_max;
 
-                    $matchesDiscount = $discountChange >=  $rule->descuento_min
-                        && $discountChange <=  $rule->descuento_max;
+                    $matchesDiscount = $discountChange >= $rule->descuento_min
+                        && $discountChange <= $rule->descuento_max;
 
                     return $matchesPrice && $matchesDiscount;
                 });
