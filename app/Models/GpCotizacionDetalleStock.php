@@ -48,9 +48,16 @@ class GpCotizacionDetalleStock extends Model
     protected $appends = ['disable_movimiento', 'pendiente', 'disable_traslado', 'picking'];
     protected $casts = [
         'disable_movimiento' => 'boolean',
-        'pendiente' => 'integer',
+        'pendiente' => 'float',
         'disable_traslado' => 'boolean',
-        'picking' => 'boolean'
+        'picking' => 'boolean',
+
+        'cantidad_autorizada_reserva' => 'float',
+        'cantidad_facturada' => 'float',
+        'cantidad_cancelada' => 'float',
+        'cantidad_cotizada' => 'float',
+        'cantidad_traslado' => 'float',
+        'cantidad_reservada' => 'float',
     ];
     protected $fillable = [
         'cotizacion_id',
@@ -76,17 +83,19 @@ class GpCotizacionDetalleStock extends Model
 
     protected function getReservada()
     {
-        return (int) $this->cantidad_reservada ?? 0;
+        return (float) $this->cantidad_reservada ?? 0;
     }
 
-    public function getPendienteAttribute(): int
+    public function getPendienteAttribute(): float
     {
         $res = $this->getReservada();
         $fact = $this->cantidad_facturada ?? 0;
         $can = $this->cantidad_cancelada ?? 0;
         // $cot = $this->cantidad_cotizada     ?? 0;
         // $tras = $this->cantidad_traslado ?? 0;
-        return max(0, $res - $fact - $can);
+        $pendiente = $res - $fact - $can;
+        return max(0, round($pendiente, 4));
+        // return max(0, $res - $fact - $can);
     }
 
     public function getDisableMovimientoAttribute(): bool
