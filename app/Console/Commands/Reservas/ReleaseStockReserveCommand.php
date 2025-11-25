@@ -34,7 +34,7 @@ class ReleaseStockReserveCommand extends Command
             'cotizacion.detallecotizacionstock' => function ($q) {
                 $q->where('seleccionado', '>', 0);
             }
-        ])->where('tipo_reserva_id', 1)->where('estado', 'aprobado')->where('fe_autorizacion_reserva', '<=', $hoy);
+        ])->where('tipo_reserva_id', 1)->where('estado', 'aprobado')->where('fe_autorizacion_reserva', '=', $hoy);
 
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
