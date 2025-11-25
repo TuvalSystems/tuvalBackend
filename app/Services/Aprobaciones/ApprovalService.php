@@ -1377,7 +1377,7 @@ class ApprovalService implements ApprovalServiceInterface
     /** listado de las cotizaciones pendiente de aprobaciones */
     public function getAllQuotesPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(195);
+        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         $query = $this->fetchPendingQuotes($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
@@ -1398,7 +1398,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getAllOrdersPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(195);
+        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         $query = $this->fetchPendingOrders($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
