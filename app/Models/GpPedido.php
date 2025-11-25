@@ -235,5 +235,11 @@ class GpPedido extends Model
         return $this->belongsTo(GpCliente::class, 'cliente_id');
     }
 
+     public function gpvendedor(){
+
+        return $this->belongsTo(GpVendedor::class, 'VEND_ID', 'VEND_ID');
+    }
+
+
 
 }

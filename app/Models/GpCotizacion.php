@@ -235,6 +235,12 @@ class GpCotizacion extends Model
     }
 
 
+    public function gpvendedor(){
+
+        return $this->belongsTo(GpVendedor::class, 'VEND_ID', 'VEND_ID');
+    }
+
+
 
 
 

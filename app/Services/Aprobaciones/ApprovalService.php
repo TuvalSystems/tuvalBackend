@@ -57,7 +57,12 @@ class ApprovalService implements ApprovalServiceInterface
         $this->stockWarehouseService = $stockWarehouseServiceInterface;
     }
 
-    // aprobacion comercial tanto de pedido como de cotizaciones
+
+    /*
+     *
+     * aprobacion comercial tanto de pedido como de cotizaciones
+     *
+     */
 
     public function checkoutApprovalCommercialQuotations($data)
     {
@@ -242,6 +247,21 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         return $detailMotivos;
+    }
+
+    /***
+     *  aprobacion comercial de pedidos
+     *
+     */
+
+    public function checkoutApprovalCommercialOrders($data)
+    {
+        $rgCopy = GpRegistroCopia::where('cotizacion_destino', $data['cotizacion_id'])->where('tipo', 'volver_a_pedir')->first();
+
+        if ($rgCopy) {
+
+        }
+
     }
 
     public function checkOutApprovalCommercial($data, $type)
@@ -1357,7 +1377,7 @@ class ApprovalService implements ApprovalServiceInterface
     /** listado de las cotizaciones pendiente de aprobaciones */
     public function getAllQuotesPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
+        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(195);
         $query = $this->fetchPendingQuotes($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
@@ -1378,7 +1398,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getAllOrdersPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
+        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(195);
         $query = $this->fetchPendingOrders($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
@@ -1404,9 +1424,12 @@ class ApprovalService implements ApprovalServiceInterface
         $query = GpPedido::query()
             ->with([
                 'detallepedido',
-                'gpcliente' => function ($query) {
-                    $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
-                }
+                // 'gpcliente' => function ($query) {
+                //     $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
+                // },
+                //  'gpvendedor' => function ($query) {
+                //     $query->select('id', 'VEND_ID', 'VEND_TERRITORIO');
+                // }
             ])
             ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
             ->join('gp_punto_ventas as pv', 'pv.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')
@@ -1430,9 +1453,12 @@ class ApprovalService implements ApprovalServiceInterface
         $query = GpCotizacion::query()
             ->with([
                 'detallecotizacion',
-                'gpcliente' => function ($query) {
-                    $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
-                }
+                // 'gpcliente' => function ($query) {
+                //     $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
+                // },
+                // 'gpvendedor' => function ($query) {
+                //     $query->select('id', 'VEND_ID', 'VEND_TERRITORIO');
+                // }
             ])
             ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select(
@@ -1516,15 +1542,19 @@ class ApprovalService implements ApprovalServiceInterface
 
 
         return $orders->filter(function (GpPedido $ord) use ($rules) {
-            $cliente = $ord->gpcliente; // relación Cliente del pedido
-            $typeSeller = $this->getTypeSellerByUser($ord->USERID);
+            $seller = $this->getTypeSellerByUser($ord->USERID);
+            $typeSeller = data_get($seller, 'txDescor', null);
+            $territorio = data_get($seller, 'territorio', null);
 
-            if (!$cliente) {
+            if (!$typeSeller) {
                 return false;
             }
-            $orderRules = $rules->filter(function (GpReglaAprobacion $rule) use ($cliente, $typeSeller) {
-                $matchsTipoVendedor = data_get($rule, 'tipo_vendedor') === "ALL" || data_get($rule, 'tipo_vendedor') == $typeSeller;
-                $matchZone = data_get($rule, 'zona') === "ALL" || data_get($rule, 'zona') === trim(strtoupper($cliente->CLI_TERRITORIO));
+            if (!$territorio) {
+                return false;
+            }
+            $orderRules = $rules->filter(function (GpReglaAprobacion $rule) use ($typeSeller, $territorio) {
+                $matchsTipoVendedor = data_get($rule, 'tipo_vendedor') == $typeSeller;
+                $matchZone = data_get($rule, 'zona') === trim(strtoupper($territorio));
                 return $matchsTipoVendedor && $matchZone;
             });
 
@@ -1542,10 +1572,12 @@ class ApprovalService implements ApprovalServiceInterface
                 $priceChange = $this->calculateDiscountFraction($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
 
                 $discountChange = $this->calculateDiscountChange($detail->descuento_original, $detail->descuento);
-                Log::info('pedido -filterOrderByRules', [
-                    'pedido_id' => $detail->pedido_id,
-                    'priceChange' => $priceChange,
-                    'discountChange' => $discountChange
+                Log::info('DEBUG CALCULO -filterOrderByRules', [
+                    'Original_Raw' => $detail->ART_VALOR_ORIGINAL,
+                    'Current_Raw' => $detail->ART_VALOR,
+                    'Original_Qty' => $detail->CANTIDAD, // Verifica si esto influye
+                    'Calculo' => "({$detail->ART_VALOR} - {$detail->ART_VALOR_ORIGINAL}) / {$detail->ART_VALOR_ORIGINAL}",
+                    'Resultado' => $priceChange
                 ]);
                 return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
                     $matchesPrice = $priceChange >= $rule->descuento_min
@@ -1558,7 +1590,7 @@ class ApprovalService implements ApprovalServiceInterface
                 });
             });
 
-        });
+        })->values();
     }
 
     public function calculateDiscountFraction($originalPrice, $currentPrice)
@@ -1591,16 +1623,21 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         return $quotes->filter(function (GpCotizacion $ord) use ($rules) {
-            $cliente = $ord->gpcliente; // relación Cliente del pedido
-            $typeSeller = $this->getTypeSellerByUser($ord->USERID);
+            $seller = $this->getTypeSellerByUser($ord->USERID);
+            $typeSeller = data_get($seller, 'txDescor', null);
+            $territorio = data_get($seller, 'territorio', null);
 
-            if (!$cliente) {
+            if (!$typeSeller) {
                 return false;
             }
-            $orderRules = $rules->filter(function (GpReglaAprobacion $rule) use ($cliente, $typeSeller) {
+            if (!$territorio) {
+                return false;
+            }
 
-                $matchsTipoVendedor = data_get($rule, 'tipo_vendedor') === "ALL" || data_get($rule, 'tipo_vendedor') == $typeSeller;
-                $matchZone = data_get($rule, 'zona') === "ALL" || data_get($rule, 'zona') == trim(strtoupper($cliente->CLI_TERRITORIO));
+
+            $orderRules = $rules->filter(function (GpReglaAprobacion $rule) use ($typeSeller, $territorio) {
+                $matchsTipoVendedor = data_get($rule, 'tipo_vendedor') == $typeSeller;
+                $matchZone = data_get($rule, 'zona') == trim(strtoupper($territorio));
                 return $matchsTipoVendedor && $matchZone;
             });
 
@@ -1612,17 +1649,19 @@ class ApprovalService implements ApprovalServiceInterface
             }
 
 
-            return $ord->detallecotizacion->contains(function ($detail) use ($orderRules) {
+            return $ord->detallecotizacion->every(function ($detail) use ($orderRules) {
 
                 //lo calculas desde precios
                 $priceChange = $this->calculateDiscountFraction($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
 
                 $discountChange = $this->calculateDiscountChange($detail->descuento_original, $detail->descuento);
 
-                Log::info('cotizacion -filterQuoteByRules', [
-                    'cotizacion_id' => $detail->cotizacion_id,
-                    'priceChange' => $priceChange,
-                    'discountChange' => $discountChange
+                Log::info('DEBUG CALCULO -filterQuoteByRules', [
+                    'Original_Raw' => $detail->ART_VALOR_ORIGINAL,
+                    'Current_Raw' => $detail->ART_VALOR,
+                    'Original_Qty' => $detail->CANTIDAD, // Verifica si esto influye
+                    'Calculo' => "({$detail->ART_VALOR} - {$detail->ART_VALOR_ORIGINAL}) / {$detail->ART_VALOR_ORIGINAL}",
+                    'Resultado' => $priceChange
                 ]);
                 return $orderRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discountChange) {
                     $matchesPrice = $priceChange >= $rule->descuento_min
@@ -1635,7 +1674,7 @@ class ApprovalService implements ApprovalServiceInterface
                 });
             });
 
-        });
+        })->values();
     }
 
 
@@ -1645,8 +1684,9 @@ class ApprovalService implements ApprovalServiceInterface
             'username' => $userName
         ]);
         $data = data_get($resp, 'data', []);
-        $typeSeller = data_get($data, 'txDescor', null);
-        return $typeSeller;
+        // $typeSeller = data_get($data, 'txDescor', null);
+        // $territorio = data_get($data, 'territorio', null);
+        return $data;
     }
 
 
