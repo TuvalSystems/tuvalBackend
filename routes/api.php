@@ -267,6 +267,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
         Route::get('despachoenproceso/{id}', [PedidosController::class, 'despachoenproceso']);
         Route::post('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
+        Route::post('actualizar-fecha-factura-reserva', [PedidosController::class, 'actualizarFechaReservaPedido']);
+
     });
 
     Route::group(['prefix' => 'bodegas'], function () {

@@ -1545,4 +1545,15 @@ class OrderService implements OrderServiceInterface
         $Order->save();
         return $Order;
     }
+
+    public function updateOrderReservationDate(int $id, string $newDate)
+    {
+        $order = GpPedido::find($id);
+        if (!$order) {
+            throw new \Exception("El pedido con ID {$id} no existe.");
+        }
+        $order->fe_facturacion_reserva = $newDate ? Carbon::parse($newDate) : null;
+        $order->save();
+        return $order;
+    }
 }

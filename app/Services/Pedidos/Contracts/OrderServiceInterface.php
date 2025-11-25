@@ -55,4 +55,5 @@ interface OrderServiceInterface
     public function generateInvoiceFromExistingOrder($data, $detalle, $user);
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, string $newOrd, string $newNote);
+     public function updateOrderReservationDate(int $orderId, string $newDate);
 }

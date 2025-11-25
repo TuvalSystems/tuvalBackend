@@ -1329,4 +1329,27 @@ class PedidosController extends Controller
             return $this->buildErrorResponse('Opps! Error al actualizar los datos del pedido', 500);
         }
     }
+
+
+    public function actualizarFechaReservaPedido(Request $request)
+    {
+        
+        $validate = $request->validate([
+            'id' => 'required|integer',
+            'fe_facturacion_reserva' => 'required|date_format:Y-m-d',
+        ]);
+
+        $id = data_get($validate, 'id');
+        $newDate = data_get($validate, 'fe_facturacion_reserva');
+        try {
+            $data = $this->orderService->updateOrderReservationDate($id, $newDate);
+            return $this->successResponse('Fecha de reserva actualizada Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al actualizar la fecha de reserva del pedido: ', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->buildErrorResponse('Opps! Error al actualizar la fecha de reserva del pedido', 500);
+        }
+    }
 }
