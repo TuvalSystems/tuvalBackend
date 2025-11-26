@@ -344,7 +344,7 @@ class ReservasController extends Controller
                 'pesototal' => ['nullable', 'string'], // o 'string' si lo envías formateado
                 'items' => ['required', 'array', 'min:1'],
                 'items.*.id' => ['required', 'integer', 'distinct', 'exists:gp_traslados_reservas,id'],
-                'items.*.seleccionado' => ['required', 'numeric', 'min:1'],
+                'items.*.seleccionado' => ['required', 'numeric', 'min:0.001'],
             ]);
             $data = $this->reserveService->generatePickingPdf($validated);
             return $this->buildPdfResponse($data);
