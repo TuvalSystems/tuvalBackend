@@ -714,7 +714,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $cotOld = Arr::get($payload, 'cotizacion') ?? [];
         $cotOld['registro_copia'] = null;
         $cotOld['cotizacion'] = Arr::get($payload, 'cotizacion.detallecotizacion');
-        $requiereAprobacionComercial = $this->approvalService->checkOutApprovalCommercial($cotOld, 'cotizacion');
+        $requiereAprobacionComercial = $this->approvalService->checkoutApprovalCommercialQuotations($cotOld);
         $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
         $requiereAprobacionComercial['aprobado'] = 'no';
         $cotizacion = $this->quotationBuilder->fromPayloadReservedToQuotation($cotOld, $requiereAprobacionComercial, $user, 'reserva');

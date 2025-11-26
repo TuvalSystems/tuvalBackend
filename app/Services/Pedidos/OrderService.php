@@ -271,7 +271,7 @@ class OrderService implements OrderServiceInterface
     {
 
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $order['PTO_VTA_ID'])->first();
-        $approvalComercial = $this->approvalService->checkOutApprovalCommercial($order, 'pedido');
+        $approvalComercial = $this->approvalService->checkoutApprovalCommercialOrders($order);
         $approvalCredit = $this->approvalService->checkoutApprovalCredit($order);
 
         $requieresApproval = $approvalCredit != 'no';
