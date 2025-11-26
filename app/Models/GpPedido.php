@@ -135,6 +135,8 @@ class GpPedido extends Model
 {
     use HasFactory;
 
+    protected $appends = ['msg_registro_copia'];
+
     protected $fillable = [
         'pedido',
         'factura',
@@ -220,12 +222,12 @@ class GpPedido extends Model
     }
 
 
-    public function detallepedido ()
+    public function detallepedido()
     {
         return $this->hasMany(GpPedidoDetalle::class, 'pedido_id');
     }
 
-    public function pedidostock ()
+    public function pedidostock()
     {
         return $this->hasMany(GpPedidoDetalleStock::class, 'pedido_id');
     }
@@ -235,9 +237,70 @@ class GpPedido extends Model
         return $this->belongsTo(GpCliente::class, 'cliente_id');
     }
 
-     public function gpvendedor(){
+    public function gpvendedor()
+    {
 
         return $this->belongsTo(GpVendedor::class, 'VEND_ID', 'VEND_ID');
+    }
+
+    public function gpcotizacion()
+    {
+        return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
+    }
+
+
+    public function getMsgRegistroCopiaAttribute()
+    {
+        // 1. Validaciones iniciales de seguridad
+        $cotizacion = $this->gpcotizacion;
+        if (!$cotizacion) {
+            return null;
+        }
+
+        $mensajes = [];
+
+        // --- PARTE A: Validación Directa de la Cotización ---
+        if ($cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial != 'yes') {
+            $mensajes[] = "Requiere aprobación comercial. La cotización no fue aprobada con anterioridad (ID: {$cotizacion->id}).";
+        }
+
+        // --- PARTE B: Validación "Volver a Pedir" (Registro Copia) ---
+        // Buscamos si existe el registro de copia
+        $rgCopy = GpRegistroCopia::where('cotizacion_destino', $cotizacion->id)
+            ->where('tipo', 'volver_a_pedir')
+            ->first();
+
+        if ($rgCopy) {
+            $esPedido = !empty($rgCopy->pedido_origen);
+            $idOrigen = $esPedido ? $rgCopy->pedido_origen : $rgCopy->cotizacion_origen;
+
+            if ($idOrigen) {
+                $origenEntidad = $esPedido ? GpPedido::find($idOrigen) : GpCotizacion::find($idOrigen);
+                $desde = $esPedido ? 'pedido' : 'cotizacion';
+                $prefijo = $esPedido ? 'PED' : 'COT';
+                $codigoVisual = $prefijo . str_pad($idOrigen, 8, "0", STR_PAD_LEFT);
+
+                $fechaTxt = optional($origenEntidad)->created_at
+                    ? optional($origenEntidad)->created_at->format('Y-m-d')
+                    : 'S/F';
+
+                // Lógica específica del mensaje de copia
+                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial === 'yes' && $origenEntidad->aprobado_comercial !== 'yes') {
+                    $mensajes[] = "Requiere aprobación comercial. La Cotización del pedido es desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt";
+                } else {
+                    // Si es copia pero el origen estaba OK, igual avisamos que es copia
+                    $mensajes[] = "Requiere aprobación comercial. La Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)";
+                }
+            }
+        }
+
+        // --- RESULTADO FINAL ---
+        if (empty($mensajes)) {
+            return null;
+        }
+
+        // Unimos los mensajes. Si hay 2 razones, se verán separadas por " | "
+        return implode(" | ", $mensajes);
     }
 
 

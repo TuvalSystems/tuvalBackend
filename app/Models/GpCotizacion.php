@@ -122,7 +122,7 @@ class GpCotizacion extends Model
 {
     use HasFactory;
 
-    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items', 'has_reserva'];
+    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items', 'has_reserva', 'msg_registro_copia'];
     protected $casts = [
         'reserva_disabled' => 'boolean',
         'has_l_items' => 'boolean',
@@ -224,18 +224,21 @@ class GpCotizacion extends Model
     }
 
 
-    public function bodega(){
+    public function bodega()
+    {
         return $this->belongsTo(GpBodega::class, 'BOD_BODEGA', 'BOD_BODEGA');
     }
 
 
-    public function gpcliente(){
+    public function gpcliente()
+    {
         return $this->belongsTo(GpCliente::class, 'cliente_id');
 
     }
 
 
-    public function gpvendedor(){
+    public function gpvendedor()
+    {
 
         return $this->belongsTo(GpVendedor::class, 'VEND_ID', 'VEND_ID');
     }
@@ -248,7 +251,7 @@ class GpCotizacion extends Model
 
     public function getReservaDisabledAttribute(): bool
     {
-        return ! $this->detallecotizacionstock()
+        return !$this->detallecotizacionstock()
             ->where('seleccionado', '>', 0)
             ->exists();
     }
@@ -278,8 +281,43 @@ class GpCotizacion extends Model
 
     public function getHasReservaAttribute(): bool
     {
-        return $this->relationLoaded('reservas')
-            ? $this->reserva->isNotEmpty()
+        return $this->relationLoaded('reserva')
+            ? $this->reserva !== null
             : $this->reserva()->exists();
+    }
+
+
+    public function getMsgRegistroCopiaAttribute()
+    {
+        $rgcopy = GpRegistroCopia::where('cotizacion_destino', $this->id)->where('tipo', 'volver_a_pedir')->first();
+        if (!$rgcopy) {
+            return null; // Si no hay registro de copia, no hay mensaje que mostrar
+        }
+
+        $esPedido = !empty($rgcopy->pedido_origen);
+        $idOrigen = $esPedido ? $rgcopy->pedido_origen : $rgcopy->cotizacion_origen;
+        if (!$idOrigen) {
+            return null; // Si el registro existe pero no tiene ID origen (data corrupta), salimos
+        }
+        $origenEntidad = $esPedido ? GpPedido::find($idOrigen) : GpCotizacion::find($idOrigen);
+        $desde = $esPedido ? 'pedido' : 'cotizacion';
+        $prefijo = $esPedido ? 'PED' : 'COT';
+        $codigoVisual = $prefijo . str_pad($idOrigen, 8, "0", STR_PAD_LEFT);
+
+        $fechaTxt = optional($origenEntidad)->created_at
+            ? optional($origenEntidad)->created_at->format('Y-m-d')
+            : 'S/F';
+
+        if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial === 'yes' && $origenEntidad->aprobado_comercial !== 'yes') {
+            return
+                "Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt"
+            ;
+        }
+
+        // 2. Motivo por ser copia (siempre se agrega si existe el registro)
+        return
+            "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
+        ;
+
     }
 }
