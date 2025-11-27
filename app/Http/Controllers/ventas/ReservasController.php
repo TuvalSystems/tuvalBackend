@@ -36,6 +36,21 @@ class ReservasController extends Controller
         }
     }
 
+    public function verificarStockCotizacionActual(Request $request)
+    {
+        $validate = $request->validate([
+            'id' => 'required|integer',
+        ]);
+
+        try {
+            $response = $this->reserveService->checkCurrentStockForQuotation($validate['id']);
+            return $this->successResponse('Función en desarrollo', $response, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
+    }
+
 
     public function guardarReservaCotización(Request $request)
     {
@@ -185,7 +200,7 @@ class ReservasController extends Controller
             $cot = data_get($response, 'cotizacion', null);
             $msg = $cot === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$response['cotizacion']}";
 
-            return $this->successResponse($msg,  $cot, 200);
+            return $this->successResponse($msg, $cot, 200);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error al procesar la reserva de la cotizacion: ', [
                 'message' => $e->getMessage(),

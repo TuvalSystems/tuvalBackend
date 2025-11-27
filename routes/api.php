@@ -228,6 +228,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::group(['prefix' => 'reservas'], function () {
         Route::get('validar-reserva-cotizacion/{id}', [ReservasController::class, 'validarGeneracionReservaCotizacion']);
+        Route::post('verificar-stock-actual-reserva', [ReservasController::class, 'verificarStockCotizacionActual']);
         Route::post('guardar-solicitud-reserva', [ReservasController::class, 'guardarReservaCotización']);
         Route::get('lista-tipo-reservas', [ReservasController::class, 'obtenerListaTipoReservas']);
         Route::post('lista-solicitudes-reserva', [ReservasController::class, 'obtenerListaReservasPendientes']);
