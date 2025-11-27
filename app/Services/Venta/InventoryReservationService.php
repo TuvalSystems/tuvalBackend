@@ -1577,4 +1577,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
+    /**
+     *  funcion para la verificacion del stock disponible de una cotizacion que quiere nacer como reserva
+     *
+     */
+
+    public function checkCurrentStockForQuotation($quoteId){
+    //    $detWithStock = GpCotizacionDetalle::with('stock')->where('cotizacion_id', $quoteId)->get();
+    }
+
 }
