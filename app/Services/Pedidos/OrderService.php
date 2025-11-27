@@ -673,13 +673,13 @@ class OrderService implements OrderServiceInterface
         try {
             DB::beginTransaction();
             $order = $this->getOrderOrFail($orderId);
-            if (!$this->isInvoiceDateValidForReservedOrder($order)) {
-                throw new \DomainException(sprintf(
-                    "La fecha de facturación no es válida para pedidos con origen 'reserva'. La fecha del pedido (%s) debe ser igual a la fecha actual (%s).",
-                    $order->fe_facturacion_reserva,
-                    now()->toDateString()
-                ));
-            }
+            // if (!$this->isInvoiceDateValidForReservedOrder($order)) {
+            //     throw new \DomainException(sprintf(
+            //         "La fecha de facturación no es válida para pedidos con origen 'reserva'. La fecha del pedido (%s) debe ser igual a la fecha actual (%s).",
+            //         $order->fe_facturacion_reserva,
+            //         now()->toDateString()
+            //     ));
+            // }
             $this->recalculateAndSendInvoice($order);
             DB::commit();
             Log::info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");

@@ -845,8 +845,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      */
     public function processReservedQuotationInvoiceDemand($payload, $user)
     {
+        $userReserva = GpUsuario::where('id', $payload['user_ingreso_reserva_id'])->first();
         $this->updateQuotationStocksAuthorizedDontConsolidate($payload['cotizacion']['id']);
-        $order = $this->storeReservedHeaderOrder($payload['cotizacion'], $user, $payload['fe_autorizacion_reserva']);
+        $order = $this->storeReservedHeaderOrder($payload['cotizacion'], $userReserva, $payload['fe_autorizacion_reserva']);
         $this->storeReservedDetailOrder($payload['cotizacion']['detallecotizacion'], $order);
         $rows = $this->formPayloadReservedQuotationLog($payload['id'], $payload['cotizacion'], $order, $user->id);
 
