@@ -301,8 +301,9 @@ class DispatchService implements DispatchServiceInterface
     {
         return Cache::remember('pto_vta_all', 300, function () {
             return GpRelacionPuntoVentaBodega::query()
+                ->join('gp_punto_ventas as pv', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', '=', 'pv.PTO_VTA_ID')
                 ->orderBy('PTO_VTA_BOD_BODEGA')               // ajusta campo
-                ->get(['id', 'PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA']); // solo lo necesario
+                ->get(['gp_relacion_punto_venta_bodegas.id', 'PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA','pv.id as punto_venta_id','pv.PTO_VTA_DESCRIPCION']); // solo lo necesario
         });
     }
 
