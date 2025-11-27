@@ -317,7 +317,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
             ->where('st.seleccionado', '>', 0)
-            ->whereIn('r.estado', ['aprobado'])
+            ->where('st.cantidad_traslado' ,'=', 0)
+            ->whereIn('r.estado', ['aprobado', 'traslado'])
             ->selectRaw(
                 "
             d.ART_CODIGO as codigo,
