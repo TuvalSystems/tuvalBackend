@@ -5,7 +5,6 @@ namespace App\Jobs\Bodegas;
 use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -16,7 +15,8 @@ class NotifyPurchaseReceiptItemLJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public function __construct(public string $title, public string $msg, public int $userId)
     {
-
+        $this->onQueue('notifications');
+        // $this->afterCommit = true;
     }
 
 

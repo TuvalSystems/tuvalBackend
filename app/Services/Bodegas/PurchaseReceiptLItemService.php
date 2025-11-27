@@ -6,8 +6,10 @@ use App\Jobs\Bodegas\NotifyPurchaseReceiptItemLJob;
 use App\Models\GpCliente;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleProveedores;
+use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Notifications\User\UserNotification;
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Services\Api\Transacciones\ApiGpReceivedItemL;
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
@@ -45,14 +47,14 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
     public function receivedL(array $data, $user)
     {
         $ord = $this->purchaseReceipRepository->getPurchaseReceiptLById($data['id']);
-        $hasPending  = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ord->id)
+        $hasPending = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ord->id)
             ->whereRaw('ORDEN_COMPRA_DETALLE_CANTIDAD > COALESCE(recibido, 0)')
             ->exists();
         $header = $this->formatHeaderPurcharseOrder($ord);
 
         $items = array_values(array_filter($data['detalle'], function ($d) {
             $v = $d['seleccionado'] ?? null;
-            return is_numeric($v) && (float)$v > 0;
+            return is_numeric($v) && (float) $v > 0;
         }));
 
 
@@ -67,9 +69,9 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
         $valHdr = $this->formatHeaderValidation($ord);
         $resValidate = $this->apiGpReceiptService->validateGenerationReceivedItemL($valHdr);
 
-        $successValidate = (bool)($resValidate['success'] ?? false);
+        $successValidate = (bool) ($resValidate['success'] ?? false);
         $dataValidate = $resValidate['data'] ?? [];
-        $codigo  = (string)($dataValidate['codigo']  ?? '');
+        $codigo = (string) ($dataValidate['codigo'] ?? '');
 
         if ($successValidate && $codigo != '0') {
             Log::channel('apiservice')->error("funcion receivedL, validacion fallida:", [
@@ -89,16 +91,16 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             Log::channel('apiservice')->error("Mensaje de existencia de Recibo de compra :", [
                 'res' => $dataValidate
             ]);
-            $respDelete =  $this->apiGpReceiptService->deleteReceivedItemL($valHdr);
+            $respDelete = $this->apiGpReceiptService->deleteReceivedItemL($valHdr);
             Log::channel('apiservice')->error("Eliminacion de recibo de compra : ", [
                 'res' => $respDelete
             ]);
             $payload = [
-                'cabecera'  => $header,
-                'detalle'   => $detail
+                'cabecera' => $header,
+                'detalle' => $detail
             ];
             $respStoreL = $this->apiGpReceiptService->saveReceivedItemL($payload);
-            $successStore = (bool)($respStoreL['success'] ?? false);
+            $successStore = (bool) ($respStoreL['success'] ?? false);
             Log::channel('apiservice')->error("Guardado de recibo de compra : ", [
                 'res' => $respStoreL
             ]);
@@ -107,7 +109,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             }
             $resultRcOrdG = $this->apiGpReceiptService->responseReceivedItemL($valHdr);
 
-            $successRcOrd = (bool)($resultRcOrdG['success'] ?? false);
+            $successRcOrd = (bool) ($resultRcOrdG['success'] ?? false);
             $resRcOrd = $resultRcOrdG['data'] ?? [];
             // $mensajeRcOrd = (string)($resRcOrd['message'] ? $resultRcOrdG['message'] : 'Error desconocido');
             if ($successRcOrd) {
@@ -115,7 +117,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
                     $ord->ORDEN_COMPRA_RECIBO .= '_' . $resRcOrd['numDocGenerado'];
                     $ord->increment('recibidos');
                     $ord->refresh();
-                    $this->checkOrderReception($ord, $data['detalle'],  $user);
+                    $this->checkOrderReception($ord, $data['detalle'], $user);
                 }
                 if ($resRcOrd['codigo'] != '0') {
                     throw new \RuntimeException("Error al contabilizar el recibo de compra");
@@ -125,7 +127,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             }
         } else {
             $resultRcOrdG = $this->apiGpReceiptService->responseReceivedItemL($valHdr);
-            $successRcOrd = (bool)($resultRcOrdG['success'] ?? false);
+            $successRcOrd = (bool) ($resultRcOrdG['success'] ?? false);
             $resRcOrd = $resultRcOrdG['data'] ?? [];
 
             if ($successRcOrd) {
@@ -133,7 +135,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
                     $ord->ORDEN_COMPRA_RECIBO .= '_' . $resRcOrd['numDocGenerado'];
                     $ord->increment('recibidos');
                     $ord->refresh();
-                    $this->checkOrderReception($ord, $data['detalle'],  $user);
+                    $this->checkOrderReception($ord, $data['detalle'], $user);
                 }
                 if ($resRcOrd['codigo'] != '0') {
                     // throw new \RuntimeException("Error al contabilizar el recibo de compra: {$msjRcOrdG}");
@@ -169,7 +171,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
     {
         $recibida = true;
         foreach ($detailOrder as $item) {
-            $this->updateProviderDetail($item,  $recibida);
+            $this->updateProviderDetail($item, $recibida);
             $this->updateOrderDetail($item);
         }
 
@@ -181,7 +183,13 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             $this->invoiceService->checkSendInvoice($orderModel, true);
         }
         $message = 'Artículo/s L del pedido ' . $orderModel->pedido . ' han sido recibidos en la bodega ' . $orderModel->BOD_BODEGA;
-        NotifyPurchaseReceiptItemLJob::dispatch('Articulo/s L recibidos', $message, $user->user_id);
+         NotifyPurchaseReceiptItemLJob::dispatch('Articulo/s L recibidos', $message, $user->id);
+
+        // $gpUser = GpUsuario::where('USERID', $user->USERID)->first();
+        // if ($gpUser) {
+        //     $gpUser->notify(new UserNotification('Articulo/s L recibidos', $message));
+        // }
+
     }
 
 
@@ -227,13 +235,13 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             throw new \Exception('El cliente no existe');
         }
         if ($client->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI') {
-            $order->factura_posterior_despacho  = 1;
+            $order->factura_posterior_despacho = 1;
 
             $diaActual = now()->day;
             if ($client->CLI_DIA_MAXIMO_MES_FACTURACION == 1) {
                 $order->factura_a_demanda = 1;
             } elseif ($diaActual > $client->CLI_DIA_MAXIMO_MES_FACTURACION) {
-                $order->factura_siguiente_mes  = 1;
+                $order->factura_siguiente_mes = 1;
             }
             $order->save();
         }
@@ -259,17 +267,17 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
 
     public function formatDetailPurcharseOrder($ord, $detalle)
     {
-        $docOrigen =  $ord->ORDEN_COMPRA_DOCUMENTO . '_' . $ord->recibidos;
+        $docOrigen = $ord->ORDEN_COMPRA_DOCUMENTO . '_' . $ord->recibidos;
         $detalle = array_filter($detalle, fn($d) => (float) Arr::get($d, 'seleccionado', 0) > 0);
         return array_values(array_map(function ($d) use ($docOrigen) {
             return [
-                'REC_COM_DOCU_ORIGEN'          => $docOrigen,
-                'REC_COM_ID_TIPO'              => 1,
-                'REC_COM_ID_ARTICULO'          => Arr::get($d, 'ORDEN_COMPRA_DETALLE_ARTICULO'),
+                'REC_COM_DOCU_ORIGEN' => $docOrigen,
+                'REC_COM_ID_TIPO' => 1,
+                'REC_COM_ID_ARTICULO' => Arr::get($d, 'ORDEN_COMPRA_DETALLE_ARTICULO'),
                 'REC_COM_DESCRIPCION_ARTICULO' => Arr::get($d, 'ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO'),
-                'REC_COM_UNIDAD_MEDIDA'        => Arr::get($d, 'ORDEN_COMPRA_DETALLE_UMEDIDA'),
-                'REC_COM_BODEGA'               => Arr::get($d, 'ORDEN_COMPRA_DETALLE_BODEGA'),
-                'REC_COM_CANTIDAD'             => (float) Arr::get($d, 'seleccionado', 0),
+                'REC_COM_UNIDAD_MEDIDA' => Arr::get($d, 'ORDEN_COMPRA_DETALLE_UMEDIDA'),
+                'REC_COM_BODEGA' => Arr::get($d, 'ORDEN_COMPRA_DETALLE_BODEGA'),
+                'REC_COM_CANTIDAD' => (float) Arr::get($d, 'seleccionado', 0),
             ];
         }, $detalle));
     }
@@ -279,7 +287,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
 
     public function printPurchaseReceiptL($id)
     {
-        $data  = $this->purchaseReceipRepository->getPurchaseReceiptLById($id);
+        $data = $this->purchaseReceipRepository->getPurchaseReceiptLById($id);
         if (!$data) {
             throw new \Exception('El recibo de compra no existe');
         }
