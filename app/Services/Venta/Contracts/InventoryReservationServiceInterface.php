@@ -60,6 +60,6 @@ interface InventoryReservationServiceInterface
 
     /** proceso de validacion y verificacion de stock disponible */
 
-    public function checkCurrentStockForQuotation($quoteId);
+    public function validateAndProcessQuotationStock($quoteId);
 
 }

@@ -43,8 +43,15 @@ class ReservasController extends Controller
         ]);
 
         try {
-            $response = $this->reserveService->checkCurrentStockForQuotation($validate['id']);
-            return $this->successResponse('Función en desarrollo', $response, 200);
+            $response = $this->reserveService->validateAndProcessQuotationStock($validate['id']);
+            if ($response) {
+                return $this->buildExistResponse(false, $response, 400);
+            }
+            return $this->buildExistResponse(true, 'Cuentas con stock disponible', 200);
+        } catch (\DomainException $e) {
+            // Captura excepciones de negocio (ej: Cotización no encontrada, No hay ítems seleccionados)
+            return $this->buildErrorResponse($e->getMessage(), 404);
+
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
 

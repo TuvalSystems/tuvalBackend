@@ -130,7 +130,7 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
     Route::get('llenar-cotizacion', [CotizacionesController::class, 'llenarcotizacion']);
 
-
+  Route::get('verificar-stock-actual-reserva', [ReservasController::class, 'verificarStockCotizacionActual']);
 
 });
 

@@ -27,6 +27,8 @@ interface StockWarehouseServiceInterface
     public function transformStockResponse($stockResults);
     public function transformStockQuotationResponse($stockResults);
 
+    public function transformStockReservationResponse($payload);
+
 
 
     public function getWarehouse($data);
