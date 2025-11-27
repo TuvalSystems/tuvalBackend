@@ -3,7 +3,6 @@
 namespace App\Services\User\Contracts;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Model;
 
 interface UserServiceInterface
