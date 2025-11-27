@@ -1224,13 +1224,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function fetchVehicles()
     {
-        return GpVehiculo::get();
-    }
+        return [
+            'vehiculos' => GpVehiculo::get(),
+            'transportistas' => GpTransportista::get()
+        ];
 
-    public function fetchTransportistas($vehicleId)
-    {
-        $vehicles = GpVehiculo::find($vehicleId);
-        return GpTransportista::where('id', $vehicles->transportista_id)->get();
     }
 
 

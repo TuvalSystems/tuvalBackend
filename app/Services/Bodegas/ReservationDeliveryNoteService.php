@@ -108,11 +108,13 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $itemsIds = $items->pluck('id')->toArray();
         $dQoteIds = $items->pluck('stock_id')->toArray();
         $itemsPkId = $items->keyBy('id');
-
+        // actualizamos el picking si o si de estos items ya que se va a generar una guia de remision
+        $this->updatePickingItemsSelected($itemsIds);
         $detTraslados = GpTrasladosReservas::whereIn('id', $itemsIds)->lockForUpdate()->get();
         if ($detTraslados->count() !== count($itemsIds)) {
             throw new \RuntimeException('Hay items inexistentes; actualice la lista.');
         }
+
         $detallesGuia = $this->getQtyDetailGuideRemisionReserved($itemsIds);
         $arrMsg = [];
         $detStock = GpCotizacionDetalleStock::whereIn('id', $dQoteIds)->lockForUpdate()->get()->keyBy('id');
@@ -149,6 +151,12 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             ->where('cantidad', '>', 0)
             ->get()
             ->groupBy('traslado_id');
+    }
+
+    public function updatePickingItemsSelected($items)
+    {
+        return GpTrasladosReservas::whereIn('id', $items)
+            ->update(['picking' => 1]);
     }
 
     public function getDirection($ptoWarehouse)
@@ -384,7 +392,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             }
         }
         if (!$processed) {
-             throw new \Exception('No se pudo procesar el ajuste de la guía de Reserva');
+            throw new \Exception('No se pudo procesar el ajuste de la guía de Reserva');
 
         }
         $guia->update(['estado' => 'enviada']);

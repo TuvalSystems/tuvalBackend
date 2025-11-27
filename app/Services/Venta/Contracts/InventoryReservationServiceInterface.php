@@ -42,7 +42,6 @@ interface InventoryReservationServiceInterface
     public function generatePickingPdf($payload);
 
     public function fetchVehicles();
-    public function fetchTransportistas($vehicleId);
 
     public function fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
 

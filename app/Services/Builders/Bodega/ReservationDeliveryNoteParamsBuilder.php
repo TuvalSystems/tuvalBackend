@@ -122,7 +122,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'codInterno' => $detail->art_code,
             'codAdicional' => '',
             'descripcion' => $detail->art_descripcion,
-            'cantidad' => (int) $detail->cantidad,
+            'cantidad' => (float) $detail->cantidad,
             'unidadMedida' => $detail->art_plan_umedida,
             'guiaBodega' => $header->guia_bodega
         ];

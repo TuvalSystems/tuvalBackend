@@ -362,7 +362,7 @@ class ReservasController extends Controller
     }
 
 
-    public function listaVehiculos()
+    public function listaVehiculosTransporte(): JsonResponse
     {
         try {
             $data = $this->reserveService->fetchVehicles();
@@ -378,22 +378,7 @@ class ReservasController extends Controller
         }
     }
 
-    public function listaTransportistas(Request $request)
-    {
-        $vehicleId = $request->input('vehicle_id', null);
-        try {
-            $data = $this->reserveService->fetchTransportistas($vehicleId);
-            return $this->successResponse('Datos obtenidos correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            log::channel('reservas_log')->error('Error en la funcion listaTransportesYVehiculos -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
+
 
 
 

@@ -250,8 +250,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('transferencias/actualizar-picking-items', [ReservasController::class, 'actualizacionPickingItemsTraslados']);
         Route::post('transferencias/cancelar-picking-item-reserva', [ReservasController::class, 'cancelacionPickingItemTraslados']);
         Route::post('transferencias/pdf-picking-reserva', [ReservasController::class, 'generarPdfPickingReserva']);
-        Route::post('transferencias/lista-vehiculos', [ReservasController::class, 'listaVehiculos']);
-        Route::post('transferencias/lista-transportistas', [ReservasController::class, 'listaTransportistas']);
+        Route::post('transferencias/lista-vehiculos-transportistas', [ReservasController::class, 'listaVehiculosTransporte']);
         Route::post('transferencias/lista-guias-remision-reservas-pendientes', [ReservasController::class, 'listaGuiaRemisionReservasPendientes']);
 
 
