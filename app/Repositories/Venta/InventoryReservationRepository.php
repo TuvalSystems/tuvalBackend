@@ -47,6 +47,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
         return GpTrasladosReservas::query()->from('gp_traslados_reservas as tr')
             ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
             ->leftJoin('gp_bodegas as b', 'b.BOD_BODEGA', '=', 'c.BOD_BODEGA')
+            ->join('gp_relacion_punto_venta_bodegas as ptovta', 'ptovta.PTO_VTA_BOD_BODEGA', '=', 'tr.bodega_destino')
             ->where('tr.bodega_origen', $warehouse)
             ->where(function ($q) {
                 $q->whereNull('tr.completado')->orWhere('tr.completado', 0);
@@ -54,7 +55,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
             ->select([
                 'tr.*',
                 'b.BOD_DESCRIPCION as bodega_destino_desc',
-                'c.PTO_VTA_ID as ptovtaId',
+                'ptovta.PTO_VTA_BOD_PUNTO_VENTA as ptovtaId',
             ])->get();
     }
 
