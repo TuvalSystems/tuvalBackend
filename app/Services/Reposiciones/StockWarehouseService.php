@@ -180,7 +180,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // 4) Reservas pendientes de uso para cotizar
         $reservasPendientes = $this->getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId);
         // 5) Reservas ya cotizadas pero si uso
-        $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId);
+        // $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId);
         $out = [];
         foreach ($bodegas as $b) {
             $out[$b] = (float) ($reservasPendientes[$b] ?? 0) + (float) ($reservasPedidos[$b] ?? 0) + (float) ($reservasTraslados[$b] ?? 0) + (float) ($reservasTrasladosCotizacion[$b] ?? 0);
