@@ -122,12 +122,13 @@ class GpCotizacion extends Model
 {
     use HasFactory;
 
-    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items', 'has_reserva', 'msg_registro_copia'];
+    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items', 'has_reserva', 'msg_registro_copia', 'has_duplicate_items'];
     protected $casts = [
         'reserva_disabled' => 'boolean',
         'has_l_items' => 'boolean',
         'has_service_items' => 'boolean',
         'has_reserva' => 'boolean',
+        'validate_duplicate_items' => 'boolean',
     ];
     protected $fillable = [
         'cotizacion',
@@ -319,5 +320,23 @@ class GpCotizacion extends Model
             "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
         ;
 
+    }
+
+
+    public function getHasDuplicateItemsAttribute(): bool
+    {
+        $detail = $this->detallecotizacion()->get();
+        if (!$detail) {
+            return false;
+        }
+        $countedItems = $detail->countBy(function ($item) {
+            return $item->ART_CODIGO;
+        });
+
+        $hasDuplicates = $countedItems->first(function ($item, $artCodigo) {
+            return $item > 1;
+        });
+
+        return (bool) $hasDuplicates;
     }
 }
