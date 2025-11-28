@@ -302,10 +302,10 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 $item->reservado = (float) $item->reservado;
                 return $item;
             });
-        $response2 = $this->listReservedInventoryByPendingUse();
+        // $response2 = $this->listReservedInventoryByPendingUse();
         $response3 = $this->listReservedInventoryByTransfers();
         return collect($response)
-            ->concat($response2)
+            // ->concat($response2)
             ->concat($response3)
             ->values();
     }
@@ -317,7 +317,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
             ->where('st.seleccionado', '>', 0)
-            ->where('st.cantidad_traslado' ,'=', 0)
+            ->where('st.cantidad_traslado', '=', 0)
             ->whereIn('r.estado', ['aprobado', 'traslado'])
             ->selectRaw(
                 "
@@ -345,15 +345,28 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->join('gp_cotizacion_detalles as d', 'd.id', 'st.detalle_id')
             ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
+            ->join('gp_traslados_reservas as tr', 'tr.stock_id', '=', 'st.id')
             ->where('st.cantidad_traslado', '>', 0)
             ->whereIn('r.estado', ['traslado'])
             ->selectRaw(
                 "
             d.ART_CODIGO as codigo,
             st.STO_ART_BODEGA AS bodega,
-            st.cantidad_traslado AS reservado,
+             (
+                COALESCE(st.cantidad_traslado, 0)
+                  - COALESCE(st.cantidad_cancelada, 0)
+                  - COALESCE(SUM(tr.trasladado), 0)
+             ) AS reservado,
             p.cotizacion as cotizacion,
             'traslado_reservas' as tipo",
+            )
+            ->groupBy(
+                'st.id',
+                'd.ART_CODIGO',
+                'st.STO_ART_BODEGA',
+                'p.cotizacion',
+                'st.cantidad_traslado',
+                'st.cantidad_cancelada'
             );
         return DB::query()->fromSub($baseQuotation, 'u')
             ->where('u.reservado', '>', 0)
