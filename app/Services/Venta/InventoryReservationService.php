@@ -1657,7 +1657,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $currentStock = data_get($currentStockData, 'STO_ART_STOCK_DISPONIBLE', 0);
             $stockRestante = $currentStock - $reservado;
 
-            if ($stockRestante <= 0) {
+            if ($stockRestante < 0) { //ser coloca menor a 0 porque si tiene disponible 1 y seleccionado 1 me da 0
                 $articulosOverStock["{$articulo} ({$bodega})"] = $articulo;
                 $messages[] = [
                     'ART_CODIGO' => $articulo,
