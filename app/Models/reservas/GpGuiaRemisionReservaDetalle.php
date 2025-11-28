@@ -30,6 +30,10 @@ class GpGuiaRemisionReservaDetalle extends Model
     ];
 
 
+    public function guia(){
+        return $this->belongsTo(GpGuiaRemisionReserva::class, 'guia_id');
+    }
+
     public function traslado()
     {
         return $this->belongsTo(GpTrasladosReservas::class, 'traslado_id');

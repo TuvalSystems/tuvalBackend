@@ -13,9 +13,10 @@ class GpTrasladosReservas extends Model
     use HasFactory;
 
     protected $table = 'gp_traslados_reservas';
-    protected $appends = ['pending_transfer'];
+    protected $appends = ['pending_transfer', 'check_disable_button_picking'];
     protected $casts = [
-        'pending_transfer' => 'int',
+        'pending_transfer' => 'float',
+        'check_disable_button_picking' => 'bool',
     ];
     protected $fillable = [
         'reserva_id',
@@ -37,7 +38,7 @@ class GpTrasladosReservas extends Model
     ];
 
 
-    public function cotizacion ()
+    public function cotizacion()
     {
         return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
     }
@@ -51,16 +52,18 @@ class GpTrasladosReservas extends Model
         return $this->belongsTo(GpCotizacionDetalleStock::class, 'stock_id');
     }
 
-    public function detalleguia(){
+    public function detalleguia()
+    {
         return $this->hasMany(GpGuiaRemisionReservaDetalle::class, 'traslado_id');
     }
 
-    public function reserva(){
+    public function reserva()
+    {
         return $this->belongsTo(GpReserva::class, 'reserva_id');
     }
 
 
-    public function getPendingTransferAttribute()
+    public function getPendingTransferAttribute(): float|int
     {
         $cant = $this->cantidad ?? 0;
         $res = $this->reservado ?? 0;
@@ -75,5 +78,13 @@ class GpTrasladosReservas extends Model
             fn($q) =>
             $q->whereNull('completado')->orWhere('completado', 0)
         );
+    }
+
+    public function getCheckDisableButtonPickingAttribute(): bool
+    {
+        return $this->detalleguia()->whereHas('guia', function ($query) {
+            $query->where('estado', '!=', 'eliminada');
+        })->exists();
+
     }
 }
