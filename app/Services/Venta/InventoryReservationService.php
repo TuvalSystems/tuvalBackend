@@ -1671,7 +1671,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             }else{
                 $item['STOCK_DISPONIBLE_AJUSTADO'] = $stockRestante;
             }
-            $this->updateDisponibleStockReserved( $stockId, $item['STOCK_DISPONIBLE_AJUSTADO']);
+            $this->updateDisponibleStockReserved( $stockId, $currentStock);
             return $item;
         });
 
