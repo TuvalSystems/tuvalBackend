@@ -46,17 +46,34 @@ class NotifyExpiringReservations extends Command
         $manana = Carbon::tomorrow($tz)->toDateString();
 
 
-        $reservas = GpReserva::query()->with('usuarioingreso','cotizacion')->where('tipo_reserva_id', 1)->where('estado', 'aprobado')->where('fe_autorizacion_reserva', $manana);
+        $reservas = GpReserva::query()->with([
+            'usuarioingreso',
+            'cotizacion',
+            'cotizacion.detallecotizacionstock' => function ($q) {
+                $q->where('seleccionado', '>', 0);
+                    // ->where('cantidad_traslado', '<', 0);
+
+                // --- AQUÍ ESTÁ TU FILTRO ---
+                // Esto elimina del resultado los items que ya tienen picking = 1
+                $q->whereDoesntHave('trasladoreserva', function ($qTraslado) {
+                    $qTraslado->where('picking', 1);
+                });
+            }
+        ])->where('tipo_reserva_id', 1)->where('estado', ['aprobado', 'traslado'])->where('fe_autorizacion_reserva', $manana);
         $total = 0;
 
         $reservas->chunkById(100, function ($lote) use (&$total) {
             foreach ($lote as $key => $cot) {
+                $stocksFiltrados = $cot->cotizacion->detallecotizacionstock;
+                if ($stocksFiltrados->isEmpty()) {
+                    continue;
+                }
                 $creator = $cot->usuarioingreso;
                 $quote = $cot->cotizacion;
                 $total++;
                 $title = "Reserva por expirar";
                 $msg = "Tu reserva para la cotizacion {$quote->cotizacion} expira mañana y se liberara el stock.";
-                $creator->notify((new UserNotification($title,  $msg)));
+                $creator->notify((new UserNotification($title, $msg)));
             }
         });
         $this->info("Reservas avisadas: {$total}");

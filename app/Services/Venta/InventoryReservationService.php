@@ -1473,9 +1473,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function updateQtyTransferedItems(GpGuiaRemisionReserva $guia, array $items)
     {
         foreach ($items as $itm) {
+            $trasladoId = data_get($itm, 'traslado_id');
+            $traslado = GpTrasladosReservas::with('reserva')->find($trasladoId);
+            $liberarStock = in_array($traslado->reserva->estado, ['cancelado', 'rechazada']);
             $this->updateQtyReceivedDetailGuide($itm);
-            $this->updateQtyStockQuotationTransferred($guia, $itm);
-            $this->updateStatusReservation($itm);
+            $this->updateQtyStockQuotationTransferred($guia, $itm, $liberarStock);
+            $this->updateStatusReservation($itm, $traslado->reserva);
         }
     }
 
@@ -1490,7 +1493,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     }
 
-    public function updateQtyStockQuotationTransferred(GpGuiaRemisionReserva $guia, array $item)
+    public function updateQtyStockQuotationTransferred(GpGuiaRemisionReserva $guia, array $item, bool $liberarStock)
     {
         $detalleId = (int) Arr::get($item, 'detalle_id');
         $qty = (float) max(0, Arr::get($item, 'recibir', 0));
@@ -1507,19 +1510,35 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $stockOrigen->seleccionado = max(0, (float) $stockOrigen->seleccionado - $decSel);
         $stockOrigen->save();
 
-        // En destino sumas lo recibido a "seleccionado" (ajusta si tu modelo espera otro campo)
-        $stockDestino->cantidad_reservada = (float) $stockDestino->cantidad_reservada + $qty;
-        $stockDestino->seleccionado = (float) $stockDestino->seleccionado + $qty;
+        if ($liberarStock) {
+            $stockDestino->cantidad_reservada = 0;
+            $stockDestino->seleccionado = 0;
+        } else {
+            // En destino sumas lo recibido a "seleccionado" (ajusta si tu modelo espera otro campo)
+            $stockDestino->cantidad_reservada = (float) $stockDestino->cantidad_reservada + $qty;
+            $stockDestino->seleccionado = (float) $stockDestino->seleccionado + $qty;
+        }
+
         $stockDestino->save();
+
     }
 
-    public function updateStatusReservation($itm)
+    public function updateStatusReservation($itm, $reserva)
     {
-        $trasladoId = data_get($itm, 'traslado_id');
-        $tras = GpTrasladosReservas::find($trasladoId);
-        $reserva = GpReserva::find($tras->reserva_id);
         if (!$reserva)
             return;
+
+        // BLOQUEO DE SEGURIDAD:
+        // Si la reserva está cancelada o rechazada, NO la tocamos.
+        // Ya cumplió su ciclo de vida y el stock se liberó en el paso anterior.
+        if (in_array($reserva->estado, ['cancelado', 'rechazada'])) {
+            return;
+        }
+
+        // $trasladoId = data_get($itm, 'traslado_id');
+        // $tras = GpTrasladosReservas::find($trasladoId);
+        // $reserva = GpReserva::find($tras->reserva_id);
+
         $existePendiente = GpCotizacionDetalleStock::query()
             ->from('gp_cotizacion_detalle_stocks as ds')
             ->join('gp_traslados_reservas as tr', 'tr.cotizacion_id', '=', 'ds.cotizacion_id')
@@ -1640,7 +1659,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $messages = [];
         $articulosOverStock = [];
 
-        $updatedStock = $selectedStock->map(function ($item, $stockId) use ($currentStocksLookup, &$messages,  &$articulosOverStock) {
+        $updatedStock = $selectedStock->map(function ($item, $stockId) use ($currentStocksLookup, &$messages, &$articulosOverStock) {
             $articulo = data_get($item, 'articulo');
             $bodega = data_get($item, 'bodega');
             $reservado = data_get($item, 'seleccionado');
@@ -1668,10 +1687,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     'MENSAJE' => "El stock disponible para el articulo $articulo en la bodega $bodega es de $currentStock, pero se quiere reservar $reservado",
                 ];
                 $item['STOCK_DISPONIBLE_AJUSTADO'] = 0.00;
-            }else{
+            } else {
                 $item['STOCK_DISPONIBLE_AJUSTADO'] = $stockRestante;
             }
-            $this->updateDisponibleStockReserved( $stockId, $currentStock);
+            $this->updateDisponibleStockReserved($stockId, $currentStock);
             return $item;
         });
 

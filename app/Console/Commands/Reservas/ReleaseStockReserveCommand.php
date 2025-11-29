@@ -33,8 +33,11 @@ class ReleaseStockReserveCommand extends Command
             'cotizacion',
             'cotizacion.detallecotizacionstock' => function ($q) {
                 $q->where('seleccionado', '>', 0);
+                $q->whereDoesntHave('trasladoreserva', function ($query) {
+                    $query->where('picking', 1);
+                });
             }
-        ])->where('tipo_reserva_id', 1)->where('estado', 'aprobado')->where('fe_autorizacion_reserva', '=', $hoy);
+        ])->where('tipo_reserva_id', 1)->whereIn('estado', ['aprobado', 'traslado'])->where('fe_autorizacion_reserva', '=', $hoy);
 
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
@@ -43,7 +46,7 @@ class ReleaseStockReserveCommand extends Command
                 $userSolicita = $res->usuarioingreso;
                 $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
                 $this->releaseStock($quote);
-                $res->update(['estado' => 'procesado']);
+                $res->update(['estado' => 'cancelado']);
                 $title = "Reserva liberada";
                 $msg = "Se liberó el stock reservado para la cotización {$quote->cotizacion}.";
                 $userSolicita->notify((new UserNotification($title, $msg)));
@@ -61,11 +64,16 @@ class ReleaseStockReserveCommand extends Command
     public function releaseStock(GpCotizacion $cot)
     {
         GpCotizacionDetalleStock::where('cotizacion_id', $cot->id)
+            ->whereDoesntHave('trasladoreserva', function ($q) {
+                $q->where('picking', 1);
+            })
             ->lockForUpdate()
             ->get()
             ->each(function ($stock) {
                 $stock->update([
-                    'seleccionado' => 0
+                    'seleccionado' => 0,
+                    'cantidad_cotizada' => 0,
+                    'cantidad_reservada' => 0,
                 ]);
             });
     }
