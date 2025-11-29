@@ -70,10 +70,18 @@ class ReleaseStockReserveCommand extends Command
             ->lockForUpdate()
             ->get()
             ->each(function ($stock) {
+
+                if ($stock->trasladoreserva()->exists()) {
+                    $stock->trasladoreserva()->where('picking', '!=', 1)
+                        ->update(['cantidad' => 0]);
+                }
+
                 $stock->update([
+                    'cantidad_cancelada' => $stock->cantidad_cancelada + $stock->seleccionado,
                     'seleccionado' => 0,
                     'cantidad_cotizada' => 0,
                     'cantidad_reservada' => 0,
+                    'cantidad_traslado' => 0,
                 ]);
             });
     }
