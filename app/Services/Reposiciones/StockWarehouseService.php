@@ -197,7 +197,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'c.id')
             ->whereIn('r.estado', ['aprobado', 'traslado'])
-            ->where('st.cantidad_traslado' ,'=', 0)
+            // ->where('st.cantidad_traslado' ,'=', 0)
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
             ->where('st.seleccionado', '>', 0)
