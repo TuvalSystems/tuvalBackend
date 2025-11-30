@@ -56,4 +56,9 @@ class GpReserva extends Model
     {
         return $this->belongsTo(GpReservaTipoTraslado::class, 'tipo_traslado_reserva_id');
     }
+
+
+    public function traslados ()  {
+        return $this->hasMany(GpTrasladosReservas::class, 'reserva_id');
+    }
 }

@@ -281,7 +281,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'cotizacion.detallecotizacion.proveedores',
             'tipoTraslado',
             'tipoReserva',
-            'usuarioIngreso'
+            'usuarioIngreso',
+            'traslados.detalleguia.guia',
         ])->find($id);
 
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($reserva->cotizacion->CLI_RUC);
