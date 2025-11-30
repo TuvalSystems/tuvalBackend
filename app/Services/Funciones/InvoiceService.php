@@ -246,7 +246,7 @@ class InvoiceService implements InvoiceServiceInterface
             }
 
             [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
-            $this->storeNewDispatchOrder($pedido,  $estado, $fechaLiberacion);
+            $this->storeNewDispatchOrder($pedido, $estado, $fechaLiberacion);
             return;
         } catch (\Exception $e) {
             Log::error("Error generating dispatch order: " . $e->getMessage());
@@ -254,7 +254,7 @@ class InvoiceService implements InvoiceServiceInterface
         }
     }
 
-    public function storeNewDispatchOrder($pedido,  $estado, $fechaLiberacion)
+    public function storeNewDispatchOrder($pedido, $estado, $fechaLiberacion)
     {
         $newDispatchOrder = new GpOrdenDespacho();
         $newDispatchOrder->pedido_id = $pedido->id;
@@ -331,6 +331,7 @@ class InvoiceService implements InvoiceServiceInterface
                 Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera').");
                 return;
             }
+            Log::info("Pedido {$pedido->pedido} cumple condiciones para cambiar a 'enviando'.");
             $pedido->estado = 'enviando';
             $pedido->save();
         }
@@ -341,11 +342,11 @@ class InvoiceService implements InvoiceServiceInterface
             Log::warning(
                 'Pedido no cumple validación de origen/fecha',
                 [
-                    'pedido_id'   => $pedido->id,
-                    'numero'      => $pedido->pedido ?? null,
-                    'origen'      => $pedido->origen,
+                    'pedido_id' => $pedido->id,
+                    'numero' => $pedido->pedido ?? null,
+                    'origen' => $pedido->origen,
                     'fe_fact_res' => $pedido->fe_facturacion_reserva,
-                    'today'       => now()->toDateString(),
+                    'today' => now()->toDateString(),
                     'estado_prev' => $pedido->estado,
                 ]
             );
@@ -379,7 +380,7 @@ class InvoiceService implements InvoiceServiceInterface
         }
 
         // verificar si el pedido ya fue facturado
-        $existInvoice =  $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === true) {
             $info = $existInvoice['data'];
             $pedido = GpPedido::where('pedido', $pedido->pedido)->first();
@@ -390,7 +391,7 @@ class InvoiceService implements InvoiceServiceInterface
             // throw new \Exception("El pedido {$pedido->pedido} ya se encuentra facturado con el documento {$info['numeroDocGenerado']}.");
         }
         // eliminar factura existente si existe y no se proceso correctamente
-        $deleteInvoice =  $this->apiGpProcessInvoice->deleteDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        $deleteInvoice = $this->apiGpProcessInvoice->deleteDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($deleteInvoice['success'] === false) {
             throw new \Exception("No se pudo eliminar la factura existente para el pedido {$pedido->pedido}. Error: {$deleteInvoice['message']}");
         }
@@ -529,8 +530,9 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function normalizeTextNoteClient(?string $nota): string
     {
-        if ($nota === null) return '';
-        $clean = preg_replace('/\R+/u', ' ', $nota); 
+        if ($nota === null)
+            return '';
+        $clean = preg_replace('/\R+/u', ' ', $nota);
         return trim(preg_replace('/[^\S\r\n]+/u', ' ', $clean));
     }
 
@@ -538,19 +540,19 @@ class InvoiceService implements InvoiceServiceInterface
     {
         return $detalles->values()->map(function ($detalle, $index) use ($pedido) {
             return [
-                'FAC_VTA_DET_LINEA'           => $index + 1,
-                'FAC_VTA_DET_DOCU_ORIGEN'     => $pedido->pedido,
-                'FAC_VTA_DET_ID_TIPO'         => 3,
-                'FAC_VTA_DET_ARTICULO'        => $detalle->ART_CODIGO,
-                'FAC_VTA_DET_DESC_ARTICULO'   => $detalle->ART_DESCRIPCION,
-                'FAC_VTA_DET_UNIDAD_MEDIDA'   => $detalle->ART_PLAN_UMEDIDA,
-                'FAC_VTA_DET_BODEGA'          => $pedido->BOD_BODEGA,
-                'FAC_VTA_DET_CANTIDAD'        => $detalle->ART_CANTIDAD,
-                'FAC_VTA_DET_COSTO_UNITARIO'  => $detalle->ART_VALOR,
+                'FAC_VTA_DET_LINEA' => $index + 1,
+                'FAC_VTA_DET_DOCU_ORIGEN' => $pedido->pedido,
+                'FAC_VTA_DET_ID_TIPO' => 3,
+                'FAC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
+                'FAC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
+                'FAC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
+                'FAC_VTA_DET_BODEGA' => $pedido->BOD_BODEGA,
+                'FAC_VTA_DET_CANTIDAD' => $detalle->ART_CANTIDAD,
+                'FAC_VTA_DET_COSTO_UNITARIO' => $detalle->ART_VALOR,
                 'FAC_VTA_DET_PRECIO_UNITARIO' => $detalle->ART_VALOR,
-                'FAC_VTA_DET_DESCUENTO'       => $detalle->ART_DESCUENTO,
-                'FAC_VTA_DET_IMPUESTO_IVA'    => $detalle->ART_IVA,
-                'FAC_VTA_DET_TOTAL'           => number_format(
+                'FAC_VTA_DET_DESCUENTO' => $detalle->ART_DESCUENTO,
+                'FAC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
+                'FAC_VTA_DET_TOTAL' => number_format(
                     ($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD,
                     2,
                     '.',
@@ -563,7 +565,7 @@ class InvoiceService implements InvoiceServiceInterface
     public function formatParamsInvoiceValidate($pedido)
     {
         return [
-            'documentoOrigen' =>  $pedido->pedido,
+            'documentoOrigen' => $pedido->pedido,
             'tipoDocumento' => 3
         ];
     }
@@ -595,7 +597,7 @@ class InvoiceService implements InvoiceServiceInterface
     {
         $pedido = GpPedido::where('pedido', $order->pedido)->first();
 
-        $existInvoice =  $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === false) {
             $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? 'Error no definido por GP';
             $pedido->estado = 'espera';
