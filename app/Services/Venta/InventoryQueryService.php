@@ -302,10 +302,10 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 $item->reservado = (float) $item->reservado;
                 return $item;
             });
-        // $response2 = $this->listReservedInventoryByPendingUse();
+        $response2 = $this->listReservedInventoryByPendingUse();
         $response3 = $this->listReservedInventoryByTransfers();
         return collect($response)
-            // ->concat($response2)
+            ->concat($response2)
             ->concat($response3)
             ->values();
     }
