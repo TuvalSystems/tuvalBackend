@@ -216,6 +216,8 @@ class PedidosController extends Controller
     public function verpedidos(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
+
+
         $data = $request->validate([
             'puntodeventa_id' => 'required',
             'estado' => 'required',
@@ -240,7 +242,7 @@ class PedidosController extends Controller
             $pedidos = $pedidos->where('gp_pedidos.CLI_RUC', $data['cliente']['CLI_RUC']);
         }
 
-        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(1500)->get();
+        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(500)->get();
 
         foreach ($pedidos as $pedido) {
 
@@ -1333,7 +1335,7 @@ class PedidosController extends Controller
 
     public function actualizarFechaReservaPedido(Request $request)
     {
-        
+
         $validate = $request->validate([
             'id' => 'required|integer',
             'fe_facturacion_reserva' => 'required|date_format:Y-m-d',

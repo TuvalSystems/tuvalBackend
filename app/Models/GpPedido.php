@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\traslados\GpTrasladosVentas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -135,7 +136,7 @@ class GpPedido extends Model
 {
     use HasFactory;
 
-    protected $appends = ['msg_registro_copia'];
+    protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
 
     protected $fillable = [
         'pedido',
@@ -301,6 +302,24 @@ class GpPedido extends Model
 
         // Unimos los mensajes. Si hay 2 razones, se verán separadas por " | "
         return implode(" | ", $mensajes);
+    }
+
+
+    public function gptrasladoventa()
+    {
+        return $this->hasMany(GpTrasladosVentas::class, 'pedido_id');
+    }
+
+
+    public function getCheckTrasladoVentaAttribute() : bool
+    {
+        return $this->gptrasladoventa()
+            ->where(function ($query) {
+                $query->where('completado', 1)
+                    ->orWhere('picking', 1)
+                    ->orwhere('trasladado', '>', 0);
+            })
+            ->exists();
     }
 
 
