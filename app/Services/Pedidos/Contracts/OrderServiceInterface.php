@@ -56,4 +56,11 @@ interface OrderServiceInterface
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, string $newOrd, string $newNote);
      public function updateOrderReservationDate(int $orderId, string $newDate);
+
+
+     /** listas de pedidos que nacen de una reserva */
+
+    public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId);
+
+
 }

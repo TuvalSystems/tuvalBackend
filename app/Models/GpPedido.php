@@ -252,6 +252,9 @@ class GpPedido extends Model
 
     public function getMsgRegistroCopiaAttribute()
     {
+        if (!$this->relationLoaded('gpcotizacion')) {
+            return null;
+        }
         // 1. Validaciones iniciales de seguridad
         $cotizacion = $this->gpcotizacion;
         if (!$cotizacion) {
@@ -311,7 +314,7 @@ class GpPedido extends Model
     }
 
 
-    public function getCheckTrasladoVentaAttribute() : bool
+    public function getCheckTrasladoVentaAttribute(): bool
     {
         return $this->gptrasladoventa()
             ->where(function ($query) {

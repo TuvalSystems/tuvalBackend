@@ -673,7 +673,7 @@ class OrderService implements OrderServiceInterface
         try {
             DB::beginTransaction();
             $order = $this->getOrderOrFail($orderId);
-            if($order->origen === 'reserva'){
+            if ($order->origen === 'reserva') {
                 $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
                 $order->save();
             }
@@ -1552,5 +1552,65 @@ class OrderService implements OrderServiceInterface
         $order->fe_facturacion_reserva = $newDate ? Carbon::parse($newDate) : null;
         $order->save();
         return $order;
+    }
+
+
+
+    public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId)
+    {
+        $allowedSorts = [
+            'gp.created_at',
+            'gp.pedido',
+            'gp.factura',
+            'gp.estado',
+            'gp.CLI_RUC',
+            'gp.CLI_RAZON_SOCIAL',
+            'ct.cotizacion',
+        ];
+
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'gp.created_at';
+        }
+
+        $sortOrder = strtolower($sortOrder) === 'desc' ? 'desc' : 'asc';
+
+        $query = GpPedido::query()
+            ->without(['detalle', 'sucursal', 'cliente', 'gpcotizacion'])
+            ->from('gp_pedidos as gp')
+            ->select([
+                'gp.id',
+                'gp.pedido',
+                'ct.id as cotizacion_id',
+                'ct.cotizacion as nro_cotizacion',
+                'gp.factura',
+                'gp.estado',
+                'gp.CLI_RUC as ruc_cliente',
+                'gp.CLI_RAZON_SOCIAL as razon_social_cliente',
+                'gp.USERID',
+                'gp.COND_ID',
+                'gp.created_at'
+            ])
+            ->join('gp_cotizacions as ct', 'ct.id', '=', 'gp.cotizacion_id')
+            ->where('gp.origen', 'reserva')
+            ->where('gp.PTO_VTA_ID', $ptoVtaId)
+            ->whereNotIn('gp.estado', ['eliminado', 'rechazado', 'anulada']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $columns = [
+                    'ct.cotizacion',
+                    'ct.PTO_VTA_ID',
+                    'gp.CLI_RUC',
+                    'CLI_RAZON_SOCIAL',
+                ];
+                foreach ($columns as $column) {
+                    $q->orWhere($column, 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+
+        return $query->paginate($perPage);
     }
 }

@@ -38,6 +38,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use DomainException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -1352,6 +1353,28 @@ class PedidosController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return $this->buildErrorResponse('Opps! Error al actualizar la fecha de reserva del pedido', 500);
+        }
+    }
+
+
+
+    /** funcion de lisras de pedido reservas  */
+
+
+    public function listarPedidosReservas(Request $request): JsonResponse
+    {
+
+        $perPage = $request->input('per_page', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'desc');
+        $ptoVtaId = $request->input('ptoVtaId', null);
+
+        try {
+            $data = $this->orderService->fetchOrderFromReservations($perPage, $search, $sortBy, $sortOrder, $ptoVtaId);
+            return $this->successResponse('Lista de pedidos de reservas obtenida correctamente', $data, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
 }
