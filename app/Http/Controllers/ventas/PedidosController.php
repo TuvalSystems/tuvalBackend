@@ -1364,7 +1364,7 @@ class PedidosController extends Controller
     public function listarPedidosReservas(Request $request): JsonResponse
     {
 
-        $perPage = $request->input('per_page', 10);
+        $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
         $sortBy = $request->input('sortBy', null);
         $sortOrder = $request->input('sortOrder', 'desc');

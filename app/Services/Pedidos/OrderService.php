@@ -1588,12 +1588,15 @@ class OrderService implements OrderServiceInterface
                 'gp.CLI_RAZON_SOCIAL as razon_social_cliente',
                 'gp.USERID',
                 'gp.COND_ID',
-                'gp.created_at'
+                'gp.created_at',
+                'gp.total',
+                'gp.origen',
+                'gp.fe_facturacion_reserva',
             ])
             ->join('gp_cotizacions as ct', 'ct.id', '=', 'gp.cotizacion_id')
             ->where('gp.origen', 'reserva')
-            ->where('gp.PTO_VTA_ID', $ptoVtaId)
-            ->whereNotIn('gp.estado', ['eliminado', 'rechazado', 'anulada']);
+            // ->where('gp.PTO_VTA_ID', $ptoVtaId)
+            ->whereNotIn('gp.estado', ['eliminado', 'rechazado', 'anulada','facturado']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -1601,7 +1604,8 @@ class OrderService implements OrderServiceInterface
                     'ct.cotizacion',
                     'ct.PTO_VTA_ID',
                     'gp.CLI_RUC',
-                    'CLI_RAZON_SOCIAL',
+                    'gp.CLI_RAZON_SOCIAL',
+                    'gp.pedido',
                 ];
                 foreach ($columns as $column) {
                     $q->orWhere($column, 'like', "%{$search}%");
