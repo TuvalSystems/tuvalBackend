@@ -163,11 +163,12 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $detailMotivos = [];
         $ids = collect($detalles)->pluck('detalle_id')->filter();
-        $dbDetails = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
-
+        $dbDetailQuote = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+        $dbDetailOrder = GpPedidoDetalle::whereIn('id', $ids)->get()->keyBy('id');
         foreach ($detalles as $detalle) {
+
             $detailId = data_get($detalle, 'detalle_id');
-            $detailOrigin = $detailId ? $dbDetails->get($detailId) : null;
+            $detailOrigin = $detalle['tipo'] == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
 
 
             // ---------------------------------------------------------

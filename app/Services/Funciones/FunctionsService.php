@@ -263,11 +263,11 @@ class FunctionsService implements FunctionsServiceInterface
 
     /** function remplazo de stTempCartForm */
 
-    public function setCartFormQuotation($quotationDetails, $data, $user)
+    public function setCartFormQuotation($quotationDetails, $data, $user,$type)
     {
         $this->clearExistCart($data['sucursal_id'], $data['cliente_id'], $data['PTO_VTA_ID']);
         foreach ($quotationDetails as $i => $item) {
-            $cart = $this->storeCartItem($item, $data, $user, $i + 1);
+            $cart = $this->storeCartItem($item, $data, $user, $i + 1, $type);
             $this->storeCartProviders($cart->id, $item->proveedores ?? []);
             $this->storeCartStockTemp($cart->id, $item->stock ?? []);
         }
@@ -281,7 +281,7 @@ class FunctionsService implements FunctionsServiceInterface
             ->delete();
     }
 
-    public function storeCartItem($item, $data, $user, $index): GpTempCart
+    public function storeCartItem($item, $data, $user, $index, $type): GpTempCart
     {
         $cart = new GpTempCart();
         $cart->detalle_id = $item->id;
@@ -312,6 +312,7 @@ class FunctionsService implements FunctionsServiceInterface
         $cart->descuento_original = $item->descuento_original;
         $cart->modificador = $item->modificador;
         $cart->orden = $index;
+        $cart->tipo = $type;
         $cart->save();
 
         return $cart;
