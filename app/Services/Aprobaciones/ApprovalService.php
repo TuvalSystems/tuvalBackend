@@ -1594,7 +1594,7 @@ class ApprovalService implements ApprovalServiceInterface
         $query = GpPedido::query()
             ->with([
                 'detallepedido',
-                // 'gpcotizacion',
+                'gpcotizacion',
                 // 'gpcliente' => function ($query) {
                 //     $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
                 // },
