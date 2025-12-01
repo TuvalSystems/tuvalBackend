@@ -992,6 +992,14 @@ class QuotationService implements QuotationServiceInterface
             $requiereAprobacionComercial['aprobado'] = 'no';
         }
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
+        $motivoLimpio = iconv('UTF-8', 'UTF-8//IGNORE', $requiereAprobacionComercial['motivo']);
+
+        // 2. Si iconv falla (a veces pasa en ciertos servidores), usa este fallback robusto:
+        if (!$motivoLimpio) {
+            // Detecta si viene en Latin1 (común en bases de datos viejas) y lo pasa a UTF-8
+            $encoding = mb_detect_encoding($requiereAprobacionComercial['motivo'], mb_detect_order(), true);
+            $motivoLimpio = mb_convert_encoding($requiereAprobacionComercial['motivo'], 'UTF-8', $encoding ?: 'ISO-8859-1');
+        }
         $cotizacion->fill([
             'estado' => $requiereAprobacionComercial['estado'],
             'user_id' => $user->id,
@@ -1024,7 +1032,7 @@ class QuotationService implements QuotationServiceInterface
             'iva' => (float) $data['iva'],
             'total' => (float) $data['total'],
             'requiere_aprobacion_comercial' => $requiereAprobacionComercial['requiere'],
-            'motivo_aprobacion_comercial' => $requiereAprobacionComercial['motivo'],
+            'motivo_aprobacion_comercial' => $motivoLimpio,
             'aprobado_comercial' => $requiereAprobacionComercial['aprobado'],
             'aprobador_comercial_id' => null,
             'requiere_aprobacion_crediticia' => 'no',
