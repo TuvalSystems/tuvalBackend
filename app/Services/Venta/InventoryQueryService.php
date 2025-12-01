@@ -284,7 +284,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->selectRaw(
                 "
             t.ART_CODIGO as codigo,
-            t.bodega_destino AS bodega,
+            t.bodega_origen AS bodega,
             (t.cantidad - COALESCE(t.trasladado, 0)) AS reservado,
             'traslado' as tipo"
             );
