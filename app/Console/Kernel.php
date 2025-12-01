@@ -29,7 +29,7 @@ class Kernel extends ConsoleKernel
 
         //se ejecuta el 1 de cada mez
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
-            ->monthlyOn(9, '02:00')
+            ->monthlyOn(1, '02:00')
             ->timezone('America/Guayaquil')->withoutOverlapping(60)
             ->runInBackground(); // hace que no bloquee otros jobs
 
