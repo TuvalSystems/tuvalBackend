@@ -1609,7 +1609,7 @@ class ApprovalService implements ApprovalServiceInterface
                 'dfp.DESC_FORMA_PAGO_TIPO_CREDITO', // Renombrado para claridad
                 'pv.PTO_VTA_DESCRIPCION'      // Renombrado para claridad
             )
-            ->where('gp_pedidos.PTO_VTA_ID', $ptoVta) // Si es necesario, descomentar
+            // ->where('gp_pedidos.PTO_VTA_ID', $ptoVta) // Si es necesario, descomentar
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
             ->whereNotIn('estado', $excludedStates)
