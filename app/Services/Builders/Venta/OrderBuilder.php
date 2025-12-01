@@ -14,12 +14,20 @@ class OrderBuilder implements OrderBuilderInterface
 
 
 
-    public function fromPayloadOrder($cotizacionId, array $data,  array $approvalComercial, GpUsuario $user, $pv, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega, $origen, $fFacturacionReserva = null, $bodega)
+    public function fromPayloadOrder($cotizacionId, array $data, array $approvalComercial, GpUsuario $user, $pv, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega, $origen, $fFacturacionReserva = null, $bodega)
     {
         $newOrder = new GpPedido();
         $subtotalBruto = (float) $data['subtotal'] + (float) $data['descuento'];
         $descuento = (float) $data['descuento'];
         $subMenosDescuento = (float) $data['subtotal'];
+        $motivoLimpio = iconv('UTF-8', 'UTF-8//IGNORE', $approvalComercial['motivo']);
+
+        // 2. Si iconv falla (a veces pasa en ciertos servidores), usa este fallback robusto:
+        if (!$motivoLimpio) {
+            // Detecta si viene en Latin1 (común en bases de datos viejas) y lo pasa a UTF-8
+            $encoding = mb_detect_encoding($approvalComercial['motivo'], mb_detect_order(), true);
+            $motivoLimpio = mb_convert_encoding($approvalComercial['motivo'], 'UTF-8', $encoding ?: 'ISO-8859-1');
+        }
 
         $newOrder->fill([
             'cotizacion_id' => $cotizacionId,
@@ -53,7 +61,7 @@ class OrderBuilder implements OrderBuilderInterface
             'iva' => number_format((float) $data['iva'], 2, '.', ''),
             'total' => number_format((float) $data['total'], 2, '.', ''),
             'requiere_aprobacion_comercial' => $approvalComercial['requiere'],
-            'motivo_aprobacion_comercial' => $approvalComercial['motivo'],
+            'motivo_aprobacion_comercial' => $motivoLimpio,
             'aprobado_comercial' => 'no',
             'aprobador_comercial_id' => null,
             'requiere_aprobacion_crediticia' => $requiereAprobacionCrediticia,
@@ -73,7 +81,7 @@ class OrderBuilder implements OrderBuilderInterface
 
 
 
-    public function formPayloadOrderDetail($orderId,  $item, $i)
+    public function formPayloadOrderDetail($orderId, $item, $i)
     {
         $det = new GpPedidoDetalle();
         $det->fill([
@@ -84,13 +92,13 @@ class OrderBuilder implements OrderBuilderInterface
             'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
             'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
             'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-            'ART_DECIMAL_CANTIDAD' => (int)$item['ART_DECIMAL_CANTIDAD'],
+            'ART_DECIMAL_CANTIDAD' => (int) $item['ART_DECIMAL_CANTIDAD'],
             'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
             'ART_MARCA' => $item['ART_MARCA'],
             'ART_MATERIAL' => $item['ART_MATERIAL'],
             'ART_PESO' => $item['ART_PESO'],
             'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
-            'ART_VALOR' =>  $item['ART_VALOR'],
+            'ART_VALOR' => $item['ART_VALOR'],
             'ART_VALOR_ORIGINAL' => $item['ART_VALOR_ORIGINAL'],
             'ART_DESCUENTO' => $item['ART_DESCUENTO'],
             'ART_IVA' => $item['ART_IVA'],
