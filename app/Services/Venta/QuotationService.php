@@ -182,7 +182,7 @@ class QuotationService implements QuotationServiceInterface
             $clientes = $this->functionService->getClient($data);
             $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
             $this->functionService->recalculateIva($detalles);
-            $this->functionService->setCartFormQuotation($detalles, $data, $user);
+            $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
@@ -926,7 +926,7 @@ class QuotationService implements QuotationServiceInterface
             $cliente = $this->functionService->getClient($data);
             $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
             $this->functionService->recalculateIva($detalles);
-            $this->functionService->setCartFormQuotation($detalles, $data, $user);
+            $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
             $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();

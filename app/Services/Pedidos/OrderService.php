@@ -741,7 +741,7 @@ class OrderService implements OrderServiceInterface
             $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'pedido');
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
             $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data, $user);
+            $this->functionsService->setCartFormQuotation($detalle, $data, $user, 'pedido');
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
@@ -779,7 +779,7 @@ class OrderService implements OrderServiceInterface
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
 
             $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user);
+            $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user, 'pedido');
             DB::commit();
             return response([
                 'success' => true,

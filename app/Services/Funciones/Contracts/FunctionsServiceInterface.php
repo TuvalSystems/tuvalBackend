@@ -21,7 +21,7 @@ interface FunctionsServiceInterface
 
     public function getBodegas($data, $consulta = null);
     public function findAvailableArticleCodeL($artArrm, $class = 'VTA_BNS_L', $limit = 300);
-    public function setCartFormQuotation($quotationDetails, $data, $user);
+    public function setCartFormQuotation($quotationDetails, $data, $user, $type);
 
     public function storeCartStock($cartId, $stock);
 
