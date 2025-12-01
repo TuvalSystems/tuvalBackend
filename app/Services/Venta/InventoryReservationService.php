@@ -470,6 +470,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null, $clienteRuc, $userId)
     {
+        $gpUser = GpUsuario::find($userId);
 
 
         $query = GpReserva::select([
@@ -491,8 +492,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->join('gp_tipo_reservas', 'gp_reservas.tipo_reserva_id', '=', 'gp_tipo_reservas.id')
             ->leftJoin('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
             ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
-            ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id')
-            ->where('gp_reservas.user_ingreso_reserva_id', $userId);
+            ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id');
+        if ($gpUser->perfil_id !== 2) {
+            $query->where('gp_reservas.user_ingreso_reserva_id', $userId);
+        }
 
         if ($fecha_desde && $fecha_hasta) {
             $query->where('gp_cotizacions.created_at', '>=', $fecha_desde)
