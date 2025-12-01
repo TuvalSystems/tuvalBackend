@@ -168,7 +168,8 @@ class ApprovalService implements ApprovalServiceInterface
         foreach ($detalles as $detalle) {
 
             $detailId = data_get($detalle, 'detalle_id');
-            $detailOrigin = $detalle['tipo'] == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
+            $type = data_get($detalle, 'tipo', 'cotizacion');
+            $detailOrigin = $type == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
 
 
             // ---------------------------------------------------------
