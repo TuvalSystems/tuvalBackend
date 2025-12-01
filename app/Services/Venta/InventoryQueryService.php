@@ -285,7 +285,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 "
             t.ART_CODIGO as codigo,
             t.bodega_destino AS bodega,
-            t.cantidad AS reservado,
+            (t.cantidad - t.trasladado) AS reservado,
             'traslado' as tipo"
             );
 
