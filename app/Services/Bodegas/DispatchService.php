@@ -7,7 +7,7 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Support\Facades\Cache;
-
+use Illuminate\Support\Facades\DB;
 
 class DispatchService implements DispatchServiceInterface
 {
@@ -17,7 +17,7 @@ class DispatchService implements DispatchServiceInterface
         $this->invoiceService = $invoiceService;
     }
 
-    public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc)
+    public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $query = GpGuiaRemision::select([
@@ -72,7 +72,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function transferenciasEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
+    public function transferenciasEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -129,7 +129,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function transferenciasRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
+    public function transferenciasRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -181,7 +181,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function reposicionesEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc,  $ptoVta)
+    public function reposicionesEnviadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -236,7 +236,7 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perpage);
     }
 
-    public function reposicionesRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'asc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
+    public function reposicionesRecibidas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc, $ptoVta)
     {
         $bodega = $this->getNamePtoVta($ptoVtaId);
         $ptovtaSearch = $this->getNamePtoVta($ptoVta);
@@ -289,7 +289,7 @@ class DispatchService implements DispatchServiceInterface
 
     public function getNamePtoVta($ptoVtaId)
     {
-        return  GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
+        return GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
     }
 
     public function checkTraslado($order)
@@ -301,8 +301,28 @@ class DispatchService implements DispatchServiceInterface
     {
         return Cache::remember('pto_vta_all', 300, function () {
             return GpRelacionPuntoVentaBodega::query()
+                ->join('gp_punto_ventas as pv', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', '=', 'pv.PTO_VTA_ID')
                 ->orderBy('PTO_VTA_BOD_BODEGA')               // ajusta campo
-                ->get(['id', 'PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA']); // solo lo necesario
+                ->get(['gp_relacion_punto_venta_bodegas.id', 'PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA','pv.id as punto_venta_id','pv.PTO_VTA_DESCRIPCION']); // solo lo necesario
         });
+    }
+
+
+    public function getAllPtoVtaReserved()
+    {
+
+        return DB::table('gp_relacion_punto_venta_bodegas as rpv')
+            ->join('gp_punto_ventas as pv', 'rpv.PTO_VTA_BOD_PUNTO_VENTA', '=', 'pv.PTO_VTA_ID')
+            ->select(
+                [
+                    'pv.PTO_VTA_ID as PTO_VTA_ID',
+                    'rpv.PTO_VTA_BOD_BODEGA',
+                    'rpv.PTO_VTA_BOD_PUNTO_VENTA',
+                    'pv.pto_vta_max_dias_reserva',
+                    'pv.pto_vta_max_dias_autorizacion_reserva'
+                ]
+            )
+            ->orderBy('rpv.PTO_VTA_BOD_BODEGA')
+            ->get();
     }
 }

@@ -18,10 +18,11 @@ use Illuminate\Database\Eloquent\Model;
 use App\Http\Controllers\SectionsController;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Services\User\Contracts\UserServiceInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
-class UserService
+class UserService implements UserServiceInterface
 {
     use JsonResponseTrait;
 
@@ -39,7 +40,8 @@ class UserService
         }
         return true;
     }
-    public function validateStatusGpUser( $credentials): bool{
+    public function validateStatusGpUser($credentials): bool
+    {
         $user = GpUsuario::where('USERID', $credentials['username'])->where('status', true)->first();
         if (!$user) {
             return false;
@@ -70,20 +72,28 @@ class UserService
         $params = array(
             'idCompany' => config('services.api_gp.company'),
             'username' => $credentials['username'],
+            'password' => $credentials['password']
         );
-        return $this->apiGp->validateUser($params);
+
+        $resp = $this->apiGp->validateUser($params);
+        $rSuccess = data_get($resp, 'success', false);
+        if (!$rSuccess) {
+            throw ValidationException::withMessages(['username' => 'El usuario no existe o la contraseña es incorrecta.']);
+        }
+        $data = data_get($resp, 'data', []);
+        return $data;
     }
 
     public function isValidUser(array $validationResponse): bool
     {
-        return isset($validationResponse['codret']) && $validationResponse['codret'] == '0';
+        return isset($validationResponse['codRet']) && $validationResponse['codRet'] == '0';
     }
 
 
 
-    public function buildSuccessResponseUser($user): JsonResponse
+    public function buildSuccessResponseUser($user): array
     {
-        return response()->json([
+        return [
             'user' => $this->formatuserData($user),
             'token' => $this->generateAuthToken($user),
             'menu' => $this->getUserMenu($user->perfil_id)['arbol'],
@@ -94,17 +104,17 @@ class UserService
             'condiciondepago' => $this->getPaymentConditions(),
             'proveedores' => $this->getSuppliers(),
             'must_change_password' => $user->must_change_password
-        ]);
+        ];
     }
 
     public function formatUserData($user): array
     {
         return [
+            'id' => $user->id,
             'USERID' => $user->USERID,
             'USERNAME' => $user->USERNAME,
             'perfil_id' => $user->perfil_id,
             'status' => $user->status,
-
         ];
     }
 
@@ -130,7 +140,8 @@ class UserService
         $nuevo_arr = [];
         foreach ($puntosdeventa as $puntodeventa) {
             $this->getBodegas($puntodeventa);
-            $nuevo_arr[$puntodeventa->PTO_VTA_ID] = $puntodeventa;
+            $ptoVta = data_get($puntodeventa, 'PTO_VTA_ID');
+            $nuevo_arr[$ptoVta] = $puntodeventa;
         }
 
         return array_values($nuevo_arr);
@@ -236,7 +247,8 @@ class UserService
      *
      */
 
-     public function changeStatusGpUser($userId){
+    public function changeStatusGpUser($userId)
+    {
 
         try {
             $user = GpUsuario::where('USERID', $userId[0])->first();
@@ -246,6 +258,73 @@ class UserService
         } catch (\Throwable $th) {
             return $this->errorResponse('Error', $th->getMessage(), 500);
         }
-     }
+    }
 
+
+
+
+    /** proceso de notificaciones de usuarios */
+    public function getAllNotifications(int $userId, int $perPage = 10, $search = null, $sortBy = null, $sortOrder = 'desc')
+    {
+        $gpUser = GpUsuario::findOrFail($userId);
+        $allowedSorts = ['created_at', 'read_at', 'title'];
+        $sortOrder = strtolower($sortOrder ?? 'desc');
+        $sortOrder = $sortOrder === 'asc' ? 'asc' : 'desc';
+        $query = $gpUser->notifications()->whereNull('read_at')
+            ->when($search, function ($que) use ($search) {
+                $que->where('data->title', 'like', "%{$search}%")
+                    ->orWhere('data->message', 'like', "%{$search}%");
+            });
+        if ($sortBy && in_array($sortBy, $allowedSorts, true)) {
+            // ordenar por título (campo JSON)
+            if ($sortBy === 'title') {
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.title')) {$sortOrder}");
+            } else {
+                // ordenar por columnas reales de la tabla
+                $query->orderBy($sortBy, $sortOrder);
+            }
+        } else {
+            // orden por defecto
+            $query->orderBy('created_at', 'desc');
+        }
+        $paginator = $query->paginate($perPage);
+        $paginator->getCollection()->transform(function ($n) {
+            return [
+                'id' => $n->id,
+                'title' => data_get($n->data, 'title', 'Notificación'),
+                'message' => data_get($n->data, 'message', ''),
+                'read_at' => $n->read_at,
+                'time' => $n->created_at->diffForHumans(),
+                'created_at' => $n->created_at->toDateTimeString()
+            ];
+        });
+
+        return [
+            'current_page' => $paginator->currentPage(),
+            'data' => $paginator->items(), // lo que va a tu BaseTable
+            'from' => $paginator->firstItem(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'to' => $paginator->lastItem(),
+            'total' => $paginator->total(),
+            'unread_count' => $gpUser->unreadNotifications()->count(),
+        ];
+
+    }
+
+
+    public function markAsReadNotify(string $notifyId, int $userId)
+    {
+        $notify = GpUsuario::find($userId)->notifications()->findOrFail($notifyId);
+        if (is_null($notify->read_at)) {
+            $notify->markAsRead();
+        }
+        return $notify;
+    }
+
+
+    public function markAllReadNotify(int $userId)
+    {
+        GpUsuario::find($userId)->unreadNotifications->markAsRead();
+    }
 }

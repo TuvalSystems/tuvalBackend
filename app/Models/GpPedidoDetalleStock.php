@@ -43,4 +43,14 @@ class GpPedidoDetalleStock extends Model
         'seleccionado',
         'reservado',
     ];
+
+
+    public function detalle()
+    {
+        return $this->belongsTo(GpPedidoDetalle::class, 'detalle_id');
+    }
+
+    public function pedido(){
+        return $this->belongsTo(GpPedido::class, 'pedido_id');
+    }
 }

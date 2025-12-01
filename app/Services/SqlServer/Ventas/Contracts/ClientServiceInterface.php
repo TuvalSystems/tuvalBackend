@@ -10,7 +10,7 @@ interface ClientServiceInterface
 
     /**
      *  definicion de segmentos y subsegmentos
-     * @return void
+     * 
      */
     public function getListSegments();
     public function getLisSubSegmentos($segmento);

@@ -6,7 +6,6 @@ use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
-use App\Models\Notificaciones;
 use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
@@ -14,11 +13,12 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\GpUsuario;
+use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
 
 class TransferenciasController extends Controller
@@ -274,13 +274,12 @@ class TransferenciasController extends Controller
                 $pedido->transferencia_en_proceso = null;
                 $pedido->save();
             }
-            $notificacion = new Notificaciones();
-            $notificacion->titulo = 'Picking Cancelado';
-            $notificacion->user_id = $pedido->user_id;
-            $notificacion->mensaje = 'El usuario ' . $user->USERID . ' canceló el picking del artículo ' . $picking['ART_CODIGO'] . ' del pedido ' . $pedido->pedido;
-            $notificacion->estado = 'nuevo';
-            $notificacion->save();
-
+            $title = 'Picking Cancelado';
+            $msg = 'El usuario ' . $user->USERID . ' canceló el picking del artículo ' . $picking['ART_CODIGO'] . ' del pedido ' . $pedido->pedido;
+            $gpUser = GpUsuario::where('id', $user->id)->first();
+            if ($gpUser) {
+                $gpUser->notify(new UserNotification($title, $msg));
+            }
             return response([
                 'success' => true,
             ]);

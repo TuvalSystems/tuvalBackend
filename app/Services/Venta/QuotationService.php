@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+
 use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -11,6 +12,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
 use App\Models\GpClienteSucursal;
+
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
@@ -28,12 +30,16 @@ use App\Models\GpRegistroCopia;
 use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
+use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
+use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
@@ -41,7 +47,6 @@ use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-
 
 class QuotationService implements QuotationServiceInterface
 {
@@ -57,6 +62,9 @@ class QuotationService implements QuotationServiceInterface
     protected $orderAndQuotationService;
     protected $clienTSqlService;
     protected $stockSqlService;
+    protected $quotationBuilder;
+    protected $orderBuilder;
+    protected $invoiceService;
     public function __construct(
         QuotationRepositoryInterface $quotationRepository,
         ApiGpService $apiGpService,
@@ -69,6 +77,9 @@ class QuotationService implements QuotationServiceInterface
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
         ClientServiceInterface $clienTSqlService,
         StockSqlServiceInterface $stockSqlService,
+        QuotationBuilderInterface $quotationBuilderInterface,
+        OrderBuilderInterface $orderBuilderInterface,
+        InvoiceServiceInterface $invoiceServiceInterface
     ) {
         $this->quotationRepository = $quotationRepository;
         $this->apiGpService = $apiGpService;
@@ -81,6 +92,9 @@ class QuotationService implements QuotationServiceInterface
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
         $this->clienTSqlService = $clienTSqlService;
         $this->stockSqlService = $stockSqlService;
+        $this->quotationBuilder = $quotationBuilderInterface;
+        $this->orderBuilder = $orderBuilderInterface;
+        $this->invoiceService = $invoiceServiceInterface;
     }
 
 
@@ -103,7 +117,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function updateNonSaleAndReminderData($data)
     {
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio' => $data['fecha_recordatorio'],
             'cotizacion_venta_motivo_id' => $data['motivo_id'],
@@ -598,6 +612,7 @@ class QuotationService implements QuotationServiceInterface
             foreach ($detalle as $det) {
                 $this->castDecimalValuesTemp($det);
                 $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
+                $this->calculatePorcentilDiscountAndPrice($det);
             }
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             return response([
@@ -661,6 +676,12 @@ class QuotationService implements QuotationServiceInterface
         return ($costo / (1 - ($margenBruto / 100))) / (1 - ($descuentoGeneral / 100));
     }
 
+    public function calculatePorcentilDiscountAndPrice(&$detalle)
+    {
+        $detalle->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($detalle->ART_VALOR_ORIGINAL, $detalle->ART_VALOR), 3);
+        $detalle->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($detalle->descuento_original, $detalle->descuento), 3);
+    }
+
 
     /***
      *  FUNCION PARA llenar el detalle de la cotizacion - llenarcotizacion
@@ -671,6 +692,7 @@ class QuotationService implements QuotationServiceInterface
         $artPrecios = [];
         $articulosTemp = $this->quotationRepository->getGpTempCartFillQuotation($data['sucursal_id'], $data['puntodeventa_id'], $data['cliente_id'], $user->id);
         $isCopy = ($data['test'] ?? '') === 'copiarpedido';
+        $serial = data_get($data, 'serial', null);
         foreach ($articulosTemp as $artTemp) {
             $artTemp->CHECK_ALTERNATIVO = $isCopy ? 0 : $this->syncAndGetCheckAlternativo($data, $artTemp);
 
@@ -681,14 +703,18 @@ class QuotationService implements QuotationServiceInterface
             $this->loadImagesTemp($artTemp);
         }
 
-        if (($data['serial'] ?? '') === '' && empty($data['registro_copia'])) {
+        if (($serial === null || $serial === '') && empty($data['registro_copia'])) {
             $listaPrecios = $this->getPricesByClient($artPrecios);
             $cliente = GpCliente::find($data['cliente_id']);
             foreach ($articulosTemp as $artTemp) {
                 $precio = $listaPrecios[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO] ?? null;
-                if ($precio && $artTemp->ART_VALOR_ORIGINAL != $precio['LST_PRC_PRECIO']) {
-                    $artTemp->ART_VALOR_ORIGINAL = $precio['LST_PRC_PRECIO'];
-                    $artTemp->ART_VALOR = $precio['LST_PRC_VALOR'];
+                if (!$precio) {
+                    continue;
+                }
+                $nuevoPrecio = data_get($precio, 'valor', 0);
+                if (!is_null($precio) && $artTemp->ART_VALOR_ORIGINAL != $nuevoPrecio) {
+                    $artTemp->ART_VALOR_ORIGINAL = $nuevoPrecio;
+                    $artTemp->ART_VALOR = $nuevoPrecio;
                     $artTemp->modificador = 0;
                 }
             }
@@ -746,13 +772,34 @@ class QuotationService implements QuotationServiceInterface
         $artTemp->imagenes = $imagenes;
     }
 
-    public function getPricesByClient($articulos)
+    public function getPricesByClient($articulos): array
     {
         $listaPreciosAll = [];
-        $precios = $this->MsWebservice->listaprecios($articulos);
+        foreach ($articulos as $articulo) {
+            $art = data_get($articulo, 'ART_CODIGO');
 
-        foreach ($precios as $pr) {
-            $listaPreciosAll[$pr['LST_PRC_ARTICULO']][$pr['LST_PRC_ID']] = $pr;
+            if (!$art) {
+                continue;
+            }
+
+            // Esto devuelve: array de filas de precios para ese artículo
+            $prices = $this->stockWarehouseService->fetchListPricesArticle($art);
+
+            if (empty($prices) || !is_iterable($prices)) {
+                continue;
+            }
+
+            foreach ($prices as $price) {
+                $articleCode = data_get($price, 'item');
+                $priceListId = data_get($price, 'idLista');
+
+                if (!$articleCode || !$priceListId) {
+                    continue;
+                }
+
+                // Queda: [ART_CODIGO][ID_LISTA] = fila precio
+                $listaPreciosAll[$articleCode][$priceListId] = $price;
+            }
         }
 
         return $listaPreciosAll;
@@ -764,31 +811,27 @@ class QuotationService implements QuotationServiceInterface
      *  Ya se manda filtrado los items L desde el Front End
      */
 
-    public function getStockItemForWarehouse($article, $warehouse)
+    public function getStockItemForWarehouse($article, $warehouse, $cotizacionId)
     {
-        try {
-            $warehouses = $this->functionService->getBodegas($warehouse, 1);
-            $arrArticulos = ['articulo' => $article['ART_CODIGO']];
-            $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
-            $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
-            $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
-            $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article);
-            $availableArticulos = [];
-            if (!$artFormat['disponible']) {
-                $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
-                $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
-                $availableArticulos[] = $article['ART_CODIGO'];
-            }
-            $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
-            $newStock = $this->reassignStockIds($article, $artFormat['stock']);
-            $article['stock'] = $newStock;
-            $article['ART_STOCK'] = $artFormat['ART_STOCK'];
-            $article['stockListo'] = true;
-            return $this->successResponse('Stock obtenido correctamente', $article, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al obtener stock', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'data' => $article]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
+        $quoteReservedOriginId = $this->validateExistsReserve($cotizacionId);
+        $warehouses = $this->functionService->getBodegas($warehouse, 1);
+        $arrArticulos = ['articulo' => $article['ART_CODIGO']];
+        $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
+        $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+        $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
+        $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article, $quoteReservedOriginId);
+        $availableArticulos = [];
+        if (!$artFormat['disponible']) {
+            $clase = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
+            $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+            $availableArticulos[] = $article['ART_CODIGO'];
         }
+        $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
+        $newStock = $this->reassignStockIds($article, $artFormat['stock']);
+        $article['stock'] = $newStock;
+        $article['ART_STOCK'] = $artFormat['ART_STOCK'];
+        $article['stockListo'] = true;
+        return $article;
     }
 
 
@@ -855,6 +898,20 @@ class QuotationService implements QuotationServiceInterface
         return $result;
     }
 
+
+    /** proceso para omitir reservas de cotizacion  */
+    public function validateExistsReserve($quotationId)
+    {
+        $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
+        if (!$quoteReserve) {
+            return;
+        }
+        $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
+        if (!$logReserve) {
+            return;
+        }
+        return $logReserve?->cotizacion_origen_id;
+    }
 
     /***
      *
@@ -927,8 +984,7 @@ class QuotationService implements QuotationServiceInterface
     public function prepareQuotationStoreFill($data, $user)
     {
         $cotizacion = isset($data['cotizacion_id']) ? GpCotizacion::find($data['cotizacion_id']) : new GpCotizacion();
-        // $requiereAprobacionComercial = $this->approvalService->checkoutApprovalComercial($data);
-        $requiereAprobacionComercial = $this->approvalService->checkOutApprovalCommercial($data, 'cotizacion');
+        $requiereAprobacionComercial = $this->approvalService->checkoutApprovalCommercialQuotations($data);
         if ($data['cotizacion_id'] && $cotizacion->id) {
             $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
         } else {
@@ -988,22 +1044,50 @@ class QuotationService implements QuotationServiceInterface
         return $cotizacion;
     }
 
-    private function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
+    public function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
     {
-        $aprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
-        $mismoMensaje = $requiereAprobacionComercial['requiere'] === 'yes' &&
-            $requiereAprobacionComercial['motivo'];
-        $mensajecotizacion = $cotizacion->motivo_aprobacion_comercial;
-        $mensajeActual = $requiereAprobacionComercial['motivo'];
+        $estabaAprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
 
-        if ($aprobada && $mismoMensaje && $mensajecotizacion === $mensajeActual) {
+        if (!$estabaAprobada) {
+            // Si no estaba aprobada antes, no hay nada que mantener.
+            // Se aplica el estado que diga la nueva validación.
+            $this->resetToPending($requiereAprobacionComercial);
+            return;
+        }
+        // 2. Extraer motivos para comparar
+        $motivoNuevo = $requiereAprobacionComercial['motivo'] ?? '';
+        $motivoGuardado = $cotizacion->motivo_aprobacion_comercial ?? '';
+
+        // 3. Comparación Estricta
+        // Si la nueva validación dice que NO requiere aprobación, genial (aunque raro si antes requería).
+        if (($requiereAprobacionComercial['requiere'] ?? 'no') !== 'yes') {
+            $requiereAprobacionComercial['estado'] = 'aprobado';
+            $requiereAprobacionComercial['aprobado'] = 'yes';
+            return; // Dejamos que pase como 'no requiere'
+        }
+
+        if ($motivoNuevo === $motivoGuardado) {
+            // ... RESTAURAMOS el estado de aprobación de la BD
             $requiereAprobacionComercial['requiere'] = $cotizacion->requiere_aprobacion_comercial;
-            $requiereAprobacionComercial['motivo'] = $cotizacion->motivo_aprobacion_comercial;
-            $requiereAprobacionComercial['estado'] = $cotizacion->estado;
-            $requiereAprobacionComercial['aprobado'] = $cotizacion->aprobado_comercial;
+            $requiereAprobacionComercial['motivo'] = $cotizacion->motivo_aprobacion_comercial; // Redundante pero seguro
+            $requiereAprobacionComercial['estado'] = $cotizacion->estado; // Ojo: Asegúrate que 'estado' sea el campo correcto (aprobado/espera)
+            $requiereAprobacionComercial['aprobado'] = $cotizacion->aprobado_comercial; // 'yes'
         } else {
-            $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
-            $requiereAprobacionComercial['aprobado'] = 'no';
+            // Si el motivo cambió (ej: pasaste de 20% a 25%), se pierde la aprobación
+            $this->resetToPending($requiereAprobacionComercial);
+        }
+    }
+
+    public function resetToPending(&$data)
+    {
+        // Si requiere aprobación, pasa a 'espera', si no, 'aprobado' (u otro status default)
+        $req = $data['requiere'] ?? 'no';
+        if ($req === 'yes') {
+            $data['estado'] = 'espera';
+            $data['aprobado'] = 'no';
+        } else {
+            $data['estado'] = 'aprobado';
+            $data['aprobado'] = 'yes';
         }
     }
 

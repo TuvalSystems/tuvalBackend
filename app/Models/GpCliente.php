@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * GpCliente
  *
- * @mixin Eloquent
  * @property int $id
  * @property string $CLI_RUC
  * @property string|null $CLI_RAZON_SOCIAL
@@ -94,6 +93,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereUpdatedAt($value)
+ *
+ *
+ *
+ * @property  $suspendido
+ * @property  $cupo_disponible
+ * @property $cupo_asignado
  */
 
 class GpCliente extends Model
@@ -140,4 +145,11 @@ class GpCliente extends Model
         'CLI_SEGMENTO_ID',
         'CLI_SUBSEGMENTO_ID'
     ];
+
+
+
+
+    public function gpvendedor(){
+        return $this->belongsTo(GpVendedor::class, 'CLI_VENDEDOR', 'VEND_ID');
+    }
 }

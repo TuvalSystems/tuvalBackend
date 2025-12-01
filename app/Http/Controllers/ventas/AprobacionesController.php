@@ -76,50 +76,86 @@ class AprobacionesController extends Controller
     //     ]);
     // }
 
-    public function verpedidosycotizacionesporaprobar(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function verpedidosycotizacionesporaprobar(Request $request): JsonResponse
     {
 
         $data = $request->validate([
             'puntodeventa_id' => 'required',
         ]);
-
-        $pedidos = GpPedido::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
-            ->join('gp_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')
-            ->select('gp_pedidos.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
-            ->where('requiere_aprobacion_comercial', 'yes')
-            ->where('aprobado_comercial', 'no')
-            ->whereNotIn('estado',['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
-
-            ->orderBy('created_at', 'ASC')->get();
-
-        foreach ($pedidos as $key => $pedido) {
-            $res = $this->getSegmentoCliente($pedido->CLI_RUC);
-            $pedido->segmento = data_get($res, 'segmento', null);
-            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
-        }
-        //where('PTO_VTA_ID', $data['puntodeventa_id'])
-
-        $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
-            ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO')
-            ->whereNotIn('estado',['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
-            ->where('requiere_aprobacion_comercial', 'yes')
-            ->where('aprobado_comercial', 'no')
-            ->orderBy('created_at', 'ASC')->get();
-        foreach ($cotizaciones as $key => $cot) {
-
-            $res2 = $this->getSegmentoCliente($cot->CLI_RUC);
-            $cot->segmento = data_get($res2, 'segmento', null);
-            $cot->subsegmento =  data_get($res2, 'subsegmento', null);
+        try {
+            $data = $this->approvalService->getAllPendingApprovals($data['puntodeventa_id']);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
         }
 
-        //where('PTO_VTA_ID', $data['puntodeventa_id'])
+        // $pedidos = GpPedido::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
+        //     ->join('gp_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')
+        //     ->select('gp_pedidos.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
+        //     ->where('requiere_aprobacion_comercial', 'yes')
+        //     ->where('aprobado_comercial', 'no')
+        //     ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
 
-        return response([
-            'success' => true,
-            'pedidos' => $pedidos,
-            'cotizaciones' => $cotizaciones,
-        ]);
+        //     ->orderBy('created_at', 'ASC')->get();
+
+        // foreach ($pedidos as $key => $pedido) {
+        //     $res = $this->getSegmentoCliente($pedido->CLI_RUC);
+        //     $pedido->segmento = data_get($res, 'segmento', null);
+        //     $pedido->subsegmento = data_get($res, 'subsegmento', null);
+        // }
+        // //where('PTO_VTA_ID', $data['puntodeventa_id'])
+
+        // $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
+        //     ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO')
+        //     ->whereNotIn('estado', ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
+        //     ->where('requiere_aprobacion_comercial', 'yes')
+        //     ->where('aprobado_comercial', 'no')
+        //     ->orderBy('created_at', 'ASC')->get();
+        // foreach ($cotizaciones as $key => $cot) {
+
+        //     $res2 = $this->getSegmentoCliente($cot->CLI_RUC);
+        //     $cot->segmento = data_get($res2, 'segmento', null);
+        //     $cot->subsegmento = data_get($res2, 'subsegmento', null);
+        // }
+
+        // //where('PTO_VTA_ID', $data['puntodeventa_id'])
+
+        // return response([
+        //     'success' => true,
+        //     'pedidos' => $pedidos,
+        //     'cotizaciones' => $cotizaciones,
+        // ]);
     }
+
+    public function listaCotizacionesPendientesPorAprobar(Request $request) : JsonResponse
+    {
+        $data = $request->validate([
+            'puntodeventa_id' => 'required',
+        ]);
+        $ptoVta = data_get($data, 'puntodeventa_id');
+        try {
+            $data = $this->approvalService->getAllQuotesPendingApprovals($ptoVta);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    public function listaPedidosPendientesPorAprobar(Request $request) : JsonResponse
+    {
+        $data = $request->validate([
+            'puntodeventa_id' => 'required',
+        ]);
+        $ptoVta = data_get($data, 'puntodeventa_id');
+        try {
+            $data = $this->approvalService->getAllOrdersPendingApprovals($ptoVta);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+
 
     public function getSegmentoCliente($ruc)
     {
@@ -144,13 +180,13 @@ class AprobacionesController extends Controller
                     ->orWhere('requiere_aprobacion_comercial', 'yes')
                     ->where('aprobado_comercial', 'yes');
             })
-            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado','enviando', 'procesado'])
+            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
             ->orderBy('created_at', 'DESC')->get();
 
         foreach ($pedidos as $key => $pedido) {
             $res = $this->getSegmentoCliente($pedido->CLI_RUC);
             $pedido->segmento = data_get($res, 'segmento', null);
-            $pedido->subsegmento =  data_get($res, 'subsegmento', null);
+            $pedido->subsegmento = data_get($res, 'subsegmento', null);
         }
 
         return response([
@@ -166,7 +202,7 @@ class AprobacionesController extends Controller
             $gpuser = GpUsuario::where('id', $user->id)->first();
             $data = $request->all();
             $pedido = DB::transaction(function () use ($data, $gpuser) {
-                return  $this->approvalService->approveComercialOrder($data, $gpuser);
+                return $this->approvalService->approveComercialOrder($data, $gpuser);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
         } catch (\Throwable $e) {
@@ -380,5 +416,30 @@ class AprobacionesController extends Controller
             'success' => true,
             'devoluciones' => $devoluciones,
         ]);
+    }
+
+
+    /** proceso nuevo de rechazar cotizacion cuando esta en espera */
+    public function recharCotizacionEstadoEspera(Request $request)
+    {
+        $id = data_get($request->all(), 'id');
+        try {
+            $quote = $this->approvalService->denyQuotationBeenWaiting($id);
+            return $this->successResponse('Cotización rechazada', $quote, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar la cotización: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function rechazarPedidoEstadoEspera(Request $request)
+    {
+        $id = data_get($request->all(), 'id');
+        try {
+            $order = $this->approvalService->denyOrderBeenWaiting($id);
+            return $this->successResponse('Pedido rechazado', $order, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
+        }
+
     }
 }

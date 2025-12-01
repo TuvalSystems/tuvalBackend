@@ -14,6 +14,7 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpUsuario;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
+use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
@@ -30,14 +31,18 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     protected $apiDeliveryNote;
     protected $deliveryNoteBuilder;
     protected $logisticsOperationsService;
+    protected $common;
+
 
     // protected $invoiceService;
-    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote, LogisticsOperationsServiceInterface $logisticsOperationsService)
+    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote, LogisticsOperationsServiceInterface $logisticsOperationsService, DeliveryNoteCommonServiceInterface $common,)
     {
         // $this->invoiceService = $invoiceService;
         $this->deliveryNoteBuilder = $deliveryNoteBuilder;
         $this->apiDeliveryNote = $apiDeliveryNote;
         $this->logisticsOperationsService = $logisticsOperationsService;
+        $this->common = $common;
+
     }
 
 
@@ -153,27 +158,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         ]);
     }
 
-    public function moveReservedToTransferredForTrfvLine($trl, $qty)
-    {
-        $cantidad = (float) ($trl->cantidad ?? 0);
-        $trasladado = (float) ($trl->trasladado ?? 0);
-        $reservado = (float) ($trl->reservado ?? 0);
-
-        $restante = max(0.0, $cantidad - $trasladado);
-        $delta = max(0.0, min((float) $qty, $restante));
-        if ($delta <= 0) {
-            $trl->completado = (int) (($trasladado) >= $cantidad);
-            $trl->save();
-            return;
-        }
-        $nuevoTrasladado = min($cantidad, $trasladado + $delta);
-        $nuevoReservado = max(0.0, $reservado - $delta);
-
-        $trl->trasladado = $nuevoTrasladado;
-        $trl->reservado = $nuevoReservado;
-        $trl->completado = (int) (($nuevoTrasladado) >= $cantidad);
-        $trl->save();
-    }
 
     public function decrementOriginWarehouseReservedStock($trl, $qty)
     {
@@ -888,7 +872,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $docGp = data_get($resHeader, 'docGp', '');
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
         if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido);
+            $already = $this->transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido);
             if ($already) {
                 return DB::transaction(function () use ($groupItems) {
                     $this->processReservedTransferedAndDecrementStock($groupItems);
@@ -902,7 +886,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             });
         }
         /** en caso de que no exista la guia de transferencia debe crearla */
-        if (empty($resHeader) && ($responseHeaderValidate['success'] ?? null) === false) {
+        if (empty($resHeader) && (($responseHeaderValidate['success'] ?? null) === false)) {
             $response = $this->apiDeliveryNote->createTransferGuideVta($params);
             if ($response['success'] === false) {
                 throw new \Exception($response['message']);
@@ -920,7 +904,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         return false;
     }
 
-    public function validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $pedido)
+    public function transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido)
     {
         return GpGuiaRemisionTransferencia::query()
             ->where('guia_remision_id', $idGuiaRemision) // ← sin doble $
@@ -940,7 +924,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function processReservedTransferedAndDecrementStock($groupItems)
     {
         foreach ($groupItems as $item) {
-            $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
+            $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
             $this->decrementOriginWarehouseReservedStock($item->traslado, $item->GUI_REM_CANTIDAD);
         }
     }
@@ -1000,7 +984,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
 
         if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->validateGuideTransferendMovementsWeb($docGp, $idGuiaRemision, $documento);
+            $already = $this->transferMovementExistsWeb($docGp, $idGuiaRemision, $documento);
             if ($already) {
                 return DB::transaction(function () use ($groupItems) {
                     $this->generateMovementRepositionAdjustment($groupItems);
@@ -1038,7 +1022,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function generateMovementRepositionAdjustment($groupItems)
     {
         foreach ($groupItems as $item) {
-            $this->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
+            $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
         }
     }
 
@@ -1103,5 +1087,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
 
+    public function getSecuencialCommon($establecimiento, $ptoEmision): string{
+       return $this->common->getNextGuideSequential($establecimiento,  $ptoEmision);
+    }
 
 }

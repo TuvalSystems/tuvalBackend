@@ -54,7 +54,7 @@ interface QuotationServiceInterface
     public function fillQuotation($data, $user);
 
     /** funcion para obtener el stock del articulo en la cotizacion  */
-    public function getStockItemForWarehouse($article, $warehouse);
+    public function getStockItemForWarehouse($article, $warehouse, $cotizacionId);
 
     /** funcion para volver a pedir cotizacion  */
     public function requestQuotationAgain($data, $user);
@@ -76,11 +76,17 @@ interface QuotationServiceInterface
     public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist($ruc);
-     public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId) ;
+    public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId);
 
 
 
-     /*** prueba  */
+    /*** prueba  */
 
-     public function consultaStockPrueba ($articulo, $bodega);
+    public function consultaStockPrueba($articulo, $bodega);
+
+
+
+
+
+
 }

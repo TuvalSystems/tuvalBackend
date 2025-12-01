@@ -123,7 +123,7 @@ class OrderRepository implements OrderRepositoryInterface
 
     /** facturacion de siguiente mes*/
 
-  
+
     public function queryOrdersToInvoiceNextMonth($year, $mes)
     {
         return GpPedido::query()->where('estado', 'espera')
@@ -132,8 +132,13 @@ class OrderRepository implements OrderRepositoryInterface
                 $q->whereNull('factura_a_demanda')
                     ->orWhere('factura_a_demanda', 0);
             })
+            // ->where('origen', '!=', 'reserva')
+            ->where( function ($q){
+                $q->whereNull('origen')
+                  ->orWhere('origen', '!=', 'reserva');
+            })
             ->where('factura_siguiente_mes', 1)
-            ->whereMonth('created_at', '=', $mes)
+            ->whereMonth('created_at',  $mes)
             ->whereYear('created_at', $year)
             ->orderBy('id');
     }
@@ -148,5 +153,16 @@ class OrderRepository implements OrderRepositoryInterface
             ->where('seleccionado', '>', 0)
             ->get()
             ->keyBy('detalle_id');
+    }
+
+
+
+    public function queryInvoiceReservedOrdersForDate($date)
+    {
+        return GpPedido::where('origen', 'reserva')
+            ->where('estado', 'espera')
+            ->whereNotNull('fe_facturacion_reserva')
+            ->whereDate('fe_facturacion_reserva', $date)
+        ;
     }
 }

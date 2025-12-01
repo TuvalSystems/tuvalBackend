@@ -36,8 +36,14 @@ return [
             'secret' => env('PUSHER_APP_SECRET'),
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
-                'cluster' => env('PUSHER_APP_CLUSTER'),
-                'useTLS' => true,
+                'cluster' => env('PUSHER_APP_CLUSTER', 'mt1'),
+                // 'useTLS' => false, //local
+                'useTLS'  => env('PUSHER_SCHEME', 'http') === 'https',
+                // 'useTLS' => env('VITE_PUSHER_FORCE_TLS', false), // producccion
+                // 'host' => parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?? '127.0.0.1',
+                'host'    => env('PUSHER_HOST'),
+                'port' => (int) env('PUSHER_PORT', 6001),
+                'scheme' => env('PUSHER_SCHEME', 'http'),
             ],
         ],
 

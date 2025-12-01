@@ -28,7 +28,6 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
@@ -51,10 +50,11 @@ class DespachosController extends Controller
     protected $dispatchService;
     protected $deliveryNoteService;
     protected $logisticsOperationsService;
-    public function __construct(OrderServiceInterface $orderService, DispatchServiceInterface
-        $dispatchService,
-        LogisticsOperationsServiceInterface $logisticsOperationsService)
-    {
+    public function __construct(
+        OrderServiceInterface $orderService,
+        DispatchServiceInterface $dispatchService,
+        LogisticsOperationsServiceInterface $logisticsOperationsService
+    ) {
         $this->orderService = $orderService;
         $this->dispatchService = $dispatchService;
         $this->logisticsOperationsService = $logisticsOperationsService;
@@ -495,7 +495,7 @@ class DespachosController extends Controller
             ->orderBy('created_at', 'DESC')
             ->first();
 
-      $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
+        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
 
         $ordenes = array_values($ordenes->toArray());
         return response([
@@ -1067,6 +1067,24 @@ class DespachosController extends Controller
             return $this->buildErrorResponse('Error al obtener la información', 500);
         }
     }
+
+    public function indexPuntosVentaReservaLimits()
+    {
+        try {
+            $items = $this->dispatchService->getAllPtoVtaReserved();
+            return $this->successResponse('Información obtenida', $items, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error indexPuntosVentaReservaLimits', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+            ]);
+            return $this->buildErrorResponse('Error al obtener la información', 500);
+        }
+    }
+
+
+
     public function getDispatchedGuides(Request $request, $puntodeventa_id)
     {
 

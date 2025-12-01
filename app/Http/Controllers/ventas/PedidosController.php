@@ -32,11 +32,13 @@ use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use DomainException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -215,6 +217,8 @@ class PedidosController extends Controller
     public function verpedidos(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
+
+
         $data = $request->validate([
             'puntodeventa_id' => 'required',
             'estado' => 'required',
@@ -239,7 +243,7 @@ class PedidosController extends Controller
             $pedidos = $pedidos->where('gp_pedidos.CLI_RUC', $data['cliente']['CLI_RUC']);
         }
 
-        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(1500)->get();
+        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(500)->get();
 
         foreach ($pedidos as $pedido) {
 
@@ -426,7 +430,7 @@ class PedidosController extends Controller
 
         $articulos = $facturarDespachado['detalle'];
 
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $pedido = new GpPedido;
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
@@ -560,16 +564,14 @@ class PedidosController extends Controller
                     $stock->save();
                 }
             }
-
-            if (isset($eliminar['proveedores']) && count($eliminar['proveedores']) > 0) {
-                foreach ($eliminar['proveedores'] as $proveedor) {
-                    $proveedor->delete();
-                }
+            $deleteProviders = data_get($eliminar, 'proveedores') ?? [];
+            $deleteArticles = data_get($eliminar, 'articulos') ?? [];
+            foreach ($deleteProviders as $proveedor) {
+                $proveedor->delete();
             }
-            if (isset($eliminar['articulos']) && count($eliminar['articulos']) > 0) {
-                foreach ($eliminar['articulos'] as $articulo) {
-                    $articulo->delete();
-                }
+
+            foreach ($deleteArticles as $articulo) {
+                $articulo->delete();
             }
 
             // $this->recalcularpedido($data['id']);
@@ -798,7 +800,7 @@ class PedidosController extends Controller
     public function facturarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get()->toArray();
         foreach ($detalle as $key => $det) {
@@ -904,6 +906,7 @@ class PedidosController extends Controller
      */
     public function setguardarpedido(array $data, GpPedido $pedido, $PTO_VTA_DESCRIPCION, \App\Models\User|\Illuminate\Contracts\Auth\Authenticatable|null $user, array $requiere_aprobacion_comercial, string $requiere_aprobacion_crediticia): void
     {
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $pedido->PTO_VTA_ID = $data['PTO_VTA_ID'];
         $pedido->PTO_VTA_DESCRIPCION = $PTO_VTA_DESCRIPCION;
         $pedido->USERID = $user->USERID;
@@ -1192,7 +1195,7 @@ class PedidosController extends Controller
     function cancelarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
+        $user = GpUsuario::where('id', Auth::user()->id)->first();
 
         $pedido = GpPedido::where('id', $data['id'])->get()->first();
 
@@ -1310,5 +1313,68 @@ class PedidosController extends Controller
     public function actualizarPedidoYRecalcular($id)
     {
         return $this->orderService->updateOrderAndRecalculate($id);
+    }
+
+    /** funcion para el cambio de orden de compra y nota cliente por pediod */
+    public function actualizarOrdenCompraYNotaCliente(Request $request)
+    {
+        $id = $request->input('id');
+        $newOrd = $request->input('orden_de_compra');
+        $newNote = $request->input('nota_cliente');
+        try {
+            $data = $this->orderService->syncPurchaseOrderAndNoteByOrder($id, $newOrd, $newNote);
+            return $this->successResponse('Datos actualizados Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al actualizar los datos del pedido: ', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->buildErrorResponse('Opps! Error al actualizar los datos del pedido', 500);
+        }
+    }
+
+
+    public function actualizarFechaReservaPedido(Request $request)
+    {
+
+        $validate = $request->validate([
+            'id' => 'required|integer',
+            'fe_facturacion_reserva' => 'required|date_format:Y-m-d',
+        ]);
+
+        $id = data_get($validate, 'id');
+        $newDate = data_get($validate, 'fe_facturacion_reserva');
+        try {
+            $data = $this->orderService->updateOrderReservationDate($id, $newDate);
+            return $this->successResponse('Fecha de reserva actualizada Correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al actualizar la fecha de reserva del pedido: ', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->buildErrorResponse('Opps! Error al actualizar la fecha de reserva del pedido', 500);
+        }
+    }
+
+
+
+    /** funcion de lisras de pedido reservas  */
+
+
+    public function listarPedidosReservas(Request $request): JsonResponse
+    {
+
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'desc');
+        $ptoVtaId = $request->input('ptoVtaId', null);
+
+        try {
+            $data = $this->orderService->fetchOrderFromReservations($perPage, $search, $sortBy, $sortOrder, $ptoVtaId);
+            return $this->successResponse('Lista de pedidos de reservas obtenida correctamente', $data, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
     }
 }

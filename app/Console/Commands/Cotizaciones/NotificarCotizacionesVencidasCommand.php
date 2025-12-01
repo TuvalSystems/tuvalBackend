@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands\Cotizaciones;
 
+use App\Jobs\Venta\Cotizaciones\NotifyUnsoldQuotesJob;
 use App\Mail\Cotizacion\RecordatorioCotizacionNoVentaMail;
 use App\Models\GpPuntoVenta;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -42,7 +42,7 @@ class NotificarCotizacionesVencidasCommand extends Command
      *
      * @return int
      */
-    public function handle(QuotationServiceInterface $quotationService, NotificationServiceInterface $notificationService)
+    public function handle(QuotationServiceInterface $quotationService)
     {
         $hoy = now()->startOfDay();
         Log::info('✅ [CotizacionesNoVendidas] - Command executed at ' . now());
@@ -89,15 +89,12 @@ class NotificarCotizacionesVencidasCommand extends Command
                 $email = $value['email'];
                 // $email = 'sistemas6@tuvalsa.com';
                 // $userId = 179;
-                $cotizaciones = $value['cotizaciones'];
+                $cotizaciones = data_get($value['cotizaciones'], []);
                 Mail::to($email)->send(new RecordatorioCotizacionNoVentaMail($cotizaciones, $PtoVentaDescripcion));
                 foreach ($cotizaciones as $cot) {
-                    $notificationService->sendNotification(
-                        $cot->user_id,
-                        'Cotización No Vendida',
-                        'La cotización ' . $cot->cotizacion . ' no ha sido vendida y tiene un recordatorio programado para hoy.',
-
-                    );
+                    $title = 'Cotización No Vendida';
+                    $msg = 'La cotización ' . $cot->cotizacion . ' no ha sido vendida y tiene un recordatorio programado para hoy.';
+                    NotifyUnsoldQuotesJob::dispatch($title, $msg, $cot->user_id);
                 }
             }
             $bar->advance();

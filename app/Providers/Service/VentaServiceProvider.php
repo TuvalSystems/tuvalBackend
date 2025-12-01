@@ -5,14 +5,15 @@ namespace App\Providers\Service;
 use App\Services\Pedidos\OrderService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Venta\QuotationService;
-use App\Services\Pedidos\OrderJobService;
 use App\Services\Venta\PurchaseOrderService;
 use App\Services\Venta\InventoryQueryService;
+use App\Services\Venta\InventoryReservationService;
 use App\Services\Venta\Utils\OrderAndQuotationService;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
+use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
 class VentaServiceProvider extends ServiceProvider
@@ -42,6 +43,11 @@ class VentaServiceProvider extends ServiceProvider
 
         //aqui va el servicio de Job de Pedidos
         // $this->app->singleton(OrderJobService::class);
+
+          $this->app->singleton(
+            InventoryReservationServiceInterface::class,
+            InventoryReservationService::class
+        );
     }
 
 

@@ -3,7 +3,6 @@
 namespace App\Services\User\Contracts;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Model;
 
 interface UserServiceInterface
@@ -16,10 +15,10 @@ interface UserServiceInterface
     public function isValidUserWeb(array $credentials): bool;
     public function getActiveUser($username): ?Model;
 
-    public function buildSuccessResponseUser($user): JsonResponse;
+    public function buildSuccessResponseUser($user): array;
 
     // cambio de contraseña
-    public function changePassword(Request $request);
+    public function changePassword($data);
 
     /**
      * Reset password
@@ -31,4 +30,10 @@ interface UserServiceInterface
       * Cambio de status
       */
      public function changeStatusGpUser($userId);
+
+     /**notificaciones */
+
+      public function getAllNotifications(int $userId, int $perPage = 10, $search, $sortBy, $sortOrder);
+      public function markAsReadNotify(string $notifyId, int $userId);
+      public function markAllReadNotify(int $userId);
 }

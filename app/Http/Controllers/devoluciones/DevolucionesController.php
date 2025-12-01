@@ -4,6 +4,7 @@ namespace App\Http\Controllers\devoluciones;
 
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\Controller;
+use App\Jobs\Devoluciones\NotifyErrorAnulationJob;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpCliente;
@@ -11,12 +12,10 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
@@ -34,11 +33,9 @@ class DevolucionesController extends Controller
     public function __construct(
         EntryServiceInterface $entryService,
         DevolucionServiceInterface $devolucionServiceInterface,
-        NotificationServiceInterface $notificationServiceInterface
     ) {
         $this->entryService = $entryService;
         $this->devolucionService = $devolucionServiceInterface;
-        $this->notificationService = $notificationServiceInterface;
     }
 
 
@@ -140,7 +137,7 @@ class DevolucionesController extends Controller
 
             $order = app(OrderServiceInterface::class);
             $dispatch = app(DispatchServiceInterface::class);
-             $logistics = app(LogisticsOperationsServiceInterface::class);
+            $logistics = app(LogisticsOperationsServiceInterface::class);
             $despachos = new DespachosController($order, $dispatch, $logistics);
             $despachos->checkeliminardespacho($pedido);
 
@@ -158,7 +155,7 @@ class DevolucionesController extends Controller
                 $validateItemsPartialDispatch === 0 &&
                 $data['devolucion']['volver_a_facturar'] === false &&
                 ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
-                &&  ($devolucion->anulacion_habilitada === true || $devolucion->anulacion_habilitada === 1)
+                && ($devolucion->anulacion_habilitada === true || $devolucion->anulacion_habilitada === 1)
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
@@ -192,11 +189,7 @@ class DevolucionesController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
-            $this->notificationService->sendNotification(
-                $userId,
-                'Error al anular la factura',
-                $th->getMessage()
-            );
+            NotifyErrorAnulationJob::dispatch($userId, $th->getMessage());
             Log::channel('devolucion')->info("Error en la funcion enviardevolucion: {$th->getMessage()} - Devolución ID: {$devolucion->id}");
             return $this->buildErrorResponse($th->getMessage(), 401);
         }

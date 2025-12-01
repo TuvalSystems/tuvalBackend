@@ -53,4 +53,14 @@ interface OrderServiceInterface
 
     public function checkExistence($data);
     public function generateInvoiceFromExistingOrder($data, $detalle, $user);
+
+    public function syncPurchaseOrderAndNoteByOrder(int $id, string $newOrd, string $newNote);
+     public function updateOrderReservationDate(int $orderId, string $newDate);
+
+
+     /** listas de pedidos que nacen de una reserva */
+
+    public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId);
+
+
 }

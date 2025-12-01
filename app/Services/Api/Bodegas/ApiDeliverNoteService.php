@@ -3,49 +3,86 @@
 namespace App\Services\Api\Bodegas;
 
 use App\Services\Api\ApiGpService;
-
-
+use App\Services\Api\Endpoints\ApiGpEndpoints;
 
 class ApiDeliverNoteService extends ApiGpService
 {
 
-    public function createTransferGuideVta(array $params)
+    public function createDeliveryNote(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.trfv.movimientos.generar"], 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_REMISION_CREAR, 'POST', $params, 'json');
+    }
+
+    public function checkExistenceDeliveryNote(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_REMISION_EXISTE, 'GET', $params, 'json');
     }
 
     public function getAccessCodeByNumberDocDelivery(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.obtener.clave_acceso"], 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_OBTENER_CLAVE_ACCESO, 'GET', $params);
     }
+
+    public function createTransferGuideVta(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_TRFV_MOVIMIENTOS_GENERAR, 'POST', $params, 'json');
+    }
+
+
 
     public function createReplacementShipmentGuideVta(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.reposicion.movimiento.generar"], 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_REPOSICION_MOVIMIENTO_GENERAR, 'POST', $params, 'json');
     }
 
     public function createDispatchShipmentGuideVta(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.despacho.movimiento.generar"], 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_DESPACHO_MOVIMIENTO_GENERAR, 'POST', $params, 'json');
     }
 
+
+     public function createReservationGuideAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_MOVIMIENTO_GENERAR, 'POST', $params, 'json');
+    }
 
 
     public function checkDispatchGuideAdjustment(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.despacho.check.ajuste"], 'GET', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_DESPACHO_CHECK_AJUSTE, 'GET', $params, 'json');
     }
 
     public function checkTransferGuideAdjustment(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.transferencia.check.ajuste"], 'GET', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_TRANSFERENCIA_CHECK_AJUSTE, 'GET', $params, 'json');
     }
 
     public function checkRepositionGuideAdjustment(array $params)
     {
-        return $this->httpClient->makeRequest($this->endpoints["guia.reposicion.check.ajuste"], 'GET', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_REPOSICION_CHECK_AJUSTE, 'GET', $params, 'json');
     }
 
 
+    public function checkReservationGuideAdjustment(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_CHECK_AJUSTE, 'GET', $params, 'json');
+    }
+
+
+
+
+
+    /** proceso de recibir guia de reserva */
+
+    public function checkReceiveGuideReservationAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_RECIBIDO_CHECK_AJUSTE, 'GET', $params, 'json');
+    }
+
+
+    public function createReceiveGuideReservationAjustment(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_RECIBIR_ITEMS, 'POST', $params, 'json');
+    }
 
 }

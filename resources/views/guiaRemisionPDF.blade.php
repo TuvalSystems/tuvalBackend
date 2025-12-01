@@ -19,15 +19,6 @@
             font-size: 10px !important;
         }
 
-        .footer {
-            /*position: absolute;*/
-            /*bottom: -0px;*/
-            /*left: 0px;*/
-            /*right: 0px;*/
-
-            /*font-size: 20px !important;*/
-        }
-
         .pagenum:after {
             content: counter(page);
         }

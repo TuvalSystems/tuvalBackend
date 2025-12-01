@@ -2,6 +2,7 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Bodegas\DispatchService;
 use App\Services\Bodegas\DeliveryNoteService;
@@ -12,8 +13,11 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
+use App\Services\Bodegas\DeliveryNoteCommonService;
 use App\Services\Bodegas\LogisticsOperationsService;
+use App\Services\Bodegas\ReservationDeliveryNoteService;
 use App\Services\Bodegas\TransferService;
 
 class BodegasServiceProvider extends ServiceProvider
@@ -55,6 +59,15 @@ class BodegasServiceProvider extends ServiceProvider
 
         /** servicio dedicado para transferencias controller */
         $this->app->singleton(TransferServiceInterface::class, TransferService::class);
+
+         /** servicio dedicado para transferencias controller */
+        $this->app->singleton(ReservationDeliveryNoteServiceInterface::class,ReservationDeliveryNoteService::class);
+
+
+        /** servicio dedicado para la creacion de funciones globales para las guias de remision y reservas */
+        $this->app->singleton(DeliveryNoteCommonServiceInterface::class,DeliveryNoteCommonService::class);
+
+
     }
 
 

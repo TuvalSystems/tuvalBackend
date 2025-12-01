@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\reservas\GpReserva;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -110,11 +111,25 @@ use \DateTimeInterface;
  * @property boolean $facturado
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaEntrega($value)
  * @property string|null  $user_ing_recordatorio
+ * @property int|null $co_tipTrasResInv
+ * @property int|null $co_usrIngSolResInv
+ * @property string|null $origen
+ * @property int|null $pedido_reserva_id
+ * @property string|null $pedido_generado_at
+ *
  */
 class GpCotizacion extends Model
 {
     use HasFactory;
 
+    protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items', 'has_reserva', 'msg_registro_copia', 'has_duplicate_items'];
+    protected $casts = [
+        'reserva_disabled' => 'boolean',
+        'has_l_items' => 'boolean',
+        'has_service_items' => 'boolean',
+        'has_reserva' => 'boolean',
+        'validate_duplicate_items' => 'boolean',
+    ];
     protected $fillable = [
         'cotizacion',
         'user_id',
@@ -162,15 +177,20 @@ class GpCotizacion extends Model
         'aprobado_comercial_mensaje',
         'fecha_entrega',
         'facturado',
-        'user_ing_recordatorio'
+        'user_ing_recordatorio',
+        'origen',
+        'pedido_reserva_id',
+        'pedido_generado_at',
+        'fe_rechazo',
+        'user_rechazo_id',
     ];
 
     /**
-    * Prepare a date for array / JSON serialization.
-    *
-    * @param  \DateTimeInterface  $date
-    * @return string
-    */
+     * Prepare a date for array / JSON serialization.
+     *
+     * @param  \DateTimeInterface  $date
+     * @return string
+     */
     protected function serializeDate(DateTimeInterface $date): string
     {
         return $date->format('Y-m-d H:i');
@@ -198,4 +218,125 @@ class GpCotizacion extends Model
     }
 
 
+
+    public function detallecotizacionstock()
+    {
+        return $this->hasMany(GpCotizacionDetalleStock::class, 'cotizacion_id', 'id');
+    }
+
+
+    public function bodega()
+    {
+        return $this->belongsTo(GpBodega::class, 'BOD_BODEGA', 'BOD_BODEGA');
+    }
+
+
+    public function gpcliente()
+    {
+        return $this->belongsTo(GpCliente::class, 'cliente_id');
+
+    }
+
+
+    public function gpvendedor()
+    {
+
+        return $this->belongsTo(GpVendedor::class, 'VEND_ID', 'VEND_ID');
+    }
+
+
+
+
+
+    /** functiones de atributos  */
+
+    public function getReservaDisabledAttribute(): bool
+    {
+        return !$this->detallecotizacionstock()
+            ->where('seleccionado', '>', 0)
+            ->exists();
+    }
+
+
+    public function getHasLItemsAttribute(): bool
+    {
+        return $this->relationLoaded('detallecotizacion')
+            ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'L')
+            : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'L')->exists();
+    }
+
+
+    public function getHasServiceItemsAttribute(): bool
+    {
+        return $this->relationLoaded('detallecotizacion')
+            ? $this->detallecotizacion->contains('ART_TIPO_COMPRA', 'SERV')
+            : $this->detallecotizacion()->where('ART_TIPO_COMPRA', 'SERV')->exists();
+    }
+
+
+
+    public function reserva()
+    {
+        return $this->hasOne(GpReserva::class, 'cotizacion_id', 'id');
+    }
+
+    public function getHasReservaAttribute(): bool
+    {
+        return $this->relationLoaded('reserva')
+            ? $this->reserva !== null
+            : $this->reserva()->exists();
+    }
+
+
+    public function getMsgRegistroCopiaAttribute()
+    {
+        $rgcopy = GpRegistroCopia::where('cotizacion_destino', $this->id)->where('tipo', 'volver_a_pedir')->first();
+        if (!$rgcopy) {
+            return null; // Si no hay registro de copia, no hay mensaje que mostrar
+        }
+
+        $esPedido = !empty($rgcopy->pedido_origen);
+        $idOrigen = $esPedido ? $rgcopy->pedido_origen : $rgcopy->cotizacion_origen;
+        if (!$idOrigen) {
+            return null; // Si el registro existe pero no tiene ID origen (data corrupta), salimos
+        }
+        $origenEntidad = $esPedido ? GpPedido::find($idOrigen) : GpCotizacion::find($idOrigen);
+        $desde = $esPedido ? 'pedido' : 'cotizacion';
+        $prefijo = $esPedido ? 'PED' : 'COT';
+        $codigoVisual = $prefijo . str_pad($idOrigen, 8, "0", STR_PAD_LEFT);
+
+        $fechaTxt = optional($origenEntidad)->created_at
+            ? optional($origenEntidad)->created_at->format('Y-m-d')
+            : 'S/F';
+
+        if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial === 'yes' && $origenEntidad->aprobado_comercial !== 'yes') {
+            return
+                "Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt"
+            ;
+        }
+
+        // 2. Motivo por ser copia (siempre se agrega si existe el registro)
+        return
+            "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
+        ;
+
+    }
+
+
+    public function getHasDuplicateItemsAttribute(): bool
+    {
+        $detail = $this->detallecotizacion()->get();
+        if (!$detail) {
+            return false;
+        }
+        $countedItems = $detail->countBy(function ($item) {
+            return $item->ART_CODIGO;
+        });
+
+        $hasDuplicates = $countedItems->first(function ($item, $artCodigo) {
+            return $item > 1;
+        });
+
+        return (bool) $hasDuplicates;
+    }
 }

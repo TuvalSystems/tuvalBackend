@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\User\Contracts\UserServiceInterface;
+use App\Traits\JsonResponseTrait;
+use Illuminate\Http\Request;
+
+class UserNotificationController extends Controller
+{
+    use JsonResponseTrait;
+    protected $userService;
+    public function __construct(UserServiceInterface $userService)
+    {
+        $this->userService = $userService;
+    }
+
+    public function index(Request $request)
+    {
+        $user = $request->input('userId');
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortOrder = $request->input('orderBy', null);
+        $sortBy = $request->input('sortBy', null);
+
+        try {
+            $data = $this->userService->getAllNotifications($user, $perPage, $search, $sortBy, $sortOrder);
+            return $this->successResponse('Notificaciones', $data, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+    public function marcarNotificacion(Request $request){
+        $notifyId = $request->input('notifyId');
+        $user = $request->input('userId');
+        try {
+            $data = $this->userService->markAsReadNotify($notifyId, $user);
+            return $this->successResponse('Notificacion marcada con exito', $data, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+    public function marcarTodasNotificaciones(Request $request){
+        $user = $request->input('userId');
+        try {
+             $this->userService->markAllReadNotify($user);
+            return $this->successResponse('Todas las notificaciones marcadas con exito', null, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+}

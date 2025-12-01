@@ -12,4 +12,10 @@ interface OrderAndQuotationServiceInterface
 
     public function getSegmentoCliente($ruc);
 
+    public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId, $quotationId = null);
+
+
+
+    public function calculateDiscountFraction(float $originalPrice, float $currentPrice);
+     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount);
 }

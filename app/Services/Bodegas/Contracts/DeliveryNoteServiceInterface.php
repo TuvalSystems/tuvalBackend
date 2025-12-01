@@ -25,14 +25,20 @@ interface DeliveryNoteServiceInterface
 
     public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id);
 
-     public function processAjusteWevOrderGUideRemision($id);
+    public function processAjusteWevOrderGUideRemision($id);
 
-      public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin);
-      public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null);
+    public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin);
+    public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null);
 
 
 
-      public function processTransferGuideAdjustment($id, $orderNumber = null);
+    public function processTransferGuideAdjustment($id, $orderNumber = null);
 
-      public function processRepositionGuideAdjustment($id, $documento = null);
+    public function processRepositionGuideAdjustment($id, $documento = null);
+
+
+    /** funciones common */
+
+     public function getSecuencialCommon($establecimiento, $ptoEmision): string;
+
 }

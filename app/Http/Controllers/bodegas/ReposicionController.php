@@ -12,10 +12,6 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Http\Controllers\bodegas\GuiasderemisionController;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
-use App\Services\Notificacion\Contracts\NotificationServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -124,12 +120,6 @@ class ReposicionController extends Controller
         }
 
         $bodegas = array_values($bodegas);
-
-        // $invoice = app(InvoiceServiceInterface::class);
-        // $notify = app(NotificationServiceInterface::class);
-        // $deliveryNote = app(DeliveryNoteServiceInterface::class);
-        // $guias = new GuiasderemisionController($deliveryNote, $invoice,  $notify);
-        // $guias->checkguiaremision();
         $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
 
         if ($documento) {
@@ -264,41 +254,6 @@ class ReposicionController extends Controller
         }
 
     }
-
-    //  public function detallereciboreposicion($id)
-    // {
-
-    //     $guia = GpGuiaRemision::where('id', $id)
-    //         ->first();
-
-    //     $webservices = new WebserviceController();
-
-    //     $detalle = GpGuiaRemisionDetalle::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
-    //         ->where('guia_remision_id', $guia->id)
-    //         ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
-    //         ->get();
-
-    //     foreach ($detalle as $item) {
-
-    //         $item->pendiente = number_format($item->GUI_REM_CANTIDAD - $item->recibido, 2, '.', '');
-    //         $item->recibido = $item->pendiente;
-
-    //         $parameters = array(
-    //             'IDCompania' => env('ID_COMPANIA'),
-    //             'Bodega' => $guia->bodega_destino,
-    //             'Item' => $item->GUI_REM_CODI_INTERNO,
-    //         );
-    //         $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
-    //         $item->compartimientos = $respuesta['ConsultaItemCompartimentoResult']['Items_Compartimento'];
-    //         $item->compartimiento = null;
-    //     }
-
-    //     return response([
-    //         'success' => true,
-    //         'detalle' => $detalle,
-    //     ]);
-    // }
-
 
     public function procesarRecibirReposicionWeb($id)
     {

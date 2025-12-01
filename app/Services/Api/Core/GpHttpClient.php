@@ -3,9 +3,11 @@
 namespace App\Services\Api\Core;
 
 use GuzzleHttp\Client;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use GuzzleHttp\Promise\Utils;
+use Illuminate\Http\Client\RequestException;
 
 class GpHttpClient
 {
@@ -43,9 +45,23 @@ class GpHttpClient
             $client = method_exists($client, 'connectTimeout')
                 ? $client->connectTimeout(3)
                 : $client->withOptions(['connect_timeout' => 3]);
-            $client = $client->retry(0) // 3 intentos, 200ms backoff
+            $client = $client->retry(3, 200, function ($exception) {
+                // Reintentar SI es error de conexión (cURL 28, DNS, Host down)
+                if ($exception instanceof ConnectionException) {
+                    return true;
+                }
+                // Reintentar SI el servidor devuelve 5xx (Spring Boot está saturado o reiniciando)
+                if ($exception instanceof RequestException && $exception->response) {
+                    // Si el servidor spring boot se murió (500, 502, 503, 504), reintentamos
+                    if ($exception->response->status() > 500) {
+                        return true;
+                    }
+                }
+                // 3. Para cualquier otra cosa (ej: 400 Bad Request, 404, o error lógico), NO reintentar
+                return false;
+            }) // 3 intentos, 200ms backoff
                 ->withHeaders([
-                    'Accept'           => 'application/json',
+                    'Accept' => 'application/json',
                     'X-Correlation-Id' => $cid,
                 ]);
 
@@ -71,17 +87,17 @@ class GpHttpClient
                     break;
             }
 
-            $status      = $response->status();
-            $contentType = strtolower($response->header('Content-Type', ''));
-            $bodyStr     = (string) $response->body();
+            $status = $response->status();
+            $contentType = strtolower($response->header('Content-Type') ?? '');
+            $bodyStr = (string) $response->body();
             if ($status === 204) {
                 $payload = [
-                    'success'        => false,
-                    'status'         => 204,
-                    'message'        => 'No content',
-                    'data'           => null,
-                    'url'            => $url,
-                    'method'         => $method,
+                    'success' => false,
+                    'status' => 204,
+                    'message' => 'No content',
+                    'data' => null,
+                    'url' => $url,
+                    'method' => $method,
                     'correlation_id' => $cid,
                 ];
                 Log::channel('apiservice')->warning("API 204 No Content", $payload);
@@ -99,23 +115,23 @@ class GpHttpClient
 
             // Log para warnings (4xx/5xx)
             if (!$response->successful()) {
-                Log::channel('apiservice')->warning("API Request Warning", [
-                    'url'             => $url,
-                    'method'          => $method,
-                    'status'          => $status,
-                    'correlation_id'  => $cid,
-                    'body'            => mb_strimwidth($bodyStr, 0, 400000, '…'),
-                    'payload'         => $method === 'GET' ? $data : ($format === 'json' ? $data : '[form-data]'),
+                Log::channel('apiservice')->warning("Response Api (4xx/5xx)", [
+                    'url' => $url,
+                    'method' => $method,
+                    'status' => $status,
+                    'correlation_id' => $cid,
+                    'body' => mb_strimwidth($bodyStr, 0, 400000, '…'),
+                    'payload' => $method === 'GET' ? $data : ($format === 'json' ? $data : '[form-data]'),
                 ]);
                 $payload = is_array($dataParsed)
                     ? $dataParsed
                     : ['message' => (is_string($dataParsed) && $dataParsed !== '') ? $dataParsed : ($response->reason() ?: 'HTTP ' . $status)];
 
                 // Completa metadatos sin pisar campos existentes
-                $payload['success']        = $payload['success'] ?? false;
-                $payload['status']         = $status;
-                $payload['url']            = $url;
-                $payload['method']         = $method;
+                $payload['success'] = $payload['success'] ?? false;
+                $payload['status'] = $status;
+                $payload['url'] = $url;
+                $payload['method'] = $method;
                 $payload['correlation_id'] = $cid;
 
                 return $payload;
@@ -123,83 +139,94 @@ class GpHttpClient
             // Si todo OK, retorna el JSON (o string) tal cual lo devolvió la API
             if ($dataParsed === null || $dataParsed === '' || $dataParsed === []) {
                 Log::channel('apiservice')->error("API Response vacío o no parseable", [
-                    'url'            => $url,
-                    'method'         => $method,
-                    'status'         => $status,
+                    'url' => $url,
+                    'method' => $method,
+                    'status' => $status,
                     'correlation_id' => $cid,
-                    'content_type'   => $contentType,
-                    'body'           => mb_strimwidth($bodyStr, 0, 4000, '…'),
+                    'content_type' => $contentType,
+                    'body' => mb_strimwidth($bodyStr, 0, 4000, '…'),
                 ]);
+                return [
+                    'success' => false, // o true si quieres asumir OK
+                    'status' => $status ?? 500,
+                    'message' => $bodyStr !== '' ? $bodyStr : 'Respuesta vacía o no parseable',
+                    'data' => null,
+                    'url' => $url,
+                    'method' => $method,
+                    'correlation_id' => $cid ?? null,
+                ];
             }
 
             return $dataParsed;
-         } catch (\InvalidArgumentException $e) {
-        $errorResponse = [
-            'success' => false,
-            'status'  => 400,
-            'error'   => $e->getMessage(),
-            'message' => $e->getMessage(), // ← no ocultar el detalle
-            'url'     => $url,
-            'method'  => $method,
-        ];
-        Log::channel('apiservice')->warning("Invalid API Request", $errorResponse);
-        return $errorResponse;
+        } catch (\InvalidArgumentException $e) {
+            $errorResponse = [
+                'success' => false,
+                'status' => 400,
+                'error' => $e->getMessage(),
+                'message' => $e->getMessage(), // ← no ocultar el detalle
+                'url' => $url,
+                'method' => $method,
+            ];
+            Log::channel('apiservice')->warning("Invalid API Request", $errorResponse);
+            return $errorResponse;
 
-    } catch (\Illuminate\Http\Client\ConnectionException $e) {
-        // Errores de red / timeout
-        $errorResponse = [
-            'success' => false,
-            'status'  => 0,
-            'error'   => $e->getMessage(),
-            'message' => 'Connection error: '.$e->getMessage(),
-            'url'     => $url,
-            'method'  => $method,
-        ];
-        Log::channel('apiservice')->error("API Connection Error", $errorResponse);
-        return $errorResponse;
+        } catch (ConnectionException $e) {
+            // Errores de red / timeout
+            $errorResponse = [
+                'success' => false,
+                'status' => 408,
+                'error' => 'Time out',
+                // 'message' => 'Connection error: ' . $e->getMessage(),
+                'message' => 'El servicio externo no responde. Por favor intente más tarde.',
+                'url' => $url,
+                'method' => $method,
+            ];
 
-    } catch (\Illuminate\Http\Client\RequestException $e) {
-        // Si usas ->throw(), aquí puedes extraer el response y respetar el mensaje de la API
-        $resp   = $e->response;
-        $status = optional($resp)->status();
-        $body   = optional($resp)->body() ?? '';
-        $json   = optional($resp)->json();
+            Log::channel('apiservice')->error("API Connection Error", $errorResponse);
+            return $errorResponse;
 
-        $payload = is_array($json)
-            ? $json
-            : ['message' => ($body !== '' ? $body : $e->getMessage())];
+        } catch (RequestException $e) {
+            // Si usas ->throw(), aquí puedes extraer el response y respetar el mensaje de la API
+            $resp = $e->response;
+            $status = optional($resp)->status();
+            $body = optional($resp)->body() ?? '';
+            $json = optional($resp)->json();
 
-        $payload['success'] = $payload['success'] ?? false;
-        $payload['status']  = $status ?? 500;
-        $payload['url']     = $url;
-        $payload['method']  = $method;
+            $payload = is_array($json)
+                ? $json
+                : ['message' => ($body !== '' ? $body : $e->getMessage())];
 
-        Log::channel('apiservice')->error("API Request Exception", [
-            'url'     => $url,
-            'method'  => $method,
-            'status'  => $status,
-            'message' => mb_strimwidth($body ?: $e->getMessage(), 0, 4000, '…'),
-        ]);
+            $payload['success'] = $payload['success'] ?? false;
+            $payload['status'] = $status ?? 500;
+            $payload['url'] = $url;
+            $payload['method'] = $method;
 
-        return $payload;
+            Log::channel('apiservice')->error("API RequestException Error", [
+                'url' => $url,
+                'method' => $method,
+                'status' => $status,
+                'message' => mb_strimwidth($body ?: $e->getMessage(), 0, 4000, '…'),
+            ]);
 
-    } catch (\Exception $e) {
-        // Cualquier otro error: expón el mensaje real
-        $errorResponse = [
-            'success' => false,
-            'status'  => 500,
-            'error'   => $e->getMessage(),
-            'message' => $e->getMessage(), // ← clave: no reemplazar por un texto genérico
-            'url'     => $url,
-            'method'  => $method,
-        ];
-        Log::channel('apiservice')->error("API Request Error", $errorResponse);
-        return $errorResponse;
+            return $payload;
+
+        } catch (\Exception $e) {
+            // Cualquier otro error: expón el mensaje real
+            $errorResponse = [
+                'success' => false,
+                'status' => 500,
+                'error' => $e->getMessage(),
+                'message' => $e->getMessage(), // ← clave: no reemplazar por un texto genérico
+                'url' => $url,
+                'method' => $method,
+            ];
+            Log::channel('apiservice')->error("API Exception Error", $errorResponse);
+            return $errorResponse;
+        }
     }
-    }
 
 
-    public function makeAsyncRequest(string $urlKey,  string $method = 'POST', array $requests, $format = 'form')
+    public function makeAsyncRequest(string $urlKey, string $method = 'POST', array $requests, $format = 'form')
     {
         $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
         $promises = [];
