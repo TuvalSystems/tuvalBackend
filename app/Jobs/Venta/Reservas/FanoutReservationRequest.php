@@ -64,7 +64,7 @@ class FanoutReservationRequest implements ShouldQueue
         $usersApproval = GpUsuario::query()
             ->whereIn('perfil_id', [9, 2])
             ->where('status', 1)
-            // ->where('id', '!=', $actor->id)  //comentado para que a mi mismo me llegue la notificación
+            ->where('id', '!=', $actor->id)  //comentado para que a mi mismo me llegue la notificación
             ->get();
         if ($usersApproval->isNotEmpty()) {
             Notification::send(
@@ -87,7 +87,7 @@ class FanoutReservationRequest implements ShouldQueue
         GpUsuario::query()
             ->whereIn('perfil_id', [13, 2])
             ->where('status', 1)
-            //    ->where('id', '!=', $actor->id)  //comentado para que a mi mismo me llegue la notificación
+            ->where('id', '!=', $actor->id)  //comentado para que a mi mismo me llegue la notificación
             ->orderBy('id')
             ->chunkById(200, function ($chunk) use ($title, $mensaje) {
 
@@ -113,20 +113,21 @@ class FanoutReservationRequest implements ShouldQueue
             $cfg = $resp['data'] ?? [];
 
             [$to, $cc] = $this->extractRecipients($cfg);
-            // if (empty($to)) {
-            //     Log::warning('FanoutReservationRequest: sin destinatarios TO', [
-            //         'cotizacionId' => $cotizacion->id,
-            //         'tipo' => $typeR,
-            //         'pto' => $ptoVtaR
-            //     ]);
-            //     return;
-            // }
+            if (empty($to)) {
+                Log::warning('FanoutReservationRequest: sin destinatarios TO', [
+                    'cotizacionId' => $cotizacion->id,
+                    'tipo' => $typeR,
+                    'pto' => $ptoVtaR
+                ]);
+                return;
+            }
             $info = $this->computedFormatQuotationDetailStock($cotizacion->id);
             $asunto = trim((string) ($cfg['txAsu'] ?? '')) ?: 'Solicitud de reserva de inventario';
             $mailable = $typeR['type'] === 'RESERVA' ?
                 (new ReservaMail($cotizacion, $info, $actor, $asunto))->onConnection('redis')->onQueue('emails') : (new DemandaMail($cotizacion, $info, $actor, $asunto))->onConnection('redis')->onQueue('emails');
-            Mail::to('sistemas6@tuvalsa.com')->queue($mailable); //pruebas
-            //  Mail::to($to)->cc($cc)->queue($mailable);
+            //Mail::to('sistemas6@tuvalsa.com')->queue($mailable); //pruebas
+            Mail::to($to)->cc($cc)->queue($mailable);
+
 
         } catch (\Throwable $e) {
             Log::error('FanoutReservationRequest: error enviando email', [
