@@ -113,14 +113,14 @@ class FanoutReservationRequest implements ShouldQueue
             $cfg = $resp['data'] ?? [];
 
             [$to, $cc] = $this->extractRecipients($cfg);
-            // if (empty($to)) {
-            //     Log::warning('FanoutReservationRequest: sin destinatarios TO', [
-            //         'cotizacionId' => $cotizacion->id,
-            //         'tipo' => $typeR,
-            //         'pto' => $ptoVtaR
-            //     ]);
-            //     return;
-            // }
+            if (empty($to)) {
+                Log::warning('FanoutReservationRequest: sin destinatarios TO', [
+                    'cotizacionId' => $cotizacion->id,
+                    'tipo' => $typeR,
+                    'pto' => $ptoVtaR
+                ]);
+                return;
+            }
             $info = $this->computedFormatQuotationDetailStock($cotizacion->id);
             $asunto = trim((string) ($cfg['txAsu'] ?? '')) ?: 'Solicitud de reserva de inventario';
             $mailable = $typeR['type'] === 'RESERVA' ?
