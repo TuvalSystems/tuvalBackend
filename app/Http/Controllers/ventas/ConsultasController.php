@@ -446,15 +446,18 @@ class ConsultasController extends Controller
         );
     }
 
-    public function reservasweb($item = null): JsonResponse{
+    public function reservasweb($item = null): JsonResponse|Response|ResponseFactory
+    {
         try {
             $data = $this->InventoryQueryService->listReservedWebInventory($item);
-            return $this->successResponse('Información obtenida correctamente', $data, 200);
+            return response([
+                'reservados' => $data,
+            ]);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);
         }
     }
-   
+
 
     public function transferencias_pendientes_ingreso(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
@@ -524,7 +527,7 @@ class ConsultasController extends Controller
         $trasladosventas = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
             ->join('gp_bodegas', 'gp_traslados_ventas.bodega_origen', 'gp_bodegas.BOD_BODEGA')
             //            ->where('bodega_origen', $bodega)
-              ->where(function ($q){
+            ->where(function ($q) {
                 $q->whereNull('gp_traslados_ventas.completado')
                     ->orWhere('gp_traslados_ventas.completado', 0);
             })
@@ -570,7 +573,7 @@ class ConsultasController extends Controller
 
         $trasladosreposicion = GpTrasladosReposicion::join('gp_bodegas', 'gp_traslados_reposicions.bodega_origen', 'gp_bodegas.BOD_BODEGA')
             //            ->where('bodega_origen', $bodega)
-             ->where(function ($q){
+            ->where(function ($q) {
                 $q->whereNull('gp_traslados_reposicions.completado')
                     ->orWhere('gp_traslados_reposicions.completado', 0);
             })
