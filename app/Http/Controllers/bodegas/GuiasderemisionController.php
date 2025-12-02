@@ -26,6 +26,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
 use App\Models\reservas\GpGuiaRemisionReserva;
+use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -977,12 +978,14 @@ class GuiasderemisionController extends Controller
                     }
 
                     // $pedidosControl->checkenviarfactura($pedido, true);
+                    $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
                     $this->invoiceService->checkSendInvoice($pedido, true);
-                    $this->notifyService->sendNotification(
-                        $pedido->user_id,
-                        'Artículo/s recibidos',
-                        'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
-                    );
+                    // $this->notifyService->sendNotification(
+                    //     $pedido->user_id,
+                    //     'Artículo/s recibidos',
+                    //     'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
+                    // );
+                    $creatorUser->notify(new UserNotification('Articulo/s recibidos', 'Articulo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA));
                 }
                 //aqui la notifiacion
 
@@ -1004,14 +1007,17 @@ class GuiasderemisionController extends Controller
 
                     if ($pedido->estado == 'espera') {
                         // $pedidosControl->checkenviarfactura($pedido, true);
+                        $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
                         $this->invoiceService->checkSendInvoice($pedido, true);
                         //aqui la notifiacion
 
-                        $this->notifyService->sendNotification(
-                            $pedido->user_id,
-                            'Artículo/s recibidos',
-                            'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
-                        );
+                        // $this->notifyService->sendNotification(
+                        //     $pedido->user_id,
+                        //     'Artículo/s recibidos',
+                        //     'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
+                        // );
+                        $creatorUser->notify(new UserNotification('Articulo/s recibidos', 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA));
+
                     }
                 }
             }
