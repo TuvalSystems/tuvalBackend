@@ -1007,9 +1007,9 @@ class GuiasderemisionController extends Controller
 
                     if ($pedido->estado == 'espera') {
                         // $pedidosControl->checkenviarfactura($pedido, true);
+                        $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
                         $this->invoiceService->checkSendInvoice($pedido, true);
                         //aqui la notifiacion
-                        $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
 
                         // $this->notifyService->sendNotification(
                         //     $pedido->user_id,
