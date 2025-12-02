@@ -26,4 +26,7 @@ interface InventoryQueryServiceInterface
     /** funcion de consulta de reservados  */
 
      public function listReservedInventory();
+
+
+     public function listReservedWebInventory(?string $item);
 }
