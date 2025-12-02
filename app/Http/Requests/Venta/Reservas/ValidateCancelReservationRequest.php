@@ -3,8 +3,6 @@
 namespace App\Http\Requests\Venta\Reservas;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Http\Exceptions\HttpResponseException;
 
 class ValidateCancelReservationRequest extends FormRequest
 {

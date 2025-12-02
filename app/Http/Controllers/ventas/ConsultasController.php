@@ -446,104 +446,15 @@ class ConsultasController extends Controller
         );
     }
 
-    public function reservasweb($item = null): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
-    {
-
-        $articulos = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalles.id', 'gp_pedido_detalle_stocks.detalle_id')
-            ->join('gp_pedidos', 'gp_pedidos.id', 'gp_pedido_detalles.pedido_id')
-            ->join('gp_clientes', 'gp_clientes.id', 'gp_pedidos.cliente_id')
-            ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->where(function ($q) {
-                $q->where(function ($query) {
-                    $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no');
-                })
-                    ->orWhere(function ($query) {
-                        $query->where('gp_pedidos.requiere_aprobacion_comercial', 'yes');
-                        $query->where('gp_pedidos.aprobado_comercial', 'yes');
-                    });
-            })
-            ->where(function ($q) {
-                $q->where(function ($query) {
-                    $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no');
-                })
-                    ->orWhere(function ($query) {
-                        $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes');
-                        $query->where('gp_pedidos.aprobado_crediticio', 'yes');
-                    });
-            })
-            ->where('gp_pedidos.estado', '!=', 'eliminado')
-            ->where('gp_pedidos.estado', '!=', 'rechazado');
-        if ($item) {
-            $articulos = $articulos->where('gp_pedido_detalles.ART_CODIGO', $item);
+    public function reservasweb($item = null): JsonResponse{
+        try {
+            $data = $this->InventoryQueryService->listReservedWebInventory($item);
+            return $this->successResponse('Información obtenida correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
         }
-        $articulos = $articulos->where('gp_pedido_detalle_stocks.reservado', '>', 0)
-            ->where(function ($query) {
-                $query->whereNull('gp_pedidos.despachado');
-                $query->orWhere('gp_pedidos.despachado', 0);
-            })
-            ->select(
-                'gp_pedido_detalles.ART_CODIGO as codigo',
-                'gp_pedido_detalles.ART_DESCRIPCION as descripcion',
-                'gp_pedido_detalle_stocks.STO_ART_BODEGA as bodega',
-                'gp_pedido_detalle_stocks.reservado',
-                'gp_pedido_detalle_stocks.seleccionado',
-                'gp_pedidos.pedido',
-                'gp_pedidos.created_at as fecha',
-                'gp_pedidos.CLI_RUC',
-                'gp_clientes.CLI_RAZON_SOCIAL',
-                'gp_pedido_detalles.ART_CANTIDAD as cantidad_pedida'
-            )
-            ->get();
-
-        $arreglo = array();
-
-        foreach ($articulos as $articulo) {
-            $articulo->tipo = 'pedido';
-            $articulo->despachado = $articulo->seleccionado - $articulo->reservado;
-            unset($articulo->seleccionado);
-        }
-
-        foreach ($articulos as $articulo) {
-            $arreglo[] = $articulo;
-        }
-
-        $trasladosreposicion = GpTrasladosReposicion::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_traslados_reposicions.ART_CODIGO')
-             ->where(function ($q){
-                $q->whereNull('gp_traslados_reposicions.completado')
-                    ->orWhere('gp_traslados_reposicions.completado', 0);
-            });
-        if ($item) {
-            $trasladosreposicion = $trasladosreposicion->where('gp_traslados_reposicions.ART_CODIGO', $item);
-        }
-        $trasladosreposicion = $trasladosreposicion
-            ->select(
-                'gp_articulos.ART_CODIGO as codigo',
-                'gp_articulos.ART_DESCRIPCION as descripcion',
-                'gp_traslados_reposicions.bodega_origen as bodega',
-                'gp_traslados_reposicions.cantidad',
-                'gp_traslados_reposicions.trasladado',
-                'gp_traslados_reposicions.Documento as pedido',
-                'gp_traslados_reposicions.created_at as fecha',
-                'gp_traslados_reposicions.cantidad as cantidad_pedida'
-            )
-            ->get();
-
-        foreach ($trasladosreposicion as $traslado) {
-            $traslado->reservado = $traslado->cantidad - $traslado->trasladado;
-            $traslado->despachado = $traslado->trasladado;
-            unset($traslado->cantidad);
-            unset($traslado->trasladado);
-
-            $traslado->CLI_RUC = 'TUVAL';
-            $traslado->CLI_RAZON_SOCIAL = 'TUVAL';
-            $traslado->tipo = 'traslado';
-            $arreglo[] = $traslado;
-        }
-
-        return response([
-            'reservados' => $arreglo,
-        ]);
     }
+   
 
     public function transferencias_pendientes_ingreso(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {

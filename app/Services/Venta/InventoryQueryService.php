@@ -11,6 +11,7 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -378,4 +379,173 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 return $item;
             });
     }
+
+
+
+    public function listReservedWebInventory(?string $item)
+    {
+        $orders = $this->getAllOrderReservation($item);
+        $traslados = $this->getAllTransferReposition($item);
+        $quoteReservations = $this->getAllQuoteRerservations($item);
+        return $orders->merge($traslados)->merge($quoteReservations);
+    }
+
+    public function getAllOrderReservation(?string $item = null): Collection
+    {
+        $query = DB::table('gp_pedido_detalle_stocks as st')
+            ->join('gp_pedido_detalles as d', 'd.id', 'st.detalle_id')
+            ->join('gp_pedidos as p', 'p.id', '=', 'st.pedido_id')
+            ->join('gp_clientes as c', 'c.id', '=', 'p.cliente_id')
+            ->where('st.reservado', '>', 0)
+            ->whereNotIn('p.estado', ['eliminado', 'rechazado', 'anulada']);
+        $query->where(function ($q) {
+            $q->whereNull('p.despachado')
+                ->orWhere('p.despachado', 0);
+        });
+
+
+        $query->where(function ($mainQ) {
+
+            // Condición 1: Cumple con Comercial (No requiere O requiere y está aprobado)
+            $mainQ->where(function ($qCom) {
+                $qCom->where('p.requiere_aprobacion_comercial', 'no')
+                    ->orWhere(function ($sub) {
+                        $sub->where('p.requiere_aprobacion_comercial', 'yes')
+                            ->where('p.aprobado_comercial', 'yes');
+                    });
+            });
+
+            // Y (AND)
+
+            // Condición 2: Cumple con Crediticio (No requiere O requiere y está aprobado)
+            $mainQ->where(function ($qCred) {
+                $qCred->where('p.requiere_aprobacion_crediticia', 'no')
+                    ->orWhere(function ($sub) {
+                        $sub->where('p.requiere_aprobacion_crediticia', 'yes')
+                            ->where('p.aprobado_crediticio', 'yes');
+                    });
+            });
+        });
+
+
+        if ($item) {
+            $query->where('d.ART_CODIGO', $item);
+        }
+
+        $resultados = $query->select(
+            'd.ART_CODIGO as codigo',
+            'd.ART_DESCRIPCION as descripcion',
+            'st.STO_ART_BODEGA as bodega',
+            'st.reservado',
+            'st.seleccionado',
+            'p.pedido',
+            'p.created_at as fecha',
+            'p.CLI_RUC',
+            'c.CLI_RAZON_SOCIAL',
+            'd.ART_CANTIDAD as cantidad_pedida'
+        )
+            ->orderBy('d.ART_CODIGO')
+            ->orderBy('st.STO_ART_BODEGA')
+            ->get();
+
+        // Mapeo final para estandarizar estructura
+        return $resultados->map(function ($articulo) {
+            $articulo->tipo = 'pedido';
+            $articulo->despachado = $articulo->seleccionado - $articulo->reservado;
+            unset($articulo->seleccionado);
+            return $articulo;
+        });
+    }
+
+    public function getAllTransferReposition(?string $item = null): Collection
+    {
+
+        $query = DB::table('gp_traslados_reposicions as tr')
+            ->join('gp_articulos as art', 'art.ART_CODIGO', '=', 'tr.ART_CODIGO')
+            ->where(function ($q) {
+                $q->whereNull('tr.completado')
+                    ->orWhere('tr.completado', 0);
+            });
+
+        if ($item) {
+            $query->where('tr.ART_CODIGO', $item);
+        }
+
+        $resultados = $query->select(
+            'art.ART_CODIGO as codigo',
+            'art.ART_DESCRIPCION as descripcion',
+            'tr.bodega_origen as bodega',
+            'tr.cantidad',
+            'tr.trasladado',
+            'tr.Documento as pedido',
+            'tr.created_at as fecha'
+        )->get();
+
+        return $resultados->map(function ($traslado) {
+            $traslado->reservado = $traslado->cantidad - $traslado->trasladado;
+            $traslado->despachado = $traslado->trasladado;
+            $traslado->cantidad_pedida = $traslado->cantidad;
+            $traslado->CLI_RUC = 'TUVAL';
+            $traslado->CLI_RAZON_SOCIAL = 'TUVAL';
+            $traslado->tipo = 'traslado';
+
+            unset($traslado->cantidad);
+            unset($traslado->trasladado);
+
+            return $traslado;
+        });
+
+    }
+
+
+    public function getAllQuoteRerservations(?string $item = null): Collection
+    {
+        $query = DB::table('gp_cotizacion_detalle_stocks as st')
+            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
+            ->join('gp_cotizacions as p', 'p.id', '=', 'st.cotizacion_id')
+            ->join('gp_clientes as c', 'c.id', '=', 'p.cliente_id')
+            ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'p.id')
+            ->where('st.seleccionado', '>', 0)
+            ->where('st.cantidad_traslado', '=', 0)
+            ->whereIn('r.estado', ['aprobado', 'traslado']);
+
+        if ($item) {
+            $query->where('d.ART_CODIGO', $item);
+        }
+
+        $resultados = $query->select(
+            'd.ART_CODIGO as codigo',
+            'd.ART_DESCRIPCION as descripcion',
+            'st.STO_ART_BODEGA as bodega',
+            'st.seleccionado',
+            'st.cantidad_reservada',
+            'st.cantidad_facturada',
+            'st.cantidad_cancelada',
+            'p.cotizacion as pedido',
+            'p.created_at as fecha',
+            'p.CLI_RUC',
+            'c.CLI_RAZON_SOCIAL',
+            'st.cantidad_reservada as cantidad_pedida'
+        )
+            ->orderBy('d.ART_CODIGO')
+            ->orderBy('st.STO_ART_BODEGA')
+            ->get();
+
+
+        return $resultados->map(function ($articulo) {
+            $articulo->tipo = 'cotizacion';
+            $articulo->reservado = $articulo->cantidad_reservada - $articulo->cantidad_facturada - $articulo->cantidad_cancelada;
+
+            $articulo->despachado = $articulo->cantidad_facturada;
+            unset($articulo->cantidad_facturada);
+            unset($articulo->cantidad_cancelada);
+            unset($articulo->cantidad_reservada);
+            unset($articulo->seleccionado);
+            return $articulo;
+        });
+    }
+
+
+
+
 }
