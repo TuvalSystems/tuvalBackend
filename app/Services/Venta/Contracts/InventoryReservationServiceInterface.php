@@ -3,6 +3,8 @@
 namespace App\Services\Venta\Contracts;
 
 use App\Models\GpUsuario;
+use App\Models\reservas\GpReserva;
+use Illuminate\Database\Eloquent\Builder;
 
 interface InventoryReservationServiceInterface
 {
@@ -13,7 +15,7 @@ interface InventoryReservationServiceInterface
     public function fetchListTipeReserved();
 
     public function fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc);
-
+    public function cancelReservedQuotation(int $id): Builder|GpReserva;
 
     public function getQuotationWithDetails(int $id);
     public function getQuotationWithDetailsAndStock(int $id);

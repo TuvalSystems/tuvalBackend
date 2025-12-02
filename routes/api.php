@@ -232,6 +232,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('guardar-solicitud-reserva', [ReservasController::class, 'guardarReservaCotización']);
         Route::get('lista-tipo-reservas', [ReservasController::class, 'obtenerListaTipoReservas']);
         Route::post('lista-solicitudes-reserva', [ReservasController::class, 'obtenerListaReservasPendientes']);
+        Route::post('cancelar-solicitud-reserva', [ReservasController::class, 'cancelarReservaCotizacion']);
 
         Route::get('cotizacion-con-detalle/{id}', [ReservasController::class, 'obtenerCotizacionConDetalle']);
         Route::get('cotizacion-detalle-stock/{id}', [ReservasController::class, 'obtenerCotizacionDetalleConStock']);
@@ -268,7 +269,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('despachoenproceso/{id}', [PedidosController::class, 'despachoenproceso']);
         Route::post('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
         Route::post('actualizar-fecha-factura-reserva', [PedidosController::class, 'actualizarFechaReservaPedido']);
-    Route::post('/listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
+        Route::post('/listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
 
     });
 

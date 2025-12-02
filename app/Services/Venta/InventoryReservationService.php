@@ -8,6 +8,7 @@ use App\Models\GpBodega;
 use App\Models\GpUsuario;
 use App\Models\GpArticulo;
 use App\Models\GpVehiculo;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use App\Models\GpCotizacion;
@@ -189,7 +190,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-
+    public function cancelReservedQuotation(int $id): Builder|GpReserva{
+        $reserva = GpReserva::find($id);
+        $reserva->update([
+            'estado' => 'cancelado'
+        ]);
+        return $reserva;
+    }
 
     public function getQuotationWithDetails(int $id)
     {

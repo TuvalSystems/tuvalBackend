@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Venta\Reservas\ValidateCancelReservationRequest;
 use App\Models\GpUsuario;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -31,6 +32,18 @@ class ReservasController extends Controller
                 return $this->buildExistResponse($existeReserva, 'No es posible recuperar, copiar o volver a pedir la cotización porque cuenta con una reserva', 200);
             }
             return $this->buildExistResponse($existeReserva, 'La cotización no tiene reservas registradas. Puede continuar con su actividad', 202);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function cancelarReservaCotizacion(ValidateCancelReservationRequest $request): JsonResponse{
+        try {
+            $data = $request->validated();
+            $reservasId = data_get($data, 'id', null);
+            $reserva = $this->reserveService->cancelReservedQuotation($reservasId);
+            return $this->successResponse('Reserva cancelada correctamente', $reserva,200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -490,4 +503,7 @@ class ReservasController extends Controller
 
         }
     }
+
+
+
 }
