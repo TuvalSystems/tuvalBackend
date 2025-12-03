@@ -190,7 +190,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function cancelReservedQuotation(int $id): Builder|GpReserva{
+    public function cancelReservedQuotation(int $id): Builder|GpReserva
+    {
         $reserva = GpReserva::find($id);
         $reserva->update([
             'estado' => 'cancelado'
@@ -1065,22 +1066,32 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function fetchReservedTransferSummaries($ptoVtaId): array
     {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
-        $traslados = $this->reservaRepository->getAllTransferReservedByWarehouses($bodega);
+        $bodOrigin = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
+        $traslados = $this->reservaRepository->getAllTransferReservedByWarehouses($bodOrigin);
         $items = $traslados->filter(fn($t) => $t->pending_transfer > 0)->map(function ($item) {
             $qty = (float) $item->pending_transfer;
             $kg = (float) $item->art_peso;
             $item->art_pesoKg = $qty * $kg;
             return $item;
-        })->values();
-        return collect($items)->groupBy('bodega_destino')->map(function ($item) {
+        })->groupBy('bodega_destino');
+
+        $guiasGrouped = $this->reservaRepository->findCountPendingGuidesByOriginWarehouse($bodOrigin);
+        $allDestinosIds = $items->keys()->merge($guiasGrouped->keys())->unique();
+
+        return $allDestinosIds->map(function ($destId) use ($items, $guiasGrouped) {
+            $items = $items->get($destId); // Puede ser null
+            $guiaInfo = $guiasGrouped->get($destId); // Puede ser null
+
+            $bodegaNombre = $items ? $items->first()->bodega_destino_desc : ($guiaInfo->bodega_destino_desc ?? 'Desconocida');
+
             return [
-                'bodega' => $item[0]['bodega_destino_desc'],
-                'ptovtaId' => $item[0]['ptovtaId'],
-                'pesoTon' => round(collect($item)->sum('art_pesoKg') / 1000, 2),
-                'totalItems' => $item->count()
+                'bodega' => $bodegaNombre,
+                'ptovtaId' => $items ? $items->first()->ptovtaId : $guiaInfo->ptovtaId, // Usamos el que entra por parámetro, es más seguro
+                'pesoTon' => $items ? round($items->sum('art_pesoKg') / 1000, 2) : 0,
+                'totalItems' => $items ? $items->count() : 0,
+                'totalGuidePending' => $guiaInfo ? $guiaInfo->total : 0, // Tomamos el total pre-calculado
             ];
-        })->filter()->values()->all();
+        })->values()->all();
     }
 
     public function fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino): array

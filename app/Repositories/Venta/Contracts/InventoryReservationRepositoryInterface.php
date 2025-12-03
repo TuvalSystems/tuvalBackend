@@ -12,5 +12,6 @@ interface InventoryReservationRepositoryInterface
       public function checkExistingReservationTransfer(GpCotizacion $quote);
       public function getAllTransferReservedByWarehouses($warehouse);
       public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination ,$quotation = null);
+       public function findCountPendingGuidesByOriginWarehouse($bodOrigin);
       public function findGuidesPendingsByOriginWarehouse($bodOrigin, $destId);
 }

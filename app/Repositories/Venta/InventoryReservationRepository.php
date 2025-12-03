@@ -45,8 +45,8 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
     public function getAllTransferReservedByWarehouses($warehouse)
     {
         return GpTrasladosReservas::query()->from('gp_traslados_reservas as tr')
-            ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
-            ->leftJoin('gp_bodegas as b', 'b.BOD_BODEGA', '=', 'c.BOD_BODEGA')
+            // ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
+            ->leftJoin('gp_bodegas as b', 'b.BOD_BODEGA', '=', 'tr.bodega_destino')
             ->join('gp_relacion_punto_venta_bodegas as ptovta', 'ptovta.PTO_VTA_BOD_BODEGA', '=', 'tr.bodega_destino')
             ->where('tr.bodega_origen', $warehouse)
             ->where(function ($q) {
@@ -85,18 +85,41 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
     }
 
 
-
+    public function findCountPendingGuidesByOriginWarehouse($bodOrigin)
+    {
+        return GpGuiaRemisionReserva::query()
+            ->from('gp_guia_remision_reservas as gpgr')
+            ->join('gp_bodegas', 'gpgr.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
+            ->join('gp_relacion_punto_venta_bodegas as ptovta', 'ptovta.PTO_VTA_BOD_BODEGA', '=', 'gpgr.bodega_destino')
+            ->where('gpgr.bodega_origen', $bodOrigin)
+            ->where('gpgr.estado', 'pendiente')
+            ->groupBy(
+                'gpgr.bodega_destino',
+                'gp_bodegas.BOD_DESCRIPCION',
+                'ptovta.PTO_VTA_BOD_PUNTO_VENTA'
+            ) // <--- Aquí agrupamos
+            ->selectRaw('gpgr.bodega_destino, gp_bodegas.BOD_DESCRIPCION as bodega_destino_desc, count(*) as total, ptovta.PTO_VTA_BOD_PUNTO_VENTA as ptovtaId')
+            ->get()
+            ->keyBy('bodega_destino');
+    }
 
     public function findGuidesPendingsByOriginWarehouse($bodOrigin, $destId)
     {
         return GpGuiaRemisionReserva::query()
-        ->from('gp_guia_remision_reservas as gpgr')
+            ->from('gp_guia_remision_reservas as gpgr')
             ->join('gp_bodegas', 'gpgr.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
             ->where('gpgr.bodega_origen', $bodOrigin)
             ->where('gpgr.bodega_destino', $destId)
             ->where('gpgr.estado', 'pendiente')
-            ->select('gpgr.id', 'gpgr.numero_guia','gpgr.fecha_salida', 'gpgr.razon_social_transportista' ,'gpgr.placa')
+            ->select('gpgr.id', 'gpgr.numero_guia', 'gpgr.fecha_salida', 'gpgr.razon_social_transportista', 'gpgr.placa')
             ->orderByDesc('gpgr.created_at')
             ->get();
     }
+
+
+
+
+
+
+
 }
