@@ -363,8 +363,8 @@ class OrderService implements OrderServiceInterface
         $esReserva = GpCotizacion::where('id', $quoteId)
             ->where('origen', 'reserva')
             ->exists();
-        if ($esReserva) {
-            return $quoteId;
+        if (!$esReserva) {
+            return null; // Si no es reserva, salimos inmediatamente
         }
         return GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)
             ->value('cotizacion_origen_id');
