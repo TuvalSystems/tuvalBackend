@@ -360,7 +360,14 @@ class OrderService implements OrderServiceInterface
         if (!$quoteId) {
             return null;
         }
-        return GpCotizacion::where('id', $quoteId)->where('origen', 'reserva')->value('id');
+        $esReserva = GpCotizacion::where('id', $quoteId)
+            ->where('origen', 'reserva')
+            ->exists();
+        if ($esReserva) {
+            return $quoteId;
+        }
+        return GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)
+            ->value('cotizacion_origen_id');
     }
 
 
@@ -1596,7 +1603,7 @@ class OrderService implements OrderServiceInterface
             ->join('gp_cotizacions as ct', 'ct.id', '=', 'gp.cotizacion_id')
             ->where('gp.origen', 'reserva')
             // ->where('gp.PTO_VTA_ID', $ptoVtaId)
-            ->whereNotIn('gp.estado', ['eliminado', 'rechazado', 'anulada','facturado']);
+            ->whereNotIn('gp.estado', ['eliminado', 'rechazado', 'anulada', 'facturado']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
