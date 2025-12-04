@@ -181,6 +181,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/despachos/transferenciasRecibidas/{id}', [DespachosController::class, 'getReceivedTransfers']);
     Route::get('/despachos/reposicionesEnviadas/{id}', [DespachosController::class, 'getDispatchedRepositions']);
     Route::get('/despachos/reposicionesRecibidas/{id}', [DespachosController::class, 'getReceivedRepositions']);
+    Route::post('/despachos/reservas-enviadas', [DespachosController::class, 'listaGuiaReservasEnviadas']);
+    Route::post('/despachos/reservas-recibidas', [DespachosController::class, 'listaGuiaReservasRecibidas']);
 
 
 
@@ -286,6 +288,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
         Route::post('guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
         Route::get('puntos-venta/reservas/limites', [DespachosController::class, 'indexPuntosVentaReservaLimits']);
+        Route::post('guia-remision-reserva/detalle', [GuiasderemisionController::class, 'consultarDetalleGuiaReservaPorId']);
+
 
 
         Route::post('guiasderemision/generarguiatraslado', [GuiasderemisionController::class, 'generarguiatraslado']);

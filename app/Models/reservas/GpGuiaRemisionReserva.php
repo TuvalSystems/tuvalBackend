@@ -3,6 +3,7 @@
 namespace App\Models\reservas;
 
 use App\Models\GpCotizacion;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -43,6 +44,10 @@ class GpGuiaRemisionReserva extends Model
     ];
 
 
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
     public function detalleGuiaReservas()
     {
         return $this->hasMany(GpGuiaRemisionReservaDetalle::class, 'guia_id', 'id');
@@ -50,10 +55,11 @@ class GpGuiaRemisionReserva extends Model
 
     public function getQuotesAttribute(): array
     {
-        if (!$this->relationLoaded('cotizaciones')) {
-            $this->load('cotizaciones:id,cotizacion');
+        if ($this->relationLoaded('cotizaciones')) {
+            // $this->load('cotizaciones:id,cotizacion');
+            return $this->cotizaciones->pluck('cotizacion')->unique()->values()->all();
         }
-        return $this->cotizaciones->pluck('cotizacion')->unique()->values()->all();
+        return [];
     }
 
     /** relaciuib con GpCotizacion basada en el detalle de la guia tomada como pivot */

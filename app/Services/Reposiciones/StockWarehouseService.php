@@ -344,7 +344,10 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         $reservado += GpTrasladosReposicion::query()
             ->where('bodega_origen', $bodega)
             ->where('ART_CODIGO', $articulo)
-            ->whereNull('completado')
+            ->where(function ($q) {
+                $q->whereNull('completado')
+                    ->orWhere('completado', 0);
+            })
             ->get()
             ->sum(fn($item) => ($item->cantidad ?? 0) - ($item->trasladado ?? 0));
 

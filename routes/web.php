@@ -198,12 +198,18 @@ Route::group(['prefix' => 'reservas-web'], function () {
     Route::get('transferencias-web/imprimir-ord-almacenamiento', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
     Route::get('transferencias-web/recibir-items-guia-reserva', [ReservasController::class, 'recibirItemsGuiaReserva']);
     Route::get('cancelar-reserva-web', [ReservasController::class, 'cancelarReservaCotizacion']);
+
+    
+    Route::get('despachos/reservas-enviadas', [DespachosController::class, 'listaGuiaReservasEnviadas']);
+
 });
 
 Route::prefix('aprobaciones-web')->group(function () {
     Route::get('lista-items-aprobaciones', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::get('lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
     Route::get('lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
+
+
 
 });
 

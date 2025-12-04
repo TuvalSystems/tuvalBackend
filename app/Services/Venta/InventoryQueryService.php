@@ -387,7 +387,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $orders = $this->getAllOrderReservation($item);
         $traslados = $this->getAllTransferReposition($item);
         $quoteReservations = $this->getAllQuoteRerservations($item);
-        return $orders->merge($traslados)->merge($quoteReservations);
+        $quoteTransfers = $this->getAllPendingReservationTransfer($item);
+        return $orders->merge($traslados)->merge($quoteReservations)->merge($quoteTransfers);
     }
 
     public function getAllOrderReservation(?string $item = null): Collection
@@ -482,9 +483,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         )->get();
 
         return $resultados->map(function ($traslado) {
-            $traslado->reservado = $traslado->cantidad - $traslado->trasladado;
-            $traslado->despachado = $traslado->trasladado;
-            $traslado->cantidad_pedida = $traslado->cantidad;
+            $traslado->reservado = (float) round($traslado->cantidad - $traslado->trasladado, 3) ?? 0;
+            $traslado->despachado = (float) round($traslado->trasladado,3);
+            $traslado->cantidad_pedida = (float) round($traslado->cantidad, 3);
             $traslado->CLI_RUC = 'TUVAL';
             $traslado->CLI_RAZON_SOCIAL = 'TUVAL';
             $traslado->tipo = 'traslado';
@@ -543,6 +544,46 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             unset($articulo->seleccionado);
             return $articulo;
         });
+    }
+
+
+    public function getAllPendingReservationTransfer(?string $item = null)
+    {
+        $query = DB::table('gp_traslados_reservas as tr')
+            ->join('gp_articulos as art', 'art.ART_CODIGO', '=', 'tr.art_code')
+            ->join('gp_cotizacions as ct', 'ct.id', '=', 'tr.cotizacion_id')
+            ->where(function ($q) {
+                $q->whereNull('tr.completado')
+                    ->orWhere('tr.completado', 0);
+            })
+            ->where('tr.cantidad', '>', 0);
+
+        if ($item) {
+            $query->where('tr.art_code', $item);
+        }
+
+        $resultados = $query->select(
+            'art.ART_CODIGO as codigo',
+            'art.ART_DESCRIPCION as descripcion',
+            'tr.bodega_origen as bodega',
+            'tr.cantidad',
+            'tr.trasladado',
+            'ct.cotizacion as pedido',
+            'tr.created_at as fecha'
+        )->get();
+
+        return $resultados->map(function ($tr) {
+            $tr->reservado = (float) round( $tr->cantidad - $tr->trasladado, 3) ?? 0;
+            $tr->despachado = (float) round($tr->trasladado, 3) ?? 0;
+            $tr->cantidad_pedida = (float) round($tr->cantidad,3) ?? 0;
+            $tr->CLI_RUC = 'TUVAL';
+            $tr->CLI_RAZON_SOCIAL = 'TUVAL';
+            $tr->tipo = 'traslado_reserva';
+            unset($tr->cantidad);
+            unset($tr->trasladado);
+            return $tr;
+        });
+
     }
 
 

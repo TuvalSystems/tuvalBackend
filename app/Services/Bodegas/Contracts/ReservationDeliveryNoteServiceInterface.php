@@ -16,4 +16,6 @@ interface ReservationDeliveryNoteServiceInterface
     public function generatePdfReservedDeliveryNote($payload);
 
     public function dispatchGuideReservation($payload): array|Collection|GpGuiaRemisionReserva|Model|null;
+
+    public function getDetailReservationDeliveryNoteById($id): array;
 }

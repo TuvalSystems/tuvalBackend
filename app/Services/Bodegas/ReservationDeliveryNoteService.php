@@ -296,15 +296,34 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function generatePdfReservedDeliveryNote($payload)
     {
-        $id = $payload['id'];
+        $id = data_get($payload, 'id');
         $guia = GpGuiaRemisionReserva::find($id);
+        $vieData = $this->getDataReservationDeliveryNote($guia);
+
+        $html = view('pdf.guia-remision-reserva-pendiente', $vieData)->render();
+        $pdf = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+        $filename = 'guia-remision-' . Str::slug(data_get($guia, 'numero_guia')) . '.pdf';
+        return [
+            'binary' => $binary,
+            'filename' => $filename,
+            'content_type' => 'application/pdf'
+
+        ];
+    }
+
+    public function getDataReservationDeliveryNote($guia)
+    {
+
         $detalle = GpGuiaRemisionReservaDetalle::with([
             'detallecotizacion' => function ($q) {
                 $q->select('id', 'CHECK_ALTERNATIVO');
             }
         ])->where('guia_id', $guia->id)->get();
 
-        $vieData = [
+        return [
             'guia' => $guia,
             'claveAcceso' => $guia->clave_acceso,
             'detalle' => $detalle,
@@ -312,19 +331,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             'descripcion' => $this->getDescriptionWarehouse($guia->establecimiento),
             'pesoTotal' => $this->calculateKgTotal($detalle->pluck('traslado_id')->toArray()),
             'quoteList' => $this->getListQuotesTranfers($detalle->pluck('traslado_id')->toArray())
-        ];
-
-        $html = view('pdf.guia-remision-reserva-pendiente', $vieData)->render();
-        $pdf = app('dompdf.wrapper');
-        $pdf->setPaper('a4', 'portrait');
-        $pdf->loadHTML($html);
-        $binary = $pdf->output();
-        $filename = 'guia-remision-' . Str::slug($guia->numero_guia) . '.pdf';
-        return [
-            'binary' => $binary,
-            'filename' => $filename,
-            'content_type' => 'application/pdf'
-
         ];
     }
 
@@ -487,6 +493,18 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             'id_movimiento' => data_get($responseApi, 'idMovimiento'),
             'codigo' => trim((string) data_get($responseApi, 'docGp', '')),
         ]);
+    }
+
+
+
+
+
+    /*** funcion para obtebner el detalle de la guia de remision de reserva para vista de consulta  */
+
+    public function getDetailReservationDeliveryNoteById($id): array
+    {
+        $guia = GpGuiaRemisionReserva::find($id);
+        return $this->getDataReservationDeliveryNote($guia);
     }
 
 }
