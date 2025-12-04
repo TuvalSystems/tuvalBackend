@@ -247,7 +247,10 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->select('bodega_origen', DB::raw('SUM(COALESCE(cantidad,0) - COALESCE(trasladado,0)) as total'))
             ->whereIn('bodega_origen', $bodegas)
             ->where('ART_CODIGO', $articulo)
-            ->whereNull('completado')
+            ->where(function ($q) {
+                $q->whereNull('tr.completado')
+                    ->orWhere('tr.completado', 0);
+            })
             ->groupBy('bodega_origen')
             ->pluck('total', 'bodega_origen')
             ->map(fn($v) => max(0, (float) ($v ?? 0)))
