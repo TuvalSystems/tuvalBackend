@@ -1169,4 +1169,25 @@ class DespachosController extends Controller
             'data' => $this->dispatchService->reposicionesRecibidas($puntodeventa_id, $perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $clienteRuc, $ptovtaSearch),
         ]);
     }
+
+
+    public function listaGuiaReservasEnviadas(Request $request)
+    {
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'desc');
+        $ptoVtaOrigin = $request->input('ptoVtaOrigin', null);
+        $fecha_desde = $request->input('fecha_desde', null);
+        $fecha_hasta = $request->input('fecha_hasta', null);
+        $ptoVtaDestino = $request->input('ptoVtaDestino', null);
+
+        try {
+            $data = $this->dispatchService->fetchListSendReservations($perPage, $search, $sortBy, $sortOrder, $ptoVtaOrigin, $fecha_desde, $fecha_hasta, $ptoVtaDestino);
+            return $this->successResponse('Guias obtenidas correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
+        }
+
+    }
 }
