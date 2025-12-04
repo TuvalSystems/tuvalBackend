@@ -248,8 +248,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->whereIn('bodega_origen', $bodegas)
             ->where('ART_CODIGO', $articulo)
             ->where(function ($q) {
-                $q->whereNull('tr.completado')
-                    ->orWhere('tr.completado', 0);
+                $q->whereNull('completado')
+                    ->orWhere('completado', 0);
             })
             ->groupBy('bodega_origen')
             ->pluck('total', 'bodega_origen')
