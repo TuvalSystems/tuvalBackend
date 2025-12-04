@@ -483,9 +483,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         )->get();
 
         return $resultados->map(function ($traslado) {
-            $traslado->reservado = $traslado->cantidad - $traslado->trasladado;
-            $traslado->despachado = $traslado->trasladado;
-            $traslado->cantidad_pedida = $traslado->cantidad;
+            $traslado->reservado = (float) round($traslado->cantidad - $traslado->trasladado, 3) ?? 0;
+            $traslado->despachado = (float) round($traslado->trasladado,3);
+            $traslado->cantidad_pedida = (float) round($traslado->cantidad, 3);
             $traslado->CLI_RUC = 'TUVAL';
             $traslado->CLI_RAZON_SOCIAL = 'TUVAL';
             $traslado->tipo = 'traslado';
@@ -573,9 +573,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         )->get();
 
         return $resultados->map(function ($tr) {
-            $tr->reservado = (float) round( $tr->cantidad - $tr->trasladado, 3);
-            $tr->despachado = $tr->trasladado;
-            $tr->cantidad_pedida = $tr->cantidad;
+            $tr->reservado = (float) round( $tr->cantidad - $tr->trasladado, 3) ?? 0;
+            $tr->despachado = (float) round($tr->trasladado, 3) ?? 0;
+            $tr->cantidad_pedida = (float) round($tr->cantidad,3) ?? 0;
             $tr->CLI_RUC = 'TUVAL';
             $tr->CLI_RAZON_SOCIAL = 'TUVAL';
             $tr->tipo = 'traslado_reserva';
