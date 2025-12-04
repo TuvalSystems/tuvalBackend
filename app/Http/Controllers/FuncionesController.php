@@ -217,7 +217,10 @@ class FuncionesController extends Controller
 
         $trasladosreposicion = GpTrasladosReposicion::where('bodega_origen', $bodega)
             ->where('ART_CODIGO', $articulo)
-            ->whereNull('gp_traslados_reposicions.completado')
+             ->where(function ($q) {
+                $q->whereNull('gp_traslados_reposicions.completado')
+                    ->orWhere('gp_traslados_reposicions.completado', 0);
+            })
             ->get()->toarray();
 
         foreach ($trasladosreposicion as $res) {
