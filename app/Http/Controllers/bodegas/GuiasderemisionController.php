@@ -1184,6 +1184,22 @@ class GuiasderemisionController extends Controller
     }
 
 
+    public function consultarDetalleGuiaReservaPorId(Request $request)
+    {
+        try {
+            $id = $request->get('id');
+            return $this->successResponse('Detalle de guia obtenido', $this->reservedDeliveryNoteService->getDetailReservationDeliveryNoteById($id), 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al consultar detalle de guia reserva', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine()
+            ]);
+            return $this->buildErrorResponse('Error al consultar detalle de guia reserva', 500);
+        }
+    }
+
+
     public function verificarYAsignarAjusteGuiaDespacho($id)
     {
         try {
