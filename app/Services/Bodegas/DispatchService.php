@@ -398,6 +398,78 @@ class DispatchService implements DispatchServiceInterface
         return $query->paginate($perPage);
     }
 
+
+     public function fecthListReceivedReservations(int $perPage, ?string $search, ?string $sortBy, string $sortOrder = 'desc', ?string $ptoVtaOrigin, ?string $fecha_desde, ?string $fecha_hasta, ?string $ptoVtaDestino = null)
+    {
+        $bodOrigin = $this->getNamePtoVta($ptoVtaOrigin);
+        $bodDestino = $ptoVtaDestino !== null ? $this->getNamePtoVta($ptoVtaDestino) : null;
+        $allowedSorts = $this->allowedSortsReservations();
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'gr.created_at';
+        }
+        $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
+
+
+        $query = GpGuiaRemisionReserva::query()
+            ->from('gp_guia_remision_reservas as gr')
+            ->join('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
+            ->where('gr.estado', 'enviada')
+            ->where('gr.bodega_destino', $bodOrigin)
+
+            ->select([
+                'gr.id',
+                'gr.numero_guia',
+                'gr.bodega_origen',
+                'gr.bodega_destino',
+                'gr.razon_social_destinatario',
+                'gr.direccion_destinatario',
+                'gr.identificacion_destinatario',
+                'gr.fecha_salida',
+                'gr.razon_social_transportista',
+                'gr.direccion_partida',
+                'gr.placa',
+                'gr.created_at',
+                'gpu.USERID'
+            ]);
+
+        if ($bodDestino) {
+            $query->where('gr.bodega_origen', $bodDestino);
+        }
+
+        // Filtro por Rango de Fechas (LÓGICA AGREGADA)
+        if ($fecha_desde && $fecha_hasta) {
+            // Asumiendo que recibes 'Y-m-d', agregamos horas para cubrir el día completo
+            $query->whereBetween('gr.created_at', [
+                $fecha_desde . ' 00:00:00',
+                $fecha_hasta . ' 23:59:59'
+            ]);
+        } elseif ($fecha_desde) {
+            $query->where('gr.created_at', '>=', $fecha_desde . ' 00:00:00');
+        } elseif ($fecha_hasta) {
+            $query->where('gr.created_at', '<=', $fecha_hasta . ' 23:59:59');
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $columns = [
+                    'gr.numero_guia',
+                    'gr.bodega_origen',
+                    'gr.razon_social_transportista',
+                    'gr.placa',
+                    'gpu.USERID',
+                ];
+                foreach ($columns as $column) {
+                    $q->orWhere($column, 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+
+        return $query->paginate($perPage);
+    }
+
+
     public function allowedSortsReservations()
     {
         return [

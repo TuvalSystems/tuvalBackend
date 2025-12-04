@@ -182,6 +182,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/despachos/reposicionesEnviadas/{id}', [DespachosController::class, 'getDispatchedRepositions']);
     Route::get('/despachos/reposicionesRecibidas/{id}', [DespachosController::class, 'getReceivedRepositions']);
     Route::post('/despachos/reservas-enviadas', [DespachosController::class, 'listaGuiaReservasEnviadas']);
+    Route::post('/despachos/reservas-recibidas', [DespachosController::class, 'listaGuiaReservasRecibidas']);
 
 
 
