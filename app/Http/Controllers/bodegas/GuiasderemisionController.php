@@ -34,6 +34,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class GuiasderemisionController extends Controller
 {
@@ -571,6 +572,12 @@ class GuiasderemisionController extends Controller
             }
             return $response;
             // });
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+
         } catch (\Throwable $e) {
             Log::error('Error en despachar guia de remision (despacharguia)', [
                 'error' => $e->getMessage(),
