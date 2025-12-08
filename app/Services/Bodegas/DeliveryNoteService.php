@@ -12,6 +12,7 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpTempGuiasDespachoBlock;
 use App\Models\GpUsuario;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
@@ -19,6 +20,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -35,7 +37,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
     // protected $invoiceService;
-    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote, LogisticsOperationsServiceInterface $logisticsOperationsService, DeliveryNoteCommonServiceInterface $common,)
+    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote, LogisticsOperationsServiceInterface $logisticsOperationsService, DeliveryNoteCommonServiceInterface $common, )
     {
         // $this->invoiceService = $invoiceService;
         $this->deliveryNoteBuilder = $deliveryNoteBuilder;
@@ -226,8 +228,15 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
      *
      *   DESPACHO AJUSTE DE GUIA
      */
-   public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
+    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
     {
+        /** proceso temporal de guia de despacho  */
+        if ($this->isGUideBlockedForOrder($guia)) {
+            // $this->createTemporaryDeliveryNoteBlocksOrder($guia);
+            throw new \Exception('Guía bloqueada para despachar, guia en estado pendiente de despacho');
+        }
+
+
         if ($detalle->isEmpty()) {
             return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
         }
@@ -323,6 +332,19 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         ];
     }
 
+
+    public function isGUideBlockedForOrder($guia): bool
+    {
+        return GpPedido::where('pedido', $guia->pedido)->where('pendiente_salida', true)->exists();
+    }
+
+    public function createTemporaryDeliveryNoteBlocksOrder( $guia){
+        $new = new GpTempGuiasDespachoBlock();
+        $new->guia_id = $guia->id;
+        $new->pedido = $guia->pedido;
+        $new->user_id = Auth::user()->id;
+        $new->save();
+    }
 
     public function markGuideSentAndUpdateOrder(GpGuiaRemision $guia, $why)
     {
@@ -862,7 +884,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
     /** validar existencia de guia de transferencia */
-    public function validateExistenceTransferGuideAdjustment($guia, $params, $groupItems, $pedido) : bool
+    public function validateExistenceTransferGuideAdjustment($guia, $params, $groupItems, $pedido): bool
     {
         $cabecera = data_get($params, 'cabecera', []);
         $payloadHeader = $this->deliveryNoteBuilder->buildingTransferGuideAdjustmentPayload($cabecera);
@@ -1087,8 +1109,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
 
-    public function getSecuencialCommon($establecimiento, $ptoEmision): string{
-       return $this->common->getNextGuideSequential($establecimiento,  $ptoEmision);
+    public function getSecuencialCommon($establecimiento, $ptoEmision): string
+    {
+        return $this->common->getNextGuideSequential($establecimiento, $ptoEmision);
     }
 
 }

@@ -36,6 +36,7 @@ use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -1599,6 +1600,13 @@ class OrderService implements OrderServiceInterface
                 'gp.total',
                 'gp.origen',
                 'gp.fe_facturacion_reserva',
+                'gp.pendiente_salida',
+                'gp.factura_siguiente_mes',
+                'gp.requiere_aprobacion_comercial',
+                'gp.aprobado_comercial',
+                'gp.requiere_aprobacion_crediticia',
+                'gp.aprobado_crediticio',
+                'gp.factura_a_demanda',
             ])
             ->join('gp_cotizacions as ct', 'ct.id', '=', 'gp.cotizacion_id')
             ->where('gp.origen', 'reserva')
@@ -1623,5 +1631,20 @@ class OrderService implements OrderServiceInterface
         $query->orderBy($sortBy, $sortOrder);
 
         return $query->paginate($perPage);
+    }
+
+
+
+    /** funcion para el bloqueo de despacho de pedidos */
+
+
+    public function updateOrderAndBlockDispach($id, $pendingDispach)
+    {
+        $order = GpPedido::find($id);
+        $order->pendiente_salida = $pendingDispach;
+        $order->user_block_id = Auth::user()->id;
+        $order->fecha_bloqueo = Carbon::now()->format('Y-m-d H:i:s');
+        $order->save();
+        return $order;
     }
 }

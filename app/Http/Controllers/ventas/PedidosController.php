@@ -1377,4 +1377,19 @@ class PedidosController extends Controller
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
+
+    public function actualizarBloqueoPendienteDespacho(Request $request)
+    {
+
+        try {
+            $id = $request->input('id');
+            $pendingDispach = $request->input('pendiente_salida');
+            $order = $this->orderService->updateOrderAndBlockDispach($id, $pendingDispach);
+            return $this->successResponse('Bloque actualizado correctamente', $order, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
+    }
 }
