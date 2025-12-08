@@ -232,8 +232,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
         /** proceso temporal de guia de despacho  */
         if ($this->isGUideBlockedForOrder($guia)) {
-            // $this->createTemporaryDeliveryNoteBlocksOrder($guia);
-            throw new \Exception('Guía bloqueada para despachar, guia en estado pendiente de despacho');
+            throw new \Exception('La guía de despacho se encuentra bloqueada para el pedido ' . $guia->pedido);
         }
 
 
