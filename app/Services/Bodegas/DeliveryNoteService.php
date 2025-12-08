@@ -232,7 +232,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
         /** proceso temporal de guia de despacho  */
         if ($this->isGUideBlockedForOrder($guia)) {
-            throw new \Exception('La guía de despacho se encuentra bloqueada para el pedido ' . $guia->pedido);
+            abort(422, 'La guía de despacho se encuentra bloqueada para el pedido ' . $guia->pedido);
         }
 
 
