@@ -41,7 +41,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class PedidosController extends Controller
 {
@@ -286,8 +286,21 @@ class PedidosController extends Controller
 
     public function consultarexistente(Request $request)
     {
-        $data = $request->all();
-        return $this->orderService->checkExistence($data);
+        try {
+            $data = $request->all();
+            $pedido = $this->orderService->checkExistence($data);
+            return $this->successResponse('Existencia Obtenida Correctamente', $pedido, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            Log::error('Error en checkExistence', ['exception' => $e]);
+
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+
     }
 
     public function facturarexistente(Request $request)

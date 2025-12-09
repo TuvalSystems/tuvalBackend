@@ -1130,99 +1130,91 @@ class OrderService implements OrderServiceInterface
 
     public function checkExistence($data)
     {
-        try {
-            $subtotal = 0.0;
-            $totalDiscount = 0.0;
-            $netSubtotal = 0.0;
-            $totalIva = 0.0;
 
-            $detailOrder = $this->orderRepository->getAllDetailsOrderById($data['id']);
-            $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
-            $impVtaByCodigo = GpArticulo::query()
-                ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
-                ->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        $subtotal = 0.0;
+        $totalDiscount = 0.0;
+        $netSubtotal = 0.0;
+        $totalIva = 0.0;
+        $orderId = data_get($data, 'id');
+        $checkOrder = GpPedido::where('id', $orderId)->whereNotNull('factura')
+        ->where('factura', '!=', '')->exists();
+        if ($checkOrder) {
+            abort(409, 'El pedido ya se encuentra facturado');
+        }
+        $detailOrder = $this->orderRepository->getAllDetailsOrderById($orderId);
+        $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
+        $impVtaByCodigo = GpArticulo::query()
+            ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
+            ->pluck('ART_IMP_VTA', 'ART_CODIGO');
 
-            $processed = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks, &$subtotal, &$totalDiscount, &$netSubtotal, &$totalIva) {
-                $stock = $stocks->get($item->id);
+        $processed = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks, &$subtotal, &$totalDiscount, &$netSubtotal, &$totalIva) {
+            $stock = $stocks->get($item->id);
+            $cantidad = 0;
+
+            if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
+                $cantidad = $stock->seleccionado;
+            }
+            if ($item->ART_TIPO_COMPRA == 'SERV') {
+                $cantidad = $item->ART_CANTIDAD;
+            }
+            $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
+
+            $validProviders = [];
+            if ($providers['proveedores']->isNotEmpty()) {
                 $cantidad = 0;
-
-                if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
-                    $cantidad = $stock->seleccionado;
-                }
-                if ($item->ART_TIPO_COMPRA == 'SERV') {
-                    $cantidad = $item->ART_CANTIDAD;
-                }
-                $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
-
-                $validProviders = [];
-                if ($providers['proveedores']->isNotEmpty()) {
-                    $cantidad = 0;
-                    foreach ($providers['proveedores'] as $prov) {
-                        $diff = $prov->ingresado - $prov->ejecutado;
-                        if ($prov->ingresado > 0) {
-                            $cantidad += $diff;
-                            $validProviders[] = $prov;
-                        }
+                foreach ($providers['proveedores'] as $prov) {
+                    $diff = $prov->ingresado - $prov->ejecutado;
+                    if ($prov->ingresado > 0) {
+                        $cantidad += $diff;
+                        $validProviders[] = $prov;
                     }
                 }
+            }
 
-                if ($cantidad <= 0) {
-                    return null;
-                }
+            if ($cantidad <= 0) {
+                return null;
+            }
 
-                $item->stocks = $stock;
-                $item->proveedores = $validProviders;
+            $item->stocks = $stock;
+            $item->proveedores = $validProviders;
 
-                //CALCULOS
-                $valorUnitario = (float) $item->ART_VALOR;
-                $item->ART_CANTIDAD = (float) $cantidad;
-                $descuentoUnitario = (float) $item->ART_DESCUENTO;
+            //CALCULOS
+            $valorUnitario = (float) $item->ART_VALOR;
+            $item->ART_CANTIDAD = (float) $cantidad;
+            $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-                $lineaSubtotal = $valorUnitario * (float) $cantidad;
-                $lineaDiscount = $descuentoUnitario * (float) $cantidad;
-                $lineNet = round(($valorUnitario - $descuentoUnitario) * (float) $cantidad, 2);
-                $impuestoPorcentaje = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
-                $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
+            $lineaSubtotal = $valorUnitario * (float) $cantidad;
+            $lineaDiscount = $descuentoUnitario * (float) $cantidad;
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * (float) $cantidad, 2);
+            $impuestoPorcentaje = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
+            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
 
-                // calculos monetarios
-                $subtotal += $lineaSubtotal;
-                $totalDiscount += $lineaDiscount;
-                $netSubtotal += $lineNet;
-                $totalIva += $lineaIva;
+            // calculos monetarios
+            $subtotal += $lineaSubtotal;
+            $totalDiscount += $lineaDiscount;
+            $netSubtotal += $lineNet;
+            $totalIva += $lineaIva;
 
-                $item->subtotal = $lineaSubtotal;
-                $item->ART_IMP_VTA = $impuestoPorcentaje;
-                $item->ART_IVA = round($lineaIva, 2);
-                return $item;
-            })
-                ->filter()
-                ->values();
-            $total = round($netSubtotal + $totalIva, 3);
-            $data['subtotal'] = round($subtotal, 3);
-            $data['descuento'] = round($totalDiscount, 3);
-            $data['subtotalmenosdescuento'] = round($netSubtotal, 3);
-            $data['iva'] = round($totalIva, 3);
+            $item->subtotal = $lineaSubtotal;
+            $item->ART_IMP_VTA = $impuestoPorcentaje;
+            $item->ART_IVA = round($lineaIva, 2);
+            return $item;
+        })
+            ->filter()
+            ->values();
+        $total = round($netSubtotal + $totalIva, 3);
+        $data['subtotal'] = round($subtotal, 3);
+        $data['descuento'] = round($totalDiscount, 3);
+        $data['subtotalmenosdescuento'] = round($netSubtotal, 3);
+        $data['iva'] = round($totalIva, 3);
 
-            $data['total'] = $total;
+        $data['total'] = $total;
 
 
-            $facturarExistente = [];
-            $facturarExistente['pedido'] = $data;
-            $facturarExistente['detalle'] = $processed;
-
-            return response([
-                'success' => true,
-                'facturar_existente' => $facturarExistente,
-            ]);
-        } catch (\Throwable $e) {
-            // Log interno
-            Log::error('Error en checkExistence', ['exception' => $e]);
-            // Respuesta genérica
-            return response()->json([
-                'success' => false,
-                'message' => 'Ocurrió un error al comprobar la existencia.'
-            ], 500);
-        }
+        $facturarExistente = [];
+        $facturarExistente['pedido'] = $data;
+        $facturarExistente['detalle'] = $processed;
+        return $facturarExistente;
     }
 
 
