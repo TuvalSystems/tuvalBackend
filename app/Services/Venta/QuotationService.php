@@ -452,12 +452,12 @@ class QuotationService implements QuotationServiceInterface
 
         foreach ($detalle as $item) {
             $clave = $item['ART_IMP_VTA'];
-            $subtotal = round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
-            $iva = round($item['ART_IVA'], 2);
+            $subtotal = $item['ART_VALOR'] * $item['ART_CANTIDAD'];
+            $iva = round($item['ART_IVA'], 4);
 
             $peso += $item['ART_PESO'] * $item['ART_CANTIDAD'];
 
-            $tipoImpuesto[$clave] = ($tipoImpuesto[$clave] ?? 0) + $subtotal;
+            $tipoImpuesto[$clave] = round(($tipoImpuesto[$clave] ?? 0) + $subtotal, 2);
             $sumaImpuesto[$clave] = ($sumaImpuesto[$clave] ?? 0) + $iva;
         }
 
@@ -601,29 +601,26 @@ class QuotationService implements QuotationServiceInterface
 
     public function detailQuotation($data)
     {
-        try {
-            $estadoCuenta = [
-                'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
-            ];
-            $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
 
-            $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
+        $estadoCuenta = [
+            'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
+        ];
+        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
 
-            foreach ($detalle as $det) {
-                $this->castDecimalValuesTemp($det);
-                $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
-                $this->calculatePorcentilDiscountAndPrice($det);
-            }
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-            return response([
-                'success' => true,
-                'estadodecuenta' => $estadoCuenta,
-                'detalle' => $detalle,
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
+        $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
+
+        foreach ($detalle as $det) {
+            $this->castDecimalValuesTemp($det);
+            $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
+            $this->calculatePorcentilDiscountAndPrice($det);
         }
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        return [
+            'estadodecuenta' => $estadoCuenta,
+            'detalle' => $detalle,
+            'segmento' => $segmento
+        ];
+
     }
 
 

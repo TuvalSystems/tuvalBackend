@@ -125,22 +125,6 @@ class ApprovalService implements ApprovalServiceInterface
 
         if ($quoteOrigin) {
 
-            // 0. VALIDACIÓN DE ESTADO PREVIO (Persistencia)
-            // Si la cotización guardada YA requiere aprobación y NO ha sido aprobada aún,
-            // forzamos la aprobación de nuevo. Esto evita que al "Guardar" y "Recuperar" se salte el check.
-            if ($quoteOrigin->requiere_aprobacion_comercial === 'yes' && $quoteOrigin->aprobado_comercial !== 'yes') {
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-                    "La cotización recuperada se encuentra pendiente de aprobación previa (ID: $quoteId)."
-                );
-            }
-
-            // 3. Validación Descuento General (Comparación de Valores)
-            // Ahora comparamos valores. Incluso si son iguales (20% vs 20%),
-            // el bloque de arriba (0) ya habrá atrapado la solicitud.
-            $pctDescuentoRef = (float) $quoteOrigin->porcentage_descuento;  // no la uso por ahora porque cuando se
-            $pctDescuentoOriginalRef = (float) $quoteOrigin->porcentage_descuentooriginal;  // no la uso por ahora porque cuando se
-            //recupera la cotizacion y se cambia la forma de pago se cambia el porcentaje tanto de porcentaje descuento como original
-
             // Nota: Mantenemos el != si quieres que sea estricto, o > si quieres que sea solo por pérdida
             if ((float) $data['porcentage_descuento'] != (float) $data['porcentage_descuentooriginal'] && (float) $data['porcentage_descuento'] != (float) $dsctGlobalCliente) {
                 $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
@@ -214,8 +198,6 @@ class ApprovalService implements ApprovalServiceInterface
                 $excesoPct = 0;
                 $valorOriginal = (float) $refValor;
                 $porcMaxSubida = (float) $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
-                // $factor = 1 + ($porcMaxSubida / 100);
-                // $precioLimite = $valorOriginal * $factor;
                 $precioLimite = $valorOriginal * (1 + ($porcMaxSubida / 100));
                 $precioActual = (float) $detalle['ART_VALOR'];
 
