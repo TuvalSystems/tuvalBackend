@@ -108,11 +108,15 @@ class FunctionsService implements FunctionsServiceInterface
             $cantidad = (float) $item->ART_CANTIDAD;
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-            $lineaSubtotal = $valorUnitario * $cantidad;
-            $lineaDiscount = $descuentoUnitario * $cantidad;
+
             $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;
@@ -120,16 +124,15 @@ class FunctionsService implements FunctionsServiceInterface
             $totalIva += $lineaIva;
 
             $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = round($lineaIva, 2);
+            $item->ART_IVA = $lineaIva;
             $item->save();
         }
-        $total = $netSubtotal + $totalIva;
 
         $order->subtotal = round($subtotal, 2);
         $order->descuento = round($totalDiscount, 2);
         $order->subtotalmenosdescuento = round($netSubtotal, 2);
         $order->iva = round($totalIva, 2);
-        $order->total = round($total, 2);
+        $order->total = round($netSubtotal + $totalIva, 2);
         $order->save();
     }
 
@@ -180,7 +183,7 @@ class FunctionsService implements FunctionsServiceInterface
     }
 
 
-    public function getClientCheckAvailableQuota(String $ruc)
+    public function getClientCheckAvailableQuota(string $ruc)
     {
         $response = $this->apiBillingService->consultCheckAvailableQuotaClient([
             'ruc' => $ruc,
@@ -208,7 +211,7 @@ class FunctionsService implements FunctionsServiceInterface
         return $response['data'] ?? [];
     }
 
-      public function getListClientDocumentExpired($ruc)
+    public function getListClientDocumentExpired($ruc)
     {
         $response = $this->apiBillingService->consultListDocumentExpiredClient([
             'ruc' => $ruc,
@@ -263,7 +266,7 @@ class FunctionsService implements FunctionsServiceInterface
 
     /** function remplazo de stTempCartForm */
 
-    public function setCartFormQuotation($quotationDetails, $data, $user,$type)
+    public function setCartFormQuotation($quotationDetails, $data, $user, $type)
     {
         $this->clearExistCart($data['sucursal_id'], $data['cliente_id'], $data['PTO_VTA_ID']);
         foreach ($quotationDetails as $i => $item) {
@@ -325,7 +328,7 @@ class FunctionsService implements FunctionsServiceInterface
             return;
         }
 
-        foreach ($providers as  $prov) {
+        foreach ($providers as $prov) {
             GpTempCartProveedores::create([
                 'id_tempcart' => $cartId,
                 'ID_PROVEEDOR' => $prov->ID_PROVEEDOR,
@@ -386,7 +389,7 @@ class FunctionsService implements FunctionsServiceInterface
     }
 
 
-     public function like_match($pattern, $subject)
+    public function like_match($pattern, $subject)
     {
         $pattern = str_replace('%', '.*', preg_quote($pattern, '/'));
         return (bool) preg_match("/^{$pattern}$/i", $subject);
