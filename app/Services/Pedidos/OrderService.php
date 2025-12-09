@@ -41,6 +41,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+use function PHPUnit\Framework\isEmpty;
+
 class OrderService implements OrderServiceInterface
 {
     use JsonResponseTrait;
@@ -678,21 +680,18 @@ class OrderService implements OrderServiceInterface
 
     public function generateInvoiceOrder($orderId)
     {
-        try {
-            DB::beginTransaction();
-            $order = $this->getOrderOrFail($orderId);
-            if ($order->origen === 'reserva') {
-                $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
-                $order->save();
-            }
-            $this->recalculateAndSendInvoice($order);
-            DB::commit();
-            Log::info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
-            return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return $this->buildErrorResponse($th->getMessage(), 500);
+
+        $order = $this->getOrderOrFail($orderId);
+        if (!empty($order->factura)) {
+            abort(409, 'El pedido ya se encuentra facturado');
         }
+        if ($order->origen === 'reserva') {
+            $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
+            $order->save();
+        }
+        $this->recalculateAndSendInvoice($order);
+        return $order;
+
     }
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
@@ -718,7 +717,7 @@ class OrderService implements OrderServiceInterface
     {
         $order = GpPedido::find($orderId);
         if (!$order) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            abort(404, 'Pedido no encontrado');
         }
         return $order;
     }
@@ -1137,7 +1136,7 @@ class OrderService implements OrderServiceInterface
         $totalIva = 0.0;
         $orderId = data_get($data, 'id');
         $checkOrder = GpPedido::where('id', $orderId)->whereNotNull('factura')
-        ->where('factura', '!=', '')->exists();
+            ->where('factura', '!=', '')->exists();
         if ($checkOrder) {
             abort(409, 'El pedido ya se encuentra facturado');
         }

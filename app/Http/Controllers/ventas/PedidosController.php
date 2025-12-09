@@ -126,7 +126,20 @@ class PedidosController extends Controller
         $data = $request->validate([
             'id' => 'required',
         ]);
-        return $this->orderService->generateInvoiceOrder($data['id']);
+        try {
+            $order = DB::transaction(function () use ($data) {
+                return $this->orderService->generateInvoiceOrder($data['id']);
+            });
+            Log::info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
+            return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
     }
 
     public function facturarpedidoTest($codPedido)
