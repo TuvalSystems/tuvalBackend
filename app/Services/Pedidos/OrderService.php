@@ -1219,6 +1219,13 @@ class OrderService implements OrderServiceInterface
 
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
+
+        $checkOrder = GpPedido::where('id', $data['id'])->whereNotNull('factura')
+            ->where('factura', '!=', '')->exists();
+        if ($checkOrder) {
+            abort(409, 'El pedido ya se encuentra facturado');
+        }
+
         $deteleArticle = [];
         $detailIdsWithLOrSERV = GpPedidoDetalle::where('pedido_id', $data['id'])
             ->whereIn('ART_TIPO_COMPRA', ['SERV', 'L'])

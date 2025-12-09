@@ -327,6 +327,11 @@ class PedidosController extends Controller
                 return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
             });
             return $this->buildSuccessResponse('Pedido Generado Correctamente' . ' ' . $pedido->pedido . ' ' . ' en Facturar Existente', 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
         } catch (\Throwable $e) {
             Log::error('Error in facturarexistente', [
                 'error' => $e->getMessage(),
