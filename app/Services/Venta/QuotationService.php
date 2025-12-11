@@ -972,6 +972,7 @@ class QuotationService implements QuotationServiceInterface
             Log::error('Error in storeQuotation (Guardar cotización)', [
                 'error' => $th->getMessage(),
                 'linea' => $th->getLine(),
+                'file' => $th->getFile(),
             ]);
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
