@@ -323,9 +323,16 @@ class PedidosController extends Controller
             $data = $facturarExistente['pedido'];
             $detalle = $facturarExistente['detalle'];
             $user = Auth::user();
-            $pedido = DB::transaction(function () use ($data, $detalle, $user) {
-                return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
-            });
+            //new sintaxis
+            $pedido = DB::transaction(
+                fn() =>
+                $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user)
+            );
+            // $pedido = DB::transaction(function () use ($data, $detalle, $user) {
+            //     return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
+            // });
+
+            //old sintaxis
             return $this->buildSuccessResponse('Pedido Generado Correctamente' . ' ' . $pedido->pedido . ' ' . ' en Facturar Existente', 200);
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
@@ -337,7 +344,8 @@ class PedidosController extends Controller
                 'error' => $e->getMessage(),
                 'data' => $data['id'],
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
+                'trace' => $e->getTrace()
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
