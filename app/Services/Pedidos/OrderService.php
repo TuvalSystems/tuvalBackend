@@ -739,7 +739,8 @@ class OrderService implements OrderServiceInterface
     public function getOrderExistenceByQuotation($orderId): bool
     {
         $oldOrder = GpPedido::findOrFail($orderId);
-        $orders = GpPedido::Where('cotizacion_id', $oldOrder->cotizacion_id)->where('pedido_origen', $oldOrder->pedido)
+        $orders = GpPedido::Where('cotizacion_id', $oldOrder->cotizacion_id)
+        ->where('pedido_origen', $oldOrder->pedido)
             ->whereNotNull('factura')->where('factura', '!=', '')->exists();
 
         return (bool) $orders;
