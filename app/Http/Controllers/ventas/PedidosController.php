@@ -336,6 +336,8 @@ class PedidosController extends Controller
             Log::error('Error in facturarexistente', [
                 'error' => $e->getMessage(),
                 'data' => $data['id'],
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }

@@ -740,7 +740,7 @@ class OrderService implements OrderServiceInterface
     {
         $oldOrder = GpPedido::findOrFail($orderId);
         $orders = GpPedido::Where('cotizacion_id', $oldOrder->cotizacion_id)
-        ->where('pedido_origen', $oldOrder->pedido)
+            ->where('pedido_origen', $oldOrder->pedido)
             ->whereNotNull('factura')->where('factura', '!=', '')->exists();
 
         return (bool) $orders;
@@ -1159,10 +1159,8 @@ class OrderService implements OrderServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
         $orderId = data_get($data, 'id');
-        $hasInvoicedChildren = $this->getOrderExistenceByQuotation($orderId);
-        if ($hasInvoicedChildren) {
-            abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
-        }
+
+
         $detailOrder = $this->orderRepository->getAllDetailsOrderById($orderId);
         $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
         $impVtaByCodigo = GpArticulo::query()
@@ -1244,10 +1242,44 @@ class OrderService implements OrderServiceInterface
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
 
-        $hasInvoicedChildren = $this->getOrderExistenceByQuotation($data['id']);
-        if ($hasInvoicedChildren) {
-            abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
+        // $hasInvoicedChildren = $this->getOrderExistenceByQuotation($data['id']);
+        // if ($hasInvoicedChildren) {
+        //     abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
+        // }
+
+        //Bloqueo de permisos
+        $parentOder = GpPedido::where('id', $data['id'])->lockForUpdate()->firstOrFail();
+        $detailsCheck = GpPedidoDetalle::where('pedido_id', $parentOder->id)->lockForUpdate()->get()->keyBy('id');
+        $stocksCheck = GpPedidoDetalleStock::where('pedido_id', $parentOder->id)->lockForUpdate()->get()->keyBy('id');
+        //validacion de stock y detalle del pedido para nuevos pedidos
+        foreach ($detalle as $item) {
+            $itemBase = $detailsCheck->get($item['id']);
+            if (!$itemBase) {
+                abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado o eliminado por otro usuario. Por favor recarga la página.");
+            }
+
+            if ($itemBase->ART_CANTIDAD < $item['ART_CANTIDAD']) {
+                abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado en otro pedido. Por favor recarga la página.");
+            }
+
+            if ($item['ART_TIPO_COMPRA'] != 'SERV' && $item['ART_TIPO_COMPRA'] != 'L') {
+                $st = data_get($item, 'stocks');
+                if (empty($st)) {
+                    abort(409, "Error de validación de stock para {$item['ART_CODIGO']}. Recarga la página.");
+                }
+
+                $stockBase = $stocksCheck->get($st['id']);
+                if (!$stockBase) {
+                    abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado. Por favor recarga la página.");
+                }
+
+                if ($st['seleccionado'] > $stockBase->seleccionado) {
+                    abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado en otro pedido. Por favor recarga la página.");
+                }
+
+            }
         }
+
 
         $deteleArticle = [];
         $detailIdsWithLOrSERV = GpPedidoDetalle::where('pedido_id', $data['id'])
