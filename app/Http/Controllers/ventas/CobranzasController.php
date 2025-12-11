@@ -499,7 +499,7 @@ class CobranzasController extends Controller
 
         $this->enviarcobro($deposito->cobro_id);
 
-        $cobro = GpCobro::where('id', $$deposito->cobro_id)->first();
+        $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
         $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
         $cobro->user_aprobador_id = $gpUser->id;
         $cobro->save();
@@ -557,6 +557,11 @@ class CobranzasController extends Controller
         }
 
         $gpUser = GpUsuario::where('id', $dato->user_id)->first();
+        $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
+        $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $cobro->user_aprobador_id = $gpUser->id;
+        $cobro->save();
+
         if ($gpUser) {
             $gpUser->notify(new UserNotification('Depósito/Transferencia rechazado', $mensaje));
         }
