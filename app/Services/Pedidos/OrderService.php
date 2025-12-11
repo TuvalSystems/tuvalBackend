@@ -1149,7 +1149,7 @@ class OrderService implements OrderServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
         $orderId = data_get($data, 'id');
-        $checkOrder = $this->getOrderOrFail($data['id']);
+        $checkOrder = $this->getOrderOrFail($orderId);
         if (!empty($checkOrder->factura)) {
             abort(409, 'El pedido ya se encuentra facturado');
         }
