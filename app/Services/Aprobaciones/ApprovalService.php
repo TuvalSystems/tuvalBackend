@@ -172,10 +172,10 @@ class ApprovalService implements ApprovalServiceInterface
 
 
             // 2. Descripción de Referencia
-            $refDescripcion = data_get($detailOrigin, 'ART_DESCRIPCION_ORIGINAL');
+            $refDescripcion = data_get($detalle, 'ART_DESCRIPCION_ORIGINAL');
 
             // 3. Valor de Referencia
-            $refValor = data_get($detailOrigin, 'ART_VALOR_ORIGINAL');
+            $refValor = data_get($detalle, 'ART_VALOR_ORIGINAL');
 
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
                 $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
