@@ -729,11 +729,20 @@ class OrderService implements OrderServiceInterface
 
     public function getOrderOrFail($orderId)
     {
-        $order = GpPedido::find($orderId);
+        $order = GpPedido::findOrFail($orderId);
         if (!$order) {
             abort(404, 'Pedido no encontrado');
         }
         return $order;
+    }
+
+    public function getOrderExistenceByQuotation($orderId): bool
+    {
+        $oldOrder = GpPedido::findOrFail($orderId);
+        $orders = GpPedido::Where('cotizacion_id', $oldOrder->cotizacion_id)->where('pedido_origen', $oldOrder->pedido)
+            ->whereNotNull('factura')->where('factura', '!=', '')->exists();
+
+        return (bool) $orders;
     }
 
     public function recalculateAndSendInvoice($order)
@@ -1149,9 +1158,9 @@ class OrderService implements OrderServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
         $orderId = data_get($data, 'id');
-        $checkOrder = $this->getOrderOrFail($orderId);
-        if (!empty($checkOrder->factura)) {
-            abort(409, 'El pedido ya se encuentra facturado');
+        $hasInvoicedChildren = $this->getOrderExistenceByQuotation($orderId);
+        if ($hasInvoicedChildren) {
+            abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
         }
         $detailOrder = $this->orderRepository->getAllDetailsOrderById($orderId);
         $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
@@ -1234,9 +1243,9 @@ class OrderService implements OrderServiceInterface
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
 
-        $checkOrder = $this->getOrderOrFail($data['id']);
-        if (!empty($checkOrder->factura)) {
-            abort(409, 'El pedido ya se encuentra facturado');
+        $hasInvoicedChildren = $this->getOrderExistenceByQuotation($data['id']);
+        if ($hasInvoicedChildren) {
+            abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
         }
 
         $deteleArticle = [];
