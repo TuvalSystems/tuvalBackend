@@ -1149,9 +1149,8 @@ class OrderService implements OrderServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
         $orderId = data_get($data, 'id');
-        $checkOrder = GpPedido::where('id', $orderId)->whereNotNull('factura')
-            ->where('factura', '!=', '')->exists();
-        if ($checkOrder) {
+        $checkOrder = $this->getOrderOrFail($data['id']);
+        if (!empty($checkOrder->factura)) {
             abort(409, 'El pedido ya se encuentra facturado');
         }
         $detailOrder = $this->orderRepository->getAllDetailsOrderById($orderId);
@@ -1235,9 +1234,8 @@ class OrderService implements OrderServiceInterface
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
 
-        $checkOrder = GpPedido::where('id', $data['id'])->whereNotNull('factura')
-            ->where('factura', '!=', '')->exists();
-        if ($checkOrder) {
+        $checkOrder = $this->getOrderOrFail($data['id']);
+        if (!empty($checkOrder->factura)) {
             abort(409, 'El pedido ya se encuentra facturado');
         }
 
