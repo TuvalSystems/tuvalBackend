@@ -172,10 +172,10 @@ class ApprovalService implements ApprovalServiceInterface
 
 
             // 2. Descripción de Referencia
-            $refDescripcion = $detailOrigin ? $detailOrigin->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
+            $refDescripcion = data_get($detailOrigin, 'ART_DESCRIPCION_ORIGINAL');
 
             // 3. Valor de Referencia
-            $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
+            $refValor = data_get($detailOrigin, 'ART_VALOR_ORIGINAL');
 
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
                 $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
@@ -189,7 +189,7 @@ class ApprovalService implements ApprovalServiceInterface
                     $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva...' vs Original: '$descRef...'");
                 }
 
-                if ($detalle['ART_VALOR'] != (float) $refValor) {
+                if ($detalle['ART_VALOR'] != (float) $refValor ) {
                     $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $refValor");
                 }
 
