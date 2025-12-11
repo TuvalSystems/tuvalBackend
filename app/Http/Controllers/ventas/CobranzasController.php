@@ -499,6 +499,10 @@ class CobranzasController extends Controller
 
         $this->enviarcobro($deposito->cobro_id);
 
+        $cobro = GpCobro::where('id', $$deposito->cobro_id)->first();
+        $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $cobro->user_aprobador_id = $gpUser->id;
+        $cobro->save();
         $dato = GpCobrosDeposito::where('gp_cobros_depositos.id', $request->id)
             ->join('gp_cobros', 'gp_cobros.id', '=', 'gp_cobros_depositos.cobro_id')
             ->join('gp_caja_bancos', 'gp_caja_bancos.CB_ID', '=', 'gp_cobros_depositos.banco')
@@ -1094,11 +1098,8 @@ class CobranzasController extends Controller
                 }
             }
         }
-        $user = Auth::user();
-        $gpUser = GpUsuario::find($user->id);
+
         $cobro->alerta = ($alerta);
-        $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
-        $cobro->user_aprobador_id = $gpUser->id;
         $cobro->save();
 
         $this->checkcobrosenviados();
