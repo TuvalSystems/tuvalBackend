@@ -1592,22 +1592,21 @@ class OrderService implements OrderServiceInterface
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote)
     {
-        $ord = trim($newOrd ?? '');
-        $note = trim($newNote ?? '');
-        $Order = GpPedido::find($id);
-        if (!$Order) {
-            throw new \Exception('El pedido no existe');
+        $order = GpPedido::findOrFail($id);
+        $inputs = [
+            'orden_de_compra' => $newOrd,
+            'nota_cliente' => $newNote
+        ];
+
+        $updates = collect($inputs)
+            ->map(fn($value) => trim((string) $value))
+            ->filter(fn($value) => strlen($value) > 0)
+            ->all();
+
+        if (!empty($updates)) {
+            $order->update($updates);
         }
-        if ($ord !== '') {
-            $Order->orden_de_compra = $ord;
-        }
-        if ($note !== '') {
-            $Order->nota_cliente = $note;
-        }
-        if ($Order->isDirty()) {
-            $Order->save();
-        }
-        return $Order;
+        return $order;
     }
 
     public function updateOrderReservationDate(int $id, string $newDate)
