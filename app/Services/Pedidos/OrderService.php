@@ -1592,14 +1592,14 @@ class OrderService implements OrderServiceInterface
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, string $newOrd, string $newNote)
     {
-        $ord = is_null($newOrd) ? '' : trim($newOrd);
-        $note = is_null($newNote) ? '' : trim($newNote);
+        $ord = trim($newOrd ?? '');
+        $note = trim($newNote ?? '');
         $Order = GpPedido::find($id);
         if (!$ord) {
             throw new \Exception('El pedido no existe');
         }
-        $Order->orden_de_compra = $ord;
-        $Order->nota_cliente = $note;
+        $Order->orden_de_compra = $ord ?? '';
+        $Order->nota_cliente = $note ?? '';
         $Order->save();
         return $Order;
     }

@@ -1360,8 +1360,8 @@ class PedidosController extends Controller
     public function actualizarOrdenCompraYNotaCliente(Request $request)
     {
         $id = $request->input('id');
-        $newOrd = $request->input('orden_de_compra');
-        $newNote = $request->input('nota_cliente');
+        $newOrd = $request->input('orden_de_compra' ?? '');
+        $newNote = $request->input('nota_cliente' ?? '');
         try {
             $data = $this->orderService->syncPurchaseOrderAndNoteByOrder($id, $newOrd, $newNote);
             return $this->successResponse('Datos actualizados Correctamente', $data, 200);
