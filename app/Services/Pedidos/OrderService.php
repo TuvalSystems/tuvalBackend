@@ -1590,7 +1590,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function syncPurchaseOrderAndNoteByOrder(int $id, string $newOrd, string $newNote)
+    public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote)
     {
         $ord = trim($newOrd ?? '');
         $note = trim($newNote ?? '');
