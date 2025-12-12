@@ -1598,9 +1598,15 @@ class OrderService implements OrderServiceInterface
         if (!$ord) {
             throw new \Exception('El pedido no existe');
         }
-        $Order->orden_de_compra = $ord ?? '';
-        $Order->nota_cliente = $note ?? '';
-        $Order->save();
+        if ($ord !== '') {
+            $Order->orden_de_compra = $ord ?? '';
+        }
+        if ($note !== '') {
+            $Order->nota_cliente = $note ?? '';
+        }
+        if ($Order->isDirty()) {
+            $Order->save();
+        }
         return $Order;
     }
 
