@@ -1642,7 +1642,7 @@ class OrderService implements OrderServiceInterface
                 'gp.id',
                 'gp.pedido',
                 'ct.id as cotizacion_id',
-                'ct.BOD_BODEGA',
+                'ct.PTO_VTA_DESCRIPCION AS pto_vta',
                 'ct.cotizacion as nro_cotizacion',
                 'gp.factura',
                 'gp.estado',
