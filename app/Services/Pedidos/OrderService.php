@@ -1595,7 +1595,7 @@ class OrderService implements OrderServiceInterface
         $ord = trim($newOrd ?? '');
         $note = trim($newNote ?? '');
         $Order = GpPedido::find($id);
-        if (!$ord) {
+        if (!$Order) {
             throw new \Exception('El pedido no existe');
         }
         if ($ord !== '') {
