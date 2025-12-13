@@ -103,20 +103,21 @@ class FunctionsService implements FunctionsServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
 
+         $subtotal = 0.0;
+        $totalDiscount = 0.0;
+        $netSubtotal = 0.0;
+        $totalIva = 0.0;
+
         foreach ($detalle as $item) {
             $valorUnitario = (float) $item->ART_VALOR;
             $cantidad = (float) $item->ART_CANTIDAD;
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaSubtotal = $valorUnitario * $cantidad;
             $lineaDiscount = $descuentoUnitario * $cantidad;
-
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
-
+            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;
@@ -124,15 +125,16 @@ class FunctionsService implements FunctionsServiceInterface
             $totalIva += $lineaIva;
 
             $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = $lineaIva;
+            $item->ART_IVA = round($lineaIva, 2);
             $item->save();
         }
+        $total = $netSubtotal + $totalIva;
 
         $order->subtotal = round($subtotal, 2);
         $order->descuento = round($totalDiscount, 2);
         $order->subtotalmenosdescuento = round($netSubtotal, 2);
         $order->iva = round($totalIva, 2);
-        $order->total = round($netSubtotal + $totalIva, 2);
+        $order->total = round($total, 2);
         $order->save();
     }
 

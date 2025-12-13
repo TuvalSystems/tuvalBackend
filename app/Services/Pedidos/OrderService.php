@@ -123,40 +123,26 @@ class OrderService implements OrderServiceInterface
             $pedido['estado'] === 'eliminado';
     }
 
-    public function buildOrderDetail(array $pedido)
+     public function buildOrderDetail(array $pedido)
     {
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->toarray();
-        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
-
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
 
         foreach ($detalle as &$item) {
-            $valorUnitario = $item['ART_VALOR'];
-            $cantidad = $item['ART_CANTIDAD'];
-            $descuentoUnitario = $item['ART_DESCUENTO'];
-            $impuestoPorcentaje = (float) $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
 
-            //calculo del peso
             $pesoItem = $item['ART_PESO'] * $item['ART_CANTIDAD'];
-            $item['ART_PESO_TOTAL'] = round($pesoItem, 2);
+            $item['ART_PESO_TOTAL'] = number_format($pesoItem, 2, '.', '');
             $peso += $pesoItem;
-
-
             $type = strtoupper(trim((string) ($item['ART_TIPO_COMPRA'] ?? '')));
             $item['compartimiento'] = match ($type) {
                 '', 'L', 'SERV' => '',
                 default => $this->getCompartimento($item['ART_CODIGO'] ?? null, $pedido['BOD_BODEGA'] ?? null),
             };
-
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
-
-            $tipoImpuesto[$impuestoPorcentaje] = ($tipoImpuesto[$impuestoPorcentaje] ?? 0) + $lineaSubtotal;
-            $sumaImpuesto[$impuestoPorcentaje] = ($sumaImpuesto[$impuestoPorcentaje] ?? 0) + $lineaIva;
+            $impKey = $item['ART_IMP_VTA'];
+            $tipoImpuesto[$impKey] = ($tipoImpuesto[$impKey] ?? 0) + round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
+            $sumaImpuesto[$impKey] = ($sumaImpuesto[$impKey] ?? 0) + round($item['ART_IVA'], 2);
             if (!empty($item['ART_CODIGO_TRES_LETRAS'])) {
                 $item['imagenes'] = $this->getImagenes($item['ART_CODIGO_TRES_LETRAS']);
             } else {
@@ -1195,6 +1181,7 @@ class OrderService implements OrderServiceInterface
                 return null;
             }
 
+
             $item->stocks = $stock;
             $item->proveedores = $validProviders;
 
@@ -1203,13 +1190,11 @@ class OrderService implements OrderServiceInterface
             $item->ART_CANTIDAD = (float) $cantidad;
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-
-            $impuestoPorcentaje = (float) $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+            $lineaSubtotal = $valorUnitario * (float) $cantidad;
+            $lineaDiscount = $descuentoUnitario * (float) $cantidad;
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * (float) $cantidad, 2);
+            $impuestoPorcentaje = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
+            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
 
             // calculos monetarios
             $subtotal += $lineaSubtotal;
@@ -1217,19 +1202,20 @@ class OrderService implements OrderServiceInterface
             $netSubtotal += $lineNet;
             $totalIva += $lineaIva;
 
-            // $item->subtotal = $lineaSubtotal;
+            $item->subtotal = $lineaSubtotal;
             $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = $lineaIva;
+            $item->ART_IVA = round($lineaIva, 2);
             return $item;
         })
             ->filter()
             ->values();
-        $data['subtotal'] = round($subtotal, 2);
+        $total = round($netSubtotal + $totalIva, 3);
+        $data['subtotal'] = round($subtotal, 3);
+        $data['descuento'] = round($totalDiscount, 3);
+        $data['subtotalmenosdescuento'] = round($netSubtotal, 3);
+        $data['iva'] = round($totalIva, 3);
 
-        $data['descuento'] = round($totalDiscount, 2);
-        $data['subtotalmenosdescuento'] = round($netSubtotal, 2);
-        $data['iva'] = round($totalIva, 2);
-        $data['total'] = round($netSubtotal + $totalIva, 2);
+        $data['total'] = $total;
 
 
         $facturarExistente = [];

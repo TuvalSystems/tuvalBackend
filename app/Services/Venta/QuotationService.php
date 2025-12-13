@@ -450,14 +450,14 @@ class QuotationService implements QuotationServiceInterface
         $tipoImpuesto = [];
         $sumaImpuesto = [];
 
-        foreach ($detalle as $item) {
+         foreach ($detalle as $item) {
             $clave = $item['ART_IMP_VTA'];
-            $subtotal = $item['ART_VALOR'] * $item['ART_CANTIDAD'];
-            $iva = round($item['ART_IVA'], 4);
+            $subtotal = round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
+            $iva = round($item['ART_IVA'], 2);
 
             $peso += $item['ART_PESO'] * $item['ART_CANTIDAD'];
 
-            $tipoImpuesto[$clave] = round(($tipoImpuesto[$clave] ?? 0) + $subtotal, 2);
+            $tipoImpuesto[$clave] = ($tipoImpuesto[$clave] ?? 0) + $subtotal;
             $sumaImpuesto[$clave] = ($sumaImpuesto[$clave] ?? 0) + $iva;
         }
 
