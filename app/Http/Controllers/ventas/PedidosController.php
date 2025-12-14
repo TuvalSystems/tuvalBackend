@@ -1427,7 +1427,7 @@ class PedidosController extends Controller
             $id = $request->input('id');
             $pendingDispach = $request->input('pendiente_salida');
             $order = $this->orderService->updateOrderAndBlockDispach($id, $pendingDispach);
-            return $this->successResponse('Bloque actualizado correctamente', $order, 200);
+            return $this->successResponse('Bloqueo actualizado correctamente', $order, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
 
