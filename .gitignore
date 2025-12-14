@@ -31,3 +31,4 @@ _ide_helper_models.php
 /.env.dev
 /.env.local
 /.env.prod
+/.env.qa

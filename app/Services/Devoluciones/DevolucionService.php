@@ -19,6 +19,7 @@ use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpArticulo;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
@@ -858,6 +859,7 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
 
+
     /**
      * FUNCIONES PARA LA GENERACION DE NOTA DE CREDITO Y AJUSTE EN CASO DE QUE SE HAYA
      * GENERADO ALGUN ERROR POR AB MOTIVO
@@ -996,7 +998,7 @@ class DevolucionService implements DevolucionServiceInterface
         return $devolucion;
     }
 
-    public function totalDevoluciones($devolucion, $detalles)
+      public function totalDevoluciones($devolucion, $detalles)
     {
         $subtotal = 0.0;
         $descuento = 0.0;

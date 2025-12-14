@@ -103,6 +103,11 @@ class FunctionsService implements FunctionsServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
 
+         $subtotal = 0.0;
+        $totalDiscount = 0.0;
+        $netSubtotal = 0.0;
+        $totalIva = 0.0;
+
         foreach ($detalle as $item) {
             $valorUnitario = (float) $item->ART_VALOR;
             $cantidad = (float) $item->ART_CANTIDAD;
@@ -180,7 +185,7 @@ class FunctionsService implements FunctionsServiceInterface
     }
 
 
-    public function getClientCheckAvailableQuota(String $ruc)
+    public function getClientCheckAvailableQuota(string $ruc)
     {
         $response = $this->apiBillingService->consultCheckAvailableQuotaClient([
             'ruc' => $ruc,
@@ -208,7 +213,7 @@ class FunctionsService implements FunctionsServiceInterface
         return $response['data'] ?? [];
     }
 
-      public function getListClientDocumentExpired($ruc)
+    public function getListClientDocumentExpired($ruc)
     {
         $response = $this->apiBillingService->consultListDocumentExpiredClient([
             'ruc' => $ruc,
@@ -263,7 +268,7 @@ class FunctionsService implements FunctionsServiceInterface
 
     /** function remplazo de stTempCartForm */
 
-    public function setCartFormQuotation($quotationDetails, $data, $user,$type)
+    public function setCartFormQuotation($quotationDetails, $data, $user, $type)
     {
         $this->clearExistCart($data['sucursal_id'], $data['cliente_id'], $data['PTO_VTA_ID']);
         foreach ($quotationDetails as $i => $item) {
@@ -325,7 +330,7 @@ class FunctionsService implements FunctionsServiceInterface
             return;
         }
 
-        foreach ($providers as  $prov) {
+        foreach ($providers as $prov) {
             GpTempCartProveedores::create([
                 'id_tempcart' => $cartId,
                 'ID_PROVEEDOR' => $prov->ID_PROVEEDOR,
@@ -386,7 +391,7 @@ class FunctionsService implements FunctionsServiceInterface
     }
 
 
-     public function like_match($pattern, $subject)
+    public function like_match($pattern, $subject)
     {
         $pattern = str_replace('%', '.*', preg_quote($pattern, '/'));
         return (bool) preg_match("/^{$pattern}$/i", $subject);

@@ -54,7 +54,7 @@ interface OrderServiceInterface
     public function checkExistence($data);
     public function generateInvoiceFromExistingOrder($data, $detalle, $user);
 
-    public function syncPurchaseOrderAndNoteByOrder(int $id, string $newOrd, string $newNote);
+    public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote);
      public function updateOrderReservationDate(int $orderId, string $newDate);
 
 
@@ -62,5 +62,5 @@ interface OrderServiceInterface
 
     public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId);
 
-
+    public function updateOrderAndBlockDispach($id, $pendingDispach);
 }

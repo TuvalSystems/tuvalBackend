@@ -1322,7 +1322,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $paginator = $q->orderBy($sortBy, $sortOrder)->paginate($perpage);
         // 6) Limpiar relaciones del payload (dejamos solo el accessor "quotes")
         $paginator->getCollection()->each(function ($g) {
-            $g->unsetRelation('cotizaciones');          // oculta modelos de cotizaciones
+            // $g->unsetRelation('cotizaciones');          // oculta modelos de cotizaciones
             $g->unsetRelation('detalleGuiaReservas');   // por si estuviera eager en otro sitio
             $g->makeHidden(['cotizaciones']); //también sirve, pero unsetRelation evita serializarla
         });

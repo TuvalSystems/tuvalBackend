@@ -38,6 +38,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
 
@@ -489,14 +490,19 @@ class CobranzasController extends Controller
         $request->validate([
             'id' => 'required',
         ]);
-
+        $gpUser = GpUsuario::find(auth()->user()->id);
         $deposito = GpCobrosDeposito::where('id', $request->id)->first();
-
+        $deposito->fecha_aprobacion = Carbon::now()->format('Y-m-d H:i:s');
+        $deposito->user_aprobador_id = $gpUser->id;
         $deposito->estado = 'revisado';
         $deposito->save();
 
         $this->enviarcobro($deposito->cobro_id);
 
+        $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
+        $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $cobro->user_aprobador_id = $gpUser->id;
+        $cobro->save();
         $dato = GpCobrosDeposito::where('gp_cobros_depositos.id', $request->id)
             ->join('gp_cobros', 'gp_cobros.id', '=', 'gp_cobros_depositos.cobro_id')
             ->join('gp_caja_bancos', 'gp_caja_bancos.CB_ID', '=', 'gp_cobros_depositos.banco')
@@ -551,6 +557,11 @@ class CobranzasController extends Controller
         }
 
         $gpUser = GpUsuario::where('id', $dato->user_id)->first();
+        $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
+        $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $cobro->user_aprobador_id = $gpUser->id;
+        $cobro->save();
+
         if ($gpUser) {
             $gpUser->notify(new UserNotification('Depósito/Transferencia rechazado', $mensaje));
         }
@@ -1184,7 +1195,7 @@ class CobranzasController extends Controller
                     if ($tipo == '-TC') {
                         $tarjeta = GpCobrosTarjetaMonto::where('cobro_id', $cobro->id)->first();
                         if ($tarjeta) {
-                             $gpUser = GpUsuario::find($cobro->user_id);
+                            $gpUser = GpUsuario::find($cobro->user_id);
                             if ($gpUser) {
                                 $gpUser->notify(new UserNotification('Cobro con tarjeta anulado', 'El cobro con tarjeta ' . $tarjeta->comprobante . ' del recibo ' . $cobro->numero_recibo . ' ha sido anulado desde GP'));
                             }

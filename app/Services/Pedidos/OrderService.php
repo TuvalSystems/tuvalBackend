@@ -36,9 +36,12 @@ use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+
+use function PHPUnit\Framework\isEmpty;
 
 class OrderService implements OrderServiceInterface
 {
@@ -120,7 +123,7 @@ class OrderService implements OrderServiceInterface
             $pedido['estado'] === 'eliminado';
     }
 
-    public function buildOrderDetail(array $pedido)
+     public function buildOrderDetail(array $pedido)
     {
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->toarray();
         $peso = 0;
@@ -677,21 +680,18 @@ class OrderService implements OrderServiceInterface
 
     public function generateInvoiceOrder($orderId)
     {
-        try {
-            DB::beginTransaction();
-            $order = $this->getOrderOrFail($orderId);
-            if ($order->origen === 'reserva') {
-                $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
-                $order->save();
-            }
-            $this->recalculateAndSendInvoice($order);
-            DB::commit();
-            Log::info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
-            return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return $this->buildErrorResponse($th->getMessage(), 500);
+
+        $order = $this->getOrderOrFail($orderId);
+        if (!empty($order->factura)) {
+            abort(409, 'El pedido ya se encuentra facturado');
         }
+        if ($order->origen === 'reserva') {
+            $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
+            $order->save();
+        }
+        $this->recalculateAndSendInvoice($order);
+        return $order;
+
     }
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
@@ -715,11 +715,21 @@ class OrderService implements OrderServiceInterface
 
     public function getOrderOrFail($orderId)
     {
-        $order = GpPedido::find($orderId);
+        $order = GpPedido::findOrFail($orderId);
         if (!$order) {
-            return $this->buildErrorResponse("Pedido no encontrado", 404);
+            abort(404, 'Pedido no encontrado');
         }
         return $order;
+    }
+
+    public function getOrderExistenceByQuotation($orderId): bool
+    {
+        $oldOrder = GpPedido::findOrFail($orderId);
+        $orders = GpPedido::Where('cotizacion_id', $oldOrder->cotizacion_id)
+            ->where('pedido_origen', $oldOrder->pedido)
+            ->whereNotNull('factura')->where('factura', '!=', '')->exists();
+
+        return (bool) $orders;
     }
 
     public function recalculateAndSendInvoice($order)
@@ -1129,104 +1139,134 @@ class OrderService implements OrderServiceInterface
 
     public function checkExistence($data)
     {
-        try {
-            $subtotal = 0.0;
-            $totalDiscount = 0.0;
-            $netSubtotal = 0.0;
-            $totalIva = 0.0;
 
-            $detailOrder = $this->orderRepository->getAllDetailsOrderById($data['id']);
-            $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
-            $impVtaByCodigo = GpArticulo::query()
-                ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
-                ->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        $subtotal = 0.0;
+        $totalDiscount = 0.0;
+        $netSubtotal = 0.0;
+        $totalIva = 0.0;
+        $orderId = data_get($data, 'id');
 
-            $processed = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks, &$subtotal, &$totalDiscount, &$netSubtotal, &$totalIva) {
-                $stock = $stocks->get($item->id);
+
+        $detailOrder = $this->orderRepository->getAllDetailsOrderById($orderId);
+        $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
+        $impVtaByCodigo = GpArticulo::query()
+            ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
+            ->pluck('ART_IMP_VTA', 'ART_CODIGO');
+
+        $processed = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks, &$subtotal, &$totalDiscount, &$netSubtotal, &$totalIva) {
+            $stock = $stocks->get($item->id);
+            $cantidad = 0;
+
+            if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
+                $cantidad = $stock->seleccionado;
+            }
+            if ($item->ART_TIPO_COMPRA == 'SERV') {
+                $cantidad = $item->ART_CANTIDAD;
+            }
+            $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
+
+            $validProviders = [];
+            if ($providers['proveedores']->isNotEmpty()) {
                 $cantidad = 0;
-
-                if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
-                    $cantidad = $stock->seleccionado;
-                }
-                if ($item->ART_TIPO_COMPRA == 'SERV') {
-                    $cantidad = $item->ART_CANTIDAD;
-                }
-                $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
-
-                $validProviders = [];
-                if ($providers['proveedores']->isNotEmpty()) {
-                    $cantidad = 0;
-                    foreach ($providers['proveedores'] as $prov) {
-                        $diff = $prov->ingresado - $prov->ejecutado;
-                        if ($prov->ingresado > 0) {
-                            $cantidad += $diff;
-                            $validProviders[] = $prov;
-                        }
+                foreach ($providers['proveedores'] as $prov) {
+                    $diff = $prov->ingresado - $prov->ejecutado;
+                    if ($prov->ingresado > 0) {
+                        $cantidad += $diff;
+                        $validProviders[] = $prov;
                     }
                 }
+            }
 
-                if ($cantidad <= 0) {
-                    return null;
-                }
-
-                $item->stocks = $stock;
-                $item->proveedores = $validProviders;
-
-                //CALCULOS
-                $valorUnitario = (float) $item->ART_VALOR;
-                $item->ART_CANTIDAD = (float) $cantidad;
-                $descuentoUnitario = (float) $item->ART_DESCUENTO;
-
-                $lineaSubtotal = $valorUnitario * (float) $cantidad;
-                $lineaDiscount = $descuentoUnitario * (float) $cantidad;
-                $lineNet = round(($valorUnitario - $descuentoUnitario) * (float) $cantidad, 2);
-                $impuestoPorcentaje = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
-                $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
-
-                // calculos monetarios
-                $subtotal += $lineaSubtotal;
-                $totalDiscount += $lineaDiscount;
-                $netSubtotal += $lineNet;
-                $totalIva += $lineaIva;
-
-                $item->subtotal = $lineaSubtotal;
-                $item->ART_IMP_VTA = $impuestoPorcentaje;
-                $item->ART_IVA = round($lineaIva, 2);
-                return $item;
-            })
-                ->filter()
-                ->values();
-            $total = round($netSubtotal + $totalIva, 3);
-            $data['subtotal'] = round($subtotal, 3);
-            $data['descuento'] = round($totalDiscount, 3);
-            $data['subtotalmenosdescuento'] = round($netSubtotal, 3);
-            $data['iva'] = round($totalIva, 3);
-
-            $data['total'] = $total;
+            if ($cantidad <= 0) {
+                return null;
+            }
 
 
-            $facturarExistente = [];
-            $facturarExistente['pedido'] = $data;
-            $facturarExistente['detalle'] = $processed;
+            $item->stocks = $stock;
+            $item->proveedores = $validProviders;
 
-            return response([
-                'success' => true,
-                'facturar_existente' => $facturarExistente,
-            ]);
-        } catch (\Throwable $e) {
-            // Log interno
-            Log::error('Error en checkExistence', ['exception' => $e]);
-            // Respuesta genérica
-            return response()->json([
-                'success' => false,
-                'message' => 'Ocurrió un error al comprobar la existencia.'
-            ], 500);
-        }
+            //CALCULOS
+            $valorUnitario = (float) $item->ART_VALOR;
+            $item->ART_CANTIDAD = (float) $cantidad;
+            $descuentoUnitario = (float) $item->ART_DESCUENTO;
+
+            $lineaSubtotal = $valorUnitario * (float) $cantidad;
+            $lineaDiscount = $descuentoUnitario * (float) $cantidad;
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * (float) $cantidad, 2);
+            $impuestoPorcentaje = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
+            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
+
+            // calculos monetarios
+            $subtotal += $lineaSubtotal;
+            $totalDiscount += $lineaDiscount;
+            $netSubtotal += $lineNet;
+            $totalIva += $lineaIva;
+
+            $item->subtotal = $lineaSubtotal;
+            $item->ART_IMP_VTA = $impuestoPorcentaje;
+            $item->ART_IVA = round($lineaIva, 2);
+            return $item;
+        })
+            ->filter()
+            ->values();
+        $total = round($netSubtotal + $totalIva, 3);
+        $data['subtotal'] = round($subtotal, 3);
+        $data['descuento'] = round($totalDiscount, 3);
+        $data['subtotalmenosdescuento'] = round($netSubtotal, 3);
+        $data['iva'] = round($totalIva, 3);
+
+        $data['total'] = $total;
+
+
+        $facturarExistente = [];
+        $facturarExistente['pedido'] = $data;
+        $facturarExistente['detalle'] = $processed;
+        return $facturarExistente;
     }
 
 
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
+
+        // $hasInvoicedChildren = $this->getOrderExistenceByQuotation($data['id']);
+        // if ($hasInvoicedChildren) {
+        //     abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
+        // }
+
+        //Bloqueo de permisos
+        $parentOder = GpPedido::where('id', $data['id'])->lockForUpdate()->firstOrFail();
+        $detailsCheck = GpPedidoDetalle::where('pedido_id', $parentOder->id)->lockForUpdate()->get()->keyBy('id');
+        $stocksCheck = GpPedidoDetalleStock::where('pedido_id', $parentOder->id)->lockForUpdate()->get()->keyBy('id');
+        //validacion de stock y detalle del pedido para nuevos pedidos
+        foreach ($detalle as $item) {
+            $itemBase = $detailsCheck->get($item['id']);
+            if (!$itemBase) {
+                abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado o eliminado por otro usuario. Por favor recarga la página.");
+            }
+
+            if ($itemBase->ART_CANTIDAD < $item['ART_CANTIDAD']) {
+                abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado en otro pedido. Por favor recarga la página.");
+            }
+
+            if ($item['ART_TIPO_COMPRA'] != 'SERV' && $item['ART_TIPO_COMPRA'] != 'L') {
+                $st = data_get($item, 'stocks');
+                if (empty($st)) {
+                    abort(409, "Error de validación de stock para {$item['ART_CODIGO']}. Recarga la página.");
+                }
+
+                $stockBase = $stocksCheck->get($st['id']);
+                if (!$stockBase) {
+                    abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado. Por favor recarga la página.");
+                }
+
+                if ($st['seleccionado'] > $stockBase->seleccionado) {
+                    abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado en otro pedido. Por favor recarga la página.");
+                }
+
+            }
+        }
+
+
         $deteleArticle = [];
         $detailIdsWithLOrSERV = GpPedidoDetalle::where('pedido_id', $data['id'])
             ->whereIn('ART_TIPO_COMPRA', ['SERV', 'L'])
@@ -1536,18 +1576,23 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function syncPurchaseOrderAndNoteByOrder(int $id, string $newOrd, string $newNote)
+    public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote)
     {
-        $ord = is_null($newOrd) ? '' : trim($newOrd);
-        $note = is_null($newNote) ? '' : trim($newNote);
-        $Order = GpPedido::find($id);
-        if (!$ord) {
-            throw new \Exception('El pedido no existe');
+        $order = GpPedido::findOrFail($id);
+        $inputs = [
+            'orden_de_compra' => $newOrd,
+            'nota_cliente' => $newNote
+        ];
+
+        $updates = collect($inputs)
+            ->map(fn($value) => trim((string) $value))
+            ->filter(fn($value) => strlen($value) > 0)
+            ->all();
+
+        if (!empty($updates)) {
+            $order->update($updates);
         }
-        $Order->orden_de_compra = $ord;
-        $Order->nota_cliente = $note;
-        $Order->save();
-        return $Order;
+        return $order;
     }
 
     public function updateOrderReservationDate(int $id, string $newDate)
@@ -1588,6 +1633,7 @@ class OrderService implements OrderServiceInterface
                 'gp.id',
                 'gp.pedido',
                 'ct.id as cotizacion_id',
+                'ct.PTO_VTA_DESCRIPCION AS pto_vta',
                 'ct.cotizacion as nro_cotizacion',
                 'gp.factura',
                 'gp.estado',
@@ -1599,6 +1645,13 @@ class OrderService implements OrderServiceInterface
                 'gp.total',
                 'gp.origen',
                 'gp.fe_facturacion_reserva',
+                'gp.pendiente_salida',
+                'gp.factura_siguiente_mes',
+                'gp.requiere_aprobacion_comercial',
+                'gp.aprobado_comercial',
+                'gp.requiere_aprobacion_crediticia',
+                'gp.aprobado_crediticio',
+                'gp.factura_a_demanda',
             ])
             ->join('gp_cotizacions as ct', 'ct.id', '=', 'gp.cotizacion_id')
             ->where('gp.origen', 'reserva')
@@ -1623,5 +1676,20 @@ class OrderService implements OrderServiceInterface
         $query->orderBy($sortBy, $sortOrder);
 
         return $query->paginate($perPage);
+    }
+
+
+
+    /** funcion para el bloqueo de despacho de pedidos */
+
+
+    public function updateOrderAndBlockDispach($id, $pendingDispach)
+    {
+        $order = GpPedido::find($id);
+        $order->pendiente_salida = $pendingDispach;
+        $order->user_block_id = Auth::user()->id;
+        $order->fecha_bloqueo = Carbon::now()->format('Y-m-d H:i:s');
+        $order->save();
+        return $order;
     }
 }

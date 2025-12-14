@@ -41,7 +41,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class PedidosController extends Controller
 {
@@ -126,7 +126,20 @@ class PedidosController extends Controller
         $data = $request->validate([
             'id' => 'required',
         ]);
-        return $this->orderService->generateInvoiceOrder($data['id']);
+        try {
+            $order = DB::transaction(function () use ($data) {
+                return $this->orderService->generateInvoiceOrder($data['id']);
+            });
+            Log::info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
+            return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
     }
 
     public function facturarpedidoTest($codPedido)
@@ -286,8 +299,21 @@ class PedidosController extends Controller
 
     public function consultarexistente(Request $request)
     {
-        $data = $request->all();
-        return $this->orderService->checkExistence($data);
+        try {
+            $data = $request->all();
+            $pedido = $this->orderService->checkExistence($data);
+            return $this->successResponse('Existencia Obtenida Correctamente', $pedido, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            Log::error('Error en checkExistence', ['exception' => $e]);
+
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+
     }
 
     public function facturarexistente(Request $request)
@@ -297,14 +323,29 @@ class PedidosController extends Controller
             $data = $facturarExistente['pedido'];
             $detalle = $facturarExistente['detalle'];
             $user = Auth::user();
-            $pedido = DB::transaction(function () use ($data, $detalle, $user) {
-                return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
-            });
+            //new sintaxis
+            $pedido = DB::transaction(
+                fn() =>
+                $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user)
+            );
+            // $pedido = DB::transaction(function () use ($data, $detalle, $user) {
+            //     return $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user);
+            // });
+
+            //old sintaxis
             return $this->buildSuccessResponse('Pedido Generado Correctamente' . ' ' . $pedido->pedido . ' ' . ' en Facturar Existente', 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
         } catch (\Throwable $e) {
             Log::error('Error in facturarexistente', [
                 'error' => $e->getMessage(),
                 'data' => $data['id'],
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTrace()
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1319,8 +1360,8 @@ class PedidosController extends Controller
     public function actualizarOrdenCompraYNotaCliente(Request $request)
     {
         $id = $request->input('id');
-        $newOrd = $request->input('orden_de_compra');
-        $newNote = $request->input('nota_cliente');
+        $newOrd = $request->input('orden_de_compra' ?? '');
+        $newNote = $request->input('nota_cliente' ?? '');
         try {
             $data = $this->orderService->syncPurchaseOrderAndNoteByOrder($id, $newOrd, $newNote);
             return $this->successResponse('Datos actualizados Correctamente', $data, 200);
@@ -1375,6 +1416,21 @@ class PedidosController extends Controller
             return $this->successResponse('Lista de pedidos de reservas obtenida correctamente', $data, 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
+
+    public function actualizarBloqueoPendienteDespacho(Request $request)
+    {
+
+        try {
+            $id = $request->input('id');
+            $pendingDispach = $request->input('pendiente_salida');
+            $order = $this->orderService->updateOrderAndBlockDispach($id, $pendingDispach);
+            return $this->successResponse('Bloqueo actualizado correctamente', $order, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
         }
     }
 }

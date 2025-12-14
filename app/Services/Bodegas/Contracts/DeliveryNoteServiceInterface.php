@@ -41,4 +41,11 @@ interface DeliveryNoteServiceInterface
 
      public function getSecuencialCommon($establecimiento, $ptoEmision): string;
 
+
+
+     /** funcion temporal para bloqueo de guias de remision */
+
+     public function isGUideBlockedForOrder($guia): bool;
+      public function createTemporaryDeliveryNoteBlocksOrder($guia);
+
 }

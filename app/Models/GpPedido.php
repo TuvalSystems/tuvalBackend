@@ -131,6 +131,8 @@ use \DateTimeInterface;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido wherePedidoOrigen($value)
  * @property string|null $origen
  * @property string|null $fe_facturacion_reserva
+ * @property boolean $pendiente_salida
+ *
  */
 class GpPedido extends Model
 {
@@ -201,9 +203,7 @@ class GpPedido extends Model
         'aprobado_crediticio_mensaje',
         'origen',
         'fe_facturacion_reserva',
-
-
-
+        'pendiente_salida'
     ];
 
     /**

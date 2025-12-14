@@ -450,7 +450,7 @@ class QuotationService implements QuotationServiceInterface
         $tipoImpuesto = [];
         $sumaImpuesto = [];
 
-        foreach ($detalle as $item) {
+         foreach ($detalle as $item) {
             $clave = $item['ART_IMP_VTA'];
             $subtotal = round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
             $iva = round($item['ART_IVA'], 2);
@@ -601,29 +601,26 @@ class QuotationService implements QuotationServiceInterface
 
     public function detailQuotation($data)
     {
-        try {
-            $estadoCuenta = [
-                'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
-            ];
-            $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
 
-            $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
+        $estadoCuenta = [
+            'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
+        ];
+        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
 
-            foreach ($detalle as $det) {
-                $this->castDecimalValuesTemp($det);
-                $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
-                $this->calculatePorcentilDiscountAndPrice($det);
-            }
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-            return response([
-                'success' => true,
-                'estadodecuenta' => $estadoCuenta,
-                'detalle' => $detalle,
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
+        $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
+
+        foreach ($detalle as $det) {
+            $this->castDecimalValuesTemp($det);
+            $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
+            $this->calculatePorcentilDiscountAndPrice($det);
         }
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        return [
+            'estadodecuenta' => $estadoCuenta,
+            'detalle' => $detalle,
+            'segmento' => $segmento
+        ];
+
     }
 
 
@@ -975,6 +972,7 @@ class QuotationService implements QuotationServiceInterface
             Log::error('Error in storeQuotation (Guardar cotización)', [
                 'error' => $th->getMessage(),
                 'linea' => $th->getLine(),
+                'file' => $th->getFile(),
             ]);
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
