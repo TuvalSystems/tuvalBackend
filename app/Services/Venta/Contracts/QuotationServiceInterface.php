@@ -80,13 +80,4 @@ interface QuotationServiceInterface
 
 
 
-    /*** prueba  */
-
-    public function consultaStockPrueba($articulo, $bodega);
-
-
-
-
-
-
 }

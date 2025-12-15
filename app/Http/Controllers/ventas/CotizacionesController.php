@@ -1242,9 +1242,5 @@ class CotizacionesController extends Controller
     }
 
 
-    public function obtenerStockPrueba($articulo, $bodega)
-    {
-
-        return $this->quotationService->consultaStockPrueba($articulo, $bodega);
-    }
+   
 }

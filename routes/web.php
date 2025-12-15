@@ -128,7 +128,6 @@ Route::prefix('pedidos')->group(function () {
 
 
 Route::prefix('cotizaciones')->group(function () {
-    Route::get('/consulta-stock-web/{articulo}/{bodega}', [CotizacionesController::class, 'obtenerStockPrueba']);
     Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
     Route::get('llenar-cotizacion', [CotizacionesController::class, 'llenarcotizacion']);
 
@@ -199,7 +198,7 @@ Route::group(['prefix' => 'reservas-web'], function () {
     Route::get('transferencias-web/recibir-items-guia-reserva', [ReservasController::class, 'recibirItemsGuiaReserva']);
     Route::get('cancelar-reserva-web', [ReservasController::class, 'cancelarReservaCotizacion']);
 
-    
+
     Route::get('despachos/reservas-enviadas', [DespachosController::class, 'listaGuiaReservasEnviadas']);
 
 });

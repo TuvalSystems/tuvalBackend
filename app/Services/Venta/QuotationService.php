@@ -41,7 +41,6 @@ use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\SqlServer\Bodega\Contracts\StockSqlServiceInterface;
 use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
@@ -76,7 +75,6 @@ class QuotationService implements QuotationServiceInterface
         ApprovalServiceInterface $approvalService,
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
         ClientServiceInterface $clienTSqlService,
-        StockSqlServiceInterface $stockSqlService,
         QuotationBuilderInterface $quotationBuilderInterface,
         OrderBuilderInterface $orderBuilderInterface,
         InvoiceServiceInterface $invoiceServiceInterface
@@ -91,7 +89,6 @@ class QuotationService implements QuotationServiceInterface
         $this->approvalService = $approvalService;
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
         $this->clienTSqlService = $clienTSqlService;
-        $this->stockSqlService = $stockSqlService;
         $this->quotationBuilder = $quotationBuilderInterface;
         $this->orderBuilder = $orderBuilderInterface;
         $this->invoiceService = $invoiceServiceInterface;
@@ -257,7 +254,8 @@ class QuotationService implements QuotationServiceInterface
                 $stockRequests[] = ['articulo' => $art['articulo'], 'bodega' => $bod];
             }
         }
-        return $this->stockSqlService->getStockByArticleBatch($stockRequests);
+        $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
+        return $this->stockWarehouseService->transformStockQuotationResponse($stockResults);
     }
 
 
@@ -1525,14 +1523,5 @@ class QuotationService implements QuotationServiceInterface
         }
     }
 
-    /** test de stock  */
 
-    public function consultaStockPrueba($articulo, $bodega)
-    {
-        $params = [
-            'articulo' => $articulo,
-            'bodega' => $bodega
-        ];
-        return $this->stockSqlService->consultStockWarehouseSql($params);
-    }
 }
