@@ -41,7 +41,6 @@ use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -59,7 +58,6 @@ class QuotationService implements QuotationServiceInterface
     protected $OrderQuotationService;
     protected $approvalService;
     protected $orderAndQuotationService;
-    protected $clienTSqlService;
     protected $stockSqlService;
     protected $quotationBuilder;
     protected $orderBuilder;
@@ -74,7 +72,6 @@ class QuotationService implements QuotationServiceInterface
         OrderAndQuotationServiceInterface $OrderQuotationService,
         ApprovalServiceInterface $approvalService,
         OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
-        ClientServiceInterface $clienTSqlService,
         QuotationBuilderInterface $quotationBuilderInterface,
         OrderBuilderInterface $orderBuilderInterface,
         InvoiceServiceInterface $invoiceServiceInterface
@@ -88,7 +85,6 @@ class QuotationService implements QuotationServiceInterface
         $this->OrderQuotationService = $OrderQuotationService;
         $this->approvalService = $approvalService;
         $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
-        $this->clienTSqlService = $clienTSqlService;
         $this->quotationBuilder = $quotationBuilderInterface;
         $this->orderBuilder = $orderBuilderInterface;
         $this->invoiceService = $invoiceServiceInterface;
@@ -448,7 +444,7 @@ class QuotationService implements QuotationServiceInterface
         $tipoImpuesto = [];
         $sumaImpuesto = [];
 
-         foreach ($detalle as $item) {
+        foreach ($detalle as $item) {
             $clave = $item['ART_IMP_VTA'];
             $subtotal = round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
             $iva = round($item['ART_IVA'], 2);
@@ -1272,70 +1268,41 @@ class QuotationService implements QuotationServiceInterface
 
 
     /** Seccion de clientes */
-    public function getSegmentosSqlServer()
+    public function getAllSegments()
     {
-        try {
-            $segmentos = $this->clienTSqlService->getListSegments();
-            return $this->successResponse('Segmentos obtenidos correctamente', $segmentos, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        } finally {
-            // evita sesiones "sleeping" abiertas en sqlsrvtuv
-            DB::disconnect('sqlsrvdyn');
-        }
+        $resp = $this->apiGpService->fetchAllSegments();
+        return data_get($resp, 'data', []);
     }
 
-    public function getSubSegmentosSqlServer($segmento)
+    public function getSubSegmentBySegment(int $coAtrPadre)
     {
-        try {
-            $subsegmentos = $this->clienTSqlService->getLisSubSegmentos($segmento);
-            return $this->successResponse('Segmentos obtenidos correctamente', $subsegmentos, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        } finally {
-            // evita sesiones "sleeping" abiertas en sqlsrvtuv
-            DB::disconnect('sqlsrvdyn');
+        if (empty($coAtrPadre)) {
+            abort(404, 'Segmento no encontrado');
         }
+        $resp = $this->apiGpService->fetchSubSegmentsBySegment(['coAtrPadre' => $coAtrPadre]);
+        return data_get($resp, 'data', []);
     }
 
 
     public function storeClientQuotation(array $data, GpUsuario $user)
     {
-        try {
-            DB::beginTransaction();
-            $this->prepareForValidationDirection($data);
 
-            $nivelPrecio = $this->getNivelPriceSeller($data, $user);
-            $params = $this->getParametersToSendSqlServer($data, $nivelPrecio);
-            $this->clienTSqlService->syncToSqlServerModifyOrCreateClient($params);
-            $this->createClientWeb($data, $nivelPrecio);
-            $this->createClientSucursalWeb($data);
-            $this->sendToSegmentAndRucToSqlServer($data);
-            $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
-            $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-            $cliente->vendedor = $vendedor;
+        $this->prepareForValidationDirection($data);
 
-            $sucursales = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
-            $cliente->sucursales = $sucursales;
-            $cliente->sucursalesfacturacion = $sucursales;
+        $nivelPrecio = $this->getNivelPriceSeller($data, $user);
+        $params = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
+        $this->apiGpService->StoreClientGp($params);
+        $this->createClientWeb($data, $nivelPrecio);
+        $this->createClientSucursalWeb($data);
+        $this->sendToSegmentAndRucToGp($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
+        $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
+        $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
+        $cliente->vendedor = $vendedor;
 
-            DB::commit();
-            return response([
-                'success' => true,
-                'message' => 'Cliente correctaente guardado',
-                'cliente' => $cliente,
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error al guardar el cliente ', [
-                'error' => $e->getMessage(),
-                'data' => $data,
-            ]);
-            return $this->buildErrorResponse('Opps! Hubo un error al guardar el cliente' . '' . $e->getMessage(), 500);
-        } finally {
-            // evita sesiones "sleeping" abiertas en sqlsrvtuv
-            DB::disconnect('sqlsrvtuv');
-        }
+        $sucursales = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
+        $cliente->sucursales = $sucursales;
+        $cliente->sucursalesfacturacion = $sucursales;
+        return $cliente;
     }
 
     public function prepareForValidationDirection(&$data)
@@ -1344,123 +1311,23 @@ class QuotationService implements QuotationServiceInterface
         $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'] = isset($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) ? mb_strtoupper($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) : strtolower($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
     }
 
-    public function getParametersToSendSqlServer($data, string $nivelPrecio)
-    {
-        $lines = str_split($data['CLI_DIRECCION'], 61);
-        $line1 = $lines[0] ?? '';
-        $line2 = $lines[1] ?? '';
-        return [
-            'CLI_TIPO_ID' => $data['CLI_TIPO_ID'],
-            'CLI_RUC' => $data['CLI_RUC'],
-            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_NOMBRE_CORTO' => $data['CLI_NOMBRE_CORTO'],
-            'CLI_CLASE' => 'LOCAL',
-            'CLI_COND_PAGO' => 'CONTADO',
-            'CLI_DESC_COMERCIAL' => '25',
-            'CLI_NIVEL_PRECIO' => $nivelPrecio,
-            'CLI_PRIORIDAD' => '1',
-            'CLI_CONTACTO' => $data['CLI_CONTACTO'],
-            'CLI_DIRECCION_1' => $line1,
-            'CLI_DIRECCION_2' => $line2,
-            'CLI_CIUDAD' => $data['CLI_CIUDAD'],
-            'CLI_PROVINCIA' => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_PAIS' => 'Ec',
-            'CLI_TERRITORIO' => $data['CLI_TERRITORIO'],
-            'CLI_TELEFONO_1' => $data['CLI_TELEFONO_1'],
-            'CLI_TELEFONO_2' => $data['CLI_TELEFONO_2'],
-            'CLI_TELEFONO_3' => $data['CLI_TELEFONO_3'],
-            'CLI_TELEFONO_4' => $data['CLI_TELEFONO_4'],
-            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
-            'CLI_CORREO_ELECT_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'CLI_VENDEDOR' => $data['CLI_VENDEDOR'],
-            'CLI_GRUPO' => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_SUBGRUPO' => $data['CLI_SUBGRUPO'],
-            'CLI_PUNTO_VENTA' => $data['CLI_PUNTO_VENTA'],
-        ];
-    }
+
 
 
     public function createClientWeb(array $data, string $nivelPrecio)
     {
-        $attrs = $this->getDataFormatClient($data, $nivelPrecio);
+        $attrs = $this->quotationBuilder->formPayloadClientWeb($data, $nivelPrecio);
         Log::info('GpCliente creará con attrs:', $attrs);
         return GpCliente::create($attrs);
     }
 
 
 
-    public function getDataFormatClient(array $data, string $nivelPrecio)
-    {
-        $now = now()->toDateTimeString();
-        return [
-            'CLI_RUC' => $data['CLI_RUC'],
-            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_NOMBRE_CORTO' => $data['CLI_NOMBRE_CORTO'],
-            'CLI_CLASE' => 'LOCAL',
-            'CLI_PRIORIDAD' => '1',
-            'CLI_ID_DIRECCION' => 'PRINCIPAL',
-            'CLI_CONTACTO' => $data['CLI_CONTACTO'],
-            'CLI_DIRECCION' => $data['CLI_DIRECCION'],
-            'CLI_CIUDAD' => $data['CLI_CIUDAD'],
-            'CLI_PROVINCIA' => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_TERRITORIO' => $data['CLI_TERRITORIO'],
-            'CLI_ESTADO' => 'ACTIVO',
-            'CLI_SUSPENDIDO' => 'NO',
-            'CLI_TELEFONO_1' => $data['CLI_TELEFONO_1'],
-            'CLI_TELEFONO_2' => $data['CLI_TELEFONO_2'],
-            'CLI_TELEFONO_3' => $data['CLI_TELEFONO_3'],
-            'CLI_TELEFONO_4' => $data['CLI_TELEFONO_4'],
-            'CLI_FECHA_MODIFICACION' => $now,
-            'CLI_FECHA_CREACION' => $now,
-            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
-            'CLI_CORREO_ELECT_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'CLI_IMPUESTO' => env('IVA_IMPUESTO'),
-            'CLI_DIRECCION_ENVIO' => 'PRINCIPAL',
-            'CLI_DIRECCION_FACTURA' => 'PRINCIPAL',
-            'CLI_VENDEDOR' => $data['CLI_VENDEDOR'],
-            'CLI_DSTO_COMERCIAL' => 25,
-            'CLI_CONDICION_PAGO' => 'CONTADO',
-            'CLI_DIA_GRACIA_VTA_CREDITO' => 0,
-            'CLI_DIA_GRACIA_CHEQUE_A_FECHA' => 0,
-            'CLI_NIVEL_PRECIO' => $nivelPrecio,
-            'CLI_TIPO_CREDITO' => 'SIN CREDITO',
-            'CLI_MONTO_CREDITO' => 0,
-            'CLI_GRUPO_ECONOMICO' => '',
-            'CLI_GRUPO' => $data['CLI_GRUPO_NOMBRE'],
-            'CLI_SUBGRUPO' => $data['CLI_SUBGRUPO'] ?? '',
-            'CLI_DIA_MAXIMO_MES_FACTURACION' => 0,
-            'CLI_FACTURA_POSTERIOR_AL_DESPACHO' => 'NO',
-            'CLI_SEGMENTO_ID' => $data['CLI_SEGMENTO_ID'] ?? null,
-            'CLI_SUBSEGMENTO_ID' => $data['CLI_SUBSEGMENTO_ID'] ?? null,
-        ];
-    }
-
 
     public function createClientSucursalWeb(array $data)
     {
-        return GpClienteSucursal::create($this->getDataFormatClientSucursal($data));
+        return GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data));
     }
-
-    public function getDataFormatClientSucursal(array $data)
-    {
-        return [
-            'CLI_SUC_RUC' => $data['CLI_RUC'],
-            'CLI_SUC_DESCRIPCION' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_SUC_ID_DIRECCION' => 'PRINCIPAL',
-            'CLI_SUC_DIRECCION' => $data['CLI_DIRECCION'],
-            'CLI_SUC_CONTACTO' => $data['CLI_CONTACTO'],
-            'CLI_SUC_REFERENCIA' => $data['CLI_CONTACTO'],
-            'CLI_SUC_VENDEDOR' => $data['CLI_VENDEDOR'],
-            'CLI_SUC_TERRITORIO' => $data['CLI_TERRITORIO'],
-            'CLI_SUC_CIUDAD' => $data['CLI_CIUDAD'],
-            'CLI_SUC_PROVINCIA' => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_SUC_PAIS' => 'Ecuador',
-            'CLI_SUC_TELEFONO' => $data['CLI_TELEFONO_1'],
-            'CLI_SUC_CORREO_ELECTRONICO_SRI' => $data['CLI_CORREO_ELECT_SRI'],
-            'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_SRI'],
-        ];
-    }
-
 
     public function getNivelPriceSeller(array $data, GpUsuario $user)
     {
@@ -1477,9 +1344,12 @@ class QuotationService implements QuotationServiceInterface
         $payload = $nivelPrecioApi['data'];
         return ((int) $payload['coTipVen'] === 1) ? 'TIENDA' : 'GENERAL';
     }
-    public function sendToSegmentAndRucToSqlServer($data)
+    public function sendToSegmentAndRucToGp($ruc, $subsegmentoId)
     {
-        $this->clienTSqlService->sendToSegmentAndRucToSqlServer($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
+        $this->apiGpService->storeSubsegmentAssociation([
+            'ruc' => $ruc,
+            'subsegmentoId' => $subsegmentoId,
+        ]);
     }
 
 
@@ -1515,7 +1385,7 @@ class QuotationService implements QuotationServiceInterface
             $cliente->CLI_SUBSEGMENTO_ID = $subsegmentoId;
             $cliente->save();
             DB::commit();
-            $this->clienTSqlService->sendToSegmentAndRucToSqlServer($cliente['CLI_RUC'], $subsegmentoId);
+            $this->sendToSegmentAndRucToGp($cliente['CLI_RUC'], $subsegmentoId);
             return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
         } catch (\Throwable $e) {
             DB::rollBack();

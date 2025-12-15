@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Repositories\Pedidos\OrderRepository;
 use App\Repositories\Venta\QuotationRepository;
@@ -14,8 +13,6 @@ use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Repositories\Bodegas\TransferRepository;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
-use App\Repositories\SqlServer\Venta\ClientSqlRepository;
-use App\Repositories\SqlServer\Venta\Contracts\ClientSqlRepositoryInterface;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Repositories\Venta\InventoryReservationRepository;
 
@@ -32,7 +29,6 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->singleton(OrderRepositoryInterface::class, OrderRepository::class);
         $this->app->singleton(PurchaseReceipRepositoryInterface::class, PurchaseReceipRepository::class);
         $this->app->singleton(QuotationRepositoryInterface::class, QuotationRepository::class);
-        $this->app->singleton(ClientSqlRepositoryInterface::class, ClientSqlRepository::class);
         $this->app->singleton(TransferRepositoryInterface::class, TransferRepository::class);
         $this->app->singleton(InventoryReservationRepositoryInterface::class, InventoryReservationRepository::class);
 

@@ -20,8 +20,6 @@ interface InventoryQueryServiceInterface
 
     /** funcion para consulta de segmento de cliente */
 
-    public function getConsultClientSegment($data);
-
 
     /** funcion de consulta de reservados  */
 

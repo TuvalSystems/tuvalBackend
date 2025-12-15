@@ -27,12 +27,10 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         StockWarehouseServiceInterface $stockWarehouseService,
         ApiGpService $apiGp,
         FunctionsServiceInterface $functionsService,
-        ClientServiceInterface $clientSqlService,
     ) {
         $this->stockWarehouseService = $stockWarehouseService;
         $this->apiGp = $apiGp;
         $this->functionsService = $functionsService;
-        $this->clientSqlService = $clientSqlService;
     }
 
 
@@ -129,16 +127,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         return is_array($data) ? $data : (array) $data;
     }
 
-    public function getConsultClientSegment($ruc)
-    {
-        $segmento = $this->clientSqlService->validateClientforRucSegment($ruc);
 
-        if (is_array($segmento)) {
-            return $this->buildSuccessResponse('Segmento encontrado', 200);
-        } else {
-            return $this->buildErrorResponse('Segmento no encontrado', 500);
-        }
-    }
 
 
 

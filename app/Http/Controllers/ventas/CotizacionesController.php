@@ -612,9 +612,16 @@ class CotizacionesController extends Controller
 
     public function guardarcliente(Request $request)
     {
-        $data = $request->all();
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
-        return $this->quotationService->storeClientQuotation($data, $user);
+        try {
+            $data = $request->all();
+            $user = GpUsuario::where('id', Auth::user()->id)->first();
+            $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
+            return $this->successResponse('Información Obtenida Correctamente', $cliente, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
+
     }
 
     public function detallecotizacion(Request $request)
@@ -1133,14 +1140,27 @@ class CotizacionesController extends Controller
     /** seccion de cliente  */
     public function obtenerListaSegmentos()
     {
+        try {
+            $resp = $this->quotationService->getAllSegments();
+            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
 
-        return $this->quotationService->getSegmentosSqlServer();
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function obtenerListaSubSegmentos(Request $request)
     {
-        $segmento = $request->get('segmento', null);
-        return $this->quotationService->getSubSegmentosSqlServer($segmento);
+        try {
+            $coAtrPadre = $request->get('segmento', null);
+            $resp = $this->quotationService->getSubSegmentBySegment($coAtrPadre);
+            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
+
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
+
     }
 
     public function validarSegmentoCliente(Request $request)

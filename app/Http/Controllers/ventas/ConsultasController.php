@@ -698,10 +698,4 @@ class ConsultasController extends Controller
         ]);
     }
 
-
-    public function consultarClienteSegmento(Request $request)
-    {
-        $data = $request->all();
-        return $this->InventoryQueryService->getConsultClientSegment($data);
-    }
 }
