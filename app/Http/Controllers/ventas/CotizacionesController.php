@@ -837,90 +837,6 @@ class CotizacionesController extends Controller
         $pdf = Pdf::loadView('cotizacionPDF', $cotizacion);
         return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
     }
-    // public function imprimircotizacion2($id): \Illuminate\Http\Response|string
-    // {
-    //     $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
-
-    //     if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
-    //         return 'No permitido';
-    //     } elseif ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
-    //         return 'No permitido';
-    //     } elseif ($cotizacion['estado'] == 'caducado') {
-    //         return 'No permitido';
-    //     }
-
-    //     GpCotizacion::where('id', $id)->update(['impreso' => 'yes']);
-
-    //     GpCotizacion::where('id', $id)
-    //         ->whereNull('fecha_impreso')
-    //         ->update(['fecha_impreso' => date('Y-m-d H:i:s')]);
-
-    //     $detalle = GpCotizacionDetalle::where('cotizacion_id', $cotizacion['id'])->get()->toarray();
-    //     $peso = 0;
-
-
-
-    //     foreach ($detalle as $art) {
-    //         $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
-    //         $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
-    //     }
-
-    //     foreach ($detalle as &$art) {
-    //         $peso += $art['ART_PESO'] * $art['ART_CANTIDAD'];
-
-    //         $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_VALOR'] * $art['ART_CANTIDAD'], 2, '.', '');
-    //         $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_IVA'], 2, '.', '');
-    //     }
-    //     $cotizacion['peso'] = $peso;
-    //     $cotizacion['detalle'] = $detalle;
-    //     $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
-    //     $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'];
-
-    //     $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toarray();
-
-    //     $cotizacion['cliente'] = $cliente;
-
-    //     $sucursal = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toarray();
-
-    //     $cotizacion['sucursal'] = $sucursal;
-    //     //
-    //     $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toarray();
-
-    //     if ($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0) {
-    //         $cotizacion['validez'] = '0 días';
-    //     } else {
-    //         //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-    //         //            $cotizacion['validez'] = $horas.' horas';
-    //         $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
-    //     }
-
-    //     $validez_real = 0;
-    //     $webservices = new WebserviceController;
-
-    //     $validez_real = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'];
-    //     for ($i = 1; $i <= $validez_real; $i++) {
-    //         $expira = date('Y-m-d', strtotime($i . ' day', strtotime($cotizacion['created_at'])));
-    //         $parameters = array(
-    //             'IDCompania' => env('ID_COMPANIA'),
-    //             'Fecha' => $expira,
-    //         );
-
-    //         $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
-    //         if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
-    //             $validez_real++;
-    //         }
-    //     }
-
-    //     $expira = date('Y-m-d', strtotime($validez_real . ' day', strtotime($cotizacion['created_at'])));
-
-
-    //     $cotizacion['expira'] = $expira; //date('Y-m-d', strtotime($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' day', strtotime($cotizacion['updated_at'])));
-    //     $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
-    //     $data = $cotizacion;
-    //     //return view('cotizacionPDF', $data);
-    //     $pdf = Pdf::loadView('cotizacionPDF', $data);
-    //     return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
-    // }
 
     public function imprimircotizacionimagenes($id): \Illuminate\Http\Response|string
     {
@@ -1242,5 +1158,5 @@ class CotizacionesController extends Controller
     }
 
 
-   
+
 }
