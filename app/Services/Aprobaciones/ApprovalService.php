@@ -361,21 +361,20 @@ class ApprovalService implements ApprovalServiceInterface
             // Comparamos directamente contra la variable normalizada
             if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL'] && $detalle['ART_VALOR'] != $valorOriginalReal) {
                 // Mensaje genérico de cambio
-                $mensaje = "El valor del producto es diferente al valor original";
+                $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: {$detalle['ART_VALOR_ORIGINAL']}";
 
                 // Si quieres mantener el mensaje específico que tenías para items existentes:
                 if ($detOriginal) {
-                    $mensaje = "Valor diferente al detalle Original - {$detalle['detalle_id']} - {$detalle['ART_VALOR']}";
+                    $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $valorOriginalReal";
                 }
-
-                $detailMotivos[] = $this->requiredApprovalResponse($mensaje);
+                 $detailMotivos[] = $this->requiredApprovalResponse($mensaje);
             }
 
             // C. Validaciones NO Tipo L (Standard)
             if ($detalle['ART_TIPO_COMPRA'] != 'L') {
                 // C.1 Descripción
                 if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL'] && $detalle['ART_DESCRIPCION'] != $descOriginalReal) {
-                    $detailMotivos[] = $this->requiredApprovalResponse("La descripcion del producto es diferente a la original");
+                      $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '{$detalle['ART_DESCRIPCION']}...' vs Original: '$descOriginalReal...'");
                 }
 
                 // C.2 Exceso de Precio
