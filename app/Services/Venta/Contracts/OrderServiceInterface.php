@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Pedidos\Contracts;
+namespace App\Services\Venta\Contracts;
 
 interface OrderServiceInterface
 {

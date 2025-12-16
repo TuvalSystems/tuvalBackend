@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Pedidos;
+namespace App\Services\Venta;
 
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -30,18 +30,17 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
 use App\Services\Api\Cobros\ApiBillingService;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-use function PHPUnit\Framework\isEmpty;
 
 class OrderService implements OrderServiceInterface
 {

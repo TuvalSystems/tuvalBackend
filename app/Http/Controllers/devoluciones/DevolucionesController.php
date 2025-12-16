@@ -16,7 +16,7 @@ use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;

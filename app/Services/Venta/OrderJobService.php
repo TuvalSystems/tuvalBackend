@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services\Pedidos;
+namespace App\Services\Venta;
 
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Carbon\Carbon;
 use Exception;
@@ -74,12 +74,12 @@ class OrderJobService
 
     /** funciones para el facturar siguiente mes */
 
-     public function invoicePreviousMonthOrders()
+    public function invoicePreviousMonthOrders()
     {
         $now = now('America/Guayaquil');
         $prev = $now->copy()->subMonthNoOverflow();
         $year = (int) $prev->year;
-        $mes  = (int) $prev->month;
+        $mes = (int) $prev->month;
 
         if ($this->shouldAbortBilling($mes)) {
             Log::channel('cron_process')->warning("⚠️ No se ejecuta facturación: Aún no llega el mes: {$mes}");
@@ -94,7 +94,7 @@ class OrderJobService
         }
         $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
         $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
-            foreach ($pedidos as  $pedido) {
+            foreach ($pedidos as $pedido) {
                 $resultados['total']++;
 
                 // Éxito idempotente si ya está facturado
@@ -104,7 +104,7 @@ class OrderJobService
                 }
 
                 $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
-                if (! $lock->get()) {
+                if (!$lock->get()) {
                     // Otro proceso ya está facturando → no lo cuentes como error
                     Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
                     continue;
@@ -136,13 +136,13 @@ class OrderJobService
                     $resultados['fallidos']++;
                     $resultados['errores'][] = [
                         'pedido_id' => $pedido->id,
-                        'pedido'    => $pedido->pedido,
-                        'error'     => $e->getMessage(),
+                        'pedido' => $pedido->pedido,
+                        'error' => $e->getMessage(),
                     ];
                     Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->pedido}", [
                         'pedido_id' => $pedido->id,
-                        'error'     => $e->getMessage(),
-                        'trace'     => $e->getTraceAsString(),
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
                     ]);
                 } finally {
                     optional($lock)->release();
@@ -151,7 +151,7 @@ class OrderJobService
         });
 
         Log::channel('cron_process')->info("📊 Resumen facturación masiva", $resultados);
-         return $resultados;
+        return $resultados;
     }
 
 
@@ -162,14 +162,14 @@ class OrderJobService
     }
 
 
-        /** facturacion de pedidos en estado de reserva  */
+    /** facturacion de pedidos en estado de reserva  */
 
 
     public function generateInvoiceForReservedOrders(?string $date = null): array
     {
         $today = $date ? Carbon::parse($date)->toDateString() : now()->toDateString();
         $metrics = ['processed' => 0, 'invoiced' => 0, 'skipped' => 0, 'failed' => 0];
-        $orders =  $this->orderRepository->queryInvoiceReservedOrdersForDate($today);
+        $orders = $this->orderRepository->queryInvoiceReservedOrdersForDate($today);
         $orders->orderBy('id')->chunkById(200, function ($orders) use (&$metrics, $today) {
             foreach ($orders as $order) {
                 $metrics['processed']++;
