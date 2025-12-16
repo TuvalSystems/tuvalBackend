@@ -126,7 +126,8 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function sendStoreReminderGp($params){
+    public function sendStoreReminderGp($params)
+    {
         $this->apiGpService->storeQuoteReminderGp($params);
 
     }
@@ -259,11 +260,6 @@ class QuotationService implements QuotationServiceInterface
 
         GpTempCart::where('id', $id)
             ->update(['CHECK_ALTERNATIVO' => $checkAlternative]);
-
-        return $this->buildSuccessResponse(
-            'Check alternativo actualizado correctamente',
-            200
-        );
     }
 
 
@@ -484,7 +480,7 @@ class QuotationService implements QuotationServiceInterface
      * @return JsonResponse
      */
 
-    public function consultQuotationsNews($data)
+    public function consultQuotationsNews($data): array
     {
         $periodo = $data['periodo'] ?? null;
         $sucursal = $data['sucursal'] ?? null;
@@ -492,7 +488,7 @@ class QuotationService implements QuotationServiceInterface
         $motivo = $data['motivo'] ?? null;
 
         if (!$periodo) {
-            return $this->buildErrorResponse('Debe ingresar un periodo', 400);
+            abort(400, 'Debe ingresar un periodo');
         }
         $fechaInit = date('Y-m-01', strtotime($periodo));
         $fechaEnd = date('Y-m-t', strtotime($periodo));
@@ -501,21 +497,21 @@ class QuotationService implements QuotationServiceInterface
             $formattedSucursal = strtoupper(trim($sucursal));
             $sucursal = GpBodega::where('BOD_BODEGA', $formattedSucursal)->first();
             if (!$sucursal) {
-                return $this->buildErrorResponse('Sucursal no encontrada', 404);
+                abort(404, 'Sucursal no encontrada');
             }
         }
 
         if (!is_null($motivo)) {
             $motivo = GpCotizacionVentaMotivo::where('descripcion', [strtolower(trim($motivo))])->first();
             if (!$motivo) {
-                return $this->buildErrorResponse('Motivo de no venta no encontrado', 404);
+                abort(404, 'Motivo de no venta no encontrado');
             }
         }
 
         if (!is_null($vendedor)) {
             $vendedor = GpUsuario::where('USERID', trim($vendedor))->first();
             if (!$vendedor) {
-                return $this->buildErrorResponse('Vendedor no encontrado', 404);
+                abort(404, 'Vendedor no encontrado');
             }
         }
 
@@ -553,7 +549,7 @@ class QuotationService implements QuotationServiceInterface
             ];
         })->values()->toArray();
 
-        return $this->successResponse('Datos Obtenidos Correctamente', $resumen, 200);
+        return $resumen;
     }
 
 
@@ -677,10 +673,7 @@ class QuotationService implements QuotationServiceInterface
             }
         }
         $this->functionService->recalculateIva($articulosTemp);
-        return response([
-            'success' => true,
-            'articulos' => $articulosTemp,
-        ]);
+        return $articulosTemp;
     }
 
 
@@ -878,30 +871,20 @@ class QuotationService implements QuotationServiceInterface
 
     public function requestQuotationAgain($data, $user)
     {
-        try {
-            DB::beginTransaction();
-            $cliente = $this->functionService->getClient($data);
-            $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
-            $this->functionService->recalculateIva($detalles);
-            $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
-            $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-            DB::commit();
-            return response([
-                'success' => true,
-                'cliente' => $cliente,
-                'registro_copia' => $registroCopiaId,
-                'currentSucursal' => $data['sucursal_id'],
-                'test' => 'volver_a_pedir',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            Log::error('Error in requestQuotationAgain (Volver a pedir cotización)', [
-                'error' => $th->getMessage(),
-            ]);
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        $cliente = $this->functionService->getClient($data);
+        $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
+        $this->functionService->recalculateIva($detalles);
+        $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+
+        return [
+            'cliente' => $cliente,
+            'registro_copia' => $registroCopiaId,
+            'currentSucursal' => $data['sucursal_id'],
+            'test' => 'volver_a_pedir',
+            'segmento' => $segmento
+        ];
     }
 
 
@@ -912,30 +895,17 @@ class QuotationService implements QuotationServiceInterface
 
     public function storeQuotation($data, $user)
     {
-        try {
-            DB::beginTransaction();
-            $cotizacion = $this->prepareQuotationStoreFill($data, $user);
 
-            if (!empty($data['cotizacion_id'])) {
-                GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
-            }
-            $this->saveQuotationDetail($data['cotizacion'], $cotizacion->id);
-            $this->OrderQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
-            $this->updateRegisterCopyQuotation($data['registro_copia'], $cotizacion->id);
-            DB::commit();
-            return $this->buildSuccessResponse(
-                "Cotización {$cotizacion->cotizacion} guardada correctamente",
-                200
-            );
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            Log::error('Error in storeQuotation (Guardar cotización)', [
-                'error' => $th->getMessage(),
-                'linea' => $th->getLine(),
-                'file' => $th->getFile(),
-            ]);
-            return $this->buildErrorResponse($th->getMessage(), 500);
+        $cotizacion = $this->prepareQuotationStoreFill($data, $user);
+
+        if (!empty($data['cotizacion_id'])) {
+            GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
         }
+        $this->saveQuotationDetail($data['cotizacion'], $cotizacion->id);
+        $this->OrderQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
+        $this->updateRegisterCopyQuotation($data['registro_copia'], $cotizacion->id);
+        return $cotizacion;
+
     }
 
 
@@ -1154,20 +1124,17 @@ class QuotationService implements QuotationServiceInterface
      */
     public function getMarginItem($artArticulo)
     {
-        try {
-            $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
-            if (!$itemL) {
-                return $this->buildErrorResponse('Item no encontrado', 404);
-            }
-            $datosL = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $itemL->ART_CLASE_ARTICULO)->first();
-            if (!$datosL) {
-                return $this->buildErrorResponse('Datos L no encontrados', 404);
-            }
 
-            return $this->successResponse('Información obtenida correctamente', $datosL, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
+        $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
+        if (!$itemL) {
+            abort(404, 'Item no encontrado');
         }
+        $datosL = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $itemL->ART_CLASE_ARTICULO)->first();
+        if (!$datosL) {
+            abort(404, 'Datos L no encontrados');
+        }
+        return $datosL;
+
     }
 
 
@@ -1180,24 +1147,12 @@ class QuotationService implements QuotationServiceInterface
 
     public function saveProviderQuotationTemp(array $data)
     {
-        try {
-            DB::beginTransaction();
-            if (empty($data['proveedores']) || !is_array($data['proveedores'])) {
-                return $this->buildSuccessResponse('No se han encontrado proveedores para guardar', 200);
-            }
-            $this->deleteProviderQuotationTemp($data['id']);
-            $this->saveProviderQuotationItemTemp($data['proveedores'], $data['id']);
-            $this->updateTempCartArtValor($data['id'], $data['ART_VALOR']);
-            DB::commit();
-            return $this->buildSuccessResponse('Proveedores guardados correctamente', 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error al guardar proveedores en la cotización temporal', [
-                'error' => $e->getMessage(),
-                'data' => $data,
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
+        if (empty($data['proveedores']) || !is_array($data['proveedores'])) {
+            return;
         }
+        $this->deleteProviderQuotationTemp($data['id']);
+        $this->saveProviderQuotationItemTemp($data['proveedores'], $data['id']);
+        $this->updateTempCartArtValor($data['id'], $data['ART_VALOR']);
     }
 
     public function deleteProviderQuotationTemp($idTempCart)
@@ -1321,42 +1276,22 @@ class QuotationService implements QuotationServiceInterface
 
     public function checkClientWithSegmentExist($ruc)
     {
-        try {
-            $hasSegment = $this->apiGpService->fetchClientSegment([
-                'ruc' => $ruc,
-            ]);
-            if ($hasSegment['success'] === true) {
-                return response()->json([
-                    'exists' => true,
-                    'message' => 'Segmento encontrado',
-                ], 200);
-            }
-
-            return response()->json([
-                'exists' => false,
-                'message' => 'Segmento no encontrado',
-            ], 202);
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        return $this->apiGpService->fetchClientSegment([
+            'ruc' => $ruc,
+        ]);
     }
 
 
     public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId)
     {
-        try {
-            DB::beginTransaction();
-            $cliente = GpCliente::find($cliente['id']);
-            $cliente->CLI_SEGMENTO_ID = $segmentoId;
-            $cliente->CLI_SUBSEGMENTO_ID = $subsegmentoId;
-            $cliente->save();
-            DB::commit();
-            $this->sendToSegmentAndRucToGp($cliente['CLI_RUC'], $subsegmentoId);
-            return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
-        }
+
+        $cliente = GpCliente::find($cliente['id']);
+        $cliente->CLI_SEGMENTO_ID = $segmentoId;
+        $cliente->CLI_SUBSEGMENTO_ID = $subsegmentoId;
+        $cliente->save();
+        $this->sendToSegmentAndRucToGp($cliente['CLI_RUC'], $subsegmentoId);
+        return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
+
     }
 
 
