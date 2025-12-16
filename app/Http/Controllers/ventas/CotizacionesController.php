@@ -640,7 +640,21 @@ class CotizacionesController extends Controller
         ini_set('max_execution_time', -1);
         $data = $request->all();
         $user = Auth::user();
-        return $this->quotationService->restoreQuotation($data, $user);
+
+        try {
+            $info = $this->quotationService->restoreQuotation($data, $user);
+            return response([
+                'success' => true,
+                'cliente' => $info['cliente'],
+                'currentSucursal' => $info['currentSucursal'],
+                'cotizacion_id' => $info['cotizacion_id'],
+                'test' => $info['test'],
+                'segmento' => $info['segmento']
+            ]);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
     }
 
 

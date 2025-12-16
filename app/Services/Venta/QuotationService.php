@@ -120,39 +120,16 @@ class QuotationService implements QuotationServiceInterface
 
         ]);
         $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
-        $this->sendStoreReminderGp($sendQuote);
+        $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($sendQuote);
+        $this->sendStoreReminderGp($params);
         return null;
     }
 
 
-    public function sendStoreReminderGp($cotizacion)
-    {
-        $parmas = [
-            'txCot' => $cotizacion->cotizacion,
-            'txUsr' => $cotizacion->usuario->USERID,
-            'txCliRuc' => $cotizacion->CLI_RUC,
-            'txCliRazSoc' => $cotizacion->CLI_RAZON_SOCIAL,
-            'txCotCliSri' => $cotizacion->CLI_CORREO_ELECT_SRI,
-            'txEst' => $cotizacion->estado,
-            'txBod' => $cotizacion->BOD_BODEGA,
-            'txPtoVta' => $cotizacion->PTO_VTA_ID,
-            'txPtoVtaDesc' => $cotizacion->PTO_VTA_DESCRIPCION,
-            'txCotReqapr' => $cotizacion->requiere_aprobacion_comercial,
-            'txCotAprCom' => $cotizacion->aprobado_comercial,
-            'txCotMot' => $cotizacion->motivosNoVenta->descripcion,
-            'coCotRec' => $cotizacion->recordar,
-            'feCotRec' => $cotizacion->fecha_recordatorio,
-            'txObsMot' => $cotizacion->observacion,
-            'feIng' => date('Y-m-d'),
-            'txUsrIng' => $cotizacion->user_ing_recordatorio,
-            'feUltmod' => date('Y-m-d'),
-            'txUsrMod' => $cotizacion->user_ing_recordatorio,
-            'ndCotTot' => $cotizacion->total,
-        ];
-        $this->apiGpService->storeQuoteReminderGp($parmas);
+    public function sendStoreReminderGp($params){
+        $this->apiGpService->storeQuoteReminderGp($params);
+
     }
-
-
 
     /**
      * RECUPERAR COTIZACIONES CON RECORDATORIO PARA HOY PARA PROCESO JOB ENVIO DE NOTIFICACION Y CORREO ELECTRONICO
@@ -170,29 +147,18 @@ class QuotationService implements QuotationServiceInterface
 
     public function restoreQuotation($data, $user)
     {
-        try {
-            DB::beginTransaction();
-            $clientes = $this->functionService->getClient($data);
-            $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
-            $this->functionService->recalculateIva($detalles);
-            $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-            DB::commit();
-            return response([
-                'success' => true,
-                'cliente' => $clientes,
-                'currentSucursal' => $data['sucursal_id'],
-                'cotizacion_id' => $data['id'],
-                'test' => 'recuperarcotizacion',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in restoreQuotation', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $clientes = $this->functionService->getClient($data);
+        $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
+        $this->functionService->recalculateIva($detalles);
+        $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
+        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        return [
+            'cliente' => $clientes,
+            'currentSucursal' => $data['sucursal_id'],
+            'cotizacion_id' => $data['id'],
+            'test' => 'recuperarcotizacion',
+            'segmento' => $segmento
+        ];
     }
 
     public function getQuotationDetailWithSuppliers($quotationId)

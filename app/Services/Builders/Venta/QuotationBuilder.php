@@ -18,6 +18,32 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
+    public function formPayloadSendStoreReminderGp($quote): array{
+        return [
+            'txCot'         => $quote->cotizacion,
+            'txUsr'         => $quote->usuario->USERID,
+            'txCliRuc'      => $quote->CLI_RUC,
+            'txCliRazSoc'   => $quote->CLI_RAZON_SOCIAL,
+            'txCotCliSri'   => $quote->CLI_CORREO_ELECT_SRI,
+            'txEst'         => $quote->estado,
+            'txBod'         => $quote->BOD_BODEGA,
+            'txPtoVta'      => $quote->PTO_VTA_ID,
+            'txPtoVtaDesc'  => $quote->PTO_VTA_DESCRIPCION,
+            'txCotReqapr'   => $quote->requiere_aprobacion_comercial,
+            'txCotAprCom'   => $quote->aprobado_comercial,
+            'txCotMot'      => $quote->motivosNoVenta->descripcion,
+            'coCotRec'      => $quote->recordar,
+            'feCotRec'      => $quote->fecha_recordatorio,
+            'txObsMot'      => $quote->observacion,
+            'feIng'         => date('Y-m-d'),
+            'txUsrIng'      => $quote->user_ing_recordatorio,
+            'feUltmod'      => date('Y-m-d'),
+            'txUsrMod'      => $quote->user_ing_recordatorio,
+            'ndCotTot'      => $quote->total,
+        ];
+    }
+
+
     public function fromPayloadReservedToQuotation(array $data, array $requiereApproval, GpUsuario $user, $origen)
     {
 
