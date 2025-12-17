@@ -131,7 +131,7 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
     Route::get('llenar-cotizacion', [CotizacionesController::class, 'llenarcotizacion']);
 
-  Route::get('verificar-stock-actual-reserva', [ReservasController::class, 'verificarStockCotizacionActual']);
+    Route::get('verificar-stock-actual-reserva', [ReservasController::class, 'verificarStockCotizacionActual']);
 
 });
 
@@ -175,6 +175,8 @@ Route::prefix('bodegas')->group(function () {
 
 Route::prefix('consultas')->group(function () {
     Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+    Route::get('buscararticulo-web', [ConsultasController::class, 'buscarArticuloWeb']);
+
 });
 
 Route::prefix('consultas')->group(function () {

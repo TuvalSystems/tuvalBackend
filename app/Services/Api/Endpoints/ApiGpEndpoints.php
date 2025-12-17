@@ -13,7 +13,7 @@ class ApiGpEndpoints
     public const GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE = 'api/consultar-detalle-transferencia';
     public const GENERAL_CONSULTAR_SUCURSALES_CLIENTE = 'api/consultar-sucursales-clientes';
     public const GENERAL_CONSULTAR_COORDENADAS = 'api/consultar-listado-coordenadas';
-    public const GENERAL_CONSULTAR_LISTA_PRECIO_ARTICULO = 'api/consultar-lista-precio-articulo';
+    public const GENERAL_CONSULTAR_LISTA_PRECIO_ARTICULO = 'api/consultar-lista-precio-articulos';
 
     // ---
     // 📦 2. Endpoints de Inventario y Stock ( Bodega )

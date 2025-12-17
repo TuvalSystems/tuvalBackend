@@ -27,4 +27,11 @@ interface InventoryQueryServiceInterface
 
 
      public function listReservedWebInventory(?string $item);
+
+
+      /**
+       * funcion encargada de buscar articulos
+       * @param array $filters
+       */
+      public function searchWithDetails(array $filters);
 }
