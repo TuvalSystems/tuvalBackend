@@ -596,13 +596,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         return $articulos->map(function ($art) use ($filters, $isItemL) {
 
             //Ajustamos el identificador de items tipo L
-            if (in_array($art->ART_CLASE_ARTICULO, ['VTA-SERV-L', 'VTA-BNS-L'])) {
-                $art->ART_TIPO_COMPRA = 'L';
-            }
-
-            //obtenemos el precio
-            $isService = in_array($art->ART_CLASE_ARTICULO, ['VTA-SERV', 'VTA-SERV-L']);
-            if ($isService) {
+            $serviceTypes = ['VTA-SERV-L', 'VTA-BNS-L'];
+            $isService = in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
+            if (in_array($art->ART_CLASE_ARTICULO, $serviceTypes)) {
                 $art->ART_TIPO_COMPRA = 'L';
             }
 
@@ -636,7 +632,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             return $art;
 
         })->filter()->values();
-        // return $codigosParaPrecio;
     }
 
     public function isSearchItemsL(array $filters)
@@ -649,7 +644,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 continue;
             }
 
-            $normalizeCheck = strtolower($filters[$camp]);
+            $normalizeCheck = strtolower(trim($filters[$camp]));
             if (in_array($normalizeCheck, $valoresObjetivo, true)) {
                 return true;
             }
