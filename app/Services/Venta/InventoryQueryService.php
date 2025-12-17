@@ -586,8 +586,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $isItemL = $this->isSearchItemsL($filters);
 
         $articulos = $isItemL
-            ? GpArticulo::busquedaitemsl($filters)
-            : GpArticulo::busqueda($filters);
+            ? GpArticulo::searchItemLModel($filters)
+            : GpArticulo::searchItemModel($filters);
 
         if ($articulos->isEmpty()) {
             return collect();
