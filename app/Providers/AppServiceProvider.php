@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Services\User\Contracts\UserServiceInterface;
@@ -54,7 +55,7 @@ class AppServiceProvider extends ServiceProvider
         Queue::looping(fn () => rescue(fn () => DB::reconnect(), report: false));
         $this->generateCodeQuotation();
         $this->generateCodeOrder();
-        $this->clearSleepConecctionsSQLServer();
+        $this->generateCodeDevolucion();
     }
 
 
@@ -75,33 +76,11 @@ class AppServiceProvider extends ServiceProvider
     }
 
 
-
-    public function clearSleepConecctionsSQLServer()
-    {
-        DB::listen(function ($event) {
-            static $booted  = [];   // conexiones ya inicializadas
-            static $booting = [];   // guardia contra re-entrancia
-
-            $name = $event->connectionName;
-            if (!in_array($name, ['sqlsrvdyn', 'sqlsrvtuv'])) {
-                return;
-            }
-
-            if (!empty($booted[$name]) || !empty($booting[$name])) {
-                return; // ya hecho o estamos dentro de la inicialización
-            }
-
-            $booting[$name] = true; // <-- marcar ANTES para evitar re-entrar
-
-            try {
-                $event->connection->unprepared("
-                SET LOCK_TIMEOUT 5000;
-                SET XACT_ABORT ON;
-            ");
-                $booted[$name] = true;
-            } finally {
-                unset($booting[$name]);
-            }
+    public function generateCodeDevolucion(){
+        GpDevoluciones::created(function(GpDevoluciones $devolucion){
+            $code = 'DEV' . str_pad($devolucion->id, 8, "0", STR_PAD_LEFT);
+            $devolucion->updateQuietly(['devolucion' => $code]);
         });
     }
+
 }

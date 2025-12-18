@@ -188,7 +188,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::get('/devoluciones/pedidoscliente/{cliente_id}/{puntodeventa_id}', [DevolucionesController::class, 'pedidoscliente']);
     Route::post('/devoluciones/detallepedidodevolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
-    Route::post('/devoluciones/enviardevolucion', [DevolucionesController::class, 'enviardevolucion']);
+    // Route::post('/devoluciones/enviardevolucion', [DevolucionesController::class, 'enviardevolucion']);
+    Route::post('/devoluciones/enviardevolucion', [DevolucionesController::class, 'enviarDevolucion']);
     Route::post('/devoluciones/detalledevolucion', [DevolucionesController::class, 'detalledevolucion']);
     Route::get('/devoluciones/verdevolucionesporrecibir/{puntodeventa}', [DevolucionesController::class, 'verdevolucionesporrecibir']);
     Route::post('/devoluciones/recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);

@@ -7,6 +7,7 @@ interface DevolucionServiceInterface
     public function validateInvoiceNotDispatchOrInProcess($pedido);
     public function countsReturnsByOrders($pedido, $devolucion);
 
+    public function handleDevolutionTransaction($data);
     public function anularDevolucion($pedido, $devolucion);
 
     public function canBeAnulledByLimitDate($pedido);

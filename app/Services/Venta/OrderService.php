@@ -160,7 +160,7 @@ class OrderService implements OrderServiceInterface
         );
         $response = $this->apiGpService->getStockByWarehouseAndCompartment($params);
         $data = data_get($response, 'data', []);
-        return $data['COMPARTIMIENTO'] ?? null;
+        return data_get($data, 'COMPARTIMIENTO', null);
     }
 
     public function getImagenes(string $codigo): array

@@ -1208,4 +1208,10 @@ class DespachosController extends Controller
             return $this->errorResponse($e->getMessage(), [], 500);
         }
     }
+
+
+    public function cancelarOrdenDespacho($id){
+
+        return $this->dispatchService->cancelDispatchIfEmptyPicking($id);
+    }
 }

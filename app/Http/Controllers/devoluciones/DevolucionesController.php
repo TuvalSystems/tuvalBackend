@@ -21,8 +21,10 @@ use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class DevolucionesController extends Controller
 {
@@ -89,7 +91,7 @@ class DevolucionesController extends Controller
 
     //procesos nuevos comentados para no afectar produccion en espera de aprobacion de Dennis para deploy a producccion
     //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y repositorios )
-    public function enviardevolucion(Request $request)
+    public function enviardevolucionOrigin(Request $request)
     {
 
         try {
@@ -148,14 +150,12 @@ class DevolucionesController extends Controller
             $validateItemsPartialDispatch = $this->devolucionService->validateItemPartialDispatch($devolucion);
             if (
                 $validateAnulationInvoiceDispatch &&
-                isset($data['devolucion']['tipo_devolucion']) &&
-                $data['devolucion']['tipo_devolucion'] === "total" &&
-                $countsReturnsByOrders === 0 &&
-                $validateItemsL === 0 &&
-                $validateItemsPartialDispatch === 0 &&
-                $data['devolucion']['volver_a_facturar'] === false &&
-                ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
-                && ($devolucion->anulacion_habilitada === true || $devolucion->anulacion_habilitada === 1)
+                ($data['devolucion']['tipo_devolucion'] ?? '') === "total" &&
+                !$countsReturnsByOrders &&
+                !$validateItemsL &&
+                !$validateItemsPartialDispatch &&
+                ($data['devolucion']['volver_a_facturar'] ?? false) === false &&
+                ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === true)
             ) {
                 $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
                 if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
@@ -192,6 +192,52 @@ class DevolucionesController extends Controller
             NotifyErrorAnulationJob::dispatch($userId, $th->getMessage());
             Log::channel('devolucion')->info("Error en la funcion enviardevolucion: {$th->getMessage()} - Devolución ID: {$devolucion->id}");
             return $this->buildErrorResponse($th->getMessage(), 401);
+        }
+    }
+
+    public function enviarDevolucion(Request $request): JsonResponse
+    {
+        $data = $request->all();
+        try {
+            $newDev = $this->devolucionService->handleDevolutionTransaction($data);
+            $statusDev = $newDev->estado === 'solicitado';
+            $tipoDev = $newDev->tipo_devolucion === 'total';
+            $devCode = is_object($newDev) ? $newDev->devolucion : '';
+            if (isset($newDev->warning_message)) {
+                return $this->buildSuccessResponse(
+                    "ATENCIÓN: " . $newDev->warning_message,
+                    200
+                );
+            }
+            if ($statusDev && $tipoDev) {
+
+                // Caso: Tiene pagos registrados
+                if (!$newDev->permite_anulacion) {
+                    return $this->buildSuccessResponse(
+                        "La devolución {$devCode} ha sido solicitada. No se podrá anular la factura ya que tiene pagos registrados. La devolución será procesada normalmente.",
+                        200
+                    );
+                }
+
+                if (!$newDev->anulacion_habilitada) {
+                    return $this->buildSuccessResponse(
+                        "La devolución {$devCode} ha sido solicitada, pero no se procesará porque excede el límite de días permitido para anulaciones. La devolución será procesada normalmente.",
+                        200
+                    );
+                }
+            }
+            return $this->buildSuccessResponse("La devolución  {$devCode} ha sido solicitada. ", 200);
+
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $th) {
+            Log::channel('devolucion')->info("Error al Procesar la devolución: {$th->getMessage()} - Devolución ID: {$newDev->id}");
+            $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
+            NotifyErrorAnulationJob::dispatch($userId, $th->getMessage());
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
 

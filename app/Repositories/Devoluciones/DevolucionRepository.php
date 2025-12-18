@@ -23,25 +23,25 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->first();
     }
 
-    public function validateInvoiceNotDispatchOrInProcess($pedido)
+    public function isOrderNotDispatchedOrProcessing($pedido)
     {
         return GpPedido::where(function ($q) {
             $q->where('despachado', 0)->orWhereNull('despachado');
         })->where(function ($q) {
             $q->where('despacho_en_proceso', 0)->orWhereNull('despacho_en_proceso');
         })
-            ->where('id', $pedido['id'])->first();
+            ->where('id', $pedido['id'])->exists();
     }
 
-    public function countsReturnsByOrders($pedido, $devolucion)
+    public function hasOtherActiveReturns($pedido, $devolucion) : bool
     {
-
-        return GpDevoluciones::where('pedido_id', $pedido['id'])->where('id', '!=', $devolucion['id'])->where('estado', '!=', ' rechazada')->count();
+        return GpDevoluciones::where('pedido_id', $pedido['id'])->where('id', '!=', $devolucion['id'])
+        ->whereNotIn('estado', ['no_procesado', 'rechazada'])->exists();
     }
 
-    public function validateItemLDetailInvoice($devolucion)
+    public function validateItemLDetailInvoice($devolucion) : bool
     {
-        return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])->where('ART_TIPO_COMPRA', 'L')->count();
+        return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])->where('ART_TIPO_COMPRA', 'L')->exists();
     }
 
 
@@ -70,26 +70,26 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function validateItemsPartialDispatch($devolucion)
+    public function hasPartiallyDispatchedItems($devolucion) : bool
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])
             ->where('despachado_parcial', 1)
-            ->count();
+            ->exists();
     }
 
 
-    public function getReturnsAnulated($pedido_id)
+    public function getReturnsAnulated($pedido_id) : bool
     {
-        return GpDevoluciones::where('pedido_id', $pedido_id)->where('estado', 'anulada')->first();
+        return GpDevoluciones::where('pedido_id', $pedido_id)->where('estado', 'anulada')->exists();
     }
 
 
     // funciones para el detallepedidodevolucion - getDetailOrderReturnById
-    public function getReturnsInProcess($pedido_id)
+    public function getReturnsInProcess($pedido_id): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido_id)
-            ->where('estado', '!=', 'procesado')
-            ->where('estado', '!=', 'rechazado')->first();
+            ->whereNotIn('estado', ['no_procesado', 'procesado', 'rechazada'])
+          ->exists();
     }
 
     public function getMotivosDevolucion()
