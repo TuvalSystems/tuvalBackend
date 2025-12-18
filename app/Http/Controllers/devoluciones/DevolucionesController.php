@@ -82,10 +82,27 @@ class DevolucionesController extends Controller
         ]);
     }
 
-    public function detallepedidodevolucion()
+    public function detallepedidodevolucion(Request $request)
     {
-        $data = request()->all();
-        return $this->devolucionService->getDetailOrderReturnById($data);
+        try {
+            $data = $request->all();
+            $info = $this->devolucionService->getDetailOrderReturnById($data);
+            return response([
+                'success'               => true,
+                'detalle'               => $info['detalle'],
+                'motivos'               => $info['motivos'],
+                'clientes'              => $info['clientes'],
+                'devolucion_anterior'   => $info['devolucion_anterior'],
+                'items_devueltos'       => $info['items_devueltos'],
+            ]);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
+        }
     }
 
 

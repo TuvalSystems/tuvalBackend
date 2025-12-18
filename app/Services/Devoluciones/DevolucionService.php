@@ -188,7 +188,7 @@ class DevolucionService implements DevolucionServiceInterface
         $shouldAnulated = (
             $isCleanOrder &&
             ($data['devolucion']['tipo_devolucion'] ?? '') === "total" &&
-            !$hasOtherReturns  &&
+            !$hasOtherReturns &&
             !$validateItemsL &&
             !$hasPartialDispatch &&
             ($data['devolucion']['volver_a_facturar'] ?? false) === false &&
@@ -671,17 +671,17 @@ class DevolucionService implements DevolucionServiceInterface
         $clientId = Arr::get($order, 'cliente_id');
 
         if ($this->devolucionRepository->getReturnsAnulated($orderId)) {
-            return $this->buildErrorResponse('Esta factura se encuentra anulada en el SRI', 409);
+            abort(409, 'Esta factura se encuentra anulada en el SRI');
         }
 
         if ($this->devolucionRepository->getReturnsInProcess($orderId)) {
-            return $this->buildErrorResponse('Esta factura ya tiene una devolución en proceso', 409);
+            abort(409, 'Esta factura ya tiene una devolución en proceso');
         }
 
         $pedido = $this->devolucionRepository->getOrderbyId($orderId);
 
         if ($pedido->despacho_en_proceso && !$pedido->despachado) {
-            return $this->buildErrorResponse('El pedido está siendo despachado', 409);
+            abort(409, 'El pedido está siendo despachado');
         }
 
         $detalles = $this->orderRepository->getAllDetailsOrderById($orderId);
@@ -694,7 +694,7 @@ class DevolucionService implements DevolucionServiceInterface
         ]);
 
         if (!$grupoEconomico['success']) {
-            return $this->buildErrorResponse($grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente', 400);
+            abort(400, $grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente');
         }
 
         $clientesArr = collect($grupoEconomico['CGE_RUC'] ?? [])->map(function ($ruc) {
@@ -708,14 +708,13 @@ class DevolucionService implements DevolucionServiceInterface
         $detailFormat = $this->getDetailFormatPedido($detalles, $pedido);
         $devolucionAnterior = $this->devolucionRepository->getReturnsHistoryByOrderId($orderId);
 
-        return response([
-            'success' => true,
-            'detalle' => $detailFormat,
-            'motivos' => $motivos,
-            'clientes' => $clientesArr,
-            'devolucion_anterior' => $devolucionAnterior,
-            'items_devueltos' => $this->validarItemNoTengaDespachoParcial($detalles),
-        ]);
+        return [
+            'detalle'               => $detailFormat,
+            'motivos'               => $motivos,
+            'clientes'              => $clientesArr,
+            'devolucion_anterior'   => $devolucionAnterior,
+            'items_devueltos'       => $this->validarItemNoTengaDespachoParcial($detalles)
+        ];
     }
 
     public function getDetailFormatPedido($detalles, $pedido)
