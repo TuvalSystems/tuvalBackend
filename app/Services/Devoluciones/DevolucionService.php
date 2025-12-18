@@ -147,7 +147,7 @@ class DevolucionService implements DevolucionServiceInterface
             $this->processInvoiceAnulation($data, $newDev);
         } catch (Exception $e) {
             Log::error("Error crítico: Devolución {$newDev->id} creada, pero falló la anulación: " . $e->getMessage());
-            $newDev->warning_message = "Devolución generada {$newDev->devolucion}, pero hubo un error en la anulación automática: " . $e->getMessage();
+            $newDev->warning_message = "Devolución generada {$newDev->devolucion}, pero no fue anulada por el siguiente motivo: " . $e->getMessage();
         }
 
         return $newDev;
