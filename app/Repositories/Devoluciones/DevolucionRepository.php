@@ -153,7 +153,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function getReturnsHistoryByOrderId($pedido_id)
     {
         return GpDevoluciones::where('pedido_id', $pedido_id)
-            ->where('estado', '!=', 'rechazada')
+            ->whereNotIn('estado', ['no_procesado', 'rechazada'])
             ->exists();
     }
 

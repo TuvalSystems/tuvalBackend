@@ -85,8 +85,7 @@ class DevolucionService implements DevolucionServiceInterface
     {
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
             ->where('cliente_id', $cienteId)
-            ->where('estado', 'facturado')
-            ->orWhere('estado', 'anulada')
+            ->whereIn('estado', ['facturado', 'anulada'])
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
     }
 
