@@ -232,7 +232,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
         /** proceso temporal de guia de despacho  */
         if ($this->isGUideBlockedForOrder($guia)) {
-           abort(422, 'El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de Salida).');
+           abort(422, 'El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).');
         }
 
 
