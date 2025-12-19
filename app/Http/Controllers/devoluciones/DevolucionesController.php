@@ -12,6 +12,8 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\GpUsuario;
+use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
@@ -88,12 +90,12 @@ class DevolucionesController extends Controller
             $data = $request->all();
             $info = $this->devolucionService->getDetailOrderReturnById($data);
             return response([
-                'success'               => true,
-                'detalle'               => $info['detalle'],
-                'motivos'               => $info['motivos'],
-                'clientes'              => $info['clientes'],
-                'devolucion_anterior'   => $info['devolucion_anterior'],
-                'items_devueltos'       => $info['items_devueltos'],
+                'success' => true,
+                'detalle' => $info['detalle'],
+                'motivos' => $info['motivos'],
+                'clientes' => $info['clientes'],
+                'devolucion_anterior' => $info['devolucion_anterior'],
+                'items_devueltos' => $info['items_devueltos'],
             ]);
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
@@ -215,12 +217,16 @@ class DevolucionesController extends Controller
     public function enviarDevolucion(Request $request): JsonResponse
     {
         $data = $request->all();
+         $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
+         $gpUser = GpUsuario::where('id', $userId)->first();
         try {
             $newDev = $this->devolucionService->handleDevolutionTransaction($data);
             $statusDev = $newDev->estado === 'solicitado';
             $tipoDev = $newDev->tipo_devolucion === 'total';
             $devCode = is_object($newDev) ? $newDev->devolucion : '';
             if (isset($newDev->warning_message)) {
+                // NotifyErrorAnulationJob::dispatch($userId, $newDev->warning_message);
+                $gpUser->notify(new UserNotification('Devolucion No Procesada', $newDev->warning_message));
                 return $this->buildSuccessResponse(
                     "ATENCIÓN: " . $newDev->warning_message,
                     200
@@ -252,8 +258,7 @@ class DevolucionesController extends Controller
             );
         } catch (\Throwable $th) {
             Log::channel('devolucion')->info("Error al Procesar la devolución: {$th->getMessage()} - Devolución ID: {$newDev->id}");
-            $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
-            NotifyErrorAnulationJob::dispatch($userId, $th->getMessage());
+            $gpUser ->notify(new UserNotification('Error al Procesar la devolucion', $newDev->warning_message));
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
