@@ -578,7 +578,7 @@ class CobranzasController extends Controller
 
     public function enviarcobros()
     {
-        $cobros = GpCobro::where('estado', '!=', 'enviado')->get();
+        $cobros = GpCobro::whereNotIn('estado',['enviado','no_enviado'])->get();
 
         foreach ($cobros as $cobro) {
             $this->enviarcobro($cobro->id);
