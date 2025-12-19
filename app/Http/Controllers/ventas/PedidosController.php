@@ -1438,8 +1438,11 @@ class PedidosController extends Controller
     {
         try {
             $id = $request->input('id', null);
-            $validate = $this->orderService->hasDeliveryNoteAjusted($id);
-            return $this->buildExistResponse($validate, 'Ya cuenta con guias de despacho', 200);
+            $hasDispatchs = $this->orderService->hasDeliveryNoteAjusted($id);
+            if ($hasDispatchs) {
+                return $this->buildExistResponse($hasDispatchs, 'Ya cuenta con guias de despacho', 200);
+            }
+            return $this->buildExistResponse($hasDispatchs, 'No cuenta con guias de despacho', 200);
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
                 $e->getMessage(),
