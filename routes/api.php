@@ -273,6 +273,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('actualizar-fecha-factura-reserva', [PedidosController::class, 'actualizarFechaReservaPedido']);
         Route::post('/listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
         Route::post('/bloquear-despacho-pedido', [PedidosController::class, 'actualizarBloqueoPendienteDespacho']);
+        Route::post('validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
+
 
     });
 

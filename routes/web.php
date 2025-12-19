@@ -123,6 +123,9 @@ Route::prefix('pedidos')->group(function () {
     Route::get('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
 
     Route::get('/listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
+    Route::get('/validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
+
+
 
 });
 

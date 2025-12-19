@@ -1433,4 +1433,20 @@ class PedidosController extends Controller
 
         }
     }
+
+    public function validacionExistenciaGuiasEnPedidos(Request $request)
+    {
+        try {
+            $id = $request->input('id', null);
+            $validate = $this->orderService->hasDeliveryNoteAjusted($id);
+            return $this->buildExistResponse($validate, 'Guias existentes', 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

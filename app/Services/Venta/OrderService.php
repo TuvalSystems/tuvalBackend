@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta;
 
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
@@ -122,7 +124,7 @@ class OrderService implements OrderServiceInterface
             $pedido['estado'] === 'eliminado';
     }
 
-     public function buildOrderDetail(array $pedido)
+    public function buildOrderDetail(array $pedido)
     {
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->toarray();
         $peso = 0;
@@ -1691,4 +1693,23 @@ class OrderService implements OrderServiceInterface
         $order->save();
         return $order;
     }
+
+
+
+    /*** funcion para validar la existencia de guias de un pedido  */
+
+    public function hasDeliveryNoteAjusted($id): bool
+    {
+        $order = GpPedido::find($id);
+        if (!$order) {
+            abort(404, "El pedido con ID {$id} no existe.");
+        }
+        return GpGuiaRemisionDespacho::whereHas('guiaRemision', function ($q) use ($order) {
+            $q->where('pedido', $order->pedido)
+                ->where('tipo', 'despacho')
+                ->whereNotIn('estado', ['pendiente', 'eliminada']);
+        })->exists();
+
+    }
+
 }
