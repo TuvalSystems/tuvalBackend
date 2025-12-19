@@ -19,6 +19,6 @@ class GpGuiaRemisionDespacho extends Model
 
     public function guiaRemision()
     {
-        return $this->belongsTo(GpGuiaRemision::class);
+        return $this->belongsTo(GpGuiaRemision::class, 'guia_remision_id');
     }
 }
