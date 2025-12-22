@@ -354,13 +354,13 @@ class DevolucionesController extends Controller
                 $e->getStatusCode()
             );
         } catch (\Throwable $th) {
-            Log::channel('devolucion')->error("Error al recibir devolución ID {$data['devolucion']['id']}", [
-                'error' => $th->getMessage(),
-                'stack' => $th->getTraceAsString(),
+            $devolucionId = data_get($data, 'devolucion.id', 'DESCONOCIDO');
+            Log::channel('devolucion')->error("Error al recibir devolución ID {$devolucionId}", [
+                'exception' => $th,
+                'error_summary' => $th->getMessage(),
                 'line' => $th->getLine(),
                 'file' => $th->getFile(),
                 'data' => $data,
-
             ]);
             return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
         }
