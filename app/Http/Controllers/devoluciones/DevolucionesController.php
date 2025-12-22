@@ -217,8 +217,8 @@ class DevolucionesController extends Controller
     public function enviarDevolucion(Request $request): JsonResponse
     {
         $data = $request->all();
-         $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
-         $gpUser = GpUsuario::where('id', $userId)->first();
+        $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
+        $gpUser = GpUsuario::where('id', $userId)->first();
         try {
             $newDev = $this->devolucionService->handleDevolutionTransaction($data);
             $statusDev = $newDev->estado === 'solicitado';
@@ -258,7 +258,7 @@ class DevolucionesController extends Controller
             );
         } catch (\Throwable $th) {
             Log::channel('devolucion')->info("Error al Procesar la devolución: {$th->getMessage()} - Devolución ID: {$newDev->id}");
-            $gpUser ->notify(new UserNotification('Error al Procesar la devolucion', $newDev->warning_message));
+            $gpUser->notify(new UserNotification('Error al Procesar la devolucion', $newDev->warning_message));
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
@@ -327,11 +327,11 @@ class DevolucionesController extends Controller
         try {
             $devolucion = GpDevoluciones::find($data['devolucion']['id']);
             if (!$devolucion) {
-                return $this->buildErrorResponse('devolucion no encontrada', 404);
+                abort(404, 'devolucion no encontrada');
             }
 
             if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
-                return $this->buildErrorResponse('Esta devolución ya fue recibida en otra instancia', 404);
+                abort(404, 'Esta devolución ya fue recibida en otra instancia');
             }
 
             DB::transaction(function () use ($data, $user, $devolucion) {
@@ -348,8 +348,20 @@ class DevolucionesController extends Controller
             });
 
             return $this->buildSuccessResponse('Devolución recibida', 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
         } catch (\Throwable $th) {
-            Log::channel('devolucion')->error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
+            Log::channel('devolucion')->error("Error al recibir devolución ID {$data['devolucion']['id']}", [
+                'error' => $th->getMessage(),
+                'stack' => $th->getTraceAsString(),
+                'line' => $th->getLine(),
+                'file' => $th->getFile(),
+                'data' => $data,
+
+            ]);
             return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
         }
     }
