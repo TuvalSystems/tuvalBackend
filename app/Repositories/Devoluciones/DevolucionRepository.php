@@ -17,10 +17,10 @@ use Illuminate\Support\Facades\DB;
 class DevolucionRepository implements DevolucionRepositoryInterface
 {
 
-    public function isInvoiceAlreadyVoided($pedido, $devolucion)
+    public function isInvoiceAlreadyVoided($pedido, $devolucion) : bool
     {
-        return GpFacturaAnulada::where('factura', $pedido->factura)->where('devolucion_id', $devolucion['id'])
-            ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->first();
+        return GpFacturaAnulada::where('factura', $pedido->factura)->where('devolucion_id', $devolucion->id)
+            ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->exists();
     }
 
     public function isOrderNotDispatchedOrProcessing($pedido)

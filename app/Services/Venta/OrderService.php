@@ -207,11 +207,9 @@ class OrderService implements OrderServiceInterface
     {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
-        if ($datosFactura['success'] === false) {
-            throw new \Exception($datosFactura['message']);
-        }
-        $pedido['clave_acceso'] = $datosFactura['data']['claveAcceso'];
-        $pedido['fecha_autorizacion'] = Carbon::parse($datosFactura['data']['fechaEnvio'])->format('Y-m-d H:i:s');
+
+        $pedido['clave_acceso'] = data_get($datosFactura, 'claveAcceso', '');
+        $pedido['fecha_autorizacion'] = Carbon::parse(data_get($datosFactura, 'fechaEnvio'))->format('Y-m-d H:i:s');
         return $pedido;
     }
 
@@ -221,9 +219,16 @@ class OrderService implements OrderServiceInterface
             return ['success' => false, 'message' => 'El pedido no tiene factura'];
         }
 
-        return $this->apiSalesService->getDataDocumentGp(array(
+        $resp = $this->apiSalesService->fetchGpInvoiceInfo(array(
             'numdoc' => $pedido['factura'],
         ));
+        $success = data_get($resp, 'success', false);
+        $message = data_get($resp, 'message', 'Error al obtener datos del documento');
+        if (!$success) {
+            throw new \Exception($message);
+        }
+
+        return data_get($resp, 'data', []);
     }
 
     public function generateInvoiceXml($id)

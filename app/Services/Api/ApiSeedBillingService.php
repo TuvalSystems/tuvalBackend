@@ -1,0 +1,27 @@
+<?php
+
+
+
+namespace App\Services\Api;
+
+use App\Services\Api\Core\SeedBillingHttpClient;
+
+class ApiSeedBillingService
+{
+    protected $httpClient;
+    protected $endpoints;
+
+    public function __construct()
+    {
+        $config = config("services.api_seedbilling");
+        $this->httpClient = new SeedBillingHttpClient($config['url'], $config['timeout'], $config['token'], $config['idSuscriptor'], );
+        $this->endpoints = $config["endpoints"];
+    }
+
+
+    public function anularComprobante(array $params)
+    {
+        return $this->httpClient->makeRequest($this->endpoints["anular_comprobante"], 'POST', $params);
+    }
+
+}

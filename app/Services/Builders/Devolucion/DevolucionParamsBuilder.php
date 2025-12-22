@@ -4,6 +4,7 @@ namespace App\Services\Builders\Devolucion;
 
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpPedido;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use Illuminate\Support\Arr;
@@ -93,5 +94,23 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
         ];
     }
 
+
+    public function formPayloadInvoiceAnulation($order, $devolucion, $diario, $documentId, $claveAcceso): GpFacturaAnulada
+    {
+        $inv = new GpFacturaAnulada();
+        $inv->fill([
+            'devolucion_id'        => $devolucion->id,
+            'pedido_id'           => $order->id,
+            'factura'             => $order->factura,
+            'pedido'              => $order->pedido,
+            'documento_id'        => $documentId,
+            'claveacceso'         => $claveAcceso,
+            'msj_anulacion_gp'    => 'Factura anulada correctamente en GP',
+            'diario_response_gp'  => $diario,
+            'estado'              => 'pendiente',
+            // 'resp_document'       => ,
+        ]);
+        return $inv;
+    }
 
 }
