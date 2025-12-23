@@ -43,7 +43,6 @@ class DevolucionService implements DevolucionServiceInterface
 
     // protected $apiGpReturnsIntegrationService;
     // protected $apiSales;
-    // protected $apiSeedBelling;
     // protected $approvalService;
     // protected $devolucionRepository;
     // protected $orderRepository;
@@ -54,7 +53,6 @@ class DevolucionService implements DevolucionServiceInterface
     public function __construct(
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
         protected readonly ApiSalesService $apiSales,
-        protected readonly ApiSeedBillingService $apiSeedBelling,
         protected readonly ApprovalServiceInterface $approvalService,
         protected readonly DevolucionRepositoryInterface $devolucionRepository,
         protected readonly OrderRepositoryInterface $orderRepository,
@@ -193,11 +191,6 @@ class DevolucionService implements DevolucionServiceInterface
 
         if ($shouldAnulated) {
             $this->anulationService->execute($data['pedido'], $newDev);
-            // $respData = $anulacionResponse ? $anulacionResponse->getData(true) : null;
-            // if (!$respData || ($respData['success'] ?? false) === false) {
-            //     $msg = $respData['error'] ?? 'Ocurrió un error al anular la factura';
-            //     throw new Exception($msg);
-            // }
         }
     }
 
@@ -249,226 +242,7 @@ class DevolucionService implements DevolucionServiceInterface
         return now()->lte($fechaLimite);
     }
 
-    /**
-     * PROCESO DE ANULACION DE DEVOLUCION
-     */
-
-
-
-    // public function anularDevolucion($pedido, $devolucion)
-    // {
-    //     $pedido = GpPedido::find($pedido['id']);
-    //     if ($this->devolucionRepository->isInvoiceAlreadyVoided($pedido, $devolucion)) {
-    //         abort(400, 'La factura ya fue anulada');
-    //     }
-    //     return $this->processCancellation($pedido, $devolucion);
-    // }
-
-    // public function processCancellation($order, $devolucion)
-    // {
-    //     // VALIDACION DE CLAVE DE ACCESO
-    //     $accessKeyResponse = $this->apiGetDocumentAccessKey($order);
-    //     $this->saveAccessKeyInfo($order, $accessKeyResponse, $devolucion);
-    //     if (!$this->isValidAccessKey($accessKeyResponse)) {
-    //         $devolucion->update([
-    //             'estado' => 'no_procesado',
-    //             'motivo_no_anulada' => $accessKeyResponse['message']
-    //         ]);
-    //         // throw new \Exception('La devolución es válida para anulación, pero ' . ' ' . $accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso');
-    //         abort(400, 'La devolución es válida para anulación, pero ' . ' ' . $accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso');
-    //     }
-
-    //     //VALIDACION DE ANULACION DE FACTURA GP
-    //     $cancelResponse = $this->apiInvalidateGpVoucher($order);
-    //     if ($cancelResponse['success'] === false) {
-    //         $this->saveBaseCancellationInfo($order, $cancelResponse, $devolucion);
-
-    //         // throw new \Exception('La devolución es válida para anulación, pero ' . $cancelResponse['message'] ?? 'Error al anular la factura');
-    //         abort(400, 'La devolución es válida para anulación, pero ' . $cancelResponse['message'] ?? 'Error al anular la factura');
-    //     }
-    //     $this->saveFailedCancellation($order, $cancelResponse, $devolucion);
-    //     $this->sendSeedBilling($order, $accessKeyResponse['claveAcceso'], $devolucion);
-    //     return $this->buildSuccessResponse('Factura anulada correctamente', 200);
-    // }
-
-    // public function saveBaseCancellationInfo($order, $cancelResponse, $devolucion)
-    // {
-
-    //     GpFacturaAnulada::updateOrCreate(
-    //         ['pedido_id' => $order->id],
-    //         [
-    //             'devolucion_id' => $devolucion['id'],
-    //             'pedido' => $order->pedido,
-    //             'factura' => $order->factura,
-    //             'msj_anulacion_gp' => $cancelResponse['message'],
-    //             'diario_response_gp' => $cancelResponse['diario'] ?? null,
-    //             'estado' => 'pendiente',
-    //         ]
-    //     );
-    // }
-
-    // public function saveAccessKeyInfo($order, $accessKeyResponse, $devolucion)
-    // {
-
-    //     $data = [
-    //         'resp_document' => $accessKeyResponse['message'] ?? null,
-    //         'pedido' => $order->pedido,
-    //         'estado' => 'pendiente',
-    //     ];
-
-    //     // si existe la clave de acceso
-    //     if (!empty($accessKeyResponse['claveAcceso'])) {
-    //         $data['claveacceso'] = $accessKeyResponse['claveAcceso'];
-    //         $data['documento_id'] = $accessKeyResponse['id'];
-    //         $data['pedido'] = $order->pedido;
-    //         $data['estado'] = 'pendiente';
-    //     }
-
-    //     // si existe el mensaje de error y no existe la clave de acceso
-
-
-    //     GpFacturaAnulada::updateOrCreate(
-    //         ['pedido_id' => $order->id, 'factura' => $order->factura, 'devolucion_id' => $devolucion['id']],
-    //         $data
-    //     );
-    // }
-
-    // private function isValidAccessKey($accessKeyResponse): bool
-    // {
-    //     return !isset($accessKeyResponse['success'])
-    //         && !empty($accessKeyResponse['claveAcceso']);
-    // }
-    // private function sendSeedBilling($order, string $accessKey, $devolucion): void
-    // {
-    //     $response = $this->apiResponseSeedBelling($accessKey);
-
-    //     GpFacturaAnulada::updateOrCreate(
-    //         ['pedido_id' => $order->id, 'factura' => $order->factura, 'devolucion_id' => $devolucion['id']],
-    //         [
-    //             'resp_seedbilling' => $response['respuesta'] ?? null,
-    //             'estado' => 'enviada',
-    //         ]
-    //     );
-
-    //     $this->apiUpdateTbhFacAnuAutorize($order->factura); //me actualiza el estado de la factura anulada
-    //     $this->updateStatusDevolutions($order, $devolucion); //me actualiza el estado de la devolucion
-    //     $this->updateStatusOrders($order); //me actualiza el estado del pedido
-    //     $this->updatedStatusOrderDispatch($order); //me actualiza el estado del despacho
-    //     $this->updateDevolucionWithSelectedQuantity($devolucion); //me actualiza el devuelto con el seleccionado
-    //     $this->updateDetailOrderStock($order, $devolucion); //me actualiza el detalle pedido stock de cada item
-    // }
-
-    // private function saveFailedCancellation($order, array $cancelResponse, $devolucion): void
-    // {
-    //     GpFacturaAnulada::updateOrCreate(
-    //         ['pedido_id' => $order->id],
-    //         [
-    //             'devolucion_id' => $devolucion['id'],
-    //             'pedido' => $order->pedido,
-    //             'factura' => $order->factura,
-    //             'msj_anulacion_gp' => $cancelResponse['message'],
-    //             'diario_response_gp' => $cancelResponse['diario'] ?? null,
-    //             'estado' => 'pendiente',
-    //         ]
-    //     );
-    // }
-
-    // public function updateStatusDevolutions($order, $devolucion)
-    // {
-    //     GpDevoluciones::where('pedido_id', $order->id)
-    //         ->where('id', $devolucion->id ?? $devolucion['id'])
-    //         ->update(['estado' => 'anulada']);
-    // }
-
-    // public function updateStatusOrders($order)
-    // {
-    //     GpPedido::where('id', $order->id)
-    //         ->update(['estado' => 'anulada']);
-    // }
-    // public function updatedStatusOrderDispatch($order)
-    // {
-    //     GpOrdenDespacho::where('pedido_id', $order->id)
-    //         ->update(['estado' => 'cancelada']);
-    // }
-
-
-    // public function apiInvalidateGpVoucher($pedido)
-    // {
-    //     return $this->apiSales->invalidateGpVoucher(array(
-    //         'numeroDocumento' => $pedido->factura,
-    //         'cliente' => $pedido->CLI_RUC
-    //     ));
-    // }
-
-    // public function apiGetDocumentAccessKey($pedido)
-    // {
-    //     return $this->apiSales->getDocumentAccesKey(array(
-    //         'numdoc' => $pedido->factura,
-    //     ));
-    // }
-
-    // public function apiResponseSeedBelling($accesCode)
-    // {
-
-    //     return $this->apiSeedBelling->anularComprobante(array(
-    //         'claveAcceso' => $accesCode,
-    //     ));
-    // }
-
-    // public function apiUpdateTbhFacAnuAutorize($factura)
-    // {
-    //     $this->apiSales->updatedStatusDocumentGp(array(
-    //         'numdoc' => $factura,
-    //     ));
-    // }
-
-    // public function updateDetailOrderStock($order, $devolucion)
-    // {
-    //     if ($devolucion['rebajado'] || $devolucion->rebajado) {
-    //         return;
-    //     }
-    //     $pedidoId = $order->id;
-    //     $bodega = $order->BOD_BODEGA;
-    //     $actualizarStock = !$devolucion->despachado;
-    //     $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-    //     foreach ($detalles as $key => $value) {
-    //         $articulo = GpPedidoDetalle::find($value->detalle_id);
-
-    //         if (!$articulo || $articulo->pedido_id !== $pedidoId) {
-    //             continue;
-    //         }
-
-    //         $articulo->devuelto += $value->devuelto;
-    //         $articulo->save();
-    //         if ($actualizarStock) {
-    //             $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
-    //                 ->where('STO_ART_BODEGA', $bodega)
-    //                 ->first();
-    //             if ($stock) {
-    //                 $stock->reservado = max(0, $stock->reservado - $value->devuelto);
-    //                 $stock->save();
-    //             }
-    //         }
-    //     }
-    //     $devolucion->rebajado = true;
-    //     $devolucion->save();
-    // }
-
-    // public function updateDevolucionWithSelectedQuantity($devolucion)
-    // {
-    //     $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
-    //     $afectados = DB::table('gp_devoluciones_detalles')
-    //         ->where('devolucion_id', $devolucion->id)
-    //         // ->where('despachado_parcial', 0)
-    //         ->update([
-    //             'devuelto' => DB::raw("`$origen`")
-    //         ]);
-    //     Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado anulada");
-    //     return $afectados;
-    // }
-
-
-
+  
 
     // esta función verifica si el pedido tiene guías de remisión asociadas o no
     // y con eso determinamos si la devlucion pasa de despachado a no despachado

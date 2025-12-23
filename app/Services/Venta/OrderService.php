@@ -2,7 +2,6 @@
 
 namespace App\Services\Venta;
 
-use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -31,7 +30,6 @@ use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
-use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -47,43 +45,20 @@ use Illuminate\Support\Facades\Log;
 class OrderService implements OrderServiceInterface
 {
     use JsonResponseTrait;
-    protected ApiSalesService $apiSalesService;
-    protected ApiGpService $apiGpService;
-    protected ApprovalServiceInterface $approvalService;
-
-    protected OrderRepositoryInterface $orderRepository;
-    protected ApiBillingService $apiBillingService;
-    protected FunctionsServiceInterface $functionsService;
-    protected PurchaseReceiptServiceInterface $purchaseReceiptService;
-    protected $invoiceService;
-    protected $orderAndQuotationService;
-    protected $stockWarehouseService;
-    protected $orderBuilder;
+   
 
     public function __construct(
-        ApiSalesService $apiSalesService,
-        ApiGpService $apiGpService,
-        ApprovalServiceInterface $approvalService,
-        OrderRepositoryInterface $orderRepository,
-        ApiBillingService $apiBillingService,
-        FunctionsServiceInterface $functionsService,
-        PurchaseReceiptServiceInterface $purchaseReceiptService,
-        InvoiceServiceInterface $invoiceService,
-        OrderAndQuotationServiceInterface $orderAndQuotationService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        OrderBuilderInterface $orderBuilderInterface
+       protected readonly ApiSalesService $apiSalesService,
+       protected readonly ApiGpService $apiGpService,
+       protected readonly ApprovalServiceInterface $approvalService,
+       protected readonly OrderRepositoryInterface $orderRepository,
+       protected readonly FunctionsServiceInterface $functionsService,
+       protected readonly PurchaseReceiptServiceInterface $purchaseReceiptService,
+       protected readonly InvoiceServiceInterface $invoiceService,
+       protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+       protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+       protected readonly OrderBuilderInterface $orderBuilder
     ) {
-        $this->apiGpService = $apiGpService;
-        $this->apiSalesService = $apiSalesService;
-        $this->approvalService = $approvalService;
-        $this->orderRepository = $orderRepository;
-        $this->apiBillingService = $apiBillingService;
-        $this->functionsService = $functionsService;
-        $this->purchaseReceiptService = $purchaseReceiptService;
-        $this->invoiceService = $invoiceService;
-        $this->orderAndQuotationService = $orderAndQuotationService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->orderBuilder = $orderBuilderInterface;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
