@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Pedidos\Contracts;
+namespace App\Services\Venta\Contracts;
 
 interface OrderServiceInterface
 {
@@ -63,4 +63,6 @@ interface OrderServiceInterface
     public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId);
 
     public function updateOrderAndBlockDispach($id, $pendingDispach);
+
+    public function hasDeliveryNoteAjusted($id): bool;
 }

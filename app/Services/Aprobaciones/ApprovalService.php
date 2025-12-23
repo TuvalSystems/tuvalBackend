@@ -189,7 +189,7 @@ class ApprovalService implements ApprovalServiceInterface
                     $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva...' vs Original: '$descRef...'");
                 }
 
-                if ($detalle['ART_VALOR'] != (float) $refValor ) {
+                if ($detalle['ART_VALOR'] != (float) $refValor) {
                     $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $refValor");
                 }
 
@@ -281,37 +281,47 @@ class ApprovalService implements ApprovalServiceInterface
 
 
         $nivelCliente = $this->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
+        $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
+        $rebajaCotizacion = $this->getPorcentilDiscount('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
+        $prcCLienteDescuento = $this->getPorcentilDiscountCommercialCliente($data['CLI_RUC']);
+
+        $dsctGlobalCliente = (float) $prcCLienteDescuento - (float) $rebajaCotizacion;
+
         if (!$nivelCliente) {
             $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
         }
 
-        $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
         if (!$nivelCotizacion) {
             $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion no encontrada en la base de datos.");
         }
 
 
         if ($quoteOrigin) {
+            $nivelCotizacionAnterior = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $quoteOrigin->DESC_FORMA_PAGO_CODIGO);
             if ($quoteOrigin->requiere_aprobacion_comercial === 'yes' && $quoteOrigin->aprobado_comercial !== 'yes') {
                 $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
                     "Requiere aprobación comercial. La cotización no fue aprobada con anterioridad (ID: $quoteId)."
                 );
             }
-            if ($nivelCotizacion > $nivelCliente && $data['COND_ID'] != $quoteOrigin->COND_ID) {
+
+            if ($nivelCotizacion > $nivelCotizacionAnterior && $nivelCotizacion > $nivelCliente) {
                 $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
             }
 
-            if ($data['porcentage_descuento'] > $data['porcentage_descuentooriginal'] && $data['porcentage_descuento'] != $quoteOrigin->porcentage_descuento) {
+            if ($data['porcentage_descuento'] != $data['porcentage_descuentooriginal'] && $data['porcentage_descuento'] != $dsctGlobalCliente) {
                 $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
             }
         } else {
             if ($nivelCotizacion > $nivelCliente) {
                 $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
             }
+            if ($data['porcentage_descuento'] != $data['porcentage_descuentooriginal'] && $data['porcentage_descuento'] != $dsctGlobalCliente) {
+                $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
+            }
         }
 
         $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-        $motivosDetalle = $this->validateOrdersDetailToApprove($data['cotizacion'], $ptoVenta);
+        $motivosDetalle = $this->validateOrdersDetailToApprove($data['cotizacion'], $ptoVenta, $dsctGlobalCliente);
         if (!empty($motivosDetalle)) {
             $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
         }
@@ -319,7 +329,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $this->finalizeApprovalReasons($motivosAprobacionComercial);
     }
 
-    public function validateOrdersDetailToApprove($detalles, $ptoVta): array
+    public function validateOrdersDetailToApprove($detalles, $ptoVta, $dsctGlobalCliente): array
     {
         $detailMotivos = [];
 
@@ -341,29 +351,30 @@ class ApprovalService implements ApprovalServiceInterface
 
             // A. Validación de Descuento
             // Comparamos directamente contra la variable normalizada
-            if ($detalle['descuento'] != $descuentoOriginalReal) {
-                $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - ID: " . ($detailId ?? 'Nuevo'));
+            if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
+                // $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - ID: " . ($detailId ?? 'Nuevo'));
+                $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
+
             }
 
             // B. Validación de Valor (Precio)
             // Comparamos directamente contra la variable normalizada
-            if ($detalle['ART_VALOR'] != $valorOriginalReal) {
+            if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL'] && $detalle['ART_VALOR'] != $valorOriginalReal) {
                 // Mensaje genérico de cambio
-                $mensaje = "El valor del producto es diferente al valor original";
+                $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: {$detalle['ART_VALOR_ORIGINAL']}";
 
                 // Si quieres mantener el mensaje específico que tenías para items existentes:
                 if ($detOriginal) {
-                    $mensaje = "Valor diferente al detalle Original - {$detalle['detalle_id']} - {$detalle['ART_VALOR']}";
+                    $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $valorOriginalReal";
                 }
-
-                $detailMotivos[] = $this->requiredApprovalResponse($mensaje);
+                 $detailMotivos[] = $this->requiredApprovalResponse($mensaje);
             }
 
             // C. Validaciones NO Tipo L (Standard)
             if ($detalle['ART_TIPO_COMPRA'] != 'L') {
                 // C.1 Descripción
-                if ($detalle['ART_DESCRIPCION'] != $descOriginalReal) {
-                    $detailMotivos[] = $this->requiredApprovalResponse("La descripcion del producto es diferente a la original");
+                if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL'] && $detalle['ART_DESCRIPCION'] != $descOriginalReal) {
+                      $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '{$detalle['ART_DESCRIPCION']}...' vs Original: '$descOriginalReal...'");
                 }
 
                 // C.2 Exceso de Precio

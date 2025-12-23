@@ -30,7 +30,7 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;

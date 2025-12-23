@@ -17,13 +17,13 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpSubGrupoCliente;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\GpPedidoDetalleStock;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
+use App\Http\Requests\Venta\Consultas\BusquedaArticuloRequest;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
@@ -186,6 +186,18 @@ class ConsultasController extends Controller
             return response([
                 'error' => 'Hubo un error al buscar'
             ], 401);
+        }
+    }
+
+    public function buscarArticuloWeb(BusquedaArticuloRequest $request)
+    {
+
+        try {
+            
+            $data = $this->InventoryQueryService->searchWithDetails($request->validated());
+            return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
         }
     }
 
@@ -698,10 +710,4 @@ class ConsultasController extends Controller
         ]);
     }
 
-
-    public function consultarClienteSegmento(Request $request)
-    {
-        $data = $request->all();
-        return $this->InventoryQueryService->getConsultClientSegment($data);
-    }
 }

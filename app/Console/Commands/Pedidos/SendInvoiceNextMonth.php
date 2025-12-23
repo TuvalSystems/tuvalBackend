@@ -2,12 +2,10 @@
 
 namespace App\Console\Commands\Pedidos;
 
-use App\Services\Pedidos\OrderJobService;
-use App\Supports\DbUtils;
+use App\Services\Venta\OrderJobService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Console\Command\Command as Cmd;
 
 
 class SendInvoiceNextMonth extends Command

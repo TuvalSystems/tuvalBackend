@@ -1,7 +1,9 @@
 <?php
 
-namespace App\Services\Pedidos;
+namespace App\Services\Venta;
 
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
@@ -30,18 +32,17 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
 use App\Services\Api\Cobros\ApiBillingService;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-use function PHPUnit\Framework\isEmpty;
 
 class OrderService implements OrderServiceInterface
 {
@@ -123,7 +124,7 @@ class OrderService implements OrderServiceInterface
             $pedido['estado'] === 'eliminado';
     }
 
-     public function buildOrderDetail(array $pedido)
+    public function buildOrderDetail(array $pedido)
     {
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->toarray();
         $peso = 0;
@@ -1692,4 +1693,23 @@ class OrderService implements OrderServiceInterface
         $order->save();
         return $order;
     }
+
+
+
+    /*** funcion para validar la existencia de guias de un pedido  */
+
+    public function hasDeliveryNoteAjusted($id): bool
+    {
+        $order = GpPedido::find($id);
+        if (!$order) {
+            abort(404, "El pedido con ID {$id} no existe.");
+        }
+        return GpGuiaRemisionDespacho::whereHas('guiaRemision', function ($q) use ($order) {
+            $q->where('pedido', $order->pedido)
+                ->where('tipo', 'despacho')
+                ->whereNotIn('estado', ['pendiente', 'eliminada']);
+        })->exists();
+
+    }
+
 }

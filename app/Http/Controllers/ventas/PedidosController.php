@@ -30,12 +30,12 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use DomainException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -1431,6 +1431,25 @@ class PedidosController extends Controller
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
 
+        }
+    }
+
+    public function validacionExistenciaGuiasEnPedidos(Request $request)
+    {
+        try {
+            $id = $request->input('id', null);
+            $hasDispatchs = $this->orderService->hasDeliveryNoteAjusted($id);
+            if ($hasDispatchs) {
+                return $this->buildExistResponse($hasDispatchs, 'Ya cuenta con guias de despacho', 200);
+            }
+            return $this->buildExistResponse($hasDispatchs, 'No cuenta con guias de despacho', 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
 }

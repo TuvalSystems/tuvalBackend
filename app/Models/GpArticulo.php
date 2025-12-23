@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * App\Models\GpArticulo
@@ -117,72 +118,160 @@ class GpArticulo extends Model
         'dias_enfriamiento',
     ];
 
-    public static function busqueda($buscar): \Illuminate\Support\Collection
+    public static function busqueda($buscar): Collection
     {
         $resultados = self::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
             ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'BNS-INACT')
-            ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'CMP-GASTOS')
-            ->where('gp_articulos.ART_TIPO_COMPRA','!=','L');
-        if(isset($buscar['codigo3l']) && $buscar['codigo3l'] != ''){
+            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'BNS-INACT')
+            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'CMP-GASTOS')
+            ->where('gp_articulos.ART_TIPO_COMPRA', '!=', 'L');
+        if (isset($buscar['codigo3l']) && $buscar['codigo3l'] != '') {
             $resultados = $resultados->where('gp_articulos.ART_CODIGO_TRES_LETRAS', $buscar['codigo3l']);
         }
-        if(isset($buscar['text_codigo']) && $buscar['text_codigo'] != ''){
-            if($buscar['select_codigo'] == 'empieza'){
-                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', $buscar['text_codigo'].'%');
+        if (isset($buscar['text_codigo']) && $buscar['text_codigo'] != '') {
+            if ($buscar['select_codigo'] == 'empieza') {
+                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', $buscar['text_codigo'] . '%');
             }
-            if($buscar['select_codigo'] == 'contiene'){
-                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%'.$buscar['text_codigo'].'%');
+            if ($buscar['select_codigo'] == 'contiene') {
+                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $buscar['text_codigo'] . '%');
             }
-            if($buscar['select_codigo'] == 'termina'){
-                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%'.$buscar['text_codigo']);
-            }
-        }
-        if(isset($buscar['text_nombre']) && $buscar['text_nombre'] != ''){
-            if($buscar['select_nombre'] == 'empieza'){
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'].'%');
-            }
-            if($buscar['select_nombre'] == 'contiene'){
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%'.$buscar['text_nombre'].'%');
-            }
-            if($buscar['select_nombre'] == 'termina'){
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%'.$buscar['text_nombre']);
+            if ($buscar['select_codigo'] == 'termina') {
+                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $buscar['text_codigo']);
             }
         }
-        if(isset($buscar['terminal']) && $buscar['terminal'] != ''){
-            $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%'.$buscar['terminal']);
+        if (isset($buscar['text_nombre']) && $buscar['text_nombre'] != '') {
+            if ($buscar['select_nombre'] == 'empieza') {
+                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'] . '%');
+            }
+            if ($buscar['select_nombre'] == 'contiene') {
+                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre'] . '%');
+            }
+            if ($buscar['select_nombre'] == 'termina') {
+                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre']);
+            }
         }
-         $resultados->orderby('gp_articulos.ART_CODIGO_ZAFIRO', 'ASC')
+        if (isset($buscar['terminal']) && $buscar['terminal'] != '') {
+            $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $buscar['terminal']);
+        }
+        $resultados->orderby('gp_articulos.ART_CODIGO_ZAFIRO', 'ASC')
             ->limit(500);
-//        print_r($resultados->toSql());
+        //        print_r($resultados->toSql());
 //        die();
         $resultados = $resultados->get(['gp_articulos.*', 'gp_unidad_medidas.UMEDIDA_BASE AS ART_PLAN_UMEDIDA']);
         return $resultados;
     }
 
-    public static function busquedaitemsl($buscar): \Illuminate\Support\Collection
+    public static function busquedaitemsl($buscar): Collection
     {
         $resultados = self::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
             ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'BNS-INACT')
-            ->where('gp_articulos.ART_CLASE_ARTICULO','!=',  'CMP-GASTOS')
-            ->where('gp_articulos.ART_TIPO_COMPRA','L')
+            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'BNS-INACT')
+            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'CMP-GASTOS')
+            ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
             ->where('gp_articulos.disponible', '=', 1);
-        if(isset($buscar['text_nombre']) && $buscar['text_nombre'] != ''){
-            if($buscar['select_nombre'] == 'empieza'){
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'].'%');
+        if (isset($buscar['text_nombre']) && $buscar['text_nombre'] != '') {
+            if ($buscar['select_nombre'] == 'empieza') {
+                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'] . '%');
             }
-            if($buscar['select_nombre'] == 'contiene'){
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%'.$buscar['text_nombre'].'%');
+            if ($buscar['select_nombre'] == 'contiene') {
+                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre'] . '%');
             }
-            if($buscar['select_nombre'] == 'termina'){
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%'.$buscar['text_nombre']);
+            if ($buscar['select_nombre'] == 'termina') {
+                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre']);
             }
         }
         $resultados = $resultados
-        ->inRandomOrder() ->limit(500)
+            ->inRandomOrder()->limit(500)
             ->get(['gp_articulos.*', 'gp_unidad_medidas.UMEDIDA_BASE AS ART_PLAN_UMEDIDA']);
         return $resultados;
+    }
+
+
+    /** nuevo proceso para consulta de items L e items de busqueda normal */
+
+
+    /**
+     * Summary of searchItemLModel
+     * @param mixed $filters
+     * @return \Illuminate\Support\Collection
+     */
+    public static function searchItemLModel(array $filters): Collection
+    {
+        $query = self::query()
+            ->select([
+                'gp_articulos.*',
+                'unm.UMEDIDA_BASE AS ART_PLAN_UMEDIDA'
+            ])
+            ->join('gp_unidad_medidas as unm', 'unm.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
+            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
+            ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
+            ->where('gp_articulos.disponible', 1)
+            ->whereNotIn('gp_articulos.ART_CLASE_ARTICULO', ['BNS-INACT', 'CMP-GASTOS']);
+
+        $textSearch = $filters['text_nombre'] ?? null;
+        if (!empty($textSearch)) {
+            $modo = $filters['select_nombre'] ?? 'contiene';
+
+            $patron = match ($modo) {
+                'empieza' => "$textSearch%",
+                'termina' => "%$textSearch",
+                default => "%$textSearch%"
+            };
+
+            $query->where('gp_articulos.ART_DESCRIPCION', 'like', $patron);
+        }
+        return $query->orderBy('gp_articulos.ART_DESCRIPCION', 'asc')->limit(500)->get();
+    }
+
+    public static function searchItemModel(array $filters): Collection
+    {
+        $query = self::query()
+            ->select([
+                'gp_articulos.*',
+                'unm.UMEDIDA_BASE AS ART_PLAN_UMEDIDA'
+            ])
+            ->join('gp_unidad_medidas as unm', 'unm.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
+            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
+            ->where('gp_articulos.ART_TIPO_COMPRA', '!=', 'L') // Aquí excluimos los items 'L'
+            ->whereNotIn('gp_articulos.ART_CLASE_ARTICULO', ['BNS-INACT', 'CMP-GASTOS']);
+        if (!empty($filters['codigo3l'])) {
+            $query->where('gp_articulos.ART_CODIGO_TRES_LETRAS', $filters['codigo3l']);
+        }
+
+        $textCodigo = $filters['text_codigo'] ?? null;
+        if (!empty($textCodigo)) {
+            $modo = $filters['select_codigo'] ?? 'contiene';
+
+            $patron = match ($modo) {
+                'empieza' => "$textCodigo%",
+                'termina' => "%$textCodigo",
+                default => "%$textCodigo%",
+            };
+
+            $query->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', $patron);
+        }
+
+        $textNombre = $buscar['text_nombre'] ?? null;
+        if (!empty($textNombre)) {
+            $modo = $buscar['select_nombre'] ?? 'contiene';
+
+            $patron = match ($modo) {
+                'empieza' => "$textNombre%",
+                'termina' => "%$textNombre",
+                default => "%$textNombre%",
+            };
+
+            $query->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $patron);
+        }
+
+        if (!empty($buscar['terminal'])) {
+            $query->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $filters['terminal']);
+        }
+
+        return $query
+            ->orderBy('gp_articulos.ART_CODIGO_ZAFIRO', 'ASC')
+            ->limit(500)
+            ->get();
     }
 
 

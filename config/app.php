@@ -189,10 +189,6 @@ return [
         App\Providers\Service\VentaServiceProvider::class,
         App\Providers\RepositoryServiceProvider::class,
 
-        // Providers SqlServer --> para mantener separada logica de SQL Server
-        App\Providers\Service\SqlServer\SqlServerServiceProvider::class,
-        App\Providers\Service\SqlServer\VentaSqlServerServiceProvider::class,
-        App\Providers\Service\SqlServer\BodegaSqlServerServiceProvider::class,
 
         //Provider Builders
         App\Providers\Service\Builder\BodegaBuilderServiceProvider::class,
