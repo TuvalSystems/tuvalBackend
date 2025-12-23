@@ -58,11 +58,11 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
 
 
         /** envia a anular la factura a gp  */
-        $diario = $this->sendAnulationTpGpInvoice($newOrder->factura, $newOrder->CLI_RUC, $devolucion->user_id);
+        $diario = $this->sendAnulationTpGpInvoice($newOrder->factura, $newOrder->CLI_RUC, $devolucion->user_id, $devolucion->devolucion);
         if (!data_get($diario, 'success', false)) {
             $mensajeError = data_get($diario, 'message', 'Error desconocido al anular factura en GP');
             $devolucion->update(['estado' => 'no_procesado', 'motivo_no_anulada' => $mensajeError]);
-            abort(400, "Devolución generada {$devolucion->factura} pero no fue anulada por el siguiente motivo : " . $mensajeError);
+            abort(400, "Devolución generada {$devolucion->devolucion} pero no fue anulada por el siguiente motivo : " . $mensajeError);
         }
 
         $anulation = $this->createRegisterInvoiceAnulation($newOrder, $devolucion, data_get($diario, 'data'), $documentId, $claveAcceso);
@@ -79,12 +79,13 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
         ]);
     }
 
-    public function sendAnulationTpGpInvoice(string $invoice, string $ruc, int $userId)
+    public function sendAnulationTpGpInvoice(string $invoice, string $ruc, int $userId, $devolucion)
     {
         $params = [
             'numDoc' => $invoice,
             'cliente' => $ruc,
-            'userId' => $userId
+            'userId' => $userId,
+            'devolucion' => $devolucion
         ];
         return $this->apiSales->retrieveGpJournalEntry($params);
     }
