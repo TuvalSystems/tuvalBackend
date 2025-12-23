@@ -30,12 +30,12 @@ use Illuminate\Support\Facades\Log;
 class DevolucionJobService
 {
     use DevolucionesCriteriosTrait, JsonResponseTrait;
-    protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
-    protected $devolucionBuilder;
-    public function __construct(ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService, DevolucionParamsBuilderInterface $devolucionBuilder)
+   
+    public function __construct(
+        protected readonly  ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        protected readonly DevolucionParamsBuilderInterface $devolucionBuilder)
     {
-        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
-        $this->devolucionBuilder = $devolucionBuilder;
+       
     }
 
     public function listarTodasLasDevolucionesAplicables()

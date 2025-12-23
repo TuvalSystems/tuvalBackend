@@ -2,7 +2,6 @@
 
 namespace App\Services\Venta;
 
-use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -31,7 +30,6 @@ use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
-use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -47,43 +45,20 @@ use Illuminate\Support\Facades\Log;
 class OrderService implements OrderServiceInterface
 {
     use JsonResponseTrait;
-    protected ApiSalesService $apiSalesService;
-    protected ApiGpService $apiGpService;
-    protected ApprovalServiceInterface $approvalService;
-
-    protected OrderRepositoryInterface $orderRepository;
-    protected ApiBillingService $apiBillingService;
-    protected FunctionsServiceInterface $functionsService;
-    protected PurchaseReceiptServiceInterface $purchaseReceiptService;
-    protected $invoiceService;
-    protected $orderAndQuotationService;
-    protected $stockWarehouseService;
-    protected $orderBuilder;
+   
 
     public function __construct(
-        ApiSalesService $apiSalesService,
-        ApiGpService $apiGpService,
-        ApprovalServiceInterface $approvalService,
-        OrderRepositoryInterface $orderRepository,
-        ApiBillingService $apiBillingService,
-        FunctionsServiceInterface $functionsService,
-        PurchaseReceiptServiceInterface $purchaseReceiptService,
-        InvoiceServiceInterface $invoiceService,
-        OrderAndQuotationServiceInterface $orderAndQuotationService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        OrderBuilderInterface $orderBuilderInterface
+       protected readonly ApiSalesService $apiSalesService,
+       protected readonly ApiGpService $apiGpService,
+       protected readonly ApprovalServiceInterface $approvalService,
+       protected readonly OrderRepositoryInterface $orderRepository,
+       protected readonly FunctionsServiceInterface $functionsService,
+       protected readonly PurchaseReceiptServiceInterface $purchaseReceiptService,
+       protected readonly InvoiceServiceInterface $invoiceService,
+       protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+       protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+       protected readonly OrderBuilderInterface $orderBuilder
     ) {
-        $this->apiGpService = $apiGpService;
-        $this->apiSalesService = $apiSalesService;
-        $this->approvalService = $approvalService;
-        $this->orderRepository = $orderRepository;
-        $this->apiBillingService = $apiBillingService;
-        $this->functionsService = $functionsService;
-        $this->purchaseReceiptService = $purchaseReceiptService;
-        $this->invoiceService = $invoiceService;
-        $this->orderAndQuotationService = $orderAndQuotationService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->orderBuilder = $orderBuilderInterface;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -162,7 +137,7 @@ class OrderService implements OrderServiceInterface
         );
         $response = $this->apiGpService->getStockByWarehouseAndCompartment($params);
         $data = data_get($response, 'data', []);
-        return $data['COMPARTIMIENTO'] ?? null;
+        return data_get($data, 'COMPARTIMIENTO', null);
     }
 
     public function getImagenes(string $codigo): array
@@ -207,11 +182,9 @@ class OrderService implements OrderServiceInterface
     {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
-        if ($datosFactura['success'] === false) {
-            throw new \Exception($datosFactura['message']);
-        }
-        $pedido['clave_acceso'] = $datosFactura['data']['claveAcceso'];
-        $pedido['fecha_autorizacion'] = Carbon::parse($datosFactura['data']['fechaEnvio'])->format('Y-m-d H:i:s');
+
+        $pedido['clave_acceso'] = data_get($datosFactura, 'claveAcceso', '');
+        $pedido['fecha_autorizacion'] = Carbon::parse(data_get($datosFactura, 'fechaEnvio'))->format('Y-m-d H:i:s');
         return $pedido;
     }
 
@@ -221,9 +194,16 @@ class OrderService implements OrderServiceInterface
             return ['success' => false, 'message' => 'El pedido no tiene factura'];
         }
 
-        return $this->apiSalesService->getDataDocumentGp(array(
+        $resp = $this->apiSalesService->fetchGpInvoiceInfo(array(
             'numdoc' => $pedido['factura'],
         ));
+        $success = data_get($resp, 'success', false);
+        $message = data_get($resp, 'message', 'Error al obtener datos del documento');
+        if (!$success) {
+            throw new \Exception($message);
+        }
+
+        return data_get($resp, 'data', []);
     }
 
     public function generateInvoiceXml($id)
