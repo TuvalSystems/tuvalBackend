@@ -137,11 +137,16 @@ class DevolucionService implements DevolucionServiceInterface
             $this->dispatchService->cancelDispatchIfEmptyPicking($orderId);
             $this->processInvoiceAnulation($data, $newDev);
         } catch (Exception $e) {
-            Log::error("Error crítico: Devolución {$newDev->id} creada, pero falló la anulación: " . $e->getMessage());
-            $newDev->warning_message = "Devolución generada {$newDev->devolucion}, pero no fue anulada por el siguiente motivo: " . $e->getMessage();
+            Log::error("Error De proceso processInvoiceAnulation o cancelDispatchIfEmptyPicking: Devolución {$newDev->id} creada, pero falló la anulación: " . $e->getMessage());
+            if ($newDev->estado !== 'no_procesado') {
+                $newDev->update([
+                    'estado' => 'no_procesado',
+                    'motivo_no_anulada' => "Fallo en proceso: " . $e->getMessage()
+                ]);
+            }
+            throw $e;
         }
-
-        return $newDev;
+        return $newDev->refresh();
     }
 
 
@@ -183,16 +188,16 @@ class DevolucionService implements DevolucionServiceInterface
             !$validateItemsL &&
             !$hasPartialDispatch &&
             ($data['devolucion']['volver_a_facturar'] ?? false) === false &&
-            ($newDev->permite_anulacion === true || $newDev->anulacion_habilitada === true)
+            ($newDev->permite_anulacion === true && $newDev->anulacion_habilitada === true)
         );
 
         if ($shouldAnulated) {
-            $anulacionResponse = $this->anulationService->execute($data['pedido'], $newDev);
-            $respData = $anulacionResponse ? $anulacionResponse->getData(true) : null;
-            if (!$respData || ($respData['success'] ?? false) === false) {
-                $msg = $respData['error'] ?? 'Ocurrió un error al anular la factura';
-                throw new Exception($msg);
-            }
+            $this->anulationService->execute($data['pedido'], $newDev);
+            // $respData = $anulacionResponse ? $anulacionResponse->getData(true) : null;
+            // if (!$respData || ($respData['success'] ?? false) === false) {
+            //     $msg = $respData['error'] ?? 'Ocurrió un error al anular la factura';
+            //     throw new Exception($msg);
+            // }
         }
     }
 
@@ -531,7 +536,7 @@ class DevolucionService implements DevolucionServiceInterface
         }
         $response = $this->apiSales->validateGpInvoicePayments(
             array(
-                'numeroDocumento' => $pedido['factura'],
+                'numdoc' => $pedido['factura'],
                 'cliente' => $pedido['CLI_RUC']
             )
         );

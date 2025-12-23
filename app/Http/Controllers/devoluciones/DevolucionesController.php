@@ -224,16 +224,15 @@ class DevolucionesController extends Controller
             $statusDev = $newDev->estado === 'solicitado';
             $tipoDev = $newDev->tipo_devolucion === 'total';
             $devCode = is_object($newDev) ? $newDev->devolucion : '';
-            if (isset($newDev->warning_message)) {
+            if (isset($newDev->motivo_no_anulada) && $newDev->estado = 'no_procesado') {
                 // NotifyErrorAnulationJob::dispatch($userId, $newDev->warning_message);
                 $gpUser->notify(new UserNotification('Devolucion No Procesada', $newDev->warning_message));
                 return $this->buildSuccessResponse(
-                    "ATENCIÓN: " . $newDev->warning_message,
+                    "ATENCIÓN: " . $newDev->motivo_no_anulada,
                     200
                 );
             }
             if ($statusDev && $tipoDev) {
-
                 // Caso: Tiene pagos registrados
                 if (!$newDev->permite_anulacion) {
                     return $this->buildSuccessResponse(
@@ -257,8 +256,10 @@ class DevolucionesController extends Controller
                 $e->getStatusCode()
             );
         } catch (\Throwable $th) {
-            Log::channel('devolucion')->info("Error al Procesar la devolución: {$th->getMessage()} - Devolución ID: {$newDev->id}");
-            $gpUser->notify(new UserNotification('Error al Procesar la devolucion', $newDev->warning_message));
+            $logId = isset($newDev) ? $newDev->id : 'No creado';
+            $msgError = isset($newDev) ? $newDev->motivo_no_anulada : $th->getMessage();
+            Log::channel('devolucion')->info("Error al Procesar la devolución: {$th->getMessage()} - Devolución ID: {$logId}");
+            $gpUser->notify(new UserNotification('Error al Procesar la devolucion', $msgError));
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }

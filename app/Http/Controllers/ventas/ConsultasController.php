@@ -193,7 +193,6 @@ class ConsultasController extends Controller
     {
 
         try {
-            
             $data = $this->InventoryQueryService->searchWithDetails($request->validated());
             return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
         } catch (\Throwable $e) {

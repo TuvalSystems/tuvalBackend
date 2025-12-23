@@ -47,34 +47,36 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
 
         /** obtiene y valida la clave de acceso de la factura */
         $invoice = $this->getOrderAccesKey($newOrder->factura);
-        $documentId = data_get($invoice, 'id', null);
-        $claveAcceso = data_get($invoice, 'data.claveAcceso');
-        if (!$claveAcceso) {
+        $successInv = data_get($invoice, 'success', false);
+        $documentId = data_get($invoice, 'data.id', null);
+        $claveAcceso = data_get($invoice, 'data.claveAcceso', null);
+        if (!$successInv || !$claveAcceso) {
             $mensajeError = data_get($invoice, 'message', 'Error desconocido al obtener clave');
             $devolucion->update(['estado' => 'no_procesado', 'motivo_no_anulada' => $mensajeError]);
-            abort(400, 'La devolución es válida para anulación, pero ' . $mensajeError);
+            abort(400, "Devolución generada {$devolucion->devolucion} pero no fue anulada por el siguiente motivo : " . $mensajeError);
         }
 
 
         /** envia a anular la factura a gp  */
-        $diario = $this->sendAnulationTpGpInvoice($newOrder->factura, $newOrder->cliente_ruc, $devolucion->usuario_id);
+        $diario = $this->sendAnulationTpGpInvoice($newOrder->factura, $newOrder->CLI_RUC, $devolucion->user_id);
         if (!data_get($diario, 'success', false)) {
             $mensajeError = data_get($diario, 'message', 'Error desconocido al anular factura en GP');
             $devolucion->update(['estado' => 'no_procesado', 'motivo_no_anulada' => $mensajeError]);
-            abort(400, 'La devolución es válida para anulación, pero no se procesara debido a: ' . $mensajeError);
+            abort(400, "Devolución generada {$devolucion->factura} pero no fue anulada por el siguiente motivo : " . $mensajeError);
         }
-        $anulation = $this->createRegisterInvoiceAnulation($order, $devolucion, data_get($diario, 'data'), $documentId, $claveAcceso);
+
+        $anulation = $this->createRegisterInvoiceAnulation($newOrder, $devolucion, data_get($diario, 'data'), $documentId, $claveAcceso);
         $this->finalizeCancellation($anulation, $newOrder, $devolucion);
         Log::channel('devolucion')->info("Anulación completada Devolución ID: {$devolucion['id']} para Pedido ID: {$order['id']}");
+        // return $devolucion->refresh();
     }
 
 
     public function getOrderAccesKey($invoice)
     {
-        $resp = $this->apiSales->retrieveDocumentAccessKey([
+        return $this->apiSales->retrieveDocumentAccessKey([
             'numdoc' => $invoice
         ]);
-        return data_get($resp, 'data', []);
     }
 
     public function sendAnulationTpGpInvoice(string $invoice, string $ruc, int $userId)
@@ -84,8 +86,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
             'cliente' => $ruc,
             'userId' => $userId
         ];
-        $resp = $this->apiSales->retrieveGpJournalEntry($params);
-        return $resp;
+        return $this->apiSales->retrieveGpJournalEntry($params);
     }
 
 
@@ -100,11 +101,13 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     public function finalizeCancellation(GpFacturaAnulada $invoice, GpPedido $order, GpDevoluciones $devolucion)
     {
         $resp = $this->apiResponseSeedBelling($invoice->claveacceso);
-        $success = data_get($resp, 'success', false);
+        // $success = data_get($resp, 'success', false);
         $message = data_get($resp, 'respuesta', null);
-        if (!$success) {
-            abort(400, 'Error al enviar la anulación al SRI: ' . data_get($resp, 'message', 'Error desconocido'));
-        }
+
+        // quito el sucess porque solo voy a guardar el mensaje nada mas 
+        // if (!$success) {
+        //     abort(400, 'Error al enviar la anulación al SRI: ' . data_get($resp, 'message', 'Error desconocido'));
+        // }
 
         DB::transaction(function () use ($invoice, $order, $devolucion, $message) {
             $invoice->update([
@@ -156,8 +159,8 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
             }
             $art->increment('devuelto', $dvd->devuelto);
             if ($shouldReleaseStock) {
-                $stockRecord = GpPedidoDetalleStock::where('pedido_detalle_id', $art->id)
-                    ->where('BOD_BODEGA', $bodega)
+                $stockRecord = GpPedidoDetalleStock::where('detalle_id', $art->id)
+                    ->where('STO_ART_BODEGA', $bodega)
                     ->first();
                 if ($stockRecord) {
                     $newReserved = max(0, $stockRecord->reservado - $dvd->devuelto);
