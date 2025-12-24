@@ -17,14 +17,12 @@ use Illuminate\Support\Facades\DB;
 
 class DispatchService implements DispatchServiceInterface
 {
-    protected $invoiceService;
-    protected $stockService;
+
     public function __construct(
-        InvoiceServiceInterface $invoiceService,
-        StockWarehouseServiceInterface $stockService
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly StockWarehouseServiceInterface $stockService
     ) {
-        $this->invoiceService = $invoiceService;
-        $this->stockService = $stockService;
+
     }
 
     public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc)

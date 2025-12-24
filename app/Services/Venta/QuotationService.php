@@ -42,52 +42,27 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
 class QuotationService implements QuotationServiceInterface
 {
     use JsonResponseTrait;
-    protected $quotationRepository;
-    protected $apiGpService;
-    protected $apiBillingService;
-    protected $functionService;
-    protected $stockWarehouseService;
-    protected $MsWebservice;
-    protected $OrderQuotationService;
-    protected $approvalService;
-    protected $orderAndQuotationService;
-    protected $stockSqlService;
-    protected $quotationBuilder;
-    protected $orderBuilder;
-    protected $invoiceService;
+  
     public function __construct(
-        QuotationRepositoryInterface $quotationRepository,
-        ApiGpService $apiGpService,
-        ApiBillingService $apiBillingService,
-        FunctionsServiceInterface $functionService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        MswService $MsWebservice,
-        OrderAndQuotationServiceInterface $OrderQuotationService,
-        ApprovalServiceInterface $approvalService,
-        OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
-        QuotationBuilderInterface $quotationBuilderInterface,
-        OrderBuilderInterface $orderBuilderInterface,
-        InvoiceServiceInterface $invoiceServiceInterface
+     protected readonly   QuotationRepositoryInterface $quotationRepository,
+      protected readonly   ApiGpService $apiGpService,
+      protected readonly   ApiBillingService $apiBillingService,
+      protected readonly   FunctionsServiceInterface $functionService,
+      protected readonly   StockWarehouseServiceInterface $stockWarehouseService,
+      protected readonly   OrderAndQuotationServiceInterface $OrderQuotationService,
+      protected readonly   ApprovalServiceInterface $approvalService,
+      protected readonly   OrderAndQuotationServiceInterface $orderAndQuotationService,
+      protected readonly   QuotationBuilderInterface $quotationBuilder,
+      protected readonly   OrderBuilderInterface $orderBuilder,
+      protected readonly   InvoiceServiceInterface $invoiceService
     ) {
-        $this->quotationRepository = $quotationRepository;
-        $this->apiGpService = $apiGpService;
-        $this->apiBillingService = $apiBillingService;
-        $this->functionService = $functionService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->MsWebservice = $MsWebservice;
-        $this->OrderQuotationService = $OrderQuotationService;
-        $this->approvalService = $approvalService;
-        $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
-        $this->quotationBuilder = $quotationBuilderInterface;
-        $this->orderBuilder = $orderBuilderInterface;
-        $this->invoiceService = $invoiceServiceInterface;
+       
     }
 
 

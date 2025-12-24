@@ -47,40 +47,20 @@ use Illuminate\Support\Facades\Auth;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
 {
-    protected $approvalService;
-    protected $orderAndQuotationService;
-    protected $quotationBuilder;
-    protected $orderBuilder;
-    protected $invoiceService;
-    protected $stockWarehouseService;
-    protected $reservaBuilder;
-    protected $reservaRepository;
-    protected $apiDelivery;
-    protected $functionService;
-
 
     public function __construct(
-        ApprovalServiceInterface $approvalService,
-        OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
-        QuotationBuilderInterface $quotationBuilderInterface,
-        OrderBuilderInterface $orderBuilderInterface,
-        InvoiceServiceInterface $invoiceServiceInterface,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ReservedBuilderInterface $reservedBuilderInterface,
-        InventoryReservationRepositoryInterface $reservaRepository,
-        ApiDeliverNoteService $apiDeliveryNote,
-        FunctionsServiceInterface $functionsServiceInterface
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+        protected readonly QuotationBuilderInterface $quotationBuilder,
+        protected readonly OrderBuilderInterface $orderBuilder,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ReservedBuilderInterface $reservaBuilder,
+        protected readonly InventoryReservationRepositoryInterface $reservaRepository,
+        protected readonly ApiDeliverNoteService $apiDelivery,
+        protected readonly FunctionsServiceInterface $functionService
     ) {
-        $this->approvalService = $approvalService;
-        $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
-        $this->quotationBuilder = $quotationBuilderInterface;
-        $this->orderBuilder = $orderBuilderInterface;
-        $this->invoiceService = $invoiceServiceInterface;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->reservaBuilder = $reservedBuilderInterface;
-        $this->reservaRepository = $reservaRepository;
-        $this->apiDelivery = $apiDeliveryNote;
-        $this->functionService = $functionsServiceInterface;
+
     }
 
 

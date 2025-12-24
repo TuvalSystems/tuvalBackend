@@ -16,7 +16,6 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpRegistroCopia;
-use App\Services\Api\MswService;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
@@ -39,23 +38,14 @@ use Illuminate\Support\Facades\Auth;
 class ApprovalService implements ApprovalServiceInterface
 {
     use JsonResponseTrait;
-    protected $functionService;
-    protected $invoiceService;
-    protected $mswService;
-    protected $apiGpService;
-    protected $stockWarehouseService;
+  
     public function __construct(
-        FunctionsServiceInterface $functionService,
-        InvoiceServiceInterface $invoiceService,
-        MswService $mswService,
-        ApiGpService $apiGpService,
-        StockWarehouseServiceInterface $stockWarehouseServiceInterface
+       protected readonly FunctionsServiceInterface $functionService,
+       protected readonly InvoiceServiceInterface $invoiceService,
+       protected readonly ApiGpService $apiGpService,
+       protected readonly StockWarehouseServiceInterface $stockWarehouseService
     ) {
-        $this->functionService = $functionService;
-        $this->invoiceService = $invoiceService;
-        $this->mswService = $mswService;
-        $this->apiGpService = $apiGpService;
-        $this->stockWarehouseService = $stockWarehouseServiceInterface;
+      
     }
 
 

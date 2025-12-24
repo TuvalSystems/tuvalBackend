@@ -18,10 +18,8 @@ use Illuminate\Support\Arr;
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
-    protected $apiGpService;
-    public function __construct(ApiGpService $apiGpService)
+    public function __construct(protected readonly ApiGpService $apiGpService)
     {
-        $this->apiGpService = $apiGpService;
     }
 
     public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo)

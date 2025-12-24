@@ -41,14 +41,7 @@ class DevolucionService implements DevolucionServiceInterface
     use DevolucionesCriteriosTrait,
         JsonResponseTrait;
 
-    // protected $apiGpReturnsIntegrationService;
-    // protected $apiSales;
-    // protected $approvalService;
-    // protected $devolucionRepository;
-    // protected $orderRepository;
-    // protected $devolucionBuilder;
-    // protected $apiGpService;
-    // protected $dispatchService;
+   
 
     public function __construct(
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,

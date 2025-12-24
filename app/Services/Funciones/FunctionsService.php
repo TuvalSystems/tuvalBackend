@@ -21,21 +21,15 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 class FunctionsService implements FunctionsServiceInterface
 {
 
-    protected $orderRepository;
-    protected $apiGpService;
-    protected $stockWarehouseService;
-    protected $apiBillingService;
+
 
     public function __construct(
-        OrderRepositoryInterface $orderRepository,
-        ApiGpService $apiGpService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiBillingService $apiBillingService,
+        protected readonly OrderRepositoryInterface $orderRepository,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiBillingService $apiBillingService,
     ) {
-        $this->orderRepository = $orderRepository;
-        $this->apiGpService = $apiGpService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiBillingService = $apiBillingService;
+
     }
 
     public function getItemProviders($pedidoId, $item, $pendientes = false, $existentes = false): array
@@ -103,7 +97,7 @@ class FunctionsService implements FunctionsServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
 
-         $subtotal = 0.0;
+        $subtotal = 0.0;
         $totalDiscount = 0.0;
         $netSubtotal = 0.0;
         $totalIva = 0.0;

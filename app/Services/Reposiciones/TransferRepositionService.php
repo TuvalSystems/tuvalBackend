@@ -21,17 +21,13 @@ use Illuminate\Support\Facades\Log;
 class TransferRepositionService implements TransferRepositionServiceInterface
 {
     use JsonResponseTrait;
-    protected $apiGp;
-    protected $stockWarehouseService;
-    protected $apiGpReturnsIntegrationService;
+
     public function __construct(
-        ApiGpService $apiGp,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        protected readonly ApiGpService $apiGp,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
     ) {
-        $this->apiGp = $apiGp;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
+
     }
 
     public function validateRequest($request)

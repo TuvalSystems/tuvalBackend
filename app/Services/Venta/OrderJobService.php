@@ -16,21 +16,15 @@ use Illuminate\Support\Facades\Log;
 class OrderJobService
 {
     use JsonResponseTrait;
-    protected $webService;
-    protected $invoiceService;
-    protected $orderService;
-    protected $orderRepository;
+
 
     public function __construct(
-        MswService $webService,
-        InvoiceServiceInterface $invoiceService,
-        OrderServiceInterface $orderServiceInterface,
-        OrderRepositoryInterface $orderRepository
+        protected readonly MswService $webService,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly OrderServiceInterface $orderService,
+        protected readonly OrderRepositoryInterface $orderRepository
     ) {
-        $this->webService = $webService;
-        $this->invoiceService = $invoiceService;
-        $this->orderService = $orderServiceInterface;
-        $this->orderRepository = $orderRepository;
+
     }
 
 

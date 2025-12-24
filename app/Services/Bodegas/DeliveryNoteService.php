@@ -30,20 +30,14 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
      *  SERVICIO DEDICADO AL  GUIAREMISIONCONTROLLER
      */
 
-    protected $apiDeliveryNote;
-    protected $deliveryNoteBuilder;
-    protected $logisticsOperationsService;
-    protected $common;
-
-
     // protected $invoiceService;
-    public function __construct(DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, ApiDeliverNoteService $apiDeliveryNote, LogisticsOperationsServiceInterface $logisticsOperationsService, DeliveryNoteCommonServiceInterface $common, )
+    public function __construct(
+       protected readonly DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, 
+       protected readonly ApiDeliverNoteService $apiDeliveryNote, 
+       protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService, 
+       protected readonly DeliveryNoteCommonServiceInterface $common, )
     {
-        // $this->invoiceService = $invoiceService;
-        $this->deliveryNoteBuilder = $deliveryNoteBuilder;
-        $this->apiDeliveryNote = $apiDeliveryNote;
-        $this->logisticsOperationsService = $logisticsOperationsService;
-        $this->common = $common;
+        
 
     }
 

@@ -10,7 +10,6 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Services\Api\MswService;
 use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -24,18 +23,15 @@ class InvoiceService implements InvoiceServiceInterface
     const STATUS_PENDING = 'pendiente';
     const STATUS_RELEASED = 'liberada';
     use JsonResponseTrait;
-    protected $purchaseOrderService;
-    protected $functionService;
-    protected $mswService;
-    protected $apiGpProcessInvoice;
+
     // Implementa todos los metodos de facturacion de pedidos, devoluciones, aprobaciones, etc
 
-    public function __construct(PurchaseOrderServiceInterface $purchaseOrderService, FunctionsServiceInterface $functionService, MswService $mswService, ApiGpProcessInviceVta $apiGpProcessInvoice)
-    {
-        $this->purchaseOrderService = $purchaseOrderService;
-        $this->functionService = $functionService;
-        $this->mswService = $mswService;
-        $this->apiGpProcessInvoice = $apiGpProcessInvoice;
+    public function __construct(
+        protected readonly PurchaseOrderServiceInterface $purchaseOrderService,
+        protected readonly FunctionsServiceInterface $functionService,
+        protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice
+    ) {
+
     }
 
     /** Funcion de checkenviarfactura pasada aqui para reutilizar en otros servicios

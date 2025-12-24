@@ -9,7 +9,6 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Collection;
@@ -21,18 +20,13 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 {
 
     use JsonResponseTrait;
-    protected $stockWarehouseService;
-    protected $apiGp;
-    protected $functionsService;
-    protected $clientSqlService;
+
     public function __construct(
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiGpService $apiGp,
-        FunctionsServiceInterface $functionsService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiGpService $apiGp,
+        protected readonly FunctionsServiceInterface $functionsService,
     ) {
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiGp = $apiGp;
-        $this->functionsService = $functionsService;
+
     }
 
 

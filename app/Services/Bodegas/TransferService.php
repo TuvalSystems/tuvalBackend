@@ -17,23 +17,15 @@ use Illuminate\Support\Str;
 class TransferService implements TransferServiceInterface
 {
 
-    protected $invoiceService;
-    protected $logisticsOperationsService;
-    protected $stockWarehouseService;
-    protected $transferRepository;
-    protected $functionService;
+
     public function __construct(
-        InvoiceServiceInterface $invoiceService,
-        LogisticsOperationsServiceInterface $logisticsOperationsService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        TransferRepositoryInterface $transferRepositoryInterface,
-        FunctionsServiceInterface $functionService
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly TransferRepositoryInterface $transferRepository,
+        protected readonly FunctionsServiceInterface $functionService
     ) {
-        $this->invoiceService = $invoiceService;
-        $this->logisticsOperationsService = $logisticsOperationsService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->transferRepository = $transferRepositoryInterface;
-        $this->functionService = $functionService;
+
     }
 
 
@@ -57,10 +49,10 @@ class TransferService implements TransferServiceInterface
         }
 
         foreach ($trasladosVentas as $t) {
-            $reservado   = (float) ($t->reservado   ?? 0);
-            $trasladado  = (float) ($t->trasladado  ?? 0);
-            $cantidad    = (float) $t->cantidad;
-            $pendiente   = round($cantidad - $reservado - $trasladado, (int) ($t->ART_DECIMAL_CANTIDAD ?? 2));
+            $reservado = (float) ($t->reservado ?? 0);
+            $trasladado = (float) ($t->trasladado ?? 0);
+            $cantidad = (float) $t->cantidad;
+            $pendiente = round($cantidad - $reservado - $trasladado, (int) ($t->ART_DECIMAL_CANTIDAD ?? 2));
             $t->pendiente = $pendiente;
             $t->fecha = Carbon::parse($t->fecha)->format('Y-m-d H:i');
             $key = $t->ART_CODIGO . '@' . $bodega;
@@ -102,9 +94,9 @@ class TransferService implements TransferServiceInterface
         // 5) Guías por bodega destino (una sola ida a BD por bodega)
         foreach ($bodegas as $destID => &$bod) {
             $guias = $this->transferRepository->findGuidesToWarehouseDestinoAndOrigin($bodega, $destID);
-            $bod['guias']      = $guias->values()->all();
+            $bod['guias'] = $guias->values()->all();
             $bod['ultimaguia'] = $guias->first();
-            $bod['pedidos']         = array_values($bod['pedidos']);
+            $bod['pedidos'] = array_values($bod['pedidos']);
             $bod['compartimientos'] = array_values($bod['compartimientos']);
             $bod['peso_total'] = collect($bod['traslados'])->reduce(function ($carry, $t) {
                 $peso = (float) ($t->ART_PESO ?? 0);
@@ -113,12 +105,12 @@ class TransferService implements TransferServiceInterface
         }
         unset($bod);
         $bodegas = array_values($bodegas);
-         $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
-         if ($pedido !== null && $pedido !== 'null') {
+        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
+        if ($pedido !== null && $pedido !== 'null') {
             return $bodegas[0]['traslados'] ?? [];
-         }
+        }
 
-         return $bodegas;
+        return $bodegas;
     }
 
 
