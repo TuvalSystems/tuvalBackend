@@ -24,7 +24,6 @@ class ProcessDevolucion implements ShouldQueue, ShouldBeUnique
     public $timeout = 300;
     public $failOnTimeout = true;
     public array|int $backoff = [10, 30, 60, 120]; // backoff exponencial simple
-    public int $tryAfter = 5;
 
     public function __construct(public int $devolucionId)
     {
