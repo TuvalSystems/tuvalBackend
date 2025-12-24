@@ -9,6 +9,7 @@ use App\Models\GpUsuario;
 use App\Models\GpCliente;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpVendedor;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPuntoVenta;
@@ -26,6 +27,7 @@ use App\Services\Api\ApiSeedBillingService;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
@@ -41,7 +43,7 @@ class DevolucionService implements DevolucionServiceInterface
     use DevolucionesCriteriosTrait,
         JsonResponseTrait;
 
-   
+
 
     public function __construct(
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
@@ -235,7 +237,7 @@ class DevolucionService implements DevolucionServiceInterface
         return now()->lte($fechaLimite);
     }
 
-  
+
 
     // esta función verifica si el pedido tiene guías de remisión asociadas o no
     // y con eso determinamos si la devlucion pasa de despachado a no despachado
@@ -663,6 +665,112 @@ class DevolucionService implements DevolucionServiceInterface
 
         return $data;
     }
+
+
+
+
+    /**  proceso de listar devoluciones por recibir 
+     *   
+     * 
+     */
+
+    public function fetchReturnsToReceived($perPage = 10, $search, $sortBy = 'gd.created_at', $sortOrder = 'desc', $ptoVtaId): LengthAwarePaginator
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
+        $allowedSortFields = [
+            'gd.created_at',
+            'gd.devolucion',
+            'gd.pedido',
+            'gd.factura',
+            'gd.DOC_GENERADO',
+        ];
+
+        if (!in_array($sortBy, $allowedSortFields, true)) {
+            $sortBy = 'gd.created_at';
+        }
+
+        $sortOrder = strtolower($sortOrder) === 'desc' ? 'desc' : 'asc';
+
+        $query = GpDevoluciones::query()
+            ->from('gp_devoluciones as gd')
+            ->select([
+                'gd.id',
+                'gd.devolucion',
+                'gp.CLI_RUC',
+                'gp.CLI_RAZON_SOCIAL',
+                'gd.USERID',
+                'gp.PTO_VTA_DESCRIPCION',
+                'gd.created_at',
+                'gd.volver_a_facturar'
+            ])
+            ->join('gp_pedidos as gp', 'gd.pedido_id', '=', 'gp.id')
+            ->join('gp_punto_ventas as gpv', 'gp.PTO_VTA_ID', '=', 'gpv.PTO_VTA_ID')
+            ->whereIn('gd.estado', ['aprobado', 'solicitado'])
+            ->where('gd.despachado', '=', 1)
+            ->where('gp.BOD_BODEGA', '=', $bodega)
+            ->where(function ($p) {
+                $p->where('gd.tipo_devolucion', '!=', 'total')
+                    ->orWhere('gd.volver_a_facturar', '=', false);
+            });
+
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $columns = [
+                    'gd.devolucion',
+                    'gd.pedido',
+                    'gd.factura',
+                    'gd.DOC_GENERADO',
+                    'gp.CLI_RAZON_SOCIAL',
+                    'gp.CLI_RUC',
+                ];
+                foreach ($columns as $column) {
+                    $q->orWhere($column, 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+        return $query->paginate($perPage);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

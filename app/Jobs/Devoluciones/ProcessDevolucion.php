@@ -15,12 +15,14 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Batchable;
+use Illuminate\Contracts\Cache\Repository;
 
 class ProcessDevolucion implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, Batchable;
 
-
+    public $timeout = 300;
+    public $failOnTimeout = true;
     public array|int $backoff = [10, 30, 60, 120]; // backoff exponencial simple
     public int $tryAfter = 5;
 
@@ -30,9 +32,20 @@ class ProcessDevolucion implements ShouldQueue, ShouldBeUnique
         $this->onQueue('devoluciones');
     }
 
-     public function uniqueId(): string
+    public function uniqueId(): string
     {
         return 'devolucion:' . $this->devolucionId;
+    }
+
+    public function uniqueVia(): Repository
+    {
+        return cache()->driver('redis');
+    }
+
+    public function uniqueFor()
+    {
+        // El bloqueo de unicidad debe durar al menos lo mismo que el timeout
+        return 310;
     }
 
 
@@ -41,7 +54,9 @@ class ProcessDevolucion implements ShouldQueue, ShouldBeUnique
     public function middleware(): array
     {
         return [
-            new WithoutOverlapping('devolucion:' . $this->devolucionId), // lock en Redis (requiere CACHE_DRIVER=redis)
+            (new WithoutOverlapping('devolucion:' . $this->devolucionId))
+                ->releaseAfter(30) // Si está bloqueado, reintenta en 30s
+                ->expireAfter(310), // lock en Redis (requiere CACHE_DRIVER=redis)
             new RateLimited('devoluciones'),                              // opcional: define bucket 'devoluciones' en rate limiter
         ];
     }

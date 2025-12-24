@@ -213,9 +213,12 @@ Route::prefix('aprobaciones-web')->group(function () {
     Route::get('lista-items-aprobaciones', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::get('lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
     Route::get('lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
+});
 
-
-
+Route::prefix('devoluciones-web')->group(function () {
+    Route::get('lista-devoluciones-por-recibir', [DevolucionesController::class, 'listaDevolucionesPorRecibir']);
+    // Route::get('detalle-devolucion-por-recibir', [DevolucionesController::class, 'detalleDevolucionPorRecibir']);
+    // Route::get('recibir-items-devolucion', [DevolucionesController::class, 'recibirItemsDevolucion']);
 });
 
 

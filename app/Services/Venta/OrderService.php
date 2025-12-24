@@ -28,6 +28,7 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\reservas\GpCotizacionReservaDetalleLog;
 use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -1589,7 +1590,7 @@ class OrderService implements OrderServiceInterface
 
 
 
-    public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId)
+    public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId): LengthAwarePaginator
     {
         $allowedSorts = [
             'gp.created_at',

@@ -319,6 +319,23 @@ class DevolucionesController extends Controller
         ]);
     }
 
+    public function listaDevolucionesPorRecibir(Request $request): JsonResponse
+    {
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'desc');
+        $ptoVtaId = $request->input('ptoVtaId', null);
+
+        try {
+            $data = $this->devolucionService->fetchReturnsToReceived($perPage, $search, $sortBy, $sortOrder, $ptoVtaId);
+            return $this->successResponse('Lista de devoluciones por recibir obtenida correctamente', $data, 200);
+
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener la lista de devoluciones por recibir: ' . $e->getMessage(), [], 500);
+        }
+    }
+
 
     public function recibirdevolucion(Request $request)
     {
