@@ -54,7 +54,7 @@ class ProcessDevolucion implements ShouldQueue, ShouldBeUnique
     {
         return [
             (new WithoutOverlapping('devolucion:' . $this->devolucionId))
-                ->releaseAfter(60) // Si está bloqueado, reintenta en 30s
+              //  ->releaseAfter(60) // Si está bloqueado, reintenta en 30s
                 ->expireAfter(310)
                 ->dontRelease(),// lock en Redis (requiere CACHE_DRIVER=redis)
             new RateLimited('devoluciones'),                              // opcional: define bucket 'devoluciones' en rate limiter
