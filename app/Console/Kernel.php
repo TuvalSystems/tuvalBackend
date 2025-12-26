@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
         $schedule->job(new EnqueueDevoluciones(10))
             ->timezone('America/Guayaquil')
             ->everyMinute()
-            ->withoutOverlapping(60)
+            ->withoutOverlapping(5)
             ->runInBackground();
         // $schedule->command('devoluciones:procesar')
         //     ->everyMinute()
