@@ -1267,9 +1267,5 @@ class CotizacionesController extends Controller
             return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
 
         }
-
     }
-
-
-
 }

@@ -25,6 +25,7 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
@@ -593,6 +594,7 @@ class DevolucionService implements DevolucionServiceInterface
         $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
         $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
         $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalleDev)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
         $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
         $data['devolucion'] = $devolucion;
         $data['pedido'] = $pedido;
@@ -620,34 +622,45 @@ class DevolucionService implements DevolucionServiceInterface
             return $base;
         })->sortBy('detalle_id')->values();
 
-        foreach ($detalleGrouped as $art) {
-            $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
-            $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
-        }
-        foreach ($detalleGrouped as $key => $art) {
 
-            if ($art['devuelto'] == 0) {
+
+        foreach ($detalleGrouped as $key => $art) {
+            $valorUnitario = (float) $art['ART_VALOR'];
+            $cantidad = (float) $art['devuelto'];
+            $descuentoUnitario = (float) $art['ART_DESCUENTO'];
+            $impuestoPorcentaje = (float) $articulosImpuesto[$art['ART_CODIGO']] ?? 0;
+            $tipoImpuesto = $art['ART_IMP_VTA'];
+
+            if ($cantidad == 0) {
                 unset($detalleGrouped[$key]);
                 continue;
             }
 
-            $data['tipoimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_VALOR'] * $art['devuelto'], 2, '.', '');
-            $data['sumaimpuesto'][$art['ART_IMP_VTA']] += (float) number_format(($art['ART_IVA'] / $art['ART_CANTIDAD']) * $art['devuelto'], 2, '.', '');
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
+            if (!isset($data['tipoimpuesto'][$tipoImpuesto])) {
+                $data['tipoimpuesto'][$tipoImpuesto] = 0;
+                $data['sumaimpuesto'][$tipoImpuesto] = 0;
+            }
 
 
-            $data['descuento'] += (float) number_format($art['ART_DESCUENTO'] * $art['devuelto'], 2, '.', '');
-            $data['subtotalmenosdescuento'] += (float) number_format(($art['ART_VALOR'] - $art['ART_DESCUENTO']) * $art['devuelto'], 2, '.', '');
-            $data['iva'] += (float) number_format(((($art['ART_VALOR'] - $art['ART_DESCUENTO']) * $art['devuelto']) * $art['ART_IMP_VTA'] / 100), 2, '.', '');
+            $data['tipoimpuesto'][$art['ART_IMP_VTA']] += $lineaSubtotal;
+            $data['sumaimpuesto'][$art['ART_IMP_VTA']] += $lineaIva;
+
+            $data['subtotal'] += $lineaSubtotal;
+            $data['descuento'] += $lineaDiscount;
+            $data['subtotalmenosdescuento'] += $lineNet;
+            $data['iva'] += $lineaIva;
         }
 
-        foreach ($data['tipoimpuesto'] as $linea) {
-            $data['subtotal'] += $linea;
-        }
-
-        $data['subtotalmenosdescuento'] = (float) number_format($data['subtotalmenosdescuento'], 2, '.', '');
-        $data['descuento'] = (float) number_format($data['descuento'], 2, '.', '');
-        $data['iva'] = (float) number_format($data['iva'], 2, '.', '');
-        $data['total'] = number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
+        $data['subtotalmenosdescuento'] = (float) round($data['subtotalmenosdescuento'], 2);
+        $data['descuento'] = (float) round($data['descuento'], 2);
+        $data['iva'] = (float) round($data['iva'], 2);
+        $totalMatematico = $data['subtotalmenosdescuento'] + $data['iva'];
+        $data['total'] = number_format($totalMatematico, 2, '.', '');
 
 
         $data['detalle'] = $detalleGrouped;
@@ -658,7 +671,6 @@ class DevolucionService implements DevolucionServiceInterface
 
         return $data;
     }
-
 
 
 

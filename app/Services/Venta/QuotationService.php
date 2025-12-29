@@ -12,7 +12,6 @@ use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
 use App\Models\GpClienteSucursal;
-
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
@@ -34,7 +33,6 @@ use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
-use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
@@ -48,21 +46,21 @@ use Illuminate\Support\Facades\Log;
 class QuotationService implements QuotationServiceInterface
 {
     use JsonResponseTrait;
-  
+
     public function __construct(
-     protected readonly   QuotationRepositoryInterface $quotationRepository,
-      protected readonly   ApiGpService $apiGpService,
-      protected readonly   ApiBillingService $apiBillingService,
-      protected readonly   FunctionsServiceInterface $functionService,
-      protected readonly   StockWarehouseServiceInterface $stockWarehouseService,
-      protected readonly   OrderAndQuotationServiceInterface $OrderQuotationService,
-      protected readonly   ApprovalServiceInterface $approvalService,
-      protected readonly   OrderAndQuotationServiceInterface $orderAndQuotationService,
-      protected readonly   QuotationBuilderInterface $quotationBuilder,
-      protected readonly   OrderBuilderInterface $orderBuilder,
-      protected readonly   InvoiceServiceInterface $invoiceService
+        protected readonly QuotationRepositoryInterface $quotationRepository,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly ApiBillingService $apiBillingService,
+        protected readonly FunctionsServiceInterface $functionService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly OrderAndQuotationServiceInterface $OrderQuotationService,
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+        protected readonly QuotationBuilderInterface $quotationBuilder,
+        protected readonly OrderBuilderInterface $orderBuilder,
+        protected readonly InvoiceServiceInterface $invoiceService
     ) {
-       
+
     }
 
 

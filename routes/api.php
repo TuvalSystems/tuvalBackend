@@ -105,9 +105,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::post('/pedidos/detallepedido', [PedidosController::class, 'detallepedido']);
     Route::post('/pedidos/consultarexistente', [PedidosController::class, 'consultarexistente']);
-    Route::post('/pedidos/consultardespachado', [PedidosController::class, 'consultardespachado']);
+    // Route::post('/pedidos/consultardespachado', [PedidosController::class, 'consultardespachado']);
     Route::post('/pedidos/facturarexistente', [PedidosController::class, 'facturarexistente']);
-    Route::post('/pedidos/facturardespachado', [PedidosController::class, 'facturardespachado']);
+    // Route::post('/pedidos/facturardespachado', [PedidosController::class, 'facturardespachado']);
     // Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
 
     Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);

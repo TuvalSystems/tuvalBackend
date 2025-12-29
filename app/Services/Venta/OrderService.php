@@ -46,19 +46,19 @@ use Illuminate\Support\Facades\Log;
 class OrderService implements OrderServiceInterface
 {
     use JsonResponseTrait;
-   
+
 
     public function __construct(
-       protected readonly ApiSalesService $apiSalesService,
-       protected readonly ApiGpService $apiGpService,
-       protected readonly ApprovalServiceInterface $approvalService,
-       protected readonly OrderRepositoryInterface $orderRepository,
-       protected readonly FunctionsServiceInterface $functionsService,
-       protected readonly PurchaseReceiptServiceInterface $purchaseReceiptService,
-       protected readonly InvoiceServiceInterface $invoiceService,
-       protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
-       protected readonly StockWarehouseServiceInterface $stockWarehouseService,
-       protected readonly OrderBuilderInterface $orderBuilder
+        protected readonly ApiSalesService $apiSalesService,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly OrderRepositoryInterface $orderRepository,
+        protected readonly FunctionsServiceInterface $functionsService,
+        protected readonly PurchaseReceiptServiceInterface $purchaseReceiptService,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly OrderBuilderInterface $orderBuilder
     ) {
     }
 
