@@ -204,13 +204,47 @@ class ConsultasController extends Controller
     public function consultarstock(Request $request)
     {
         $data = $request->all();
-        return $this->InventoryQueryService->getConsultStock($data);
+        try {
+            $st = $this->InventoryQueryService->getConsultStock($data);
+            return response([
+                'success' => true,
+                'stock' => $st['stock'],
+                'ART_STOCK' => $st['ART_STOCK'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al consultar Stock (getConsultStock)' . [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'data' => $data
+            ]);
+            return $this->buildErrorResponse('Stock insuficiente', 500);
+        }
     }
 
     public function consultaStockOthers(Request $request)
     {
         $data = $request->all();
-        return $this->InventoryQueryService->getConsultStockOthers($data);
+        try {
+            $st = $this->InventoryQueryService->getConsultStockOthers($data);
+            //nose porque hace pero va
+            return response([
+                'success' => true,
+                'stock' => $st['stock'],
+                'ART_STOCK' => $st['ART_STOCK'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al consultar Stock (getConsultStockOthers)', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+            ]);
+            return $this->buildErrorResponse('Stock insuficiente', 500);
+
+        }
     }
 
     public function consultaItemTransito(Request $request)
@@ -328,7 +362,16 @@ class ConsultasController extends Controller
 
     public function cupodisponible($ruc)
     {
-        return $this->InventoryQueryService->getAvailableSpace($ruc);
+        try {
+            $cl = $this->InventoryQueryService->getAvailableSpace($ruc);
+            return response([
+                'success' => true,
+                'cliente' => $cl['cliente'],
+                'segmento' => $cl['segmento']
+            ]);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function territorios(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
