@@ -24,6 +24,7 @@ interface StockWarehouseServiceInterface
     public function fetchStockBatchWarehouses(array $params);
     public function fetchStockByOnlyWarehouse(array $params);
     public function fetchStock(array $infoRequest);
+    public function fetchStockWarehouseCompartmentDevolution(array $params);
     public function transformStockResponse($stockResults);
     public function transformStockQuotationResponse($stockResults);
 

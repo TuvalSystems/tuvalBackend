@@ -2,59 +2,77 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Pedidos\OrderService;
+use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Services\Venta\OrderJobService;
+use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Venta\QuotationService;
 use App\Services\Venta\PurchaseOrderService;
 use App\Services\Venta\InventoryQueryService;
 use App\Services\Venta\InventoryReservationService;
 use App\Services\Venta\Utils\OrderAndQuotationService;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
+use App\Services\Venta\OrderService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
-class VentaServiceProvider extends ServiceProvider
+class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
-    public function register()
+    // public function register()
+    // {
+
+    //     //aqui agrego las Cotizaciones para no crear otro provider
+    //     $this->app->singleton(QuotationServiceInterface::class, QuotationService::class);
+    //     /** servicio dedicdo a las ordenes de compra */
+    //     $this->app->singleton(PurchaseOrderServiceInterface::class, PurchaseOrderService::class);
+
+    //     /** aqui va el servicio de consultas controller  */
+    //     $this->app->singleton(InventoryQueryServiceInterface::class, InventoryQueryService::class);
+
+    //     /** Servicios de utilidad para cotizacion y para pedidos  */
+
+    //     $this->app->singleton(OrderAndQuotationServiceInterface::class, OrderAndQuotationService::class);
+
+
+    //     // aqui agrego las ordenes para no crear otro provider
+    //     $this->app->singleton(
+    //         OrderServiceInterface::class,
+    //         OrderService::class
+    //     );
+
+    //     //aqui va el servicio de Job de Pedidos
+    //     // $this->app->singleton(OrderJobService::class);
+
+    //       $this->app->singleton(
+    //         InventoryReservationServiceInterface::class,
+    //         InventoryReservationService::class
+    //     );
+    // }
+
+
+
+
+    public array $singletons = [
+        QuotationServiceInterface::class            => QuotationService::class,
+        PurchaseOrderServiceInterface::class        => PurchaseOrderService::class,
+        InventoryQueryServiceInterface::class       => InventoryQueryService::class,
+        OrderAndQuotationServiceInterface::class    => OrderAndQuotationService::class,
+        OrderServiceInterface::class                => OrderService::class,
+        InventoryReservationServiceInterface::class => InventoryReservationService::class,
+        
+        // Nota: Si descomentas OrderJobService en el futuro, agrégalo aquí:
+        OrderJobService::class ,
+    ];
+
+    /**
+     * Indica a Laravel qué servicios provee este archivo para que sepa
+     * cuándo cargarlo.
+     */
+    public function provides()
     {
-
-        //aqui agrego las Cotizaciones para no crear otro provider
-        $this->app->singleton(QuotationServiceInterface::class, QuotationService::class);
-        /** servicio dedicdo a las ordenes de compra */
-        $this->app->singleton(PurchaseOrderServiceInterface::class, PurchaseOrderService::class);
-
-        /** aqui va el servicio de consultas controller  */
-        $this->app->singleton(InventoryQueryServiceInterface::class, InventoryQueryService::class);
-
-        /** Servicios de utilidad para cotizacion y para pedidos  */
-
-        $this->app->singleton(OrderAndQuotationServiceInterface::class, OrderAndQuotationService::class);
-
-
-        // aqui agrego las ordenes para no crear otro provider
-        $this->app->singleton(
-            OrderServiceInterface::class,
-            OrderService::class
-        );
-
-        //aqui va el servicio de Job de Pedidos
-        // $this->app->singleton(OrderJobService::class);
-
-          $this->app->singleton(
-            InventoryReservationServiceInterface::class,
-            InventoryReservationService::class
-        );
-    }
-
-
-
-
-    public function boot()
-    {
-        //
+        return array_keys($this->singletons);
     }
 }

@@ -26,20 +26,14 @@ use Illuminate\Support\Str;
 
 class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceInterface
 {
-    protected $common;
-    protected $builder;
-    protected $apiDelivery;
-    protected $logistic;
+  
     public function __construct(
-        DeliveryNoteCommonServiceInterface $common,
-        ReservationDeliveryNoteParamsBuilderInterface $builder,
-        ApiDeliverNoteService $apiDeliveryNote,
-        LogisticsOperationsServiceInterface $logisticsOperations
+      protected readonly DeliveryNoteCommonServiceInterface $common,
+      protected readonly ReservationDeliveryNoteParamsBuilderInterface $builder,
+      protected readonly ApiDeliverNoteService $apiDelivery,
+      protected readonly LogisticsOperationsServiceInterface $logistic
     ) {
-        $this->common = $common;
-        $this->builder = $builder;
-        $this->apiDelivery = $apiDeliveryNote;
-        $this->logistic = $logisticsOperations;
+       
     }
 
 

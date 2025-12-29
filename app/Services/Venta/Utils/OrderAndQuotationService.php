@@ -18,21 +18,15 @@ use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 {
 
-    protected $apiGpService;
-    protected $functionService;
-    protected $MsWebService;
-    protected $stockWarehouseService;
+
 
     public function __construct(
-        ApiGpService $apiGpService,
-        FunctionsServiceInterface $functionService,
-        MswService $MsWebService,
-        StockWarehouseServiceInterface $stockWarehouseService
+        protected readonly ApiGpService $apiGpService,
+        protected readonly FunctionsServiceInterface $functionService,
+        protected readonly MswService $MsWebService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService
     ) {
-        $this->apiGpService = $apiGpService;
-        $this->functionService = $functionService;
-        $this->MsWebService = $MsWebService;
-        $this->stockWarehouseService = $stockWarehouseService;
+
     }
 
 
@@ -50,7 +44,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             if ($item->ART_TIPO_COMPRA != 'L') {
                 if ($encera) {
                     $item->ART_VALOR = $listaPreciosWs[$item->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'] ?? 0;
-                    $item->ART_VALOR_ORIGINAL =  $item->ART_VALOR;
+                    $item->ART_VALOR_ORIGINAL = $item->ART_VALOR;
                 }
             }
             return $item;
@@ -77,7 +71,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
             // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion') : $this->getStocksRequestQuotation($quotationId, $item->id, 'cotizacion');
-            $item->stock =  $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion');
+            $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion');
         });
         return $details;
     }
@@ -90,13 +84,13 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
     /**pedido */
-    public function getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy,  $warehouse)
+    public function getQuotationDetailWithSuppliersTypeOrder($quotationId, $copy, $warehouse)
     {
         $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
         $details->each(function ($item) use ($warehouse, $quotationId, $copy) {
             $item->proveedores = collect();
             // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido') : $this->getStocksRequestQuotation($quotationId, $item->id, 'pedido');
-            $item->stock =  $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido');
+            $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido');
         });
         return $details;
     }
@@ -111,10 +105,10 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     public function getFormattedStocksQuotation($quotationId, $detailId, $typeDetailStock)
     {
         if ($typeDetailStock == 'pedido') {
-            $stock  = GpPedidoDetalleStock::where('pedido_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
+            $stock = GpPedidoDetalleStock::where('pedido_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
             return $this->formatStockCollection($stock, 'pedido_id');
         }
-        $stock  = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
+        $stock = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->where('detalle_id', $detailId)->get()->toArray();
         return $this->formatStockCollection($stock, 'cotizacion_id');
     }
 
@@ -127,7 +121,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
                 'detalle_id' => $item['detalle_id'],
                 'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
                 'STO_ART_STOCK_DISPONIBLE' => 0,
-                'seleccionado' =>  0 //$item['seleccionado'],
+                'seleccionado' => 0 //$item['seleccionado'],
             ];
         })->toArray();
     }
@@ -157,8 +151,8 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
     public function getPriceListByItems($arArticulos)
     {
-        $prices =  $this->MsWebService->listaprecios($arArticulos);
-        $indexedPrices  = [];
+        $prices = $this->MsWebService->listaprecios($arArticulos);
+        $indexedPrices = [];
         foreach ($prices as $price) {
             $articleCode = $price['LST_PRC_ARTICULO'];
             $priceId = $price['LST_PRC_ID'];
@@ -221,7 +215,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
-     public function assignmentDisponibleStock(&$stock, $stockResponseFormatted, $detailOrder)
+    public function assignmentDisponibleStock(&$stock, $stockResponseFormatted, $detailOrder)
     {
         $stock['STO_ART_STOCK_DISPONIBLE'] = $stockResponseFormatted['STOCK_DISPONIBLE'] ?? 0;
         $stock['STO_ART_ARTICULO'] = $detailOrder->ART_CODIGO;
@@ -232,7 +226,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
      *  para visualizar el porcentaje de cambio de precio y descuento de un articulo
      */
 
-     public function calculateDiscountFraction(float $originalPrice, float $currentPrice)
+    public function calculateDiscountFraction(float $originalPrice, float $currentPrice)
     {
         if ($originalPrice == 0.0) {
             return 0.0;

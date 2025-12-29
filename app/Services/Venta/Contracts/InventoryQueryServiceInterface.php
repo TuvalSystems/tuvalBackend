@@ -20,8 +20,6 @@ interface InventoryQueryServiceInterface
 
     /** funcion para consulta de segmento de cliente */
 
-    public function getConsultClientSegment($data);
-
 
     /** funcion de consulta de reservados  */
 
@@ -29,4 +27,11 @@ interface InventoryQueryServiceInterface
 
 
      public function listReservedWebInventory(?string $item);
+
+
+      /**
+       * funcion encargada de buscar articulos
+       * @param array $filters
+       */
+      public function searchWithDetails(array $filters);
 }

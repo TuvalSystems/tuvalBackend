@@ -3,36 +3,30 @@
 namespace App\Services\Venta;
 
 use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
 class InventoryQueryService implements InventoryQueryServiceInterface
 {
 
     use JsonResponseTrait;
-    protected $stockWarehouseService;
-    protected $apiGp;
-    protected $functionsService;
-    protected $clientSqlService;
+
     public function __construct(
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiGpService $apiGp,
-        FunctionsServiceInterface $functionsService,
-        ClientServiceInterface $clientSqlService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiGpService $apiGp,
+        protected readonly FunctionsServiceInterface $functionsService,
     ) {
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiGp = $apiGp;
-        $this->functionsService = $functionsService;
-        $this->clientSqlService = $clientSqlService;
+
     }
 
 
@@ -129,16 +123,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         return is_array($data) ? $data : (array) $data;
     }
 
-    public function getConsultClientSegment($ruc)
-    {
-        $segmento = $this->clientSqlService->validateClientforRucSegment($ruc);
 
-        if (is_array($segmento)) {
-            return $this->buildSuccessResponse('Segmento encontrado', 200);
-        } else {
-            return $this->buildErrorResponse('Segmento no encontrado', 500);
-        }
-    }
 
 
 
@@ -484,7 +469,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
         return $resultados->map(function ($traslado) {
             $traslado->reservado = (float) round($traslado->cantidad - $traslado->trasladado, 3) ?? 0;
-            $traslado->despachado = (float) round($traslado->trasladado,3);
+            $traslado->despachado = (float) round($traslado->trasladado, 3);
             $traslado->cantidad_pedida = (float) round($traslado->cantidad, 3);
             $traslado->CLI_RUC = 'TUVAL';
             $traslado->CLI_RAZON_SOCIAL = 'TUVAL';
@@ -573,9 +558,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         )->get();
 
         return $resultados->map(function ($tr) {
-            $tr->reservado = (float) round( $tr->cantidad - $tr->trasladado, 3) ?? 0;
+            $tr->reservado = (float) round($tr->cantidad - $tr->trasladado, 3) ?? 0;
             $tr->despachado = (float) round($tr->trasladado, 3) ?? 0;
-            $tr->cantidad_pedida = (float) round($tr->cantidad,3) ?? 0;
+            $tr->cantidad_pedida = (float) round($tr->cantidad, 3) ?? 0;
             $tr->CLI_RUC = 'TUVAL';
             $tr->CLI_RAZON_SOCIAL = 'TUVAL';
             $tr->tipo = 'traslado_reserva';
@@ -589,4 +574,101 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
 
 
+    public function searchWithDetails(array $filters)
+    {
+
+        $isItemL = $this->isSearchItemsL($filters);
+
+        $articulos = $isItemL
+            ? GpArticulo::searchItemLModel($filters)
+            : GpArticulo::searchItemModel($filters);
+
+        if ($articulos->isEmpty()) {
+            return collect();
+        }
+
+        return $articulos->map(function ($art) use ($filters, $isItemL) {
+
+            //Ajustamos el identificador de items tipo L
+            $serviceTypes = ['VTA-SERV-L', 'VTA-BNS-L'];
+            $isService = in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
+            if (in_array($art->ART_CLASE_ARTICULO, $serviceTypes)) {
+                $art->ART_TIPO_COMPRA = 'L';
+            }
+
+            //inicializamos colleccion vacia
+            $preciosArticulo = collect();
+
+
+            if (!$isService) {
+                $codWithFormat = $art->ART_CODIGO . ',';
+                $respApi = $this->getApiPriceArticle($codWithFormat);
+                $preciosArticulo = collect($respApi);
+            }
+
+            $nivelPrecio = $filters['nivel_precio'] ?? null;
+            if ($nivelPrecio) {
+                $precioEncontrado = $preciosArticulo->firstWhere('idLista', $nivelPrecio);
+                $valor = $precioEncontrado ? $precioEncontrado['valor'] : 0;
+                $art->ART_VALOR = (float) number_format($valor, 4, '.', '');
+                $art->ART_VALOR_ORIGINAL = $art->ART_VALOR;
+                $art->ART_DESCRIPCION_ORIGINAL = $art->ART_DESCRIPCION;
+            } else {
+                $art->precios = $preciosArticulo->values();
+            }
+
+            $art->proveedores = [];
+            $art->descuento = 0;
+            $art->descuento_original = 0;
+            $art->modificador = 0;
+            $art->imagenes = $this->getImageArticle($art->ART_CODIGO_TRES_LETRAS);
+
+            return $art;
+
+        })->filter()->values();
+    }
+
+    public function isSearchItemsL(array $filters)
+    {
+        $campChecked = ['codigo3l', 'text_codigo', 'text_nombre', 'terminal'];
+        $valoresObjetivo = ['item l', 'items l', 'l'];
+
+        foreach ($campChecked as $camp) {
+            if (!isset($filters[$camp])) {
+                continue;
+            }
+
+            $normalizeCheck = strtolower(trim($filters[$camp]));
+            if (in_array($normalizeCheck, $valoresObjetivo, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    public function getApiPriceArticle($article)
+    {
+        $params = [
+            'item' => $article
+        ];
+
+        $response = $this->apiGp->fetchItemPriceListFromGp($params);
+        $data = data_get($response, 'data', []);
+        return (array) $data;
+    }
+
+    public function getImageArticle($codArt)
+    {
+        $images = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $path = "images/productos/{$codArt}_{$i}.jpg";
+            $pathAbsolute = public_path($path);
+            if (File::exists($pathAbsolute)) {
+                $images[] = url($pathAbsolute);
+            }
+        }
+        return $images;
+    }
 }

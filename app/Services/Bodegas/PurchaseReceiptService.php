@@ -7,10 +7,8 @@ use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 
 class PurchaseReceiptService implements PurchaseReceiptServiceInterface
 {
-    protected PurchaseReceipRepositoryInterface $purchaseReceipRepository;
-    public function __construct(PurchaseReceipRepositoryInterface $purchaseReceipRepository)
+    public function __construct(protected readonly PurchaseReceipRepositoryInterface $purchaseReceipRepository)
     {
-        $this->purchaseReceipRepository = $purchaseReceipRepository;
     }
 
 

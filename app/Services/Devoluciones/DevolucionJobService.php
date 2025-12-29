@@ -22,7 +22,7 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\DB;
@@ -31,12 +31,12 @@ use Illuminate\Support\Facades\Log;
 class DevolucionJobService
 {
     use DevolucionesCriteriosTrait, JsonResponseTrait;
-    protected ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService;
-    protected $devolucionBuilder;
-    public function __construct(ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService, DevolucionParamsBuilderInterface $devolucionBuilder)
+   
+    public function __construct(
+        protected readonly  ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        protected readonly DevolucionParamsBuilderInterface $devolucionBuilder)
     {
-        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
-        $this->devolucionBuilder = $devolucionBuilder;
+       
     }
 
     public function listarTodasLasDevolucionesAplicables()

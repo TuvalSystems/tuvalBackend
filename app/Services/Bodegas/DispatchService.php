@@ -3,19 +3,26 @@
 namespace App\Services\Bodegas;
 
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpOrdenDespacho;
+use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DispatchService implements DispatchServiceInterface
 {
-    protected $invoiceService;
-    public function __construct(InvoiceServiceInterface $invoiceService)
-    {
-        $this->invoiceService = $invoiceService;
+
+    public function __construct(
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly StockWarehouseServiceInterface $stockService
+    ) {
+
     }
 
     public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc)
@@ -399,7 +406,7 @@ class DispatchService implements DispatchServiceInterface
     }
 
 
-     public function fecthListReceivedReservations(int $perPage, ?string $search, ?string $sortBy, string $sortOrder = 'desc', ?string $ptoVtaOrigin, ?string $fecha_desde, ?string $fecha_hasta, ?string $ptoVtaDestino = null)
+    public function fecthListReceivedReservations(int $perPage, ?string $search, ?string $sortBy, string $sortOrder = 'desc', ?string $ptoVtaOrigin, ?string $fecha_desde, ?string $fecha_hasta, ?string $ptoVtaDestino = null)
     {
         $bodOrigin = $this->getNamePtoVta($ptoVtaOrigin);
         $bodDestino = $ptoVtaDestino !== null ? $this->getNamePtoVta($ptoVtaDestino) : null;
@@ -483,5 +490,84 @@ class DispatchService implements DispatchServiceInterface
             'gpu.USERID',
             'gr.created_at'
         ];
+    }
+
+
+
+    /** funcion migrada de checkeliminar despacho */
+
+    public function cancelDispatchIfEmptyPicking($orderId)
+    {
+        $pedido = GpPedido::find($orderId);
+        if (!$pedido) {
+            return false;
+        }
+        $orderDispatch = GpOrdenDespacho::where('pedido_id', $orderId)->first();
+        $report = $this->getPickingItems($pedido);
+        if ($report->isEmpty() && $orderDispatch) {
+            $orderDispatch->estado = 'cancelada';
+            $orderDispatch->fecha_hora_liberacion = null;
+            $orderDispatch->save();
+        }
+    }
+
+    public function getPickingItems($order)
+    {
+        $warehouse = $order->BOD_BODEGA;
+        $details = GpPedidoDetalle::where('pedido_id', $order->id)->get();
+        $devoluciones = $this->getSumDetailDevolutions($details->pluck('id')->toArray());
+        $report = $details->map(function ($det) use ($warehouse, $devoluciones) {
+            if ($det->ART_TIPO_COMPRA == 'L') {
+                $det->ART_DESCRIPCION_ORIGINAL = $det->ART_DESCRIPCION;
+            }
+
+            $reservado = $det->reservado ?? 0;
+            $trasladado = $det->trasladado ?? 0;
+
+            $devsDelItem = $devoluciones->get($det->id, collect());
+            // $devueltoDesp = $devsDelItem->where('despachado_parcial', 1)->sum('total_devuelto');
+            $devueltoNoDesp = $devsDelItem->where('despachado_parcial', 0)->sum('total_devuelto');
+
+            $detTNoDevuelto = ($det->ART_CANTIDAD - $trasladado) - $reservado - $devueltoNoDesp;
+            $det->pendiente = number_format($detTNoDevuelto, 2, '.', '');
+            if ($detTNoDevuelto <= 0) {
+                return null;
+            }
+            $stockData = $this->getStockCompartmentByDetail($det->ART_CODIGO, $warehouse);
+            $stockDisponible = data_get($stockData, 'STOCK_DISPONIBLE', 0);
+            $restValor = min($det->ART_CANTIDAD, $stockDisponible);
+            if ($restValor <= 0) {
+                return null;
+            }
+            $det->compartimento = data_get($stockData, 'COMPARTIMIENTO', null);
+            $det->mejorStock = $stockDisponible;
+            return $det;
+        })
+            ->filter()
+            ->values();
+
+        return $report;
+    }
+
+
+    public function getSumDetailDevolutions($detailsIds)
+    {
+        return GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', '=', 'gp_devoluciones_detalles.devolucion_id')
+            ->whereIn('gp_devoluciones_detalles.detalle_id', $detailsIds)
+            ->selectRaw('
+            gp_devoluciones_detalles.detalle_id,
+            gp_devoluciones_detalles.despachado_parcial,
+            SUM(gp_devoluciones_detalles.devuelto) as total_devuelto
+        ')
+            ->groupBy('gp_devoluciones_detalles.detalle_id', 'gp_devoluciones_detalles.despachado_parcial')
+            ->get()
+            ->groupBy('detalle_id');
+    }
+
+
+    public function getStockCompartmentByDetail($articulo, $bodega)
+    {
+        $params = ['articulo' => $articulo, 'bodega' => $bodega, 'compartimento' => ''];
+        return $this->stockService->fetchStockWarehouseCompartiment($params);
     }
 }

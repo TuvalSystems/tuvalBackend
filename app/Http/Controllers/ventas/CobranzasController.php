@@ -34,10 +34,9 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
 use App\Notifications\User\UserNotification;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Venta\Contracts\OrderServiceInterface;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -578,7 +577,7 @@ class CobranzasController extends Controller
 
     public function enviarcobros()
     {
-        $cobros = GpCobro::where('estado', '!=', 'enviado')->get();
+        $cobros = GpCobro::whereNotIn('estado',['enviado','no_enviado'])->get();
 
         foreach ($cobros as $cobro) {
             $this->enviarcobro($cobro->id);

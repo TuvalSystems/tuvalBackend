@@ -29,6 +29,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CotizacionesController extends Controller
 {
@@ -158,7 +159,6 @@ class CotizacionesController extends Controller
 
     public function llenarcotizacion(Request $request)
     {
-
         $data = $request->validate([
             'cliente_id' => '',
             'puntodeventa_id' => '',
@@ -168,7 +168,13 @@ class CotizacionesController extends Controller
             'test' => '', // copiarpedido se creo un  campo test para que no se sincronice el check alternativo cuando se copia un pedido, se creo en el frontend cuando se copia
         ]);
         $user = Auth::user();
-        return $this->quotationService->fillQuotation($data, $user);
+        try {
+            $art = $this->quotationService->fillQuotation($data, $user);
+            return $this->successResponse('Información Obtenida Correctamente', $art, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+
     }
 
     public function eliminararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -290,21 +296,49 @@ class CotizacionesController extends Controller
             'articulo' => 'required',
             'CHECK_ALTERNATIVO' => 'required|boolean',
         ]);
+        try {
+            $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
+            return $this->buildSuccessResponse(
+                'Check alternativo actualizado correctamente',
+                200
+            );
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
 
-        return $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
     }
 
     public function saveproveedor(Request $request)
     {
-        $data = $request->all();
-        return $this->quotationService->saveProviderQuotationTemp($data);
+        try {
+            $data = $request->all();
+            $this->quotationService->saveProviderQuotationTemp($data);
+            return $this->buildSuccessResponse('Proveedores guardados correctamente', 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function guardarcotizacion(Request $request)
     {
-        $data = $request->all();
-        $user = Auth::user();
-        return $this->quotationService->storeQuotation($data, $user);
+        try {
+            $data = $request->all();
+            $user = Auth::user();
+            $quote = DB::transaction(fn() => $this->quotationService->storeQuotation($data, $user));
+            return $this->buildSuccessResponse(
+                "Cotización {$quote->cotizacion} guardada correctamente",
+                200
+            );
+        } catch (\Throwable $th) {
+            Log::error('Error in guardarcotizacion (Guardar cotización)', [
+                'error' => $th->getMessage(),
+                'linea' => $th->getLine(),
+                'file' => $th->getFile(),
+            ]);
+            return $this->buildErrorResponse($th->getMessage(), 500);
+
+        }
+
     }
 
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -612,9 +646,16 @@ class CotizacionesController extends Controller
 
     public function guardarcliente(Request $request)
     {
-        $data = $request->all();
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
-        return $this->quotationService->storeClientQuotation($data, $user);
+        try {
+            $data = $request->all();
+            $user = GpUsuario::where('id', Auth::user()->id)->first();
+            $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
+            return $this->successResponse('Información Obtenida Correctamente', $cliente, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
+
     }
 
     public function detallecotizacion(Request $request)
@@ -633,7 +674,21 @@ class CotizacionesController extends Controller
         ini_set('max_execution_time', -1);
         $data = $request->all();
         $user = Auth::user();
-        return $this->quotationService->restoreQuotation($data, $user);
+
+        try {
+            $info = $this->quotationService->restoreQuotation($data, $user);
+            return response([
+                'success' => true,
+                'cliente' => $info['cliente'],
+                'currentSucursal' => $info['currentSucursal'],
+                'cotizacion_id' => $info['cotizacion_id'],
+                'test' => $info['test'],
+                'segmento' => $info['segmento']
+            ]);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
     }
 
 
@@ -661,7 +716,15 @@ class CotizacionesController extends Controller
     {
         $data = $request->all();
         $user = Auth::user();
-        return $this->quotationService->requestQuotationAgain($data, $user);
+        try {
+            $info = $this->quotationService->requestQuotationAgain($data, $user);
+            return $this->successResponse('Información Obtenida Correctamente', $info, 200);
+        } catch (\Throwable $th) {
+            Log::error('Error in volverapedircotizacion (Volver a pedir cotización)', [
+                'error' => $th->getMessage(),
+            ]);
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
     }
 
 
@@ -837,90 +900,6 @@ class CotizacionesController extends Controller
         $pdf = Pdf::loadView('cotizacionPDF', $cotizacion);
         return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
     }
-    // public function imprimircotizacion2($id): \Illuminate\Http\Response|string
-    // {
-    //     $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
-
-    //     if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
-    //         return 'No permitido';
-    //     } elseif ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
-    //         return 'No permitido';
-    //     } elseif ($cotizacion['estado'] == 'caducado') {
-    //         return 'No permitido';
-    //     }
-
-    //     GpCotizacion::where('id', $id)->update(['impreso' => 'yes']);
-
-    //     GpCotizacion::where('id', $id)
-    //         ->whereNull('fecha_impreso')
-    //         ->update(['fecha_impreso' => date('Y-m-d H:i:s')]);
-
-    //     $detalle = GpCotizacionDetalle::where('cotizacion_id', $cotizacion['id'])->get()->toarray();
-    //     $peso = 0;
-
-
-
-    //     foreach ($detalle as $art) {
-    //         $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
-    //         $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
-    //     }
-
-    //     foreach ($detalle as &$art) {
-    //         $peso += $art['ART_PESO'] * $art['ART_CANTIDAD'];
-
-    //         $cotizacion['tipoimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_VALOR'] * $art['ART_CANTIDAD'], 2, '.', '');
-    //         $cotizacion['sumaimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_IVA'], 2, '.', '');
-    //     }
-    //     $cotizacion['peso'] = $peso;
-    //     $cotizacion['detalle'] = $detalle;
-    //     $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
-    //     $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'];
-
-    //     $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toarray();
-
-    //     $cotizacion['cliente'] = $cliente;
-
-    //     $sucursal = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toarray();
-
-    //     $cotizacion['sucursal'] = $sucursal;
-    //     //
-    //     $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toarray();
-
-    //     if ($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0) {
-    //         $cotizacion['validez'] = '0 días';
-    //     } else {
-    //         //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-    //         //            $cotizacion['validez'] = $horas.' horas';
-    //         $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
-    //     }
-
-    //     $validez_real = 0;
-    //     $webservices = new WebserviceController;
-
-    //     $validez_real = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'];
-    //     for ($i = 1; $i <= $validez_real; $i++) {
-    //         $expira = date('Y-m-d', strtotime($i . ' day', strtotime($cotizacion['created_at'])));
-    //         $parameters = array(
-    //             'IDCompania' => env('ID_COMPANIA'),
-    //             'Fecha' => $expira,
-    //         );
-
-    //         $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
-    //         if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
-    //             $validez_real++;
-    //         }
-    //     }
-
-    //     $expira = date('Y-m-d', strtotime($validez_real . ' day', strtotime($cotizacion['created_at'])));
-
-
-    //     $cotizacion['expira'] = $expira; //date('Y-m-d', strtotime($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'].' day', strtotime($cotizacion['updated_at'])));
-    //     $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
-    //     $data = $cotizacion;
-    //     //return view('cotizacionPDF', $data);
-    //     $pdf = Pdf::loadView('cotizacionPDF', $data);
-    //     return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
-    // }
 
     public function imprimircotizacionimagenes($id): \Illuminate\Http\Response|string
     {
@@ -1167,8 +1146,18 @@ class CotizacionesController extends Controller
      */
     public function consultQuotationsNews(Request $request): JsonResponse
     {
+        try {
+            $resumen = $this->quotationService->consultQuotationsNews($request->all());
+            return $this->successResponse('Datos Obtenidos Correctamente', $resumen, 200);
 
-        return $this->quotationService->consultQuotationsNews($request->all());
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     /**
@@ -1208,8 +1197,18 @@ class CotizacionesController extends Controller
             'articulo' => 'required',
         ]);
         $articulo = $request->get('articulo', null);
+        try {
+            $datosL = $this->quotationService->getMarginItem($articulo['ART_CODIGO']);
+            return $this->successResponse('Información obtenida correctamente', $datosL, 200);
 
-        return $this->quotationService->getMarginItem($articulo['ART_CODIGO']);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
 
@@ -1217,20 +1216,42 @@ class CotizacionesController extends Controller
     /** seccion de cliente  */
     public function obtenerListaSegmentos()
     {
+        try {
+            $resp = $this->quotationService->getAllSegments();
+            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
 
-        return $this->quotationService->getSegmentosSqlServer();
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function obtenerListaSubSegmentos(Request $request)
     {
-        $segmento = $request->get('segmento', null);
-        return $this->quotationService->getSubSegmentosSqlServer($segmento);
+        try {
+            $coAtrPadre = $request->get('segmento', null);
+            $resp = $this->quotationService->getSubSegmentBySegment($coAtrPadre);
+            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
+
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+
+        }
+
     }
 
     public function validarSegmentoCliente(Request $request)
     {
         $cliente = $request->get('cliente', null);
-        return $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+        try {
+            $hasSegment = $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+            if ($hasSegment['success'] === true) {
+                return $this->buildExistResponse(true, 'Segmento encontrado', 200);
+            }
+            return $this->buildExistResponse(false, 'Segmento no encontrado', 202);
+
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function actualizarSegmentoCliente(Request $request)
@@ -1238,13 +1259,17 @@ class CotizacionesController extends Controller
         $cliente = $request->get('cliente', null);
         $segmento = $request->get('segmento', null);
         $subsegmento = $request->get('subsegmento', null);
-        return $this->quotationService->updateClientWithSegment($cliente, $segmento, $subsegmento);
+
+        try {
+             $this->quotationService->updateClientWithSegment($cliente, $segmento, $subsegmento);
+            return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
+
+        }
+
     }
 
 
-    public function obtenerStockPrueba($articulo, $bodega)
-    {
 
-        return $this->quotationService->consultaStockPrueba($articulo, $bodega);
-    }
 }

@@ -88,37 +88,39 @@ class GpDevoluciones extends Model
     use HasFactory;
 
     protected $fillable = [
-        "devolucion",
-        "estado",
-        "pedido_id",
-        "cliente_id",
-        "pedido",
-        "factura",
-        "volver_a_facturar",
-        "tipo_devolucion",
-        "despachado",
-        "cliente_volver_a_facturar_id",
-        "user_id",
-        "sucursal_id",
-        "sucursal_facturacion_id",
-        "motivo",
-        "orden_de_compra",
-        "requiere_aprobacion",
-        "aprobado",
-        "aprobador_id",
-        "aprobado_mensaje",
-        "devolucion_bodega",
-        "impuesto",
-        "procesando",
-        "subtotal",
-        "descuento",
-        "subtotalmenosdescuento",
-        "iva",
-        "total",
-        "observacion",
-        "permite_anulacion",
-        "anulacion_habilitada",
-        "nota_cliente"
+        'devolucion',
+        'estado',
+        'pedido_id',
+        'cliente_id',
+        'pedido',
+        'factura',
+        'volver_a_facturar',
+        'tipo_devolucion',
+        'despachado',
+        'cliente_volver_a_facturar_id',
+        'USERID',
+        'user_id',
+        'sucursal_id',
+        'sucursal_facturacion_id',
+        'motivo',
+        'orden_de_compra',
+        'requiere_aprobacion',
+        'aprobado',
+        'aprobador_id',
+        'aprobado_mensaje',
+        'devolucion_bodega',
+        'impuesto',
+        'procesando',
+        'subtotal',
+        'descuento',
+        'subtotalmenosdescuento',
+        'iva',
+        'total',
+        'observacion',
+        'permite_anulacion',
+        'anulacion_habilitada',
+        'nota_cliente',
+        'motivo_no_anulada'
     ];
     /**
      * Prepare a date for array / JSON serialization.
@@ -173,8 +175,8 @@ class GpDevoluciones extends Model
                             ->where('dp.pedido_id', '=', DB::raw('gp_devoluciones.pedido_id'))
                             ->where('dp.tipo_devolucion', 'parcial');
                     })
-                     ->orWhere('gp_devoluciones.permite_anulacion', 0)
-                      ->orWhere('gp_devoluciones.anulacion_habilitada', 0);
+                        ->orWhere('gp_devoluciones.permite_anulacion', 0)
+                        ->orWhere('gp_devoluciones.anulacion_habilitada', 0);
                 });
         }
 

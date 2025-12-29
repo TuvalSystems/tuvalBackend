@@ -71,21 +71,12 @@ interface QuotationServiceInterface
 
     /** procesos de cliente */
 
-    public function getSegmentosSqlServer();
-    public function getSubSegmentosSqlServer($segmento);
+    public function getAllSegments();
+    public function getSubSegmentBySegment(int $coAtrPadre);
     public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist($ruc);
     public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId);
-
-
-
-    /*** prueba  */
-
-    public function consultaStockPrueba($articulo, $bodega);
-
-
-
 
 
 

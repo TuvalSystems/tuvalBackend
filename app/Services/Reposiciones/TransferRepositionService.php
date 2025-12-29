@@ -21,17 +21,13 @@ use Illuminate\Support\Facades\Log;
 class TransferRepositionService implements TransferRepositionServiceInterface
 {
     use JsonResponseTrait;
-    protected $apiGp;
-    protected $stockWarehouseService;
-    protected $apiGpReturnsIntegrationService;
+
     public function __construct(
-        ApiGpService $apiGp,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        protected readonly ApiGpService $apiGp,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
     ) {
-        $this->apiGp = $apiGp;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
+
     }
 
     public function validateRequest($request)
@@ -289,20 +285,15 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->where('guia_remision_id', $guia->id)
             ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
             ->get();
-        $items = collect($detalle)
-            ->pluck('GUI_REM_CODI_INTERNO')
-            ->toArray();
 
-        $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
-        $response = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
-            $compartimento = collect($responseCompartimentos)
-                ->first(function ($response) use ($item) {
-                    // 🔍 Verificar dentro de 'data' si existe el item
-                    $codigo = data_get($response, 'data.Item');
-                    return $codigo && $codigo === $item['GUI_REM_CODI_INTERNO'];
-                });
-            $lista = data_get($compartimento, 'lista', []);
-            // $compart = data_get($compartimento, 'data', []) ?? [];
+
+        $response = collect($detalle)->map(function ($item) use ($guia) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item['GUI_REM_CODI_INTERNO'],
+                'bodega' => $guia->bodega_destino
+            ]);
+          
+            $lista = data_get($resp, 'lista', []);
             $item->pendiente = number_format(round($item->GUI_REM_CANTIDAD - $item->recibido, 2), 2, '.', '');
             $item->recibido = $item->pendiente;
             $item->compartimientos = $lista;
@@ -333,157 +324,14 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         $detalle = GpGuiaRemisionDetalle::join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
             ->where('guia_remision_id', $guia->id)
             ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
-            // ->whereIN('GUI_REM_CODI_INTERNO', [
-            //     '029-000007-I',
-            //     '026-000053-I',
-            //     '028-000292-I',
-            //     '029-000042-I',
-            //     '029-000057-I',
-            //     '028-000170-I',
-            //     '029-000094-I',
-            //     '953-000037-I',
-            //     '953-000032-I',
-            //     '029-000401-I',
-            //     '029-000003-I',
-            //     '953-000040-I',
-            //     '029-000220-I',
-            //     '953-000036-I',
-            //     '029-000323-I',
-            //     '029-000380-I',
-            //     '691-000063-I',
-            //     '952-000043-I',
-            //     '029-000020-I',
-            //     '029-000368-I',
-            //     '029-000171-I',
-            //     '953-000167-I',
-            //     '029-000400-I',
-            //     '520-000033-S',
-            //     '953-000165-I',
-            //     '029-000366-I',
-            //     '029-000383-I',
-            //     '029-000405-I',
-            //     '029-000006-I',
-            //     '029-000002-I',
-            //     '029-000059-I',
-            //     '029-000316-I',
-            //     '029-000339-I',
-            //     '027-000020-I',
-            //     '028-000246-I',
-            //     '029-000141-I',
-            //     '953-000005-I',
-            //     '029-000364-I',
-            //     '029-000289-I',
-            //     '027-000021-I',
-            //     '027-000004-I',
-            //     '029-000115-I',
-            //     '029-000086-I',
-            //     '029-000190-I',
-            //     '029-000164-I',
-            //     '951-000032-I',
-            //     '028-000258-I',
-            //     '029-000386-I',
-            //     '029-000384-I',
-            //     '026-000040-I',
-            //     '953-000039-I',
-            //     '949-000024-I',
-            //     '029-000085-I',
-            //     '029-000290-I'
-            // ])
-            // ->whereIn('GUI_REM_CODI_INTERNO', [
-            //     '021-000162-I',
-            //     '021-000185-I',
-            //     '029-000129-I',
-            //     '029-000090-I',
-            //     '029-000149-I',
-            //     '029-000336-I',
-            //     '029-000032-I',
-            //     '029-000033-I',
-            //     '029-000034-I',
-            //     '029-000321-I',
-            //     '029-000145-I',
-            //     '029-000114-I',
-            //     '029-000233-I',
-            //     '029-000124-I',
-            //     '029-000019-I',
-            //     '029-000016-I',
-            //     '029-000014-I',
-            //     '029-000080-I',
-            //     '029-000109-I',
-            //     '029-000262-I',
-            //     '029-000105-I',
-            //     '029-000100-I',
-            //     '029-000098-I',
-            //     '037-000018-I',
-            //     '029-000101-I',
-            //     '029-000112-I',
-            //     '029-000144-I',
-            //     '029-000156-I',
-            //     '029-000236-I',
-            //     '029-000319-I',
-            //     '029-000088-I',
-            //     '026-000079-I',
-            //     '026-000075-I',
-            //     '038-000049-I',
-            //     '038-000103-I',
-            //     '029-000227-I',
-            //     '029-000150-I',
-            //     '260-000003-I',
-            //     '028-000169-I',
-            //     '026-000087-I',
-            //     '026-000020-I',
-            //     '026-000022-I',
-            //     '691-000021-I',
-            //     '520-000001-S',
-            //     '021-000162-I',
-            //     '125-000053-I',
-            //     '521-000019-I',
-            //     '521-000091-I',
-            //     '875-000007-I',
-            //     '125-000051-I',
-            //     '520-000052-S',
-            //     '870-000047-I'
-            // ])
-            // ->whereNotIn('GUI_REM_CODI_INTERNO', [
-            //     '025-000161-I',
-            //     '021-000177-I',
-            //     '021-000130-I',
-            //     '870-000064-I',
-            //     '029-000084-I',
-            //     '023-000089-I',
-            //     '038-000040-I',
-            //     '021-000072-I',
-            //     '026-000091-I',
-            //     '026-000037-I',
-            //     '029-000238-I',
-            //     '125-000052-I',
-            //     '029-000120-I',
-            //     '038-000054-I',
-            //     '021-000186-I',
-            //     '520-000026-I',
-            //     '520-000026-I',
-            //     '029-000140-I',
-            //     '026-000011-I',
-            //     '688-000043-I',
-            //     '125-000056-I',
-            //     '521-000074-I'
-            // ])
             ->get();
-        $items = $detalle->pluck('GUI_REM_CODI_INTERNO')->all();
-        $resp = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
-
-        $binsByItem = [];
-        foreach ($resp as $r) {
-            $itemCode = (string) data_get($r, 'data.Item', '');
-            if ($itemCode === '' || isset($binsByItem[$itemCode])) {
-                continue;
-            }
-            $bin = trim((string) data_get($r, 'lista.0.bin', ''));
-            $binsByItem[$itemCode] = $bin === '' ? 'GENERAL' : $bin;
-        }
-        // return $binsByItem;
+     
         $response = [];
-
         foreach ($detalle as $item) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item->GUI_REM_CODI_INTERNO,
+                'bodega' => $guia->bodega_destino
+            ]);
             $decimalPlaces = (int) $item->ART_DECIMAL_CANTIDAD;
             $pendiente = round((float) $item->GUI_REM_CANTIDAD - (float) $item->recibido, $decimalPlaces);
             if ($pendiente < 0) {
@@ -491,8 +339,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             }
             $item->pendiente = round($pendiente, 2);
             $item->recibido = round($item->pendiente, 2);
-            $bin = $binsByItem[$item->GUI_REM_CODI_INTERNO] ?? 'GENERAL';
-            $item->compartimiento = $bin;
+            $item->compartimiento = data_get($resp, 'detalle.compartimento', 'GENERAL');
             $response[] = $item;
         }
         return $response;

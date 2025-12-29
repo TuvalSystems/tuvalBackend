@@ -22,24 +22,14 @@ use Illuminate\Support\Facades\Log;
 class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterface
 {
 
-    protected $invoiceService;
-    protected $notificacionService;
-    protected $purechaseReceiptService;
-    protected $purchaseReceipRepository;
-    protected $apiGpReceiptService;
-    protected $entryService;
     public function __construct(
-        InvoiceServiceInterface $invoiceServiceInterface,
-        PurchaseReceiptServiceInterface $purechaseReceiptService,
-        PurchaseReceipRepositoryInterface $purchaseReceipRepositoryInterface,
-        ApiGpReceivedItemL $apiGpReceiptService,
-        EntryServiceInterface $entryService,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly PurchaseReceiptServiceInterface $purechaseReceiptService,
+        protected readonly PurchaseReceipRepositoryInterface $purchaseReceipRepository,
+        protected readonly ApiGpReceivedItemL $apiGpReceiptService,
+        protected readonly EntryServiceInterface $entryService,
     ) {
-        $this->apiGpReceiptService = $apiGpReceiptService;
-        $this->invoiceService = $invoiceServiceInterface;
-        $this->purechaseReceiptService = $purechaseReceiptService;
-        $this->purchaseReceipRepository = $purchaseReceipRepositoryInterface;
-        $this->entryService = $entryService;
+
     }
 
     /** Proceso de recibir item L en la bodega */
@@ -183,7 +173,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             $this->invoiceService->checkSendInvoice($orderModel, true);
         }
         $message = 'Artículo/s L del pedido ' . $orderModel->pedido . ' han sido recibidos en la bodega ' . $orderModel->BOD_BODEGA;
-         NotifyPurchaseReceiptItemLJob::dispatch('Articulo/s L recibidos', $message, $user->id);
+        NotifyPurchaseReceiptItemLJob::dispatch('Articulo/s L recibidos', $message, $user->id);
 
         // $gpUser = GpUsuario::where('USERID', $user->USERID)->first();
         // if ($gpUser) {

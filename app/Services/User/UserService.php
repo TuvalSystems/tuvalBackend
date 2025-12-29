@@ -26,10 +26,8 @@ class UserService implements UserServiceInterface
 {
     use JsonResponseTrait;
 
-    protected $apiGp;
-    public function __construct(ApiGpService $apiGp)
+    public function __construct(protected readonly ApiGpService $apiGp)
     {
-        $this->apiGp = $apiGp;
     }
 
     public function isValidUserWeb(array $credentials): bool

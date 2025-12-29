@@ -16,4 +16,8 @@ interface DispatchServiceInterface
     public function getAllPtoVta();
      public function getAllPtoVtaReserved();
 
+     /** PROCESO DE CANCELACION DE ORDEN DE DESPACHO */
+
+      public function cancelDispatchIfEmptyPicking($orderId);
+
 }

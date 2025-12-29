@@ -19,10 +19,8 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     const ORDER_STATUS = 'iniciado';
     const SENT_STATUS = 'enviado';
     const GENERATED_STATUS = 'generado';
-    protected $mswService;
-    public function __construct(MswService $mswService)
+    public function __construct(protected readonly MswService $mswService)
     {
-        $this->mswService = $mswService;
     }
 
     public function getViewPurchaseOrder()

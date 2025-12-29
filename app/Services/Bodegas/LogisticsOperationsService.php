@@ -14,10 +14,8 @@ use Illuminate\Support\Facades\Log;
 class LogisticsOperationsService implements LogisticsOperationsServiceInterface
 {
 
-    protected $apiDeliveryNote;
-    public function __construct(ApiDeliverNoteService $apiDeliveryNote)
+    public function __construct(protected readonly ApiDeliverNoteService $apiDeliveryNote)
     {
-        $this->apiDeliveryNote = $apiDeliveryNote;
     }
 
 

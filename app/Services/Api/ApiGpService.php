@@ -90,7 +90,7 @@ class ApiGpService
             ];
         })->toArray();
 
-        return $this->httpClient->makeBatchRequest( ApiGpEndpoints::INVENTARIO_CONSULTAR_STOCK_BODEGA_ASYNC, $request);
+        return $this->httpClient->makeBatchRequest(ApiGpEndpoints::INVENTARIO_CONSULTAR_STOCK_BODEGA_ASYNC, $request);
     }
 
 
@@ -100,9 +100,29 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TIPO_VENDEDOR, 'POST', $params, 'json');
     }
 
+
+    public function fetchAllSegments(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TODOS_SEGMENTOS, 'GET', $params);
+    }
+
+    public function fetchSubSegmentsBySegment(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_SUBSEGMENTOS_SEGMENTO, 'GET', $params);
+    }
+
     public function fetchClientSegment(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_SEGMENTO, 'GET', $params);
+    }
+
+    public function StoreClientGp(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_MODIFICAR, 'POST', $params, 'json');
+    }
+
+    public function storeSubsegmentAssociation(array $params = []){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_SUBSEGMENTO_RUC, 'POST', $params, 'json');
     }
 
 

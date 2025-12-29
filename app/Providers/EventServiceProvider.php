@@ -2,10 +2,15 @@
 
 namespace App\Providers;
 
+use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpCotizacion;
+use App\Models\GpPedido;
+use App\Observers\Devoluciones\GpDevolucionesObserver;
+use App\Observers\Ventas\GpCotizacionObserver;
+use App\Observers\Ventas\GpPedidoObserver;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Event;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -27,6 +32,8 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        GpPedido::observe(GpPedidoObserver::class);
+        GpCotizacion::observe(GpCotizacionObserver::class);
+        GpDevoluciones::observe(GpDevolucionesObserver::class);
     }
 }
