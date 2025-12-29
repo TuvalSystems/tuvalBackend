@@ -16,7 +16,7 @@ interface DevolucionServiceInterface
 
     public function executeReturn($data);
 
-    public function validateItemLDetailInvoice( $devolucion);
+    public function validateItemLDetailInvoice($devolucion);
 
     public function getReturnsDetailDevolucion($devolucion);
 
@@ -29,12 +29,15 @@ interface DevolucionServiceInterface
 
     public function fetchReturnsToReceived($perPage = 10, $search, $sortBy = 'gd.created_at', $sortOrder = 'desc', $ptoVtaId): LengthAwarePaginator;
 
-
+    public function getReturnDetailToReceiveById(int $id);
+    public function generatePdfOrderStorageDevolution(array $data);
+    public function receivedDevolutions(array $header, array $detail);
+    public function dennyDevolucion(int $id);
 
     /** funciones a ejecutar en caso de que no se genere la nota de credito o el ajuste  */
     public function generarNotaCreditoDevolucionesFallidas($id);
     public function generarAjusteDevolucionesVentaFallidas($id);
 
-    public function  responseCreditNoteDevolution($devolucionId);
+    public function responseCreditNoteDevolution($devolucionId);
 
 }

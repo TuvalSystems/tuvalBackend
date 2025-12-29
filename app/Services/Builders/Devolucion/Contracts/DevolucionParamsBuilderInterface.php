@@ -6,6 +6,7 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpPedido;
+use App\Models\GpUsuario;
 
 interface DevolucionParamsBuilderInterface
 {
@@ -17,4 +18,10 @@ interface DevolucionParamsBuilderInterface
     // Define los métodos que debe implementar el servicio
     public function builderParamsDevolutionAdjustment(GpDevoluciones $devolucion, GpPedido $pedido, $userId, $items);
     public function formPayloadInvoiceAnulation($order, $devolucion, $diario, $documentId, $claveAcceso): GpFacturaAnulada;
+
+
+    //ingreso 
+    public function createRegisterHistortyHeaderDev($dev, GpUsuario $user);
+    public function createRegisterHistoryDetailDev($items, $ing);
+
 }

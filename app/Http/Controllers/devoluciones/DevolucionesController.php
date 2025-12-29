@@ -4,6 +4,7 @@ namespace App\Http\Controllers\devoluciones;
 
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
 use App\Jobs\Devoluciones\NotifyErrorAnulationJob;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -336,8 +337,30 @@ class DevolucionesController extends Controller
         }
     }
 
+    public function detalleDevolucionPorRecibir(Request $request): JsonResponse
+    {
+        $devolucionId = $request->input('id');
+        try {
+            $data = $this->devolucionService->getReturnDetailToReceiveById($devolucionId);
+            return $this->successResponse('Detalle de devolución por recibir obtenido correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener el detalle de la devolución por recibir: ' . $e->getMessage(), [], 500);
+        }
+    }
 
-    public function recibirdevolucion(Request $request)
+
+    public function imprimirOrdenDeAlmacenamiento(Request $request)
+    {
+        $data = $request->all();
+        try {
+            $response = $this->devolucionService->generatePdfOrderStorageDevolution($data);
+            return $this->buildPdfResponse($response);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function recibirdevolucion1(Request $request)
     {
 
         $user = Auth::user();
@@ -384,12 +407,44 @@ class DevolucionesController extends Controller
         }
     }
 
+    public function recibirDevolucion(ValidateReceivedDevolutionsRequest $request)
+    {
+        $data = $request->validated();
+        try {
+            $resp = $this->devolucionService->receivedDevolutions(
+                data_get($data, 'header'),
+                data_get($data, 'details')
+            );
+            return $this->successResponse('Devoluciones recibidas correctamente', $resp, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
+
+        }
+    }
+
 
     public function imprimirdevolucion($id)
     {
         $devolucion = $this->devolucionService->printReturn($id);
         $pdf = PDF::loadView('devolucionPDF', $devolucion);
         return $pdf->stream('nota_de_credito.pdf');
+    }
+
+
+    public function rechazarDevolucion(Request $request)
+    {
+        $data = $request->all();
+        try {
+            $this->devolucionService->dennyDevolucion(data_get($data, 'id'));
+            return $this->buildSuccessResponse("Devolución rechazada correctamente", 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse('Error al rechazar la devolución ' . $th->getMessage(), 500);
+        }
     }
 
 

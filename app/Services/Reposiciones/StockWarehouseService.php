@@ -12,13 +12,14 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Api\ApiGpService;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Arr;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
-    public function __construct(protected readonly ApiGpService $apiGpService)
+    public function __construct(protected readonly ApiGpService $apiGpService, protected readonly ApiGpReturnsIntegrationService $apiReturns)
     {
     }
 
@@ -455,6 +456,13 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // }
 
         $data = data_get($res, 'data', []);
+        return is_array($data) ? $data : (array) $data;
+    }
+
+
+    public function fetchStockWarehouseCompartmentDevolution(array $params){
+        $resp = $this->apiReturns->consultItemBin($params);
+        $data = data_get($resp, 'data', []);
         return is_array($data) ? $data : (array) $data;
     }
 

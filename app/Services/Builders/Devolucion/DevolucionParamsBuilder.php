@@ -5,7 +5,10 @@ namespace App\Services\Builders\Devolucion;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpFacturaAnulada;
+use App\Models\GpIngreso;
+use App\Models\GpIngresosDetalle;
 use App\Models\GpPedido;
+use App\Models\GpUsuario;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use Illuminate\Support\Arr;
 
@@ -111,6 +114,28 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
             // 'resp_document'       => ,
         ]);
         return $inv;
+    }
+
+
+     public function createRegisterHistortyHeaderDev($dev, GpUsuario $user){
+        $ing = new GpIngreso();
+        $ing->fill([
+            'user_id'   => $user->id,
+            'USERID'    => $user->USERID,
+            'tipo'      => 'devolucion',
+            'documento' => $dev->devolucion,
+        ]);
+        return $ing;
+    }
+
+    public function createRegisterHistoryDetailDev($items, $ing){
+        $d = new GpIngresosDetalle();
+        $d->fill([
+            'ingreso_id'    => $ing->id,
+            'ART_CODIGO'    => $items['ART_CODIGO'],
+            'ingresado'     => $items['new_devuelto'],
+        ]);
+        return $d;
     }
 
 }

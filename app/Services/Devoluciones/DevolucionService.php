@@ -7,7 +7,6 @@ use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Models\GpCliente;
-use App\Models\GpOrdenDespacho;
 use App\Models\GpVendedor;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
@@ -23,7 +22,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Services\Api\ApiSalesService;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\devoluciones\GpDevoluciones;
-use App\Services\Api\ApiSeedBillingService;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -37,6 +35,8 @@ use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Services\Devoluciones\Contracts\ReturnCancellationServiceInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class DevolucionService implements DevolucionServiceInterface
 {
@@ -55,6 +55,8 @@ class DevolucionService implements DevolucionServiceInterface
         protected readonly ApiGpService $apiGpService,
         protected readonly DispatchServiceInterface $dispatchService,
         protected readonly ReturnCancellationServiceInterface $anulationService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly EntryServiceInterface $entryService
     ) {
     }
 
@@ -380,32 +382,23 @@ class DevolucionService implements DevolucionServiceInterface
             $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id']);
         }
 
-        //test
-        $items = collect($detalle)
-            ->filter(fn($item) => $item['seleccionado'] > 0 || $item['devuelto'] > 0)
-            ->pluck('ART_CODIGO')
-            ->toArray();
-
-
         // $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
-        $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $pedido['BOD_BODEGA']);
-        $detalle = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
-            $compartimento = collect($responseCompartimentos)
-                ->first(function ($response) use ($item) {
-                    // 🔍 Verificar dentro de 'data' si existe el item
-                    return $response['data']['Item'] === $item['ART_CODIGO'];
-                });
-
-            $item['compartimientos'] = $compartimento['lista'] ?? [];
-            $item['compartimiento'] = $compartimento['data']['bin'] ?? null;
-
+        $detalleEnriquecido = collect($detalle)->map(function ($item) use ($pedido) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item['ART_CODIGO'],
+                'bodega' => $pedido->BOD_BODEGA
+            ]);
+            $bin = data_get($resp, 'detalle.compartimento', null);
+            $lista = data_get($resp, 'lista', []);
+            $item['compartimientos'] = $lista;
+            $item['compartimiento'] = $bin;
             return $item;
         })->toArray();
 
         $segmento = $this->getSegmentoCliente($pedido['CLI_RUC']);
         return response([
             'success' => true,
-            'detalle' => $detalle,
+            'detalle' => $detalleEnriquecido,
             'segmento' => $segmento
         ]);
     }
@@ -735,6 +728,121 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
 
+
+
+    public function getReturnDetailToReceiveById(int $id)
+    {
+        $devolucion = GpDevoluciones::find($id);
+        $pedido = $this->devolucionRepository->getOrderbyId($devolucion->pedido_id);
+        $segmento = $this->getSegmentoCliente($pedido->CLI_RUC);
+        $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion->id, 1);
+        $devolucion->orderDespacho = $this->devolucionRepository->getDispatchOrder($devolucion->pedido_id);
+        $detalleEnriquecido = collect($detalle)->map(function ($item) use ($pedido) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item['ART_CODIGO'],
+                'bodega' => $pedido->BOD_BODEGA
+            ]);
+            $bin = data_get($resp, 'detalle.compartimento', null);
+            $lista = data_get($resp, 'lista', []);
+            $item['compartimientos'] = $lista;
+            $item['compartimiento'] = $bin;
+            return $item;
+        });
+
+        return [
+            'devolucion' => $devolucion,
+            'detalle' => $detalleEnriquecido,
+            'segmento' => $segmento,
+            'pedido' => $pedido
+        ];
+    }
+
+
+
+    public function generatePdfOrderStorageDevolution(array $data)
+    {
+        $header = data_get($data, 'header');
+        $detalle = data_get($data, 'details');
+
+        $viewData = [
+            'header' => $header,
+            'details' => $detalle,
+        ];
+
+        $html = view('pdf.orden-almacenamiento-devolucion', $viewData)->render();
+        $pdf = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+        $filename = 'orden-almacenamiento-' . $header['devolucion'] . '.pdf';
+
+        return [
+            'binary' => $binary,
+            'filename' => $filename,
+            'content_type' => 'application/pdf',
+        ];
+    }
+
+
+    public function receivedDevolutions(array $header, array $detail)
+    {
+        $auth = Auth::user();
+        $gpuser = GpUsuario::find($auth->id);
+
+        return DB::transaction(function () use ($gpuser, $header, $detail) {
+            $dev = GpDevoluciones::lockForUpdate()->find($header['id']);
+            if (!$dev) {
+                abort(409, 'devolución no encontrada');
+            }
+            if (in_array($dev->estado, ['recibido', 'procesado'])) {
+                abort(409, 'Esta devolución ya fue recibida en otra instancia');
+            }
+            foreach ($detail as $dt) {
+                $itmd = GpDevolucionesDetalle::lockForUpdate()->find($dt['id']);
+
+                if ($itmd) {
+                    $newDev = data_get($dt, 'new_devuelto', 0.00);
+                    $itmd->devuelto += $newDev;
+                    $itmd->recibido += $newDev;
+                    $itmd->compartimiento = $dt['compartimiento'];
+                    $itmd->USERID = $gpuser->USERID;
+                    $itmd->save();
+                }
+            }
+            $this->createRegisterHistoryReceivedDevolution($dev, $gpuser, $detail);
+            $dev->update([
+                'estado' => 'recibido',
+            ]);
+            return $dev;
+        });
+    }
+
+    public function createRegisterHistoryReceivedDevolution(GpDevoluciones $devolucion, GpUsuario $gpuser, array $detail)
+    {
+        $header = $this->devolucionBuilder->createRegisterHistortyHeaderDev($devolucion, $gpuser);
+        $header->save();
+        foreach ($detail as $dt) {
+            $newDt = $this->devolucionBuilder->createRegisterHistoryDetailDev($dt, $header);
+            $newDt->save();
+        }
+    }
+
+
+    public function dennyDevolucion(int $id)
+    {
+        $auth = Auth::user();
+        $gpuser = GpUsuario::find($auth->id);
+        return DB::transaction(function () use ($id, $gpuser) {
+            $devolucion = GpDevoluciones::lockForUpdate()->findOrFail($id);
+            $devolucion->update([
+                'estado' => 'rechazado',
+                'aprobado' => 'no',
+                'aprobador_id' => $gpuser->id
+            ]);
+
+            return $devolucion->refresh();
+        });
+    }
 
 
 

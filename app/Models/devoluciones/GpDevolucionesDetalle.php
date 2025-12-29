@@ -11,6 +11,7 @@ class GpDevolucionesDetalle extends Model
     use HasFactory;
 
     protected $table = 'gp_devoluciones_detalles';
+    protected $appends = ['pending_received_devolution'];
     protected $fillable = [
         'devolucion_id',
         'detalle_id',
@@ -44,4 +45,15 @@ class GpDevolucionesDetalle extends Model
         'USERID',
         'despachado_parcial'
     ];
+
+
+
+
+    protected function getPendingReceivedDevolutionAttribute()
+    {
+        $select = (float) $this->seleccionado;
+        $devuelto = (float) $this->devuelto;
+        $resultado = max(0, $select - $devuelto);
+        return number_format($resultado, 2, '.', '');
+    }
 }

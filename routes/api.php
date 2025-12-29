@@ -370,15 +370,17 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('enviardevolucion', [DevolucionesController::class, 'enviarDevolucion']);
         Route::post('detalledevolucion', [DevolucionesController::class, 'detalledevolucion']);
         Route::get('verdevolucionesporrecibir/{puntodeventa}', [DevolucionesController::class, 'verdevolucionesporrecibir']);
-        Route::post('recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);
+        // Route::post('recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);
 
         Route::get('procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
         Route::get('imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
 
 
         Route::post('pendiente-recepcion', [DevolucionesController::class, 'listaDevolucionesPorRecibir']);
-
-
+        Route::post('detalle-devolucion-por-recibir', [DevolucionesController::class, 'detalleDevolucionPorRecibir']);
+        Route::post('orden-almacenamiento', [DevolucionesController::class, 'imprimirOrdenDeAlmacenamiento']);
+        Route::post('recibir-devolucion', [DevolucionesController::class, 'recibirDevolucion']);
+        Route::post('rechazar-devolucion', [DevolucionesController::class, 'rechazarDevolucion']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

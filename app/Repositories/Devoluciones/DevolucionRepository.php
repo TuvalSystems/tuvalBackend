@@ -10,6 +10,7 @@ use App\Models\GpPedido;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpFacturaAnulada;
+use App\Models\GpOrdenDespacho;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -45,10 +46,10 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getOrderbyId($pedido_id)
+    public function getOrderbyId($pedidoId)
     {
 
-        return GpPedido::find($pedido_id);
+        return GpPedido::find($pedidoId);
     }
 
     public function getDetailDevolucion($devolucion_id, $despachadoParcial = null)
@@ -223,5 +224,10 @@ class DevolucionRepository implements DevolucionRepositoryInterface
                 return $item->toArray();
             })
             ->toArray();
+    }
+
+
+    public function getDispatchOrder($orderId){
+        return GpOrdenDespacho::where('pedido_id', $orderId)->where('estado', '!=', 'pendiente')->exists();
     }
 }

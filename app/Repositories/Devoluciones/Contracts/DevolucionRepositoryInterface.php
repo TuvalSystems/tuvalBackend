@@ -11,7 +11,7 @@ interface DevolucionRepositoryInterface
     public function hasOtherActiveReturns($pedido, $devolucion) :bool;
     public function validateItemLDetailInvoice($devolucion) : bool;
 
-    public function getOrderbyId($pedido_id);
+    public function getOrderbyId($pedidoId);
     public function getDetailDevolucion($devolucion_id, $despachadoParcial = null);
 
     public function hasPartiallyDispatchedItems($devolucion);
@@ -45,4 +45,5 @@ interface DevolucionRepositoryInterface
     public function getClientsByClientIdToArray($cliente_id);
     public function getSucursalByInvoiceToArray($invoice_id);
     public function getDetailDevolucionById($devolucion_id);
+     public function getDispatchOrder($orderId);
 }
