@@ -7,6 +7,7 @@ use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionErroresJob;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpIngreso;
@@ -282,12 +283,11 @@ class DevolucionJobService
     public function totalDevoluciones($devolucion, $detalles)
     {
         $subtotal = 0.0;
-        $descuento = 0.0;
-        $subtotalMenosDescuento = 0.0;
-        $ivaTotal = 0.0;
+        $totalDiscount = 0.0;
+        $netSubtotal = 0.0;
+        $totalIva = 0.0;
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $detalles->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
 
-        $tipoImpuesto = [];
-        $sumaImpuesto = [];
         foreach ($detalles as $key => $detalle) {
             if ($detalle->devuelto == 0)
                 continue;
@@ -295,30 +295,26 @@ class DevolucionJobService
             $cantidad = (float) $detalle->devuelto;
             $valorUnitario = (float) $detalle->ART_VALOR;
             $descuentoUnitario = (float) $detalle->ART_DESCUENTO;
-            $porcentajeImpuesto = (float) $detalle->ART_IMP_VTA;
+            $impuestoPorcentaje = (float) $articulosImpuesto[$detalle->ART_CODIGO] ?? 0;
 
-            $valorTotal = round($valorUnitario * $cantidad, 2);
-            $descuentoTotal = round($descuentoUnitario * $cantidad, 2);
-            $valorNeto = round(($valorUnitario - $descuentoTotal) * $cantidad, 2);
-            $iva = round($valorNeto * ($porcentajeImpuesto / 100), 2);
 
-            $tipoImpuesto[$porcentajeImpuesto] = ($tipoImpuesto[$porcentajeImpuesto] ?? 0) + $valorTotal;
-            $sumaImpuesto[$porcentajeImpuesto] = ($sumaImpuesto[$porcentajeImpuesto] ?? 0) + $iva;
 
-            $descuento += $descuentoTotal;
-            $subtotalMenosDescuento += $valorNeto;
-            $ivaTotal += $iva;
-        }
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
 
-        foreach ($tipoImpuesto as $valor) {
-            $subtotal += $valor;
+            $subtotal += $lineaSubtotal;
+            $totalDiscount += $lineaDiscount;
+            $netSubtotal += $lineNet;
+            $totalIva += $lineaIva;
         }
 
         $devolucion->subtotal = round($subtotal, 2);
-        $devolucion->descuento = round($descuento, 2);
-        $devolucion->subtotalmenosdescuento = round($subtotalMenosDescuento, 2);
-        $devolucion->iva = round($ivaTotal, 2);
-        $devolucion->total = round($subtotalMenosDescuento + $ivaTotal, 2);
+        $devolucion->descuento = round($totalDiscount, 2);
+        $devolucion->subtotalmenosdescuento = round($netSubtotal, 2);
+        $devolucion->iva = round($totalIva, 2);
+        $devolucion->total = round($netSubtotal + $totalIva, 2);
         $devolucion->save();
     }
 
@@ -332,7 +328,7 @@ class DevolucionJobService
     public function generarDevolucionVenta($devolucion)
     {
         $userIngreso = $this->getUserIngreso($devolucion);
-        $userId =filled($userIngreso) ? trim($userIngreso) : 'adminWeb';
+        $userId = filled($userIngreso) ? trim($userIngreso) : 'adminWeb';
 
         // Obtener el pedido y los detalles
         $pedido = GpPedido::find($devolucion->pedido_id);
