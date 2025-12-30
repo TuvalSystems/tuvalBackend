@@ -673,7 +673,7 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
     /** para facturas antes del 2026 */
-     public function printReturnOld($devolucion_id)
+    public function printReturnOld($devolucion_id)
     {
         $data = [];
         $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
@@ -1073,36 +1073,34 @@ class DevolucionService implements DevolucionServiceInterface
         }
     }
 
-    public function bajarDevolucionAPedido($devolucion, $detalles, $pedido)
+    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $devDetails, GpPedido $order)
     {
         if ($devolucion->rebajado) {
             return;
         }
-        $pedidoId = $pedido->id;
-        $bodega = $pedido->BOD_BODEGA;
-        $actualizarStock = !$devolucion->despachado;
-        foreach ($detalles as $key => $value) {
-            $articulo = GpPedidoDetalle::find($value->detalle_id);
+        $bodega = $order->BOD_BODEGA;
+        $shouldReleaseStock = !$devolucion->despachado;
 
-            if (!$articulo || $articulo->pedido_id !== $pedidoId) {
+        $orderDetails = GpPedidoDetalle::where('pedido_id', $order->id)->get()->keyBy('id');
+        foreach ($devDetails as $dvd) {
+            $art = $orderDetails->get($dvd->detalle_id);
+            if (!$art) {
+                Log::channel('devolucion')->warning("No se encontró el detalle de pedido ID {$dvd->detalle_id} para la devolución ID {$devolucion->id}");
                 continue;
             }
-            $articulo->devuelto += $value->devuelto;
-            $articulo->save();
-            if ($actualizarStock) {
-                $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
+            $art->increment('devuelto', $dvd->devuelto);
+            if ($shouldReleaseStock) {
+                $stockRecord = GpPedidoDetalleStock::where('detalle_id', $art->id)
                     ->where('STO_ART_BODEGA', $bodega)
                     ->first();
-
-                if ($stock) {
-                    $stock->reservado -= $value->devuelto;
-                    $stock->save();
+                if ($stockRecord) {
+                    $newReserved = max(0, $stockRecord->reservado - $dvd->devuelto);
+                    $stockRecord->update(['reservado' => $newReserved]);
                 }
             }
+
         }
-        $devolucion->rebajado = true;
-        $devolucion->save();
-        return $devolucion;
+        $devolucion->update(['rebajado' => true]);
     }
 
     public function totalDevoluciones($devolucion, $detalles)
