@@ -261,20 +261,21 @@ class DevolucionJobService
             if (!$art) {
                 continue;
             }
-            $art->increment('devuelto', $value->devuelto);
+            $art->devuelto += $value->devuelto;
+            $art->save();
 
             if ($actualizarStock) {
                 $stock = GpPedidoDetalleStock::where('detalle_id', $art->id)
                     ->where('STO_ART_BODEGA', $bodega)
                     ->first();
                 if ($stock) {
-                    $newReserved = max(0, $stock->reservado - $value->devuelto);
-                    $stock->update(['reservado' => $newReserved]);
+                    $stock->reservado = max(0, $stock->reservado - $value->devuelto);
+                    $stock->save();
                 }
             }
         }
         $devolucion->update(['rebajado' => true]);
-        
+
     }
 
     public function totalDevoluciones($devolucion, $detalles)

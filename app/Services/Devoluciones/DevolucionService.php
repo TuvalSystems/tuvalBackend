@@ -1078,27 +1078,31 @@ class DevolucionService implements DevolucionServiceInterface
         if ($devolucion->rebajado) {
             return;
         }
+        $pedidoId = $order->id;
         $bodega = $order->BOD_BODEGA;
         $actualizarStock = !$devolucion->despachado;
-        $articulos = GpPedidoDetalle::where('pedido_id', $order->id)->get()->keyBy('id');
-        foreach ($detalles as $value) {
-            $art = $articulos->get($value->detalle_id);
-            if (!$art) {
+        foreach ($detalles as $key => $value) {
+            $articulo = GpPedidoDetalle::find($value->detalle_id);
+
+            if (!$articulo || $articulo->pedido_id !== $pedidoId) {
                 continue;
             }
-            $art->increment('devuelto', $value->devuelto);
-
+            $articulo->devuelto += $value->devuelto;
+            $articulo->save();
             if ($actualizarStock) {
-                $stock = GpPedidoDetalleStock::where('detalle_id', $art->id)
+                $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                     ->where('STO_ART_BODEGA', $bodega)
                     ->first();
+
                 if ($stock) {
-                    $newReserved = max(0, $stock->reservado - $value->devuelto);
-                    $stock->update(['reservado' => $newReserved]);
+                    $stock->reservado -= $value->devuelto;
+                    $stock->save();
                 }
             }
         }
-        $devolucion->update(['rebajado' => true]);
+        $devolucion->rebajado = true;
+        $devolucion->save();
+        return $devolucion;
     }
 
     public function totalDevoluciones($devolucion, $detalles)
