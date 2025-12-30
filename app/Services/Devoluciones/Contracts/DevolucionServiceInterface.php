@@ -25,6 +25,7 @@ interface DevolucionServiceInterface
     public function getDetailOrderReturnById($order);
 
     public function printReturn($devolucion_id);
+    public function printReturnOld($devolucion_id);
 
 
     public function fetchReturnsToReceived($perPage = 10, $search, $sortBy = 'gd.created_at', $sortOrder = 'desc', $ptoVtaId): LengthAwarePaginator;

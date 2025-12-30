@@ -2,32 +2,28 @@
 
 namespace App\Http\Controllers\devoluciones;
 
-use App\Http\Controllers\bodegas\DespachosController;
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
-use App\Jobs\Devoluciones\NotifyErrorAnulationJob;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
-use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\GpCliente;
 use App\Models\GpUsuario;
-use App\Notifications\User\UserNotification;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
-use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Venta\Contracts\OrderServiceInterface;
-use App\Traits\JsonResponseTrait;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
-use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use App\Models\GpOrdenDespacho;
+use App\Traits\JsonResponseTrait;
+use App\Models\GpClienteSucursal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\devoluciones\GpDevoluciones;
+use App\Notifications\User\UserNotification;
+use App\Models\devoluciones\GpDevolucionesDetalle;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
+use Carbon\Carbon;
 
 class DevolucionesController extends Controller
 {
@@ -360,52 +356,6 @@ class DevolucionesController extends Controller
         }
     }
 
-    public function recibirdevolucion1(Request $request)
-    {
-
-        $user = Auth::user();
-        $data = $request->all();
-        try {
-            $devolucion = GpDevoluciones::find($data['devolucion']['id']);
-            if (!$devolucion) {
-                abort(404, 'devolucion no encontrada');
-            }
-
-            if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
-                abort(404, 'Esta devolución ya fue recibida en otra instancia');
-            }
-
-            DB::transaction(function () use ($data, $user, $devolucion) {
-                foreach ($data['detalledevolucion'] as $detalle) {
-                    GpDevolucionesDetalle::where('id', $detalle['id'])->update([
-                        'devuelto' => $detalle['devuelto'],
-                        'recibido' => $detalle['devuelto'],
-                        'compartimiento' => $detalle['compartimiento'],
-                        'USERID' => $user->USERID
-                    ]);
-                }
-                $devolucion->update(['estado' => 'recibido']);
-                $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
-            });
-
-            return $this->buildSuccessResponse('Devolución recibida', 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $th) {
-            $devolucionId = data_get($data, 'devolucion.id', 'DESCONOCIDO');
-            Log::channel('devolucion')->error("Error al recibir devolución ID {$devolucionId}", [
-                'exception' => $th,
-                'error_summary' => $th->getMessage(),
-                'line' => $th->getLine(),
-                'file' => $th->getFile(),
-                'data' => $data,
-            ]);
-            return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
-        }
-    }
 
     public function recibirDevolucion(ValidateReceivedDevolutionsRequest $request)
     {
@@ -430,7 +380,10 @@ class DevolucionesController extends Controller
 
     public function imprimirdevolucion($id)
     {
-        $devolucion = $this->devolucionService->printReturn($id);
+        $dev = GpDevoluciones::findOrFail($id);
+        $order = GpPedido::where('id', $dev->pedido_id)->first();
+        $anioDev = (int) Carbon::parse($order->fecha_factura)->format('Y');
+        $devolucion = ($anioDev <= 2025) ? $this->devolucionService->printReturnOld($id) : $this->devolucionService->printReturn($id);
         $pdf = PDF::loadView('devolucionPDF', $devolucion);
         return $pdf->stream('nota_de_credito.pdf');
     }

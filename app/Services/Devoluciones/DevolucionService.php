@@ -672,6 +672,79 @@ class DevolucionService implements DevolucionServiceInterface
         return $data;
     }
 
+    /** para facturas antes del 2026 */
+     public function printReturnOld($devolucion_id)
+    {
+        $data = [];
+        $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
+        $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
+        $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
+        $data['devolucion'] = $devolucion;
+        $data['pedido'] = $pedido;
+
+        $cliente = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
+        $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
+        $cliente['CLI_CORREO_ELECT_SRI'] = $email[0];
+        $data['cliente'] = $cliente;
+
+        $sucursal = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
+        $data['sucursal'] = $sucursal;
+
+        $data['subtotal'] = 0;
+        $data['descuento'] = 0;
+        $data['subtotalmenosdescuento'] = 0;
+        $data['iva'] = 0;
+
+        $detalleGrouped = collect($detalleDev)->groupBy(function ($det) {
+            return $det['detalle_id'] . '_' . $det['ART_CODIGO'];
+        })->map(function ($group) {
+            $base = $group->first();
+            $base['seleccionado'] = $group->sum('seleccionado');
+            $base['devuelto'] = $group->sum('devuelto');
+            $base['recibido'] = $group->sum('recibido');
+            return $base;
+        })->sortBy('detalle_id')->values();
+
+        foreach ($detalleGrouped as $art) {
+            $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
+            $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
+        }
+        foreach ($detalleGrouped as $key => $art) {
+
+            if ($art['devuelto'] == 0) {
+                unset($detalleGrouped[$key]);
+                continue;
+            }
+
+            $data['tipoimpuesto'][$art['ART_IMP_VTA']] += (float) number_format($art['ART_VALOR'] * $art['devuelto'], 2, '.', '');
+            $data['sumaimpuesto'][$art['ART_IMP_VTA']] += (float) number_format(($art['ART_IVA'] / $art['ART_CANTIDAD']) * $art['devuelto'], 2, '.', '');
+
+
+            $data['descuento'] += (float) number_format($art['ART_DESCUENTO'] * $art['devuelto'], 2, '.', '');
+            $data['subtotalmenosdescuento'] += (float) number_format(($art['ART_VALOR'] - $art['ART_DESCUENTO']) * $art['devuelto'], 2, '.', '');
+            $data['iva'] += (float) number_format(((($art['ART_VALOR'] - $art['ART_DESCUENTO']) * $art['devuelto']) * $art['ART_IMP_VTA'] / 100), 2, '.', '');
+        }
+
+        foreach ($data['tipoimpuesto'] as $linea) {
+            $data['subtotal'] += $linea;
+        }
+
+        $data['subtotalmenosdescuento'] = (float) number_format($data['subtotalmenosdescuento'], 2, '.', '');
+        $data['descuento'] = (float) number_format($data['descuento'], 2, '.', '');
+        $data['iva'] = (float) number_format($data['iva'], 2, '.', '');
+        $data['total'] = number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
+
+
+        $data['detalle'] = $detalleGrouped;
+        $data['PTO_VTA_DESCRIPCION'] = $puntoVenta->PTO_VTA_DESCRIPCION;
+        $data['direccion'] = $puntoVenta->PTO_VTA_DIRECCION_1 . ' ' . $puntoVenta->PTO_VTA_DIRECCION_2;
+        $data['telefono'] = $puntoVenta->PTO_VTA_FONO_1;
+        $data['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
+
+        return $data;
+    }
+
 
 
     /**  proceso de listar devoluciones por recibir 
