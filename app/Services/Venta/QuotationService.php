@@ -377,16 +377,24 @@ class QuotationService implements QuotationServiceInterface
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
-
+        $subtotalmenosDescuento = 0;
+        $sumIva = 0;
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
         foreach ($detalle as $item) {
-            $clave = $item['ART_IMP_VTA'];
-            $subtotal = round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
-            $iva = round($item['ART_IVA'], 2);
-
+            $valorUnitario = (float) $item['ART_VALOR'];
+            $cantidad = (float) $item['ART_CANTIDAD'];
+            $descuentoUnitario = (float) $item['ART_DESCUENTO'];
+            $impuestoPorcentaje = (float) $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
             $peso += $item['ART_PESO'] * $item['ART_CANTIDAD'];
 
-            $tipoImpuesto[$clave] = ($tipoImpuesto[$clave] ?? 0) + $subtotal;
-            $sumaImpuesto[$clave] = ($sumaImpuesto[$clave] ?? 0) + $iva;
+            $tipoImpuesto[$impuestoPorcentaje] = ($tipoImpuesto[$impuestoPorcentaje] ?? 0) + $lineaSubtotal;
+            $sumaImpuesto[$impuestoPorcentaje] = ($sumaImpuesto[$impuestoPorcentaje] ?? 0) + $lineaIva;
+            $subtotalmenosDescuento += $lineNet;
+            $sumIva += $lineaIva;
         }
 
         $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toArray();
@@ -407,13 +415,14 @@ class QuotationService implements QuotationServiceInterface
         $cotizacion['sucursal'] = $sucursal;
         $cotizacion['validez'] = $validezTexto;
         $cotizacion['expira'] = $validezReal;
+        $cotizacion['totalCotizacion'] = number_format($subtotalmenosDescuento + $sumIva , 2, '.', '');;
         $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         return $cotizacion;
     }
 
     public function calcularDiasHabiles($dias, $desde)
     {
-        
+
         $validez = $dias;
         $fecha = $desde;
 
@@ -426,7 +435,7 @@ class QuotationService implements QuotationServiceInterface
             $resp = $this->apiBillingService->validateBusinessDate($parameters);
             $data = data_get($resp, 'data', []);
             if (data_get($data, 'codigo') == 0) {
-                 $validez++;
+                $validez++;
             }
             // $respuesta = $webService->cobranzas('ConsultaDiaFeriado', $parameters);
             // if ($respuesta['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
