@@ -235,7 +235,7 @@ class DevolucionJobService
             $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
             $devolucion->estado = 'procesado';
             $devolucion->fecha_NC = now()->format('Y-m-d');
-            $this->bajarDevolucionAPedido($devolucion,  $pedido);
+            $this->bajarDevolucionAPedido($devolucion,  $detalles,$pedido);
             $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
         } else {
             $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
@@ -248,35 +248,36 @@ class DevolucionJobService
     }
 
 
-    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, GpPedido $order)
+    public function bajarDevolucionAPedido( $devolucion, $detalles,  $pedido)
     {
-         if ($devolucion->rebajado) {
+        if ($devolucion->rebajado) {
             return;
         }
-        $bodega = $order->BOD_BODEGA;
-        $shouldReleaseStock = !$devolucion->despachado;
+        $pedidoId = $pedido->id;
+        $bodega = $pedido->BOD_BODEGA;
+        $actualizarStock = !$devolucion->despachado;
+        foreach ($detalles as $key => $value) {
+            $articulo = GpPedidoDetalle::find($value->detalle_id);
 
-        $devDetails = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        $orderDetails = GpPedidoDetalle::where('pedido_id', $order->id)->get()->keyBy('id');
-        foreach ($devDetails as $dvd) {
-            $art = $orderDetails->get($dvd->detalle_id);
-            if (!$art) {
-                Log::channel('devolucion')->warning("No se encontró el detalle de pedido ID {$dvd->detalle_id} para la devolución ID {$devolucion->id}");
+            if (!$articulo || $articulo->pedido_id !== $pedidoId) {
                 continue;
             }
-            $art->increment('devuelto', $dvd->devuelto);
-            if ($shouldReleaseStock) {
-                $stockRecord = GpPedidoDetalleStock::where('detalle_id', $art->id)
+            $articulo->devuelto += $value->devuelto;
+            $articulo->save();
+            if ($actualizarStock) {
+                $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                     ->where('STO_ART_BODEGA', $bodega)
                     ->first();
-                if ($stockRecord) {
-                    $newReserved = max(0, $stockRecord->reservado - $dvd->devuelto);
-                    $stockRecord->update(['reservado' => $newReserved]);
+
+                if ($stock) {
+                    $stock->reservado -= $value->devuelto;
+                    $stock->save();
                 }
             }
-
         }
-        $devolucion->update(['rebajado' => true]);
+        $devolucion->rebajado = true;
+        $devolucion->save();
+        return $devolucion;
     }
 
     public function totalDevoluciones($devolucion, $detalles)
