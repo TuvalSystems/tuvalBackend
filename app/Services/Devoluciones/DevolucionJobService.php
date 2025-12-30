@@ -31,12 +31,12 @@ use Illuminate\Support\Facades\Log;
 class DevolucionJobService
 {
     use DevolucionesCriteriosTrait, JsonResponseTrait;
-   
+
     public function __construct(
-        protected readonly  ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
-        protected readonly DevolucionParamsBuilderInterface $devolucionBuilder)
-    {
-       
+        protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        protected readonly DevolucionParamsBuilderInterface $devolucionBuilder
+    ) {
+
     }
 
     public function listarTodasLasDevolucionesAplicables()
@@ -235,7 +235,7 @@ class DevolucionJobService
             $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
             $devolucion->estado = 'procesado';
             $devolucion->fecha_NC = now()->format('Y-m-d');
-            $this->bajarDevolucionAPedido($devolucion,  $detalles,$pedido);
+            $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
             $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
         } else {
             $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
@@ -248,36 +248,33 @@ class DevolucionJobService
     }
 
 
-    public function bajarDevolucionAPedido( $devolucion, $detalles,  $pedido)
+    public function bajarDevolucionAPedido($devolucion, $detalles, $pedido)
     {
         if ($devolucion->rebajado) {
             return;
         }
-        $pedidoId = $pedido->id;
         $bodega = $pedido->BOD_BODEGA;
         $actualizarStock = !$devolucion->despachado;
-        foreach ($detalles as $key => $value) {
-            $articulo = GpPedidoDetalle::find($value->detalle_id);
-
-            if (!$articulo || $articulo->pedido_id !== $pedidoId) {
+        $articulos = GpPedidoDetalle::where('pedido_id', $pedido->id)->get()->keyBy('id');
+        foreach ($detalles as $value) {
+            $art = $articulos->get($value->detalle_id);
+            if (!$art) {
                 continue;
             }
-            $articulo->devuelto += $value->devuelto;
-            $articulo->save();
+            $art->increment('devuelto', $value->devuelto);
+
             if ($actualizarStock) {
-                $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
+                $stock = GpPedidoDetalleStock::where('detalle_id', $art->id)
                     ->where('STO_ART_BODEGA', $bodega)
                     ->first();
-
                 if ($stock) {
-                    $stock->reservado -= $value->devuelto;
-                    $stock->save();
+                    $newReserved = max(0, $stock->reservado - $value->devuelto);
+                    $stock->update(['reservado' => $newReserved]);
                 }
             }
         }
-        $devolucion->rebajado = true;
-        $devolucion->save();
-        return $devolucion;
+        $devolucion->update(['rebajado' => true]);
+        
     }
 
     public function totalDevoluciones($devolucion, $detalles)

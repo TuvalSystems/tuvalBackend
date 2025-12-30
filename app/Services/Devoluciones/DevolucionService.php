@@ -673,7 +673,7 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
     /** para facturas antes del 2026 */
-     public function printReturnOld($devolucion_id)
+    public function printReturnOld($devolucion_id)
     {
         $data = [];
         $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
@@ -1058,7 +1058,7 @@ class DevolucionService implements DevolucionServiceInterface
                 $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
                 $devolucion->estado = 'procesado';
                 $devolucion->fecha_NC = now()->format('Y-m-d');
-                $this->bajarDevolucionAPedido($devolucion, $pedido);
+                $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
                 $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
             } else {
                 $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
@@ -1073,33 +1073,30 @@ class DevolucionService implements DevolucionServiceInterface
         }
     }
 
-    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, GpPedido $order)
+    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $order)
     {
-          if ($devolucion->rebajado) {
+        if ($devolucion->rebajado) {
             return;
         }
         $bodega = $order->BOD_BODEGA;
-        $shouldReleaseStock = !$devolucion->despachado;
-
-        $devDetails = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        $orderDetails = GpPedidoDetalle::where('pedido_id', $order->id)->get()->keyBy('id');
-        foreach ($devDetails as $dvd) {
-            $art = $orderDetails->get($dvd->detalle_id);
+        $actualizarStock = !$devolucion->despachado;
+        $articulos = GpPedidoDetalle::where('pedido_id', $order->id)->get()->keyBy('id');
+        foreach ($detalles as $value) {
+            $art = $articulos->get($value->detalle_id);
             if (!$art) {
-                Log::channel('devolucion')->warning("No se encontró el detalle de pedido ID {$dvd->detalle_id} para la devolución ID {$devolucion->id}");
                 continue;
             }
-            $art->increment('devuelto', $dvd->devuelto);
-            if ($shouldReleaseStock) {
-                $stockRecord = GpPedidoDetalleStock::where('detalle_id', $art->id)
+            $art->increment('devuelto', $value->devuelto);
+
+            if ($actualizarStock) {
+                $stock = GpPedidoDetalleStock::where('detalle_id', $art->id)
                     ->where('STO_ART_BODEGA', $bodega)
                     ->first();
-                if ($stockRecord) {
-                    $newReserved = max(0, $stockRecord->reservado - $dvd->devuelto);
-                    $stockRecord->update(['reservado' => $newReserved]);
+                if ($stock) {
+                    $newReserved = max(0, $stock->reservado - $value->devuelto);
+                    $stock->update(['reservado' => $newReserved]);
                 }
             }
-
         }
         $devolucion->update(['rebajado' => true]);
     }
@@ -1238,7 +1235,7 @@ class DevolucionService implements DevolucionServiceInterface
                 $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
                 $devolucion->estado = 'procesado';
                 $devolucion->fecha_NC = now()->format('Y-m-d');
-                $this->bajarDevolucionAPedido($devolucion, $pedido);
+                $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
                 $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
             } else {
                 $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
