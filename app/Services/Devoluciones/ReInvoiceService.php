@@ -45,6 +45,8 @@ class ReInvoiceService implements ReInvoiceServiceInterface
 
         $detailOrigin   = GpPedidoDetalle::where('pedido_id', $orderOrigin->id)->get();
         $this->processDetailOrder($detailOrigin, $newOrderHeader, $orderOrigin, $devolucion, $isDispatch);
+        $this->functions->recalculateOrder($newOrderHeader->id);
+        $this->invoice->checkSendInvoice($newOrderHeader);
         return $newOrderHeader;
     }
 
