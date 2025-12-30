@@ -1238,7 +1238,7 @@ class DevolucionService implements DevolucionServiceInterface
                 $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
                 $devolucion->estado = 'procesado';
                 $devolucion->fecha_NC = now()->format('Y-m-d');
-                $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
+                $this->bajarDevolucionAPedido($devolucion, $pedido);
                 $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
             } else {
                 $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
