@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
@@ -19,7 +20,7 @@ class OrderJobService
 
 
     public function __construct(
-        protected readonly MswService $webService,
+        protected readonly ApiBillingService $apiBilling,
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly OrderServiceInterface $orderService,
         protected readonly OrderRepositoryInterface $orderRepository
@@ -37,7 +38,7 @@ class OrderJobService
         }
 
         if (!$this->isBussinessDay()) {
-            throw new Exception('Dia no Habil');
+           return false;
         }
 
         return $this->invoicePreviousMonthOrders();
@@ -50,15 +51,15 @@ class OrderJobService
 
     public function isBussinessDay()
     {
-
         $params = [
-            'IDCompania' => env('ID_COMPANIA'),
-            'Fecha' => date('Y-m-d'),
+            'idCompany' => env('ID_COMPANIA'),
+            'fecha' => Carbon::now()->format('Y-m-d'),
         ];
 
-        $diaHabil = $this->webService->cobranzas('ConsultaDiaFeriado', $params);
-        Log::channel('cron_process')->warning('Respuesta inesperada del WS ConsultaDiaFeriado', ['response' => $diaHabil]);
-        if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
+        $resp = $this->apiBilling->validateBusinessDate($params);
+        log::channel('cron_process')->warning('Respuesta del WS ConsultaDiaFeriado', ['response' => $resp]);
+        $data = data_get($resp, 'data', []);
+        if (data_get($data, 'codigo') == 0) {
             return false;
         }
         return true;

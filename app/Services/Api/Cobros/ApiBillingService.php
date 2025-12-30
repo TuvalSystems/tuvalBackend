@@ -37,4 +37,10 @@ class   ApiBillingService extends ApiGpService {
 
     }
 
+
+    public function validateBusinessDate(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_DIAS_FERIADOS, 'GET', $params);
+    }
+
 }

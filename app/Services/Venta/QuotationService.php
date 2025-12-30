@@ -20,7 +20,6 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
-use App\Http\Controllers\WebserviceController;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPedido;
@@ -414,21 +413,25 @@ class QuotationService implements QuotationServiceInterface
 
     public function calcularDiasHabiles($dias, $desde)
     {
-        $webService = new WebserviceController();
+        
         $validez = $dias;
         $fecha = $desde;
 
         for ($i = 1; $i < $validez; $i++) {
             $fechaPropuesta = date('Y-m-d', strtotime("+$i days", strtotime($fecha)));
             $parameters = [
-                'IDCompania' => env('ID_COMPANIA'),
-                'Fecha' => $fechaPropuesta,
+                'idCompany' => env('ID_COMPANIA'),
+                'fecha' => $fechaPropuesta,
             ];
-
-            $respuesta = $webService->cobranzas('ConsultaDiaFeriado', $parameters);
-            if ($respuesta['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
-                $validez++;
+            $resp = $this->apiBillingService->validateBusinessDate($parameters);
+            $data = data_get($resp, 'data', []);
+            if (data_get($data, 'codigo') == 0) {
+                 $validez++;
             }
+            // $respuesta = $webService->cobranzas('ConsultaDiaFeriado', $parameters);
+            // if ($respuesta['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
+            //     $validez++;
+            // }
         }
 
         return date('Y-m-d', strtotime("+$validez days", strtotime($desde)));
