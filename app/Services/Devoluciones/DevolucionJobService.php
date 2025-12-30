@@ -2,31 +2,27 @@
 
 namespace App\Services\Devoluciones;
 
-use App\Http\Controllers\ventas\PedidosController;
-use App\Models\devoluciones\GpDevolucionDocument;
-use App\Models\devoluciones\GpDevolucionErroresJob;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpArticulo;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpIngreso;
-use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
+use App\Models\GpIngreso;
+use App\Models\GpCliente;
+use App\Models\GpArticulo;
+use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpRelacionPuntoVentaIdVenta;
-use App\Services\Api\ApiGpService;
-use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Venta\Contracts\OrderServiceInterface;
-use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Traits\JsonResponseTrait;
+use App\Models\GpClienteSucursal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\GpPedidoDetalleStock;
+use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Models\devoluciones\GpDevolucionDocument;
+use App\Http\Controllers\ventas\PedidosController;
+use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\devoluciones\GpDevolucionErroresJob;
+use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
+use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 
 class DevolucionJobService
 {
@@ -34,7 +30,8 @@ class DevolucionJobService
 
     public function __construct(
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
-        protected readonly DevolucionParamsBuilderInterface $devolucionBuilder
+        protected readonly DevolucionParamsBuilderInterface $devolucionBuilder,
+        protected readonly ReInvoiceServiceInterface $reInvoice
     ) {
 
     }
@@ -63,12 +60,6 @@ class DevolucionJobService
     public function procesarDevolucionJob($devolucion)
     {
         $criterios = $this->listReturnCriteria();
-        $apiGp = app(ApiGpService::class);
-        $order = app(OrderServiceInterface::class);
-        $aproval = app(ApprovalServiceInterface::class);
-        $invoice = app(InvoiceServiceInterface::class);
-        $function = app(FunctionsServiceInterface::class);
-        $pedidosController = new PedidosController($apiGp, $order, $aproval, $invoice, $function);
 
         try {
 
@@ -76,7 +67,7 @@ class DevolucionJobService
 
 
             if ($criterioAplicable) {
-                $this->ejecutarProcesosDevolucion($devolucion, $criterioAplicable, $pedidosController);
+                $this->ejecutarProcesosDevolucion($devolucion, $criterioAplicable);
             } else {
                 GpDevolucionErroresJob::create([
                     'devolucion_id' => $devolucion->id,
@@ -115,7 +106,7 @@ class DevolucionJobService
     }
 
 
-    private function ejecutarProcesosDevolucion($devolucion, $criterio, PedidosController $pedidosController)
+    private function ejecutarProcesosDevolucion($devolucion, $criterio)
     {
         // Procesar método si está definido
         if (!empty($criterio['metodo']) && method_exists($this, $criterio['metodo'])) {
@@ -138,7 +129,7 @@ class DevolucionJobService
 
         // Volver a Facturar si corresponde
         if (!empty($criterio['volverafacturar']) && $criterio['volverafacturar'] === true) {
-            $pedidosController->volverafacturar($devolucion);
+            $this->reInvoice->execute($devolucion);
         }
 
 

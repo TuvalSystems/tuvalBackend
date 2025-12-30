@@ -49,7 +49,7 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function getPurchaseOrdersByOrderNumber(string $orderNumber)
     {
-        return  GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
+        return GpOrdenDeCompraGenerado::leftJoin('gp_orden_de_compras', 'gp_orden_de_compras.id', '=', 'gp_orden_de_compra_generados.orden_id')
             ->leftJoin('gp_proveedors', 'gp_proveedors.PROV_RUC', '=', 'gp_orden_de_compra_generados.ORDEN_COMPRA_ID_PROVEEDOR')
             ->join('gp_pedidos', 'gp_pedidos.pedido', '=', 'gp_orden_de_compras.ORDEN_COMPRA_DOCU_ORIGEN')
             ->where('gp_pedidos.pedido', $orderNumber)
@@ -133,12 +133,12 @@ class OrderRepository implements OrderRepositoryInterface
                     ->orWhere('factura_a_demanda', 0);
             })
             // ->where('origen', '!=', 'reserva')
-            ->where( function ($q){
+            ->where(function ($q) {
                 $q->whereNull('origen')
-                  ->orWhere('origen', '!=', 'reserva');
+                    ->orWhere('origen', '!=', 'reserva');
             })
             ->where('factura_siguiente_mes', 1)
-            ->whereMonth('created_at',  $mes)
+            ->whereMonth('created_at', $mes)
             ->whereYear('created_at', $year)
             ->orderBy('id');
     }
@@ -147,7 +147,7 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder)
     {
-        return  GpPedidoDetalleStock::query()
+        return GpPedidoDetalleStock::query()
             ->where('STO_ART_BODEGA', $warehouseId)
             ->whereIn('detalle_id', $detailOrder)
             ->where('seleccionado', '>', 0)
@@ -162,7 +162,10 @@ class OrderRepository implements OrderRepositoryInterface
         return GpPedido::where('origen', 'reserva')
             ->where('estado', 'espera')
             ->whereNotNull('fe_facturacion_reserva')
-            ->whereDate('fe_facturacion_reserva', $date)
-        ;
+            ->whereDate('fe_facturacion_reserva', $date);
     }
+
+
+
+    
 }

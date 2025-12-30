@@ -230,4 +230,15 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function getDispatchOrder($orderId){
         return GpOrdenDespacho::where('pedido_id', $orderId)->where('estado', '!=', 'pendiente')->exists();
     }
+
+
+    public function shouldMarkAsDispatched($devId) : bool
+    {
+        return GpDevolucionesDetalle::where('devolucion_id', $devId)
+            ->where('despachado_parcial', 1)
+            ->exists();
+    }
+
+
+   
 }

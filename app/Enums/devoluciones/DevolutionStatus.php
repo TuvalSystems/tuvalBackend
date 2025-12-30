@@ -8,4 +8,8 @@ enum DevolutionStatus: string
     case NO_PROCESADO = 'no_procesado';
     case ENVIADA = 'enviada';
     case CANCELADA = 'cancelada';  // para despachos
+
+
+    // PARA REFACTURA
+    case ESPERA = 'espera';
 }

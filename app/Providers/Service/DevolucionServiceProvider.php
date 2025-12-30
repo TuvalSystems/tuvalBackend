@@ -9,8 +9,10 @@ use App\Services\Devoluciones\DevolucionService;
 use App\Services\Devoluciones\ReturnCancellationService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\ReturnCancellationServiceInterface;
 use App\Services\Devoluciones\DevolucionJobService;
+use App\Services\Devoluciones\ReInvoiceService;
 
 class DevolucionServiceProvider extends ServiceProvider implements DeferrableProvider
 {
@@ -20,6 +22,7 @@ class DevolucionServiceProvider extends ServiceProvider implements DeferrablePro
         EntryServiceInterface::class => EntryService::class,
         DevolucionServiceInterface::class => DevolucionService::class,
         ReturnCancellationServiceInterface::class => ReturnCancellationService::class,
+        ReInvoiceServiceInterface::class => ReInvoiceService::class,
 
         DevolucionJobService::class
     ];

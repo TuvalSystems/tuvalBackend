@@ -73,6 +73,7 @@ Route::get('/generadevolucionventaurlalt', [DevolucionesController::class, 'gene
 //Route::get('/checkcobrosenviados/', [CobranzasController::class, 'checkcobrosenviados']);
 //Route::get('/checkeliminardespachourl', [DevolucionesController::class, 'checkeliminardespachourl']);
 Route::get('pedidos/volver-facturar-test/{id}', [PedidosController::class, 'volveraFacuturarTest']);
+Route::get('pedidos/volver-facturar-prueba/{id}', [PedidosController::class, 'volverAFacturarPrueba']);
 Route::get('/procesardevolucionestest', [DevolucionesController::class, 'procesardevolucionestest']);
 Route::get('/checkdespachadoscompletos', [DespachosController::class, 'checkdespachadoscompletos']);
 Route::get('/sincronizacion/testcliente', [SincronizacionController::class, 'testcliente']);
