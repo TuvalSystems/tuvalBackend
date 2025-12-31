@@ -86,7 +86,7 @@ use Illuminate\Database\Eloquent\Model;
 class GpDevolucionesDetalle extends Model
 {
     use HasFactory;
-
+    const TIPO_SERVICIO = 'SERV';
     protected $table = 'gp_devoluciones_detalles';
     protected $appends = ['pending_received_devolution'];
     protected $fillable = [
@@ -132,5 +132,21 @@ class GpDevolucionesDetalle extends Model
         $devuelto = (float) $this->devuelto;
         $resultado = max(0, $select - $devuelto);
         return number_format($resultado, 2, '.', '');
+    }
+
+
+
+    /** scopes para notas de credito  */
+
+    public function scopeArticulosFisicos($query)
+    {
+        return $query->where('ART_TIPO_COMPRA', '!=', self::TIPO_SERVICIO);
+    }
+
+    public function scopeValidosParaNotaCredito($query)
+    {
+        return $query->where('despachado_parcial', 1)
+            ->where('devuelto', '>', 0)
+            ->where('recibido', '>', 0);
     }
 }

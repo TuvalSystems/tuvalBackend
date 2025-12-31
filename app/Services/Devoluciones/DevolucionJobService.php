@@ -23,6 +23,7 @@ use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
+use Exception;
 
 class DevolucionJobService
 {
@@ -57,15 +58,12 @@ class DevolucionJobService
     }
 
 
-    public function procesarDevolucionJob($devolucion)
+    public function procesarDevolucionJob(GpDevoluciones $devolucion)
     {
         $criterios = $this->listReturnCriteria();
 
         try {
-
             $criterioAplicable = $this->encontrarCriterioAplicable($devolucion, $criterios);
-
-
             if ($criterioAplicable) {
                 $this->ejecutarProcesosDevolucion($devolucion, $criterioAplicable);
             } else {
@@ -88,7 +86,7 @@ class DevolucionJobService
     }
 
 
-    private function encontrarCriterioAplicable($devolucion, $criterios)
+    private function encontrarCriterioAplicable(GpDevoluciones $devolucion, $criterios)
     {
         foreach ($criterios as $criterio) {
             if (
@@ -106,7 +104,7 @@ class DevolucionJobService
     }
 
 
-    private function ejecutarProcesosDevolucion($devolucion, $criterio)
+    private function ejecutarProcesosDevolucion(GpDevoluciones $devolucion, $criterio)
     {
         // Procesar método si está definido
         if (!empty($criterio['metodo']) && method_exists($this, $criterio['metodo'])) {
@@ -120,11 +118,8 @@ class DevolucionJobService
 
         // Generar Nota de Crédito si corresponde
         if ($criterio['generarnotadecredito'] === true) {
-            $ntCredito = $this->generarNotaDeCredito($devolucion);
-            $respArray = $ntCredito->getData(true);
-            if ($respArray['success'] === false) {
-                throw new \Exception('Error generando nota de crédito: ' . ($respArray['error'] ?? 'Error desconocido'));
-            }
+            $this->generarNotaDeCredito($devolucion);
+
         }
 
         // Volver a Facturar si corresponde
@@ -142,44 +137,43 @@ class DevolucionJobService
 
 
 
-    public function generarNotaDeCredito($devolucion)
+    public function generarNotaDeCredito(GpDevoluciones $devolucion)
     {
-        $pedido = GpPedido::find($devolucion->pedido_id);
-        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        $docId = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)
+        $pedido     = GpPedido::find($devolucion->pedido_id);
+        $detalles   = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+        $docId      = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)
             ->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'NC%')->first();
-        $cliente = GpCliente::find($devolucion->cliente_id);
-        $sucursal = GpClienteSucursal::find($devolucion->sucursal_facturacion_id);
+        $cliente    = GpCliente::find($devolucion->cliente_id);
+        $sucursal   = GpClienteSucursal::find($devolucion->sucursal_facturacion_id);
 
         $subtotal = 0;
         $iva = 0;
-        $linea = 0;
         $detalleDevolucion = [];
 
         foreach ($detalles as $key => $detalle) {
             if ($detalle->devuelto == 0)
                 continue;
 
-            $linea++;
+
             $cantidad = $detalle->devuelto;
             $valorUnitario = $detalle->ART_VALOR;
             $descuento = $detalle->ART_DESCUENTO;
             $totalLinea = round(($valorUnitario - $descuento) * $cantidad, 2);
 
             $detalleDevolucion[] = [
-                'NC_VTA_DET_LINEA' => $linea,
-                'NC_VTA_DET_DOCU_ORIGEN' => $devolucion->devolucion,
-                'NC_VTA_DET_ID_TIPO' => '4',
-                'NC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
-                'NC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
-                'NC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
-                'NC_VTA_DET_BODEGA' => $pedido->BOD_BODEGA,
-                'NC_VTA_DET_CANTIDAD' => $cantidad,
-                'NC_VTA_DET_COSTO_UNITARIO' => $valorUnitario,
-                'NC_VTA_DET_PRECIO_UNITARIO' => $valorUnitario,
-                'NC_VTA_DET_DESCUENTO' => $descuento,
-                'NC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
-                'NC_VTA_DET_TOTAL' => $totalLinea
+                'NC_VTA_DET_LINEA'              => $key + 1,
+                'NC_VTA_DET_DOCU_ORIGEN'        => $devolucion->devolucion,
+                'NC_VTA_DET_ID_TIPO'            => '4',
+                'NC_VTA_DET_ARTICULO'           => $detalle->ART_CODIGO,
+                'NC_VTA_DET_DESC_ARTICULO'      => $detalle->ART_DESCRIPCION,
+                'NC_VTA_DET_UNIDAD_MEDIDA'      => $detalle->ART_PLAN_UMEDIDA,
+                'NC_VTA_DET_BODEGA'             => $pedido->BOD_BODEGA,
+                'NC_VTA_DET_CANTIDAD'           => $cantidad,
+                'NC_VTA_DET_COSTO_UNITARIO'     => $valorUnitario,
+                'NC_VTA_DET_PRECIO_UNITARIO'    => $valorUnitario,
+                'NC_VTA_DET_DESCUENTO'          => $descuento,
+                'NC_VTA_DET_IMPUESTO_IVA'       => $detalle->ART_IVA,
+                'NC_VTA_DET_TOTAL'              => $totalLinea
             ];
             $subtotal += $totalLinea;
             $iva += $detalle->ART_IVA;
@@ -189,21 +183,21 @@ class DevolucionJobService
         // return $detalles;
         $cabecera = [
             [
-                'NC_VTA_DOCU_ORIGEN' => $devolucion->devolucion,
-                'NC_VTA_ID_TIPO' => '4',
-                'NC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
-                'NC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
-                'NC_VTA_ID_CLIENTE' => $cliente->CLI_RUC,
-                'NC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
-                'NC_VTA_ID_DIRECCION' => $sucursal->CLI_SUC_ID_DIRECCION,
-                'NC_VTA_COND_PAGO' => $pedido->COND_ID,
-                'NC_VTA_NOTA_DOCU' => $devolucion->factura,
-                'NC_VTA_FECHA' => now()->format('Y-m-d'),
-                'NC_VTA_BODEGA' => $pedido->BOD_BODEGA,
-                'NC_VTA_SUBTOTAL' => $subtotal,
-                'NC_VTA_DESCUENTO_COMERCIAL' => 0,
-                'NC_VTA_IMPUESTO' => $iva,
-                'NC_VTA_TOTAL' => $total,
+                'NC_VTA_DOCU_ORIGEN'        => $devolucion->devolucion,
+                'NC_VTA_ID_TIPO'            => '4',
+                'NC_VTA_PUNTO_VENTA'        => $pedido->PTO_VTA_ID,
+                'NC_VTA_DOC_ID'             => $docId->PTO_VTA_ID_FACTURA_NC,
+                'NC_VTA_ID_CLIENTE'         => $cliente->CLI_RUC,
+                'NC_VTA_ID_VENDEDOR'        => $pedido->VEND_ID,
+                'NC_VTA_ID_DIRECCION'       => $sucursal->CLI_SUC_ID_DIRECCION,
+                'NC_VTA_COND_PAGO'          => $pedido->COND_ID,
+                'NC_VTA_NOTA_DOCU'          => $devolucion->factura,
+                'NC_VTA_FECHA'              => now()->format('Y-m-d'),
+                'NC_VTA_BODEGA'             => $pedido->BOD_BODEGA,
+                'NC_VTA_SUBTOTAL'           => $subtotal,
+                'NC_VTA_DESCUENTO_COMERCIAL'=> 0,
+                'NC_VTA_IMPUESTO'           => $iva,
+                'NC_VTA_TOTAL'              => $total,
             ]
         ];
 
@@ -213,29 +207,31 @@ class DevolucionJobService
         ];
         $responseNtc = $this->apiGpReturnsIntegrationService->generateCreditNote($parameters);
         if ($responseNtc['success'] === false) {
-            return $this->buildErrorResponse($responseNtc['message'], 404);
+            throw new Exception($responseNtc['message']);
         }
 
         $consultaParams = [
             'document' => $devolucion->devolucion,
             'tipo' => 4,
         ];
-        $responseCreditNote = $this->apiGpReturnsIntegrationService->responseCreditNote($consultaParams);
-
-        if (!empty(trim($responseCreditNote['respuesta'][0]['documentoGenerado']))) {
-            $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
-            $devolucion->estado = 'procesado';
-            $devolucion->fecha_NC = now()->format('Y-m-d');
-            $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
-            $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
-        } else {
-            $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
-            $resultado = $this->buildErrorResponse('Error al generar la nota de crédito: ' . $devolucion->NC_VTA_MENSAJE, 500);
+        $responseCreditNote = $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($consultaParams);
+        $docGenerado = $responseCreditNote['respuesta'][0]['documentoGenerado'];
+        $mensajeError = $responseCreditNote['respuesta'][0]['mensaje'] ?? 'Sin mensaje';
+        $codigoError = $responseCreditNote['respuesta'][0]['codigo'] ?? '';
+        if (!empty(trim($docGenerado))) {
+            $devolucion->NC_VTA_MENSAJE = "$mensajeError - $codigoError";
+            $devolucion->save();
+            throw new Exception($devolucion->NC_VTA_MENSAJE);
         }
 
+        $devolucion->fecha_NC = now()->format('Y-m-d');
+        $devolucion->estado = 'procesado';
+        $devolucion->DOC_GENERADO = $docGenerado;
+
         $devolucion->save();
+        $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
         $this->totalDevoluciones($devolucion, $detalles);
-        return $resultado ?? $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito', 500);
+
     }
 
 
@@ -316,45 +312,34 @@ class DevolucionJobService
             ->update(['estado' => 'cancelada']);
     }
 
-    public function generarDevolucionVenta($devolucion)
+    public function generarDevolucionVenta(GpDevoluciones $devolucion)
     {
         $userIngreso = $this->getUserIngreso($devolucion);
         $userId = filled($userIngreso) ? trim($userIngreso) : 'adminWeb';
 
-        // Obtener el pedido y los detalles
         $pedido = GpPedido::find($devolucion->pedido_id);
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
-            ->where('ART_TIPO_COMPRA', '!=', 'SERV') // Filtramos los servicios directamente en la consulta
-            ->where('despachado_parcial', 1)
-            ->where(function ($query) {
-                $query->where('devuelto', '>', 0)
-                    ->whereNotNull('devuelto')
-                    ->where('recibido', '>', 0)
-                    ->whereNotNull('recibido');
-            })
+            ->articulosFisicos()     
+            ->validosParaNotaCredito()
             ->get();
 
-        // 🛠️ Preparación de los items para la devolución
         $itemsDevolucion = $detalles->map(function ($detalle) use ($devolucion, $pedido) {
-            // Obtenemos el valor devuelto del detalle
-            $devuelto = ($devolucion->despachado && $devolucion->volver_a_facturar) ? $detalle->recibido : $detalle->devuelto;
-            if (!$devuelto) {
-                return null; // Si no hay devuelto, se ignora el item
-            }
+            $cantidad = ($devolucion->despachado && $devolucion->volver_a_facturar) ? $detalle->recibido : $detalle->devuelto;
+            if (!$cantidad) return null;
 
             $compartimiento = $detalle->ART_TIPO_COMPRA === 'L' ? $pedido->pedido : $detalle->compartimiento;
-
             return [
                 'item' => $detalle->ART_CODIGO,
-                'cantidad' => $devuelto,
+                'cantidad' => $cantidad,
                 'compartimiento' => $compartimiento
             ];
-        })->filter()->values()->toArray(); // Removemos los nulos y reindexamos el array
+        })->filter()->values()->toArray(); 
 
-        // 🚫 Early return si no hay items
+       
         if (empty($itemsDevolucion)) {
             $devolucion->devolucion_bodega = true;
             $devolucion->save();
+            Log::channel('devolucion')->info("Devolución {$devolucion->id}: Sin items físicos para ajuste de stock.");
             return;
         }
 
@@ -370,10 +355,10 @@ class DevolucionJobService
             $devolucion->AJ_VTA_MENSAJE = $res1['message'];
             $devolucion->devolucion_bodega = false;
             $devolucion->save();
-            throw new \Exception('Ajuste : mensaje -  ' . ($res1['message'] ?? 'Error desconocido'));
+            throw new Exception('Ajuste : mensaje -  ' . ($res1['message'] ?? 'Error desconocido'));
         }
         Log::channel('devolucion')->info("Se realizo el Ajuste de la devolucion {$devolucion->id} con el documento {$res1['data']['docGp']}");
-        $this->createDocumentDevolution($devolucion, $res1['data'], $userId);
+        $this->createDocumentDevolution($devolucion, $res1['data']);
         // 🟢 Actualización correcta
         $devolucion->devolucion_bodega = true;
         $devolucion->save();
@@ -384,7 +369,7 @@ class DevolucionJobService
         return GpIngreso::where('tipo', 'devolucion')->where('documento', $devolucion->devolucion)->value('USERID');
     }
 
-    public function createDocumentDevolution($devolucion, $responseApi, $userId)
+    public function createDocumentDevolution($devolucion, $responseApi)
     {
         $devDoc = new GpDevolucionDocument();
         $devDoc->devolucion_id = $devolucion->id;

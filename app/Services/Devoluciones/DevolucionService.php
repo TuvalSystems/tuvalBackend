@@ -1045,29 +1045,31 @@ class DevolucionService implements DevolucionServiceInterface
             ];
             $responseNtc = $this->apiGpReturnsIntegrationService->generateCreditNote($parameters);
             if ($responseNtc['success'] === false) {
-                return $this->buildErrorResponse($responseNtc['message'], 404);
+                throw new Exception($responseNtc['message']);
             }
 
             $consultaParams = [
                 'document' => $devolucion->devolucion,
                 'tipo' => 4,
             ];
-            $responseCreditNote = $this->apiGpReturnsIntegrationService->responseCreditNote($consultaParams);
-
-            if (!empty(trim($responseCreditNote['respuesta'][0]['documentoGenerado']))) {
-                $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
-                $devolucion->estado = 'procesado';
-                $devolucion->fecha_NC = now()->format('Y-m-d');
-                $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
-                $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
-            } else {
-                $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
-                $resultado = $this->buildErrorResponse('Error al generar la nota de crédito: ' . $devolucion->NC_VTA_MENSAJE, 500);
+            $responseCreditNote = $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($consultaParams);
+            $docGenerado = $responseCreditNote['respuesta'][0]['documentoGenerado'];
+            $mensajeError = $responseCreditNote['respuesta'][0]['mensaje'] ?? 'Sin mensaje';
+            $codigoError = $responseCreditNote['respuesta'][0]['codigo'] ?? '';
+            if (!empty(trim($docGenerado))) {
+                $devolucion->NC_VTA_MENSAJE = "$mensajeError - $codigoError";
+                $devolucion->save();
+                throw new Exception($devolucion->NC_VTA_MENSAJE);
             }
 
+            $devolucion->fecha_NC = now()->format('Y-m-d');
+            $devolucion->estado = 'procesado';
+            $devolucion->DOC_GENERADO = $docGenerado;
+
             $devolucion->save();
+            $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
             $this->totalDevoluciones($devolucion, $detalles);
-            return $resultado ?? $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito', 500);
+            return $devolucion;
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
@@ -1234,7 +1236,7 @@ class DevolucionService implements DevolucionServiceInterface
                 'document' => $devolucion->devolucion,
                 'tipo' => 4,
             ];
-            $responseCreditNote = $this->apiGpReturnsIntegrationService->responseCreditNote($consultaParams);
+            $responseCreditNote = $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($consultaParams);
             if (!empty(trim($responseCreditNote['respuesta'][0]['documentoGenerado']))) {
                 $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
                 $devolucion->estado = 'procesado';

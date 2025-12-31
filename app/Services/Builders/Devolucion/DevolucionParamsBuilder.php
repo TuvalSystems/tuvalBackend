@@ -85,7 +85,7 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
     {
         $header = [
             'idCompany'         => config('services.api_gp.company'),
-            'documento'         =>  $devolucion->devolucion,
+            'documento'         => $devolucion->devolucion,
             'pedidoOrigen'      => $pedido->pedido,
             'bodega'            => $pedido->BOD_BODEGA,
             'observacion'       => $devolucion->DOC_GENERADO,
