@@ -219,8 +219,8 @@ class TransferenciasController extends Controller
             ->get();
 
         foreach ($guias as $guia) {
-            $detalle = GpGuiaRemisionDetalle::join('gp_traslados_ventas', 'gp_traslados_ventas.id', 'gp_guia_remision_detalles.detalle_id')
-                ->join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
+            $detalle = GpGuiaRemisionDetalle::leftjoin('gp_traslados_ventas', 'gp_traslados_ventas.id', 'gp_guia_remision_detalles.detalle_id')
+                ->leftjoin('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
                 ->join('gp_articulos', 'gp_articulos.ART_CODIGO', 'gp_guia_remision_detalles.GUI_REM_CODI_INTERNO')
                 ->where('gp_guia_remision_detalles.guia_remision_id', $guia->id)
                 ->select('gp_guia_remision_detalles.*', 'gp_pedidos.pedido', 'gp_articulos.ART_DECIMAL_CANTIDAD')
