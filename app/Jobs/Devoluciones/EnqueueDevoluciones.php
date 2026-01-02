@@ -26,8 +26,10 @@ class EnqueueDevoluciones implements ShouldQueue
 
     public function handle(DevolucionJobService $service)
     {
+        Log::channel('devolucion')->info("🏁 INICIO JOB MAESTRO: Buscando devoluciones...");
           // 1) Trae las devoluciones aplicables (tu método actual)
         $devoluciones = $service->listarTodasLasDevolucionesAplicables();
+        Log::channel('devolucion')->info("🧐 El servicio devolvió: " . $devoluciones->count() . " registros.");
         $devoluciones->chunk($this->chunkSize)->each(function ($chunk){
            Log::channel('devolucion')->info("Se encontraron {$chunk->count()} devoluciones para procesar");
             $batch = [];
