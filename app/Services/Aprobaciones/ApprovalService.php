@@ -64,7 +64,7 @@ class ApprovalService implements ApprovalServiceInterface
         $rgcopy = data_get($data, 'registro_copia', null);
 
         if ($rgcopy) {
-            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->first();
+            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->where('destino_aprobado', false)->first();
             if ($registroVolverAPedir) {
                 $esPedido = !empty($registroVolverAPedir->pedido_origen);
                 $idOrigen = $esPedido ? $registroVolverAPedir->pedido_origen : $registroVolverAPedir->cotizacion_origen;
@@ -244,7 +244,7 @@ class ApprovalService implements ApprovalServiceInterface
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
         $motivosAprobacionComercial = [];
 
-        $rgCopy = GpRegistroCopia::where('cotizacion_destino', $data['cotizacion_id'])->where('tipo', 'volver_a_pedir')->first();
+        $rgCopy = GpRegistroCopia::where('cotizacion_destino', $data['cotizacion_id'])->where('tipo', 'volver_a_pedir')->where('destino_aprobado', false)->first();
         if ($rgCopy) {
             $esPedido = !empty($rgCopy->pedido_origen);
             $idOrigen = $esPedido ? $rgCopy->pedido_origen : $rgCopy->cotizacion_origen;
@@ -264,11 +264,11 @@ class ApprovalService implements ApprovalServiceInterface
             }
 
             // 2. Motivo por ser copia (siempre se agrega si existe el registro)
-            if(!$rgCopy->destino_aprobado){
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-                    "Requiere aprobación comercial. La Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
-                );
-            }
+            // if(!$rgCopy->destino_aprobado){
+            //     $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+            //         "Requiere aprobación comercial. La Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
+            //     );
+            // }
         }
 
 
