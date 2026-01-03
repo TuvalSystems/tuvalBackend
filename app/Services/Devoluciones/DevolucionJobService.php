@@ -16,7 +16,6 @@ use App\Models\GpPedidoDetalleStock;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\devoluciones\GpDevolucionDocument;
-use App\Http\Controllers\ventas\PedidosController;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpDevolucionErroresJob;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
@@ -319,7 +318,7 @@ class DevolucionJobService
 
         $pedido = GpPedido::find($devolucion->pedido_id);
         $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
-            ->articulosFisicos()     
+            ->articulosFisicos()
             ->validosParaNotaCredito()
             ->get();
 
@@ -333,9 +332,9 @@ class DevolucionJobService
                 'cantidad' => $cantidad,
                 'compartimiento' => $compartimiento
             ];
-        })->filter()->values()->toArray(); 
+        })->filter()->values()->toArray();
 
-       
+
         if (empty($itemsDevolucion)) {
             $devolucion->devolucion_bodega = true;
             $devolucion->save();
