@@ -372,7 +372,7 @@ class QuotationService implements QuotationServiceInterface
         $subtotalmenosDescuento = 0;
         $sumIva = 0;
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
-        foreach ($detalle as $item) {
+        foreach ($detalle as &$item) {
             $valorUnitario = (float) $item['ART_VALOR'];
             $cantidad = (float) $item['ART_CANTIDAD'];
             $descuentoUnitario = (float) $item['ART_DESCUENTO'];
@@ -400,6 +400,7 @@ class QuotationService implements QuotationServiceInterface
             $subtotalmenosDescuento += $lineNet;
             $sumIva += $lineaIva;
         }
+        unset($item);
 
         $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toArray();
         $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toArray();
