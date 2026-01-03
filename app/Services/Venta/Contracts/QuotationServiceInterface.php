@@ -38,7 +38,7 @@ interface QuotationServiceInterface
      *  imprimir cotizacion pdf
      */
 
-    public function printQuotationPdf($id);
+    public function printQuotationPdf($id, $withImages = false);
 
     /***
      * API para obtener listado de cotizaciones con novedades

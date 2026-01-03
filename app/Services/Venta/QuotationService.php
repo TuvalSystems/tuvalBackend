@@ -338,34 +338,25 @@ class QuotationService implements QuotationServiceInterface
      * IMPRIMIR COTIZCIONES EN PDF
      */
 
-    public function printQuotationPdf($id)
+    public function printQuotationPdf($id, $withImages = false)
     {
         $cotizacion = GpCotizacion::where('id', $id)->first()->toArray();
 
         if (!$cotizacion) {
-            return $this->buildErrorResponse(
-                'No se encontró la cotización',
-                404
-            );
+            abort(404, 'Cotización no encontrada');
+
         }
         if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
-            return $this->buildErrorResponse(
-                'La cotización requiere aprobación comercial y aún no ha sido aprobada',
-                403
-            );
+            abort(403, 'La cotización requiere aprobación comercial y aún no ha sido aprobada');
+
         }
 
         if ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
-            return $this->buildErrorResponse(
-                'La cotización requiere aprobación crediticia y aún no ha sido aprobada',
-                403
-            );
+            abort(403, 'La cotización requiere aprobación crediticia y aún no ha sido aprobada');
+
         }
         if ($cotizacion['estado'] == 'caducado') {
-            return $this->buildErrorResponse(
-                'La cotización ha caducado y no puede ser impresa',
-                403
-            );
+            abort(403, 'La cotización ha caducado y no puede ser impresa');
         }
 
         $this->updatePrintsQuotation($id);
@@ -377,6 +368,7 @@ class QuotationService implements QuotationServiceInterface
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
+        $imagenes = [];
         $subtotalmenosDescuento = 0;
         $sumIva = 0;
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
@@ -390,6 +382,18 @@ class QuotationService implements QuotationServiceInterface
             $lineaSubtotal = $lineNet + $lineaDiscount;
             $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
             $peso += $item['ART_PESO'] * $item['ART_CANTIDAD'];
+
+            //proceso de imagenes
+            if ($withImages) {
+                for ($i = 1; $i <= 3; $i++) {
+                    $file = 'images/productos/' . $item['ART_CODIGO_TRES_LETRAS'] . '_' . $i . '.jpg';
+
+                    if (File::exists($file)) {
+                        $imagenes[] = $file;
+                    }
+                }
+                $item['imagenes'] = $imagenes;
+            }
 
             $tipoImpuesto[$impuestoPorcentaje] = ($tipoImpuesto[$impuestoPorcentaje] ?? 0) + $lineaSubtotal;
             $sumaImpuesto[$impuestoPorcentaje] = ($sumaImpuesto[$impuestoPorcentaje] ?? 0) + $lineaIva;
@@ -415,7 +419,8 @@ class QuotationService implements QuotationServiceInterface
         $cotizacion['sucursal'] = $sucursal;
         $cotizacion['validez'] = $validezTexto;
         $cotizacion['expira'] = $validezReal;
-        $cotizacion['totalCotizacion'] = number_format($subtotalmenosDescuento + $sumIva , 2, '.', '');;
+        $cotizacion['totalCotizacion'] = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');
+        ;
         $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         return $cotizacion;
     }
