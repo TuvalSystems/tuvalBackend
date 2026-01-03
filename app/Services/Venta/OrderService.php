@@ -103,23 +103,40 @@ class OrderService implements OrderServiceInterface
     public function buildOrderDetail(array $pedido)
     {
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->toarray();
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
 
         foreach ($detalle as &$item) {
 
+            $cantidad = $item['ART_CANTIDAD'];
+            $valorUnitario = $item['ART_VALOR'];
+            $descuentoUnitario = $item['ART_DESCUENTO'];
+            $impuestoPorcentaje = (float) $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
+            $typeImp = $item['ART_IMP_VTA'];
+
+
+            //calculo de peso por item
             $pesoItem = $item['ART_PESO'] * $item['ART_CANTIDAD'];
             $item['ART_PESO_TOTAL'] = number_format($pesoItem, 2, '.', '');
             $peso += $pesoItem;
+
+            //compartimento
             $type = strtoupper(trim((string) ($item['ART_TIPO_COMPRA'] ?? '')));
             $item['compartimiento'] = match ($type) {
                 '', 'L', 'SERV' => '',
                 default => $this->getCompartimento($item['ART_CODIGO'] ?? null, $pedido['BOD_BODEGA'] ?? null),
             };
-            $impKey = $item['ART_IMP_VTA'];
-            $tipoImpuesto[$impKey] = ($tipoImpuesto[$impKey] ?? 0) + round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
-            $sumaImpuesto[$impKey] = ($sumaImpuesto[$impKey] ?? 0) + round($item['ART_IVA'], 2);
+
+            //calculo de subtotales
+            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
+            $tipoImpuesto[$typeImp] = ($tipoImpuesto[$typeImp] ?? 0) + $lineaSubtotal;
+            $sumaImpuesto[$typeImp] = ($sumaImpuesto[$typeImp] ?? 0) + $lineaIva;
             if (!empty($item['ART_CODIGO_TRES_LETRAS'])) {
                 $item['imagenes'] = $this->getImagenes($item['ART_CODIGO_TRES_LETRAS']);
             } else {
