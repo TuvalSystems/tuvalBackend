@@ -636,7 +636,8 @@ class DevolucionService implements DevolucionServiceInterface
                 continue;
             }
 
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
             $lineaSubtotal = $lineNet + $lineaDiscount;
             $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
@@ -1132,7 +1133,8 @@ class DevolucionService implements DevolucionServiceInterface
 
 
 
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            // $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
             $lineaSubtotal = $lineNet + $lineaDiscount;
             $lineaIva = $lineNet * ($impuestoPorcentaje / 100);

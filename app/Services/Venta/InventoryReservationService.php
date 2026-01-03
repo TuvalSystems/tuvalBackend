@@ -770,11 +770,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $cantidad = (float) $item->ART_CANTIDAD;
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-            $lineaSubtotal = $valorUnitario * $cantidad;
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaSubtotal = $lineNet + $lineaDiscount;
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;
@@ -782,16 +783,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $totalIva += $lineaIva;
 
             $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = round($lineaIva, 2);
+            $item->ART_IVA = $lineaIva;
             $item->save();
         }
-        $total = $netSubtotal + $totalIva;
-
         $qt->subtotal = round($subtotal, 2);
         $qt->descuento = round($totalDiscount, 2);
         $qt->subtotalmenosdescuento = round($netSubtotal, 2);
         $qt->iva = round($totalIva, 2);
-        $qt->total = round($total, 2);
+        $qt->total = round($netSubtotal + $totalIva, 2);
         $qt->save();
         return $qt;
     }

@@ -139,20 +139,21 @@ class DevolucionJobService
 
     public function generarNotaDeCredito(GpDevoluciones $devolucion)
     {
-        $pedido     = GpPedido::find($devolucion->pedido_id);
-        $detalles   = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        $docId      = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)
+        $pedido = GpPedido::find($devolucion->pedido_id);
+        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+        $docId = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)
             ->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'NC%')->first();
-        $cliente    = GpCliente::find($devolucion->cliente_id);
-        $sucursal   = GpClienteSucursal::find($devolucion->sucursal_facturacion_id);
+        $cliente = GpCliente::find($devolucion->cliente_id);
+        $sucursal = GpClienteSucursal::find($devolucion->sucursal_facturacion_id);
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $detalles->pluck('ART_CODIGO'))
-                                   ->pluck('ART_IMP_VTA', 'ART_CODIGO');
+            ->pluck('ART_IMP_VTA', 'ART_CODIGO');
         $subtotal = 0.0;
         $iva = 0.0;
         $detalleDevolucion = [];
 
         foreach ($detalles as $key => $detalle) {
-            if ($detalle->devuelto == 0) continue;
+            if ($detalle->devuelto == 0)
+                continue;
 
             $valorUnitario = $detalle->ART_VALOR;
             $cantidad = $detalle->devuelto;
@@ -160,24 +161,24 @@ class DevolucionJobService
             $porcentajeIva = (float) ($articulosImpuesto[$detalle->ART_CODIGO] ?? 0);
 
 
-            $lineNet = round(($valorUnitario - $descuento) * $cantidad, 2);
+            $lineNet = round((($valorUnitario - $descuento) * $cantidad) + 0.000001, 2);
             $ivaLineaRaw = $lineNet * ($porcentajeIva / 100);
             $ivaLineaParaApi = round($ivaLineaRaw, 2);
 
             $detalleDevolucion[] = [
-                'NC_VTA_DET_LINEA'              => $key + 1,
-                'NC_VTA_DET_DOCU_ORIGEN'        => $devolucion->devolucion,
-                'NC_VTA_DET_ID_TIPO'            => '4',
-                'NC_VTA_DET_ARTICULO'           => $detalle->ART_CODIGO,
-                'NC_VTA_DET_DESC_ARTICULO'      => $detalle->ART_DESCRIPCION,
-                'NC_VTA_DET_UNIDAD_MEDIDA'      => $detalle->ART_PLAN_UMEDIDA,
-                'NC_VTA_DET_BODEGA'             => $pedido->BOD_BODEGA,
-                'NC_VTA_DET_CANTIDAD'           => $cantidad,
-                'NC_VTA_DET_COSTO_UNITARIO'     => $valorUnitario,
-                'NC_VTA_DET_PRECIO_UNITARIO'    => $valorUnitario,
-                'NC_VTA_DET_DESCUENTO'          => $descuento,
-                'NC_VTA_DET_IMPUESTO_IVA'       => $ivaLineaParaApi,
-                'NC_VTA_DET_TOTAL'              => $lineNet
+                'NC_VTA_DET_LINEA' => $key + 1,
+                'NC_VTA_DET_DOCU_ORIGEN' => $devolucion->devolucion,
+                'NC_VTA_DET_ID_TIPO' => '4',
+                'NC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
+                'NC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
+                'NC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
+                'NC_VTA_DET_BODEGA' => $pedido->BOD_BODEGA,
+                'NC_VTA_DET_CANTIDAD' => $cantidad,
+                'NC_VTA_DET_COSTO_UNITARIO' => $valorUnitario,
+                'NC_VTA_DET_PRECIO_UNITARIO' => $valorUnitario,
+                'NC_VTA_DET_DESCUENTO' => $descuento,
+                'NC_VTA_DET_IMPUESTO_IVA' => $ivaLineaParaApi,
+                'NC_VTA_DET_TOTAL' => $lineNet
             ];
             $subtotal += $lineNet;
             $iva += $ivaLineaRaw;
@@ -188,21 +189,21 @@ class DevolucionJobService
         // return $detalles;
         $cabecera = [
             [
-                'NC_VTA_DOCU_ORIGEN'        => $devolucion->devolucion,
-                'NC_VTA_ID_TIPO'            => '4',
-                'NC_VTA_PUNTO_VENTA'        => $pedido->PTO_VTA_ID,
-                'NC_VTA_DOC_ID'             => $docId->PTO_VTA_ID_FACTURA_NC,
-                'NC_VTA_ID_CLIENTE'         => $cliente->CLI_RUC,
-                'NC_VTA_ID_VENDEDOR'        => $pedido->VEND_ID,
-                'NC_VTA_ID_DIRECCION'       => $sucursal->CLI_SUC_ID_DIRECCION,
-                'NC_VTA_COND_PAGO'          => $pedido->COND_ID,
-                'NC_VTA_NOTA_DOCU'          => $devolucion->factura,
-                'NC_VTA_FECHA'              => now()->format('Y-m-d'),
-                'NC_VTA_BODEGA'             => $pedido->BOD_BODEGA,
-                'NC_VTA_SUBTOTAL'           => round($subtotal, 2),
-                'NC_VTA_DESCUENTO_COMERCIAL'=> 0,
-                'NC_VTA_IMPUESTO'           => $totalIvaFinal,
-                'NC_VTA_TOTAL'              => $total,
+                'NC_VTA_DOCU_ORIGEN' => $devolucion->devolucion,
+                'NC_VTA_ID_TIPO' => '4',
+                'NC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
+                'NC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
+                'NC_VTA_ID_CLIENTE' => $cliente->CLI_RUC,
+                'NC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
+                'NC_VTA_ID_DIRECCION' => $sucursal->CLI_SUC_ID_DIRECCION,
+                'NC_VTA_COND_PAGO' => $pedido->COND_ID,
+                'NC_VTA_NOTA_DOCU' => $devolucion->factura,
+                'NC_VTA_FECHA' => now()->format('Y-m-d'),
+                'NC_VTA_BODEGA' => $pedido->BOD_BODEGA,
+                'NC_VTA_SUBTOTAL' => round($subtotal, 2),
+                'NC_VTA_DESCUENTO_COMERCIAL' => 0,
+                'NC_VTA_IMPUESTO' => $totalIvaFinal,
+                'NC_VTA_TOTAL' => $total,
             ]
         ];
 
@@ -219,29 +220,30 @@ class DevolucionJobService
             'document' => $devolucion->devolucion,
             'tipo' => 4,
         ];
-        $respNc                         = $this->getApiResponseNoteCredit($consultaParams);
-        $successNc                      = data_get($respNc, 'success', false);
-        $docGenerado                    = data_get($respNc, 'data.docGenerado', null);
-        $responseCreditNote             = data_get($respNc, 'data', []);
-        $fechaNc                        = data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
+        $respNc = $this->getApiResponseNoteCredit($consultaParams);
+        $successNc = data_get($respNc, 'success', false);
+        $docGenerado = data_get($respNc, 'data.docGenerado', null);
+        $responseCreditNote = data_get($respNc, 'data', []);
+        $fechaNc = data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
         if (!$successNc || empty($docGenerado)) {
-            $msgError                   = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
+            $msgError = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
             $devolucion->NC_VTA_MENSAJE = $msgError;
             $devolucion->save();
             throw new Exception($msgError);
         }
-        $devolucion->NC_VTA_MENSAJE     = 'Nota de crédito generada correctamente.';
-        $devolucion->fecha_NC           = Carbon::parse($fechaNc)->format('Y-m-d');
-        $devolucion->estado             = 'procesado';
-        $devolucion->DOC_GENERADO       = $docGenerado;
+        $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
+        $devolucion->fecha_NC = Carbon::parse($fechaNc)->format('Y-m-d');
+        $devolucion->estado = 'procesado';
+        $devolucion->DOC_GENERADO = $docGenerado;
         $devolucion->save();
         $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
         $this->totalDevoluciones($devolucion, $detalles);
     }
 
 
-    public function getApiResponseNoteCredit($params){
-      return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse( $params);
+    public function getApiResponseNoteCredit($params)
+    {
+        return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($params);
 
     }
 
@@ -297,7 +299,7 @@ class DevolucionJobService
 
 
 
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
             $lineaSubtotal = $lineNet + $lineaDiscount;
             $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
@@ -336,7 +338,8 @@ class DevolucionJobService
 
         $itemsDevolucion = $detalles->map(function ($detalle) use ($devolucion, $pedido) {
             $cantidad = ($devolucion->despachado && $devolucion->volver_a_facturar) ? $detalle->recibido : $detalle->devuelto;
-            if (!$cantidad) return null;
+            if (!$cantidad)
+                return null;
 
             $compartimiento = $detalle->ART_TIPO_COMPRA === 'L' ? $pedido->pedido : $detalle->compartimiento;
             return [
