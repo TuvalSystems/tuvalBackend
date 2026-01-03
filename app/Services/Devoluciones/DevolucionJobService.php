@@ -22,6 +22,7 @@ use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
+use Carbon\Carbon;
 use Exception;
 
 class DevolucionJobService
@@ -218,20 +219,21 @@ class DevolucionJobService
             'document' => $devolucion->devolucion,
             'tipo' => 4,
         ];
-        $respNc = $this->getApiResponseNoteCredit($consultaParams);
-        $successNc = data_get($respNc, 'success', false);
-        $docGenerado = data_get($respNc, 'data.docGenerado', null);
-        $responseCreditNote = data_get($respNc, 'data', []);
+        $respNc                         = $this->getApiResponseNoteCredit($consultaParams);
+        $successNc                      = data_get($respNc, 'success', false);
+        $docGenerado                    = data_get($respNc, 'data.docGenerado', null);
+        $responseCreditNote             = data_get($respNc, 'data', []);
+        $fechaNc                        = data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
         if (!$successNc || empty($docGenerado)) {
-            $msgError = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
+            $msgError                   = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
             $devolucion->NC_VTA_MENSAJE = $msgError;
             $devolucion->save();
             throw new Exception($msgError);
         }
-        $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
-        $devolucion->fecha_NC= data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
-        $devolucion->estado = 'procesado';
-        $devolucion->DOC_GENERADO = $docGenerado;
+        $devolucion->NC_VTA_MENSAJE     = 'Nota de crédito generada correctamente.';
+        $devolucion->fecha_NC           = Carbon::parse($fechaNc)->format('Y-m-d');
+        $devolucion->estado             = 'procesado';
+        $devolucion->DOC_GENERADO       = $docGenerado;
         $devolucion->save();
         $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
         $this->totalDevoluciones($devolucion, $detalles);

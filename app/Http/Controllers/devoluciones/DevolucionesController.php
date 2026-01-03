@@ -418,6 +418,11 @@ class DevolucionesController extends Controller
 
     public function restaurarNotaCreditoDevolucion($id)
     {
-        return $this->devolucionService->responseCreditNoteDevolution($id);
+        try {
+            $dev = $this->devolucionService->responseCreditNoteDevolution($id);
+            return $this->successResponse('Devolución restaurada correctamente', $dev, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al restaurar la devolución: ' . $e->getMessage(), 500);
+        }
     }
 }
