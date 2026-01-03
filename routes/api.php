@@ -343,7 +343,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::group(['prefix' => 'aprobaciones'], function () {
 
         Route::post('aprobarpedido', [AprobacionesController::class, 'aprobarpedido']);
-        Route::post('aprobarcotizacion', [AprobacionesController::class, 'aprobarcotizacion']);
+        Route::post('aprobarcotizacion', [AprobacionesController::class, 'aprobacionComercialCotizacion']);
         Route::post('rechazarcotizacion', [AprobacionesController::class, 'rechazarcotizacion']);
         Route::post('rechazarpedido', [AprobacionesController::class, 'rechazarpedido']);
         Route::post('consultaparaaprobarpedido', [AprobacionesController::class, 'consultaparaaprobarpedido']);

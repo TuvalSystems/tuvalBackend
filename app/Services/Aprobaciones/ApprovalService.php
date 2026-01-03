@@ -38,14 +38,14 @@ use Illuminate\Support\Facades\Auth;
 class ApprovalService implements ApprovalServiceInterface
 {
     use JsonResponseTrait;
-  
+
     public function __construct(
-       protected readonly FunctionsServiceInterface $functionService,
-       protected readonly InvoiceServiceInterface $invoiceService,
-       protected readonly ApiGpService $apiGpService,
-       protected readonly StockWarehouseServiceInterface $stockWarehouseService
+        protected readonly FunctionsServiceInterface $functionService,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService
     ) {
-      
+
     }
 
 
@@ -264,9 +264,11 @@ class ApprovalService implements ApprovalServiceInterface
             }
 
             // 2. Motivo por ser copia (siempre se agrega si existe el registro)
-            $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-                "Requiere aprobación comercial. La Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
-            );
+            if(!$rgCopy->destino_aprobado){
+                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                    "Requiere aprobación comercial. La Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
+                );
+            }
         }
 
 
@@ -357,14 +359,14 @@ class ApprovalService implements ApprovalServiceInterface
                 if ($detOriginal) {
                     $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $valorOriginalReal";
                 }
-                 $detailMotivos[] = $this->requiredApprovalResponse($mensaje);
+                $detailMotivos[] = $this->requiredApprovalResponse($mensaje);
             }
 
             // C. Validaciones NO Tipo L (Standard)
             if ($detalle['ART_TIPO_COMPRA'] != 'L') {
                 // C.1 Descripción
                 if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL'] && $detalle['ART_DESCRIPCION'] != $descOriginalReal) {
-                      $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '{$detalle['ART_DESCRIPCION']}...' vs Original: '$descOriginalReal...'");
+                    $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '{$detalle['ART_DESCRIPCION']}...' vs Original: '$descOriginalReal...'");
                 }
 
                 // C.2 Exceso de Precio
@@ -1563,6 +1565,32 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
+    /** aprobacion comercial de cotizaciones */
+    public function approveComercialQuote($id, $user)
+    {
+        $gpUser = GpUsuario::find($user->id);
+        $quote = GpCotizacion::where('id', $id)->where('estado', 'espera')
+            ->lockForUpdate()->first();
+
+        if (!$quote) {
+            abort(404, "Cotización no encontrada");
+        }
+        $quote->aprobado_comercial = 'yes';
+        $quote->aprobador_comercial_id = $gpUser->id;
+        $quote->estado = 'aprobado';
+        $quote->save();
+        $this->updateRegisterCopyApprovalComercialDestination($quote->id);
+        return $quote;
+    }
+
+    public function updateRegisterCopyApprovalComercialDestination($quoteId){
+        $rgCopy = GpRegistroCopia::where('cotizacion_destino', $quoteId)->where('tipo', 'volver_a_pedir')->first();
+        if (!$rgCopy) {
+            return;
+        }
+        $rgCopy->destino_aprobado = true;
+        $rgCopy->save();
+    }
 
 
 }
