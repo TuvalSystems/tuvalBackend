@@ -57,6 +57,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function checkoutApprovalCommercialQuotations($data)
     {
+        $motivosAprobacionComercial = [];
         $registroVolverAPedir = null;
         $quoteId = data_get($data, 'cotizacion_id', null);
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
