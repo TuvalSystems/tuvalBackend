@@ -144,20 +144,24 @@ class DevolucionJobService
             ->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'NC%')->first();
         $cliente    = GpCliente::find($devolucion->cliente_id);
         $sucursal   = GpClienteSucursal::find($devolucion->sucursal_facturacion_id);
-
-        $subtotal = 0;
-        $iva = 0;
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $detalles->pluck('ART_CODIGO'))
+                                   ->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        $subtotal = 0.0;
+        $iva = 0.0;
         $detalleDevolucion = [];
 
         foreach ($detalles as $key => $detalle) {
-            if ($detalle->devuelto == 0)
-                continue;
+            if ($detalle->devuelto == 0) continue;
 
-
-            $cantidad = $detalle->devuelto;
             $valorUnitario = $detalle->ART_VALOR;
+            $cantidad = $detalle->devuelto;
             $descuento = $detalle->ART_DESCUENTO;
-            $totalLinea = round(($valorUnitario - $descuento) * $cantidad, 2);
+            $porcentajeIva = (float) ($articulosImpuesto[$detalle->ART_CODIGO] ?? 0);
+
+
+            $lineNet = round(($valorUnitario - $descuento) * $cantidad, 2);
+            $ivaLineaRaw = $lineNet * ($porcentajeIva / 100);
+            $ivaLineaParaApi = round($ivaLineaRaw, 2);
 
             $detalleDevolucion[] = [
                 'NC_VTA_DET_LINEA'              => $key + 1,
@@ -171,13 +175,14 @@ class DevolucionJobService
                 'NC_VTA_DET_COSTO_UNITARIO'     => $valorUnitario,
                 'NC_VTA_DET_PRECIO_UNITARIO'    => $valorUnitario,
                 'NC_VTA_DET_DESCUENTO'          => $descuento,
-                'NC_VTA_DET_IMPUESTO_IVA'       => $detalle->ART_IVA,
-                'NC_VTA_DET_TOTAL'              => $totalLinea
+                'NC_VTA_DET_IMPUESTO_IVA'       => $ivaLineaParaApi,
+                'NC_VTA_DET_TOTAL'              => $lineNet
             ];
-            $subtotal += $totalLinea;
-            $iva += $detalle->ART_IVA;
+            $subtotal += $lineNet;
+            $iva += $ivaLineaRaw;
         }
-        $total = $subtotal + $iva;
+        $totalIvaFinal = round($iva, 2);
+        $total = round($subtotal + $totalIvaFinal, 2);
 
         // return $detalles;
         $cabecera = [
@@ -193,9 +198,9 @@ class DevolucionJobService
                 'NC_VTA_NOTA_DOCU'          => $devolucion->factura,
                 'NC_VTA_FECHA'              => now()->format('Y-m-d'),
                 'NC_VTA_BODEGA'             => $pedido->BOD_BODEGA,
-                'NC_VTA_SUBTOTAL'           => $subtotal,
+                'NC_VTA_SUBTOTAL'           => round($subtotal, 2),
                 'NC_VTA_DESCUENTO_COMERCIAL'=> 0,
-                'NC_VTA_IMPUESTO'           => $iva,
+                'NC_VTA_IMPUESTO'           => $totalIvaFinal,
                 'NC_VTA_TOTAL'              => $total,
             ]
         ];
