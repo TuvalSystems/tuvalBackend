@@ -105,12 +105,10 @@ class FunctionsService implements FunctionsServiceInterface
 
             $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
-
             $lineaSubtotal = $lineNet + $lineaDiscount;
-
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
             $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
-
+            
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;
