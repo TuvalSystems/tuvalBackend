@@ -57,40 +57,49 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function checkoutApprovalCommercialQuotations($data)
     {
+        $registroVolverAPedir = null;
         $quoteId = data_get($data, 'cotizacion_id', null);
-
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
-        $motivosAprobacionComercial = [];
-        $rgcopy = data_get($data, 'registro_copia', null);
-
-        if ($rgcopy) {
-            $registroVolverAPedir = GpRegistroCopia::where('id', $data['registro_copia'])->where('tipo', 'volver_a_pedir')->where('destino_aprobado', false)->first();
-            if ($registroVolverAPedir) {
-                $esPedido = !empty($registroVolverAPedir->pedido_origen);
-                $idOrigen = $esPedido ? $registroVolverAPedir->pedido_origen : $registroVolverAPedir->cotizacion_origen;
-
-                $origenEntidad = $esPedido ? GpPedido::find($idOrigen) : GpCotizacion::find($idOrigen);
-                $desde = $esPedido ? 'pedido' : 'cotizacion';
-                $prefijo = $esPedido ? 'PED' : 'COT';
-                $codigoVisual = $prefijo . str_pad($idOrigen, 8, "0", STR_PAD_LEFT);
-
-                $fechaTxt = optional($origenEntidad)->created_at
-                    ? optional($origenEntidad)->created_at->format('Y-m-d')
-                    : 'S/F';
-
-                if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial === 'yes' && $origenEntidad->aprobado_comercial !== 'yes') {
-                    $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-                        "Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt"
-                    );
-                }
-
-                // 2. Motivo por ser copia (siempre se agrega si existe el registro)
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-                    "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
-                );
-
-            }
+        $idRegistroCopiaInput = data_get($data, 'registro_copia');
+        if ($quoteOrigin) {
+            $registroVolverAPedir = GpRegistroCopia::where('cotizacion_destino', $quoteOrigin->id)
+                ->where('tipo', 'volver_a_pedir')
+                ->where('destino_aprobado', false)
+                ->first();
         }
+        if (!$registroVolverAPedir && $idRegistroCopiaInput) {
+            $registroVolverAPedir = GpRegistroCopia::where('id', $idRegistroCopiaInput)
+                ->where('tipo', 'volver_a_pedir')
+                ->where('destino_aprobado', false)
+                ->first();
+        }
+
+        if ($registroVolverAPedir) {
+            $esPedido = !empty($registroVolverAPedir->pedido_origen);
+            $idOrigen = $esPedido ? $registroVolverAPedir->pedido_origen : $registroVolverAPedir->cotizacion_origen;
+
+            $origenEntidad = $esPedido ? GpPedido::find($idOrigen) : GpCotizacion::find($idOrigen);
+            $desde = $esPedido ? 'pedido' : 'cotizacion';
+            $prefijo = $esPedido ? 'PED' : 'COT';
+            $codigoVisual = $prefijo . str_pad($idOrigen, 8, "0", STR_PAD_LEFT);
+
+            $fechaTxt = optional($origenEntidad)->created_at
+                ? optional($origenEntidad)->created_at->format('Y-m-d')
+                : 'S/F';
+
+            if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial === 'yes' && $origenEntidad->aprobado_comercial !== 'yes') {
+                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                    "Cotización desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt"
+                );
+            }
+
+            // 2. Motivo por ser copia (siempre se agrega si existe el registro)
+            $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
+                "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
+            );
+
+        }
+
 
 
         $nivelCliente = $this->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
@@ -1576,7 +1585,8 @@ class ApprovalService implements ApprovalServiceInterface
         return $quote;
     }
 
-    public function updateRegisterCopyApprovalComercialDestination($quoteId){
+    public function updateRegisterCopyApprovalComercialDestination($quoteId)
+    {
         $rgCopy = GpRegistroCopia::where('cotizacion_destino', $quoteId)->where('tipo', 'volver_a_pedir')->first();
         if (!$rgCopy) {
             return;
