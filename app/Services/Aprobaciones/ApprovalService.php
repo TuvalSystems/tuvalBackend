@@ -262,13 +262,6 @@ class ApprovalService implements ApprovalServiceInterface
                     "Requiere aprobación comercial. La Cotización del pedido es desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt"
                 );
             }
-
-            // 2. Motivo por ser copia (siempre se agrega si existe el registro)
-            // if(!$rgCopy->destino_aprobado){
-            //     $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-            //         "Requiere aprobación comercial. La Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
-            //     );
-            // }
         }
 
 
@@ -343,7 +336,7 @@ class ApprovalService implements ApprovalServiceInterface
 
             // A. Validación de Descuento
             // Comparamos directamente contra la variable normalizada
-            if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
+            if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente && $detalle['descuento'] != $descuentoOriginalReal) {
                 // $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - ID: " . ($detailId ?? 'Nuevo'));
                 $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
 
