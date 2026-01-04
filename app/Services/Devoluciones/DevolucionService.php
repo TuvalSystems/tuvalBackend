@@ -607,10 +607,10 @@ class DevolucionService implements DevolucionServiceInterface
         $sucursal = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
         $data['sucursal'] = $sucursal;
 
-        $data['subtotal'] = 0;
-        $data['descuento'] = 0;
-        $data['subtotalmenosdescuento'] = 0;
-        $data['iva'] = 0;
+        $data['subtotal'] = 0.00;
+        $data['descuento'] = 0.00;
+        $data['subtotalmenosdescuento'] = 0.00;
+        $data['iva'] = 0.00;
 
         $detalleGrouped = collect($detalleDev)->groupBy(function ($det) {
             return $det['detalle_id'] . '_' . $det['ART_CODIGO'];
@@ -636,7 +636,7 @@ class DevolucionService implements DevolucionServiceInterface
                 continue;
             }
 
-            
+
             $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
             $lineaSubtotal = $lineNet + $lineaDiscount;
@@ -683,6 +683,7 @@ class DevolucionService implements DevolucionServiceInterface
         $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
         $data['devolucion'] = $devolucion;
         $data['pedido'] = $pedido;
+        $typeDev = $devolucion['tipo_devolucion'] == 'total' ? 'total' : 'parcial';
 
         $cliente = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
         $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
@@ -692,10 +693,10 @@ class DevolucionService implements DevolucionServiceInterface
         $sucursal = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
         $data['sucursal'] = $sucursal;
 
-        $data['subtotal'] = 0;
-        $data['descuento'] = 0;
-        $data['subtotalmenosdescuento'] = 0;
-        $data['iva'] = 0;
+        $data['subtotal'] = 0.00;
+        $data['descuento'] = 0.00;
+        $data['subtotalmenosdescuento'] = 0.00;
+        $data['iva'] = 0.00;
 
         $detalleGrouped = collect($detalleDev)->groupBy(function ($det) {
             return $det['detalle_id'] . '_' . $det['ART_CODIGO'];
@@ -708,8 +709,8 @@ class DevolucionService implements DevolucionServiceInterface
         })->sortBy('detalle_id')->values();
 
         foreach ($detalleGrouped as $art) {
-            $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
-            $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
+            $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0.00;
+            $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0.00;
         }
         foreach ($detalleGrouped as $key => $art) {
 
@@ -734,7 +735,7 @@ class DevolucionService implements DevolucionServiceInterface
         $data['subtotalmenosdescuento'] = (float) number_format($data['subtotalmenosdescuento'], 2, '.', '');
         $data['descuento'] = (float) number_format($data['descuento'], 2, '.', '');
         $data['iva'] = (float) number_format($data['iva'], 2, '.', '');
-        $data['total'] = number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
+        $data['total'] = $typeDev == 'total' ? $pedido['total'] : number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
 
 
         $data['detalle'] = $detalleGrouped;
