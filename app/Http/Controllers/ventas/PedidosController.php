@@ -20,7 +20,6 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use DomainException;
@@ -37,7 +36,6 @@ class PedidosController extends Controller
     public function __construct(
         protected readonly ApiGpService $apiGp,
         protected readonly OrderServiceInterface $orderService,
-        protected readonly ApprovalServiceInterface $approvalService,
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly FunctionsServiceInterface $functionService,
 
