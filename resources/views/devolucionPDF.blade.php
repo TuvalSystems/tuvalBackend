@@ -324,7 +324,7 @@
                         </tr>
                         <tr>
                             <td><b>SUBTOTAL - DESCUENTO: </b></td>
-                            <td class="text-right">${{ $subtotalmenosdescuento }}</td>
+                            <td class="text-right">${{ number_format($subtotalmenosdescuento, 2, '.', '') }}</td>
                         </tr>
                         @foreach($sumaimpuesto as $key => $impuesto)
                             <tr>

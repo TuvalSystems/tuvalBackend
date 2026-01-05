@@ -2,23 +2,42 @@
 
 namespace App\Providers\Service;
 
+use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Devoluciones\EntryService;
 use App\Services\Devoluciones\DevolucionService;
+use App\Services\Devoluciones\ReturnCancellationService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
+use App\Services\Devoluciones\Contracts\ReturnCancellationServiceInterface;
+use App\Services\Devoluciones\DevolucionJobService;
+use App\Services\Devoluciones\ReInvoiceService;
 
-class DevolucionServiceProvider extends ServiceProvider
+class DevolucionServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
-    public function register()
+
+    public array $singletons = [
+        EntryServiceInterface::class => EntryService::class,
+        DevolucionServiceInterface::class => DevolucionService::class,
+        ReturnCancellationServiceInterface::class => ReturnCancellationService::class,
+        ReInvoiceServiceInterface::class => ReInvoiceService::class,
+
+        DevolucionJobService::class
+    ];
+    // public function register()
+    // {
+    //     $this->app->singleton(EntryServiceInterface::class, EntryService::class);
+    //     $this->app->singleton(DevolucionServiceInterface::class, DevolucionService::class);
+    //     $this->app->singleton(ReturnCancellationServiceInterface::class, ReturnCancellationService::class);
+    // }
+
+    public function provides()
     {
-        $this->app->singleton(EntryServiceInterface::class, EntryService::class);
-        $this->app->singleton(DevolucionServiceInterface::class, DevolucionService::class);
+        return array_keys($this->singletons);
     }
 
 
-    public function boot() {}
 
-   
 }

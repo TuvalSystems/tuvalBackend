@@ -268,7 +268,7 @@
                     @endforeach
                     <tr>
                         <td><b>TOTAL: </b></td>
-                        <td class="text-right">${{ $total }}</td>
+                        <td class="text-right">${{ $totalCotizacion }}</td>
                     </tr>
                 </table>
             </div>

@@ -42,6 +42,8 @@ class ApiGpEndpoints
     public const COBROS_CONSULTAR_LISTA_VENCIDOS = 'api/cobros/consultar-lista-documentos-vencidos-cliente';
     public const COBROS_CONSULTAR_LISTA_SIN_SOPORTE = 'api/cobros/consultar-lista-documentos-sin-soporte-cliente';
 
+    public const COBROS_CONSULTA_DIAS_FERIADOS = 'api/cobros/consultar-dias-feriado';
+
     // ---
     // 📄 5. Endpoints de Transacciones ( Recibos, Facturación )
     // ---

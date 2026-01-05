@@ -47,4 +47,6 @@ interface ApprovalServiceInterface
     public function getAllQuotesPendingApprovals($ptoVta);
     public function getAllOrdersPendingApprovals($ptoVta);
 
+    /**  aprobacicon comercial de cotizacion */
+    public function approveComercialQuote($id, $user);
 }

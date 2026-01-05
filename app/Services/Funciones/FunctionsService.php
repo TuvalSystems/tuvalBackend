@@ -21,21 +21,15 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 class FunctionsService implements FunctionsServiceInterface
 {
 
-    protected $orderRepository;
-    protected $apiGpService;
-    protected $stockWarehouseService;
-    protected $apiBillingService;
+
 
     public function __construct(
-        OrderRepositoryInterface $orderRepository,
-        ApiGpService $apiGpService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiBillingService $apiBillingService,
+        protected readonly OrderRepositoryInterface $orderRepository,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiBillingService $apiBillingService,
     ) {
-        $this->orderRepository = $orderRepository;
-        $this->apiGpService = $apiGpService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiBillingService = $apiBillingService;
+
     }
 
     public function getItemProviders($pedidoId, $item, $pendientes = false, $existentes = false): array
@@ -103,21 +97,18 @@ class FunctionsService implements FunctionsServiceInterface
         $netSubtotal = 0.0;
         $totalIva = 0.0;
 
-         $subtotal = 0.0;
-        $totalDiscount = 0.0;
-        $netSubtotal = 0.0;
-        $totalIva = 0.0;
-
         foreach ($detalle as $item) {
             $valorUnitario = (float) $item->ART_VALOR;
             $cantidad = (float) $item->ART_CANTIDAD;
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-            $lineaSubtotal = $valorUnitario * $cantidad;
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            // $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaSubtotal = $lineNet + $lineaDiscount;
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;
@@ -125,16 +116,15 @@ class FunctionsService implements FunctionsServiceInterface
             $totalIva += $lineaIva;
 
             $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = round($lineaIva, 2);
+            $item->ART_IVA = $lineaIva;
             $item->save();
         }
-        $total = $netSubtotal + $totalIva;
 
         $order->subtotal = round($subtotal, 2);
         $order->descuento = round($totalDiscount, 2);
         $order->subtotalmenosdescuento = round($netSubtotal, 2);
         $order->iva = round($totalIva, 2);
-        $order->total = round($total, 2);
+        $order->total = round($netSubtotal + $totalIva, 2);
         $order->save();
     }
 

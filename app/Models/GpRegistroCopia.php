@@ -28,6 +28,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereUserId($value)
+ * @property int $destino_aprobado
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereDestinoAprobado($value)
  * @mixin \Eloquent
  */
 class GpRegistroCopia extends Model
@@ -40,5 +42,6 @@ class GpRegistroCopia extends Model
         'user_id',
         'USERID',
         'tipo',
+        'destino_aprobado'
     ];
 }

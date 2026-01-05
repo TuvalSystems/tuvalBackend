@@ -2,6 +2,7 @@
 
 namespace App\Providers\Service\Builder;
 
+use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Builders\Venta\OrderBuilder;
 use App\Services\Builders\Venta\ReservedBuilder;
@@ -16,44 +17,62 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
 
-class BodegaBuilderServiceProvider extends ServiceProvider
+class BodegaBuilderServiceProvider extends ServiceProvider implements DeferrableProvider
 {
+    
+
+
+    public array $singletons = [
+        // Bodega
+        DeliveryNoteParamsBuilderInterface::class            => DeliveryNoteParamsBuilder::class,
+        ReservationDeliveryNoteParamsBuilderInterface::class => ReservationDeliveryNoteParamsBuilder::class,
+
+        // Devoluciones (Este es el que usa tu Job)
+        DevolucionParamsBuilderInterface::class              => DevolucionParamsBuilder::class,
+
+        // Venta
+        QuotationBuilderInterface::class                     => QuotationBuilder::class,
+        OrderBuilderInterface::class                         => OrderBuilder::class,
+        ReservedBuilderInterface::class                      => ReservedBuilder::class,
+    ];
+
     /**
-     * Register services.
-     *
-     * @return void
+     * Laravel cargará este archivo solo cuando se solicite uno de estos Builders.
      */
-    public function register()
+    public function provides()
     {
-        $this->app->singleton(
-            DeliveryNoteParamsBuilderInterface::class,
-            DeliveryNoteParamsBuilder::class
-        );
-
-        $this->app->singleton(
-            DevolucionParamsBuilderInterface::class,
-            DevolucionParamsBuilder::class
-        );
-
-        /** venta */
-        $this->app->singleton(
-            QuotationBuilderInterface::class,
-            QuotationBuilder::class
-        );
-
-
-        $this->app->singleton(
-            OrderBuilderInterface::class,
-            OrderBuilder::class
-        );
-
-        $this->app->singleton(ReservedBuilderInterface::class, ReservedBuilder::class);
-        $this->app->singleton(ReservationDeliveryNoteParamsBuilderInterface::class, ReservationDeliveryNoteParamsBuilder::class);
+        return array_keys($this->singletons);
     }
 
+    // public function register()
+    // {
+    //     $this->app->singleton(
+    //         DeliveryNoteParamsBuilderInterface::class,
+    //         DeliveryNoteParamsBuilder::class
+    //     );
+
+    //     $this->app->singleton(
+    //         DevolucionParamsBuilderInterface::class,
+    //         DevolucionParamsBuilder::class
+    //     );
+
+    //     /** venta */
+    //     $this->app->singleton(
+    //         QuotationBuilderInterface::class,
+    //         QuotationBuilder::class
+    //     );
 
 
-    public function boot()
-    {
-    }
+    //     $this->app->singleton(
+    //         OrderBuilderInterface::class,
+    //         OrderBuilder::class
+    //     );
+
+    //     $this->app->singleton(ReservedBuilderInterface::class, ReservedBuilder::class);
+    //     $this->app->singleton(ReservationDeliveryNoteParamsBuilderInterface::class, ReservationDeliveryNoteParamsBuilder::class);
+    // }
+
+
+
+   
 }

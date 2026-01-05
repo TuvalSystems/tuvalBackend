@@ -2,71 +2,63 @@
 
 namespace App\Services\Devoluciones;
 
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpOrdenDespacho;
+use Exception;
+use Carbon\Carbon;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Models\GpUsuario;
+use App\Models\GpCliente;
 use App\Models\GpVendedor;
-use App\Services\Api\ApiSalesService;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
+use App\Models\GpClienteSucursal;
+use App\Services\Api\ApiGpService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Models\GpPedidoDetalleStock;
 use Illuminate\Support\Facades\Auth;
+use App\Services\Api\ApiSalesService;
+use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\devoluciones\GpDevoluciones;
-use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
-use App\Models\GpPuntoVenta;
-use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
-use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
-use App\Services\Api\ApiGpService;
-use App\Services\Api\ApiSeedBellingService;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
-use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Bodegas\Contracts\DispatchServiceInterface;
+use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
+use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
+use App\Services\Devoluciones\Contracts\ReturnCancellationServiceInterface;
+use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 
 class DevolucionService implements DevolucionServiceInterface
 {
     use DevolucionesCriteriosTrait,
         JsonResponseTrait;
 
-    protected $apiGpReturnsIntegrationService;
-    protected $apiSales;
-    protected $apiSeedBelling;
-    protected $approvalService;
-    protected $devolucionRepository;
-    protected $orderRepository;
-    protected $devolucionBuilder;
-    protected $apiGpService;
+
 
     public function __construct(
-
-        ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
-        ApiSalesService $apiSales,
-        ApiSeedBellingService $apiSeedBelling,
-        ApprovalServiceInterface $approvalService,
-        DevolucionRepositoryInterface $devolucionRepository,
-        OrderRepositoryInterface $orderRepository,
-        DevolucionParamsBuilderInterface $devolucionBuilder,
-        ApiGpService $apiGpService
+        protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        protected readonly ApiSalesService $apiSales,
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly DevolucionRepositoryInterface $devolucionRepository,
+        protected readonly OrderRepositoryInterface $orderRepository,
+        protected readonly DevolucionParamsBuilderInterface $devolucionBuilder,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly DispatchServiceInterface $dispatchService,
+        protected readonly ReturnCancellationServiceInterface $anulationService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly EntryServiceInterface $entryService
     ) {
-        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
-        $this->apiSales = $apiSales;
-        $this->apiSeedBelling = $apiSeedBelling;
-        $this->approvalService = $approvalService;
-        $this->devolucionRepository = $devolucionRepository;
-        $this->orderRepository = $orderRepository;
-        $this->devolucionBuilder = $devolucionBuilder;
-        $this->apiGpService = $apiGpService;
     }
 
 
@@ -80,38 +72,140 @@ class DevolucionService implements DevolucionServiceInterface
     {
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
             ->where('cliente_id', $cienteId)
-            ->where('estado', 'facturado')
-            ->orWhere('estado', 'anulada')
+            ->whereIn('estado', ['facturado', 'anulada'])
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
     }
 
 
+
     /**
-     * PROCESO DE ANULACION DE DEVOLUCION
+     * ✅ Proceso de enviar devolución
+     *
+     * @param array $data
+     * @return GpDevoluciones
      */
 
-    public function anularDevolucion($pedido, $devolucion)
+    public function handleDevolutionTransaction($data)
     {
-        $pedido = GpPedido::find($pedido['id']);
-        if ($this->isInvoiceAlreadyVoided($pedido, $devolucion)) {
-            return $this->buildErrorResponse('La factura ya fue anulada', 400);
+        $devolucion = Arr::get($data, 'devolucion');
+        $pedidoDev = Arr::get($data, 'pedido');
+        $detallePedido = Arr::get($data, 'detallepedido');
+
+        $orderId = Arr::get($data, 'pedido.id');
+        $order = GpPedido::find($orderId);
+        if (!$order) {
+            abort(404, 'Pedido no encontrado');
         }
-        return $this->processCancellation($pedido, $devolucion);
+
+        if ($order->despacho_en_proceso && !$order->despachado) {
+            abort(400, 'El pedido esta en proceso de despacho, no se puede enviar la devolucion');
+        }
+
+        $detailInfo = [
+            'devolucion' => $devolucion,
+            'pedido' => $pedidoDev,
+            'detalle' => [],
+        ];
+
+        foreach ($detallePedido as $det) {
+            $isRefacturacion = $devolucion['volver_a_facturar'];
+            $isSelected = ($det['seleccionado'] ?? 0) > 0;
+            if ($isRefacturacion || $isSelected) {
+                $detailInfo['detalle'][] = $det;
+            }
+        }
+
+        $itemsDespachados = array_filter($detallePedido, function ($detalle) {
+            return ($detalle['despacho'] ?? false) === true && ($detalle['despachado'] ?? 0) > 0;
+        });
+
+        $detailInfo['pedido']['despachado'] = count($itemsDespachados) > 0 ? 1 : 0;
+
+
+        $newDev = DB::transaction(function () use ($detailInfo) {
+            if (count($detailInfo['detalle']) > 0) {
+                return $this->executeReturn($detailInfo);
+            }
+            throw new Exception("No hay ítems válidos para generar la devolución.");
+        });
+
+        try {
+            $this->dispatchService->cancelDispatchIfEmptyPicking($orderId);
+            $this->processInvoiceAnulation($data, $newDev);
+        } catch (Exception $e) {
+            Log::error("Error De proceso processInvoiceAnulation o cancelDispatchIfEmptyPicking: Devolución {$newDev->id} creada, pero falló la anulación: " . $e->getMessage());
+            if ($newDev->estado !== 'no_procesado') {
+                $newDev->update([
+                    'estado' => 'no_procesado',
+                    'motivo_no_anulada' => "Fallo en proceso: " . $e->getMessage()
+                ]);
+            }
+            throw $e;
+        }
+        return $newDev->refresh();
     }
 
-    public function isInvoiceAlreadyVoided($pedido, $devolucion)
+
+
+
+
+    public function executeReturn($data): GpDevoluciones
     {
-        return $this->devolucionRepository->isInvoiceAlreadyVoided($pedido, $devolucion);
+        $user = Auth::user();
+        $gpUser = GpUsuario::where('id', $user->id)->first();
+        $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
+        $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
+        $calculatedData = [
+            'status' => $requiredApproval === 'yes' ? 'espera' : 'solicitado',
+            'requiredApproval' => $requiredApproval,
+            'USERID' => $gpUser->USERID,
+            'userId' => $gpUser->id,
+            'canNullify' => $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status),
+            'anulacionHabilitada' => $this->canBeAnulledByLimitDate(Arr::get($data, 'pedido', [])),
+            'isDispatched' => $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detalle', []), Arr::get($data, 'devolucion', [])),
+        ];
+        $devolucion = $this->devolucionBuilder->formPayloadDevolutionHeader($data, $calculatedData);
+        $devolucion->save();
+        $this->storeReturnDetail($devolucion->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detalle', []));
+        return $devolucion;
     }
+
+    public function processInvoiceAnulation($data, $newDev)
+    {
+        $isCleanOrder = $this->devolucionRepository->isOrderNotDispatchedOrProcessing($data['pedido']);
+        $hasOtherReturns = $this->devolucionRepository->hasOtherActiveReturns($data['pedido'], $newDev);
+        $validateItemsL = $this->devolucionRepository->validateItemLDetailInvoice($newDev);
+        $hasPartialDispatch = $this->devolucionRepository->hasPartiallyDispatchedItems($newDev);
+
+        $shouldAnulated = (
+            $isCleanOrder &&
+            ($data['devolucion']['tipo_devolucion'] ?? '') === "total" &&
+            !$hasOtherReturns &&
+            !$validateItemsL &&
+            !$hasPartialDispatch &&
+            ($data['devolucion']['volver_a_facturar'] ?? false) === false &&
+            ($newDev->permite_anulacion === true && $newDev->anulacion_habilitada === true)
+        );
+
+        if ($shouldAnulated) {
+            $this->anulationService->execute($data['pedido'], $newDev);
+        }
+    }
+
+
+    /**
+     * validaciones para el proceso de anulacion
+     * */
+
     public function validateInvoiceNotDispatchOrInProcess($pedido)
     {
-        return $this->devolucionRepository->validateInvoiceNotDispatchOrInProcess($pedido);
+        return $this->devolucionRepository->isOrderNotDispatchedOrProcessing($pedido);
     }
 
     public function countsReturnsByOrders($pedido, $devolucion)
     {
 
-        return $this->devolucionRepository->countsReturnsByOrders($pedido, $devolucion);
+        return $this->devolucionRepository->hasOtherActiveReturns($pedido, $devolucion);
     }
 
     public function validateItemLDetailInvoice($devolucion)
@@ -121,7 +215,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function validateItemPartialDispatch($devolucion)
     {
-        return $this->devolucionRepository->validateItemsPartialDispatch($devolucion);
+        return $this->devolucionRepository->hasPartiallyDispatchedItems($devolucion);
     }
 
     public function canBeAnulledByLimitDate($pedido)
@@ -146,253 +240,7 @@ class DevolucionService implements DevolucionServiceInterface
         return now()->lte($fechaLimite);
     }
 
-    public function processCancellation($order, $devolucion)
-    {
-        // VALIDACION DE CLAVE DE ACCESO
-        $accessKeyResponse = $this->apiGetDocumentAccessKey($order);
-        $this->saveAccessKeyInfo($order, $accessKeyResponse, $devolucion);
-        if (!$this->isValidAccessKey($accessKeyResponse)) {
-            throw new \Exception('La devolución es válida para anulación, pero ' . ' ' . $accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso');
-            // return $this->buildErrorResponse($accessKeyResponse['message'] ?? 'Error al obtener la clave de acceso', 400);
-        }
 
-        //VALIDACION DE ANULACION DE FACTURA GP
-        $cancelResponse = $this->apiInvalidateGpVoucher($order);
-        if ($cancelResponse['success'] === false) {
-            $this->saveBaseCancellationInfo($order, $cancelResponse, $devolucion);
-
-            throw new \Exception('La devolución es válida para anulación, pero ' . $cancelResponse['message'] ?? 'Error al anular la factura');
-            // return $this->buildErrorResponse($cancelResponse['message'] ?? 'Error al anular la factura', 400);
-        }
-        $this->saveFailedCancellation($order, $cancelResponse, $devolucion);
-        $this->sendSeedBilling($order, $accessKeyResponse['claveAcceso'], $devolucion);
-        return $this->buildSuccessResponse('Factura anulada correctamente', 200);
-    }
-
-    public function saveBaseCancellationInfo($order, $cancelResponse, $devolucion)
-    {
-
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id],
-            [
-                'devolucion_id' => $devolucion['id'],
-                'pedido' => $order->pedido,
-                'factura' => $order->factura,
-                'msj_anulacion_gp' => $cancelResponse['message'],
-                'diario_response_gp' => $cancelResponse['diario'] ?? null,
-                'estado' => 'pendiente',
-            ]
-        );
-    }
-
-    public function saveAccessKeyInfo($order, $accessKeyResponse, $devolucion)
-    {
-
-        $data = [
-            'resp_document' => $accessKeyResponse['message'] ?? null,
-            'pedido' => $order->pedido,
-            'estado' => 'pendiente',
-        ];
-
-        // si existe la clave de acceso
-        if (!empty($accessKeyResponse['claveAcceso'])) {
-            $data['claveacceso'] = $accessKeyResponse['claveAcceso'];
-            $data['documento_id'] = $accessKeyResponse['id'];
-            $data['pedido'] = $order->pedido;
-            $data['estado'] = 'pendiente';
-        }
-
-        // si existe el mensaje de error y no existe la clave de acceso
-
-
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id, 'factura' => $order->factura, 'devolucion_id' => $devolucion['id']],
-            $data
-        );
-    }
-
-    private function isValidAccessKey($accessKeyResponse): bool
-    {
-        return !isset($accessKeyResponse['success'])
-            && !empty($accessKeyResponse['claveAcceso']);
-    }
-    private function sendSeedBilling($order, string $accessKey, $devolucion): void
-    {
-        $response = $this->apiResponseSeedBelling($accessKey);
-
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id, 'factura' => $order->factura, 'devolucion_id' => $devolucion['id']],
-            [
-                'resp_seedbilling' => $response['respuesta'] ?? null,
-                'estado' => 'enviada',
-            ]
-        );
-
-        $this->apiUpdateTbhFacAnuAutorize($order->factura); //me actualiza el estado de la factura anulada
-        $this->updateStatusDevolutions($order, $devolucion); //me actualiza el estado de la devolucion
-        $this->updateStatusOrders($order); //me actualiza el estado del pedido
-        $this->updatedStatusOrderDispatch($order); //me actualiza el estado del despacho
-        $this->updateDevolucionWithSelectedQuantity($devolucion); //me actualiza el devuelto con el seleccionado
-        $this->updateDetailOrderStock($order, $devolucion); //me actualiza el detalle pedido stock de cada item
-    }
-
-    private function saveFailedCancellation($order, array $cancelResponse, $devolucion): void
-    {
-        GpFacturaAnulada::updateOrCreate(
-            ['pedido_id' => $order->id],
-            [
-                'devolucion_id' => $devolucion['id'],
-                'pedido' => $order->pedido,
-                'factura' => $order->factura,
-                'msj_anulacion_gp' => $cancelResponse['message'],
-                'diario_response_gp' => $cancelResponse['diario'] ?? null,
-                'estado' => 'pendiente',
-            ]
-        );
-    }
-
-    public function updateStatusDevolutions($order, $devolucion)
-    {
-        GpDevoluciones::where('pedido_id', $order->id)
-            ->where('id', $devolucion->id ?? $devolucion['id'])
-            ->update(['estado' => 'anulada']);
-    }
-
-    public function updateStatusOrders($order)
-    {
-        GpPedido::where('id', $order->id)
-            ->update(['estado' => 'anulada']);
-    }
-    public function updatedStatusOrderDispatch($order)
-    {
-        GpOrdenDespacho::where('pedido_id', $order->id)
-            ->update(['estado' => 'cancelada']);
-    }
-
-
-    public function apiInvalidateGpVoucher($pedido)
-    {
-        return $this->apiSales->invalidateGpVoucher(array(
-            'numeroDocumento' => $pedido->factura,
-            'cliente' => $pedido->CLI_RUC
-        ));
-    }
-
-    public function apiGetDocumentAccessKey($pedido)
-    {
-        return $this->apiSales->getDocumentAccesKey(array(
-            'numdoc' => $pedido->factura,
-        ));
-    }
-
-    public function apiResponseSeedBelling($accesCode)
-    {
-
-        return $this->apiSeedBelling->anularComprobante(array(
-            'claveAcceso' => $accesCode,
-        ));
-    }
-
-    public function apiUpdateTbhFacAnuAutorize($factura)
-    {
-        $this->apiSales->updatedStatusDocumentGp(array(
-            'numdoc' => $factura,
-        ));
-    }
-
-    public function updateDetailOrderStock($order, $devolucion)
-    {
-        if ($devolucion['rebajado'] || $devolucion->rebajado) {
-            return;
-        }
-        $pedidoId = $order->id;
-        $bodega = $order->BOD_BODEGA;
-        $actualizarStock = !$devolucion->despachado;
-        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        foreach ($detalles as $key => $value) {
-            $articulo = GpPedidoDetalle::find($value->detalle_id);
-
-            if (!$articulo || $articulo->pedido_id !== $pedidoId) {
-                continue;
-            }
-
-            $articulo->devuelto += $value->devuelto;
-            $articulo->save();
-            if ($actualizarStock) {
-                $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
-                    ->where('STO_ART_BODEGA', $bodega)
-                    ->first();
-                if ($stock) {
-                    $stock->reservado = max(0, $stock->reservado - $value->devuelto);
-                    $stock->save();
-                }
-            }
-        }
-        $devolucion->rebajado = true;
-        $devolucion->save();
-    }
-
-    public function updateDevolucionWithSelectedQuantity($devolucion)
-    {
-        $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
-        $afectados = DB::table('gp_devoluciones_detalles')
-            ->where('devolucion_id', $devolucion->id)
-            // ->where('despachado_parcial', 0)
-            ->update([
-                'devuelto' => DB::raw("`$origen`")
-            ]);
-        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado anulada");
-        return $afectados;
-    }
-
-
-    /**
-     * ✅ Ejecuta la devolución de un pedido.
-     *
-     * @param array $data
-     * @return GpDevoluciones
-     */
-
-    public function executeReturn($data): GpDevoluciones
-    {
-        $user = Auth::user();
-        $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
-
-        $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
-
-        $lastReturn = GpDevoluciones::latest('id')->first();
-        $nextId = $lastReturn?->id + 1 ?? 1;
-
-
-        $return = new GpDevoluciones();
-        $return->devolucion = $this->generateReturnCode($nextId);
-        $return->estado = $status;
-        $return->pedido_id = Arr::get($data, 'pedido.id');
-        $return->cliente_id = Arr::get($data, 'pedido.cliente_id');
-        $return->pedido = Arr::get($data, 'pedido.pedido');
-        $return->factura = Arr::get($data, 'pedido.factura');
-        $return->volver_a_facturar = Arr::get($data, 'devolucion.volver_a_facturar');
-        $return->tipo_devolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $return->despachado = $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []), Arr::get($data, 'devolucion', []));
-        $return->cliente_volver_a_facturar_id = Arr::get($data, 'devolucion.cliente_volver_a_facturar_id');
-        $return->user_id = $user->id;
-        $return->USERID = $user->USERID;
-        $return->sucursal_id = Arr::get($data, 'devolucion.sucursal_id');
-        $return->sucursal_facturacion_id = Arr::get($data, 'devolucion.sucursal_facturacion_id');
-        $return->motivo = Arr::get($data, 'devolucion.motivo');
-        $return->orden_de_compra = Arr::get($data, 'pedido.orden_de_compra');
-        $return->nota_cliente = Arr::get($data, 'pedido.nota_cliente');
-        $return->requiere_aprobacion = $requiredApproval;
-        $return->aprobado = 'no';
-        $return->impuesto = Arr::get($data, 'pedido.impuesto');
-        $return->observacion = Arr::get($data, 'devolucion.observacion');
-        $return->permite_anulacion = $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status);
-        $return->anulacion_habilitada = $this->canBeAnulledByLimitDate(Arr::get($data, 'pedido', []));
-        $return->save();
-
-        $this->storeReturnDetail($return->id, Arr::get($data, 'pedido', []), Arr::get($data, 'detallepedido', []));
-        return $return;
-    }
 
     // esta función verifica si el pedido tiene guías de remisión asociadas o no
     // y con eso determinamos si la devlucion pasa de despachado a no despachado
@@ -458,58 +306,22 @@ class DevolucionService implements DevolucionServiceInterface
         if (!$isTotalSolicitada) {
             return false;
         }
-        $response = $this->apiSales->getCheckoutPaymentInvoiceGp(
+        $response = $this->apiSales->validateGpInvoicePayments(
             array(
-                'numeroDocumento' => $pedido['factura'],
+                'numdoc' => $pedido['factura'],
                 'cliente' => $pedido['CLI_RUC']
             )
         );
+        $succes = data_get($response, 'success', false);
+        return (bool) $succes;
 
-        if (isset($response['success']) && $response['success'] === false) {
-            return true;
-        }
-        if (isset($response['documento']) && $response['documento'] === 'PAGOS') {
-            return false;
-        }
-        return true;
-    }
-
-    public function generateReturnCode(int $id): string
-    {
-        return 'DEV' . str_pad($id, 8, '0', STR_PAD_LEFT);
     }
 
     public function storeReturnDetail($returnId, $pedido, $details): void
     {
         foreach ($details as $item) {
-            $detail = new GpDevolucionesDetalle();
-            $detail->devolucion_id = $returnId;
-            $detail->detalle_id = Arr::get($item, 'id');
-            $detail->ART_CODIGO = Arr::get($item, 'ART_CODIGO');
-            $detail->ART_DESCRIPCION = Arr::get($item, 'ART_DESCRIPCION');
-            $detail->ART_DESCRIPCION_ORIGINAL = Arr::get($item, 'ART_DESCRIPCION_ORIGINAL');
-            $detail->CHECK_ALTERNATIVO = Arr::get($item, 'CHECK_ALTERNATIVO', 0);
-            $detail->ART_CODIGO_TRES_LETRAS = Arr::get($item, 'ART_CODIGO_TRES_LETRAS');
-            $detail->ART_DECIMAL_CANTIDAD = (int) Arr::get($item, 'ART_DECIMAL_CANTIDAD');
-            $detail->ART_PLAN_UMEDIDA = Arr::get($item, 'ART_PLAN_UMEDIDA');
-            $detail->ART_MARCA = Arr::get($item, 'ART_MARCA');
-            $detail->ART_MATERIAL = Arr::get($item, 'ART_MATERIAL');
-            $detail->ART_PESO = Arr::get($item, 'ART_PESO');
-            $detail->ART_TIPO_COMPRA = Arr::get($item, 'ART_TIPO_COMPRA');
-            $detail->ART_VALOR = (float) Arr::get($item, 'ART_VALOR');
-            $detail->ART_IVA = (float) Arr::get($item, 'ART_IVA');
-            $detail->ART_VALOR_ORIGINAL = (float) Arr::get($item, 'ART_VALOR_ORIGINAL');
-            $detail->ART_DESCUENTO = (float) Arr::get($item, 'ART_DESCUENTO');
-            $detail->ART_CANTIDAD = (float) Arr::get($item, 'ART_CANTIDAD');
-            $detail->ART_STOCK = (float) Arr::get($item, 'ART_STOCK');
-            $detail->ART_IMP_VTA = (float) Arr::get($item, 'ART_IMP_VTA');
-            $detail->ART_COSTO_PROMEDIO = (float) Arr::get($item, 'ART_COSTO_PROMEDIO');
-            $detail->descuento = (float) Arr::get($item, 'descuento');
-            $detail->descuento_original = (float) Arr::get($item, 'descuento_original');
-            $detail->modificador = (float) Arr::get($item, 'modificador');
-            $detail->seleccionado = (float) Arr::get($item, 'seleccionado');
-            $detail->disponible = (float) Arr::get($item, 'disponible');
-            $detail->despachado_parcial = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
+            $dispatched = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
+            $detail = $this->devolucionBuilder->formPayloadDevolutionDetail($returnId, $item, $dispatched);
             $detail->save();
         }
     }
@@ -571,32 +383,23 @@ class DevolucionService implements DevolucionServiceInterface
             $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id']);
         }
 
-        //test
-        $items = collect($detalle)
-            ->filter(fn($item) => $item['seleccionado'] > 0 || $item['devuelto'] > 0)
-            ->pluck('ART_CODIGO')
-            ->toArray();
-
-
         // $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
-        $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $pedido['BOD_BODEGA']);
-        $detalle = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
-            $compartimento = collect($responseCompartimentos)
-                ->first(function ($response) use ($item) {
-                    // 🔍 Verificar dentro de 'data' si existe el item
-                    return $response['data']['Item'] === $item['ART_CODIGO'];
-                });
-
-            $item['compartimientos'] = $compartimento['lista'] ?? [];
-            $item['compartimiento'] = $compartimento['data']['bin'] ?? null;
-
+        $detalleEnriquecido = collect($detalle)->map(function ($item) use ($pedido) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item['ART_CODIGO'],
+                'bodega' => $pedido->BOD_BODEGA
+            ]);
+            $bin = data_get($resp, 'detalle.compartimento', null);
+            $lista = data_get($resp, 'lista', []);
+            $item['compartimientos'] = $lista;
+            $item['compartimiento'] = $bin;
             return $item;
         })->toArray();
 
         $segmento = $this->getSegmentoCliente($pedido['CLI_RUC']);
         return response([
             'success' => true,
-            'detalle' => $detalle,
+            'detalle' => $detalleEnriquecido,
             'segmento' => $segmento
         ]);
     }
@@ -623,17 +426,17 @@ class DevolucionService implements DevolucionServiceInterface
         $clientId = Arr::get($order, 'cliente_id');
 
         if ($this->devolucionRepository->getReturnsAnulated($orderId)) {
-            return $this->buildErrorResponse('Esta factura se encuentra anulada en el SRI', 409);
+            abort(409, 'Esta factura se encuentra anulada en el SRI');
         }
 
         if ($this->devolucionRepository->getReturnsInProcess($orderId)) {
-            return $this->buildErrorResponse('Esta factura ya tiene una devolución en proceso', 409);
+            abort(409, 'Esta factura ya tiene una devolución en proceso');
         }
 
         $pedido = $this->devolucionRepository->getOrderbyId($orderId);
 
         if ($pedido->despacho_en_proceso && !$pedido->despachado) {
-            return $this->buildErrorResponse('El pedido está siendo despachado', 409);
+            abort(409, 'El pedido está siendo despachado');
         }
 
         $detalles = $this->orderRepository->getAllDetailsOrderById($orderId);
@@ -646,7 +449,7 @@ class DevolucionService implements DevolucionServiceInterface
         ]);
 
         if (!$grupoEconomico['success']) {
-            return $this->buildErrorResponse($grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente', 400);
+            abort(400, $grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente');
         }
 
         $clientesArr = collect($grupoEconomico['CGE_RUC'] ?? [])->map(function ($ruc) {
@@ -660,14 +463,13 @@ class DevolucionService implements DevolucionServiceInterface
         $detailFormat = $this->getDetailFormatPedido($detalles, $pedido);
         $devolucionAnterior = $this->devolucionRepository->getReturnsHistoryByOrderId($orderId);
 
-        return response([
-            'success' => true,
+        return [
             'detalle' => $detailFormat,
             'motivos' => $motivos,
             'clientes' => $clientesArr,
             'devolucion_anterior' => $devolucionAnterior,
-            'items_devueltos' => $this->validarItemNoTengaDespachoParcial($detalles),
-        ]);
+            'items_devueltos' => $this->validarItemNoTengaDespachoParcial($detalles)
+        ];
     }
 
     public function getDetailFormatPedido($detalles, $pedido)
@@ -792,6 +594,7 @@ class DevolucionService implements DevolucionServiceInterface
         $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
         $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
         $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalleDev)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
         $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
         $data['devolucion'] = $devolucion;
         $data['pedido'] = $pedido;
@@ -804,10 +607,96 @@ class DevolucionService implements DevolucionServiceInterface
         $sucursal = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
         $data['sucursal'] = $sucursal;
 
-        $data['subtotal'] = 0;
-        $data['descuento'] = 0;
-        $data['subtotalmenosdescuento'] = 0;
-        $data['iva'] = 0;
+        $data['subtotal'] = 0.00;
+        $data['descuento'] = 0.00;
+        $data['subtotalmenosdescuento'] = 0.00;
+        $data['iva'] = 0.00;
+
+        $detalleGrouped = collect($detalleDev)->groupBy(function ($det) {
+            return $det['detalle_id'] . '_' . $det['ART_CODIGO'];
+        })->map(function ($group) {
+            $base = $group->first();
+            $base['seleccionado'] = $group->sum('seleccionado');
+            $base['devuelto'] = $group->sum('devuelto');
+            $base['recibido'] = $group->sum('recibido');
+            return $base;
+        })->sortBy('detalle_id')->values();
+
+
+
+        foreach ($detalleGrouped as $key => $art) {
+            $valorUnitario = (float) $art['ART_VALOR'];
+            $cantidad = (float) $art['devuelto'];
+            $descuentoUnitario = (float) $art['ART_DESCUENTO'];
+            $impuestoPorcentaje = (float) $articulosImpuesto[$art['ART_CODIGO']] ?? 0;
+            $tipoImpuesto = $art['ART_IMP_VTA'];
+
+            if ($cantidad == 0) {
+                unset($detalleGrouped[$key]);
+                continue;
+            }
+
+
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
+            if (!isset($data['tipoimpuesto'][$tipoImpuesto])) {
+                $data['tipoimpuesto'][$tipoImpuesto] = 0;
+                $data['sumaimpuesto'][$tipoImpuesto] = 0;
+            }
+
+
+            $data['tipoimpuesto'][$art['ART_IMP_VTA']] += $lineaSubtotal;
+            $data['sumaimpuesto'][$art['ART_IMP_VTA']] += $lineaIva;
+
+            $data['subtotal'] += $lineaSubtotal;
+            $data['descuento'] += $lineaDiscount;
+            $data['subtotalmenosdescuento'] += $lineNet;
+            $data['iva'] += $lineaIva;
+        }
+
+        $data['subtotalmenosdescuento'] = (float) round($data['subtotalmenosdescuento'], 2);
+        $data['descuento'] = (float) round($data['descuento'], 2);
+        $data['iva'] = (float) round($data['iva'], 2);
+        $totalMatematico = $data['subtotalmenosdescuento'] + $data['iva'];
+        $data['total'] = number_format($totalMatematico, 2, '.', '');
+
+
+        $data['detalle'] = $detalleGrouped;
+        $data['PTO_VTA_DESCRIPCION'] = $puntoVenta->PTO_VTA_DESCRIPCION;
+        $data['direccion'] = $puntoVenta->PTO_VTA_DIRECCION_1 . ' ' . $puntoVenta->PTO_VTA_DIRECCION_2;
+        $data['telefono'] = $puntoVenta->PTO_VTA_FONO_1;
+        $data['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
+
+        return $data;
+    }
+
+    /** para facturas antes del 2026 */
+    public function printReturnOld($devolucion_id)
+    {
+        $data = [];
+        $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
+        $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
+        $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
+        $data['devolucion'] = $devolucion;
+        $data['pedido'] = $pedido;
+        $typeDev = $devolucion['tipo_devolucion'] == 'total' ? 'total' : 'parcial';
+
+        $cliente = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
+        $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
+        $cliente['CLI_CORREO_ELECT_SRI'] = $email[0];
+        $data['cliente'] = $cliente;
+
+        $sucursal = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
+        $data['sucursal'] = $sucursal;
+
+        $data['subtotal'] = 0.00;
+        $data['descuento'] = 0.00;
+        $data['subtotalmenosdescuento'] = 0.00;
+        $data['iva'] = 0.00;
 
         $detalleGrouped = collect($detalleDev)->groupBy(function ($det) {
             return $det['detalle_id'] . '_' . $det['ART_CODIGO'];
@@ -820,8 +709,8 @@ class DevolucionService implements DevolucionServiceInterface
         })->sortBy('detalle_id')->values();
 
         foreach ($detalleGrouped as $art) {
-            $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0;
-            $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0;
+            $data['tipoimpuesto'][$art['ART_IMP_VTA']] = 0.00;
+            $data['sumaimpuesto'][$art['ART_IMP_VTA']] = 0.00;
         }
         foreach ($detalleGrouped as $key => $art) {
 
@@ -846,7 +735,7 @@ class DevolucionService implements DevolucionServiceInterface
         $data['subtotalmenosdescuento'] = (float) number_format($data['subtotalmenosdescuento'], 2, '.', '');
         $data['descuento'] = (float) number_format($data['descuento'], 2, '.', '');
         $data['iva'] = (float) number_format($data['iva'], 2, '.', '');
-        $data['total'] = number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
+        $data['total'] = $typeDev == 'total' ? $pedido['total'] : number_format($data['subtotalmenosdescuento'] + $data['iva'], 2, '.', '');
 
 
         $data['detalle'] = $detalleGrouped;
@@ -857,6 +746,226 @@ class DevolucionService implements DevolucionServiceInterface
 
         return $data;
     }
+
+
+
+    /**  proceso de listar devoluciones por recibir
+     *
+     *
+     */
+
+    public function fetchReturnsToReceived($perPage = 10, $search, $sortBy = 'gd.created_at', $sortOrder = 'desc', $ptoVtaId): LengthAwarePaginator
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
+        $allowedSortFields = [
+            'gd.created_at',
+            'gd.devolucion',
+            'gd.pedido',
+            'gd.factura',
+            'gd.DOC_GENERADO',
+        ];
+
+        if (!in_array($sortBy, $allowedSortFields, true)) {
+            $sortBy = 'gd.created_at';
+        }
+
+        $sortOrder = strtolower($sortOrder) === 'desc' ? 'desc' : 'asc';
+
+        $query = GpDevoluciones::query()
+            ->from('gp_devoluciones as gd')
+            ->select([
+                'gd.id',
+                'gd.devolucion',
+                'gp.CLI_RUC',
+                'gp.CLI_RAZON_SOCIAL',
+                'gd.USERID',
+                'gp.PTO_VTA_DESCRIPCION',
+                'gd.created_at',
+                'gd.volver_a_facturar'
+            ])
+            ->join('gp_pedidos as gp', 'gd.pedido_id', '=', 'gp.id')
+            ->join('gp_punto_ventas as gpv', 'gp.PTO_VTA_ID', '=', 'gpv.PTO_VTA_ID')
+            ->whereIn('gd.estado', ['aprobado', 'solicitado'])
+            ->where('gd.despachado', '=', 1)
+            ->where('gp.BOD_BODEGA', '=', $bodega)
+            ->where(function ($p) {
+                $p->where('gd.tipo_devolucion', '!=', 'total')
+                    ->orWhere('gd.volver_a_facturar', '=', false);
+            });
+
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $columns = [
+                    'gd.devolucion',
+                    'gd.pedido',
+                    'gd.factura',
+                    'gd.DOC_GENERADO',
+                    'gp.CLI_RAZON_SOCIAL',
+                    'gp.CLI_RUC',
+                ];
+                foreach ($columns as $column) {
+                    $q->orWhere($column, 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+        return $query->paginate($perPage);
+    }
+
+
+
+
+    public function getReturnDetailToReceiveById(int $id)
+    {
+        $devolucion = GpDevoluciones::find($id);
+        $pedido = $this->devolucionRepository->getOrderbyId($devolucion->pedido_id);
+        $segmento = $this->getSegmentoCliente($pedido->CLI_RUC);
+        $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion->id, 1);
+        $devolucion->orderDespacho = $this->devolucionRepository->getDispatchOrder($devolucion->pedido_id);
+        $detalleEnriquecido = collect($detalle)->map(function ($item) use ($pedido) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item['ART_CODIGO'],
+                'bodega' => $pedido->BOD_BODEGA
+            ]);
+            $bin = data_get($resp, 'detalle.compartimento', null);
+            $lista = data_get($resp, 'lista', []);
+            $item['compartimientos'] = $lista;
+            $item['compartimiento'] = $bin;
+            return $item;
+        });
+
+        return [
+            'devolucion' => $devolucion,
+            'detalle' => $detalleEnriquecido,
+            'segmento' => $segmento,
+            'pedido' => $pedido
+        ];
+    }
+
+
+
+    public function generatePdfOrderStorageDevolution(array $data)
+    {
+        $header = data_get($data, 'header');
+        $detalle = data_get($data, 'details');
+
+        $viewData = [
+            'header' => $header,
+            'details' => $detalle,
+        ];
+
+        $html = view('pdf.orden-almacenamiento-devolucion', $viewData)->render();
+        $pdf = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+        $filename = 'orden-almacenamiento-' . $header['devolucion'] . '.pdf';
+
+        return [
+            'binary' => $binary,
+            'filename' => $filename,
+            'content_type' => 'application/pdf',
+        ];
+    }
+
+
+    public function receivedDevolutions(array $header, array $detail)
+    {
+        $auth = Auth::user();
+        $gpuser = GpUsuario::find($auth->id);
+
+        return DB::transaction(function () use ($gpuser, $header, $detail) {
+            $dev = GpDevoluciones::lockForUpdate()->find($header['id']);
+            if (!$dev) {
+                abort(409, 'devolución no encontrada');
+            }
+            if (in_array($dev->estado, ['recibido', 'procesado'])) {
+                abort(409, 'Esta devolución ya fue recibida en otra instancia');
+            }
+            foreach ($detail as $dt) {
+                $itmd = GpDevolucionesDetalle::lockForUpdate()->find($dt['id']);
+
+                if ($itmd) {
+                    $newDev = data_get($dt, 'new_devuelto', 0.00);
+                    $itmd->devuelto += $newDev;
+                    $itmd->recibido += $newDev;
+                    $itmd->compartimiento = $dt['compartimiento'];
+                    $itmd->USERID = $gpuser->USERID;
+                    $itmd->save();
+                }
+            }
+            $this->createRegisterHistoryReceivedDevolution($dev, $gpuser, $detail);
+            $dev->update([
+                'estado' => 'recibido',
+            ]);
+            return $dev;
+        });
+    }
+
+    public function createRegisterHistoryReceivedDevolution(GpDevoluciones $devolucion, GpUsuario $gpuser, array $detail)
+    {
+        $header = $this->devolucionBuilder->createRegisterHistortyHeaderDev($devolucion, $gpuser);
+        $header->save();
+        foreach ($detail as $dt) {
+            $newDt = $this->devolucionBuilder->createRegisterHistoryDetailDev($dt, $header);
+            $newDt->save();
+        }
+    }
+
+
+    public function dennyDevolucion(int $id)
+    {
+        $auth = Auth::user();
+        $gpuser = GpUsuario::find($auth->id);
+        return DB::transaction(function () use ($id, $gpuser) {
+            $devolucion = GpDevoluciones::lockForUpdate()->findOrFail($id);
+            $devolucion->update([
+                'estado' => 'rechazado',
+                'aprobado' => 'no',
+                'aprobador_id' => $gpuser->id
+            ]);
+
+            return $devolucion->refresh();
+        });
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -938,41 +1047,49 @@ class DevolucionService implements DevolucionServiceInterface
             ];
             $responseNtc = $this->apiGpReturnsIntegrationService->generateCreditNote($parameters);
             if ($responseNtc['success'] === false) {
-                return $this->buildErrorResponse($responseNtc['message'], 404);
+                throw new Exception($responseNtc['message']);
             }
 
             $consultaParams = [
                 'document' => $devolucion->devolucion,
                 'tipo' => 4,
             ];
-            $responseCreditNote = $this->apiGpReturnsIntegrationService->responseCreditNote($consultaParams);
-
-            if (!empty(trim($responseCreditNote['respuesta'][0]['documentoGenerado']))) {
-                $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
-                $devolucion->estado = 'procesado';
-                $devolucion->fecha_NC = now()->format('Y-m-d');
-                $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
-                $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
-            } else {
-                $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
-                $resultado = $this->buildErrorResponse('Error al generar la nota de crédito: ' . $devolucion->NC_VTA_MENSAJE, 500);
+            $respNc = $this->getApiResponseNoteCredit($consultaParams);
+            $successNc = data_get($respNc, 'success', false);
+            $docGenerado = data_get($respNc, 'data.docGenerado', null);
+            $responseCreditNote = data_get($respNc, 'data', []);
+            $fechaNc = data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
+            if (!$successNc || empty($docGenerado)) {
+                $msgError = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
+                $devolucion->NC_VTA_MENSAJE = $msgError;
+                $devolucion->save();
+                throw new Exception($msgError);
             }
-
+            $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
+            $devolucion->fecha_NC = Carbon::parse($fechaNc)->format('Y-m-d');
+            $devolucion->estado = 'procesado';
+            $devolucion->DOC_GENERADO = $docGenerado;
             $devolucion->save();
+            $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
             $this->totalDevoluciones($devolucion, $detalles);
-            return $resultado ?? $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito', 500);
+            return $devolucion;
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+    public function getApiResponseNoteCredit($params)
+    {
+        return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($params);
 
-    public function bajarDevolucionAPedido($devolucion, $detalles, $pedido)
+    }
+
+    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $order)
     {
         if ($devolucion->rebajado) {
             return;
         }
-        $pedidoId = $pedido->id;
-        $bodega = $pedido->BOD_BODEGA;
+        $pedidoId = $order->id;
+        $bodega = $order->BOD_BODEGA;
         $actualizarStock = !$devolucion->despachado;
         foreach ($detalles as $key => $value) {
             $articulo = GpPedidoDetalle::find($value->detalle_id);
@@ -998,15 +1115,14 @@ class DevolucionService implements DevolucionServiceInterface
         return $devolucion;
     }
 
-      public function totalDevoluciones($devolucion, $detalles)
+    public function totalDevoluciones($devolucion, $detalles)
     {
         $subtotal = 0.0;
-        $descuento = 0.0;
-        $subtotalMenosDescuento = 0.0;
-        $ivaTotal = 0.0;
+        $totalDiscount = 0.0;
+        $netSubtotal = 0.0;
+        $totalIva = 0.0;
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $detalles->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
 
-        $tipoImpuesto = [];
-        $sumaImpuesto = [];
         foreach ($detalles as $key => $detalle) {
             if ($detalle->devuelto == 0)
                 continue;
@@ -1014,30 +1130,27 @@ class DevolucionService implements DevolucionServiceInterface
             $cantidad = (float) $detalle->devuelto;
             $valorUnitario = (float) $detalle->ART_VALOR;
             $descuentoUnitario = (float) $detalle->ART_DESCUENTO;
-            $porcentajeImpuesto = (float) $detalle->ART_IMP_VTA;
+            $impuestoPorcentaje = (float) $articulosImpuesto[$detalle->ART_CODIGO] ?? 0;
 
-            $valorTotal = round($valorUnitario * $cantidad, 2);
-            $descuentoTotal = round($descuentoUnitario * $cantidad, 2);
-            $valorNeto = round(($valorUnitario - $descuentoTotal) * $cantidad, 2);
-            $iva = round($valorNeto * ($porcentajeImpuesto / 100), 2);
 
-            $tipoImpuesto[$porcentajeImpuesto] = ($tipoImpuesto[$porcentajeImpuesto] ?? 0) + $valorTotal;
-            $sumaImpuesto[$porcentajeImpuesto] = ($sumaImpuesto[$porcentajeImpuesto] ?? 0) + $iva;
 
-            $descuento += $descuentoTotal;
-            $subtotalMenosDescuento += $valorNeto;
-            $ivaTotal += $iva;
-        }
+            // $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
 
-        foreach ($tipoImpuesto as $valor) {
-            $subtotal += $valor;
+            $subtotal += $lineaSubtotal;
+            $totalDiscount += $lineaDiscount;
+            $netSubtotal += $lineNet;
+            $totalIva += $lineaIva;
         }
 
         $devolucion->subtotal = round($subtotal, 2);
-        $devolucion->descuento = round($descuento, 2);
-        $devolucion->subtotalmenosdescuento = round($subtotalMenosDescuento, 2);
-        $devolucion->iva = round($ivaTotal, 2);
-        $devolucion->total = round($subtotalMenosDescuento + $ivaTotal, 2);
+        $devolucion->descuento = round($totalDiscount, 2);
+        $devolucion->subtotalmenosdescuento = round($netSubtotal, 2);
+        $devolucion->iva = round($totalIva, 2);
+        $devolucion->total = round($netSubtotal + $totalIva, 2);
         $devolucion->save();
     }
 
@@ -1096,7 +1209,7 @@ class DevolucionService implements DevolucionServiceInterface
                 $devolucion->AJ_VTA_MENSAJE = $res1['message'];
                 $devolucion->devolucion_bodega = false;
                 $devolucion->save();
-                throw new \Exception('Ajuste : mensaje -  ' . ($res1['message'] ?? 'Error desconocido'));
+                throw new Exception('Ajuste : mensaje -  ' . ($res1['message'] ?? 'Error desconocido'));
             }
             $this->createDocumentDevolution($devolucion, $res1['data'], $userId);
             // 🟢 Actualización correcta
@@ -1123,33 +1236,31 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function responseCreditNoteDevolution($devolucionId)
     {
-        try {
-            DB::beginTransaction();
-            $devolucion = GpDevoluciones::find($devolucionId);
-            $pedido = GpPedido::find($devolucion->pedido_id);
-            $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-            $consultaParams = [
-                'document' => $devolucion->devolucion,
-                'tipo' => 4,
-            ];
-            $responseCreditNote = $this->apiGpReturnsIntegrationService->responseCreditNote($consultaParams);
-            if (!empty(trim($responseCreditNote['respuesta'][0]['documentoGenerado']))) {
-                $devolucion->DOC_GENERADO = $responseCreditNote['respuesta'][0]['documentoGenerado'];
-                $devolucion->estado = 'procesado';
-                $devolucion->fecha_NC = now()->format('Y-m-d');
-                $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
-                $resultado = $this->buildSuccessResponse('Nota de crédito generada correctamente', 200);
-            } else {
-                $devolucion->NC_VTA_MENSAJE = ($responseCreditNote['respuesta'][0]['mensaje'] ?? '') . ' - ' . ($responseCreditNote['respuesta'][0]['codigo'] ?? '');
-                $resultado = $this->buildErrorResponse('Error al generar la nota de crédito: ' . $devolucion->NC_VTA_MENSAJE, 500);
-            }
+        $devolucion = GpDevoluciones::find($devolucionId);
+        $pedido = GpPedido::find($devolucion->pedido_id);
+        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+        $consultaParams = [
+            'document' => $devolucion->devolucion,
+            'tipo' => 4,
+        ];
+        $respNc             = $this->getApiResponseNoteCredit($consultaParams);
+        $successNc          = data_get($respNc, 'success', false);
+        $docGenerado        = data_get($respNc, 'data.docGenerado', null);
+        $responseCreditNote = data_get($respNc, 'data', []);
+        $fechaNc            = data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
+        if (!$successNc || empty($docGenerado)) {
+            $msgError = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
+            $devolucion->NC_VTA_MENSAJE = $msgError;
             $devolucion->save();
-            $this->totalDevoluciones($devolucion, $detalles);
-            DB::commit();
-            return $resultado;
-        } catch (\Throwable $e) {
-            Log::error('Error al generar la nota de crédito: ' . $e->getMessage());
-            return $this->buildErrorResponse('Error ha ocurrido mientras se generaba la nota de credito de la devolucion' . $e->getMessage(), 500);
+            throw new Exception($msgError);
         }
+        $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
+        $devolucion->fecha_NC = Carbon::parse($fechaNc)->format('Y-m-d');
+        $devolucion->estado = 'procesado';
+        $devolucion->DOC_GENERADO = $docGenerado;
+        $devolucion->save();
+        $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
+        $this->totalDevoluciones($devolucion, $detalles);
+        return $devolucion->refresh();
     }
 }

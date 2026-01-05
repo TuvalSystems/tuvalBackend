@@ -14,9 +14,9 @@ class ApiGpReturnsIntegrationService extends ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::DEVOLUCIONES_GENERAR_NOTA_CREDITO, 'POST', $params, 'json');
     }
 
-    public function responseCreditNote($params)
+    public function retrieveCreditNoteResponse($params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::DEVOLUCIONES_RESPUESTA_NOTA_CREDITO, 'POST', $params,);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::DEVOLUCIONES_RESPUESTA_NOTA_CREDITO, 'GET', $params);
     }
 
     public function generateSalesReturn($params)

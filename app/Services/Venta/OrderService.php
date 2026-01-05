@@ -2,7 +2,6 @@
 
 namespace App\Services\Venta;
 
-use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -29,9 +28,9 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\reservas\GpCotizacionReservaDetalleLog;
 use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
-use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -47,43 +46,20 @@ use Illuminate\Support\Facades\Log;
 class OrderService implements OrderServiceInterface
 {
     use JsonResponseTrait;
-    protected ApiSalesService $apiSalesService;
-    protected ApiGpService $apiGpService;
-    protected ApprovalServiceInterface $approvalService;
 
-    protected OrderRepositoryInterface $orderRepository;
-    protected ApiBillingService $apiBillingService;
-    protected FunctionsServiceInterface $functionsService;
-    protected PurchaseReceiptServiceInterface $purchaseReceiptService;
-    protected $invoiceService;
-    protected $orderAndQuotationService;
-    protected $stockWarehouseService;
-    protected $orderBuilder;
 
     public function __construct(
-        ApiSalesService $apiSalesService,
-        ApiGpService $apiGpService,
-        ApprovalServiceInterface $approvalService,
-        OrderRepositoryInterface $orderRepository,
-        ApiBillingService $apiBillingService,
-        FunctionsServiceInterface $functionsService,
-        PurchaseReceiptServiceInterface $purchaseReceiptService,
-        InvoiceServiceInterface $invoiceService,
-        OrderAndQuotationServiceInterface $orderAndQuotationService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        OrderBuilderInterface $orderBuilderInterface
+        protected readonly ApiSalesService $apiSalesService,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly OrderRepositoryInterface $orderRepository,
+        protected readonly FunctionsServiceInterface $functionsService,
+        protected readonly PurchaseReceiptServiceInterface $purchaseReceiptService,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly OrderBuilderInterface $orderBuilder
     ) {
-        $this->apiGpService = $apiGpService;
-        $this->apiSalesService = $apiSalesService;
-        $this->approvalService = $approvalService;
-        $this->orderRepository = $orderRepository;
-        $this->apiBillingService = $apiBillingService;
-        $this->functionsService = $functionsService;
-        $this->purchaseReceiptService = $purchaseReceiptService;
-        $this->invoiceService = $invoiceService;
-        $this->orderAndQuotationService = $orderAndQuotationService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->orderBuilder = $orderBuilderInterface;
     }
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -127,23 +103,42 @@ class OrderService implements OrderServiceInterface
     public function buildOrderDetail(array $pedido)
     {
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido['id'])->get()->toarray();
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
 
         foreach ($detalle as &$item) {
 
+            $cantidad = $item['ART_CANTIDAD'];
+            $valorUnitario = $item['ART_VALOR'];
+            $descuentoUnitario = $item['ART_DESCUENTO'];
+            $impuestoPorcentaje = (float) $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
+            $typeImp = $item['ART_IMP_VTA'];
+
+
+            //calculo de peso por item
             $pesoItem = $item['ART_PESO'] * $item['ART_CANTIDAD'];
             $item['ART_PESO_TOTAL'] = number_format($pesoItem, 2, '.', '');
             $peso += $pesoItem;
+
+            //compartimento
             $type = strtoupper(trim((string) ($item['ART_TIPO_COMPRA'] ?? '')));
             $item['compartimiento'] = match ($type) {
                 '', 'L', 'SERV' => '',
                 default => $this->getCompartimento($item['ART_CODIGO'] ?? null, $pedido['BOD_BODEGA'] ?? null),
             };
-            $impKey = $item['ART_IMP_VTA'];
-            $tipoImpuesto[$impKey] = ($tipoImpuesto[$impKey] ?? 0) + round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
-            $sumaImpuesto[$impKey] = ($sumaImpuesto[$impKey] ?? 0) + round($item['ART_IVA'], 2);
+
+            //calculo de subtotales
+
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
+            $tipoImpuesto[$typeImp] = ($tipoImpuesto[$typeImp] ?? 0) + $lineaSubtotal;
+            $sumaImpuesto[$typeImp] = ($sumaImpuesto[$typeImp] ?? 0) + $lineaIva;
             if (!empty($item['ART_CODIGO_TRES_LETRAS'])) {
                 $item['imagenes'] = $this->getImagenes($item['ART_CODIGO_TRES_LETRAS']);
             } else {
@@ -162,7 +157,7 @@ class OrderService implements OrderServiceInterface
         );
         $response = $this->apiGpService->getStockByWarehouseAndCompartment($params);
         $data = data_get($response, 'data', []);
-        return $data['COMPARTIMIENTO'] ?? null;
+        return data_get($data, 'COMPARTIMIENTO', null);
     }
 
     public function getImagenes(string $codigo): array
@@ -207,11 +202,9 @@ class OrderService implements OrderServiceInterface
     {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
-        if ($datosFactura['success'] === false) {
-            throw new \Exception($datosFactura['message']);
-        }
-        $pedido['clave_acceso'] = $datosFactura['data']['claveAcceso'];
-        $pedido['fecha_autorizacion'] = Carbon::parse($datosFactura['data']['fechaEnvio'])->format('Y-m-d H:i:s');
+
+        $pedido['clave_acceso'] = data_get($datosFactura, 'claveAcceso', '');
+        $pedido['fecha_autorizacion'] = Carbon::parse(data_get($datosFactura, 'fechaEnvio'))->format('Y-m-d H:i:s');
         return $pedido;
     }
 
@@ -221,9 +214,16 @@ class OrderService implements OrderServiceInterface
             return ['success' => false, 'message' => 'El pedido no tiene factura'];
         }
 
-        return $this->apiSalesService->getDataDocumentGp(array(
+        $resp = $this->apiSalesService->fetchGpInvoiceInfo(array(
             'numdoc' => $pedido['factura'],
         ));
+        $success = data_get($resp, 'success', false);
+        $message = data_get($resp, 'message', 'Error al obtener datos del documento');
+        if (!$success) {
+            throw new \Exception($message);
+        }
+
+        return data_get($resp, 'data', []);
     }
 
     public function generateInvoiceXml($id)
@@ -1191,11 +1191,12 @@ class OrderService implements OrderServiceInterface
             $item->ART_CANTIDAD = (float) $cantidad;
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-            $lineaSubtotal = $valorUnitario * (float) $cantidad;
-            $lineaDiscount = $descuentoUnitario * (float) $cantidad;
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * (float) $cantidad, 2);
-            $impuestoPorcentaje = $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
-            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 3);
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+
+            $impuestoPorcentaje = (float) $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
 
             // calculos monetarios
             $subtotal += $lineaSubtotal;
@@ -1205,18 +1206,16 @@ class OrderService implements OrderServiceInterface
 
             $item->subtotal = $lineaSubtotal;
             $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = round($lineaIva, 2);
+            $item->ART_IVA = $lineaIva;
             return $item;
         })
             ->filter()
             ->values();
-        $total = round($netSubtotal + $totalIva, 3);
-        $data['subtotal'] = round($subtotal, 3);
-        $data['descuento'] = round($totalDiscount, 3);
-        $data['subtotalmenosdescuento'] = round($netSubtotal, 3);
-        $data['iva'] = round($totalIva, 3);
-
-        $data['total'] = $total;
+        $data['subtotal'] = round($subtotal, 2);
+        $data['descuento'] = round($totalDiscount, 2);
+        $data['subtotalmenosdescuento'] = round($netSubtotal, 2);
+        $data['iva'] = round($totalIva, 2);
+        $data['total'] = round($netSubtotal + $totalIva, 2);
 
 
         $facturarExistente = [];
@@ -1609,7 +1608,7 @@ class OrderService implements OrderServiceInterface
 
 
 
-    public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId)
+    public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId): LengthAwarePaginator
     {
         $allowedSorts = [
             'gp.created_at',

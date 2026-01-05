@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
         $schedule->job(new EnqueueDevoluciones(10))
             ->timezone('America/Guayaquil')
             ->everyMinute()
-            ->withoutOverlapping(60)
+            ->withoutOverlapping(5)
             ->runInBackground();
         // $schedule->command('devoluciones:procesar')
         //     ->everyMinute()
@@ -30,7 +30,7 @@ class Kernel extends ConsoleKernel
         //se ejecuta el 1 de cada mez
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
             ->monthlyOn(1, '02:00')
-            ->timezone('America/Guayaquil')->withoutOverlapping(60)
+            ->timezone('America/Guayaquil')->withoutOverlapping(10)
             ->runInBackground(); // hace que no bloquee otros jobs
 
         // ejecuta cada 2 horas la actualización de articulos
@@ -44,7 +44,7 @@ class Kernel extends ConsoleKernel
             ->timezone('America/Guayaquil')
             ->between('06:00', '22:00')
             ->everyTenMinutes()              // frecuencia
-            ->withoutOverlapping(30)            // evita procesos en paralelo
+            ->withoutOverlapping(20)            // evita procesos en paralelo
             ->runInBackground()
         ; // hace que no bloquee otros jobs
 

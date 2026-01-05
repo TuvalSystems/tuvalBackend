@@ -73,6 +73,7 @@ Route::get('/generadevolucionventaurlalt', [DevolucionesController::class, 'gene
 //Route::get('/checkcobrosenviados/', [CobranzasController::class, 'checkcobrosenviados']);
 //Route::get('/checkeliminardespachourl', [DevolucionesController::class, 'checkeliminardespachourl']);
 Route::get('pedidos/volver-facturar-test/{id}', [PedidosController::class, 'volveraFacuturarTest']);
+Route::get('pedidos/volver-facturar-prueba/{id}', [PedidosController::class, 'volverAFacturarPrueba']);
 Route::get('/procesardevolucionestest', [DevolucionesController::class, 'procesardevolucionestest']);
 Route::get('/checkdespachadoscompletos', [DespachosController::class, 'checkdespachadoscompletos']);
 Route::get('/sincronizacion/testcliente', [SincronizacionController::class, 'testcliente']);
@@ -123,6 +124,7 @@ Route::prefix('pedidos')->group(function () {
     Route::get('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
 
     Route::get('/listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
+    Route::get('cancelar-orden-despacho/{id}', [DespachosController::class, 'cancelarOrdenDespacho']);
     Route::get('/validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
 
 
@@ -212,9 +214,12 @@ Route::prefix('aprobaciones-web')->group(function () {
     Route::get('lista-items-aprobaciones', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::get('lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
     Route::get('lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
+});
 
-
-
+Route::prefix('devoluciones-web')->group(function () {
+    Route::get('lista-devoluciones-por-recibir', [DevolucionesController::class, 'listaDevolucionesPorRecibir']);
+    Route::get('detalle-devolucion-por-recibir', [DevolucionesController::class, 'detalleDevolucionPorRecibir']);
+    // Route::get('recibir-items-devolucion', [DevolucionesController::class, 'recibirItemsDevolucion']);
 });
 
 

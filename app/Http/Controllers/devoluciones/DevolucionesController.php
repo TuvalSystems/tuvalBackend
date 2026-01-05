@@ -2,27 +2,28 @@
 
 namespace App\Http\Controllers\devoluciones;
 
-use App\Http\Controllers\bodegas\DespachosController;
-use App\Http\Controllers\Controller;
-use App\Jobs\Devoluciones\NotifyErrorAnulationJob;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
-use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Venta\Contracts\OrderServiceInterface;
-use App\Traits\JsonResponseTrait;
-use Illuminate\Support\Facades\Auth;
+use App\Models\GpCliente;
+use App\Models\GpUsuario;
 use Illuminate\Http\Request;
-use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use App\Models\GpOrdenDespacho;
+use App\Traits\JsonResponseTrait;
+use App\Models\GpClienteSucursal;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\devoluciones\GpDevoluciones;
+use App\Notifications\User\UserNotification;
+use App\Models\devoluciones\GpDevolucionesDetalle;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
+use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
+use Carbon\Carbon;
 
 class DevolucionesController extends Controller
 {
@@ -80,118 +81,183 @@ class DevolucionesController extends Controller
         ]);
     }
 
-    public function detallepedidodevolucion()
+    public function detallepedidodevolucion(Request $request)
     {
-        $data = request()->all();
-        return $this->devolucionService->getDetailOrderReturnById($data);
+        try {
+            $data = $request->all();
+            $info = $this->devolucionService->getDetailOrderReturnById($data);
+            return response([
+                'success' => true,
+                'detalle' => $info['detalle'],
+                'motivos' => $info['motivos'],
+                'clientes' => $info['clientes'],
+                'devolucion_anterior' => $info['devolucion_anterior'],
+                'items_devueltos' => $info['items_devueltos'],
+            ]);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), [], 500);
+        }
     }
 
 
     //procesos nuevos comentados para no afectar produccion en espera de aprobacion de Dennis para deploy a producccion
     //funcion en estado pendiente de utilizar (refactorizado el proceso de recibir devoluciones en el controller, utilizo services y repositorios )
-    public function enviardevolucion(Request $request)
+    // public function enviardevolucionOrigin(Request $request)
+    // {
+
+    //     try {
+    //         $data = $request->all();
+    //         DB::beginTransaction();
+    //         // 🔎 **1️⃣ Validación de Pedido**
+    //         $pedido = GpPedido::find($data['pedido']['id']);
+
+    //         if (!$pedido) {
+    //             return response(['message' => 'Pedido no encontrado'], 404);
+    //         }
+    //         if ($pedido->despacho_en_proceso && !$pedido->despachado) {
+    //             return response(['message' => 'Este pedido está siendo despachado'], 401);
+    //         }
+
+    //         // 🔎 **2️⃣ Inicialización de la estructura agrupada**
+    //         $detallePedidoAgrupado = [
+    //             'devolucion' => $data['devolucion'],
+    //             'pedido' => $data['pedido'],
+    //             'detallepedido' => []
+    //         ];
+
+
+    //         // 🔄 **3️⃣ Filtrado de detalles válidos**
+    //         foreach ($data['detallepedido'] as $detalle) {
+    //             $isValid = $data['devolucion']['volver_a_facturar'] || $detalle['seleccionado'] > 0;
+    //             if ($isValid) {
+    //                 //se verifica que este despachado y asignamos el estado al pedido
+    //                 $detallePedidoAgrupado['detallepedido'][] = $detalle;
+    //             }
+    //         }
+
+    //         // 🔄 **4️⃣ Verificación de despacho**
+    //         $countDetalle = count(array_filter($data['detallepedido'], function ($detalle) {
+    //             return isset($detalle['despacho']) && $detalle['despacho'] === true && $detalle['despachado'] > 0;
+    //         }));
+
+    //         $detallePedidoAgrupado['pedido']['despachado'] = $countDetalle > 0 ? 1 : 0;
+
+    //         // 🔄 **5️⃣ Ejecución de la devolución**
+    //         if (count($detallePedidoAgrupado['detallepedido']) > 0) {
+    //             $devolucion = $this->devolucionService->executeReturn($detallePedidoAgrupado);
+    //         }
+
+
+    //         $order = app(OrderServiceInterface::class);
+    //         $dispatch = app(DispatchServiceInterface::class);
+    //         $logistics = app(LogisticsOperationsServiceInterface::class);
+    //         $despachos = new DespachosController($order, $dispatch, $logistics);
+    //         $despachos->checkeliminardespacho($pedido);
+
+    //         // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
+    //         $validateAnulationInvoiceDispatch = $this->devolucionService->validateInvoiceNotDispatchOrInProcess($data['pedido']);
+    //         $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'], $devolucion);
+    //         $validateItemsL = $this->devolucionService->validateItemLDetailInvoice($devolucion);
+    //         $validateItemsPartialDispatch = $this->devolucionService->validateItemPartialDispatch($devolucion);
+    //         if (
+    //             $validateAnulationInvoiceDispatch &&
+    //             ($data['devolucion']['tipo_devolucion'] ?? '') === "total" &&
+    //             !$countsReturnsByOrders &&
+    //             !$validateItemsL &&
+    //             !$validateItemsPartialDispatch &&
+    //             ($data['devolucion']['volver_a_facturar'] ?? false) === false &&
+    //             ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === true)
+    //         ) {
+    //             $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
+    //             if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
+    //                 $responseArray = $anulacionResponse->getData(true);
+    //                 if ($responseArray['success'] == false) {
+    //                     $error = $anulacionResponse->getData(true)['error'] ?? 'A ocurrido un error al anular la factura';
+    //                     return $this->buildErrorResponse($error, 401);
+    //                 }
+    //             }
+    //         }
+    //         DB::commit();
+    //         $esSolicitada = $devolucion->estado === 'solicitado';
+    //         $esTotal = $devolucion->tipo_devolucion === 'total';
+    //         $devolucionCodigo = is_object($devolucion) ? $devolucion->devolucion : '';
+    //         if ($esSolicitada && !$devolucion->permite_anulacion && $esTotal) {
+    //             return $this->buildSuccessResponse(
+    //                 "La devolución {$devolucionCodigo} ha sido solicitada. no se podrá anular la factura ya que tiene pagos registrados. La devolución será procesada normalmente.",
+    //                 200
+    //             );
+    //         }
+
+
+    //         if ($esSolicitada && !$devolucion->anulacion_habilitada && $esTotal && !$devolucion->permite_anulacion) {
+    //             return $this->buildSuccessResponse(
+    //                 "La devolución {$devolucionCodigo} ha sido solicitada, pero no se procesará porque excede el límite de días permitido para realizar anulaciones. La devolución sera procesada normalmente.",
+    //                 200
+    //             );
+    //         }
+
+    //         return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
+    //     } catch (\Throwable $th) {
+    //         DB::rollBack();
+    //         $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
+    //         NotifyErrorAnulationJob::dispatch($userId, $th->getMessage());
+    //         Log::channel('devolucion')->info("Error en la funcion enviardevolucion: {$th->getMessage()} - Devolución ID: {$devolucion->id}");
+    //         return $this->buildErrorResponse($th->getMessage(), 401);
+    //     }
+    // }
+
+    public function enviarDevolucion(Request $request): JsonResponse
     {
-
+        $data = $request->all();
+        $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
+        $gpUser = GpUsuario::where('id', $userId)->first();
         try {
-            $data = $request->all();
-            DB::beginTransaction();
-            // 🔎 **1️⃣ Validación de Pedido**
-            $pedido = GpPedido::find($data['pedido']['id']);
-
-            if (!$pedido) {
-                return response(['message' => 'Pedido no encontrado'], 404);
-            }
-            if ($pedido->despacho_en_proceso && !$pedido->despachado) {
-                return response(['message' => 'Este pedido está siendo despachado'], 401);
-            }
-
-            // 🔎 **2️⃣ Inicialización de la estructura agrupada**
-            $detallePedidoAgrupado = [
-                'devolucion' => $data['devolucion'],
-                'pedido' => $data['pedido'],
-                'detallepedido' => []
-            ];
-
-
-            // 🔄 **3️⃣ Filtrado de detalles válidos**
-            foreach ($data['detallepedido'] as $detalle) {
-                $isValid = $data['devolucion']['volver_a_facturar'] || $detalle['seleccionado'] > 0;
-                if ($isValid) {
-                    //se verifica que este despachado y asignamos el estado al pedido
-                    $detallePedidoAgrupado['detallepedido'][] = $detalle;
-                }
-            }
-
-            // 🔄 **4️⃣ Verificación de despacho**
-            $countDetalle = count(array_filter($data['detallepedido'], function ($detalle) {
-                return isset($detalle['despacho']) && $detalle['despacho'] === true && $detalle['despachado'] > 0;
-            }));
-
-            $detallePedidoAgrupado['pedido']['despachado'] = $countDetalle > 0 ? 1 : 0;
-
-            // 🔄 **5️⃣ Ejecución de la devolución**
-            if (count($detallePedidoAgrupado['detallepedido']) > 0) {
-                $devolucion = $this->devolucionService->executeReturn($detallePedidoAgrupado);
-            }
-
-
-            $order = app(OrderServiceInterface::class);
-            $dispatch = app(DispatchServiceInterface::class);
-            $logistics = app(LogisticsOperationsServiceInterface::class);
-            $despachos = new DespachosController($order, $dispatch, $logistics);
-            $despachos->checkeliminardespacho($pedido);
-
-            // se movio la anulacion para tomar el id de la devolución para enviar a anular la factura
-            $validateAnulationInvoiceDispatch = $this->devolucionService->validateInvoiceNotDispatchOrInProcess($data['pedido']);
-            $countsReturnsByOrders = $this->devolucionService->countsReturnsByOrders($data['pedido'], $devolucion);
-            $validateItemsL = $this->devolucionService->validateItemLDetailInvoice($devolucion);
-            $validateItemsPartialDispatch = $this->devolucionService->validateItemPartialDispatch($devolucion);
-            if (
-                $validateAnulationInvoiceDispatch &&
-                isset($data['devolucion']['tipo_devolucion']) &&
-                $data['devolucion']['tipo_devolucion'] === "total" &&
-                $countsReturnsByOrders === 0 &&
-                $validateItemsL === 0 &&
-                $validateItemsPartialDispatch === 0 &&
-                $data['devolucion']['volver_a_facturar'] === false &&
-                ($devolucion->permite_anulacion === true || $devolucion->permite_anulacion === 1)
-                && ($devolucion->anulacion_habilitada === true || $devolucion->anulacion_habilitada === 1)
-            ) {
-                $anulacionResponse = $this->devolucionService->anularDevolucion($data['pedido'], $devolucion);
-                if (!$anulacionResponse || !$anulacionResponse->getData(true)) {
-                    $responseArray = $anulacionResponse->getData(true);
-                    if ($responseArray['success'] == false) {
-                        $error = $anulacionResponse->getData(true)['error'] ?? 'A ocurrido un error al anular la factura';
-                        return $this->buildErrorResponse($error, 401);
-                    }
-                }
-            }
-            DB::commit();
-            $esSolicitada = $devolucion->estado === 'solicitado';
-            $esTotal = $devolucion->tipo_devolucion === 'total';
-            $devolucionCodigo = is_object($devolucion) ? $devolucion->devolucion : '';
-            if ($esSolicitada && !$devolucion->permite_anulacion && $esTotal) {
+            $newDev = $this->devolucionService->handleDevolutionTransaction($data);
+            $statusDev = $newDev->estado === 'solicitado';
+            $tipoDev = $newDev->tipo_devolucion === 'total';
+            $devCode = is_object($newDev) ? $newDev->devolucion : '';
+            if (isset($newDev->motivo_no_anulada) && $newDev->estado = 'no_procesado') {
+                // NotifyErrorAnulationJob::dispatch($userId, $newDev->warning_message);
+                $gpUser->notify(new UserNotification('Devolucion No Procesada', $newDev->warning_message));
                 return $this->buildSuccessResponse(
-                    "La devolución {$devolucionCodigo} ha sido solicitada. no se podrá anular la factura ya que tiene pagos registrados. La devolución será procesada normalmente.",
+                    "ATENCIÓN: " . $newDev->motivo_no_anulada,
                     200
                 );
             }
+            if ($statusDev && $tipoDev) {
+                // Caso: Tiene pagos registrados
+                if (!$newDev->permite_anulacion) {
+                    return $this->buildSuccessResponse(
+                        "La devolución {$devCode} ha sido solicitada. No se podrá anular la factura ya que tiene pagos registrados. La devolución será procesada normalmente.",
+                        200
+                    );
+                }
 
-
-            if ($esSolicitada && !$devolucion->anulacion_habilitada && $esTotal && !$devolucion->permite_anulacion) {
-                return $this->buildSuccessResponse(
-                    "La devolución {$devolucionCodigo} ha sido solicitada, pero no se procesará porque excede el límite de días permitido para realizar anulaciones. La devolución sera procesada normalmente.",
-                    200
-                );
+                if (!$newDev->anulacion_habilitada) {
+                    return $this->buildSuccessResponse(
+                        "La devolución {$devCode} ha sido solicitada, pero no se procesará porque excede el límite de días permitido para anulaciones. La devolución será procesada normalmente.",
+                        200
+                    );
+                }
             }
+            return $this->buildSuccessResponse("La devolución  {$devCode} ha sido solicitada. ", 200);
 
-            return $this->buildSuccessResponse('La devolución ' . (is_object($devolucion) ? $devolucion->devolucion : '') . ' ha sido solicitada. ', 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
         } catch (\Throwable $th) {
-            DB::rollBack();
-            $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
-            NotifyErrorAnulationJob::dispatch($userId, $th->getMessage());
-            Log::channel('devolucion')->info("Error en la funcion enviardevolucion: {$th->getMessage()} - Devolución ID: {$devolucion->id}");
-            return $this->buildErrorResponse($th->getMessage(), 401);
+            $logId = isset($newDev) ? $newDev->id : 'No creado';
+            $msgError = isset($newDev) ? $newDev->motivo_no_anulada : $th->getMessage();
+            Log::channel('devolucion')->info("Error al Procesar la devolución: {$th->getMessage()} - Devolución ID: {$logId}");
+            $gpUser->notify(new UserNotification('Error al Procesar la devolucion', $msgError));
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
 
@@ -250,48 +316,88 @@ class DevolucionesController extends Controller
         ]);
     }
 
-
-    public function recibirdevolucion(Request $request)
+    public function listaDevolucionesPorRecibir(Request $request): JsonResponse
     {
+        $perPage = $request->input('perPage', 10);
+        $search = $request->input('search', null);
+        $sortBy = $request->input('sortBy', null);
+        $sortOrder = $request->input('sortOrder', 'desc');
+        $ptoVtaId = $request->input('ptoVtaId', null);
 
-        $user = Auth::user();
+        try {
+            $data = $this->devolucionService->fetchReturnsToReceived($perPage, $search, $sortBy, $sortOrder, $ptoVtaId);
+            return $this->successResponse('Lista de devoluciones por recibir obtenida correctamente', $data, 200);
+
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener la lista de devoluciones por recibir: ' . $e->getMessage(), [], 500);
+        }
+    }
+
+    public function detalleDevolucionPorRecibir(Request $request): JsonResponse
+    {
+        $devolucionId = $request->input('id');
+        try {
+            $data = $this->devolucionService->getReturnDetailToReceiveById($devolucionId);
+            return $this->successResponse('Detalle de devolución por recibir obtenido correctamente', $data, 200);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Error al obtener el detalle de la devolución por recibir: ' . $e->getMessage(), [], 500);
+        }
+    }
+
+
+    public function imprimirOrdenDeAlmacenamiento(Request $request)
+    {
         $data = $request->all();
         try {
-            $devolucion = GpDevoluciones::find($data['devolucion']['id']);
-            if (!$devolucion) {
-                return $this->buildErrorResponse('devolucion no encontrada', 404);
-            }
+            $response = $this->devolucionService->generatePdfOrderStorageDevolution($data);
+            return $this->buildPdfResponse($response);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 
-            if (in_array($devolucion->estado, ['recibido', 'procesado'])) {
-                return $this->buildErrorResponse('Esta devolución ya fue recibida en otra instancia', 404);
-            }
 
-            DB::transaction(function () use ($data, $user, $devolucion) {
-                foreach ($data['detalledevolucion'] as $detalle) {
-                    GpDevolucionesDetalle::where('id', $detalle['id'])->update([
-                        'devuelto' => $detalle['devuelto'],
-                        'recibido' => $detalle['devuelto'],
-                        'compartimiento' => $detalle['compartimiento'],
-                        'USERID' => $user->USERID
-                    ]);
-                }
-                $devolucion->update(['estado' => 'recibido']);
-                $this->entryService->registerEntity('devolucion', $data['devolucion'], $data['detalledevolucion']);
-            });
-
-            return $this->buildSuccessResponse('Devolución recibida', 200);
+    public function recibirDevolucion(ValidateReceivedDevolutionsRequest $request)
+    {
+        $data = $request->validated();
+        try {
+            $resp = $this->devolucionService->receivedDevolutions(
+                data_get($data, 'header'),
+                data_get($data, 'details')
+            );
+            return $this->successResponse('Devoluciones recibidas correctamente', $resp, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
         } catch (\Throwable $th) {
-            Log::channel('devolucion')->error("Error al recibir devolución ID {$data['devolucion']['id']}: {$th->getMessage()}");
             return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
+
         }
     }
 
 
     public function imprimirdevolucion($id)
     {
-        $devolucion = $this->devolucionService->printReturn($id);
+        $dev = GpDevoluciones::findOrFail($id);
+        $order = GpPedido::where('id', $dev->pedido_id)->first();
+        $anioDev = (int) Carbon::parse($order->fecha_factura)->format('Y');
+        $devolucion = ($anioDev <= 2025) ? $this->devolucionService->printReturnOld($id) : $this->devolucionService->printReturn($id);
         $pdf = PDF::loadView('devolucionPDF', $devolucion);
         return $pdf->stream('nota_de_credito.pdf');
+    }
+
+
+    public function rechazarDevolucion(Request $request)
+    {
+        $data = $request->all();
+        try {
+            $this->devolucionService->dennyDevolucion(data_get($data, 'id'));
+            return $this->buildSuccessResponse("Devolución rechazada correctamente", 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse('Error al rechazar la devolución ' . $th->getMessage(), 500);
+        }
     }
 
 
@@ -312,6 +418,11 @@ class DevolucionesController extends Controller
 
     public function restaurarNotaCreditoDevolucion($id)
     {
-        return $this->devolucionService->responseCreditNoteDevolution($id);
+        try {
+            $dev = $this->devolucionService->responseCreditNoteDevolution($id);
+            return $this->successResponse('Devolución restaurada correctamente', $dev, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al restaurar la devolución: ' . $e->getMessage(), 500);
+        }
     }
 }

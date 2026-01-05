@@ -12,7 +12,6 @@ use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
 use App\Models\GpClienteSucursal;
-
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
@@ -21,7 +20,6 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
-use App\Http\Controllers\WebserviceController;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPedido;
@@ -34,7 +32,6 @@ use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
-use App\Services\Api\MswService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
@@ -42,52 +39,27 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
 class QuotationService implements QuotationServiceInterface
 {
     use JsonResponseTrait;
-    protected $quotationRepository;
-    protected $apiGpService;
-    protected $apiBillingService;
-    protected $functionService;
-    protected $stockWarehouseService;
-    protected $MsWebservice;
-    protected $OrderQuotationService;
-    protected $approvalService;
-    protected $orderAndQuotationService;
-    protected $stockSqlService;
-    protected $quotationBuilder;
-    protected $orderBuilder;
-    protected $invoiceService;
+
     public function __construct(
-        QuotationRepositoryInterface $quotationRepository,
-        ApiGpService $apiGpService,
-        ApiBillingService $apiBillingService,
-        FunctionsServiceInterface $functionService,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        MswService $MsWebservice,
-        OrderAndQuotationServiceInterface $OrderQuotationService,
-        ApprovalServiceInterface $approvalService,
-        OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
-        QuotationBuilderInterface $quotationBuilderInterface,
-        OrderBuilderInterface $orderBuilderInterface,
-        InvoiceServiceInterface $invoiceServiceInterface
+        protected readonly QuotationRepositoryInterface $quotationRepository,
+        protected readonly ApiGpService $apiGpService,
+        protected readonly ApiBillingService $apiBillingService,
+        protected readonly FunctionsServiceInterface $functionService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly OrderAndQuotationServiceInterface $OrderQuotationService,
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+        protected readonly QuotationBuilderInterface $quotationBuilder,
+        protected readonly OrderBuilderInterface $orderBuilder,
+        protected readonly InvoiceServiceInterface $invoiceService
     ) {
-        $this->quotationRepository = $quotationRepository;
-        $this->apiGpService = $apiGpService;
-        $this->apiBillingService = $apiBillingService;
-        $this->functionService = $functionService;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->MsWebservice = $MsWebservice;
-        $this->OrderQuotationService = $OrderQuotationService;
-        $this->approvalService = $approvalService;
-        $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
-        $this->quotationBuilder = $quotationBuilderInterface;
-        $this->orderBuilder = $orderBuilderInterface;
-        $this->invoiceService = $invoiceServiceInterface;
+
     }
 
 
@@ -366,34 +338,25 @@ class QuotationService implements QuotationServiceInterface
      * IMPRIMIR COTIZCIONES EN PDF
      */
 
-    public function printQuotationPdf($id)
+    public function printQuotationPdf($id, $withImages = false)
     {
         $cotizacion = GpCotizacion::where('id', $id)->first()->toArray();
 
         if (!$cotizacion) {
-            return $this->buildErrorResponse(
-                'No se encontró la cotización',
-                404
-            );
+            abort(404, 'Cotización no encontrada');
+
         }
         if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
-            return $this->buildErrorResponse(
-                'La cotización requiere aprobación comercial y aún no ha sido aprobada',
-                403
-            );
+            abort(403, 'La cotización requiere aprobación comercial y aún no ha sido aprobada');
+
         }
 
         if ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
-            return $this->buildErrorResponse(
-                'La cotización requiere aprobación crediticia y aún no ha sido aprobada',
-                403
-            );
+            abort(403, 'La cotización requiere aprobación crediticia y aún no ha sido aprobada');
+
         }
         if ($cotizacion['estado'] == 'caducado') {
-            return $this->buildErrorResponse(
-                'La cotización ha caducado y no puede ser impresa',
-                403
-            );
+            abort(403, 'La cotización ha caducado y no puede ser impresa');
         }
 
         $this->updatePrintsQuotation($id);
@@ -405,17 +368,39 @@ class QuotationService implements QuotationServiceInterface
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
-
-        foreach ($detalle as $item) {
-            $clave = $item['ART_IMP_VTA'];
-            $subtotal = round($item['ART_VALOR'] * $item['ART_CANTIDAD'], 2);
-            $iva = round($item['ART_IVA'], 2);
-
+        $imagenes = [];
+        $subtotalmenosDescuento = 0;
+        $sumIva = 0;
+        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        foreach ($detalle as &$item) {
+            $valorUnitario = (float) $item['ART_VALOR'];
+            $cantidad = (float) $item['ART_CANTIDAD'];
+            $descuentoUnitario = (float) $item['ART_DESCUENTO'];
+            $impuestoPorcentaje = (float) $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount = $descuentoUnitario * $cantidad;
+            $lineaSubtotal = $lineNet + $lineaDiscount;
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
             $peso += $item['ART_PESO'] * $item['ART_CANTIDAD'];
 
-            $tipoImpuesto[$clave] = ($tipoImpuesto[$clave] ?? 0) + $subtotal;
-            $sumaImpuesto[$clave] = ($sumaImpuesto[$clave] ?? 0) + $iva;
+            //proceso de imagenes
+            if ($withImages) {
+                for ($i = 1; $i <= 3; $i++) {
+                    $file = 'images/productos/' . $item['ART_CODIGO_TRES_LETRAS'] . '_' . $i . '.jpg';
+
+                    if (File::exists($file)) {
+                        $imagenes[] = $file;
+                    }
+                }
+                $item['imagenes'] = $imagenes;
+            }
+
+            $tipoImpuesto[$impuestoPorcentaje] = ($tipoImpuesto[$impuestoPorcentaje] ?? 0) + $lineaSubtotal;
+            $sumaImpuesto[$impuestoPorcentaje] = ($sumaImpuesto[$impuestoPorcentaje] ?? 0) + $lineaIva;
+            $subtotalmenosDescuento += $lineNet;
+            $sumIva += $lineaIva;
         }
+        unset($item);
 
         $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toArray();
         $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toArray();
@@ -435,27 +420,33 @@ class QuotationService implements QuotationServiceInterface
         $cotizacion['sucursal'] = $sucursal;
         $cotizacion['validez'] = $validezTexto;
         $cotizacion['expira'] = $validezReal;
+        $cotizacion['totalCotizacion'] = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');
+        ;
         $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         return $cotizacion;
     }
 
     public function calcularDiasHabiles($dias, $desde)
     {
-        $webService = new WebserviceController();
+
         $validez = $dias;
         $fecha = $desde;
 
         for ($i = 1; $i < $validez; $i++) {
             $fechaPropuesta = date('Y-m-d', strtotime("+$i days", strtotime($fecha)));
             $parameters = [
-                'IDCompania' => env('ID_COMPANIA'),
-                'Fecha' => $fechaPropuesta,
+                'idCompany' => env('ID_COMPANIA'),
+                'fecha' => $fechaPropuesta,
             ];
-
-            $respuesta = $webService->cobranzas('ConsultaDiaFeriado', $parameters);
-            if ($respuesta['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
+            $resp = $this->apiBillingService->validateBusinessDate($parameters);
+            $data = data_get($resp, 'data', []);
+            if (data_get($data, 'codigo') == 0) {
                 $validez++;
             }
+            // $respuesta = $webService->cobranzas('ConsultaDiaFeriado', $parameters);
+            // if ($respuesta['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
+            //     $validez++;
+            // }
         }
 
         return date('Y-m-d', strtotime("+$validez days", strtotime($desde)));

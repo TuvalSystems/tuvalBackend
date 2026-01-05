@@ -47,40 +47,20 @@ use Illuminate\Support\Facades\Auth;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
 {
-    protected $approvalService;
-    protected $orderAndQuotationService;
-    protected $quotationBuilder;
-    protected $orderBuilder;
-    protected $invoiceService;
-    protected $stockWarehouseService;
-    protected $reservaBuilder;
-    protected $reservaRepository;
-    protected $apiDelivery;
-    protected $functionService;
-
 
     public function __construct(
-        ApprovalServiceInterface $approvalService,
-        OrderAndQuotationServiceInterface $orderAndQuotationServiceInterface,
-        QuotationBuilderInterface $quotationBuilderInterface,
-        OrderBuilderInterface $orderBuilderInterface,
-        InvoiceServiceInterface $invoiceServiceInterface,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ReservedBuilderInterface $reservedBuilderInterface,
-        InventoryReservationRepositoryInterface $reservaRepository,
-        ApiDeliverNoteService $apiDeliveryNote,
-        FunctionsServiceInterface $functionsServiceInterface
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+        protected readonly QuotationBuilderInterface $quotationBuilder,
+        protected readonly OrderBuilderInterface $orderBuilder,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ReservedBuilderInterface $reservaBuilder,
+        protected readonly InventoryReservationRepositoryInterface $reservaRepository,
+        protected readonly ApiDeliverNoteService $apiDelivery,
+        protected readonly FunctionsServiceInterface $functionService
     ) {
-        $this->approvalService = $approvalService;
-        $this->orderAndQuotationService = $orderAndQuotationServiceInterface;
-        $this->quotationBuilder = $quotationBuilderInterface;
-        $this->orderBuilder = $orderBuilderInterface;
-        $this->invoiceService = $invoiceServiceInterface;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->reservaBuilder = $reservedBuilderInterface;
-        $this->reservaRepository = $reservaRepository;
-        $this->apiDelivery = $apiDeliveryNote;
-        $this->functionService = $functionsServiceInterface;
+
     }
 
 
@@ -790,11 +770,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $cantidad = (float) $item->ART_CANTIDAD;
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-            $lineaSubtotal = $valorUnitario * $cantidad;
+            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
+            $lineaSubtotal = $lineNet + $lineaDiscount;
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = round($lineNet * ($impuestoPorcentaje / 100), 2);
+            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+
 
             $subtotal += $lineaSubtotal;
             $totalDiscount += $lineaDiscount;
@@ -802,16 +783,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $totalIva += $lineaIva;
 
             $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = round($lineaIva, 2);
+            $item->ART_IVA = $lineaIva;
             $item->save();
         }
-        $total = $netSubtotal + $totalIva;
-
         $qt->subtotal = round($subtotal, 2);
         $qt->descuento = round($totalDiscount, 2);
         $qt->subtotalmenosdescuento = round($netSubtotal, 2);
         $qt->iva = round($totalIva, 2);
-        $qt->total = round($total, 2);
+        $qt->total = round($netSubtotal + $totalIva, 2);
         $qt->save();
         return $qt;
     }

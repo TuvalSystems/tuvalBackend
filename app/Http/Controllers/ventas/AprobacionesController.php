@@ -18,6 +18,7 @@ use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AprobacionesController extends Controller
 {
@@ -127,7 +128,7 @@ class AprobacionesController extends Controller
         // ]);
     }
 
-    public function listaCotizacionesPendientesPorAprobar(Request $request) : JsonResponse
+    public function listaCotizacionesPendientesPorAprobar(Request $request): JsonResponse
     {
         $data = $request->validate([
             'puntodeventa_id' => 'required',
@@ -141,7 +142,7 @@ class AprobacionesController extends Controller
         }
     }
 
-    public function listaPedidosPendientesPorAprobar(Request $request) : JsonResponse
+    public function listaPedidosPendientesPorAprobar(Request $request): JsonResponse
     {
         $data = $request->validate([
             'puntodeventa_id' => 'required',
@@ -334,21 +335,38 @@ class AprobacionesController extends Controller
         }
     }
 
-    public function aprobarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // public function aprobarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    // {
+
+    //     $data = $request->all();
+    //     $user = Auth::user();
+
+    //     if (GpCotizacion::where('id', $data['id'])->update(['aprobado_comercial' => 'yes', 'aprobador_comercial_id' => $user->id, 'estado' => 'aprobado'])) {
+    //         return response([
+    //             'success' => true,
+    //             'message' => 'Cotización ' . $data['cotizacion'] . ' aprobada'
+    //         ]);
+    //     } else {
+    //         return response([
+    //             'error' => 'Hubo un error al guardar'
+    //         ], 401);
+    //     }
+    // }
+
+    public function aprobacionComercialCotizacion(Request $request): JsonResponse
     {
-
-        $data = $request->all();
-        $user = Auth::user();
-
-        if (GpCotizacion::where('id', $data['id'])->update(['aprobado_comercial' => 'yes', 'aprobador_comercial_id' => $user->id, 'estado' => 'aprobado'])) {
-            return response([
-                'success' => true,
-                'message' => 'Cotización ' . $data['cotizacion'] . ' aprobada'
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 401);
+        try {
+            $data = $request->all();
+            $user = Auth::user();
+            $quote = DB::transaction(fn() => $this->approvalService->approveComercialQuote($data['id'], $user));
+            return $this->buildSuccessResponse("Cotización {$quote->cotizacion} aprobada", 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse('Error al aprobar la cotización: ' . $e->getMessage(), 500);
         }
     }
     public function rechazarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

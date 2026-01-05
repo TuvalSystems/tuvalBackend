@@ -9,7 +9,6 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\SqlServer\Ventas\Contracts\ClientServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Collection;
@@ -21,79 +20,53 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 {
 
     use JsonResponseTrait;
-    protected $stockWarehouseService;
-    protected $apiGp;
-    protected $functionsService;
-    protected $clientSqlService;
+
     public function __construct(
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiGpService $apiGp,
-        FunctionsServiceInterface $functionsService,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiGpService $apiGp,
+        protected readonly FunctionsServiceInterface $functionsService,
     ) {
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiGp = $apiGp;
-        $this->functionsService = $functionsService;
+
     }
 
 
 
     public function getConsultStock($data)
     {
-        try {
-            $articulo = $data['articulo'];
-            $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
-            if (empty($warehouses)) {
-                return [];
-            }
-
-            $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-            $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
-            $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
-            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-            return response([
-                'success' => true,
-                'stock' => $art['stock'],
-                'ART_STOCK' => $art['ART_STOCK'],
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)' . ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'data' => $data]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
+        $articulo = $data['articulo'];
+        $warehouses = $this->stockWarehouseService->getWarehouseNotConsult($data);
+        if (empty($warehouses)) {
+            return [];
         }
+        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+        $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
+        $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
+        $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
+        return [
+            'stock' => $art['stock'],
+            'ART_STOCK' => $art['ART_STOCK'],
+        ];
+
     }
 
 
 
     public function getConsultStockOthers($data)
     {
-        try {
-            $articulo = $data['articulo'];
-            $warehouses = $this->stockWarehouseService->getWarehouse($data);
-            if (empty($warehouses)) {
-                return [];
-            }
 
-            $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
-            $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
-            $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
-            $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-            return response([
-                'success' => true,
-                'stock' => $art['stock'],
-                'ART_STOCK' => $art['ART_STOCK'],
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStockOthers)', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-                'data' => $data,
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Stock insuficiente'
-            ], 500);
+        $articulo = $data['articulo'];
+        $warehouses = $this->stockWarehouseService->getWarehouse($data);
+        if (empty($warehouses)) {
+            return [];
         }
+        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+        $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
+        $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
+        $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
+        return [
+            'stock' => $art['stock'],
+            'ART_STOCK' => $art['ART_STOCK'],
+        ];
     }
 
 
@@ -101,23 +74,17 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function getAvailableSpace($ruc)
     {
+        $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
+        $segmento = $this->getSegmentoCliente($ruc);
+        $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
 
-        try {
-            $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
-            $segmento = $this->getSegmentoCliente($ruc);
-            $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
-
-            $cliente->suspendido = (float) $cupoDisponible['suspendido'] ?? 0;
-            $cliente->cupo_disponible = number_format($cupoDisponible['cupoDisponibleGp'], 2, '.', ',');
-            $cliente->cupo_asignado = number_format($cupoDisponible['cupoAsignado'], 2, '.', ',');
-            return response([
-                'success' => true,
-                'cliente' => $cliente,
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $cliente->suspendido = (float) $cupoDisponible['suspendido'] ?? 0;
+        $cliente->cupo_disponible = number_format($cupoDisponible['cupoDisponibleGp'], 2, '.', ',');
+        $cliente->cupo_asignado = number_format($cupoDisponible['cupoAsignado'], 2, '.', ',');
+        return [
+            'cliente' => $cliente,
+            'segmento' => $segmento
+        ];
     }
 
     public function getSegmentoCliente($ruc)

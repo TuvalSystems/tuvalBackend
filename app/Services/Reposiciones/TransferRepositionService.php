@@ -21,17 +21,13 @@ use Illuminate\Support\Facades\Log;
 class TransferRepositionService implements TransferRepositionServiceInterface
 {
     use JsonResponseTrait;
-    protected $apiGp;
-    protected $stockWarehouseService;
-    protected $apiGpReturnsIntegrationService;
+
     public function __construct(
-        ApiGpService $apiGp,
-        StockWarehouseServiceInterface $stockWarehouseService,
-        ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+        protected readonly ApiGpService $apiGp,
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
     ) {
-        $this->apiGp = $apiGp;
-        $this->stockWarehouseService = $stockWarehouseService;
-        $this->apiGpReturnsIntegrationService = $apiGpReturnsIntegrationService;
+
     }
 
     public function validateRequest($request)
@@ -289,20 +285,15 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->where('guia_remision_id', $guia->id)
             ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
             ->get();
-        $items = collect($detalle)
-            ->pluck('GUI_REM_CODI_INTERNO')
-            ->toArray();
 
-        $responseCompartimentos = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
-        $response = collect($detalle)->map(function ($item) use ($responseCompartimentos) {
-            $compartimento = collect($responseCompartimentos)
-                ->first(function ($response) use ($item) {
-                    // 🔍 Verificar dentro de 'data' si existe el item
-                    $codigo = data_get($response, 'data.Item');
-                    return $codigo && $codigo === $item['GUI_REM_CODI_INTERNO'];
-                });
-            $lista = data_get($compartimento, 'lista', []);
-            // $compart = data_get($compartimento, 'data', []) ?? [];
+
+        $response = collect($detalle)->map(function ($item) use ($guia) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item['GUI_REM_CODI_INTERNO'],
+                'bodega' => $guia->bodega_destino
+            ]);
+          
+            $lista = data_get($resp, 'lista', []);
             $item->pendiente = number_format(round($item->GUI_REM_CANTIDAD - $item->recibido, 2), 2, '.', '');
             $item->recibido = $item->pendiente;
             $item->compartimientos = $lista;
@@ -334,22 +325,13 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->where('guia_remision_id', $guia->id)
             ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
             ->get();
-        $items = $detalle->pluck('GUI_REM_CODI_INTERNO')->all();
-        $resp = $this->apiGpReturnsIntegrationService->consultMultipleItemsBin($items, $guia->bodega_destino);
-
-        $binsByItem = [];
-        foreach ($resp as $r) {
-            $itemCode = (string) data_get($r, 'data.Item', '');
-            if ($itemCode === '' || isset($binsByItem[$itemCode])) {
-                continue;
-            }
-            $bin = trim((string) data_get($r, 'lista.0.bin', ''));
-            $binsByItem[$itemCode] = $bin === '' ? 'GENERAL' : $bin;
-        }
-        // return $binsByItem;
+     
         $response = [];
-
         foreach ($detalle as $item) {
+            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
+                'item' => $item->GUI_REM_CODI_INTERNO,
+                'bodega' => $guia->bodega_destino
+            ]);
             $decimalPlaces = (int) $item->ART_DECIMAL_CANTIDAD;
             $pendiente = round((float) $item->GUI_REM_CANTIDAD - (float) $item->recibido, $decimalPlaces);
             if ($pendiente < 0) {
@@ -357,8 +339,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             }
             $item->pendiente = round($pendiente, 2);
             $item->recibido = round($item->pendiente, 2);
-            $bin = $binsByItem[$item->GUI_REM_CODI_INTERNO] ?? 'GENERAL';
-            $item->compartimiento = $bin;
+            $item->compartimiento = data_get($resp, 'detalle.compartimento', 'GENERAL');
             $response[] = $item;
         }
         return $response;

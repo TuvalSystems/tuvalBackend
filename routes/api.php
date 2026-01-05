@@ -102,13 +102,12 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/aprobaciones/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
     Route::post('/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
     Route::get('/aprobaciones/verdevolucionesporaprobar', [AprobacionesController::class, 'verdevolucionesporaprobar']);
-    Route::get('/devoluciones/verdevolucionesporrecibir/{puntodeventa}', [AprobacionesController::class, 'verdevolucionesporrecibir']);
 
     Route::post('/pedidos/detallepedido', [PedidosController::class, 'detallepedido']);
     Route::post('/pedidos/consultarexistente', [PedidosController::class, 'consultarexistente']);
-    Route::post('/pedidos/consultardespachado', [PedidosController::class, 'consultardespachado']);
+    // Route::post('/pedidos/consultardespachado', [PedidosController::class, 'consultardespachado']);
     Route::post('/pedidos/facturarexistente', [PedidosController::class, 'facturarexistente']);
-    Route::post('/pedidos/facturardespachado', [PedidosController::class, 'facturardespachado']);
+    // Route::post('/pedidos/facturardespachado', [PedidosController::class, 'facturardespachado']);
     // Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
 
     Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);
@@ -186,21 +185,16 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
 
-    Route::get('/devoluciones/pedidoscliente/{cliente_id}/{puntodeventa_id}', [DevolucionesController::class, 'pedidoscliente']);
-    Route::post('/devoluciones/detallepedidodevolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
-    Route::post('/devoluciones/enviardevolucion', [DevolucionesController::class, 'enviardevolucion']);
-    Route::post('/devoluciones/detalledevolucion', [DevolucionesController::class, 'detalledevolucion']);
-    Route::get('/devoluciones/verdevolucionesporrecibir/{puntodeventa}', [DevolucionesController::class, 'verdevolucionesporrecibir']);
-    Route::post('/devoluciones/recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);
+
+    // Route::post('/devoluciones/enviardevolucion', [DevolucionesController::class, 'enviardevolucion']);
+
     Route::get('/pedidos/sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
     Route::post('/pedidos/cancelarpedido', [PedidosController::class, 'cancelarpedido']);
 
 
     Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
-    Route::get('/devoluciones/procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
     Route::get('/pedidos/imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
 
-    Route::get('/devoluciones/imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
     Route::post('/consultas/notificaciones', [ConsultasController::class, 'notificaciones']);
 
     //new routes
@@ -271,8 +265,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('despachoenproceso/{id}', [PedidosController::class, 'despachoenproceso']);
         Route::post('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
         Route::post('actualizar-fecha-factura-reserva', [PedidosController::class, 'actualizarFechaReservaPedido']);
-        Route::post('/listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
-        Route::post('/bloquear-despacho-pedido', [PedidosController::class, 'actualizarBloqueoPendienteDespacho']);
+        Route::post('listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
+        Route::post('bloquear-despacho-pedido', [PedidosController::class, 'actualizarBloqueoPendienteDespacho']);
         Route::post('validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
 
 
@@ -349,7 +343,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::group(['prefix' => 'aprobaciones'], function () {
 
         Route::post('aprobarpedido', [AprobacionesController::class, 'aprobarpedido']);
-        Route::post('aprobarcotizacion', [AprobacionesController::class, 'aprobarcotizacion']);
+        Route::post('aprobarcotizacion', [AprobacionesController::class, 'aprobacionComercialCotizacion']);
         Route::post('rechazarcotizacion', [AprobacionesController::class, 'rechazarcotizacion']);
         Route::post('rechazarpedido', [AprobacionesController::class, 'rechazarpedido']);
         Route::post('consultaparaaprobarpedido', [AprobacionesController::class, 'consultaparaaprobarpedido']);
@@ -365,6 +359,28 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('pedido/rechazar-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
 
 
+    });
+
+
+
+    Route::group(['prefix' => 'devoluciones'], function () {
+        Route::get('pedidoscliente/{cliente_id}/{puntodeventa_id}', [DevolucionesController::class, 'pedidoscliente']);
+        Route::post('detallepedidodevolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
+
+        Route::post('enviardevolucion', [DevolucionesController::class, 'enviarDevolucion']);
+        Route::post('detalledevolucion', [DevolucionesController::class, 'detalledevolucion']);
+        Route::get('verdevolucionesporrecibir/{puntodeventa}', [DevolucionesController::class, 'verdevolucionesporrecibir']);
+        // Route::post('recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);
+
+        Route::get('procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
+        Route::get('imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
+
+
+        Route::post('pendiente-recepcion', [DevolucionesController::class, 'listaDevolucionesPorRecibir']);
+        Route::post('detalle-devolucion-por-recibir', [DevolucionesController::class, 'detalleDevolucionPorRecibir']);
+        Route::post('orden-almacenamiento', [DevolucionesController::class, 'imprimirOrdenDeAlmacenamiento']);
+        Route::post('recibir-devolucion', [DevolucionesController::class, 'recibirDevolucion']);
+        Route::post('rechazar-devolucion', [DevolucionesController::class, 'rechazarDevolucion']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

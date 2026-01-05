@@ -61,7 +61,7 @@ class ApiGpService
 
     public function transferCompartment(array $params = [])
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_TRANSFERENCIA_COMPARTIMENTO, 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_TRANSFERENCIA_COMPARTIMENTO, 'POST', $params , 'json');
     }
 
 
