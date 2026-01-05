@@ -3,25 +3,20 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Models\GpPedido;
-use App\Models\GpCliente;
 use App\Models\GpArticulo;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\GpOrdenDespacho;
-use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
-use App\Models\GpPedidoDetalleStock;
 use Illuminate\Support\Facades\Auth;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
-use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -150,8 +145,6 @@ class PedidosController extends Controller
 
     public function corregirenviando(): void
     {
-
-        $webservices = new WebserviceController();
         $enviando = GpPedido::where('estado', 'enviando')
             ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())->get();
 
