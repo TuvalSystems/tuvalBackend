@@ -89,7 +89,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function getReturnsInProcess($pedido_id): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido_id)
-            ->whereNotIn('estado', ['procesado'])
+            ->whereNotIn('estado', ['procesado','rechazado', 'no_procesado'])
             ->exists();
     }
 
