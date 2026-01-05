@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 class DevolucionRepository implements DevolucionRepositoryInterface
 {
 
-    public function isInvoiceAlreadyVoided($pedido, $devolucion) : bool
+    public function isInvoiceAlreadyVoided($pedido, $devolucion): bool
     {
         return GpFacturaAnulada::where('factura', $pedido->factura)->where('devolucion_id', $devolucion->id)
             ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->exists();
@@ -34,13 +34,13 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->where('id', $pedido['id'])->exists();
     }
 
-    public function hasOtherActiveReturns($pedido, $devolucion) : bool
+    public function hasOtherActiveReturns($pedido, $devolucion): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido['id'])->where('id', '!=', $devolucion['id'])
-        ->whereNotIn('estado', ['no_procesado', 'rechazada'])->exists();
+            ->whereNotIn('estado', ['no_procesado', 'rechazada'])->exists();
     }
 
-    public function validateItemLDetailInvoice($devolucion) : bool
+    public function validateItemLDetailInvoice($devolucion): bool
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])->where('ART_TIPO_COMPRA', 'L')->exists();
     }
@@ -71,7 +71,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function hasPartiallyDispatchedItems($devolucion) : bool
+    public function hasPartiallyDispatchedItems($devolucion): bool
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])
             ->where('despachado_parcial', 1)
@@ -79,7 +79,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getReturnsAnulated($pedido_id) : bool
+    public function getReturnsAnulated($pedido_id): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido_id)->where('estado', 'anulada')->exists();
     }
@@ -89,8 +89,8 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function getReturnsInProcess($pedido_id): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido_id)
-            ->whereNotIn('estado', ['no_procesado', 'procesado', 'rechazada'])
-          ->exists();
+            ->whereNotIn('estado', ['procesado'])
+            ->exists();
     }
 
     public function getMotivosDevolucion()
@@ -227,12 +227,13 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getDispatchOrder($orderId){
+    public function getDispatchOrder($orderId)
+    {
         return GpOrdenDespacho::where('pedido_id', $orderId)->where('estado', '!=', 'pendiente')->exists();
     }
 
 
-    public function shouldMarkAsDispatched($devId) : bool
+    public function shouldMarkAsDispatched($devId): bool
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devId)
             ->where('despachado_parcial', 1)
@@ -240,5 +241,5 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-   
+
 }
