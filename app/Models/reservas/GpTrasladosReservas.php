@@ -8,6 +8,61 @@ use App\Models\GpCotizacionDetalleStock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * App\Models\reservas\GpTrasladosReservas
+ *
+ * @property int $id
+ * @property int|null $reserva_id
+ * @property int|null $cotizacion_id
+ * @property int|null $detalle_id
+ * @property int|null $stock_id
+ * @property string|null $art_code
+ * @property string|null $art_descripcion
+ * @property string|null $art_cod_tres_letras
+ * @property string|null $art_plan_umedida
+ * @property string|null $art_peso
+ * @property string|null $cantidad
+ * @property string|null $bodega_origen
+ * @property string|null $bodega_destino
+ * @property string|null $reservado
+ * @property string|null $trasladado
+ * @property int $completado
+ * @property int $picking
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read GpCotizacion|null $cotizacion
+ * @property-read GpCotizacionDetalle|null $detalleCotizacion
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\reservas\GpGuiaRemisionReservaDetalle> $detalleguia
+ * @property-read int|null $detalleguia_count
+ * @property-read bool $check_disable_button_picking
+ * @property-read int|float $pending_transfer
+ * @property-read \App\Models\reservas\GpReserva|null $reserva
+ * @property-read GpCotizacionDetalleStock|null $stock
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas pending()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereArtCodTresLetras($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereArtCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereArtDescripcion($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereArtPeso($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereArtPlanUmedida($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereBodegaDestino($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereBodegaOrigen($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereCantidad($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereCompletado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereCotizacionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereDetalleId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas wherePicking($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereReservaId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereReservado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereStockId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereTrasladado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class GpTrasladosReservas extends Model
 {
     use HasFactory;
