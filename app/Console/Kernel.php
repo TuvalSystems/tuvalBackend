@@ -50,13 +50,13 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('reservas:notificacion-expiracion')
             ->timezone('America/Guayaquil')
-            ->dailyAt('09:00')
+            ->dailyAt('07:30')
             ->withoutOverlapping(30)
             ->runInBackground();
 
         $schedule->command('reservas:release-stock')
             ->timezone('America/Guayaquil')
-            ->dailyAt('09:00')
+            ->dailyAt('07:30')
             ->withoutOverlapping(30)
             ->runInBackground();
     }
