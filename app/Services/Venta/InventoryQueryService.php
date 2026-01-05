@@ -42,10 +42,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
         $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-        return [
-            'stock' => $art['stock'],
-            'ART_STOCK' => $art['ART_STOCK'],
-        ];
+
+        return $art;
 
     }
 
@@ -63,10 +61,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
         $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-        return [
-            'stock' => $art['stock'],
-            'ART_STOCK' => $art['ART_STOCK'],
-        ];
+        return $art;
+       
     }
 
 
