@@ -1742,6 +1742,7 @@ class OrderService implements OrderServiceInterface
             ->where('pedido_id', $order->id)
             ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
             ->get();
+
         if ($ordProv->isEmpty()) {
             return false;
         }
@@ -1765,8 +1766,8 @@ class OrderService implements OrderServiceInterface
                     'documento' => $reciboIndividual,
                     'tipo' => 1
                 ];
-                $respData = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
 
+                $respData = $this->apiGpValidateStatusReceptionItemL($params);
                 if (data_get($respData, 'estado') !== 'PROCESADO') {
                     return false;
                 }
