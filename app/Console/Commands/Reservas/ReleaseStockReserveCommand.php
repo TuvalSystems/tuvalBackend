@@ -26,8 +26,8 @@ class ReleaseStockReserveCommand extends Command
     public function handle()
     {
         $tz = config('app.timezone', 'America/Guayaquil');
-        $hoy = Carbon::now($tz)->startOfDay();
 
+        $ayer = Carbon::now($tz)->subDay();
         $reservas = GpReserva::with([
             'usuarioingreso',
             'cotizacion',
@@ -37,13 +37,14 @@ class ReleaseStockReserveCommand extends Command
                     $query->where('picking', 1);
                 });
             }
-        ])->where('tipo_reserva_id', 1)->whereIn('estado', ['aprobado', 'traslado'])->where('fe_autorizacion_reserva', '=', $hoy);
-
+        ])->where('tipo_reserva_id', 1)->whereIn('estado', ['aprobado', 'traslado'])->whereDate('fe_autorizacion_reserva', '=', $ayer);
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
             foreach ($lote as $key => $res) {
+
                 $quote = $res->cotizacion;
                 $userSolicita = $res->usuarioingreso;
+
                 $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
                 $this->releaseStock($quote);
                 $res->update(['estado' => 'cancelado']);
