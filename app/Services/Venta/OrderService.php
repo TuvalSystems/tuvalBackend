@@ -31,6 +31,7 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
+use App\Services\Api\Transacciones\ApiGpReceivedItemL;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -58,7 +59,8 @@ class OrderService implements OrderServiceInterface
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
-        protected readonly OrderBuilderInterface $orderBuilder
+        protected readonly OrderBuilderInterface $orderBuilder,
+        protected readonly ApiGpReceivedItemL $apiGpReceiptService
     ) {
     }
 
@@ -1709,6 +1711,77 @@ class OrderService implements OrderServiceInterface
                 ->whereNotIn('estado', ['pendiente', 'eliminada']);
         })->exists();
 
+    }
+
+
+
+    /** funciones de sendfacturas gp  */
+
+    public function sendInvoicesToGp()
+    {
+        GpPedido::where('estado', 'espera')->chunk(100, function ($orders) {
+            foreach ($orders as $ord) {
+                $this->invoiceService->checkSendInvoice($ord);
+            }
+        });
+        $ordersL = GpPedido::where('estado', 'orden_de_compra')->get();
+        foreach ($ordersL as $ord) {
+            if ($this->valdidateOrdersProviders($ord)) {
+                $ord->estado = 'espera';
+                $ord->save();
+                $this->invoiceService->generateDisptachOrder($ord);
+                $this->invoiceService->sendInvoiceGp($ord);
+            }
+        }
+    }
+
+    public function valdidateOrdersProviders(GpPedido $order)
+    {
+        $ordProv = GpPedidoDetalleProveedores::
+            join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
+            ->where('pedido_id', $order->id)
+            ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
+            ->get();
+        if ($ordProv->isEmpty()) {
+            return false;
+        }
+
+        foreach ($ordProv as $prov) {
+            if ($prov->recibido == 'no') {
+                return false;
+            }
+
+            $cadenaLimpia = trim($prov->ORDEN_COMPRA_RECIBO, '_');
+            if (empty($cadenaLimpia)) {
+                return false;
+            }
+
+            $listaRecibos = explode('_', $cadenaLimpia);
+            foreach ($listaRecibos as $reciboIndividual) {
+                if (empty($reciboIndividual))
+                    continue;
+
+                $params = [
+                    'documento' => $reciboIndividual,
+                    'tipo' => 1
+                ];
+                $respData = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
+
+                if (data_get($respData, 'estado') !== 'PROCESADO') {
+                    return false;
+                }
+            }
+
+        }
+        return true;
+    }
+
+
+
+    public function apiGpValidateStatusReceptionItemL($params)
+    {
+        $resp = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
+        return data_get($resp, 'data', []);
     }
 
 }

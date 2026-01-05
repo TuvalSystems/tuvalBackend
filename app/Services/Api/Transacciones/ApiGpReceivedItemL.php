@@ -34,4 +34,11 @@ class ApiGpReceivedItemL extends ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::TRANSACCIONES_RESPUESTA_RECIBO_ITEM_L, 'POST', $params, 'json');
     }
+
+      public function callValidateReceivedItemLApi(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::TRANSACCIONES_ESTADO_RECEPCION_ITEM_L, 'POST', $params, 'json');
+    }
+
+
 }

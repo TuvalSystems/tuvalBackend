@@ -53,6 +53,7 @@ class ApiGpEndpoints
     public const TRANSACCIONES_GUARDAR_RECIBO_ITEM_L = 'api/transacciones/guardar-documento-recibo-compra-l';
     public const TRANSACCIONES_GENERAR_RECIBO_ITEM_L = 'api/transacciones/generar-documento-recibo-compra-l';
     public const TRANSACCIONES_RESPUESTA_RECIBO_ITEM_L = 'api/transacciones/respuesta-documento-recibo-compra-l';
+    public const TRANSACCIONES_ESTADO_RECEPCION_ITEM_L = 'api/transacciones/estado-recepcion-recibo-compra-l';
     public const TRANSACCIONES_GUARDAR_FACTURA_VTA = 'api/transacciones/guardar-documento-factura-vta';
     public const TRANSACCIONES_RESPUESTA_FACTURA_VTA = 'api/transacciones/respuesta-documento-factura-vta';
     public const TRANSACCIONES_ELIMINAR_FACTURA_VTA = 'api/transacciones/eliminar-documento-factura-vta';
