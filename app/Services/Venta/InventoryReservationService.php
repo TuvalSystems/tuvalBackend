@@ -1510,11 +1510,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $stockOrigen->cantidad_reservada = max(0, (float) $stockOrigen->cantidad_reservada - $decTras);
         $stockOrigen->cantidad_traslado = max(0, (float) $stockOrigen->cantidad_traslado - $decTras);
         $stockOrigen->seleccionado = max(0, (float) $stockOrigen->seleccionado - $decSel);
+        $stockOrigen->cantidad_transito = (float) max(0, $stockOrigen->cantidad_transito - $qty);
         $stockOrigen->save();
 
         if ($liberarStock) {
             $stockDestino->cantidad_reservada = 0;
             $stockDestino->seleccionado = 0;
+            $stockOrigen->cantidad_transito = 0;
         } else {
             // En destino sumas lo recibido a "seleccionado" (ajusta si tu modelo espera otro campo)
             $stockDestino->cantidad_reservada = (float) $stockDestino->cantidad_reservada + $qty;
