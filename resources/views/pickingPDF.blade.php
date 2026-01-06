@@ -182,6 +182,7 @@
         <table class="table table-striped tablacarrito">
             <thead>
             <tr>
+                <th>#</th>
                 <th class="nowrap">Compartimiento / Existencia </th>
                 <th>CTL </th>
                 <th>Descripción</th>
@@ -195,6 +196,7 @@
             <tbody>
             @foreach ($reporte as $key => $value)
                 <tr>
+                    <td>{{ $key + 1 }}</td>
                     <td>
                         <table style="width:100%">
                             <tbody>
