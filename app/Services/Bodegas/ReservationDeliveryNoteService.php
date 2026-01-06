@@ -28,10 +28,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 {
 
     public function __construct(
-      protected readonly DeliveryNoteCommonServiceInterface $common,
-      protected readonly ReservationDeliveryNoteParamsBuilderInterface $builder,
-      protected readonly ApiDeliverNoteService $apiDelivery,
-      protected readonly LogisticsOperationsServiceInterface $logistic
+        protected readonly DeliveryNoteCommonServiceInterface $common,
+        protected readonly ReservationDeliveryNoteParamsBuilderInterface $builder,
+        protected readonly ApiDeliverNoteService $apiDelivery,
+        protected readonly LogisticsOperationsServiceInterface $logistic
     ) {
 
     }
@@ -490,9 +490,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         ]);
     }
 
-    public function updateStockTransitItem($traslado, $qty){
-        
-        GpCotizacionDetalleStock::where('id', $traslado->stock_id)->update(['cantidad_transito' => $qty]);
+    public function updateStockTransitItem($traslado, $qty)
+    {
+        GpCotizacionDetalleStock::where('id', $traslado->stock_id)
+            ->increment('cantidad_transito', $qty);
     }
 
 
