@@ -26,14 +26,14 @@ use Illuminate\Support\Str;
 
 class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceInterface
 {
-  
+
     public function __construct(
       protected readonly DeliveryNoteCommonServiceInterface $common,
       protected readonly ReservationDeliveryNoteParamsBuilderInterface $builder,
       protected readonly ApiDeliverNoteService $apiDelivery,
       protected readonly LogisticsOperationsServiceInterface $logistic
     ) {
-       
+
     }
 
 
@@ -96,7 +96,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $items = collect($items);
         if ($items->isEmpty()) {
             throw new \RuntimeException(
-                'No hay items para procesar el ajuste de la guía de reposición'
+                'No hay items para procesar el ajuste de la guía de reserva'
             );
         }
         $itemsIds = $items->pluck('id')->toArray();
