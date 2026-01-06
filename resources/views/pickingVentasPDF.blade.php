@@ -157,6 +157,7 @@
         <table class="table table-striped tablacarrito">
             <thead>
             <tr>
+                <td>#</td>
                 <th class="nowrap">Compartimiento / Existencia </th>
                 @if(isset($reporte[0]['pedido']))
                 <th>Pedido</th>
@@ -173,6 +174,7 @@
             <tbody>
             @foreach ($reporte as $key => $value)
                 <tr>
+                    <td>{{ $key +1  }}</td>
                     <td>
                         <table style="width:100%">
                             <tbody>
