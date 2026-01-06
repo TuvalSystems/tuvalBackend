@@ -475,6 +475,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     {
         foreach ($groupItems as $item) {
             $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->cantidad);
+            $this->updateStockTransitItem($item->traslado, $item->cantidad);
         }
     }
 
@@ -487,6 +488,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             'id_movimiento' => data_get($responseApi, 'idMovimiento'),
             'codigo' => trim((string) data_get($responseApi, 'docGp', '')),
         ]);
+    }
+
+    public function updateStockTransitItem($traslado, $qty){
+        
+        GpCotizacionDetalleStock::where('id', $traslado->stock_id)->update(['cantidad_transito' => $qty]);
     }
 
 

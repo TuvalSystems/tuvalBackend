@@ -73,6 +73,7 @@ class GpCotizacionDetalleStock extends Model
         'cantidad_cancelada',
         'user_id_cancelacion',
         'cantidad_reservada',
+        'cantidad_transito'
     ];
 
 
