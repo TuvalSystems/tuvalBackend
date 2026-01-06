@@ -368,7 +368,7 @@ class QuotationService implements QuotationServiceInterface
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
-        $imagenes = [];
+        // $imagenes = [];
         $subtotalmenosDescuento = 0;
         $sumIva = 0;
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
@@ -385,6 +385,7 @@ class QuotationService implements QuotationServiceInterface
 
             //proceso de imagenes
             if ($withImages) {
+                $imagenes = [];
                 for ($i = 1; $i <= 3; $i++) {
                     $file = 'images/productos/' . $item['ART_CODIGO_TRES_LETRAS'] . '_' . $i . '.jpg';
 
