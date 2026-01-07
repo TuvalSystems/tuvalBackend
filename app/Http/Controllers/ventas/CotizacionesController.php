@@ -1165,9 +1165,9 @@ class CotizacionesController extends Controller
 
     public function validarSegmentoCliente(Request $request)
     {
-        $cliente = $request->get('cliente', null);
+        $ruc = $request->get('ruc', null);
         try {
-            $hasSegment = $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+            $hasSegment = $this->quotationService->checkClientWithSegmentExist($ruc);
             if ($hasSegment['success'] === true) {
                 return $this->buildExistResponse(true, 'Segmento encontrado', 200);
             }
@@ -1180,12 +1180,11 @@ class CotizacionesController extends Controller
 
     public function actualizarSegmentoCliente(Request $request)
     {
-        $cliente = $request->get('cliente', null);
+        $ruc = $request->get('ruc', null);
         $segmento = $request->get('segmento', null);
         $subsegmento = $request->get('subsegmento', null);
-
         try {
-            $this->quotationService->updateClientWithSegment($cliente, $segmento, $subsegmento);
+            $this->quotationService->updateClientWithSegment($ruc, $segmento, $subsegmento);
             return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);

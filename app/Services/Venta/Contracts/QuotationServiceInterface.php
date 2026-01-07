@@ -76,7 +76,7 @@ interface QuotationServiceInterface
     public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist($ruc);
-    public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId);
+    public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);
 
 
 

@@ -1274,16 +1274,14 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId)
+    public function updateClientWithSegment(string $ruc, int  $segmentoId, int $subsegmentoId)
     {
-
-        $cliente = GpCliente::find($cliente['id']);
+        $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
         $cliente->CLI_SEGMENTO_ID = $segmentoId;
         $cliente->CLI_SUBSEGMENTO_ID = $subsegmentoId;
         $cliente->save();
-        $this->sendToSegmentAndRucToGp($cliente['CLI_RUC'], $subsegmentoId);
-        return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
-
+        $this->sendToSegmentAndRucToGp($cliente->CLI_RUC, $subsegmentoId);
+        return $cliente;
     }
 
 
