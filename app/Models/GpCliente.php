@@ -149,7 +149,13 @@ class GpCliente extends Model
 
 
 
-    public function gpvendedor(){
+    public function gpvendedor()
+    {
         return $this->belongsTo(GpVendedor::class, 'CLI_VENDEDOR', 'VEND_ID');
+    }
+
+    public function sucursales()
+    {
+        return $this->hasMany(GpClienteSucursal::class, 'CLI_SUC_RUC', 'CLI_RUC');
     }
 }

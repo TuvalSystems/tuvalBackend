@@ -338,6 +338,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
         Route::post('consultastockothers', [ConsultasController::class, 'consultaStockOthers']);
         Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
+        Route::post('buscar-clientes', [ConsultasController::class, 'buscarClientes']);
     });
 
     Route::group(['prefix' => 'aprobaciones'], function () {

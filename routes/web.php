@@ -226,3 +226,6 @@ Route::prefix('devoluciones-web')->group(function () {
 Route::get('notifications-web/all', [UserNotificationController::class, 'index']);
 Route::get('notifications-web/mark-as-read', [UserNotificationController::class, 'marcarNotificacion']);
 Route::get('notifications-web/mark-all-as-read', [UserNotificationController::class, 'marcarNotificacion']);
+
+
+Route::get('consultas-web/buscar-clientes', [ConsultasController::class, 'buscarClientes']);

@@ -52,7 +52,7 @@ class GpClienteSucursal extends Model
 {
     use HasFactory;
 
-    protected $table ='gp_cliente_sucursals';
+    protected $table = 'gp_cliente_sucursals';
 
 
     protected $fillable = [
@@ -72,4 +72,10 @@ class GpClienteSucursal extends Model
         'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA',
         'coordenadas',
     ];
+
+
+    public function vendedor()
+    {
+        return $this->belongsTo(GpVendedor::class, 'CLI_SUC_VENDEDOR', 'VEND_ID');
+    }
 }

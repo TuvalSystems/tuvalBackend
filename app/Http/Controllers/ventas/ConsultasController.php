@@ -26,6 +26,7 @@ use App\Http\Controllers\WebserviceController;
 use App\Http\Requests\Venta\Consultas\BusquedaArticuloRequest;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\JsonResponse;
@@ -35,13 +36,11 @@ use Illuminate\Support\Facades\Log;
 class ConsultasController extends Controller
 {
     use JsonResponseTrait;
-    protected $InventoryQueryService;
 
-
-
-    public function __construct(InventoryQueryServiceInterface $InventoryQueryService)
-    {
-        $this->InventoryQueryService = $InventoryQueryService;
+    public function __construct(
+        protected readonly InventoryQueryServiceInterface $InventoryQueryService,
+        protected readonly ClientQueryServiceInterface $clientService
+    ) {
     }
 
     public function buscararticulo(Request $request): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
@@ -191,7 +190,6 @@ class ConsultasController extends Controller
 
     public function buscarArticuloWeb(BusquedaArticuloRequest $request)
     {
-
         try {
             $data = $this->InventoryQueryService->searchWithDetails($request->validated());
             return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
@@ -357,6 +355,19 @@ class ConsultasController extends Controller
             return response([
                 'error' => 'Hubo un error al buscar'
             ], 401);
+        }
+    }
+
+    public function buscarClientes(Request $request)
+    {
+        try {
+            $rq = $request->all();
+            $search = data_get($rq, 'search', null);
+            $tipo = data_get($rq, 'tipo', null);
+            $clientes = $this->clientService->getAllClients($search, $tipo);
+            return $this->successResponse('Clientes obtenidos correctamente', $clientes, 200);
+        } catch (\Throwable $th) {
+            return $this->errorResponse('Error al buscar clientes', $th->getMessage(), 500);
         }
     }
 
