@@ -211,7 +211,7 @@ class OrderService implements OrderServiceInterface
     public function getInvoiceDocumentInfo($pedido)
     {
         if (!$pedido['factura']) {
-            return ['success' => false, 'message' => 'El pedido no tiene factura'];
+            throw new \Exception('El pedido no tiene factura');
         }
 
         $resp = $this->apiSalesService->fetchGpInvoiceInfo(array(
@@ -222,7 +222,6 @@ class OrderService implements OrderServiceInterface
         if (!$success) {
             throw new \Exception($message);
         }
-
         return data_get($resp, 'data', []);
     }
 
@@ -230,11 +229,9 @@ class OrderService implements OrderServiceInterface
     {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
-        if ($datosFactura['success'] === false) {
-            throw new \Exception($datosFactura['message']);
-        }
-        $datos['xml'] = $datosFactura['data']['xml'];
-        $datos['factura'] = $pedido['factura'];
+
+        $datos['xml'] =  data_get($datosFactura, 'xml', '');
+        $datos['factura'] =  data_get($datosFactura, 'numeroDocumento', '');
         return $datos;
     }
 
