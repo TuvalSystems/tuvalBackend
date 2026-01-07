@@ -64,8 +64,8 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $newOrd->sucursal_id                = $orderOrigin->sucursal_id;
         $newOrd->sucursal_facturacion_id    = $orderOrigin->sucursal_facturacion_id;
         $newOrd->cliente_id                 = $devolucion->cliente_volver_a_facturar_id;
-        $newOrd->orden_de_compra            = $orderOrigin->orden_de_compra;
-        $newOrd->nota_cliente               = $orderOrigin->nota_cliente;
+        $newOrd->orden_de_compra            = $devolucion->orden_de_compra;
+        $newOrd->nota_cliente               = $devolucion->nota_cliente;
         $newOrd->CLI_RUC                    = $cliente->CLI_RUC;
         $newOrd->CLI_RAZON_SOCIAL           = $cliente->CLI_RAZON_SOCIAL;
         $newOrd->CLI_CORREO_ELECT_SRI       = $cliente->CLI_CORREO_ELECT_SRI;
@@ -108,7 +108,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
             $this->replicateProviders($orderOrigin, $newOrderHeader, $dtOr, $newDetail);
             $this->replicateStock($orderOrigin, $newOrderHeader, $dtOr, $newDetail, $devolucion, $cantidad);
         }
-        
+
     }
 
 
