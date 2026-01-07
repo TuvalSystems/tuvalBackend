@@ -3,14 +3,19 @@
 namespace App\Services\Venta;
 
 use App\Models\GpCliente;
+use App\Models\GpClienteSucursal;
+use App\Services\Api\ApiGpService;
+use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use Illuminate\Database\Eloquent\Builder;
 
 class ClientQueryService implements ClientQueryServiceInterface
 {
 
-    public function __construct()
-    {
+    public function __construct(
+        protected readonly ApiGpService $apiGp,
+        protected readonly FunctionsServiceInterface $functionsService,
+    ) {
         // Inyecta dependencias si es necesario
     }
 
@@ -50,6 +55,44 @@ class ClientQueryService implements ClientQueryServiceInterface
             //     }
             // ])
             ->limit(120)
+            ->get();
+    }
+
+
+
+    public function getAvailabeCreditCustomer(string $ruc): array
+    {
+        $cliente = GpCliente::with([
+            'gpvendedor:id,VEND_ID,VEND_NOMBRES,VEND_APELLIDOS',
+        ])
+            ->where('CLI_RUC', $ruc)->first();
+
+        $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
+        $cliente->suspendido = data_get($cupoDisponible, 'suspendido', 0);
+        $cliente->cupo_disponible = number_format(data_get($cupoDisponible, 'cupoDisponibleGp', 0), 2, '.', ',');
+        $cliente->cupo_asignado = number_format(data_get($cupoDisponible, 'cupoAsignado', 0), 2, '.', ',');
+        $segmentos = $this->getSegmentClient($ruc);
+        return compact('cliente', 'segmentos');
+    }
+
+
+    public function getSegmentClient(string $ruc)
+    {
+        $resp = $this->apiGp->fetchClientSegment(['ruc' => $ruc]);
+        return data_get($resp, 'data', []);
+    }
+
+
+    public function getCustomerBranches(string $ruc): mixed
+    {
+        return GpClienteSucursal::where('CLI_SUC_RUC', $ruc)
+            ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC')
+            ->select([
+                'id',
+                'CLI_SUC_ID_DIRECCION',
+                'CLI_SUC_DIRECCION',
+                'CLI_SUC_CORREO_ELECTRONICO_SRI'
+            ])
             ->get();
     }
 }

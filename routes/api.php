@@ -96,7 +96,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
     Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
     Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
-    Route::post('/consultas/consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
     Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
     Route::post('/verpedidosycotizacionesporaprobar', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::post('/aprobaciones/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
@@ -115,7 +114,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/volverapedircotizacion', [CotizacionesController::class, 'volverapedircotizacion']);
     Route::post('/pedidos/recuperarpedido', [PedidosController::class, 'recuperarpedido']);
     Route::post('/pedidos/copiarpedido', [PedidosController::class, 'copiarpedido']);
-    Route::post('/consultas/territorios', [ConsultasController::class, 'territorios']);
     Route::post('/guardarordenpedido', [CotizacionesController::class, 'guardarordenpedido']);
     Route::post('/cotizaciones/guardardireccion', [CotizacionesController::class, 'guardardireccion']);
     Route::post('/cotizaciones/guardarcliente', [CotizacionesController::class, 'guardarcliente']);
@@ -152,8 +150,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/cobranzas/estadocaja/{USERID}', [CobranzasController::class, 'estadocaja']);
     Route::get('/cobranzas/abrircaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'abrircaja']);
     Route::get('/cobranzas/cerrarcaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'cerrarcaja']);
-    Route::get('/consultas/puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);
-    Route::get('/consultas/cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
+
     Route::post('/cobranzas/consultacierrecajausuario', [CobranzasController::class, 'consultacierrecajausuario']);
     Route::post('/cobranzas/consultacobroscliente', [CobranzasController::class, 'consultacobroscliente']);
 
@@ -195,7 +192,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
     Route::get('/pedidos/imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
 
-    Route::post('/consultas/notificaciones', [ConsultasController::class, 'notificaciones']);
 
     //new routes
 
@@ -333,12 +329,23 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 
     Route::group(['prefix' => 'consultas'], function () {
+        Route::post('notificaciones', [ConsultasController::class, 'notificaciones']);
+        Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
+        Route::post('territorios', [ConsultasController::class, 'territorios']);
+        Route::get('puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);
+        Route::get('cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
         Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
         Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
         Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
         Route::post('consultastockothers', [ConsultasController::class, 'consultaStockOthers']);
         Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
+
+        /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
         Route::post('buscar-clientes', [ConsultasController::class, 'buscarClientes']);
+        Route::get('cliente/cupo-disponible/{ruc}', [ConsultasController::class, 'obtenerCupoDisponibleCliente']);
+        Route::get('cliente/sucursales/{ruc}', [ConsultasController::class, 'obtenerSucursalesCliente']);
+
+
     });
 
     Route::group(['prefix' => 'aprobaciones'], function () {

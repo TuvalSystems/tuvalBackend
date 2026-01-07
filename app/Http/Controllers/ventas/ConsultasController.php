@@ -371,6 +371,26 @@ class ConsultasController extends Controller
         }
     }
 
+    public function obtenerCupoDisponibleCliente($ruc)
+    {
+        try {
+            $response = $this->clientService->getAvailabeCreditCustomer($ruc);
+            return $this->successResponse('Cupo disponible obtenido correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerSucursalesCliente($ruc)
+    {
+        try {
+            $response = $this->clientService->getCustomerBranches($ruc);
+            return $this->successResponse('Información obtenido correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
     public function cupodisponible($ruc)
     {
         try {

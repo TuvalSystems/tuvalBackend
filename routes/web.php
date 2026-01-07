@@ -229,3 +229,4 @@ Route::get('notifications-web/mark-all-as-read', [UserNotificationController::cl
 
 
 Route::get('consultas-web/buscar-clientes', [ConsultasController::class, 'buscarClientes']);
+Route::get('consultas-web/cliente/cupo-disponible/{ruc}', [ConsultasController::class, 'obtenerCupoDisponibleCliente']);
