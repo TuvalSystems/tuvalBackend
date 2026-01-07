@@ -127,6 +127,7 @@ Route::prefix('pedidos')->group(function () {
     Route::get('cancelar-orden-despacho/{id}', [DespachosController::class, 'cancelarOrdenDespacho']);
     Route::get('/validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
 
+    Route::get('imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
 
 
 });

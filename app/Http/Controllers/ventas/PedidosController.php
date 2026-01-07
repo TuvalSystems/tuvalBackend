@@ -27,6 +27,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
+use function Symfony\Component\Translation\t;
+
 class PedidosController extends Controller
 {
     use JsonResponseTrait;
@@ -397,7 +399,7 @@ class PedidosController extends Controller
             $xmlContent = $this->orderService->generateInvoiceXml($id);
 
             if (empty($xmlContent['xml']) || empty($xmlContent['factura'])) {
-                return $this->buildErrorResponse('No se pudo generar el XML.', 422);
+                throw new \Exception('No se pudo generar el XML.');
             }
 
             $nombreArchivo = 'factura_' . $xmlContent['factura'] . '.xml';
@@ -406,6 +408,11 @@ class PedidosController extends Controller
                 ->header('Content-Type', 'application/xml')
                 ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
         } catch (\Throwable $th) {
+            Log::error('Error en imprimirpedidoxml', [
+                'error' => $th->getMessage(),
+                'linea' => $th->getLine(),
+                'pedido_id' => $id,
+            ]);
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
