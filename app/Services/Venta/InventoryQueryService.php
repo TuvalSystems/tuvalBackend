@@ -62,7 +62,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
         $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
         return $art;
-       
+
     }
 
 
@@ -308,8 +308,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             d.ART_CODIGO as codigo,
             st.STO_ART_BODEGA AS bodega,
              (
-                COALESCE(st.cantidad_traslado, 0)
-                  - COALESCE(st.cantidad_cancelada, 0)
+               COALESCE(SUM(tr.cantidad), 0)
                   - COALESCE(SUM(tr.trasladado), 0)
              ) AS reservado,
             p.cotizacion as cotizacion,

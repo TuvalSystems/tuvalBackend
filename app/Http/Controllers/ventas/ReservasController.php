@@ -171,8 +171,8 @@ class ReservasController extends Controller
             $reserva = DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->approvalApplicationReservedQuotation($data['data'], $gpUser);
             });
-            $msg = "Reserva autorizada correctamente:  {$reserva['reserva_id']}";
-            return $this->buildSuccessResponse($msg, 200);
+            $msg = "Reserva autorizada correctamente";
+            return $this->successResponse($msg, $reserva,200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->buildErrorResponse('Cotización no encontrada', 404);
         } catch (\DomainException $e) {

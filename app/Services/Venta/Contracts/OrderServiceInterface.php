@@ -65,4 +65,6 @@ interface OrderServiceInterface
     public function updateOrderAndBlockDispach($id, $pendingDispach);
 
     public function hasDeliveryNoteAjusted($id): bool;
+
+    public function sendInvoicesToGp();
 }

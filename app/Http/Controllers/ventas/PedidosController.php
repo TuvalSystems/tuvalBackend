@@ -3,29 +3,21 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Models\GpPedido;
-use App\Models\GpCliente;
 use App\Models\GpArticulo;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\GpOrdenDespacho;
-use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
-use App\Models\GpPedidoDetalleStock;
 use Illuminate\Support\Facades\Auth;
-use App\Models\GpPedidoDetalleProveedores;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Http\Controllers\FuncionesController;
-use App\Http\Controllers\WebserviceController;
-use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use DomainException;
@@ -44,7 +36,6 @@ class PedidosController extends Controller
     public function __construct(
         protected readonly ApiGpService $apiGp,
         protected readonly OrderServiceInterface $orderService,
-        protected readonly ApprovalServiceInterface $approvalService,
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly FunctionsServiceInterface $functionService,
 
@@ -152,8 +143,6 @@ class PedidosController extends Controller
 
     public function corregirenviando(): void
     {
-
-        $webservices = new WebserviceController();
         $enviando = GpPedido::where('estado', 'enviando')
             ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())->get();
 
@@ -164,54 +153,19 @@ class PedidosController extends Controller
 
     public function sendfacturasgp()
     {
-
-        $webservices = new WebserviceController();
-
-        $pedidos = GpPedido::where('estado', 'espera')
-            //->where('factura_siguiente_mes', 0)
-            //where('id',69)
-            ->get();
-
-        foreach ($pedidos as $pedido) {
-
-            // $this->checkenviarfactura($pedido);
-            $this->invoiceService->checkSendInvoice($pedido);
+        try {
+            $this->orderService->sendInvoicesToGp();
+            return $this->buildSuccessResponse("Proceso de facturas ejecutado", 200);
+        } catch (\Throwable $e) {
+            Log::error('Error critico en sendInvoicesToGp', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
-        $traslados = GpPedido::where('estado', 'orden_de_compra')->get();
-        foreach ($traslados as $pedido) {
-            $listo = 'yes';
-            $detalleProveedores = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
-                ->where('pedido_id', $pedido->id)
-                ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
-                ->get();
 
-            if (!count($detalleProveedores)) {
-                $listo = 'no';
-            }
-
-            foreach ($detalleProveedores as $prov) {
-                if ($prov->recibido == 'no') {
-                    $listo = 'no';
-                }
-
-                $parameters = array(
-                    'documento_origen' => $prov->ORDEN_COMPRA_RECIBO,
-                    'tipo_documento' => 1,
-                );
-
-                $result = $webservices->transaccional('MST_Estado_Recibo_Compra', $parameters);
-
-                if (isset($result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION']) && $result['MST_Estado_Recibo_CompraResult']['CS_ESTADO_RECIBO_COMPRA'][0]['REC_COM_ESTADO_RECEPCION'] != 'PROCESADO') {
-                    $listo = 'no';
-                }
-            }
-            if ($listo == 'yes') {
-                $pedido->estado = 'espera';
-                $pedido->save();
-                $this->invoiceService->generateDisptachOrder($pedido);
-                $this->invoiceService->sendInvoiceGp($pedido);
-            }
-        }
     }
 
 
@@ -514,11 +468,12 @@ class PedidosController extends Controller
 
 
 
-    public function volveraFacuturarTest($devolucionId){
+    public function volveraFacuturarTest($devolucionId)
+    {
         try {
-             $devolucion = GpDevoluciones::where('id', $devolucionId)->first();
-             $newOrd = DB::transaction(fn ()=> $this->reInvoice->execute($devolucion));
-             return $this->successResponse('Información Obtenida Correctamente', $newOrd, 200);
+            $devolucion = GpDevoluciones::where('id', $devolucionId)->first();
+            $newOrd = DB::transaction(fn() => $this->reInvoice->execute($devolucion));
+            return $this->successResponse('Información Obtenida Correctamente', $newOrd, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }

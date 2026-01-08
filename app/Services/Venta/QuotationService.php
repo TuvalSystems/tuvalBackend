@@ -1244,9 +1244,9 @@ class QuotationService implements QuotationServiceInterface
 
     public function getNivelPriceSeller(array $data, GpUsuario $user)
     {
-        if ($data['CLI_PUNTO_VENTA'] !== '005') {
-            return 'GENERAL';
-        }
+        // if ($data['CLI_PUNTO_VENTA'] !== '005') {
+        //     return 'GENERAL';
+        // }
         $nivelPrecioApi = $this->apiGpService->getTypeBySeller([
             'usuario' => $user->USERID,
             // 'usuario' => 'oficina',

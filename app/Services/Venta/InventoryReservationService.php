@@ -43,6 +43,7 @@ use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
@@ -1260,7 +1261,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      *  -- ya me carga la lista de cotizaciones basada en attributos de la guia de remision
      */
 
-    public function paginateTransfersToReceive(string $ptoVta, int $perpage = 10, ?string $search = null, ?string $sortBy = null, string $sortOrder = 'desc')
+    public function paginateTransfersToReceive(string $ptoVta, int $perpage = 10, ?string $search = null, ?string $sortBy = null, string $sortOrder = 'desc'): LengthAwarePaginator
     {
 
         // 1) Resolver bodega destino
@@ -1300,11 +1301,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         // 5) Orden y paginación
         $paginator = $q->orderBy($sortBy, $sortOrder)->paginate($perpage);
         // 6) Limpiar relaciones del payload (dejamos solo el accessor "quotes")
-        $paginator->getCollection()->each(function ($g) {
-            // $g->unsetRelation('cotizaciones');          // oculta modelos de cotizaciones
-            $g->unsetRelation('detalleGuiaReservas');   // por si estuviera eager en otro sitio
-            $g->makeHidden(['cotizaciones']); //también sirve, pero unsetRelation evita serializarla
-        });
+        foreach ($paginator->items() as $g) {
+            $g->unsetRelation('detalleGuiaReservas');
+            $g->makeHidden(['cotizaciones']);
+        }
+
         return $paginator;
     }
 
@@ -1509,11 +1510,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $stockOrigen->cantidad_reservada = max(0, (float) $stockOrigen->cantidad_reservada - $decTras);
         $stockOrigen->cantidad_traslado = max(0, (float) $stockOrigen->cantidad_traslado - $decTras);
         $stockOrigen->seleccionado = max(0, (float) $stockOrigen->seleccionado - $decSel);
+        $stockOrigen->cantidad_transito = (float) max(0, $stockOrigen->cantidad_transito - $qty);
         $stockOrigen->save();
 
         if ($liberarStock) {
             $stockDestino->cantidad_reservada = 0;
             $stockDestino->seleccionado = 0;
+            $stockOrigen->cantidad_transito = 0;
         } else {
             // En destino sumas lo recibido a "seleccionado" (ajusta si tu modelo espera otro campo)
             $stockDestino->cantidad_reservada = (float) $stockDestino->cantidad_reservada + $qty;
