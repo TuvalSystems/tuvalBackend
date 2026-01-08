@@ -91,7 +91,8 @@ class ClientQueryService implements ClientQueryServiceInterface
                 'id',
                 'CLI_SUC_ID_DIRECCION',
                 'CLI_SUC_DIRECCION',
-                'CLI_SUC_CORREO_ELECTRONICO_SRI'
+                'CLI_SUC_CORREO_ELECTRONICO_SRI',
+                'coordenadas'
             ])
             ->get();
     }
