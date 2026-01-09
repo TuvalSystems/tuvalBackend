@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpUsuario;
+use App\Models\reservas\GpCotizacionReservaLog;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -849,12 +850,13 @@ class ApprovalService implements ApprovalServiceInterface
     public function getOrderApprovalData($data)
     {
         try {
+            $quoteReservedOriginId = $this->validateExistsReserve($data['cotizacion_id']);
             $detalles = $this->getDetailArticlesWithStock($data['id']);
             $flatDetails = $this->stockFormatterForUpdateApproval($detalles);
             $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
             $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
             $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
-            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id']);
+            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id'],  $quoteReservedOriginId);
             if ($alert) {
                 return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
             }
@@ -868,12 +870,25 @@ class ApprovalService implements ApprovalServiceInterface
         }
     }
 
+    public function validateExistsReserve($quotationId)
+    {
+        $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
+        if (!$quoteReserve) {
+            return;
+        }
+        $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
+        if (!$logReserve) {
+            return;
+        }
+        return $logReserve?->cotizacion_origen_id;
+    }
 
-    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId)
+
+    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId,  $quoteReservedOriginId = null)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
@@ -1075,6 +1090,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function updateStockOnOrderApproval($order)
     {
+        $quoteReservedOriginId = $this->validateExistsReserve($order->cotizacion_id);
         $detalles = $this->getDetailArticlesWithStock($order->id);
         if ($detalles->isEmpty()) {
             return;
@@ -1085,7 +1101,7 @@ class ApprovalService implements ApprovalServiceInterface
         $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
 
-        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id);
+        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
     }
 
     public function getDetailArticlesWithStock($orderId)
@@ -1155,11 +1171,11 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $orderId)
+    public function updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $orderId, $quoteReservedOriginId = null)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
