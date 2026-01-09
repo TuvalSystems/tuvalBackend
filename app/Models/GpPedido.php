@@ -99,7 +99,6 @@ use \DateTimeInterface;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereVENDAPELLIDOS($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereVENDID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereVENDNOMBRES($value)
- * @mixin \Eloquent
  * @property string|null $fecha_factura
  * @property string|null $fecha_hora_factura
  * @property string|null $fecha_hora_rechazado
@@ -132,7 +131,38 @@ use \DateTimeInterface;
  * @property string|null $origen
  * @property string|null $fe_facturacion_reserva
  * @property boolean $pendiente_salida
- *
+ * @property int|null $user_rechazo_id Usuario que rechazo el pedido en estado de espera
+ * @property int|null $user_block_id
+ * @property string|null $fecha_bloqueo
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoDetalle> $detallepedido
+ * @property-read int|null $detallepedido_count
+ * @property-read \App\Models\GpClienteSucursal|null $direccion_entrega
+ * @property-read bool $check_traslado_venta
+ * @property-read mixed $msg_registro_copia
+ * @property-read \App\Models\GpCliente|null $gpcliente
+ * @property-read \App\Models\GpCotizacion|null $gpcotizacion
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, GpTrasladosVentas> $gptrasladoventa
+ * @property-read int|null $gptrasladoventa_count
+ * @property-read \App\Models\GpVendedor|null $gpvendedor
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoDetalleStock> $pedidostock
+ * @property-read int|null $pedidostock_count
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereDespachoEnProceso($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFacturaOrigen($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFeFacturacionReserva($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaBloqueo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaHoraCancelado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaHoraFactura($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaHoraRechazado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereImpuesto($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereMotivoAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereOrigen($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido wherePendienteSalida($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereRechazado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereTransferenciaEnProceso($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUSERIDCancelado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUserBlockId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUserRechazoId($value)
+ * @mixin \Eloquent
  */
 class GpPedido extends Model
 {
