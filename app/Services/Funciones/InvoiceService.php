@@ -749,6 +749,7 @@ class InvoiceService implements InvoiceServiceInterface
             $reserva->estado = 'procesado';
             $cotizacion->estado = 'procesado';
             $reserva->save();
+            $cotizacion->save();
         }
     }
 }
