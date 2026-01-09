@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpArticulo;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -208,7 +209,7 @@ class PedidosController extends Controller
                 $pedido->imprimir = 'no';
             } elseif ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
                 $pedido->imprimir = 'no';
-            } elseif ($pedido->estado == 'rechazado') {
+            } elseif ($pedido->estado ==  OrderStatus::RECHAZADO) {
                 $pedido->imprimir = 'no';
             } else {
                 $pedido->imprimir = 'yes';
@@ -487,14 +488,14 @@ class PedidosController extends Controller
 
         $pedido = GpPedido::where('id', $data['id'])->get()->first();
 
-        if ($pedido->estado == 'facturado') {
+        if ($pedido->estado == OrderStatus::FACTURADO) {
             return response([
                 'success' => true,
                 'message' => 'Pedido ' . $pedido->pedido . ' ya está facturado y no se puede eliminar',
             ]);
         }
 
-        $pedido->estado = 'eliminado';
+        $pedido->estado = OrderStatus::ELIMINADO;
         $pedido->USERID_cancelado = $user->USERID;
         $pedido->fecha_hora_cancelado = date('Y-m-d H:i:s');
         $pedido->save();

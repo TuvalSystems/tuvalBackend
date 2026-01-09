@@ -2,6 +2,7 @@
 
 namespace App\Models\devoluciones;
 
+use App\Enums\devoluciones\DevolutionStatus;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpPedido;
@@ -87,6 +88,9 @@ class GpDevoluciones extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'estado' => DevolutionStatus::class
+    ];
     protected $fillable = [
         'devolucion',
         'estado',

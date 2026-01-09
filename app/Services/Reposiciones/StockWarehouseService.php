@@ -641,7 +641,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
      *  actualizar el stock en pedido detalle stock
      */
 
-    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId)
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId ,  $quoteReservedOriginId = null)
     {
         $bodegas = $stockFormatted
             ->pluck('STO_ART_BODEGA')
@@ -649,7 +649,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->values()
             ->map(fn($i) => (string) $i)
             ->toArray();
-        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId, false, null);
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId, false, $quoteReservedOriginId);
 
         return collect($stockFormatted)
             ->filter(function ($item) use ($articulo) {

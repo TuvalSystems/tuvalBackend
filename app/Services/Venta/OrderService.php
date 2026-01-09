@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -567,7 +568,7 @@ class OrderService implements OrderServiceInterface
             $order->save();
         }
         $this->recalculateAndSendInvoice($order);
-        return $order;
+        return $order->refresh();
 
     }
 
@@ -740,7 +741,7 @@ class OrderService implements OrderServiceInterface
                 $resultados['total']++;
 
                 // Éxito idempotente si ya está facturado
-                if (filled($pedido->factura) && $pedido->estado === 'facturado') {
+                if (filled($pedido->factura) && $pedido->estado === OrderStatus::FACTURADO) {
                     $resultados['exitosos']++;
                     continue;
                 }
@@ -767,7 +768,7 @@ class OrderService implements OrderServiceInterface
                     }
 
                     $pedido->refresh();
-                    if ($pedido->estado === 'facturado' && filled($pedido->factura)) {
+                    if ($pedido->estado === OrderStatus::FACTURADO && filled($pedido->factura)) {
                         $resultados['exitosos']++;
                         Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
                     } else {

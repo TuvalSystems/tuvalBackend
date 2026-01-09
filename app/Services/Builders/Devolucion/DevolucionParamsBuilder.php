@@ -2,6 +2,7 @@
 
 namespace App\Services\Builders\Devolucion;
 
+use App\Enums\devoluciones\InvoiceAnulationStatus;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpFacturaAnulada;
@@ -110,7 +111,7 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
             'claveacceso'         => $claveAcceso,
             'msj_anulacion_gp'    => 'Factura anulada correctamente en GP',
             'diario_response_gp'  => $diario,
-            'estado'              => 'pendiente',
+            'estado'              => InvoiceAnulationStatus::PENDIENTE,
             // 'resp_document'       => ,
         ]);
         return $inv;

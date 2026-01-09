@@ -2,7 +2,7 @@
 
 namespace App\Repositories\Devoluciones;
 
-
+use App\Enums\devoluciones\InvoiceAnulationStatus;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpMotivosDevolucion;
@@ -21,7 +21,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function isInvoiceAlreadyVoided($pedido, $devolucion): bool
     {
         return GpFacturaAnulada::where('factura', $pedido->factura)->where('devolucion_id', $devolucion->id)
-            ->where('pedido_id', $pedido->id)->where('estado', 'enviada')->exists();
+            ->where('pedido_id', $pedido->id)->where('estado', InvoiceAnulationStatus::ENVIADA)->exists();
     }
 
     public function isOrderNotDispatchedOrProcessing($pedido)
