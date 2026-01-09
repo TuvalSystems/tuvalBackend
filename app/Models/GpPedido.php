@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\traslados\GpTrasladosVentas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -169,7 +170,9 @@ class GpPedido extends Model
     use HasFactory;
 
     protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
-
+    protected $casts = [
+        'estado' => OrderStatus::class
+    ];
     protected $fillable = [
         'pedido',
         'factura',

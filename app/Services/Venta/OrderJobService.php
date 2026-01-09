@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Api\MswService;
@@ -93,7 +94,7 @@ class OrderJobService
                 $resultados['total']++;
 
                 // Éxito idempotente si ya está facturado
-                if (filled($pedido->factura) && $pedido->estado === 'facturado') {
+                if (filled($pedido->factura) && $pedido->estado === OrderStatus::FACTURADO) {
                     $resultados['exitosos']++;
                     continue;
                 }
@@ -120,7 +121,7 @@ class OrderJobService
                     }
 
                     $pedido->refresh();
-                    if ($pedido->estado === 'facturado' && filled($pedido->factura)) {
+                    if ($pedido->estado === OrderStatus::FACTURADO && filled($pedido->factura)) {
                         $resultados['exitosos']++;
                         Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
                     } else {
@@ -179,7 +180,7 @@ class OrderJobService
                             ->first();
 
                         // Idempotencia: sal si ya está facturado o tiene número de factura, etc.
-                        if (in_array($fresh->estado, ['facturado'], true) || !empty($fresh->factura)) {
+                        if (in_array($fresh->estado, [OrderStatus::FACTURADO], true) || !empty($fresh->factura)) {
                             $metrics['skipped']++;
                             Log::channel('cron_process')->info("⏭️ Pedido {$fresh->id} omitido: ya facturado.");
                             return;

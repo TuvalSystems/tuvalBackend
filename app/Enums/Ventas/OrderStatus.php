@@ -10,6 +10,6 @@ enum OrderStatus : string
     case RECHAZADO = 'rechazado';
     case TRASLADO = 'traslado';
     case ORDEN_DE_COMPRA = 'orden_de_compra';
-    case ENVIADO = 'enviando';
+    case ENVIANDO = 'enviando';
     case ANULADA = 'anulada';
 }

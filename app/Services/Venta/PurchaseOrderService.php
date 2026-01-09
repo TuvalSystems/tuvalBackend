@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpProveedor;
 use App\Models\GpPedidoDetalle;
@@ -105,7 +106,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         }
 
         if ($ordenCreado) {
-            $pedido->estado = self::ORDER_STATE;
+            $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
             $pedido->save();
         }
 
@@ -314,7 +315,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         })->where('recibido', 'no')->exists();
 
         if ($hasPending) {
-            $pedido->estado = self::ORDER_STATE;
+            $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
             $pedido->save();
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\WebserviceController;
 use App\Models\cobranzas\GpCobro;
@@ -65,11 +66,11 @@ class DespachosController extends Controller
             return;
         }
 
-        if ($pedido->estado == 'orden_de_compra') {
+        if ($pedido->estado == OrderStatus::ORDEN_DE_COMPRA) {
             return;
         }
 
-        if ($pedido->estado == 'traslado') {
+        if ($pedido->estado == OrderStatus::TRASLADO) {
             return;
         }
 
@@ -352,7 +353,7 @@ class DespachosController extends Controller
         foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if ($pedido->estado == 'rechazado') {
+            if ($pedido->estado == OrderStatus::RECHAZADO) {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();
@@ -450,7 +451,7 @@ class DespachosController extends Controller
         foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if ($pedido->estado == 'rechazado') {
+            if ($pedido->estado == OrderStatus::RECHAZADO) {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();

@@ -333,11 +333,11 @@ class InvoiceService implements InvoiceServiceInterface
                 return;
             }
             Log::info("Pedido {$pedido->pedido} cumple condiciones para cambiar a 'enviando'.");
-            $pedido->estado = OrderStatus::ENVIADO;
+            $pedido->estado = OrderStatus::ENVIANDO;
             $pedido->save();
         }
 
-
+        $pedido->refresh();
         // validacion si pedido nace de reserva o cotizacion
         if (!$this->isInvoiceDateValidForReservedOrder($pedido)) {
             Log::warning(
@@ -575,7 +575,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkFinalInvoiceValidation(GpPedido $pedido): bool
     {
-        if ($pedido->estado != OrderStatus::ENVIADO) {
+        if ($pedido->estado != OrderStatus::ENVIANDO) {
             return false;
         }
 

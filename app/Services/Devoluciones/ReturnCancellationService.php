@@ -3,6 +3,8 @@
 namespace App\Services\Devoluciones;
 
 use App\Enums\devoluciones\DevolutionStatus;
+use App\Enums\devoluciones\InvoiceAnulationStatus;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\devoluciones\GpFacturaAnulada;
@@ -38,7 +40,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
         Log::channel('devolucion')->info("Procesando anulación Devolución ID: {$devolucion['id']} para Pedido ID: {$order['id']}");
 
         $newOrder = GpPedido::find($order['id']);
-        if (!$order) {
+        if (!$newOrder) {
             abort(404, 'Pedido no encontrado');
         }
         if ($this->repository->isInvoiceAlreadyVoided($newOrder, $devolucion)) {
@@ -52,7 +54,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
         $claveAcceso = data_get($invoice, 'data.claveAcceso', null);
         if (!$successInv || !$claveAcceso) {
             $mensajeError = data_get($invoice, 'message', 'Error desconocido al obtener clave');
-            $devolucion->update(['estado' => 'no_procesado', 'motivo_no_anulada' => $mensajeError]);
+            $devolucion->update(['estado' => DevolutionStatus::NO_PROCESADO, 'motivo_no_anulada' => $mensajeError]);
             abort(400, "Devolución generada {$devolucion->devolucion} pero no fue anulada por el siguiente motivo : " . $mensajeError);
         }
 
@@ -61,7 +63,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
         $diario = $this->sendAnulationTpGpInvoice($newOrder->factura, $newOrder->CLI_RUC, $devolucion->user_id, $devolucion->devolucion);
         if (!data_get($diario, 'success', false)) {
             $mensajeError = data_get($diario, 'message', 'Error desconocido al anular factura en GP');
-            $devolucion->update(['estado' => 'no_procesado', 'motivo_no_anulada' => $mensajeError]);
+            $devolucion->update(['estado' => DevolutionStatus::NO_PROCESADO, 'motivo_no_anulada' => $mensajeError]);
             abort(400, "Devolución generada {$devolucion->devolucion} pero no fue anulada por el siguiente motivo : " . $mensajeError);
         }
 
@@ -105,14 +107,14 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
         // $success = data_get($resp, 'success', false);
         $message = data_get($resp, 'respuesta', null);
 
-        // quito el sucess porque solo voy a guardar el mensaje nada mas 
+        // quito el sucess porque solo voy a guardar el mensaje nada mas
         // if (!$success) {
         //     abort(400, 'Error al enviar la anulación al SRI: ' . data_get($resp, 'message', 'Error desconocido'));
         // }
 
         DB::transaction(function () use ($invoice, $order, $devolucion, $message) {
             $invoice->update([
-                'estado' => DevolutionStatus::ENVIADA,
+                'estado' => InvoiceAnulationStatus::ENVIADA,
                 'resp_seedbilling' => $message
             ]);
 
@@ -177,10 +179,10 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     {
         $devolucion->update(['estado' => DevolutionStatus::ANULADA]);
 
-        $order->update(['estado' => DevolutionStatus::ANULADA]);
+        $order->update(['estado' => OrderStatus::ANULADA]);
 
         GpOrdenDespacho::where('pedido_id', $order->id)
-            ->update(['estado' => DevolutionStatus::CANCELADA]);
+            ->update(['estado' => 'cancelada']);
 
     }
 

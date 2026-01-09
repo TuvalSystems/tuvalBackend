@@ -2,7 +2,7 @@
 
 namespace App\Services\Devoluciones;
 
-use App\Enums\devoluciones\DevolutionStatus;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -59,7 +59,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $newOrd->factura                    = null;
         $newOrd->factura_origen             = $orderOrigin->factura;
         $newOrd->fecha_factura              = null;
-        $newOrd->estado                     = DevolutionStatus::ESPERA;
+        $newOrd->estado                     = OrderStatus::ESPERA;
         $newOrd->despachado                 = $isDispatch;
         $newOrd->sucursal_id                = $orderOrigin->sucursal_id;
         $newOrd->sucursal_facturacion_id    = $orderOrigin->sucursal_facturacion_id;

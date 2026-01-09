@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\devoluciones\DevolutionStatus;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
@@ -238,7 +239,7 @@ class AprobacionesController extends Controller
         $devolucion = GpDevoluciones::where('id', $data['id'])->first();
 
         $devolucion->aprobado = 'yes';
-        $devolucion->estado = 'aprobado';
+        $devolucion->estado = DevolutionStatus::APROBADO;
 
         if ($devolucion->volver_a_facturar == 1 && $devolucion->despachado == 1) {
             //$devolucion->estado = 'recibido';
@@ -267,7 +268,7 @@ class AprobacionesController extends Controller
 
         $devolucion = GpDevoluciones::where('id', $data['id'])->first();
         $devolucion->aprobado = 'yes';
-        $devolucion->estado = 'rechazado';
+        $devolucion->estado = DevolutionStatus::RECHAZADO;
         $devolucion->aprobador_id = $user->id;
         if ($devolucion->save()) {
 

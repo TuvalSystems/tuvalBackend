@@ -2,6 +2,7 @@
 
 namespace App\Services\Aprobaciones;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Jobs\Aprobaciones\NotifyApprovalOrdersJob;
 use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -927,7 +928,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -945,7 +946,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido = GpPedido::where('id', $data['id'])
             ->whereNotIn('estado', ['eliminado', 'anulada'])
             ->lockForUpdate()->first();
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -1000,7 +1001,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -1027,7 +1028,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -1202,7 +1203,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function denyOrderBeenWaiting(int $id)
     {
         $order = GpPedido::find($id);
-        $order->estado = 'rechazado';
+        $order->estado = OrderStatus::RECHAZADO;
         $order->user_rechazo_id = auth()->user()->id;
         $order->fecha_hora_rechazado = Carbon::now()->format('Y-m-d H:i:s');
         $order->rechazado = 1;

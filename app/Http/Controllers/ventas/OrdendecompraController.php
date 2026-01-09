@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\Controller;
@@ -42,7 +43,7 @@ class OrdendecompraController extends Controller
         }
 
         if($flag){
-            $pedido->estado = 'orden_de_compra';
+            $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
             $pedido->save();
         }
         return $flag;
@@ -102,7 +103,7 @@ class OrdendecompraController extends Controller
                 }
             }
             if($flag) {
-                $pedido->estado = 'orden_de_compra';
+                $pedido->estado =  OrderStatus::ORDEN_DE_COMPRA;
                 $pedido->save();
             }
         }

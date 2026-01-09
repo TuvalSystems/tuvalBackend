@@ -2,6 +2,7 @@
 
 namespace App\Services\Devoluciones;
 
+use App\Enums\devoluciones\DevolutionStatus;
 use App\Models\GpPedido;
 use App\Models\GpIngreso;
 use App\Models\GpCliente;
@@ -233,7 +234,7 @@ class DevolucionJobService
         }
         $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
         $devolucion->fecha_NC = Carbon::parse($fechaNc)->format('Y-m-d');
-        $devolucion->estado = 'procesado';
+        $devolucion->estado = DevolutionStatus::PROCESADO;
         $devolucion->DOC_GENERADO = $docGenerado;
         $devolucion->save();
         $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
