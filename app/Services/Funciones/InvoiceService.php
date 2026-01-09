@@ -735,8 +735,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function updateCheckStatusReservation(int $reserveId)
     {
-        $reserva = GpReserva::lockForUpdate()->find($reserveId);
-        $cotizacion = GpCotizacion::lockForUpdate()->find($reserva->cotizacion_id);
+        $reserva = GpReserva::find($reserveId);
         $stocks = GpCotizacionDetalleStock::query()
             ->where('cotizacion_id', $reserva->cotizacion_id)
             ->get();
@@ -747,9 +746,10 @@ class InvoiceService implements InvoiceServiceInterface
         if (!$tienePendientes) {
             // Ajusta el nombre de la columna/valor según tu modelo (estado, estado_reserva, etc.)
             $reserva->estado = 'procesado';
-            $cotizacion->estado = 'procesado';
+
             $reserva->save();
-            $cotizacion->save();
+            GpCotizacion::where('id', $reserva->cotizacion_id) // O la columna ID real
+            ->update(['estado' => 'procesado']);
         }
     }
 }
