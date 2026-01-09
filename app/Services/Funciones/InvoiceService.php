@@ -9,6 +9,7 @@ use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpClienteSucursal;
+use App\Models\GpCotizacion;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
@@ -735,6 +736,7 @@ class InvoiceService implements InvoiceServiceInterface
     public function updateCheckStatusReservation(int $reserveId)
     {
         $reserva = GpReserva::lockForUpdate()->find($reserveId);
+        $cotizacion = GpCotizacion::lockForUpdate()->find($reserva->cotizacion_id);
         $stocks = GpCotizacionDetalleStock::query()
             ->where('cotizacion_id', $reserva->cotizacion_id)
             ->get();
@@ -745,6 +747,7 @@ class InvoiceService implements InvoiceServiceInterface
         if (!$tienePendientes) {
             // Ajusta el nombre de la columna/valor según tu modelo (estado, estado_reserva, etc.)
             $reserva->estado = 'procesado';
+            $cotizacion->estado = 'procesado';
             $reserva->save();
         }
     }
