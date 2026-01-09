@@ -601,7 +601,7 @@ class InvoiceService implements InvoiceServiceInterface
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === false) {
             $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? 'Error no definido por GP';
-            $pedido->estado = 'espera';
+            $pedido->estado =OrderStatus::ESPERA;
             throw new \Exception("Ocurrio un error al obtener la factura: {$existInvoice['message']}");
         }
         $info = $existInvoice['data'];
