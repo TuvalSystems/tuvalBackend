@@ -30,4 +30,22 @@ use Illuminate\Database\Eloquent\Model;
 class GpRelacionPuntoVentaBodegaRelacionada extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'PTO_VTA_BOD_REL_BODEGA',
+        'PTO_VTA_BOD_REL_PUNTO_VENTA',
+        'PTO_VTA_BOD_REL_NIVEL_ACCESO',
+        'orden'
+    ];
+
+
+
+    public function relacionBodega(){
+        return $this->belongsTo(GpBodega::class, 'PTO_VTA_BOD_REL_BODEGA' , 'BOD_BODEGA');
+    }
+
+
+   public function puntoVenta(){
+        return $this->belongsTo(GpPuntoVenta::class, 'PTO_VTA_BOD_REL_PUNTO_VENTA' , 'PTO_VTA_ID');
+    }
 }

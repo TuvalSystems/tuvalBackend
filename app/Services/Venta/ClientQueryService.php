@@ -5,6 +5,7 @@ namespace App\Services\Venta;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Services\Api\ApiGpService;
+use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,7 @@ class ClientQueryService implements ClientQueryServiceInterface
     public function __construct(
         protected readonly ApiGpService $apiGp,
         protected readonly FunctionsServiceInterface $functionsService,
+        protected readonly ClientBuilderInterface $builder
     ) {
         // Inyecta dependencias si es necesario
     }
@@ -95,5 +97,35 @@ class ClientQueryService implements ClientQueryServiceInterface
                 'coordenadas'
             ])
             ->get();
+    }
+
+
+
+    /** proceso para crear la nueva direccion del cliente - sucursal */
+
+    public function storeNewAddressClient(array $data)
+    {
+
+        $cliente = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
+        $email = strtolower(data_get($data, 'email', ''));
+        $textoEnvuelto = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
+        $dir = explode("\n", $textoEnvuelto);
+
+        $payloadGp = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
+        $data = $this->sendToGpNewAddress($payloadGp);
+        $identificador = strtoupper(data_get($data, 'identificador', ''));
+        return $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir);
+    }
+
+
+    public function sendToGpNewAddress($params)
+    {
+        $resp = $this->apiGp->storeNewAddressClient($params);
+        $success = data_get($resp, 'success', false);
+        if (!$success) {
+            abort(404, 'No se pudo crear la direccion del cliente');
+        }
+        return data_get($resp, 'data', []);
+
     }
 }

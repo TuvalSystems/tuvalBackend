@@ -2,6 +2,7 @@
 
 use App\Events\DemoMessage;
 use App\Events\PingArrived;
+use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\PedidosController;
@@ -186,7 +187,10 @@ Route::prefix('consultas')->group(function () {
 });
 
 Route::prefix('consultas')->group(function () {
-    Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+    Route::get('stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+    Route::get('territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
+    Route::get('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
+    Route::get('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
 });
 
 Route::group(['prefix' => 'reservas-web'], function () {
@@ -231,3 +235,6 @@ Route::get('notifications-web/mark-all-as-read', [UserNotificationController::cl
 
 Route::get('consultas-web/buscar-clientes', [ConsultasController::class, 'buscarClientes']);
 Route::get('consultas-web/cliente/cupo-disponible/{ruc}', [ConsultasController::class, 'obtenerCupoDisponibleCliente']);
+
+
+Route::get('user-web/consulta/obtener-bodegas', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);

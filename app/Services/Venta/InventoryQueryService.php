@@ -5,7 +5,9 @@ namespace App\Services\Venta;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
+use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\GpTerritorio;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
@@ -14,7 +16,6 @@ use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
 
 class InventoryQueryService implements InventoryQueryServiceInterface
 {
@@ -633,10 +634,37 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         for ($i = 1; $i <= 3; $i++) {
             $path = "images/productos/{$codArt}_{$i}.jpg";
             $pathAbsolute = public_path($path);
-            if (File::exists($pathAbsolute)) {
-                $images[] = url($pathAbsolute);
+            if (File::exists( $pathAbsolute)) {
+                $images[] = asset($path);
             }
         }
         return $images;
+    }
+
+
+
+
+
+    public function fetchAllTerritories()
+    {
+        return GpTerritorio::
+            orderBy('TERRITORIO_CODIGO', 'desc')->get();
+    }
+
+    public function fetchAllProvinces()
+    {
+        return GpProvinciaCiudadParroquia::selectRaw('MIN(id) as id, provincia')
+            ->groupBy('provincia')
+            ->orderBy('provincia', 'asc')
+            ->get();
+    }
+
+    public function fetchCitiesByProvince(string $provId)
+    {
+        return GpProvinciaCiudadParroquia::selectRaw('MIN(id) as id, ciudad')
+            ->where('provincia', $provId)
+            ->groupBy('ciudad')
+            ->orderBy('ciudad', 'asc')
+            ->get();
     }
 }

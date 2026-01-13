@@ -116,7 +116,7 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_SEGMENTO, 'GET', $params);
     }
 
-    public function StoreClientGp(array $params = [])
+    public function storeClientGp(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_MODIFICAR, 'POST', $params, 'json');
     }
@@ -143,5 +143,11 @@ class ApiGpService
     public function fetchDetailsTypeSellerFromGp(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TIPO_VENDEDOR_DETALLE, 'GET', $params);
+    }
+
+
+    public function storeNewAddressClient(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_NUEVA_DIRECCION, 'POST', $params, 'json');
     }
 }

@@ -23,6 +23,7 @@ use App\Http\Controllers\FuncionesController;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -34,13 +35,13 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class CotizacionesController extends Controller
 {
     use JsonResponseTrait;
-    protected $quotationService;
-    protected $approvalService;
 
-    public function __construct(QuotationServiceInterface $quotationService, ApprovalServiceInterface $approvalService)
+    public function __construct(
+        protected readonly QuotationServiceInterface $quotationService,
+        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly ClientQueryServiceInterface $clientService)
     {
-        $this->quotationService = $quotationService;
-        $this->approvalService = $approvalService;
+
     }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -655,7 +656,20 @@ class CotizacionesController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
 
         }
+    }
 
+
+    public function guardarNuevaDireccionSucursal(Request $request){
+        try {
+            $data = data_get($request->all(), 'form', []);
+            $sucursal = $this->clientService->storeNewAddressClient($data);
+            return $this->successResponse('Información Obtenida Correctamente', $sucursal, 200);
+        } catch(HttpException $e){
+            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
+        }catch (\Throwable $e) {
+
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function detallecotizacion(Request $request)

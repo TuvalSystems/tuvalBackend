@@ -1204,7 +1204,7 @@ class QuotationService implements QuotationServiceInterface
 
         $nivelPrecio = $this->getNivelPriceSeller($data, $user);
         $params = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
-        $this->apiGpService->StoreClientGp($params);
+        $this->apiGpService->storeClientGp($params);
         $this->createClientWeb($data, $nivelPrecio);
         $this->createClientSucursalWeb($data);
         $this->sendToSegmentAndRucToGp($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);

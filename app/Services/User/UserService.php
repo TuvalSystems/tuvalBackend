@@ -325,4 +325,25 @@ class UserService implements UserServiceInterface
     {
         GpUsuario::find($userId)->unreadNotifications->markAsRead();
     }
+
+
+
+
+    /** proceso para obtener las bodegas relacionadas de un usuario */
+
+    public function getWarehouesByUser(string $userName, string $ptoVtaId)
+    {
+        return GpRelacionPuntoVentaBodegaRelacionada::with([
+            'relacionBodega' => function ($query) {
+                $query->select('id', 'BOD_BODEGA','PERMITE_DESPACHO');
+            },
+        ])
+            ->where('PTO_VTA_BOD_REL_PUNTO_VENTA', $ptoVtaId)
+            ->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA')
+            ->whereHas('puntoVenta.relacionUsuarioPtoVta', function ($query) use ($userName) {
+                $query->where('USER_PTO_VTA_USUARIO', $userName);
+            })
+            ->get();
+
+    }
 }

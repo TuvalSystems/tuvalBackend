@@ -71,4 +71,15 @@ class GpPuntoVenta extends Model
         'PTO_VTA_DIA_VALIDEZ_COTIZACION',
         'PTO_VTA_DIAS_MAXIMO_PARA_ANULACION', // New column added
     ];
+
+
+
+    public function relacionUsuarioPtoVta()
+    {
+        return $this->hasMany(GpRelacionUsuarioPuntoVenta::class, 'USER_PTO_VTA_PUNTO_VENTA', 'PTO_VTA_ID');
+    }
+
+    public function relacionpuntoventabodegarelacionada(){
+        return $this->hasMany(GpRelacionPuntoVentaBodegaRelacionada::class, 'PTO_VTA_BOD_REL_PUNTO_VENTA', 'PTO_VTA_ID');
+    }
 }

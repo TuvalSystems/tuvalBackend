@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 interface UserServiceInterface
 {
 
-    public function validateStatusGpUser( $credentials): bool;
+    public function validateStatusGpUser($credentials): bool;
     public function validateCredentials(Request $request): array;
     public function validateUserCredentials(array $credentials): array;
     public function isValidUser(array $validationResponse): bool;
@@ -24,16 +24,18 @@ interface UserServiceInterface
      * Reset password
      */
 
-     public function resetPassword($data);
+    public function resetPassword($data);
 
-     /**
-      * Cambio de status
-      */
-     public function changeStatusGpUser($userId);
+    /**
+     * Cambio de status
+     */
+    public function changeStatusGpUser($userId);
 
-     /**notificaciones */
+    /**notificaciones */
 
-      public function getAllNotifications(int $userId, int $perPage = 10, $search, $sortBy, $sortOrder);
-      public function markAsReadNotify(string $notifyId, int $userId);
-      public function markAllReadNotify(int $userId);
+    public function getAllNotifications(int $userId, int $perPage = 10, $search, $sortBy, $sortOrder);
+    public function markAsReadNotify(string $notifyId, int $userId);
+    public function markAllReadNotify(int $userId);
+
+    public function getWarehouesByUser(string $userId, string $ptoVtaId);
 }

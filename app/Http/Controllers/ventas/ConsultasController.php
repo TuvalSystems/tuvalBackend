@@ -38,7 +38,7 @@ class ConsultasController extends Controller
     use JsonResponseTrait;
 
     public function __construct(
-        protected readonly InventoryQueryServiceInterface $InventoryQueryService,
+        protected readonly InventoryQueryServiceInterface $inventoryService,
         protected readonly ClientQueryServiceInterface $clientService
     ) {
     }
@@ -191,7 +191,7 @@ class ConsultasController extends Controller
     public function buscarArticuloWeb(BusquedaArticuloRequest $request)
     {
         try {
-            $data = $this->InventoryQueryService->searchWithDetails($request->validated());
+            $data = $this->inventoryService->searchWithDetails($request->validated());
             return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);
@@ -203,7 +203,7 @@ class ConsultasController extends Controller
     {
         $data = $request->all();
         try {
-            $st = $this->InventoryQueryService->getConsultStock($data);
+            $st = $this->inventoryService->getConsultStock($data);
             return response([
                 'success' => true,
                 'stock' => $st['stock'],
@@ -225,7 +225,7 @@ class ConsultasController extends Controller
     {
         $data = $request->all();
         try {
-            $st = $this->InventoryQueryService->getConsultStockOthers($data);
+            $st = $this->inventoryService->getConsultStockOthers($data);
             //nose porque hace pero va
             return response([
                 'success' => true,
@@ -249,7 +249,7 @@ class ConsultasController extends Controller
     {
         try {
             $data = $request->all();
-            $items = $this->InventoryQueryService->getConsultItemTransito($data);
+            $items = $this->inventoryService->getConsultItemTransito($data);
             return $this->successResponse('Transitos obtenidos correctamente', $items, 200);
         } catch (\Throwable $e) {
             Log::error('Error al consultar Stock (getConsultStock)' .
@@ -268,7 +268,7 @@ class ConsultasController extends Controller
     public function consultStockInTransit()
     {
         try {
-            $items = $this->InventoryQueryService->fetchStockInTransit();
+            $items = $this->inventoryService->fetchStockInTransit();
             return $this->successResponse('Transitos obtenidos correctamente', $items, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
@@ -394,7 +394,7 @@ class ConsultasController extends Controller
     public function cupodisponible($ruc)
     {
         try {
-            $cl = $this->InventoryQueryService->getAvailableSpace($ruc);
+            $cl = $this->inventoryService->getAvailableSpace($ruc);
             return response([
                 'success' => true,
                 'cliente' => $cl['cliente'],
@@ -466,7 +466,7 @@ class ConsultasController extends Controller
     {
         try {
             return response([
-                'reservados' => $this->InventoryQueryService->listReservedInventory(),
+                'reservados' => $this->inventoryService->listReservedInventory(),
             ]);
         } catch (\Throwable $e) {
             Log::error('Error al consultar reservados' . ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
@@ -534,7 +534,7 @@ class ConsultasController extends Controller
     public function reservasweb($item = null): JsonResponse|Response|ResponseFactory
     {
         try {
-            $data = $this->InventoryQueryService->listReservedWebInventory($item);
+            $data = $this->inventoryService->listReservedWebInventory($item);
             return response([
                 'reservados' => $data,
             ]);
@@ -781,6 +781,36 @@ class ConsultasController extends Controller
         return response([
             'notificaciones' => $notificaciones,
         ]);
+    }
+
+
+    public function obtenerListaTerritorio (){
+        try {
+            $info = $this->inventoryService->fetchAllTerritories();
+            return $this->successResponse('Información obtenido correctamente', $info, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerListaProvincias(){
+        try {
+            $info = $this->inventoryService->fetchAllProvinces();
+            return $this->successResponse('Información obtenido correctamente', $info, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    public function obtenerListaCiudadesPorProvincia(Request $request){
+        try {
+            $provId = data_get($request->all(), 'provincia');
+            $info = $this->inventoryService->fetchCitiesByProvince($provId);
+            return $this->successResponse('Información obtenido correctamente', $info, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
 }
