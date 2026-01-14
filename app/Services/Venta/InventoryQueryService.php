@@ -43,9 +43,10 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
         $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-
-        return $art;
-
+        return [
+            'stock' => data_get($art, 'stock', []),
+            'ART_STOCK' => data_get($art, 'ART_STOCK', 0),
+        ];
     }
 
 
@@ -53,16 +54,20 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     public function getConsultStockOthers($data)
     {
 
-        $articulo = $data['articulo'];
+        $articulo = data_get($data, 'articulo', []);
+        $code = data_get($articulo, 'ART_CODIGO', '');
         $warehouses = $this->stockWarehouseService->getWarehouse($data);
         if (empty($warehouses)) {
             return [];
         }
-        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+        $stockRequests = array_map(fn($whr) => ['articulo' => $code, 'bodega' => $whr,], $warehouses);
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
         $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-        return $art;
+        return [
+            'stock' => data_get($art, 'stock', []),
+            'ART_STOCK' => data_get($art, 'ART_STOCK', 0),
+        ];
 
     }
 
@@ -147,7 +152,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function getConsultItemTransito($data): array
     {
-        $articuloCodigo = data_get($data, 'articulo.ART_CODIGO');
+        $articuloCodigo = data_get($data, 'articulo');
         $ptoVentaId = data_get($data, 'puntodeventa_id');
 
         $bodegaDestino = GpRelacionPuntoVentaBodega::query()
@@ -556,13 +561,16 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             return collect();
         }
 
-        return $articulos->map(function ($art) use ($filters, $isItemL) {
+        return $articulos->map(function ($art) use ($filters) {
 
             //Ajustamos el identificador de items tipo L
             $serviceTypes = ['VTA-SERV-L', 'VTA-BNS-L'];
             $isService = in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
             if (in_array($art->ART_CLASE_ARTICULO, $serviceTypes)) {
                 $art->ART_TIPO_COMPRA = 'L';
+            }
+            if (!isset($art->ART_VALOR)) {
+                $art->ART_VALOR = 0;
             }
 
             //inicializamos colleccion vacia
@@ -594,7 +602,17 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
             return $art;
 
-        })->filter()->values();
+        })->filter(
+                function ($articulo) use ($filters) {
+                    if ($articulo->ART_TIPO_COMPRA === 'L' && $articulo->ART_CLASE_ARTICULO = 'VTA-SERV') {
+                        return true;
+                    }
+                    if (!empty($filters['nivel_precio'])) {
+                        return $articulo->ART_VALOR > 0;
+                    }
+                    return count($articulo->precios) > 0;
+                }
+            )->values();
     }
 
     public function isSearchItemsL(array $filters)
@@ -634,7 +652,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         for ($i = 1; $i <= 3; $i++) {
             $path = "images/productos/{$codArt}_{$i}.jpg";
             $pathAbsolute = public_path($path);
-            if (File::exists( $pathAbsolute)) {
+            if (File::exists($pathAbsolute)) {
                 $images[] = asset($path);
             }
         }

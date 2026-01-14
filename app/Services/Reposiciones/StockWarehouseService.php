@@ -23,7 +23,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     {
     }
 
-    public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo)
+    public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo): array
     {
         $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
         $articulo['stock'] = [];
@@ -47,17 +47,14 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
         $total = 0;
         $normalizados = [];
+        $numDecimales = (int) data_get($articulo, 'ART_DECIMAL_CANTIDAD', 0);
         foreach ($filtered as $item) {
-            $bodega = (string) $item['STO_ART_BODEGA'];
-            $stockBase = (float) $item['STO_ART_STOCK_DISPONIBLE'];
-            $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
-                ? (int) $stockBase
-                : round($stockBase, 2);
+            $bodega = (string) data_get($item, 'STO_ART_BODEGA', 0);
+            $stockBase = (float) data_get($item, 'STO_ART_STOCK_DISPONIBLE', 0);
+            $stockBase = $numDecimales == 0 ? (int) $stockBase : round($stockBase, $numDecimales);
             $resta = (float) ($reservas[$bodega] ?? 0);
             $disponible = max(0, $stockBase - $resta);
-            $disponible = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
-                ? (int) $disponible
-                : round($disponible, 2);
+            $disponible = $numDecimales == 0 ? (int) $disponible     : round($disponible, $numDecimales);
 
             $normalizados[] = [
                 'STO_ART_BODEGA' => $bodega,
@@ -66,8 +63,9 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
             $total += $disponible;
         }
+
         $articulo['stock'] = $normalizados;
-        $articulo['ART_STOCK'] = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0 ? (int) $total : round((float) $total, 2);
+        $articulo['ART_STOCK'] = $numDecimales == 0 ? (int) $total : round((float) $total, $numDecimales);
         return $articulo;
     }
 
@@ -257,49 +255,50 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->all();
     }
 
-    public function newFormatStock($stockResults, $articulo)
-    {
-        $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
-        $articulo['stock'] = [];
-        $articulo['ART_STOCK'] = 0;
+    // public function newFormatStock($stockResults, $articulo)
+    // {
+    //     $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
+    //     $articulo['stock'] = [];
+    //     $articulo['ART_STOCK'] = 0;
 
-        $filteredStock = array_values(array_filter(
-            $stockResults,
-            fn($item) =>
-            isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
-            $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
-        ));
+    //     $filteredStock = array_values(array_filter(
+    //         $stockResults,
+    //         fn($item) =>
+    //         isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
+    //         $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
+    //     ));
 
-        if (empty($filteredStock)) {
-            return $articulo;
-        }
-        $stockTotal = 0;
-        foreach ($filteredStock as &$stockItem) {
+    //     if (empty($filteredStock)) {
+    //         return $articulo;
+    //     }
+    //     $stockTotal = 0;
+    //     foreach ($filteredStock as &$stockItem) {
 
-            if (!isset($stockItem['STO_ART_STOCK_DISPONIBLE'], $stockItem['STO_ART_BODEGA'])) {
-                continue;
-            }
-            // Formateo de cantidad según configuración de decimales
-            $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
-            $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
-                ? (int) $stockValue
-                : round((float) $stockValue, 2);
+    //         if (!isset($stockItem['STO_ART_STOCK_DISPONIBLE'], $stockItem['STO_ART_BODEGA'])) {
+    //             continue;
+    //         }
+    //         // Formateo de cantidad según configuración de decimales
+    //         $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
+    //         $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
+    //             ? (int) $stockValue
+    //             : round((float) $stockValue, 2);
 
-            // Cálculo de stock disponible (considerando reservas)
-            $reservado = $this->stockReservado(
-                $articulo['ART_CODIGO'],
-                $stockItem['STO_ART_BODEGA']
-            );
+    //         // Cálculo de stock disponible (considerando reservas)
+    //         $reservado = $this->stockReservado(
+    //             $articulo['ART_CODIGO'],
+    //             $stockItem['STO_ART_BODEGA']
+    //         );
 
-            $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
-            $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
-        }
+    //         $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
+    //         $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
+    //     }
 
-        $articulo['stock'] = $filteredStock;
-        $articulo['ART_STOCK'] = $stockTotal;
+    //     $articulo['stock'] = $filteredStock;
+    //     $articulo['ART_STOCK'] = $stockTotal;
 
-        return $articulo;
-    }
+    //     return $articulo;
+    // }
+
     public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null)
     {
         $reservado = 0;
@@ -356,28 +355,31 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function checkArticuloDisponible($articulo)
     {
+        $code = data_get($articulo, 'ART_CODIGO', '');
+        $type = data_get($articulo, 'ART_TIPO_COMPRA', '');
+        $artClase = data_get($articulo, 'ART_CLASE_ARTICULO', '');
         // Artículos que no son tipo 'L' siempre están disponibles
-        if ($articulo['ART_TIPO_COMPRA'] !== 'L') {
+        if ($type !== 'L') {
             return true;
         }
         // Verificar pedidos en estados específicos
-        if ($this->hasActiveOrders($articulo['ART_CODIGO'])) {
+        if ($this->hasActiveOrders($code)) {
             return false;
         }
         // Verificar pedidos facturados no despachados
-        if ($this->hasPendingInvoicedOrders($articulo['ART_CODIGO'])) {
+        if ($this->hasPendingInvoicedOrders($code)) {
             return false;
         }
         // Verificar artículos de clase especial
-        if (isset($articulo['ART_CLASE_ARTICULO'])) {
-            if ($this->hasRecentDispatchedOrders($articulo['ART_CLASE_ARTICULO'], $articulo['ART_CODIGO'])) {
+        if (isset($artClase)) {
+            if ($this->hasRecentDispatchedOrders($artClase, $code)) {
                 return false;
             }
         } else {
             return false;
         }
         //Verificar si esta en carrito temporal
-        if ($this->isTemporalCart($articulo)) {
+        if ($this->isTemporalCart($code)) {
             return false;
         }
         // si hay una devolución volver a colocar los dias maximos
@@ -418,7 +420,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function isTemporalCart($articulo)
     {
-        return GpTempCart::where('ART_CODIGO', $articulo['ART_CODIGO'])->exists();
+        return GpTempCart::where('ART_CODIGO', $articulo)->exists();
     }
 
     public function hasRecentDispatchedOrders($artClaseArticulo, $artCodigo)
@@ -461,7 +463,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     }
 
 
-    public function fetchStockWarehouseCompartmentDevolution(array $params){
+    public function fetchStockWarehouseCompartmentDevolution(array $params)
+    {
         $resp = $this->apiReturns->consultItemBin($params);
         $data = data_get($resp, 'data', []);
         return is_array($data) ? $data : (array) $data;
@@ -544,15 +547,15 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     public function transformStockReservationResponse($payload)
     {
         return collect($payload)
-            ->map(function($item){
+            ->map(function ($item) {
                 $disp = (float) (data_get($item, 'STOCK_DISPONIBLE', 0));
-                return[
+                return [
                     'STO_ART_ARTICULO' => (string) (data_get($item, 'ARTICULO', '')),
                     'DESCRIPCION_ARTICULO' => (string) (data_get($item, 'DESCRIPCION_ARTICULO', '')),
                     'STO_ART_BODEGA' => (string) (data_get($item, 'BODEGA', '')),
                     'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''),
                 ];
-            })->keyBy(function($item){
+            })->keyBy(function ($item) {
 
                 return $item['STO_ART_ARTICULO'] . '_' . $item['STO_ART_BODEGA'];
             });
@@ -641,7 +644,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
      *  actualizar el stock en pedido detalle stock
      */
 
-    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId ,  $quoteReservedOriginId = null)
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId, $quoteReservedOriginId = null)
     {
         $bodegas = $stockFormatted
             ->pluck('STO_ART_BODEGA')

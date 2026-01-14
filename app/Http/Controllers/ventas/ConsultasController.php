@@ -188,7 +188,7 @@ class ConsultasController extends Controller
         }
     }
 
-    public function buscarArticuloWeb(BusquedaArticuloRequest $request)
+    public function buscarArticuloWeb(BusquedaArticuloRequest $request): JsonResponse
     {
         try {
             $data = $this->inventoryService->searchWithDetails($request->validated());
@@ -199,16 +199,13 @@ class ConsultasController extends Controller
     }
 
 
-    public function consultarstock(Request $request)
+    public function consultarstock(Request $request): JsonResponse
     {
         $data = $request->all();
         try {
             $st = $this->inventoryService->getConsultStock($data);
-            return response([
-                'success' => true,
-                'stock' => $st['stock'],
-                'ART_STOCK' => $st['ART_STOCK'],
-            ]);
+            return $this->successResponse('Stock obtenido correctamente', $st, 200);
+
         } catch (\Throwable $e) {
             Log::error('Error al consultar Stock (getConsultStock)' . [
                 'error' => $e->getMessage(),
@@ -221,17 +218,12 @@ class ConsultasController extends Controller
         }
     }
 
-    public function consultaStockOthers(Request $request)
+    public function consultaStockOthers(Request $request): JsonResponse
     {
         $data = $request->all();
         try {
             $st = $this->inventoryService->getConsultStockOthers($data);
-            //nose porque hace pero va
-            return response([
-                'success' => true,
-                'stock' => $st['stock'],
-                'ART_STOCK' => $st['ART_STOCK'],
-            ]);
+            return $this->successResponse('Stock obtenido correctamente', $st, 200);
         } catch (\Throwable $e) {
             Log::error('Error al consultar Stock (getConsultStockOthers)', [
                 'error' => $e->getMessage(),
@@ -245,7 +237,7 @@ class ConsultasController extends Controller
         }
     }
 
-    public function consultaItemTransito(Request $request)
+    public function consultaItemTransito(Request $request): JsonResponse
     {
         try {
             $data = $request->all();
@@ -265,7 +257,7 @@ class ConsultasController extends Controller
     }
 
 
-    public function consultStockInTransit()
+    public function consultStockInTransit(): JsonResponse
     {
         try {
             $items = $this->inventoryService->fetchStockInTransit();
@@ -381,11 +373,11 @@ class ConsultasController extends Controller
         }
     }
 
-    public function obtenerSucursalesCliente($ruc)
+    public function obtenerSucursalesCliente($ruc): JsonResponse
     {
         try {
-            $response = $this->clientService->getCustomerBranches($ruc);
-            return $this->successResponse('Información obtenido correctamente', $response, 200);
+            $resp = $this->clientService->getCustomerBranches($ruc);
+            return $this->successResponse('Información obtenido correctamente', $resp, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -784,7 +776,8 @@ class ConsultasController extends Controller
     }
 
 
-    public function obtenerListaTerritorio (){
+    public function obtenerListaTerritorio()
+    {
         try {
             $info = $this->inventoryService->fetchAllTerritories();
             return $this->successResponse('Información obtenido correctamente', $info, 200);
@@ -793,7 +786,8 @@ class ConsultasController extends Controller
         }
     }
 
-    public function obtenerListaProvincias(){
+    public function obtenerListaProvincias()
+    {
         try {
             $info = $this->inventoryService->fetchAllProvinces();
             return $this->successResponse('Información obtenido correctamente', $info, 200);
@@ -803,7 +797,8 @@ class ConsultasController extends Controller
     }
 
 
-    public function obtenerListaCiudadesPorProvincia(Request $request){
+    public function obtenerListaCiudadesPorProvincia(Request $request)
+    {
         try {
             $provId = data_get($request->all(), 'provincia');
             $info = $this->inventoryService->fetchCitiesByProvince($provId);

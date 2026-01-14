@@ -348,7 +348,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
         Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
         Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
-        Route::post('consultastockothers', [ConsultasController::class, 'consultaStockOthers']);
+        Route::post('stock-import', [ConsultasController::class, 'consultaStockOthers']);
         Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
 
         /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
