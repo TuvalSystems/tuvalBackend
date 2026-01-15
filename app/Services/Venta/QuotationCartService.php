@@ -83,6 +83,16 @@ class QuotationCartService implements QuotationCartServiceInterface
         $cart->save();
     }
 
+    public function updateDescriptionAlternativeItemTemp(int $tempId, string $description)
+    {
+        $cart = GpTempCart::find($tempId);
+        $cart->ART_DESCRIPCION = trim(str_replace('  ', ' ', $description));
+        $cart->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ', $description));
+        $cart->save();
+    }
+
+
+
     public function updateCheckAlternativeTemp(int $tempId, bool $checkAlternative)
     {
         $cart = GpTempCart::find($tempId);

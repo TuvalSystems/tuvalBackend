@@ -10,6 +10,7 @@ interface QuotationCartServiceInterface
     public function createTempItem(int $clientId, string $ptoVta, int $sucursalId, array $article, GpUsuario $user): GpTempCart;
 
     public function updateDescriptionItemTemp(int $tempId, string $description);
+    public function updateDescriptionAlternativeItemTemp(int $tempId, string $description);
     public function updateCheckAlternativeTemp(int $tempId, bool $checkAlternative);
     public function updateQuantityTemp(int $tempId, float $quantity);
     public function updatePriceTemp(int $tempId, float $price, float $modifyPrice);

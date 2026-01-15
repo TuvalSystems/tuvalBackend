@@ -68,6 +68,19 @@ class CotizacionCartController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
+      public function actualizarDescripcionAlternativaRegistroTemp(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'id' => 'required',
+                'descripcion' => 'required|string',
+            ]);
+            $this->quoteCart->updateDescriptionAlternativeItemTemp($request->id, $request->descripcion);
+            return $this->buildSuccessResponse('Descripcion actualizada correctamente', 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 
     public function actualizarCheckAlternativo(Request $request): JsonResponse
     {
