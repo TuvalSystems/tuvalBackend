@@ -2,6 +2,7 @@
 
 namespace App\Services\Aprobaciones;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Jobs\Aprobaciones\NotifyApprovalOrdersJob;
 use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpUsuario;
+use App\Models\reservas\GpCotizacionReservaLog;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -848,12 +850,13 @@ class ApprovalService implements ApprovalServiceInterface
     public function getOrderApprovalData($data)
     {
         try {
+            $quoteReservedOriginId = $this->validateExistsReserve($data['cotizacion_id']);
             $detalles = $this->getDetailArticlesWithStock($data['id']);
             $flatDetails = $this->stockFormatterForUpdateApproval($detalles);
             $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
             $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
             $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
-            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id']);
+            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id'],  $quoteReservedOriginId);
             if ($alert) {
                 return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
             }
@@ -867,12 +870,25 @@ class ApprovalService implements ApprovalServiceInterface
         }
     }
 
+    public function validateExistsReserve($quotationId)
+    {
+        $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
+        if (!$quoteReserve) {
+            return;
+        }
+        $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
+        if (!$logReserve) {
+            return;
+        }
+        return $logReserve?->cotizacion_origen_id;
+    }
 
-    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId)
+
+    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId,  $quoteReservedOriginId = null)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
@@ -927,7 +943,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -945,7 +961,7 @@ class ApprovalService implements ApprovalServiceInterface
         $pedido = GpPedido::where('id', $data['id'])
             ->whereNotIn('estado', ['eliminado', 'anulada'])
             ->lockForUpdate()->first();
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_crediticio = 'no';
         $pedido->aprobador_crediticio_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -1000,7 +1016,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -1027,7 +1043,7 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = 'rechazado';
+        $pedido->estado = OrderStatus::RECHAZADO;
         $pedido->aprobado_comercial = 'no';
         $pedido->aprobador_comercial_id = $user->id;
         $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
@@ -1074,6 +1090,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function updateStockOnOrderApproval($order)
     {
+        $quoteReservedOriginId = $this->validateExistsReserve($order->cotizacion_id);
         $detalles = $this->getDetailArticlesWithStock($order->id);
         if ($detalles->isEmpty()) {
             return;
@@ -1084,7 +1101,7 @@ class ApprovalService implements ApprovalServiceInterface
         $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
 
-        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id);
+        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
     }
 
     public function getDetailArticlesWithStock($orderId)
@@ -1154,11 +1171,11 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $orderId)
+    public function updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $orderId, $quoteReservedOriginId = null)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
@@ -1202,7 +1219,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function denyOrderBeenWaiting(int $id)
     {
         $order = GpPedido::find($id);
-        $order->estado = 'rechazado';
+        $order->estado = OrderStatus::RECHAZADO;
         $order->user_rechazo_id = auth()->user()->id;
         $order->fecha_hora_rechazado = Carbon::now()->format('Y-m-d H:i:s');
         $order->rechazado = 1;

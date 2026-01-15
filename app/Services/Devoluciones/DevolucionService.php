@@ -2,6 +2,7 @@
 
 namespace App\Services\Devoluciones;
 
+use App\Enums\devoluciones\DevolutionStatus;
 use Exception;
 use Carbon\Carbon;
 use App\Models\GpPedido;
@@ -134,9 +135,9 @@ class DevolucionService implements DevolucionServiceInterface
             $this->processInvoiceAnulation($data, $newDev);
         } catch (Exception $e) {
             Log::error("Error De proceso processInvoiceAnulation o cancelDispatchIfEmptyPicking: Devolución {$newDev->id} creada, pero falló la anulación: " . $e->getMessage());
-            if ($newDev->estado !== 'no_procesado') {
+            if ($newDev->estado !== DevolutionStatus::NO_PROCESADO) {
                 $newDev->update([
-                    'estado' => 'no_procesado',
+                    'estado' =>  DevolutionStatus::NO_PROCESADO,
                     'motivo_no_anulada' => "Fallo en proceso: " . $e->getMessage()
                 ]);
             }
@@ -156,7 +157,7 @@ class DevolucionService implements DevolucionServiceInterface
         $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
         $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
         $calculatedData = [
-            'status' => $requiredApproval === 'yes' ? 'espera' : 'solicitado',
+            'status' => $requiredApproval === 'yes' ? DevolutionStatus::ESPERA : DevolutionStatus::SOLICITADO,
             'requiredApproval' => $requiredApproval,
             'USERID' => $gpUser->USERID,
             'userId' => $gpUser->id,
@@ -881,7 +882,7 @@ class DevolucionService implements DevolucionServiceInterface
             if (!$dev) {
                 abort(409, 'devolución no encontrada');
             }
-            if (in_array($dev->estado, ['recibido', 'procesado'])) {
+            if (in_array($dev->estado, [DevolutionStatus::RECIBIDO,DevolutionStatus::PROCESADO])) {
                 abort(409, 'Esta devolución ya fue recibida en otra instancia');
             }
             foreach ($detail as $dt) {
@@ -898,7 +899,7 @@ class DevolucionService implements DevolucionServiceInterface
             }
             $this->createRegisterHistoryReceivedDevolution($dev, $gpuser, $detail);
             $dev->update([
-                'estado' => 'recibido',
+                'estado' => DevolutionStatus::RECIBIDO,
             ]);
             return $dev;
         });
@@ -922,7 +923,7 @@ class DevolucionService implements DevolucionServiceInterface
         return DB::transaction(function () use ($id, $gpuser) {
             $devolucion = GpDevoluciones::lockForUpdate()->findOrFail($id);
             $devolucion->update([
-                'estado' => 'rechazado',
+                'estado' => DevolutionStatus::RECHAZADO,
                 'aprobado' => 'no',
                 'aprobador_id' => $gpuser->id
             ]);
@@ -1067,7 +1068,7 @@ class DevolucionService implements DevolucionServiceInterface
             }
             $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
             $devolucion->fecha_NC = Carbon::parse($fechaNc)->format('Y-m-d');
-            $devolucion->estado = 'procesado';
+            $devolucion->estado = DevolutionStatus::PROCESADO;
             $devolucion->DOC_GENERADO = $docGenerado;
             $devolucion->save();
             $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
@@ -1256,7 +1257,7 @@ class DevolucionService implements DevolucionServiceInterface
         }
         $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
         $devolucion->fecha_NC = Carbon::parse($fechaNc)->format('Y-m-d');
-        $devolucion->estado = 'procesado';
+        $devolucion->estado = DevolutionStatus::PROCESADO;
         $devolucion->DOC_GENERADO = $docGenerado;
         $devolucion->save();
         $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);

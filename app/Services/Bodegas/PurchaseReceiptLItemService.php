@@ -218,7 +218,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
         $order->save();
     }
 
-    public function proccessClientInvoice(Gppedido $order)
+    public function proccessClientInvoice(GpPedido $order)
     {
         $client = GpCliente::find($order->cliente_id);
         if (!$client) {

@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -252,8 +253,6 @@ class OrderService implements OrderServiceInterface
             $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
         }
         $newOrder->refresh();
-        /** proceso de limpieza de stock para reservas  de cotizacion */
-        $this->cleanStockReservedQuotation($newOrder->cotizacion_id, $newOrder->id, $newOrder->BOD_BODEGA);
         DB::afterCommit(function () use ($newOrder) {
             $this->invoiceService->checkSendInvoice($newOrder);
         });
@@ -383,128 +382,7 @@ class OrderService implements OrderServiceInterface
 
 
 
-    public function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
-    {
-        $order = GpPedido::with('detallepedido.pedidodetallestocks')->find($orderId);
-        if (!$order)
-            return;
 
-
-        $cotResLog = GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)->first();
-        if (!$cotResLog)
-            return;
-
-        $reservedId = data_get($cotResLog, 'reserva_id', null);
-        $quoteOriginId = data_get($cotResLog, 'cotizacion_origen_id', null);
-        if (!$quoteOriginId)
-            return;
-
-        // 1) Consumo del PEDIDO por (ART_CODIGO|BODEGA)
-        $pedidoPorClave = []; // clave = ART_CODIGO|BODEGA
-        foreach ($order->detallepedido as $det) {
-            foreach ($det->pedidodetallestocks as $stk) {
-                // if ($warehouse && $stk->STO_ART_BODEGA !== $warehouse) {
-                //     continue;
-                // }
-                $clave = $det->ART_CODIGO . '|' . $stk->STO_ART_BODEGA;
-                $pedidoPorClave[$clave] = ($pedidoPorClave[$clave] ?? 0) + (int) $stk->seleccionado;
-            }
-        }
-
-        if (empty($pedidoPorClave)) {
-            return; // nada que descontar
-        }
-        // 2) Stock IDs registrados en el LOG (pivote real)
-        $stockIds = GpCotizacionReservaDetalleLog::where('ct_reserva_id', $cotResLog->id)
-            ->pluck('stock_id')
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($stockIds->isEmpty()) {
-            return;
-        }
-
-        $quoteStockRows = GpCotizacionDetalleStock::query()
-            ->from('gp_cotizacion_detalle_stocks as s')
-            ->join('gp_cotizacion_detalles as d', 'd.id', '=', 's.detalle_id')
-            ->select(
-                's.id',
-                'd.ART_CODIGO',
-                's.STO_ART_BODEGA',
-                's.seleccionado',
-                's.cantidad_facturada',
-                's.cantidad_cancelada',
-                's.cantidad_reservada'
-            )
-            ->whereIn('s.id', $stockIds->all())
-            // ->when($warehouse, fn($q) => $q->where('s.STO_ART_BODEGA', $warehouse))
-            ->get();
-
-        if ($quoteStockRows->isEmpty())
-            return;
-
-        $cotizacionPorClave = $quoteStockRows->keyBy(fn($row) => $row->ART_CODIGO . '|' . $row->STO_ART_BODEGA);
-        $clavesAfectadas = array_values(array_intersect(array_keys($pedidoPorClave), $cotizacionPorClave->keys()->all()));
-        if (empty($clavesAfectadas))
-            return;
-
-        $idsParaLock = array_map(fn($k) => $cotizacionPorClave[$k]->id, $clavesAfectadas);
-        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->lockForUpdate()->get(); // lo comento por ahora
-        // Lock real de filas para evitar race conditions
-        foreach ($clavesAfectadas as $k) {
-            $row = $cotizacionPorClave[$k];
-            $pedidoQty = (int) $pedidoPorClave[$k];
-
-            // a) Reducir seleccionado en la cotización origen: max(origen - pedido, 0)
-            $selActual = (int) $row->seleccionado;
-
-            // b) Aumentar facturado pero sin lo facturado - lo cancelado - seleccionado
-            $facturado = (int) ($row->cantidad_facturada ?? 0);
-            $cancelado = (int) ($row->cantidad_cancelada ?? 0);
-            $authorizado = (int) ($row->cantidad_reservada ?? 0);
-
-            // 1) Tope total permitido por política (NO incluye seleccionado)
-            $limite = max(0, $authorizado - $cancelado);
-
-
-            // 2) ¿Cuánto puedo incrementar el facturado SIN pasarme del tope?
-            $remanenteFact = max(0, $limite - $facturado);
-            $incFacturable = min($pedidoQty, $remanenteFact); //incremento real de factura
-
-            // 3) Limpio seleccionado hasta donde el pedido consuma (prioriza consumir reserva)
-            $consumoReserva = min($incFacturable, $selActual);
-            $nuevoSelect = $selActual - $consumoReserva;
-
-            // 4) Nuevo total facturado (sin exceder tope)
-            $nuevoFacturado = $facturado + $incFacturable;
-
-            if ($nuevoSelect !== $selActual) {
-                // Si solo quieres marcar en memoria y guardar luego, puedes batch; aquí guardamos inmediato
-                $row->seleccionado = $nuevoSelect; // nunca debe ser negativo
-                $row->cantidad_facturada = $nuevoFacturado;
-                $row->save();
-            }
-        }
-        $this->updateCheckStatusReservation($reservedId);
-    }
-
-    public function updateCheckStatusReservation(int $reserveId)
-    {
-        $reserva = GpReserva::lockForUpdate()->find($reserveId);
-        $stocks = GpCotizacionDetalleStock::query()
-            ->where('cotizacion_id', $reserva->cotizacion_id)
-            ->get();
-        $tienePendientes = $stocks->contains(function (GpCotizacionDetalleStock $stock) {
-            return $stock->pendiente > 0;   // usa tu accessor
-        });
-
-        if (!$tienePendientes) {
-            // Ajusta el nombre de la columna/valor según tu modelo (estado, estado_reserva, etc.)
-            $reserva->estado = 'procesado';
-            $reserva->save();
-        }
-    }
 
     /**
      * ✅ Obtiene el detalle de un pedido especifico.
@@ -690,7 +568,7 @@ class OrderService implements OrderServiceInterface
             $order->save();
         }
         $this->recalculateAndSendInvoice($order);
-        return $order;
+        return $order->refresh();
 
     }
 
@@ -863,7 +741,7 @@ class OrderService implements OrderServiceInterface
                 $resultados['total']++;
 
                 // Éxito idempotente si ya está facturado
-                if (filled($pedido->factura) && $pedido->estado === 'facturado') {
+                if (filled($pedido->factura) && $pedido->estado === OrderStatus::FACTURADO) {
                     $resultados['exitosos']++;
                     continue;
                 }
@@ -890,7 +768,7 @@ class OrderService implements OrderServiceInterface
                     }
 
                     $pedido->refresh();
-                    if ($pedido->estado === 'facturado' && filled($pedido->factura)) {
+                    if ($pedido->estado === OrderStatus::FACTURADO && filled($pedido->factura)) {
                         $resultados['exitosos']++;
                         Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
                     } else {

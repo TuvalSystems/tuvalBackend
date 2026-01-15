@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Traits\JsonResponseTrait;
 use RuntimeException;
 use App\Models\GpPedido;
@@ -1014,7 +1015,7 @@ class GuiasderemisionController extends Controller
                     //  $pedidosControl->checktrasladado($pedido);
                     $this->invoiceService->checkTrasladado($pedido);
 
-                    if ($pedido->estado == 'espera') {
+                    if ($pedido->estado == OrderStatus::ESPERA) {
                         // $pedidosControl->checkenviarfactura($pedido, true);
                         $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
                         $this->invoiceService->checkSendInvoice($pedido, true);
