@@ -4,7 +4,7 @@ namespace App\Services\Venta\Utils\Contracts;
 
 interface OrderAndQuotationServiceInterface
 {
-    public function getDetailQuotationOrOrder($cliente,$data, $encera = false, $copy = false , $type);
+    public function getDetailQuotationOrOrder($cliente, $data, $encera = false, $copy = false, $type);
 
     public function clearTempDataQuotation($sucursalId, $PTO_VTA_ID, $clienteId, $userId);
 
@@ -17,5 +17,5 @@ interface OrderAndQuotationServiceInterface
 
 
     public function calculateDiscountFraction(float $originalPrice, float $currentPrice);
-     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount);
+    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount);
 }

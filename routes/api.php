@@ -19,6 +19,7 @@ use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\UserNotificationController;
+use App\Http\Controllers\ventas\CotizacionCartController;
 use App\Http\Controllers\ventas\ReservasController;
 
 /*
@@ -96,7 +97,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/updatevalor', [CotizacionesController::class, 'updatevalor']);
     Route::post('/cotizaciones/updatedescuento', [CotizacionesController::class, 'updatedescuento']);
     Route::post('/cotizaciones/actualizar-check-item-alternativo', [CotizacionesController::class, 'updateCheckAlternativo']);
-    Route::post('/saveproveedor', [CotizacionesController::class, 'saveproveedor']);
     Route::post('/cotizaciones/guardarcotizacion', [CotizacionesController::class, 'guardarcotizacion']);
     Route::post('/cotizaciones/guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
     Route::post('/cotizaciones/limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
@@ -226,6 +226,31 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::get('imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
         Route::get('imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
+
+
+
+        /** Proceso registros temporales */
+
+
+
+    });
+
+
+    Route::group(['prefix' => 'cart'], function () {
+        Route::post('item/add', [CotizacionCartController::class, 'crearRegistroArticuloTemporal']);
+        Route::delete('item/delete/{id}', [CotizacionCartController::class, 'eliminarRegistroTemp']);
+        Route::group(['prefix' => 'items/update'], function () {
+            Route::post('descripcion', [CotizacionCartController::class, 'actualizarDescripcionRegistroTemp']);
+            Route::post('check-alternativo', [CotizacionCartController::class, 'actualizarCheckAlternativo']);
+            Route::post('cantidad', [CotizacionCartController::class, 'actualizarCantidadRegistroTemp']);
+            Route::post('precio', [CotizacionCartController::class, 'actualizarPrecioRegistroTemp']);
+            Route::post('peso', [CotizacionCartController::class, 'actualizarKgRegistroTemp']);
+            Route::post('stock', [CotizacionCartController::class, 'actualizarStockRegistroTemp']);
+            Route::post('descuento', [CotizacionCartController::class, 'actualizarDescuentoRegistroTemp']);
+            Route::post('modificador', [CotizacionCartController::class, 'actualizarModificadorRegistroTemp']);
+        });
+
+        Route::post('item/guardar/proveedores', [CotizacionesController::class, 'guardarProveedoresRegistroTemp']);
 
     });
 

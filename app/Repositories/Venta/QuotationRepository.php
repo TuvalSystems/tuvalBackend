@@ -4,6 +4,7 @@ namespace App\Repositories\Venta;
 
 use App\Models\GpCotizacion;
 use App\Models\GpTempCart;
+use App\Models\GpTempCartProveedores;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 
 class QuotationRepository implements QuotationRepositoryInterface
@@ -39,5 +40,26 @@ class QuotationRepository implements QuotationRepositoryInterface
     public function getQuotationHeaderById(int $id)
     {
         return GpCotizacion::where('id', $id)->first();
+    }
+
+
+    /**
+     * funciones para cart temp
+     */
+
+    public function computedMaxOrder(int $clientId, string $ptoVta, int $sucursalId){
+        return GpTempCart::where('sucursal_id',$sucursalId)
+        ->where('cliente_id', $clientId)
+        ->where('puntodeventa_id', $ptoVta)
+        ->max('orden') ;
+    }
+
+    public function deleteProviderRegisterTemp($tempId){
+        GpTempCartProveedores::where('id_tempcart', $tempId)->delete();
+    }
+
+    public function updateTempCartArtValor($idTempCart, $artValor){
+        GpTempCart::where('id', $idTempCart)
+        ->update(['ART_VALOR' => $artValor]);
     }
 }

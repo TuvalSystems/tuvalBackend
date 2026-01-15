@@ -6,6 +6,9 @@ use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
+use App\Models\GpTempCart;
+use App\Models\GpTempCartProveedores;
+use App\Models\GpTempCartStock;
 use App\Models\GpUsuario;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 
@@ -18,28 +21,29 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-    public function formPayloadSendStoreReminderGp($quote): array{
+    public function formPayloadSendStoreReminderGp($quote): array
+    {
         return [
-            'txCot'         => $quote->cotizacion,
-            'txUsr'         => $quote->usuario->USERID,
-            'txCliRuc'      => $quote->CLI_RUC,
-            'txCliRazSoc'   => $quote->CLI_RAZON_SOCIAL,
-            'txCotCliSri'   => $quote->CLI_CORREO_ELECT_SRI,
-            'txEst'         => $quote->estado,
-            'txBod'         => $quote->BOD_BODEGA,
-            'txPtoVta'      => $quote->PTO_VTA_ID,
-            'txPtoVtaDesc'  => $quote->PTO_VTA_DESCRIPCION,
-            'txCotReqapr'   => $quote->requiere_aprobacion_comercial,
-            'txCotAprCom'   => $quote->aprobado_comercial,
-            'txCotMot'      => $quote->motivosNoVenta->descripcion,
-            'coCotRec'      => $quote->recordar,
-            'feCotRec'      => $quote->fecha_recordatorio,
-            'txObsMot'      => $quote->observacion,
-            'feIng'         => date('Y-m-d'),
-            'txUsrIng'      => $quote->user_ing_recordatorio,
-            'feUltmod'      => date('Y-m-d'),
-            'txUsrMod'      => $quote->user_ing_recordatorio,
-            'ndCotTot'      => $quote->total,
+            'txCot' => $quote->cotizacion,
+            'txUsr' => $quote->usuario->USERID,
+            'txCliRuc' => $quote->CLI_RUC,
+            'txCliRazSoc' => $quote->CLI_RAZON_SOCIAL,
+            'txCotCliSri' => $quote->CLI_CORREO_ELECT_SRI,
+            'txEst' => $quote->estado,
+            'txBod' => $quote->BOD_BODEGA,
+            'txPtoVta' => $quote->PTO_VTA_ID,
+            'txPtoVtaDesc' => $quote->PTO_VTA_DESCRIPCION,
+            'txCotReqapr' => $quote->requiere_aprobacion_comercial,
+            'txCotAprCom' => $quote->aprobado_comercial,
+            'txCotMot' => $quote->motivosNoVenta->descripcion,
+            'coCotRec' => $quote->recordar,
+            'feCotRec' => $quote->fecha_recordatorio,
+            'txObsMot' => $quote->observacion,
+            'feIng' => date('Y-m-d'),
+            'txUsrIng' => $quote->user_ing_recordatorio,
+            'feUltmod' => date('Y-m-d'),
+            'txUsrMod' => $quote->user_ing_recordatorio,
+            'ndCotTot' => $quote->total,
         ];
     }
 
@@ -159,32 +163,32 @@ class QuotationBuilder implements QuotationBuilderInterface
         $line1 = $lines[0] ?? '';
         $line2 = $lines[1] ?? '';
         return [
-            'ruc'           => $data['CLI_RUC'],
-            'razonSocial'   => $data['CLI_RAZON_SOCIAL'],
-            'nombreCorto'   => $data['CLI_NOMBRE_CORTO'],
-            'clase'         => 'LOCAL',
-            'prioridad'     => '1',
-            'contacto'      => $data['CLI_CONTACTO'],
-            'direccion1'    => $line1,
-            'direccion2'    => $line2,
-            'ciudad'        => $data['CLI_CIUDAD'],
-            'provincia'     => $data['CLI_PROVINCIA_NOMBRE'],
-            'pais'          => 'Ec',
-            'territorio'    => $data['CLI_TERRITORIO'],
-            'telefono1'     => $data['CLI_TELEFONO_1'],
-            'telefono2'     => $data['CLI_TELEFONO_2'],
-            'telefono3'     => $data['CLI_TELEFONO_3'],
-            'telefono4'     => $data['CLI_TELEFONO_4'],
-            'correoSri'     => $data['CLI_CORREO_ELECT_SRI'],
+            'ruc' => $data['CLI_RUC'],
+            'razonSocial' => $data['CLI_RAZON_SOCIAL'],
+            'nombreCorto' => $data['CLI_NOMBRE_CORTO'],
+            'clase' => 'LOCAL',
+            'prioridad' => '1',
+            'contacto' => $data['CLI_CONTACTO'],
+            'direccion1' => $line1,
+            'direccion2' => $line2,
+            'ciudad' => $data['CLI_CIUDAD'],
+            'provincia' => $data['CLI_PROVINCIA_NOMBRE'],
+            'pais' => 'Ec',
+            'territorio' => $data['CLI_TERRITORIO'],
+            'telefono1' => $data['CLI_TELEFONO_1'],
+            'telefono2' => $data['CLI_TELEFONO_2'],
+            'telefono3' => $data['CLI_TELEFONO_3'],
+            'telefono4' => $data['CLI_TELEFONO_4'],
+            'correoSri' => $data['CLI_CORREO_ELECT_SRI'],
             'correoNotificacion' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'vendedor'      => $data['CLI_VENDEDOR'],
-            'grupo'         => $data['CLI_PROVINCIA_NOMBRE'],
-            'subGrupo'      => $data['CLI_SUBGRUPO'],
+            'vendedor' => $data['CLI_VENDEDOR'],
+            'grupo' => $data['CLI_PROVINCIA_NOMBRE'],
+            'subGrupo' => $data['CLI_SUBGRUPO'],
             'descComercial' => '25',
-            'condPago'      => 'CONTADO',
-            'nivelPrecio'   => $nivelPrice,
-            'puntoVenta'    => $data['CLI_PUNTO_VENTA'],
-            'tipoId'        => $data['CLI_TIPO_ID'],
+            'condPago' => 'CONTADO',
+            'nivelPrecio' => $nivelPrice,
+            'puntoVenta' => $data['CLI_PUNTO_VENTA'],
+            'tipoId' => $data['CLI_TIPO_ID'],
         ];
     }
 
@@ -234,7 +238,8 @@ class QuotationBuilder implements QuotationBuilderInterface
         ];
     }
 
-    public function formPayloadClientSucursal(array $data): array{
+    public function formPayloadClientSucursal(array $data): array
+    {
         return [
             'CLI_SUC_RUC' => $data['CLI_RUC'],
             'CLI_SUC_DESCRIPCION' => $data['CLI_RAZON_SOCIAL'],
@@ -252,4 +257,75 @@ class QuotationBuilder implements QuotationBuilderInterface
             'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_SRI'],
         ];
     }
+
+
+
+    /** funciones de cart temp */
+
+    public function formPayloadAddCartTemp(int $clienteId, string $ptoVtaId, int $sucursalId, array $article, GpUsuario $user, int $orden): GpTempCart
+    {
+        $cart = new GpTempCart();
+        $cart->fill([
+            'sucursal_id' => $sucursalId,
+            'puntodeventa_id' => $ptoVtaId,
+            'cliente_id' => $clienteId,
+            'user_id' => $user->id,
+            'USERID' => $user->USERID,
+            'ART_CODIGO' => data_get($article, 'ART_CODIGO'),
+            'ART_DESCRIPCION' => data_get($article, 'ART_DESCRIPCION'),
+            'ART_DESCRIPCION_ORIGINAL' => data_get($article, 'ART_DESCRIPCION_ORIGINAL'),
+            'ART_CODIGO_TRES_LETRAS' => data_get($article, 'ART_CODIGO_TRES_LETRAS'),
+            'ART_DECIMAL_CANTIDAD' => data_get($article, 'ART_DECIMAL_CANTIDAD'),
+            'ART_PLAN_UMEDIDA' => data_get($article, 'ART_PLAN_UMEDIDA'),
+            'ART_MARCA' => data_get($article, 'ART_MARCA'),
+            'ART_MATERIAL' => data_get($article, 'ART_MATERIAL'),
+            'ART_PESO' => data_get($article, 'ART_PESO'),
+            'ART_TIPO_COMPRA' => data_get($article, 'ART_TIPO_COMPRA'),
+            'ART_VALOR' => data_get($article, 'ART_VALOR'),
+            'ART_VALOR_ORIGINAL' => data_get($article, 'ART_VALOR_ORIGINAL'),
+            'ART_CANTIDAD' => 0,
+            'ART_IVA' => 0,
+            'ART_DESCUENTO' => 0,
+            'ART_STOCK' => data_get($article, 'ART_STOCK'),
+            'ART_IMP_VTA' => data_get($article, 'ART_IMP_VTA'),
+            'ART_COSTO_PROMEDIO' => data_get($article, 'ART_COSTO_PROMEDIO'),
+            'descuento' => data_get($article, 'descuento'),
+            'descuento_original' => data_get($article, 'descuento_original'),
+            'modificador' => data_get($article, 'modificador'),
+            'orden' => $orden,
+        ]);
+        return $cart;
+    }
+
+
+    public function formPayloadAddCartTempStock(array $stock, int $cartId): GpTempCartStock
+    {
+        $sTemp = new GpTempCartStock();
+        return $sTemp->fill([
+            'id_tempcart' => $cartId,
+            'STO_ART_BODEGA' => data_get($stock, 'STO_ART_BODEGA'),
+            'STO_ART_STOCK_DISPONIBLE' => data_get($stock, 'STO_ART_STOCK_DISPONIBLE'),
+            'seleccionado' => data_get($stock, 'seleccionado'),
+        ]);
+    }
+
+
+    public function formPayloadAddCartTempProvider(array $provider, $cardId): GpTempCartProveedores
+    {
+        $prov = new GpTempCartProveedores();
+        return $prov->fill([
+            'id_tempcart' => $cardId,
+            'ID_PROVEEDOR' => data_get($provider, 'ID_PROVEEDOR'),
+            'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', data_get($provider, 'DESCRIPCION_ARTICULO'))),
+            'FECHA_ENTREGA' => data_get($provider, 'FECHA_ENTREGA'),
+            'CANTIDAD' => data_get($provider, 'CANTIDAD'),
+            'COSTO_UNITARIO' => data_get($provider, 'COSTO_UNITARIO'),
+            'IMPUESTO' => data_get($provider, 'IMPUESTO'),
+            'TOTAL' => data_get($provider, 'TOTAL'),
+            'TOTALCONIMPUESTO' => data_get($provider, 'TOTALCONIMPUESTO'),
+            'NOTA' => data_get($provider, 'NOTA'),
+            'MARGEN' => data_get($provider, 'MARGEN', 0)
+        ]);
+    }
 }
+

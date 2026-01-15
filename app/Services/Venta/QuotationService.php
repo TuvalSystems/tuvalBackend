@@ -52,7 +52,7 @@ class QuotationService implements QuotationServiceInterface
         protected readonly ApiBillingService $apiBillingService,
         protected readonly FunctionsServiceInterface $functionService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
-        protected readonly OrderAndQuotationServiceInterface $OrderQuotationService,
+        protected readonly OrderAndQuotationServiceInterface $orderQuotationService,
         protected readonly ApprovalServiceInterface $approvalService,
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly QuotationBuilderInterface $quotationBuilder,
@@ -216,9 +216,22 @@ class QuotationService implements QuotationServiceInterface
      * LISTA DE ALTERNATIVAS
      */
 
-    public function getItemsAlternatives($item)
+    public function getItemsAlternatives(string $item)
     {
-        return $this->apiGpService->getListQuotationItemsAlternatives(array('item' => $item));
+        if (!$item) {
+            abort(404, 'el parametro no puede estar vacio');
+        }
+        $resp = $this->apiGpService->getListQuotationItemsAlternatives(['item' => $item]);
+        $success = data_get($resp, 'success', false);
+        $errorMsg = data_get($resp, 'message', '');
+        $data = data_get($resp, 'data', []);
+        if (!$success) {
+            abort(402, $errorMsg);
+        }
+        if (empty($data)) {
+            abort(404, 'No se encontraron alternativas');
+        }
+        return $data;
     }
 
 
@@ -864,7 +877,7 @@ class QuotationService implements QuotationServiceInterface
     public function requestQuotationAgain($data, $user)
     {
         $cliente = $this->functionService->getClient($data);
-        $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
+        $detalles = $this->orderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
         $this->functionService->recalculateIva($detalles);
         $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
@@ -894,7 +907,7 @@ class QuotationService implements QuotationServiceInterface
             GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
         }
         $this->saveQuotationDetail($data['cotizacion'], $cotizacion->id);
-        $this->OrderQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
+        $this->orderQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
         $this->updateRegisterCopyQuotation($data['registro_copia'], $cotizacion->id);
         return $cotizacion;
 
@@ -1137,47 +1150,6 @@ class QuotationService implements QuotationServiceInterface
      */
 
 
-    public function saveProviderQuotationTemp(array $data)
-    {
-        if (empty($data['proveedores']) || !is_array($data['proveedores'])) {
-            return;
-        }
-        $this->deleteProviderQuotationTemp($data['id']);
-        $this->saveProviderQuotationItemTemp($data['proveedores'], $data['id']);
-        $this->updateTempCartArtValor($data['id'], $data['ART_VALOR']);
-    }
-
-    public function deleteProviderQuotationTemp($idTempCart)
-    {
-        GpTempCartProveedores::where('id_tempcart', $idTempCart)
-            ->delete();
-    }
-
-    public function saveProviderQuotationItemTemp($providers, $idTempCart)
-    {
-        foreach ($providers as $provider) {
-            GpTempCartProveedores::create([
-                'id_tempcart' => $idTempCart,
-                'ID_PROVEEDOR' => $provider['ID_PROVEEDOR'],
-                'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', $provider['DESCRIPCION_ARTICULO'])),
-                'FECHA_ENTREGA' => $provider['FECHA_ENTREGA'],
-                'CANTIDAD' => $provider['CANTIDAD'],
-                'COSTO_UNITARIO' => (float) $provider['COSTO_UNITARIO'],
-                'IMPUESTO' => (float) $provider['IMPUESTO'],
-                'TOTAL' => (float) $provider['TOTAL'],
-                'TOTALCONIMPUESTO' => (float) $provider['TOTALCONIMPUESTO'],
-                'NOTA' => $provider['NOTA'],
-                'MARGEN' => (float) $provider['MARGEN'] ?? 0,
-            ]);
-        }
-    }
-
-    public function updateTempCartArtValor($idTempCart, $artValor)
-    {
-        GpTempCart::where('id', $idTempCart)
-            ->update(['ART_VALOR' => $artValor]);
-    }
-
 
 
     /** Seccion de clientes */
@@ -1274,7 +1246,7 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function updateClientWithSegment(string $ruc, int  $segmentoId, int $subsegmentoId)
+    public function updateClientWithSegment(string $ruc, int $segmentoId, int $subsegmentoId)
     {
         $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
         $cliente->CLI_SEGMENTO_ID = $segmentoId;

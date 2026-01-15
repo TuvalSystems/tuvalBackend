@@ -31,7 +31,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
 
 
-    public function getDetailQuotationOrOrder($cliente, $data, $encera = false, $copy = false, $type)
+    public function getDetailQuotationOrOrder($cliente, $data, $encera = false,  $copy = false, $type)
     {
 
         $warehouse = $this->functionService->getBodegas($data['PTO_VTA_ID'], 1);
@@ -70,7 +70,6 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $details->each(function ($item) use ($proveedores, $copy, $warehouse, $quotationId) {
             $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
-            // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion') : $this->getStocksRequestQuotation($quotationId, $item->id, 'cotizacion');
             $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion');
         });
         return $details;
@@ -89,7 +88,6 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
         $details->each(function ($item) use ($warehouse, $quotationId, $copy) {
             $item->proveedores = collect();
-            // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido') : $this->getStocksRequestQuotation($quotationId, $item->id, 'pedido');
             $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido');
         });
         return $details;

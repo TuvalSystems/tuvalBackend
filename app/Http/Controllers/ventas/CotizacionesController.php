@@ -24,6 +24,7 @@ use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use App\Services\Venta\Contracts\QuotationCartServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -39,8 +40,9 @@ class CotizacionesController extends Controller
     public function __construct(
         protected readonly QuotationServiceInterface $quotationService,
         protected readonly ApprovalServiceInterface $approvalService,
-        protected readonly ClientQueryServiceInterface $clientService)
-    {
+        protected readonly ClientQueryServiceInterface $clientService,
+        protected readonly QuotationCartServiceInterface $quoteCart
+    ) {
 
     }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -136,6 +138,8 @@ class CotizacionesController extends Controller
         ]);
     }
 
+
+
     public function selectarticuloprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
@@ -178,148 +182,7 @@ class CotizacionesController extends Controller
 
     }
 
-    public function eliminararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'id' => 'required',
-        ]);
-        GpTempCart::where('id', $data['id'])
-            ->delete();
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatecantidad(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'cantidad' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_CANTIDAD' => $data['cantidad']]);
-
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatepeso(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'peso' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_PESO' => $data['peso']]);
-
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatemodificador(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'modificador' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['modificador' => $data['modificador']]);
-
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatestock(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-        foreach ($data as $stock) {
-
-            GpTempCartStock::where('id', $stock['id'])
-                ->update(['seleccionado' => $stock['seleccionado']]);
-        }
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatedescripcion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'ART_DESCRIPCION' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_DESCRIPCION' => trim(str_replace('  ', ' ', $data['ART_DESCRIPCION']))]);
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatevalor(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'ART_VALOR' => '',
-            'modificador' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_VALOR' => $data['ART_VALOR'], 'modificador' => $data['modificador']]);
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatedescuento(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'articulo' => 'required',
-            'descuento' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['descuento' => $data['descuento']]);
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updateCheckAlternativo(Request $request)
-    {
-        $data = $request->validate([
-            'articulo' => 'required',
-            'CHECK_ALTERNATIVO' => 'required|boolean',
-        ]);
-        try {
-            $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
-            return $this->buildSuccessResponse(
-                'Check alternativo actualizado correctamente',
-                200
-            );
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-
-    }
-
-    public function saveproveedor(Request $request)
-    {
-        try {
-            $data = $request->all();
-            $this->quotationService->saveProviderQuotationTemp($data);
-            return $this->buildSuccessResponse('Proveedores guardados correctamente', 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
+    
     public function guardarcotizacion(Request $request)
     {
         try {
@@ -659,14 +522,15 @@ class CotizacionesController extends Controller
     }
 
 
-    public function guardarNuevaDireccionSucursal(Request $request){
+    public function guardarNuevaDireccionSucursal(Request $request)
+    {
         try {
             $data = data_get($request->all(), 'form', []);
             $sucursal = $this->clientService->storeNewAddressClient($data);
             return $this->successResponse('Información Obtenida Correctamente', $sucursal, 200);
-        } catch(HttpException $e){
+        } catch (HttpException $e) {
             return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
-        }catch (\Throwable $e) {
+        } catch (\Throwable $e) {
 
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1073,8 +937,19 @@ class CotizacionesController extends Controller
 
     public function getItemsAlternatives(Request $request)
     {
-        $item = $request['item'];
-        return $this->quotationService->getItemsAlternatives($item);
+        try {
+            $item = data_get($request, 'item', '');
+            $lista = $this->quotationService->getItemsAlternatives($item);
+            return $this->successResponse('Datos Obtenidos Correctamente', $lista, 200);
+        } catch (HttpException $th) {
+            return $this->buildErrorResponse(
+                $th->getMessage(),
+                $th->getStatusCode()
+            );
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+
     }
 
 
