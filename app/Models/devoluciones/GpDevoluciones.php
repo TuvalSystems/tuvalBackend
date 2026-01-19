@@ -168,7 +168,7 @@ class GpDevoluciones extends Model
 
 
         //validacion de estado solicitado
-        if ($criterio['estado'] == 'solicitado' && $criterio['tipo_devolucion'] == 'total') {
+        if ($criterio['estado']->value === 'solicitado' && $criterio['tipo_devolucion'] == 'total') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
                 ->where('dvd.ART_TIPO_COMPRA', '!=', 'L')
                 // esto me valida que solo procese las devoluciones que tengan devoluciones anteriores en estado parcial
@@ -185,7 +185,7 @@ class GpDevoluciones extends Model
         }
 
         //validacion para estado solicitado parcial
-        if ($criterio['estado'] == 'solicitado' && $criterio['tipo_devolucion'] == 'parcial') {
+        if ($criterio['estado']->value === 'solicitado' && $criterio['tipo_devolucion'] == 'parcial') {
             $query->whereNotExists(function ($sub) {
                 $sub->selectRaw(1)
                     ->from('gp_devoluciones_detalles as dvd')
@@ -196,7 +196,7 @@ class GpDevoluciones extends Model
         }
 
         // validacion de estado recibido
-        if ($criterio['estado'] == 'recibido') {
+        if ($criterio['estado']->value === 'recibido') {
             $query->join('gp_devoluciones_detalles as dvd', 'dvd.devolucion_id', '=', 'gp_devoluciones.id')
                 ->where(function ($q) {
                     $q->where(function ($subQ) {
@@ -212,7 +212,7 @@ class GpDevoluciones extends Model
 
 
         //validacione en estado aprobado parcial
-        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial' && $criterio['volver_a_facturar'] === 1) {
+        if ($criterio['estado']->value === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial' && $criterio['volver_a_facturar'] === 1) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 1)
@@ -228,7 +228,7 @@ class GpDevoluciones extends Model
         }
 
         //validacion con estad aprobado sin volver a facturar pero no despachadas parciales
-        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial' && $criterio['volver_a_facturar'] === 0) {
+        if ($criterio['estado']->value === 'aprobado' && $criterio['tipo_devolucion'] === 'parcial' && $criterio['volver_a_facturar'] === 0) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 0)
@@ -245,7 +245,7 @@ class GpDevoluciones extends Model
         }
 
         //validacione en estado aprobado total
-        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 1 && $criterio['despachado'] === 1) {
+        if ($criterio['estado']->value === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 1 && $criterio['despachado'] === 1) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 1)
@@ -265,7 +265,7 @@ class GpDevoluciones extends Model
         }
 
         //validacion con estado aprobado sin volver a facturar pero no despachadas totales
-        if ($criterio['estado'] === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 0 && ($criterio['despachado'] === 0 || $criterio['despachado'] === null)) {
+        if ($criterio['estado']->value === 'aprobado' && $criterio['tipo_devolucion'] === 'total' && $criterio['volver_a_facturar'] === 0 && ($criterio['despachado'] === 0 || $criterio['despachado'] === null)) {
             $query->where(function ($q) {
                 $q->where('gp_devoluciones.requiere_aprobacion', 1)
                     ->where('gp_devoluciones.volver_a_facturar', 0)
