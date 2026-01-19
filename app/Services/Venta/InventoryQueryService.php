@@ -604,7 +604,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
         })->filter(
                 function ($articulo) use ($filters) {
-                    if ($articulo->ART_TIPO_COMPRA === 'L' && $articulo->ART_CLASE_ARTICULO = 'VTA-SERV') {
+                    if ($articulo->ART_TIPO_COMPRA === 'L') {
                         return true;
                     }
                     if (!empty($filters['nivel_precio'])) {

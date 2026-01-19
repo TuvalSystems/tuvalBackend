@@ -117,11 +117,11 @@ class CotizacionCartController extends Controller
         try {
             $request->validate([
                 'id' => 'required',
-                'ART_VALOR' => 'required|numeric',
+                'precio' => 'required|numeric',
                 'modificador' => 'required|numeric',
             ]);
 
-            $this->quoteCart->updatePriceTemp($request->id, $request->ART_VALOR, $request->modificador);
+            $this->quoteCart->updatePriceTemp($request->id, $request->precio, $request->modificador);
             return $this->buildSuccessResponse('Precio actualizado correctamente', 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
@@ -133,10 +133,10 @@ class CotizacionCartController extends Controller
         try {
             $request->validate([
                 'id' => 'required',
-                'ART_PESO' => 'required|numeric',
+                'peso' => 'required|numeric',
             ]);
 
-            $this->quoteCart->updateKgTemp($request->id, $request->ART_PESO);
+            $this->quoteCart->updateKgTemp($request->id, $request->peso);
             return $this->buildSuccessResponse('Peso actualizado correctamente', 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);

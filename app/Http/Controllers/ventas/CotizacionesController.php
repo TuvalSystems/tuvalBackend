@@ -182,7 +182,7 @@ class CotizacionesController extends Controller
 
     }
 
-    
+
     public function guardarcotizacion(Request $request)
     {
         try {
