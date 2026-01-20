@@ -595,13 +595,20 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     ->where('seleccionado', '>=', $decrease)
                     ->decrement('seleccionado', $decrease);
 
-                if ($row->cantidad_traslado > 0) {
-                    DB::table($row->getTable())
-                        ->where('id', $row->id)
-                        ->where('seleccionado', '>=', $decrease)
-                        ->decrement('cantidad_traslado', $decrease);
-                    $this->updateQtyTransferReserved($row, $decrease);
+                if ($affected > 0) {
+                    if ($row->cantidad_traslado > 0) {
+                        // AQUÍ QUITAMOS EL WHERE DE 'seleccionado' PORQUE YA SABEMOS QUE SE COBRÓ
+                        DB::table($row->getTable())
+                            ->where('id', $row->id)
+                            // Solo nos aseguramos que cantidad_traslado tenga saldo si es necesario
+                            ->decrement('cantidad_traslado', $decrease);
+
+                        $this->updateQtyTransferReserved($row, $decrease);
+                    }
                 }
+
+
+
 
                 if ($affected === 0 && $decrease > 0) {
                     $freshSelected = (float) DB::table($row->getTable())->where('id', $row->id)->value('seleccionado');
