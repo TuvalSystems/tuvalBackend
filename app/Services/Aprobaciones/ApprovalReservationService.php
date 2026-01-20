@@ -25,7 +25,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
         $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
         $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
-        return  $this->getAlertWithoutStockArticles($detalleQuote, $newFormatStock, null, $reserva->cotizacion_id);
+        return $this->getAlertWithoutStockArticles($detalleQuote, $newFormatStock, null, null);
 
     }
 
@@ -119,7 +119,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
             if ($stock['STO_ART_STOCK_DISPONIBLE'] < $stock['seleccionado']) {
                 $alert .= "El artículo {$stock['STO_ART_ARTICULO']} tiene stock insuficiente. " .
                     "Stock disponible: {$stock['STO_ART_STOCK_DISPONIBLE']} - " .
-                    "Cantidad pedido: {$stock['seleccionado']}<br>";
+                    "Cantidad solicitada: {$stock['seleccionado']}<br>";
             }
         }
         return $alert;

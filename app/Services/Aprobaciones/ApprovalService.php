@@ -882,7 +882,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId, $quoteReservedOriginId = null)
+    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
@@ -893,7 +893,7 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         if ($allFormattedStock->isEmpty()) {
-            return;
+            return null;
         }
         $alert = null;
         foreach ($allFormattedStock as $stock) {
