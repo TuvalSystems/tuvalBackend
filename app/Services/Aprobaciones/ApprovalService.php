@@ -702,28 +702,26 @@ class ApprovalService implements ApprovalServiceInterface
         if ($data['COND_ID'] == 'CONTADO') {
             return 'no';
         }
+        $totalOrden = (float) data_get($data, 'total', 0);
 
         $cupoDisponible = $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC']);
-        if (!$cupoDisponible) {
-            return 'no';
-        }
-        if ($data['total'] > $cupoDisponible['cupoDisponibleGp']) {
+        $cupo = data_get($cupoDisponible, 'cupoDisponibleGp', 0);
+
+        if ($totalOrden > $cupo) {
             return 'Cupo';
         }
 
         $documentosVencidos = $this->functionService->getClientDocumentExpired($data['CLI_RUC']);
-        if (!$documentosVencidos) {
-            return 'no';
-        }
-        if ($documentosVencidos['pendienteGpMc'] > 0) {
+        $pendiente = data_get($documentosVencidos, 'pendienteGpMc', 0);
+
+        if ($pendiente > 0) {
             return 'Documentos Vencidos';
         }
 
         $documentosSinSoporte = $this->functionService->getClientDocumentWithoutSupport($data['CLI_RUC']);
-        if (!$documentosSinSoporte) {
-            return 'no';
-        }
-        if ($documentosSinSoporte['pendienteGpMc'] > 0) {
+        $saldo = data_get($documentosSinSoporte, 'saldoPendiente', 0);
+
+        if ($saldo > 0) {
             return 'Saldo Pendiente';
         }
 
@@ -856,7 +854,7 @@ class ApprovalService implements ApprovalServiceInterface
             $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
             $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
             $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
-            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id'],  $quoteReservedOriginId);
+            $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id'], $quoteReservedOriginId);
             if ($alert) {
                 return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
             }
@@ -884,7 +882,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId,  $quoteReservedOriginId = null)
+    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId, $quoteReservedOriginId = null)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {

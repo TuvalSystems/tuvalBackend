@@ -215,6 +215,8 @@ Route::prefix('aprobaciones-web')->group(function () {
     Route::get('lista-items-aprobaciones', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::get('lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
     Route::get('lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
+
+
 });
 
 Route::prefix('devoluciones-web')->group(function () {

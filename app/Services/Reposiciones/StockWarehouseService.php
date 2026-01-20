@@ -461,7 +461,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     }
 
 
-    public function fetchStockWarehouseCompartmentDevolution(array $params){
+    public function fetchStockWarehouseCompartmentDevolution(array $params)
+    {
         $resp = $this->apiReturns->consultItemBin($params);
         $data = data_get($resp, 'data', []);
         return is_array($data) ? $data : (array) $data;
@@ -544,15 +545,15 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     public function transformStockReservationResponse($payload)
     {
         return collect($payload)
-            ->map(function($item){
+            ->map(function ($item) {
                 $disp = (float) (data_get($item, 'STOCK_DISPONIBLE', 0));
-                return[
+                return [
                     'STO_ART_ARTICULO' => (string) (data_get($item, 'ARTICULO', '')),
                     'DESCRIPCION_ARTICULO' => (string) (data_get($item, 'DESCRIPCION_ARTICULO', '')),
                     'STO_ART_BODEGA' => (string) (data_get($item, 'BODEGA', '')),
                     'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''),
                 ];
-            })->keyBy(function($item){
+            })->keyBy(function ($item) {
 
                 return $item['STO_ART_ARTICULO'] . '_' . $item['STO_ART_BODEGA'];
             });
@@ -641,7 +642,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
      *  actualizar el stock en pedido detalle stock
      */
 
-    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId ,  $quoteReservedOriginId = null)
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId = null, $quoteReservedOriginId = null)
     {
         $bodegas = $stockFormatted
             ->pluck('STO_ART_BODEGA')

@@ -24,13 +24,14 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class AprobacionesController extends Controller
 {
     use JsonResponseTrait;
-    protected $approvalService;
-    protected $apiGpService;
 
-    public function __construct(ApiGpService $apiGpService, ApprovalServiceInterface $approvalService)
-    {
-        $this->apiGpService = $apiGpService;
-        $this->approvalService = $approvalService;
+
+    public function __construct(
+        protected readonly ApiGpService $apiGpService,
+        protected readonly ApprovalServiceInterface $approvalService,
+
+    ) {
+
     }
 
     public function estadodecuenta(Request $request): JsonResponse
@@ -288,6 +289,8 @@ class AprobacionesController extends Controller
         $data = $request->all();
         return $this->approvalService->getOrderApprovalData($data);
     }
+
+
 
     public function aprobarpedidocrediticio(Request $request)
     {
