@@ -41,7 +41,7 @@ interface StockWarehouseServiceInterface
     public function checkValidateDisponibleItemL($articulo);
      public function markArticleUnavailable( $articulo);
 
-    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId,  $quoteReservedOriginId = null);
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId = null,  $quoteReservedOriginId = null);
 
     /** funcion para el formateo de stock para almacenaral momento de guardar un pedido */
     public function applyReservedQtyToAvailableStock(&$stock, $article, $orderId, $quotationId = null);

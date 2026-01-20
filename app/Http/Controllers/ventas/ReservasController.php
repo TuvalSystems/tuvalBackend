@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ventas;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Reservas\ValidateCancelReservationRequest;
 use App\Models\GpUsuario;
+use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -17,10 +18,10 @@ use RuntimeException;
 class ReservasController extends Controller
 {
     use JsonResponseTrait;
-    protected $reserveService;
-    public function __construct(InventoryReservationServiceInterface $reserveService)
-    {
-        $this->reserveService = $reserveService;
+    public function __construct(
+        protected readonly InventoryReservationServiceInterface $reserveService,
+        protected readonly ApprovalReservationServiceInterface $aprovalReservation
+    ) {
     }
 
 
@@ -38,12 +39,13 @@ class ReservasController extends Controller
     }
 
 
-    public function cancelarReservaCotizacion(ValidateCancelReservationRequest $request): JsonResponse{
+    public function cancelarReservaCotizacion(ValidateCancelReservationRequest $request): JsonResponse
+    {
         try {
             $data = $request->validated();
             $reservasId = data_get($data, 'id', null);
             $reserva = $this->reserveService->cancelReservedQuotation($reservasId);
-            return $this->successResponse('Reserva cancelada correctamente', $reserva,200);
+            return $this->successResponse('Reserva cancelada correctamente', $reserva, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -142,6 +144,23 @@ class ReservasController extends Controller
         }
     }
 
+    public function consultarReservaAprobarRechazar(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'id' => 'required|integer|exists:gp_reservas,id',
+            ]);
+
+            $alert = $this->aprovalReservation->checkValidateApprovalReservation($request->id);
+            if ($alert) {
+                return $this->buildExistResponse(false, $alert, 200);
+            }
+            return $this->buildExistResponse(true, 'La reserva cuenta con Stock Disponible', 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
+
 
     public function rechazarSolicitudReservaCotizacion(Request $request)
     {
@@ -172,7 +191,7 @@ class ReservasController extends Controller
                 return $this->reserveService->approvalApplicationReservedQuotation($data['data'], $gpUser);
             });
             $msg = "Reserva autorizada correctamente";
-            return $this->successResponse($msg, $reserva,200);
+            return $this->successResponse($msg, $reserva, 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->buildErrorResponse('Cotización no encontrada', 404);
         } catch (\DomainException $e) {

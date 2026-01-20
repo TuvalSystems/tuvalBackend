@@ -266,6 +266,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('cotizacion-con-detalle/{id}', [ReservasController::class, 'obtenerCotizacionConDetalle']);
         Route::get('cotizacion-detalle-stock/{id}', [ReservasController::class, 'obtenerCotizacionDetalleConStock']);
         Route::get('cotizacion-detalle-stock-activo/{id}', [ReservasController::class, 'obtenerCotizacionConDetalleYStockActivo']);
+        Route::post('verificar-stock-reserva', [ReservasController::class, 'consultarReservaAprobarRechazar']);
+
         Route::post('rechazar-solicitud-reserva', [ReservasController::class, 'rechazarSolicitudReservaCotizacion']);
         Route::post('aprobar-solicitud-reserva', [ReservasController::class, 'aprobarSolicitudReservaCotizacion']);
 

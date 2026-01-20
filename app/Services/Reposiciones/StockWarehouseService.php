@@ -644,7 +644,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
      *  actualizar el stock en pedido detalle stock
      */
 
-    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId, $quoteReservedOriginId = null)
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId = null, $quoteReservedOriginId = null)
     {
         $bodegas = $stockFormatted
             ->pluck('STO_ART_BODEGA')
