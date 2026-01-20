@@ -1009,9 +1009,8 @@ class CotizacionesController extends Controller
         $request->validate([
             'articulo' => 'required',
         ]);
-        $articulo = $request->get('articulo', null);
         try {
-            $datosL = $this->quotationService->getMarginItem($articulo['ART_CODIGO']);
+            $datosL = $this->quotationService->getMarginItem($request->articulo);
             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
 
         } catch (HttpException $e) {
