@@ -179,7 +179,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // 4) Reservas pendientes de uso para cotizar
         $reservasPendientes = $this->getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId);
         // 5) Reservas ya cotizadas pero si uso
-        // $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId);
+        $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, null);
 
         $out = [];
         foreach ($bodegas as $b) {
@@ -206,7 +206,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->select(
                 'st.STO_ART_BODEGA as bodega',
                 // 'c.cotizacion',
-                DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) - ABS(IFNULL(st.cantidad_traslado, 0))) as total')
+                DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
