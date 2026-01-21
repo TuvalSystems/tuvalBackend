@@ -197,10 +197,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'c.id')
             ->whereIn('r.estado', ['aprobado', 'traslado'])
-            // ->where('st.cantidad_traslado' ,'=', 0)
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
-            ->where('st.cantidad_traslado', '=', 0)
             ->where('st.seleccionado', '>', 0)
             ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
                 $query->where('c.id', '!=', $excludeQuotationId);
@@ -208,7 +206,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->select(
                 'st.STO_ART_BODEGA as bodega',
                 // 'c.cotizacion',
-                DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0))) as total')
+                DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) - ABS(IFNULL(st.cantidad_traslado, 0))) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
