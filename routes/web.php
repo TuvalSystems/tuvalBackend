@@ -241,3 +241,5 @@ Route::get('consultas-web/cliente/cupo-disponible/{ruc}', [ConsultasController::
 
 
 Route::get('user-web/consulta/obtener-bodegas', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
+Route::get('user-web/consulta/obtener-condiciones-pago', [AuthController::class, 'obtenerCondicionesDePago']);
+Route::get('user-web/consulta/obtener-metodos-pago', [AuthController::class, 'obtenerMetodosDePago']);

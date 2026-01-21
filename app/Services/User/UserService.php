@@ -335,7 +335,7 @@ class UserService implements UserServiceInterface
     {
         return GpRelacionPuntoVentaBodegaRelacionada::with([
             'relacionBodega' => function ($query) {
-                $query->select('id', 'BOD_BODEGA','PERMITE_DESPACHO');
+                $query->select('id', 'BOD_BODEGA', 'PERMITE_DESPACHO');
             },
         ])
             ->where('PTO_VTA_BOD_REL_PUNTO_VENTA', $ptoVtaId)
@@ -345,5 +345,30 @@ class UserService implements UserServiceInterface
             })
             ->get();
 
+    }
+
+
+
+    /** proceso para obtener las condiciones de pago y formas de pago  */
+
+    public function getAllPaymentConditions()
+    {
+        return GpCondicionPago::select('id', 'COND_DIAS as condDias', 'COND_ID as condId', 'COND_TIPO_DESCUENTO as tipoDesc', 'COND_VALOR as condValor')
+            ->orderBy('COND_ID', 'desc')->get();
+    }
+
+
+    public function getAllPaymentMethods($condId)
+    {
+        return GpDescuentoFormaPago::select(
+            'id',
+            'DESC_FORMA_PAGO_CODIGO as codigo',
+            'DESC_FORMA_PAGO_DIAS_CREDITO as dias',
+            'DESC_FORMA_PAGO_TIPO_CREDITO as tipo',
+            'DESC_FORMA_PAGO_PORCENTAJE_REBAJAR as porcentaje_rabaja',
+            'NIVEL as nivel'
+        )
+            ->where('DESC_FORMA_PAGO_CONDICION_PAGO', trim($condId))
+            ->orderBy('DESC_FORMA_PAGO_DIAS_CREDITO', 'asc')->get();
     }
 }

@@ -48,6 +48,10 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('notifications/mark-all-as-read', [UserNotificationController::class, 'marcarTodasNotificaciones']);
 
 
+    Route::post('obtener-condiciones-pago', [AuthController::class, 'obtenerCondicionesDePago']);
+    Route::post('obtener-metodos-pago', [AuthController::class, 'obtenerMetodosDePago']);
+
+
     Route::post('resetpassword', [AuthController::class, 'resetPassword']);
     Route::post('change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('logout', [AuthController::class, 'logout']);

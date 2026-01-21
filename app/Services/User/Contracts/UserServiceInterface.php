@@ -38,4 +38,7 @@ interface UserServiceInterface
     public function markAllReadNotify(int $userId);
 
     public function getWarehouesByUser(string $userId, string $ptoVtaId);
+
+    public function getAllPaymentConditions();
+    public function getAllPaymentMethods($condId);
 }
