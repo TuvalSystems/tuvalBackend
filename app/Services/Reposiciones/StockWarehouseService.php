@@ -226,15 +226,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
             ->where('st.cantidad_traslado', '>', 0)
-            // ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
-            //     $query->where('c.id', '!=', $excludeQuotationId);
-            // })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
-                'c.cotizacion',
                 DB::raw('SUM(st.cantidad_traslado) as total')
             )
-            ->groupBy('st.STO_ART_BODEGA', 'c.cotizacion')
+            ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
             ->map(fn($v) => (float) ($v ?? 0))
             ->all();
