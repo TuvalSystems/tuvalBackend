@@ -177,7 +177,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // 4) Reservas pendientes de uso para cotizar
         $reservasPendientes = $this->getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId);
         // 5) Reservas ya cotizadas pero si uso
-        // $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId);
+        $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas);
 
         $out = [];
         foreach ($bodegas as $b) {
@@ -195,10 +195,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
             ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'c.id')
             ->whereIn('r.estado', ['aprobado', 'traslado'])
-            // ->where('st.cantidad_traslado' ,'=', 0)
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
-            ->where('st.cantidad_traslado', '=', 0)
             ->where('st.seleccionado', '>', 0)
             ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
                 $query->where('c.id', '!=', $excludeQuotationId);
@@ -206,7 +204,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->select(
                 'st.STO_ART_BODEGA as bodega',
                 // 'c.cotizacion',
-                DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0))) as total')
+               DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0))) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
@@ -214,7 +212,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->all();
     }
 
-    public function getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId = null)
+    public function getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas)
     {
         if (empty($bodegas))
             return [];
@@ -226,15 +224,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
             ->where('st.cantidad_traslado', '>', 0)
-            ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
-                $query->where('c.id', '!=', $excludeQuotationId);
-            })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
-                'c.cotizacion',
-                DB::raw('SUM(st.cantidad_traslado) as total')
+               DB::raw('SUM(IFNULL(st.cantidad_traslado, 0)) as total')
             )
-            ->groupBy('st.STO_ART_BODEGA', 'c.cotizacion')
+            ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
             ->map(fn($v) => (float) ($v ?? 0))
             ->all();
