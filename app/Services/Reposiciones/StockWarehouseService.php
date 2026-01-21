@@ -228,7 +228,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('st.cantidad_traslado', '>', 0)
             ->select(
                 'st.STO_ART_BODEGA as bodega',
-                DB::raw('SUM(st.cantidad_traslado) as total')
+               DB::raw('SUM(IFNULL(st.cantidad_traslado, 0)) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
