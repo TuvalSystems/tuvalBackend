@@ -251,7 +251,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
             Route::post('modificador', [CotizacionCartController::class, 'actualizarModificadorRegistroTemp']);
         });
 
-        Route::post('item/guardar/proveedores', [CotizacionesController::class, 'guardarProveedoresRegistroTemp']);
+        Route::post('item/store/proveedores', [CotizacionCartController::class, 'guardarProveedoresRegistroTemp']);
 
     });
 

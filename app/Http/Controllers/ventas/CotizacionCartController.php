@@ -68,7 +68,7 @@ class CotizacionCartController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
-      public function actualizarDescripcionAlternativaRegistroTemp(Request $request): JsonResponse
+    public function actualizarDescripcionAlternativaRegistroTemp(Request $request): JsonResponse
     {
         try {
             $request->validate([
@@ -189,8 +189,12 @@ class CotizacionCartController extends Controller
     public function guardarProveedoresRegistroTemp(Request $request)
     {
         try {
-            $data = $request->all();
-            DB::transaction(fn() => $this->quoteCart->saveProviderQuotationTemp($data));
+            $request->validate([
+                'id' => 'required',
+                'proveedores' => 'required|array',
+                'precio_actual' => 'required|numeric',
+            ]);
+            DB::transaction(fn() => $this->quoteCart->saveProviderQuotationTemp($request->id, $request->proveedores, $request->precio_actual));
             return $this->buildSuccessResponse('Proveedores guardados correctamente', 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);

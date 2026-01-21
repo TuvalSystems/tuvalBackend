@@ -69,6 +69,9 @@ class QuotationCartService implements QuotationCartServiceInterface
     public function destroyTempItem(int $tempId)
     {
         $cart = GpTempCart::find($tempId);
+        if (!$cart) {
+            return;
+        }
         $cart->delete();
     }
 
@@ -150,14 +153,11 @@ class QuotationCartService implements QuotationCartServiceInterface
     //proceso de creacion de proveedor temporal
 
 
-    public function saveProviderQuotationTemp(array $data)
+    public function saveProviderQuotationTemp(int $tempId, array $providers, float $artValor)
     {
-        if (empty($data['proveedores']) || !is_array($data['proveedores'])) {
-            return;
-        }
-        $this->repository->deleteProviderRegisterTemp($data['id']);
-        $this->saveProviderQuotationItemTemp($data['proveedores'], $data['id']);
-        $this->repository->updateTempCartArtValor($data['id'], $data['ART_VALOR']);
+        $this->repository->deleteProviderRegisterTemp($tempId);
+        $this->saveProviderQuotationItemTemp($providers, $tempId);
+        $this->repository->updateTempCartArtValor($tempId, $artValor);
     }
 
 

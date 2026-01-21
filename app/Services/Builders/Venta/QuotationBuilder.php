@@ -314,17 +314,17 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         $prov = new GpTempCartProveedores();
         return $prov->fill([
-            'id_tempcart' => $cardId,
-            'ID_PROVEEDOR' => data_get($provider, 'ID_PROVEEDOR'),
-            'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', data_get($provider, 'DESCRIPCION_ARTICULO'))),
-            'FECHA_ENTREGA' => data_get($provider, 'FECHA_ENTREGA'),
-            'CANTIDAD' => data_get($provider, 'CANTIDAD'),
-            'COSTO_UNITARIO' => data_get($provider, 'COSTO_UNITARIO'),
-            'IMPUESTO' => data_get($provider, 'IMPUESTO'),
-            'TOTAL' => data_get($provider, 'TOTAL'),
-            'TOTALCONIMPUESTO' => data_get($provider, 'TOTALCONIMPUESTO'),
-            'NOTA' => data_get($provider, 'NOTA'),
-            'MARGEN' => data_get($provider, 'MARGEN', 0)
+            'id_tempcart'               => $cardId,
+            'ID_PROVEEDOR'              => data_get($provider, 'ID_PROVEEDOR'),
+            'DESCRIPCION_ARTICULO'      => trim(str_replace('  ', ' ', data_get($provider, 'DESCRIPCION_ARTICULO'))),
+            'FECHA_ENTREGA'             => data_get($provider, 'FECHA_ENTREGA'),
+            'CANTIDAD'                  => data_get($provider, 'CANTIDAD'),
+            'COSTO_UNITARIO'            => data_get($provider, 'COSTO_UNITARIO'),
+            'IMPUESTO'                  => data_get($provider, 'IMPUESTO'),
+            'TOTAL'                     => data_get($provider, 'TOTAL'),
+            'TOTALCONIMPUESTO'          => data_get($provider, 'TOTALCONIMPUESTO'),
+            'NOTA'                      => data_get($provider, 'NOTA'),
+            'MARGEN'                    => data_get($provider, 'MARGEN', 0)
         ]);
     }
 }

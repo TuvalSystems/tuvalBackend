@@ -20,7 +20,7 @@ interface QuotationCartServiceInterface
     public function destroyTempItem(int $tempId);
     public function updateModifyPriceTemp(int $tempId, float $modifyPrice);
 
-    public function saveProviderQuotationTemp(array $data);
+    public function saveProviderQuotationTemp(int $tempId, array $providers, float $artValor);
 
 
 
