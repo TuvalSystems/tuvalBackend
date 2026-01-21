@@ -251,50 +251,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->all();
     }
 
-    // public function newFormatStock($stockResults, $articulo)
-    // {
-    //     $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
-    //     $articulo['stock'] = [];
-    //     $articulo['ART_STOCK'] = 0;
-
-    //     $filteredStock = array_values(array_filter(
-    //         $stockResults,
-    //         fn($item) =>
-    //         isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
-    //         $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
-    //     ));
-
-    //     if (empty($filteredStock)) {
-    //         return $articulo;
-    //     }
-    //     $stockTotal = 0;
-    //     foreach ($filteredStock as &$stockItem) {
-
-    //         if (!isset($stockItem['STO_ART_STOCK_DISPONIBLE'], $stockItem['STO_ART_BODEGA'])) {
-    //             continue;
-    //         }
-    //         // Formateo de cantidad según configuración de decimales
-    //         $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
-    //         $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
-    //             ? (int) $stockValue
-    //             : round((float) $stockValue, 2);
-
-    //         // Cálculo de stock disponible (considerando reservas)
-    //         $reservado = $this->stockReservado(
-    //             $articulo['ART_CODIGO'],
-    //             $stockItem['STO_ART_BODEGA']
-    //         );
-
-    //         $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
-    //         $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
-    //     }
-
-    //     $articulo['stock'] = $filteredStock;
-    //     $articulo['ART_STOCK'] = $stockTotal;
-
-    //     return $articulo;
-    // }
-
+    
     public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null)
     {
         $reservado = 0;
