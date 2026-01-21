@@ -54,7 +54,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             $stockBase = $numDecimales == 0 ? (int) $stockBase : round($stockBase, $numDecimales);
             $resta = (float) ($reservas[$bodega] ?? 0);
             $disponible = max(0, $stockBase - $resta);
-            $disponible = $numDecimales == 0 ? (int) $disponible     : round($disponible, $numDecimales);
+            $disponible = $numDecimales == 0 ? (int) $disponible : round($disponible, $numDecimales);
 
             $normalizados[] = [
                 'STO_ART_BODEGA' => $bodega,
@@ -177,7 +177,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         // 4) Reservas pendientes de uso para cotizar
         $reservasPendientes = $this->getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId);
         // 5) Reservas ya cotizadas pero si uso
-        $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas);
+        $reservasTrasladosCotizacion = $this->getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId);
 
         $out = [];
         foreach ($bodegas as $b) {
@@ -204,7 +204,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->select(
                 'st.STO_ART_BODEGA as bodega',
                 // 'c.cotizacion',
-               DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0))) as total')
+                DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0))) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
@@ -212,10 +212,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->all();
     }
 
-    public function getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas)
+    public function getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId = null)
     {
-        if (empty($bodegas))
+        if (empty($bodegas) || empty($excludeQuotationId)) {
             return [];
+        }
         return DB::table('gp_cotizacion_detalle_stocks as st')
             ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
@@ -226,7 +227,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('st.cantidad_traslado', '>', 0)
             ->select(
                 'st.STO_ART_BODEGA as bodega',
-               DB::raw('SUM(IFNULL(st.cantidad_traslado, 0)) as total')
+                DB::raw('SUM(IFNULL(st.cantidad_traslado, 0)) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
@@ -249,50 +250,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->map(fn($v) => max(0, (float) ($v ?? 0)))
             ->all();
     }
-
-    // public function newFormatStock($stockResults, $articulo)
-    // {
-    //     $articulo['disponible'] = $this->checkArticuloDisponible($articulo);
-    //     $articulo['stock'] = [];
-    //     $articulo['ART_STOCK'] = 0;
-
-    //     $filteredStock = array_values(array_filter(
-    //         $stockResults,
-    //         fn($item) =>
-    //         isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
-    //         $item['STO_ART_ARTICULO'] == $articulo['ART_CODIGO']
-    //     ));
-
-    //     if (empty($filteredStock)) {
-    //         return $articulo;
-    //     }
-    //     $stockTotal = 0;
-    //     foreach ($filteredStock as &$stockItem) {
-
-    //         if (!isset($stockItem['STO_ART_STOCK_DISPONIBLE'], $stockItem['STO_ART_BODEGA'])) {
-    //             continue;
-    //         }
-    //         // Formateo de cantidad según configuración de decimales
-    //         $stockValue = $stockItem['STO_ART_STOCK_DISPONIBLE'];
-    //         $stockItem['STO_ART_STOCK_DISPONIBLE'] = $articulo['ART_DECIMAL_CANTIDAD'] == 0
-    //             ? (int) $stockValue
-    //             : round((float) $stockValue, 2);
-
-    //         // Cálculo de stock disponible (considerando reservas)
-    //         $reservado = $this->stockReservado(
-    //             $articulo['ART_CODIGO'],
-    //             $stockItem['STO_ART_BODEGA']
-    //         );
-
-    //         $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockItem['STO_ART_STOCK_DISPONIBLE'] - $reservado);
-    //         $stockTotal += $stockItem['STO_ART_STOCK_DISPONIBLE'];
-    //     }
-
-    //     $articulo['stock'] = $filteredStock;
-    //     $articulo['ART_STOCK'] = $stockTotal;
-
-    //     return $articulo;
-    // }
 
     public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null)
     {
