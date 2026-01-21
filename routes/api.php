@@ -242,6 +242,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::group(['prefix' => 'cart'], function () {
         Route::post('item/add', [CotizacionCartController::class, 'crearRegistroArticuloTemporal']);
+        Route::post('item/clear-temp', [CotizacionCartController::class, 'limpiarRegistroTemp']);
         Route::delete('item/delete/{id}', [CotizacionCartController::class, 'eliminarRegistroTemp']);
         Route::group(['prefix' => 'item/update'], function () {
             Route::post('descripcion', [CotizacionCartController::class, 'actualizarDescripcionRegistroTemp']);

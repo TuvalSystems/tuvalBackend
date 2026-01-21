@@ -22,6 +22,8 @@ interface QuotationCartServiceInterface
 
     public function saveProviderQuotationTemp(int $tempId, array $providers, float $artValor);
 
+    public function clearCartTemp(int $clientId, string $ptoVta, int $sucursalId, int $userId );
+
 
 
 

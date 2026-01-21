@@ -171,4 +171,15 @@ class QuotationCartService implements QuotationCartServiceInterface
     }
 
 
+
+    public function clearCartTemp(int $clientId, string $ptoVta, int $sucursalId, int $userId )
+    {
+          GpTempCart::where('sucursal_id', $sucursalId)
+            ->where('puntodeventa_id', $ptoVta)
+            ->where('cliente_id', $clientId)
+            ->where('user_id', $userId)
+            ->delete();
+    }
+
+
 }

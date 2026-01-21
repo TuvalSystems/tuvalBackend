@@ -365,10 +365,10 @@ class UserService implements UserServiceInterface
             'DESC_FORMA_PAGO_CODIGO as codigo',
             'DESC_FORMA_PAGO_DIAS_CREDITO as dias',
             'DESC_FORMA_PAGO_TIPO_CREDITO as tipo',
-            'DESC_FORMA_PAGO_PORCENTAJE_REBAJAR as porcentaje_rabaja',
+            'DESC_FORMA_PAGO_PORCENTAJE_REBAJAR as porcentaje_rebaja',
             'NIVEL as nivel'
         )
             ->where('DESC_FORMA_PAGO_CONDICION_PAGO', trim($condId))
-            ->orderBy('DESC_FORMA_PAGO_DIAS_CREDITO', 'asc')->get();
+            ->orderBy('DESC_FORMA_PAGO_CODIGO')->get();
     }
 }

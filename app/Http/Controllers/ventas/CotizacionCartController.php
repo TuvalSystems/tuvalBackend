@@ -201,4 +201,18 @@ class CotizacionCartController extends Controller
         }
     }
 
+    public function limpiarRegistroTemp(Request $request){
+        try {
+            $request->validate([
+                'clienteId' => 'required|integer',
+                'puntoVentaId' => 'required|string',
+                'sucursalId' => 'required|integer',
+            ]);
+            DB::transaction(fn() => $this->quoteCart->clearCartTemp($request->clienteId, $request->puntoVentaId, $request->sucursalId, Auth::id()));
+            return $this->buildSuccessResponse('Datos limpiados correctamente', 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
 }
