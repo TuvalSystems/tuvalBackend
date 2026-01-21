@@ -36,7 +36,7 @@ class SendDenyReservationNotification implements ShouldQueue
 
         event(new ReservedListAuthorizedChanged('refresh', $quote->id, $userSolicitante->USERID));
         $title = 'Reserva Rechazada';
-        $msg = "Solicitude de reserva denegada por {$userAutorizado->USERNAME} para la cotización {$quote->cotizacion}";
+        $msg = "Solicitud de reserva denegada por {$userAutorizado->USERNAME} para la cotización {$quote->cotizacion}";
         $notification = (new UserNotification($title, $msg));
         $userSolicitante->notify($notification);
     }

@@ -38,7 +38,7 @@ class SendApprovalReservationNotification implements ShouldQueue
         event(new ReservedListAuthorizedChanged('refresh', $cotizacion->id, $user->USERID));
 
         $title = 'Reserva Aprobada';
-        $mensaje = "Solicitude de reserva aprobada por {$userAutorizado->USERID} para la cotización {$cotizacion->cotizacion}";
+        $mensaje = "Solicitud de reserva aprobada por {$userAutorizado->USERID} para la cotización {$cotizacion->cotizacion}";
         $user->notify(new UserNotification($title,  $mensaje));
     }
 }
