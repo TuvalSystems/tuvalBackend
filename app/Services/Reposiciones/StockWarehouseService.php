@@ -200,6 +200,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             // ->where('st.cantidad_traslado' ,'=', 0)
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
+            ->where('st.cantidad_traslado', '=', 0)
             ->where('st.seleccionado', '>', 0)
             ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
                 $query->where('c.id', '!=', $excludeQuotationId);
