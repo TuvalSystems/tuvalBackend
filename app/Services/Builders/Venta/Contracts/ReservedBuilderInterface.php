@@ -25,6 +25,6 @@ interface ReservedBuilderInterface
 
      /** guardar en tablas de ingreso */
 
-      public function createRegisterHistortyHeader($guia, GpUsuario $user);
+      public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote);
        public function createRegisterHistoryDetail($items, $ing);
 }

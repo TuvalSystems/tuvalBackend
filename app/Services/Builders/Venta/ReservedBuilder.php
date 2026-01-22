@@ -186,18 +186,19 @@ class ReservedBuilder implements ReservedBuilderInterface
 
 
     /**guardar en tablas de ingresos */
-     public function createRegisterHistortyHeader($guia, GpUsuario $user){
+     public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso{
         $ing = new GpIngreso();
         $ing->fill([
             'user_id' => $user->id,
             'USERID' => $user->USERID,
             'tipo' => 'traslado_reserva',
+            'documento' => $quote,
             'GUI_REM_GUIA_REMISION' => $guia->numero_guia,
         ]);
         return $ing;
     }
 
-    public function createRegisterHistoryDetail($items, $ing){
+    public function createRegisterHistoryDetail($items, $ing): GpIngresosDetalle{
         $d = new GpIngresosDetalle();
         $d->fill([
             'ingreso_id' => $ing->id,
