@@ -1484,10 +1484,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
         }
 
-        $already = $this->movementExistsWeb($guia->id, $quote, $docGpValidate);
+        $already = $this->movementExistsWeb($guia->id, $quote, $docGp);
         DB::transaction(function () use ($guia, $items, $data, $quote, $already, $user) {
-            $this->updateQtyTransferedItems($guia, $items);
             if (!$already) {
+                $this->updateQtyTransferedItems($guia, $items);
                 $this->createMovementReservation($guia, $data, $quote);
                 $this->createRegisterHistoryIng($guia, $items, $user, $quote);
             }
