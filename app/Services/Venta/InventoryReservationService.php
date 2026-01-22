@@ -1409,50 +1409,90 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
+    // public function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, $params, $items, $quote, GpUsuario $user): bool
+    // {
+    //     $cabecera = data_get($params, 'cabecera', []);
+    //     $pyValidate = $this->reservaBuilder->buildRecievedDeliveryNoteValidationPayload($cabecera);
+    //     $resValidate = $this->apiDelivery->checkReceiveGuideReservationAjustment($pyValidate);
+    //     $headerRespValidate = data_get($resValidate, 'data');
+    //     $validateSuccess = data_get($resValidate, 'success');
+    //     $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
+
+    //     /** en caso de que ya se encuentre el registro */
+    //     if (!empty($headerRespValidate) && filled($docGpValidate)) {
+    //         $already = $this->movementExistsWeb($guia->id, $quote, $docGpValidate);
+    //         DB::transaction(function () use ($guia, $items, $headerRespValidate, $quote, $already, $user) {
+    //             $this->updateQtyTransferedItems($guia, $items);
+    //             if (!$already) {
+    //                 $this->createMovementReservation($guia, $headerRespValidate, $quote);
+    //                 $this->createRegisterHistoryIng($guia, $items, $user, $quote);
+    //             }
+    //         });
+    //         return true;
+    //     }
+
+    //     /** en caso de que no exista el movimiento lo crea */
+    //     if (empty($headerRespValidate) && $validateSuccess === false) {
+    //         $resp = $this->apiDelivery->createReceiveGuideReservationAjustment($params);
+    //         $success = data_get($resp, 'success', false);
+    //         $data = data_get($resp, 'data', []);
+    //         $msg = data_get($resp, 'message');
+    //         $docGp = trim(data_get($resp, 'data.docGp', ''));
+
+    //         if (!$success) {
+    //             throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
+    //         }
+    //         if ($docGp === '') {
+    //             throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+    //         }
+    //         DB::transaction(function () use ($items, $guia, $data, $quote, $user) {
+    //             $this->updateQtyTransferedItems($guia, $items);
+    //             $this->createMovementReservation($guia, $data, $quote);
+    //             $this->createRegisterHistoryIng($guia, $items, $user, $quote);
+    //         });
+    //         return true;
+    //     }
+    //     return false;
+    // }
+
     public function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, $params, $items, $quote, GpUsuario $user): bool
     {
-        $cabecera = data_get($params, 'cabecera', []);
-        $pyValidate = $this->reservaBuilder->buildRecievedDeliveryNoteValidationPayload($cabecera);
-        $resValidate = $this->apiDelivery->checkReceiveGuideReservationAjustment($pyValidate);
-        $headerRespValidate = data_get($resValidate, 'data');
-        $validateSuccess = data_get($resValidate, 'success');
-        $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
 
-        /** en caso de que ya se encuentre el registro */
-        if (!empty($headerRespValidate) && filled($docGpValidate)) {
-            $already = $this->movementExistsWeb($guia->id, $quote, $docGpValidate);
-            DB::transaction(function () use ($guia, $items, $headerRespValidate, $quote, $already, $user) {
-                $this->updateQtyTransferedItems($guia, $items);
-                if (!$already) {
-                    $this->createMovementReservation($guia, $headerRespValidate, $quote);
-                    $this->createRegisterHistoryIng($guia, $items, $user);
-                }
-            });
-            return true;
-        }
+        $resp = $this->apiDelivery->createReceiveGuideReservationAjustment($params);
+        $success = data_get($resp, 'success', false);
+        $msg = data_get($resp, 'message');
+        $docGp = trim(data_get($resp, 'data.docGp', ''));
 
-        /** en caso de que no exista el movimiento lo crea */
-        if (empty($headerRespValidate) && $validateSuccess === false) {
-            $resp = $this->apiDelivery->createReceiveGuideReservationAjustment($params);
-            $success = data_get($resp, 'success', false);
-            $data = data_get($resp, 'data', []);
-            $msg = data_get($resp, 'message');
-            $docGp = trim(data_get($resp, 'data.docGp', ''));
-
-            if (!$success) {
+        if (!$success) {
+            $cabecera = data_get($params, 'cabecera', []);
+            $pyValidate = $this->reservaBuilder->buildRecievedDeliveryNoteValidationPayload($cabecera);
+            $resValidate = $this->apiDelivery->checkReceiveGuideReservationAjustment($pyValidate);
+            $headerRespValidate = data_get($resValidate, 'data');
+            $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
+            if (!empty($headerRespValidate) && filled($docGpValidate)) {
+                // Usamos el documento que encontró la validación
+                $docGp = $docGpValidate;
+                $data = $headerRespValidate;
+            } else {
+                // Si falló la creación y la validación tampoco trajo nada útil, lanzamos el error.
                 throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
             }
-            if ($docGp === '') {
-                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
-            }
-            DB::transaction(function () use ($items, $guia, $data, $quote, $user) {
+        } else {
+            $data = data_get($resp, 'data', []);
+        }
+        if ($docGp === '') {
+            throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+        }
+
+        $already = $this->movementExistsWeb($guia->id, $quote, $docGp);
+        DB::transaction(function () use ($guia, $items, $data, $quote, $already, $user) {
+            if (!$already) {
                 $this->updateQtyTransferedItems($guia, $items);
                 $this->createMovementReservation($guia, $data, $quote);
-                $this->createRegisterHistoryIng($guia, $items, $user);
-            });
-            return true;
-        }
-        return false;
+                $this->createRegisterHistoryIng($guia, $items, $user, $quote);
+            }
+        });
+        return true;
     }
 
 
@@ -1564,9 +1604,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function createRegisterHistoryIng($guia, $items, GpUsuario $user)
+    public function createRegisterHistoryIng($guia, $items, GpUsuario $user, $quote)
     {
-        $ing = $this->reservaBuilder->createRegisterHistortyHeader($guia, $user);
+        $ing = $this->reservaBuilder->createRegisterHistortyHeader($guia, $user, $quote);
         $ing->save();
         foreach ($items as $item) {
             $de = $this->reservaBuilder->createRegisterHistoryDetail($item, $ing);
