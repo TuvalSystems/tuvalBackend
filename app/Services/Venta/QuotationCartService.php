@@ -45,7 +45,7 @@ class QuotationCartService implements QuotationCartServiceInterface
         }
         $cart->proveedores = [];
         $cart->stock = $arrSt;
-        $cart->imagenes = $this->getImageArticle($cart->ART_CODIGO);
+        $cart->imagenes = $this->getImageArticle($cart->ART_CODIGO_TRES_LETRAS);
 
         //campos precargados para uso de front
         $cart->disabled_delete = false;
