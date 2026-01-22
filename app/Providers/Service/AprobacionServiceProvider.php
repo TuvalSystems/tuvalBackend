@@ -2,9 +2,11 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Aprobaciones\ApprovalReservationService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Aprobaciones\ApprovalService;
+use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 
 class AprobacionServiceProvider extends ServiceProvider implements DeferrableProvider
@@ -22,6 +24,7 @@ class AprobacionServiceProvider extends ServiceProvider implements DeferrablePro
 
     public array $singletons = [
         ApprovalServiceInterface::class => ApprovalService::class,
+        ApprovalReservationServiceInterface::class => ApprovalReservationService::class
     ];
 
     /**
