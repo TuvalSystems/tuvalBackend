@@ -348,9 +348,9 @@ class DispatchService implements DispatchServiceInterface
 
         $query = GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gr')
-            ->join('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
+            ->leftJoin('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
             ->where('gr.estado', 'enviada')
-            ->where('gr.bodega_origen', $bodOrigin)
+            ->where('gr.bodega_origen', trim($bodOrigin))
 
             ->select([
                 'gr.id',
@@ -373,16 +373,11 @@ class DispatchService implements DispatchServiceInterface
         }
 
         // Filtro por Rango de Fechas (LÓGICA AGREGADA)
-        if ($fecha_desde && $fecha_hasta) {
-            // Asumiendo que recibes 'Y-m-d', agregamos horas para cubrir el día completo
-            $query->whereBetween('gr.created_at', [
-                $fecha_desde . ' 00:00:00',
-                $fecha_hasta . ' 23:59:59'
-            ]);
-        } elseif ($fecha_desde) {
-            $query->where('gr.created_at', '>=', $fecha_desde . ' 00:00:00');
-        } elseif ($fecha_hasta) {
-            $query->where('gr.created_at', '<=', $fecha_hasta . ' 23:59:59');
+        if ($fecha_desde) {
+            $query->whereDate('gr.created_at', '>=', $fecha_desde);
+        }
+        if ($fecha_hasta) {
+            $query->whereDate('gr.created_at', '<=', $fecha_hasta);
         }
 
         if ($search) {
@@ -420,7 +415,7 @@ class DispatchService implements DispatchServiceInterface
         $query = GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gr')
             ->join('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
-            ->where('gr.estado', 'enviada')
+            ->where('gr.estado', 'recibida')
             ->where('gr.bodega_destino', $bodOrigin)
 
             ->select([
@@ -444,16 +439,11 @@ class DispatchService implements DispatchServiceInterface
         }
 
         // Filtro por Rango de Fechas (LÓGICA AGREGADA)
-        if ($fecha_desde && $fecha_hasta) {
-            // Asumiendo que recibes 'Y-m-d', agregamos horas para cubrir el día completo
-            $query->whereBetween('gr.created_at', [
-                $fecha_desde . ' 00:00:00',
-                $fecha_hasta . ' 23:59:59'
-            ]);
-        } elseif ($fecha_desde) {
-            $query->where('gr.created_at', '>=', $fecha_desde . ' 00:00:00');
-        } elseif ($fecha_hasta) {
-            $query->where('gr.created_at', '<=', $fecha_hasta . ' 23:59:59');
+        if ($fecha_desde) {
+            $query->whereDate('gr.created_at', '>=', $fecha_desde);
+        }
+        if ($fecha_hasta) {
+            $query->whereDate('gr.created_at', '<=', $fecha_hasta);
         }
 
         if ($search) {

@@ -212,6 +212,7 @@ Route::group(['prefix' => 'reservas-web'], function () {
 
 
     Route::get('despachos/reservas-enviadas', [DespachosController::class, 'listaGuiaReservasEnviadas']);
+     Route::get('despachos/reservas-recibidas', [DespachosController::class, 'listaGuiaReservasRecibidas']);
 
 });
 
