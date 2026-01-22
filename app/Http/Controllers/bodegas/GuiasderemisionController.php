@@ -866,21 +866,23 @@ class GuiasderemisionController extends Controller
         $documentos = array();
 
         foreach ($data['detalle'] as $item) {
-            $traslado = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
+            if($item['recibido'] > 0){
+                $traslado = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
                 ->where('gp_traslados_ventas.id', $item['detalle_id'])
                 ->select('gp_traslados_ventas.*', 'gp_pedidos.pedido')
                 ->first();
-            $item['traslado'] = $traslado;
+                $item['traslado'] = $traslado;
 
-            $transferencia = GpGuiaRemisionTransferencia::where('pedido', $traslado->pedido)
+                $transferencia = GpGuiaRemisionTransferencia::where('pedido', $traslado->pedido)
                 ->where('guia_remision_id', $data['id'])
                 ->first();
 
-            $documentos[$traslado->pedido]['pedido'] = $traslado->pedido;
-            $documentos[$traslado->pedido]['transferencia'] = '';
-            if (isset($transferencia->codigo))
-                $documentos[$traslado->pedido]['transferencia'] = $transferencia->codigo;
-            $documentos[$traslado->pedido]['items'][] = $item;
+                $documentos[$traslado->pedido]['pedido'] = $traslado->pedido;
+                $documentos[$traslado->pedido]['transferencia'] = '';
+                if (isset($transferencia->codigo))
+                    $documentos[$traslado->pedido]['transferencia'] = $transferencia->codigo;
+                $documentos[$traslado->pedido]['items'][] = $item;
+                }
         }
 
         $documentos = array_values($documentos);
