@@ -4,6 +4,7 @@ namespace App\Services\Venta;
 
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
+use App\Models\GpCotizacionImagen;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -38,6 +39,9 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             }
             if ($cotizacion->wasRecentlyCreated) {
                 $cotizacion->refresh();
+            }
+            if (!empty($files)) {
+                $this->storeImagesQuotation($cotizacion, $files);
             }
             return $cotizacion;
         });
@@ -136,8 +140,52 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function saveQuotationDetails(int $quoteId, array $items)
     {
         foreach ($items as $it) {
-            $detail = $this->formPayloadReservedToDetail($quoteId, $it);
+            $detail = $this->builder->formPayloadDetailQuotation($quoteId, $it);
             $detail->save();
+            $providers = data_get($it, 'proveedores', []);
+            if (!empty($providers)) {
+                $this->saveQuotationDetailProviders($quoteId, $detail->id, $providers);
+            }
+            $stocks = data_get($it, 'stocks', []);
+            if (!empty($stocks)) {
+                $this->saveQuotationDetailStocks($quoteId, $detail->id, $stocks);
+            }
+        }
+    }
+
+
+    public function saveQuotationDetailProviders(int $quoteId, int $detailId, array $providers)
+    {
+        foreach ($providers as $provider) {
+            $providerModel = $this->builder->formPayloadProvidersDetailQuotation($quoteId, $detailId, $provider);
+            $providerModel->save();
+        }
+    }
+    public function saveQuotationDetailStocks(int $quoteId, int $detailId, array $stocks)
+    {
+        foreach ($stocks as $st) {
+            $stockModel = $this->builder->formPayloadStocksDetailQuotation($quoteId, $detailId, $st);
+            $stockModel->save();
+        }
+    }
+
+
+    public function storeImagesQuotation(GpCotizacion $cotizacion, array $files)
+    {
+        foreach ($files as $file) {
+            $path = $file->storeAs(
+                "cotizaciones/operaciones_img/{$cotizacion->id}",
+                $file->getClientOriginalName(),
+                'public'
+            );
+
+            GpCotizacionImagen::create([
+                'cotizacion_id'   => $cotizacion->id,
+                'ruta'            => $path,
+                'nombre_original' => $file->getClientOriginalName(),
+                'tipo_mime'       => $file->getMimeType(),
+                'tamano'          => $file->getSize()
+            ]);
         }
     }
 
