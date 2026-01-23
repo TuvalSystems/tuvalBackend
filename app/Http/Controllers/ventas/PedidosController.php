@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-use function Symfony\Component\Translation\t;
+
 
 class PedidosController extends Controller
 {
@@ -64,7 +64,7 @@ class PedidosController extends Controller
                 // ¿es un error de concurrencia y aún puedo reintentar?
                 if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
                     $attempt++;
-                    usleep(200000);   
+                    usleep(200000);
                     Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
                         'attempt' => $attempt,
                         'mysqlCode' => $mysqlCode,
