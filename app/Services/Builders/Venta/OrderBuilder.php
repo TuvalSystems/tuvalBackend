@@ -2,6 +2,7 @@
 
 namespace App\Services\Builders\Venta;
 
+use App\Enums\Ventas\TaxRateEnum;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
@@ -38,7 +39,7 @@ class OrderBuilder implements OrderBuilderInterface
             'factura_posterior_despacho' => $data['factura_posterior_despacho'],
             'factura_a_demanda' => $data['factura_a_demanda'],
             'factura_siguiente_mes' => $data['factura_siguiente_mes'],
-            'impuesto' => env('IVA_IMPUESTO'),
+            'impuesto' => TaxRateEnum::IVA_15->value,
             'BOD_BODEGA' => $bodega,
             'PTO_VTA_ID' => $data['PTO_VTA_ID'],
             'PTO_VTA_DESCRIPCION' => $pv->PTO_VTA_DESCRIPCION,

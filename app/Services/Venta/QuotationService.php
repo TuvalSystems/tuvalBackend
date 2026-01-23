@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta;
 
-
+use App\Enums\Ventas\TaxRateEnum;
 use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -33,10 +33,8 @@ use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\File;
@@ -52,12 +50,9 @@ class QuotationService implements QuotationServiceInterface
         protected readonly ApiBillingService $apiBillingService,
         protected readonly FunctionsServiceInterface $functionService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
-        protected readonly OrderAndQuotationServiceInterface $orderQuotationService,
         protected readonly ApprovalServiceInterface $approvalService,
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly QuotationBuilderInterface $quotationBuilder,
-        protected readonly OrderBuilderInterface $orderBuilder,
-        protected readonly InvoiceServiceInterface $invoiceService
     ) {
 
     }
@@ -877,7 +872,7 @@ class QuotationService implements QuotationServiceInterface
     public function requestQuotationAgain($data, $user)
     {
         $cliente = $this->functionService->getClient($data);
-        $detalles = $this->orderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
         $this->functionService->recalculateIva($detalles);
         $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
@@ -907,7 +902,7 @@ class QuotationService implements QuotationServiceInterface
             GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
         }
         $this->saveQuotationDetail($data['cotizacion'], $cotizacion->id);
-        $this->orderQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
+        $this->orderAndQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
         $this->updateRegisterCopyQuotation($data['registro_copia'], $cotizacion->id);
         return $cotizacion;
 
@@ -974,7 +969,7 @@ class QuotationService implements QuotationServiceInterface
             'impreso' => 'no',
             'nota_interna' => $data['nota_interna'],
             'nota_cliente' => $data['nota_cliente'],
-            'impuesto' => env('IVA_IMPUESTO'),
+            'impuesto' => TaxRateEnum::IVA_15->value,
         ]);
         if ($data['despacho'] === 'Despacho en ruta') {
             $cotizacion->fecha_entrega = $data['fecha_entrega'];

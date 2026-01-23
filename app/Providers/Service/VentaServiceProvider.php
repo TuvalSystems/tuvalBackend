@@ -18,56 +18,28 @@ use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Contracts\QuotationCartServiceInterface;
+use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\OrderService;
 use App\Services\Venta\QuotationCartService;
+use App\Services\Venta\QuotationCreatorService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
 class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
-    // public function register()
-    // {
-
-    //     //aqui agrego las Cotizaciones para no crear otro provider
-    //     $this->app->singleton(QuotationServiceInterface::class, QuotationService::class);
-    //     /** servicio dedicdo a las ordenes de compra */
-    //     $this->app->singleton(PurchaseOrderServiceInterface::class, PurchaseOrderService::class);
-
-    //     /** aqui va el servicio de consultas controller  */
-    //     $this->app->singleton(InventoryQueryServiceInterface::class, InventoryQueryService::class);
-
-    //     /** Servicios de utilidad para cotizacion y para pedidos  */
-
-    //     $this->app->singleton(OrderAndQuotationServiceInterface::class, OrderAndQuotationService::class);
-
-
-    //     // aqui agrego las ordenes para no crear otro provider
-    //     $this->app->singleton(
-    //         OrderServiceInterface::class,
-    //         OrderService::class
-    //     );
-
-    //     //aqui va el servicio de Job de Pedidos
-    //     // $this->app->singleton(OrderJobService::class);
-
-    //       $this->app->singleton(
-    //         InventoryReservationServiceInterface::class,
-    //         InventoryReservationService::class
-    //     );
-    // }
-
 
 
 
     public array $singletons = [
-        QuotationServiceInterface::class            => QuotationService::class,
-        PurchaseOrderServiceInterface::class        => PurchaseOrderService::class,
-        InventoryQueryServiceInterface::class       => InventoryQueryService::class,
-        OrderAndQuotationServiceInterface::class    => OrderAndQuotationService::class,
-        OrderServiceInterface::class                => OrderService::class,
-        InventoryReservationServiceInterface::class => InventoryReservationService::class,
-        ClientQueryServiceInterface::class         => ClientQueryService::class,
-        QuotationCartServiceInterface::class        => QuotationCartService::class,
+        QuotationServiceInterface::class                => QuotationService::class,
+        PurchaseOrderServiceInterface::class            => PurchaseOrderService::class,
+        InventoryQueryServiceInterface::class           => InventoryQueryService::class,
+        OrderAndQuotationServiceInterface::class        => OrderAndQuotationService::class,
+        OrderServiceInterface::class                    => OrderService::class,
+        InventoryReservationServiceInterface::class     => InventoryReservationService::class,
+        ClientQueryServiceInterface::class              => ClientQueryService::class,
+        QuotationCartServiceInterface::class            => QuotationCartService::class,
+        QuotationCreatorServiceInterface::class         => QuotationCreatorService::class,
 
         // Nota: Si descomentas OrderJobService en el futuro, agrégalo aquí:
         OrderJobService::class ,

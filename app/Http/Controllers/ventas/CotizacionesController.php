@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\TaxRateEnum;
 use App\Http\Controllers\Controller;
 use App\Models\GpCronLog;
 use App\Models\GpProspecto;
@@ -20,11 +21,11 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
+use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
-use App\Services\Venta\Contracts\QuotationCartServiceInterface;
+use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -39,10 +40,27 @@ class CotizacionesController extends Controller
 
     public function __construct(
         protected readonly QuotationServiceInterface $quotationService,
-        protected readonly ApprovalServiceInterface $approvalService,
         protected readonly ClientQueryServiceInterface $clientService,
-        protected readonly QuotationCartServiceInterface $quoteCart
+        protected readonly QuotationCreatorServiceInterface $quotationCreator
     ) {
+
+    }
+
+
+
+
+    public function store(ValidateStoreQuotationRequest $request): JsonResponse
+    {
+
+        try {
+            $cotizacion = $this->quotationCreator->createOrUpdate($request->validated(), Auth::user(), $request->file('imagenes') ?? []);
+            $msg = "Cotización {$cotizacion->cotizacion} guardada correctamente";
+            return $this->buildSuccessResponse($msg, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
 
     }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -275,7 +293,7 @@ class CotizacionesController extends Controller
         $cotizacion->nota_interna = $data['nota_interna'];
         $cotizacion->nota_cliente = $data['nota_cliente'];
         $cotizacion->orden_de_compra = $data['orden_de_compra'];
-        $cotizacion->impuesto = env('IVA_IMPUESTO');
+        $cotizacion->impuesto = TaxRateEnum::IVA_15->value;
 
         if ($cotizacion->save()) {
 

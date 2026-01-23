@@ -2,6 +2,8 @@
 
 namespace App\Services\Builders\Venta\Contracts;
 
+use App\Models\GpCotizacion;
+use App\Models\GpPuntoVenta;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
@@ -27,5 +29,10 @@ interface QuotationBuilderInterface
     public function formPayloadAddCartTemp(int $clienteId, string $ptoVtaId, int $sucursalId, array $article, GpUsuario $user, int $orden): GpTempCart;
     public function formPayloadAddCartTempStock(array $stock, int $cartId):GpTempCartStock ;
     public function formPayloadAddCartTempProvider(array $provider, $cardId): GpTempCartProveedores;
+
+
+
+    /** proceso de creacion de cotizacion  */
+   public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio): GpCotizacion;
 
     }

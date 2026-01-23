@@ -2,6 +2,7 @@
 
 namespace App\Services\Builders\Venta;
 
+use App\Enums\Ventas\TaxRateEnum;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleStock;
@@ -100,7 +101,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'impreso' => 'no',
             'nota_interna' => $data['nota_interna'],
             'nota_cliente' => $data['nota_cliente'],
-            'impuesto' => env('IVA_IMPUESTO'),
+            'impuesto' => TaxRateEnum::IVA_15->value,
             'origen' => $origen
         ]);
 
@@ -181,9 +182,9 @@ class QuotationBuilder implements QuotationBuilderInterface
             'telefono4' => $data['CLI_TELEFONO_4'],
             'correoSri' => $data['CLI_CORREO_ELECT_SRI'],
             'correoNotificacion' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'vendedor'      => $data['CLI_VENDEDOR'],
-            'grupo'         => $data['CLI_GRUPO_NOMBRE'],
-            'subGrupo'      => $data['CLI_SUBGRUPO'],
+            'vendedor' => $data['CLI_VENDEDOR'],
+            'grupo' => $data['CLI_GRUPO_NOMBRE'],
+            'subGrupo' => $data['CLI_SUBGRUPO'],
             'descComercial' => '25',
             'condPago' => 'CONTADO',
             'nivelPrecio' => $nivelPrice,
@@ -217,7 +218,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'CLI_FECHA_CREACION' => $now,
             'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
             'CLI_CORREO_ELECT_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'CLI_IMPUESTO' => env('IVA_IMPUESTO'),
+            'CLI_IMPUESTO' => TaxRateEnum::IVA_15->value,
             'CLI_DIRECCION_ENVIO' => 'PRINCIPAL',
             'CLI_DIRECCION_FACTURA' => 'PRINCIPAL',
             'CLI_VENDEDOR' => $data['CLI_VENDEDOR'],
@@ -314,18 +315,85 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         $prov = new GpTempCartProveedores();
         return $prov->fill([
-            'id_tempcart'               => $cardId,
-            'ID_PROVEEDOR'              => data_get($provider, 'ID_PROVEEDOR'),
-            'DESCRIPCION_ARTICULO'      => trim(str_replace('  ', ' ', data_get($provider, 'DESCRIPCION_ARTICULO'))),
-            'FECHA_ENTREGA'             => data_get($provider, 'FECHA_ENTREGA'),
-            'CANTIDAD'                  => data_get($provider, 'CANTIDAD'),
-            'COSTO_UNITARIO'            => data_get($provider, 'COSTO_UNITARIO'),
-            'IMPUESTO'                  => data_get($provider, 'IMPUESTO'),
-            'TOTAL'                     => data_get($provider, 'TOTAL'),
-            'TOTALCONIMPUESTO'          => data_get($provider, 'TOTALCONIMPUESTO'),
-            'NOTA'                      => data_get($provider, 'NOTA'),
-            'MARGEN'                    => data_get($provider, 'MARGEN', 0)
+            'id_tempcart' => $cardId,
+            'ID_PROVEEDOR' => data_get($provider, 'ID_PROVEEDOR'),
+            'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', data_get($provider, 'DESCRIPCION_ARTICULO'))),
+            'FECHA_ENTREGA' => data_get($provider, 'FECHA_ENTREGA'),
+            'CANTIDAD' => data_get($provider, 'CANTIDAD'),
+            'COSTO_UNITARIO' => data_get($provider, 'COSTO_UNITARIO'),
+            'IMPUESTO' => data_get($provider, 'IMPUESTO'),
+            'TOTAL' => data_get($provider, 'TOTAL'),
+            'TOTALCONIMPUESTO' => data_get($provider, 'TOTALCONIMPUESTO'),
+            'NOTA' => data_get($provider, 'NOTA'),
+            'MARGEN' => data_get($provider, 'MARGEN', 0)
         ]);
     }
+
+
+    /** proces de creacion de cotizacion */
+
+    public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio): GpCotizacion
+    {
+        return $quotation->fill([
+            'estado'                            => $requiredApprovalCommercial['estado'],
+            'cliente_id'                        => $data['cliente_id'],
+            'user_id'                           => $user->id,
+            'sucursal_id'                       => $data['direccion_entrega_id'],
+            'sucursal_facturacion_id'           => $data['direccion_facturacion_id'],
+            'factura_posterior_despacho'        => $data['factura_posterior_despacho'],
+            'factura_a_demanda'                 => $data['factura_a_demanda'],
+            'factura_siguiente_mes'             => $data['factura_siguiente_mes'],
+            'BOD_BODEGA'                        => $data['bodega_facturacion'],
+            'PTO_VTA_ID'                        => $data['punto_venta_id'],
+            'PTO_VTA_DESCRIPCION'               => $puntoVenta->PTO_VTA_DESCRIPCION ?? '',
+            'USERID'                            => $user->USERID,
+            'DESC_FORMA_PAGO_CODIGO'            => $data['forma_pago_id'],
+            'CLI_RUC'                           => $data['ruc'],
+            'CLI_RAZON_SOCIAL'                  => $data['razon_social'],
+            'CLI_CORREO_ELECT_SRI'              => $data['correo_electronico_sri'],
+            'COND_ID'                           => $data['condicion_pago_id'],
+            'COND_ID_ORIGINAL'                  => $data['condicion_pago_original_id'],
+            'VEND_ID'                           => $data['vendedor_id'],
+            'VEND_NOMBRES'                      => $data['vendedor_nombres'],
+            'VEND_APELLIDOS'                    => $data['vendedor_apellidos'],
+            'despacho'                          => $data['tipo_entrega'],
+            'orden_de_compra'                   => $data['orden_de_compra'],
+            'porcentage_descuento'              => $data['descuento_articulo'],
+            'porcentage_descuentooriginal'      => $data['descuento_original'],
+            'impuesto'                          => TaxRateEnum::IVA_15->value,
+            'subtotal'                          => (float) $data['subtotal'] + (float) $data['descuento'],
+            'descuento'                         => (float) $data['descuento'],
+            'subtotalmenosdescuento'            => (float) $data['subtotal'],
+            'iva'                               => (float) $data['iva'],
+            'total'                             => (float) $data['total'],
+            'requiere_aprobacion_comercial'     => $requiredApprovalCommercial['requiere'],
+            'motivo_aprobacion_comercial'       => $motivoLimpio,
+            'aprobado_comercial'                => $requiredApprovalCommercial['aprobado'],
+            'aprobador_comercial_id'            => null,
+            'requiere_aprobacion_crediticia'    => 'no',
+            'aprobado_crediticio'               => 'no',
+            'aprobador_crediticio_id'           => null,
+            'impreso'                           => 'no',
+            'nota_interna'                      => $data['nota_interna'],
+            'nota_cliente'                      => $data['nota_cliente'],
+            'nota_operaciones'                  => $data['nota_operaciones'],
+            'origen'                            => 'cotizacion',
+            'modificador_global'                => $data['modificador_global'] ?? 0,
+
+        ]);
+    }
+
+    public function formPayloadDetailQuotation(int $quotationId, array $articles): GpCotizacionDetalle
+    {
+        $qd = new GpCotizacionDetalle();
+        $qd->fill([
+            'cotizacion_id' => $quotationId,
+            'ART_CODIGO'    => data_get($articles, 'ART_CODIGO'),
+        ]);
+
+        return $qd;
+    }
+
+
 }
 

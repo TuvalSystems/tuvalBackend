@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Enums\Ventas\TaxRateEnum;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -1238,7 +1239,7 @@ class OrderService implements OrderServiceInterface
             'factura_posterior_despacho' => $data['factura_posterior_despacho'],
             'factura_a_demanda' => $data['factura_a_demanda'],
             'factura_siguiente_mes' => $data['factura_siguiente_mes'],
-            'impuesto' => env('IVA_IMPUESTO'),
+            'impuesto' => TaxRateEnum::IVA_15->value,
             'BOD_BODEGA' => $data['BOD_BODEGA'],
             'PTO_VTA_ID' => $data['PTO_VTA_ID'],
             'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION,
