@@ -10,6 +10,8 @@ use App\Services\Aprobaciones\ApprovalService;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Aprobaciones\Utils\ApprovalFunctionsService;
+use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 
 class AprobacionServiceProvider extends ServiceProvider implements DeferrableProvider
 {
@@ -28,6 +30,7 @@ class AprobacionServiceProvider extends ServiceProvider implements DeferrablePro
         ApprovalServiceInterface::class => ApprovalService::class,
         ApprovalReservationServiceInterface::class => ApprovalReservationService::class,
         ApprovalQuotationServiceInterface::class => ApprovalQuotationService::class,
+        ApprovalFunctionsServiceInterface::class => ApprovalFunctionsService::class,
     ];
 
     /**

@@ -207,6 +207,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     //new routes
 
     Route::group(['prefix' => 'cotizaciones'], function () {
+
+
         Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
         Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 
@@ -233,7 +235,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
 
-        /** Proceso registros temporales */
+        /** Proceso nuevo de guardar cotizaciones */
+        Route::post('crear-cotizacion-v2', [CotizacionesController::class, 'store']);
 
 
 

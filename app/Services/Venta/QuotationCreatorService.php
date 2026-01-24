@@ -7,6 +7,7 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
@@ -18,7 +19,8 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function __construct(
         protected readonly QuotationRepositoryInterface $repository,
         protected readonly QuotationBuilderInterface $builder,
-        protected readonly ApprovalServiceInterface $aproval,
+        // protected readonly ApprovalServiceInterface $aproval,
+        protected readonly ApprovalQuotationServiceInterface $approval
     ) {
     }
 
@@ -63,7 +65,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
     public function determineApprovalStatus(GpCotizacion $quotation, array $data): array
     {
-        $requiereAprobacion = $this->aproval->checkoutApprovalCommercialQuotations($data);
+        $requiereAprobacion = $this->approval->approveQuotation($data);
         if ($quotation->exists) {
             $this->mantenerAprobacionSiSigueValida($quotation, $requiereAprobacion);
         } else {
@@ -146,7 +148,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             if (!empty($providers)) {
                 $this->saveQuotationDetailProviders($quoteId, $detail->id, $providers);
             }
-            $stocks = data_get($it, 'stocks', []);
+            $stocks = data_get($it, 'stock', []);
             if (!empty($stocks)) {
                 $this->saveQuotationDetailStocks($quoteId, $detail->id, $stocks);
             }
@@ -173,18 +175,20 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function storeImagesQuotation(GpCotizacion $cotizacion, array $files)
     {
         foreach ($files as $file) {
+            $cleanName = str_replace(' ', '_', $file->getClientOriginalName());
+            $uniqueName = time() . '_' . $cleanName;
             $path = $file->storeAs(
                 "cotizaciones/operaciones_img/{$cotizacion->id}",
-                $file->getClientOriginalName(),
+                $uniqueName,
                 'public'
             );
 
             GpCotizacionImagen::create([
-                'cotizacion_id'   => $cotizacion->id,
-                'ruta'            => $path,
+                'cotizacion_id' => $cotizacion->id,
+                'ruta' => $path,
                 'nombre_original' => $file->getClientOriginalName(),
-                'tipo_mime'       => $file->getMimeType(),
-                'tamano'          => $file->getSize()
+                'tipo_mime' => $file->getMimeType(),
+                'tamano' => $file->getSize()
             ]);
         }
     }

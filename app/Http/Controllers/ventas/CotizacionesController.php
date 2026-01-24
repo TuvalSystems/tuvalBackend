@@ -59,6 +59,11 @@ class CotizacionesController extends Controller
         } catch (HttpException $e) {
             return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
         } catch (\Throwable $e) {
+            Log::error('Error in CotizacionesController@store', [
+                'error' => $e->getMessage(),
+                'linea' => $e->getLine(),
+                'file' => $e->getFile(),
+            ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
 
