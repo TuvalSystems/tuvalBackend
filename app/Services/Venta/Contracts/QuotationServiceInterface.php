@@ -15,10 +15,15 @@ interface QuotationServiceInterface
     /**
      *  recuperar cotizacion
      */
-    public function restoreQuotation($data, $user);
+
+    public function restoreQuotationV2($quoteId);
     public function getStockGeneralRestoreQuotation($articulos, $bodegas);
 
-
+    /**
+     *  volver a pedir
+     */
+    public function requestQuotationAgain($data, $user);
+    public function loadQuotationForCopy($quoteId): array;
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);
 
@@ -56,8 +61,6 @@ interface QuotationServiceInterface
     /** funcion para obtener el stock del articulo en la cotizacion  */
     public function getStockItemForWarehouse($article, $warehouse, $cotizacionId);
 
-    /** funcion para volver a pedir cotizacion  */
-    public function requestQuotationAgain($data, $user);
 
     /** funcion para guardado de cotización  */
     public function storeQuotation($data, $user);
@@ -76,7 +79,4 @@ interface QuotationServiceInterface
 
     public function checkClientWithSegmentExist($ruc);
     public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);
-
-
-
 }

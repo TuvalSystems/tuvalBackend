@@ -34,20 +34,27 @@ class ValidateStoreQuotationRequest extends FormRequest
             'factura_siguiente_mes'      => filter_var($this->factura_siguiente_mes, FILTER_VALIDATE_BOOLEAN),
         ]);
 
-        if ($this->registro_copia === 'false' || $this->registro_copia === 'null') {
-            $this->merge(['registro_copia' => null]);
-        }
-        if ($this->cotizacion_id === 'false' || $this->cotizacion_id === 'null') {
-            $this->merge(['cotizacion_id' => null]);
-        }
-         if ($this->fecha_entrega === 'false' || $this->fecha_entrega === 'null') {
-            $this->merge(['fecha_entrega' => null]);
+        $fieldsToNull = [
+            'registro_copia',
+            'cotizacion_id',
+            'cotizacion_codigo',
+            'fecha_entrega',
+            'orden_de_compra'
+        ];
+
+        foreach ($fieldsToNull as $field) {
+            if ($this->$field === 'false' || $this->$field === 'null' || $this->$field === '') {
+                $this->merge([$field => null]);
+            }
         }
     }
     public function rules()
     {
         return [
-      // -- datos del cliente
+            'cotizacion_id'             => ['nullable', 'integer', 'exists:gp_cotizacions,id'],
+            'cotizacion_codigo'         => ['nullable', 'string', 'max:50'],
+            'mode'                      => ['required'],
+            // -- datos del cliente
             'cliente_id'                => ['required', 'integer', 'exists:gp_clientes,id'], // Corregido sintaxis array
             'ruc'                       => ['required', 'string', 'max:20'],
             'razon_social'              => ['required', 'string', 'max:255'],
@@ -99,25 +106,29 @@ class ValidateStoreQuotationRequest extends FormRequest
             'items.*.proveedores'       => ['nullable', 'array'],
             // --- VALIDACIÓN DE IMÁGENES (AGREGADO) ---
             // Validamos 'imagenes' porque así lo llamaste en el formData.append
-            'imagenes'                  => ['nullable', 'array'],
-            'imagenes.*'                => ['file', 'image', 'mimes:jpeg,png,jpg', 'max:5120'], // Máx 5MB
+            'imagenes_nuevas'           => ['nullable', 'array'],
+            'imagenes_nuevas.*'         => ['file', 'image', 'mimes:jpeg,png,jpg', 'max:5120'], // Máx 5MB
+
+
+            'imagenes_existentes'       => ['nullable', 'array'],
+            'imagenes_existentes.*'     => ['string'],
         ];
     }
 
 
     public function attributes()
     {
-       return [
-            'cliente_id'             => 'cliente',
-            'items'                  => 'artículos',
-            'items.*.ART_CANTIDAD'   => 'cantidad del artículo',
+        return [
+            'cliente_id'            => 'cliente',
+            'items'                 => 'artículos',
+            'items.*.ART_CANTIDAD'  => 'cantidad del artículo',
             // 'direccion_entrega_id'   => 'dirección de entrega',
             // 'fecha_entrega'          => 'fecha de entrega',
             // 'nota_interna'           => 'nota interna',
 
-            // Atributos para las imágenes
-            'imagenes'               => 'imágenes',
-            'imagenes.*'             => 'imagen',
+            'imagenes_nuevas'       => 'nuevas imágenes',
+            'imagenes_nuevas.*'     => 'nueva imagen',
+            'cotizacion_id'         => 'ID de cotización',
         ];
     }
 }

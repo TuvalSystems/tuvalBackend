@@ -3,7 +3,6 @@
 namespace App\Services\Venta;
 
 use App\Models\GpTempCart;
-use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
@@ -53,7 +52,7 @@ class QuotationCartService implements QuotationCartServiceInterface
         return $cart;
     }
 
-    public function getImageArticle($codArt)
+    public function getImageArticle($codArt): array
     {
         $images = [];
         for ($i = 1; $i <= 3; $i++) {

@@ -6,12 +6,14 @@ use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpPuntoVenta;
+use App\Models\GpRegistroCopia;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class QuotationCreatorService implements QuotationCreatorServiceInterface
 {
@@ -21,14 +23,13 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         protected readonly QuotationBuilderInterface $builder,
         // protected readonly ApprovalServiceInterface $aproval,
         protected readonly ApprovalQuotationServiceInterface $approval
-    ) {
-    }
+    ) {}
 
 
-    public function createOrUpdate(array $data, $user, array $files = []): GpCotizacion
+    public function createOrUpdate(array $data,  $user, array $existingImages = [], array $newImages = []): GpCotizacion
     {
 
-        return DB::transaction(function () use ($data, $files, $user) {
+        return DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
             $quoteId = data_get($data, 'cotizacion_id', null);
 
             if (!empty($quoteId)) {
@@ -39,12 +40,14 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             if (!empty($data['items'])) {
                 $this->saveQuotationDetails($cotizacion->id, $data['items'] ?? []);
             }
+            $registerCopyId = data_get($data, 'registro_copia', null);
+            if (!empty($registerCopyId)) {
+                $this->updateRegisterCopyQuotation($registerCopyId, $cotizacion->id);
+            }
             if ($cotizacion->wasRecentlyCreated) {
                 $cotizacion->refresh();
             }
-            if (!empty($files)) {
-                $this->storeImagesQuotation($cotizacion, $files);
-            }
+            $this->syncImages($cotizacion, $existingImages, $newImages);
             return $cotizacion;
         });
     }
@@ -61,7 +64,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         $this->builder->formPayloadHeaderQuotation($quotation, $data, $user, $puntoVenta, $requiredApprovalCommercial, $motivoLimpio);
         $quotation->save();
         return $quotation;
-
     }
     public function determineApprovalStatus(GpCotizacion $quotation, array $data): array
     {
@@ -139,7 +141,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
 
     /** proceso de creacion de detalle de cotizacion */
-    public function saveQuotationDetails(int $quoteId, array $items)
+    protected function saveQuotationDetails(int $quoteId, array $items)
     {
         foreach ($items as $it) {
             $detail = $this->builder->formPayloadDetailQuotation($quoteId, $it);
@@ -156,14 +158,14 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
 
 
-    public function saveQuotationDetailProviders(int $quoteId, int $detailId, array $providers)
+    protected function saveQuotationDetailProviders(int $quoteId, int $detailId, array $providers)
     {
         foreach ($providers as $provider) {
             $providerModel = $this->builder->formPayloadProvidersDetailQuotation($quoteId, $detailId, $provider);
             $providerModel->save();
         }
     }
-    public function saveQuotationDetailStocks(int $quoteId, int $detailId, array $stocks)
+    protected function saveQuotationDetailStocks(int $quoteId, int $detailId, array $stocks)
     {
         foreach ($stocks as $st) {
             $stockModel = $this->builder->formPayloadStocksDetailQuotation($quoteId, $detailId, $st);
@@ -172,11 +174,38 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
 
 
-    public function storeImagesQuotation(GpCotizacion $cotizacion, array $files)
+    protected function syncImages(GpCotizacion $cotizacion, array $keepUrls, array $newFiles)
+    {
+        $dbImages = GpCotizacionImagen::where('cotizacion_id', $cotizacion->id)->get();
+
+        foreach ($dbImages as $dbImg) {
+            $fullUrl = asset('storage/' . $dbImg->ruta);
+            if (!in_array($fullUrl, $keepUrls)) {
+                // 1. Borrar archivo físico
+                if (Storage::disk('public')->exists($dbImg->ruta)) {
+                    Storage::disk('public')->delete($dbImg->ruta);
+                }
+                // 2. Borrar registro de BD
+                $dbImg->delete();
+            }
+        }
+
+        if (!empty($newFiles)) {
+            $this->storeImagesQuotation($cotizacion, $newFiles);
+        }
+    }
+
+    protected function storeImagesQuotation(GpCotizacion $cotizacion, array $files)
     {
         foreach ($files as $file) {
+            // Validamos que sea un archivo real antes de procesar
+            if (!$file instanceof \Illuminate\Http\UploadedFile) {
+                continue;
+            }
+
             $cleanName = str_replace(' ', '_', $file->getClientOriginalName());
             $uniqueName = time() . '_' . $cleanName;
+
             $path = $file->storeAs(
                 "cotizaciones/operaciones_img/{$cotizacion->id}",
                 $uniqueName,
@@ -185,7 +214,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
             GpCotizacionImagen::create([
                 'cotizacion_id' => $cotizacion->id,
-                'ruta' => $path,
+                'ruta' => $path, // Guardamos ruta relativa
                 'nombre_original' => $file->getClientOriginalName(),
                 'tipo_mime' => $file->getMimeType(),
                 'tamano' => $file->getSize()
@@ -193,4 +222,14 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         }
     }
 
+
+    protected function updateRegisterCopyQuotation(int $registerCopyId, int $cotizacionId)
+    {
+
+        $registerCopy = GpRegistroCopia::find($registerCopyId);
+        if ($registerCopy) {
+            $registerCopy->cotizacion_destino = $cotizacionId;
+            $registerCopy->save();
+        }
+    }
 }

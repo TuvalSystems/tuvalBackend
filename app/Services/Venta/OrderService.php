@@ -251,7 +251,6 @@ class OrderService implements OrderServiceInterface
         $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
         $newOrder = $this->prepareOrderStoreFill($order, $user);
         $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
-        $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
 
         if ($quoteBlock) {
             $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
@@ -627,16 +626,15 @@ class OrderService implements OrderServiceInterface
             $typeRegisterCopy = 'volver_a_pedir';
 
             DB::beginTransaction();
-            $cliente = $this->functionsService->getClient($data);
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'pedido');
+            // $cliente = $this->functionsService->getClient($data);
+            // $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'pedido');
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
-            $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data, $user, 'pedido');
+            // $this->functionsService->recalculateIva($detalle);
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
             DB::commit();
             return response([
                 'success' => true,
-                'cliente' => $cliente,
+                // 'cliente' => $cliente,
                 'registro_copia' => $registerCopyId,
                 'currentSucursal' => $data['sucursal_id'],
                 'test' => 'volver_a_pedir',
@@ -661,19 +659,19 @@ class OrderService implements OrderServiceInterface
             $typeRegisterCopy = 'copia';
 
             DB::beginTransaction();
-            $cliente = $this->functionsService->getClient($data);
+            // $cliente = $this->functionsService->getClient($data);
             $data['pedido']['sucursal_id'] = $data['sucursal_id'];
             $data['pedido']['cliente_id'] = $data['cliente_id'];
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
+            // $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
             $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy, $typeRegisterCopy);
             $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
 
-            $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user, 'pedido');
+            // $this->functionsService->recalculateIva($detalle);
+            // $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user, 'pedido');
             DB::commit();
             return response([
                 'success' => true,
-                'cliente' => $cliente,
+                // 'cliente' => $cliente,
                 'registro_copia' => $registerCopyId,
                 'currentSucursal' => $data['sucursal_id'],
                 'test' => 'copiarpedido',

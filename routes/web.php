@@ -129,8 +129,6 @@ Route::prefix('pedidos')->group(function () {
     Route::get('/validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
 
     Route::get('imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
-
-
 });
 
 
@@ -139,7 +137,6 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('llenar-cotizacion', [CotizacionesController::class, 'llenarcotizacion']);
 
     Route::get('verificar-stock-actual-reserva', [ReservasController::class, 'verificarStockCotizacionActual']);
-
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -162,7 +159,6 @@ Route::prefix('bodegas')->group(function () {
 
     Route::get('guiasderemision/verificar-ajuste-guia-transferencia', [GuiasderemisionController::class, 'procesarReajusteGuiaTransferencia']);
     Route::get('guiasderemision/verificar-ajuste-guia-reposicion', [GuiasderemisionController::class, 'procesarReajusteGuiaReposicion']);
-
 });
 
 
@@ -183,7 +179,6 @@ Route::prefix('bodegas')->group(function () {
 Route::prefix('consultas')->group(function () {
     Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
     Route::get('buscararticulo-web', [ConsultasController::class, 'buscarArticuloWeb']);
-
 });
 
 Route::prefix('consultas')->group(function () {
@@ -212,8 +207,7 @@ Route::group(['prefix' => 'reservas-web'], function () {
 
 
     Route::get('despachos/reservas-enviadas', [DespachosController::class, 'listaGuiaReservasEnviadas']);
-     Route::get('despachos/reservas-recibidas', [DespachosController::class, 'listaGuiaReservasRecibidas']);
-
+    Route::get('despachos/reservas-recibidas', [DespachosController::class, 'listaGuiaReservasRecibidas']);
 });
 
 Route::prefix('aprobaciones-web')->group(function () {
@@ -221,8 +215,6 @@ Route::prefix('aprobaciones-web')->group(function () {
     Route::get('lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
     Route::get('lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
     Route::get('verificar-stock-reserva', [ReservasController::class, 'consultarReservaAprobarRechazar']);
-
-
 });
 
 Route::prefix('devoluciones-web')->group(function () {
@@ -244,3 +236,6 @@ Route::get('consultas-web/cliente/cupo-disponible/{ruc}', [ConsultasController::
 Route::get('user-web/consulta/obtener-bodegas', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
 Route::get('user-web/consulta/obtener-condiciones-pago', [AuthController::class, 'obtenerCondicionesDePago']);
 Route::get('user-web/consulta/obtener-metodos-pago', [AuthController::class, 'obtenerMetodosDePago']);
+
+Route::get('cotizaciones-web/recuperar-cotizacion-v2', [CotizacionesController::class, 'recuperarCotizacionV2']);
+Route::get('cotizaciones-web/volvrer-a-pedir-cotizacion-v2', [CotizacionesController::class, 'volverAPedirCotizacionV2']);

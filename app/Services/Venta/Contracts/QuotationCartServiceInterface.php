@@ -9,6 +9,7 @@ interface QuotationCartServiceInterface
 {
     public function createTempItem(int $clientId, string $ptoVta, int $sucursalId, array $article, GpUsuario $user): GpTempCart;
 
+    public function getImageArticle($codArt): array;
     public function updateDescriptionItemTemp(int $tempId, string $description);
     public function updateDescriptionAlternativeItemTemp(int $tempId, string $description);
     public function updateCheckAlternativeTemp(int $tempId, bool $checkAlternative);
@@ -22,7 +23,8 @@ interface QuotationCartServiceInterface
 
     public function saveProviderQuotationTemp(int $tempId, array $providers, float $artValor);
 
-    public function clearCartTemp(int $clientId, string $ptoVta, int $sucursalId, int $userId );
+    public function clearCartTemp(int $clientId, string $ptoVta, int $sucursalId, int $userId);
+
 
 
 

@@ -10,45 +10,36 @@ use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpTempCart;
-use App\Services\Api\MswService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
 class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 {
-
-
-
     public function __construct(
         protected readonly ApiGpService $apiGpService,
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly MswService $MsWebService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService
-    ) {
-
-    }
+    ) {}
 
 
 
-    public function getDetailQuotationOrOrder($cliente, $data, $encera = false,  $copy = false, $type)
+    public function getDetailQuotationOrOrder($data, $cliente, $type, $encera = false, $copy = false)
     {
 
-        $warehouse = $this->functionService->getBodegas($data['PTO_VTA_ID'], 1);
-        $detalles = $this->getQuotationDetailWithSuppliersType($data['id'], $copy, $type, $warehouse);
-        $this->resetQuotationDiscount($detalles, $cliente, $encera, $data['BOD_BODEGA']);
-        $arrayArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['ART_CODIGO' => $artCode])->toArray();
-        $listaPreciosWs = $this->getPriceListByItems($arrayArticulos);
-
-        $detalles->each(function ($item) use ($listaPreciosWs, $cliente, $encera) {
-            if ($item->ART_TIPO_COMPRA != 'L') {
-                if ($encera) {
-                    $item->ART_VALOR = $listaPreciosWs[$item->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'] ?? 0;
-                    $item->ART_VALOR_ORIGINAL = $item->ART_VALOR;
+        $warehouse = $this->functionService->getBodegas($data->PTO_VTA_ID, 1);
+        $detalles = $this->getQuotationDetailWithSuppliersType($data->id, $copy, $type, $warehouse);
+        $this->resetQuotationDiscount($detalles, $cliente, $encera, $data->BOD_BODEGA);
+        if ($encera) {
+            $detalles->each(function ($item) use ($cliente) {
+                if ($item->ART_TIPO_COMPRA != 'L') {
+                    $precioActual = data_get($this->getPriceListByItem($item->ART_CODIGO, $cliente->CLI_NIVEL_PRECIO), 'valor', 0);
+                    $item->ART_VALOR = $precioActual;
+                    $item->ART_VALOR_ORIGINAL = $precioActual;
                 }
-            }
-            return $item;
-        });
+                return $item;
+            });
+        }
 
         return $detalles;
     }
@@ -114,12 +105,12 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     {
         return collect($items)->map(function ($item) use ($relationKey) {
             return [
-                'id' => $item['id'],
-                $relationKey => $item[$relationKey],
-                'detalle_id' => $item['detalle_id'],
-                'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
-                'STO_ART_STOCK_DISPONIBLE' => 0,
-                'seleccionado' => 0 //$item['seleccionado'],
+                'id'                        => null,
+                $relationKey                => null,
+                'detalle_id'                => null,
+                'STO_ART_BODEGA'            => $item['STO_ART_BODEGA'],
+                'STO_ART_STOCK_DISPONIBLE'  => 0,
+                'seleccionado'              => 0 //$item['seleccionado'],
             ];
         })->toArray();
     }
@@ -128,12 +119,12 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     {
         if ($encera) {
             $detalles->each(function ($item) use ($cliente, $warehouse) {
-                $item->descuento = $cliente->CLI_DSTO_COMERCIAL;
-                $item->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
-                $item->ART_DESCUENTO = 0;
-                $item->modificador = 0;
-                $item->ART_DESCRIPCION_ORIGINAL = $this->restoreDescriptionItemQuotation($item->ART_CODIGO, $warehouse) ?? $item->ART_DESCRIPCION_ORIGINAL;
-                $item->ART_DESCRIPCION = $item->ART_DESCRIPCION_ORIGINAL;
+                $item->descuento                    = $cliente->CLI_DSTO_COMERCIAL;
+                $item->descuento_original           = $cliente->CLI_DSTO_COMERCIAL;
+                $item->ART_DESCUENTO                = 0;
+                $item->modificador                  = 0;
+                $item->ART_DESCRIPCION_ORIGINAL     = $this->restoreDescriptionItemQuotation($item->ART_CODIGO, $warehouse) ?? $item->ART_DESCRIPCION_ORIGINAL;
+                $item->ART_DESCRIPCION              = $item->ART_DESCRIPCION_ORIGINAL;
             });
         }
     }
@@ -146,28 +137,23 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
-
-    public function getPriceListByItems($arArticulos)
+    public function getPriceListByItem($articulo, $nivelPrice)
     {
-        $prices = $this->MsWebService->listaprecios($arArticulos);
-        $indexedPrices = [];
-        foreach ($prices as $price) {
-            $articleCode = $price['LST_PRC_ARTICULO'];
-            $priceId = $price['LST_PRC_ID'];
-            $indexedPrices[$articleCode][$priceId] = $price;
-        }
-        return $indexedPrices;
+        $prices = $this->getApiPriceArticle($articulo);
+        return collect($prices)->firstWhere('idLista', $nivelPrice);
+    }
+    public function getApiPriceArticle($article)
+    {
+        $response = $this->apiGpService->fetchItemPriceListFromGp([
+            'item' => $article,
+        ]);
+        $data = data_get($response, 'data', []);
+        return (array) $data;
     }
 
 
-    public function clearTempDataQuotation($sucursalId, $PTO_VTA_ID, $clienteId, $userId)
-    {
-        GpTempCart::where('sucursal_id', $sucursalId)
-            ->where('puntodeventa_id', $PTO_VTA_ID)
-            ->where('cliente_id', $clienteId)
-            ->where('user_id', $userId)
-            ->delete();
-    }
+
+
 
 
     /** funcion general para el registro de copia para cotizacion y pedido
@@ -238,7 +224,4 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $current = $currentDiscount / 100;
         return $current - $original;
     }
-
-
-
 }
