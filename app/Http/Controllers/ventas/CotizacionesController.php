@@ -210,25 +210,7 @@ class CotizacionesController extends Controller
     }
 
 
-    public function guardarcotizacion(Request $request)
-    {
-        try {
-            $data = $request->all();
-            $user = Auth::user();
-            $quote = DB::transaction(fn() => $this->quotationService->storeQuotation($data, $user));
-            return $this->buildSuccessResponse(
-                "Cotización {$quote->cotizacion} guardada correctamente",
-                200
-            );
-        } catch (\Throwable $th) {
-            Log::error('Error in guardarcotizacion (Guardar cotización)', [
-                'error' => $th->getMessage(),
-                'linea' => $th->getLine(),
-                'file' => $th->getFile(),
-            ]);
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
-    }
+
 
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -616,20 +598,6 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function volverapedircotizacion(Request $request)
-    {
-        $data = $request->all();
-        $user = Auth::user();
-        try {
-            $info = $this->quotationService->requestQuotationAgain($data, $user);
-            return $this->successResponse('Información Obtenida Correctamente', $info, 200);
-        } catch (\Throwable $th) {
-            Log::error('Error in volverapedircotizacion (Volver a pedir cotización)', [
-                'error' => $th->getMessage(),
-            ]);
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
-    }
 
     public function volverAPedirCotizacionV2(Request $request): JsonResponse
     {

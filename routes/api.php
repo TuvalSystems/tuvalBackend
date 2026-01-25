@@ -101,7 +101,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/updatevalor', [CotizacionesController::class, 'updatevalor']);
     Route::post('/cotizaciones/updatedescuento', [CotizacionesController::class, 'updatedescuento']);
     Route::post('/cotizaciones/actualizar-check-item-alternativo', [CotizacionesController::class, 'updateCheckAlternativo']);
-    Route::post('/cotizaciones/guardarcotizacion', [CotizacionesController::class, 'guardarcotizacion']);
     Route::post('/cotizaciones/guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
     Route::post('/cotizaciones/limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
@@ -122,7 +121,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);
     Route::post('/cotizaciones/recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
-    Route::post('/cotizaciones/volverapedircotizacion', [CotizacionesController::class, 'volverapedircotizacion']);
+    // Route::post('/cotizaciones/volverapedircotizacion', [CotizacionesController::class, 'volverapedircotizacion']);
     Route::post('/pedidos/recuperarpedido', [PedidosController::class, 'recuperarpedido']);
     Route::post('/pedidos/copiarpedido', [PedidosController::class, 'copiarpedido']);
     Route::post('/guardarordenpedido', [CotizacionesController::class, 'guardarordenpedido']);

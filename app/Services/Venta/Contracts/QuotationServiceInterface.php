@@ -22,7 +22,6 @@ interface QuotationServiceInterface
     /**
      *  volver a pedir
      */
-    public function requestQuotationAgain($data, $user);
     public function loadQuotationForCopy($quoteId): array;
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);
@@ -62,8 +61,6 @@ interface QuotationServiceInterface
     public function getStockItemForWarehouse($article, $warehouse, $cotizacionId);
 
 
-    /** funcion para guardado de cotización  */
-    public function storeQuotation($data, $user);
 
     /** funcion para obtener el margen del item l en cotizaciónes */
     public function getMarginItem($artArticulo);
