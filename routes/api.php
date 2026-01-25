@@ -122,8 +122,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);
     Route::post('/cotizaciones/recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
     // Route::post('/cotizaciones/volverapedircotizacion', [CotizacionesController::class, 'volverapedircotizacion']);
-    Route::post('/pedidos/recuperarpedido', [PedidosController::class, 'recuperarpedido']);
-    Route::post('/pedidos/copiarpedido', [PedidosController::class, 'copiarpedido']);
     Route::post('/guardarordenpedido', [CotizacionesController::class, 'guardarordenpedido']);
     Route::post('/cotizaciones/guardardireccion', [CotizacionesController::class, 'guardardireccion']);
 
@@ -238,9 +236,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('crear-cotizacion-v2', [CotizacionesController::class, 'store']);
         Route::post('recuperar-cotizacion-v2', [CotizacionesController::class, 'recuperarCotizacionV2']);
         Route::post('volver-a-pedir-cotizacion-v2', [CotizacionesController::class, 'volverAPedirCotizacionV2']);
-
-
-
     });
 
 
@@ -261,7 +256,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         });
 
         Route::post('item/store/proveedores', [CotizacionCartController::class, 'guardarProveedoresRegistroTemp']);
-
     });
 
     Route::group(['prefix' => 'reservas'], function () {
@@ -294,10 +288,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('transferencias/pdf-picking-reserva', [ReservasController::class, 'generarPdfPickingReserva']);
         Route::post('transferencias/lista-vehiculos-transportistas', [ReservasController::class, 'listaVehiculosTransporte']);
         Route::post('transferencias/lista-guias-remision-reservas-pendientes', [ReservasController::class, 'listaGuiaRemisionReservasPendientes']);
-
-
-
-
     });
 
     Route::group(['prefix' => 'pedidos'], function () {
@@ -313,7 +303,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('bloquear-despacho-pedido', [PedidosController::class, 'actualizarBloqueoPendienteDespacho']);
         Route::post('validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
 
-
+        /** nuevo proceso de copiar pedido y cotizacion */
+        Route::post('copiar-cotizacion-o-pedido-v2', [PedidosController::class, 'copiarCotizacionOPedido']);
+        Route::post('voler-a-pedir-pedido-v2', [PedidosController::class, 'volverAPedirPedido']);
     });
 
     Route::group(['prefix' => 'bodegas'], function () {
@@ -370,10 +362,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/pdf', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [ReservasController::class, 'recibirItemsGuiaReserva']);
-
-
-
-
     });
 
     Route::group(['prefix' => 'consultas'], function () {
@@ -398,7 +386,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
         Route::post('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
         Route::post('articulos/lista', [ConsultasController::class, 'buscarArticuloWeb']);
-
     });
 
     Route::group(['prefix' => 'aprobaciones'], function () {
@@ -418,8 +405,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('cotizacion/rechazar-estado-espera', [AprobacionesController::class, 'recharCotizacionEstadoEspera']);
         Route::post('pedido/rechazar-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
-
-
     });
 
 

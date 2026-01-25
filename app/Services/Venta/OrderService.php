@@ -21,14 +21,12 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalleStock;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\reservas\GpCotizacionReservaDetalleLog;
-use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
@@ -38,7 +36,9 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Services\Venta\Contracts\QuotationCartServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -62,7 +62,9 @@ class OrderService implements OrderServiceInterface
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly OrderBuilderInterface $orderBuilder,
-        protected readonly ApiGpReceivedItemL $apiGpReceiptService
+        protected readonly ApiGpReceivedItemL $apiGpReceiptService,
+        protected readonly ClientQueryServiceInterface $clientService,
+        protected readonly QuotationCartServiceInterface $cartService,
     ) {}
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -617,73 +619,68 @@ class OrderService implements OrderServiceInterface
 
 
 
-    /** function para recuperar el pedido - volver a pedir  */
 
-    public function restoreOrder($data, $user)
+
+    /**
+     *   FUNCION PARA VOLVER A PEDIR UN PEDIDO
+     */
+
+    public function loadOrderForCopy($orderId): array
     {
-        try {
-            $typeCopy = 'pedido';
-            $typeRegisterCopy = 'volver_a_pedir';
-
-            DB::beginTransaction();
-            // $cliente = $this->functionsService->getClient($data);
-            // $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'pedido');
-            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
-            // $this->functionsService->recalculateIva($detalle);
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-            DB::commit();
-            return response([
-                'success' => true,
-                // 'cliente' => $cliente,
-                'registro_copia' => $registerCopyId,
-                'currentSucursal' => $data['sucursal_id'],
-                'test' => 'volver_a_pedir',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in recoverOrder (recuperar pedido - volver a pedir)', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $user = Auth::user() ?? GpUsuario::find(179);
+        $order = GpPedido::findOrFail($orderId);
+        $cliente = $this->clientService->getAvailabeCreditCustomer($order->CLI_RUC);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($order, $clienteNew, 'pedido', false, false);
+        $this->functionsService->recalculateIva($detalles);
+        $detalles->transform(function ($item) {
+            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = 'pedido';
+            return $item;
+        });
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($order->id);
+        return [
+            'pedido'                => $order,
+            'cliente'               => $clienteNew,
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'registro_copia'        => $registroCopiaId,
+            'mode'                  => 'volver_a_pedir',
+        ];
     }
 
 
     /*** funcion para copiar pedido  */
 
-    public function copyOrder($data, $user)
+    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type): array
     {
-        try {
-            $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
-            $typeRegisterCopy = 'copia';
+        $user = Auth::user() ?? GpUsuario::find(179);
+        $initialCLient = GpCliente::find($clienteId);
+        $cliente =  $this->clientService->getAvailabeCreditCustomer($initialCLient->CLI_RUC);
+        $data = ($type === 'cotizacion')
+            ? GpCotizacion::findOrFail($rowId)
+            : GpPedido::findOrFail($rowId);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, $clienteNew, $type, true, true);
+        $this->functionsService->recalculateIva($detalles);
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data->id, $user, $type, 'copia');
+        $detalles->transform(function ($item) use ($type) {
+            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = $type;
+            return $item;
+        });
 
-            DB::beginTransaction();
-            // $cliente = $this->functionsService->getClient($data);
-            $data['pedido']['sucursal_id'] = $data['sucursal_id'];
-            $data['pedido']['cliente_id'] = $data['cliente_id'];
-            // $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
-            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy, $typeRegisterCopy);
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
-
-            // $this->functionsService->recalculateIva($detalle);
-            // $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user, 'pedido');
-            DB::commit();
-            return response([
-                'success' => true,
-                // 'cliente' => $cliente,
-                'registro_copia' => $registerCopyId,
-                'currentSucursal' => $data['sucursal_id'],
-                'test' => 'copiarpedido',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in copyOrder (copiar pedido)', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        return [
+            'cliente'               => $clienteNew,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'mode'                  => "copiar_" . $type,
+            'registro_copia'        => $registroCopiaId,
+            'sucursal_id'           => $sucursalId,
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => []
+        ];
     }
 
 

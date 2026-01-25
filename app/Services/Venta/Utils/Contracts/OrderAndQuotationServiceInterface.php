@@ -17,4 +17,8 @@ interface OrderAndQuotationServiceInterface
 
     public function calculateDiscountFraction(float $originalPrice, float $currentPrice);
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount);
+
+
+
+    public function getAllImagensOperations($quotationId);
 }

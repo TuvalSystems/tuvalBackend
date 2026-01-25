@@ -7,6 +7,7 @@ use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
+use App\Models\GpCotizacionImagen;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -124,6 +125,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
                 $item->modificador                  = 0;
                 $item->ART_DESCRIPCION_ORIGINAL     = $this->restoreDescriptionItemQuotation($item->ART_CODIGO, $warehouse) ?? $item->ART_DESCRIPCION_ORIGINAL;
                 $item->ART_DESCRIPCION              = $item->ART_DESCRIPCION_ORIGINAL;
+                $item->CHECK_ALTERNATIVO            = false;
             });
         }
     }
@@ -144,7 +146,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     public function getApiPriceArticle($article)
     {
         $response = $this->apiGpService->fetchItemPriceListFromGp([
-            'item' => $article,
+            'item' => $article . ',',
         ]);
         $data = data_get($response, 'data', []);
         return (array) $data;
@@ -222,5 +224,23 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $original = $originalDiscount / 100;
         $current = $currentDiscount / 100;
         return $current - $original;
+    }
+
+
+    /***
+     *
+     *  funcion para obtener las imagenes de operaciones para volver a pedir en cotizacion y pedidos
+     */
+
+    public function getAllImagensOperations($quotationId)
+    {
+        $imagenesOperaciones = GpCotizacionImagen::where('cotizacion_id', $quotationId)->get();
+        return  $imagenesOperaciones->map(function ($img) {
+            return [
+                'id' => $img->id,
+                'url' => asset('storage/' . $img->ruta),
+                'nombre' => $img->nombre_original
+            ];
+        });
     }
 }

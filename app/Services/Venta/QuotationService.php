@@ -130,13 +130,13 @@ class QuotationService implements QuotationServiceInterface
             $item->tipo = 'cotizacion';
             return $item;
         });
-        $imagenesOperaciones = $this->getAllImagensOperations($quote->id);
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id);
         return [
             'cotizacion'            => $quote,
-            'cliente'               => $cliente['cliente'],
+            'cliente'               => data_get($cliente, 'cliente'),
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
-            'segmento'              => $cliente['segmentos'],
+            'segmento'              => data_get($cliente, 'segmentos'),
             'mode'                  => 'restore_quote',
         ];
     }
@@ -188,19 +188,6 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-
-    public function getAllImagensOperations($quotationId)
-    {
-        $imagenesOperaciones = GpCotizacionImagen::where('cotizacion_id', $quotationId)->get();
-        return  $imagenesOperaciones->map(function ($img) {
-            return [
-                'id' => $img->id,
-                'url' => asset('storage/' . $img->ruta), // O la ruta pública que uses
-                'nombre' => $img->nombre_original
-            ];
-        });
-    }
-
     /** funcion para llenar el stock de llenar cotizacion prospecto */
     public function getStockGeneralRestoreQuotation($articulos, $bodegas)
     {
@@ -243,7 +230,8 @@ class QuotationService implements QuotationServiceInterface
         $user = Auth::user() ?? GpUsuario::find(179);
         $quote = GpCotizacion::findOrFail($quoteId);
         $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
-        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $cliente, 'cotizacion', false, false);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
             $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
@@ -252,23 +240,17 @@ class QuotationService implements QuotationServiceInterface
         });
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');
 
-        $imagenesOperaciones = $this->getAllImagensOperations($quote->id);
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id);
         return [
             'cotizacion'            => $quote,
-            'cliente'               => $cliente['cliente'],
+            'cliente'               => $clienteNew,
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
-            'segmento'              => $cliente['segmentos'],
+            'segmento'              => data_get($cliente, 'segmentos'),
             'registro_copia'        => $registroCopiaId,
             'mode'                  => 'volver_a_pedir',
         ];
     }
-
-    /***
-     *
-     * PROCESO DE COPIAR COTIZACION
-     */
-
 
 
     /**

@@ -41,8 +41,7 @@ class PedidosController extends Controller
 
         //prueba
         protected readonly ReInvoiceServiceInterface $reInvoice
-    ) {
-    }
+    ) {}
 
 
     //en proceso de mejora
@@ -82,7 +81,6 @@ class PedidosController extends Controller
                     'trace' => $e->getTraceAsString(),
                 ]);
                 return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
-
             } catch (DomainException $e) {
                 // 👈 este es el que puede lanzar tu flujo de stock
                 return $this->buildErrorResponse($e->getMessage(), 422);
@@ -165,7 +163,6 @@ class PedidosController extends Controller
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
 
@@ -255,7 +252,6 @@ class PedidosController extends Controller
 
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
     public function facturarexistente(Request $request)
@@ -298,32 +294,61 @@ class PedidosController extends Controller
     public function recalcularpedido($id): void
     {
         $this->functionService->recalculateOrder($id);
-        // $funciones = new FuncionesController();
-        // $pedido = GpPedido::where('id', $id)->first();
-        // $funciones->recalcularpedido($pedido);
     }
 
     public function corregirpedidos()
     {
         $pedidos = GpPedido::whereNotNull('pedido_origen')->get();
         foreach ($pedidos as $pedido) {
-            // $this->recalcularpedido($pedido->id);
             $this->functionService->recalculateOrder($pedido->id);
         }
     }
 
-    public function recuperarpedido(Request $request)
+
+
+    public function volverAPedirPedido(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $user = Auth::user();
-        return $this->orderService->restoreOrder($data, $user);
+        try {
+            $request->validate([
+                'id' => 'required|exists:gp_pedidos,id',
+            ]);
+            $response = $this->orderService->loadOrderForCopy($request->get('id'));
+            return $this->successResponse('Pedido copiado correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en volverAPedirPedido', [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTrace(),
+                'data' => $request->all(),
+                'exception' => $e,
+            ]);
+            return $this->buildErrorResponse('Datos inválidos para volver a pedir el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
-    public function copiarpedido(Request $request)
+
+
+    public function copiarCotizacionOPedido(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $user = Auth::user();
-        return $this->orderService->copyOrder($data, $user);
+        try {
+            $request->validate([
+                'rowId' => 'required|integer',
+                'sucursal_id' => 'required|integer',
+                'cliente_id' => 'required|integer',
+                'tipo' => 'required|string',
+            ]);
+            $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'));
+            return $this->successResponse('Pedido/Cotización copiado correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en copiarCotizacionOPedido', [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTrace(),
+                'data' => $request->all(),
+                'exception' => $e,
+            ]);
+            return $this->buildErrorResponse('Datos inválidos para copiar el pedido o cotizacion: ' . $e->getMessage(), 500);
+        }
     }
 
 
@@ -650,7 +675,6 @@ class PedidosController extends Controller
             return $this->successResponse('Bloqueo actualizado correctamente', $order, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
-
         }
     }
 

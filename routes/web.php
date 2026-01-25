@@ -239,3 +239,6 @@ Route::get('user-web/consulta/obtener-metodos-pago', [AuthController::class, 'ob
 
 Route::get('cotizaciones-web/recuperar-cotizacion-v2', [CotizacionesController::class, 'recuperarCotizacionV2']);
 Route::get('cotizaciones-web/volvrer-a-pedir-cotizacion-v2', [CotizacionesController::class, 'volverAPedirCotizacionV2']);
+Route::get('cotizacion-pedido-web/copiar-cotizacion-pedido', [PedidosController::class, 'copiarCotizacionOPedido']);
+
+Route::get('pedidos-web/voler-a-pedir-pedido-v2', [PedidosController::class, 'volverAPedirPedido']);
