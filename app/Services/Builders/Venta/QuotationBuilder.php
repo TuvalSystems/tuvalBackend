@@ -333,7 +333,7 @@ class QuotationBuilder implements QuotationBuilderInterface
 
     /** proces de creacion de cotizacion */
 
-    public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio): GpCotizacion
+    public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio, string $tipoDespacho): GpCotizacion
     {
         return $quotation->fill([
             'estado'                            => $requiredApprovalCommercial['estado'],
@@ -357,7 +357,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'VEND_ID'                           => data_get($data,'vendedor_id'),
             'VEND_NOMBRES'                      => data_get($data,'vendedor_nombres'),
             'VEND_APELLIDOS'                    => data_get($data,'vendedor_apellidos'),
-            'despacho'                          => data_get($data,'tipo_entrega'),
+            'despacho'                          => $tipoDespacho,
             'orden_de_compra'                   => data_get($data,'orden_de_compra'),
             'porcentage_descuento'              => data_get($data,'descuento_articulo'),
             'porcentage_descuentooriginal'      => data_get($data,'descuento_original'),

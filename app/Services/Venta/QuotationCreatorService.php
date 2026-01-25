@@ -61,7 +61,9 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         $requiredApprovalCommercial = $this->determineApprovalStatus($quotation, $data);
         $motivoLimpio = $this->sanitizeString($requiredApprovalCommercial['motivo'] ?? '');
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
-        $this->builder->formPayloadHeaderQuotation($quotation, $data, $user, $puntoVenta, $requiredApprovalCommercial, $motivoLimpio);
+        $despacho = data_get($data, 'tipo_entrega', 'retiro');
+        $tipoDespacho = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
+        $this->builder->formPayloadHeaderQuotation($quotation, $data, $user, $puntoVenta, $requiredApprovalCommercial, $motivoLimpio, $tipoDespacho);
         $quotation->save();
         return $quotation;
     }
@@ -177,21 +179,61 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     protected function syncImages(GpCotizacion $cotizacion, array $keepUrls, array $newFiles)
     {
         $dbImages = GpCotizacionImagen::where('cotizacion_id', $cotizacion->id)->get();
+        $urlsRegistradas = [];
 
         foreach ($dbImages as $dbImg) {
             $fullUrl = asset('storage/' . $dbImg->ruta);
+            $urlsRegistradas[] = $fullUrl;
             if (!in_array($fullUrl, $keepUrls)) {
-                // 1. Borrar archivo físico
                 if (Storage::disk('public')->exists($dbImg->ruta)) {
                     Storage::disk('public')->delete($dbImg->ruta);
                 }
-                // 2. Borrar registro de BD
                 $dbImg->delete();
             }
         }
 
+        // logica para clonar para volver a pedir
+        $urlsParaCopiar = array_diff($keepUrls, $urlsRegistradas);
+        if (!empty($urlsParaCopiar)) {
+            $this->copyImagesFromUrls($cotizacion, $urlsParaCopiar);
+        }
+
         if (!empty($newFiles)) {
             $this->storeImagesQuotation($cotizacion, $newFiles);
+        }
+    }
+
+    protected function copyImagesFromUrls(GpCotizacion $cotizacion, array $urls)
+    {
+        $baseUrl = asset('storage') . '/';
+        $disk = Storage::disk('public');
+        foreach ($urls as $url) {
+            $relativePath = str_replace($baseUrl, '', $url);
+            if (Storage::disk('public')->exists($relativePath)) {
+                $fileName = basename($relativePath);
+                $newPath = "cotizaciones/operaciones_img/{$cotizacion->id}/{$fileName}";
+                if (!$disk->exists($newPath)) {
+                    $disk->copy($relativePath, $newPath);
+
+                    GpCotizacionImagen::create([
+                        'cotizacion_id'   => $cotizacion->id,
+                        'ruta'            => $newPath,
+                        'nombre_original' => $fileName,
+                        'tipo_mime'       => $this->getMimeTypeSafe($disk, $newPath),
+                        'tamano'          => $disk->size($newPath)
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function getMimeTypeSafe($disk, $path)
+    {
+        try {
+            return $disk->mimeType($path);
+        } catch (\Exception $e) {
+            // Fallback simple por extensión si el driver falla
+            return mime_content_type(storage_path('app/public/' . $path)) ?: 'application/octet-stream';
         }
     }
 

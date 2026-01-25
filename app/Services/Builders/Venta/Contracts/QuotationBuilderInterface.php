@@ -36,7 +36,7 @@ interface QuotationBuilderInterface
 
 
     /** proceso de creacion de cotizacion  */
-    public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio): GpCotizacion;
+    public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio, string $tipoDespacho): GpCotizacion;
     public function formPayloadDetailQuotation(int $quotationId, array $articles): GpCotizacionDetalle;
 
     public function formPayloadProvidersDetailQuotation(int $quoteId, int $detailId, array $provider): GpCotizacionDetalleProveedores;
