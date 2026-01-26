@@ -62,8 +62,7 @@ class OrderService implements OrderServiceInterface
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly OrderBuilderInterface $orderBuilder,
         protected readonly ApiGpReceivedItemL $apiGpReceiptService
-    ) {
-    }
+    ) {}
 
     //me obtiene la informacion del documento xml_notificaciones
 
@@ -94,7 +93,7 @@ class OrderService implements OrderServiceInterface
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_usuarios.USERNAME')
             ->where('gp_pedidos.id', $id)
             ->first()
-                ?->toArray();
+            ?->toArray();
     }
     public function isPedidoBlocked(array $pedido): bool
     {
@@ -244,13 +243,17 @@ class OrderService implements OrderServiceInterface
 
     public function storeOrder($order, $user)
     {
-
+        $quoteBlock = GpCotizacion::where('id', data_get($order, 'cotizacion_id'))->lockForUpdate()->first();
+        if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
+            throw new \DomainException('la cotizacion ya se encuentra procesada o facturada');
+        }
         $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
         $newOrder = $this->prepareOrderStoreFill($order, $user);
         $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
         $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
-        if (isset($newOrder->cotizacion_id) && $newOrder->cotizacion_id != null && $newOrder->cotizacion_id != '') {
-            $this->updateValueInvoiceQuotation($newOrder->cotizacion_id);
+
+        if ($quoteBlock) {
+            $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
         }
         $newOrder->refresh();
         DB::afterCommit(function () use ($newOrder) {
@@ -371,14 +374,6 @@ class OrderService implements OrderServiceInterface
         return GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)
             ->value('cotizacion_origen_id');
     }
-
-
-
-    public function updateValueInvoiceQuotation($orderId)
-    {
-        GpCotizacion::where('id', $orderId)->update(['estado' => 'procesado', 'facturado' => 1]);
-    }
-
 
 
 
@@ -569,7 +564,6 @@ class OrderService implements OrderServiceInterface
         }
         $this->recalculateAndSendInvoice($order);
         return $order->refresh();
-
     }
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
@@ -1139,7 +1133,6 @@ class OrderService implements OrderServiceInterface
                 if ($st['seleccionado'] > $stockBase->seleccionado) {
                     abort(409, "El artículo con código {$item['ART_CODIGO']} ya fue procesado en otro pedido. Por favor recarga la página.");
                 }
-
             }
         }
 
@@ -1585,7 +1578,6 @@ class OrderService implements OrderServiceInterface
                 ->where('tipo', 'despacho')
                 ->whereNotIn('estado', ['pendiente', 'eliminada']);
         })->exists();
-
     }
 
 
@@ -1612,8 +1604,7 @@ class OrderService implements OrderServiceInterface
 
     public function valdidateOrdersProviders(GpPedido $order)
     {
-        $ordProv = GpPedidoDetalleProveedores::
-            join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
+        $ordProv = GpPedidoDetalleProveedores::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.detalle_id', 'gp_pedido_detalle_proveedores.detalle_id')
             ->where('pedido_id', $order->id)
             ->select('gp_pedido_detalle_proveedores.*', 'gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO')
             ->get();
@@ -1647,7 +1638,6 @@ class OrderService implements OrderServiceInterface
                     return false;
                 }
             }
-
         }
         return true;
     }
@@ -1659,5 +1649,4 @@ class OrderService implements OrderServiceInterface
         $resp = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
         return data_get($resp, 'data', []);
     }
-
 }

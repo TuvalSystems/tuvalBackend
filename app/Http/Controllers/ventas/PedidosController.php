@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-use function Symfony\Component\Translation\t;
+
 
 class PedidosController extends Controller
 {
@@ -57,14 +57,14 @@ class PedidosController extends Controller
             try {
                 $pedido = DB::transaction(function () use ($orderData, $user) {
                     return $this->orderService->storeOrder($orderData, $user);
-                }, 5);
+                });
                 return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
             } catch (QueryException $e) {
                 $mysqlCode = $e->errorInfo[1] ?? null;
                 // ¿es un error de concurrencia y aún puedo reintentar?
                 if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
                     $attempt++;
-
+                    usleep(200000);
                     Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
                         'attempt' => $attempt,
                         'mysqlCode' => $mysqlCode,
