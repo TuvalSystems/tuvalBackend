@@ -425,15 +425,15 @@ class OrderService implements OrderServiceInterface
             'estadodecuenta' => [
                 'cupoDisponible' => $clientQuota
             ],
-            'ordendecompra' => $ordenes,
-            'traslados' => $trasladosVentas,
-            'orden_despacho' => $orderDespacho,
-            'guias_remision' => $guiaRemision,
-            'devoluciones' => $devoluciones,
-            'pendientes' => $status['pendientes'],
-            'existentes' => $status['existentes'],
-            'segmento' => $segmento,
-            'has_guide_dispatched' => $status['has_guide_dispatched']
+            'ordendecompra'         => $ordenes,
+            'traslados'             => $trasladosVentas,
+            'orden_despacho'        => $orderDespacho,
+            'guias_remision'        => $guiaRemision,
+            'devoluciones'          => $devoluciones,
+            'pendientes'            => $status['pendientes'],
+            'existentes'            => $status['existentes'],
+            'segmento'              => $segmento,
+            'has_guide_dispatched'  => $hasGuideDispatched
         ];
     }
 
