@@ -171,7 +171,7 @@ class GpPedido extends Model
 {
     use HasFactory;
 
-    protected $appends = ['msg_registro_copia', 'check_traslado_venta', 'has_guide_dispatch'];
+    protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
     protected $casts = [
         'estado' => OrderStatus::class
     ];
@@ -361,19 +361,4 @@ class GpPedido extends Model
     }
 
 
-
-    /**
-     *
-     *
-     *  creacion de atributo para verificar si el pedido tiene guias de despacho generadas
-     *
-     */
-
-    public function getHasGuideDispatchAttribute()
-    {
-        return $this->detallepedido()
-            ->whereHas('detalleGuia.guia', function ($query) {
-                $query->whereIn('estado', ['espera', 'enviada', 'recibida']);
-            })->exists();
-    }
 }

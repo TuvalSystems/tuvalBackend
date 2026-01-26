@@ -413,7 +413,7 @@ class OrderService implements OrderServiceInterface
         $ordenes = $this->getPurchaseOrdersWithReceipts($data['pedido']);
 
         $trasladosVentas = $this->getTransferWithGuides($data['id']);
-
+        $hasGuideDispatched = $this->hasGuideDispatched($data['id']);
 
         // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
@@ -432,7 +432,8 @@ class OrderService implements OrderServiceInterface
             'devoluciones' => $devoluciones,
             'pendientes' => $status['pendientes'],
             'existentes' => $status['existentes'],
-            'segmento' => $segmento
+            'segmento' => $segmento,
+            'has_guide_dispatched' => $status['has_guide_dispatched']
         ];
     }
 
@@ -528,6 +529,15 @@ class OrderService implements OrderServiceInterface
         ];
     }
 
+
+    public function hasGuideDispatched($orderId)
+    {
+        return GpPedido::where('id', $orderId)
+            ->whereHas('detallepedido.detalleGuia.guia', function ($q) {
+                $q->whereIn('estado', ['espera', 'enviada', 'recibida']);
+            })
+            ->exists();
+    }
 
 
 
