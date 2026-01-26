@@ -90,7 +90,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::post('/cotizaciones/selectarticulo', [CotizacionesController::class, 'selectarticulo']);
     Route::post('/cotizaciones/selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
-    Route::post('/cotizaciones/llenarcotizacion', [CotizacionesController::class, 'llenarcotizacion']);
+    // Route::post('/cotizaciones/llenarcotizacion', [CotizacionesController::class, 'llenarcotizacion']);
     Route::post('/cotizaciones/llenarcotizacionprospecto', [CotizacionesController::class, 'llenarcotizacionprospecto']);
     Route::post('/eliminararticulo', [CotizacionesController::class, 'eliminararticulo']);
     Route::post('/cotizaciones/updatecantidad', [CotizacionesController::class, 'updatecantidad']);
@@ -105,7 +105,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
     Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
-    Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
+    // Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
     Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
     Route::post('/verpedidosycotizacionesporaprobar', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::post('/aprobaciones/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
@@ -306,6 +306,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         /** nuevo proceso de copiar pedido y cotizacion */
         Route::post('copiar-cotizacion-o-pedido-v2', [PedidosController::class, 'copiarCotizacionOPedido']);
         Route::post('voler-a-pedir-pedido-v2', [PedidosController::class, 'volverAPedirPedido']);
+        Route::post('crear-pedido-v2', [PedidosController::class, 'storeOrderV2']);
     });
 
     Route::group(['prefix' => 'bodegas'], function () {

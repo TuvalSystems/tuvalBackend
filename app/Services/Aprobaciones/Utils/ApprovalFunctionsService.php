@@ -4,6 +4,7 @@ namespace App\Services\Aprobaciones\Utils;
 
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
+use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpDatosItemsL;
 use App\Models\GpDescuentoFormaPago;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
@@ -133,4 +134,19 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
         return $datosL;
     }
 
+
+    public function getProviderToValidateMargen($prov)
+    {
+        $id = data_get($prov, 'id', null);
+        $provedorId = data_get($prov, 'ID_PROVEEDOR', null);
+        if (!$id || !$provedorId) {
+            return 0;
+        }
+        if ($id && $provedorId) {
+            return GpCotizacionDetalleProveedores::query()
+                ->where('id', $id)
+                ->where('ID_PROVEEDOR', $provedorId)
+                ->value('MARGEN') ?? 0;
+        }
+    }
 }

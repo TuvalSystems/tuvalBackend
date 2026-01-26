@@ -9,10 +9,10 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class QuotationCreatorService implements QuotationCreatorServiceInterface
@@ -21,13 +21,13 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function __construct(
         protected readonly QuotationRepositoryInterface $repository,
         protected readonly QuotationBuilderInterface $builder,
-        // protected readonly ApprovalServiceInterface $aproval,
         protected readonly ApprovalQuotationServiceInterface $approval
     ) {}
 
 
     public function createOrUpdate(array $data,  $user, array $existingImages = [], array $newImages = []): GpCotizacion
     {
+        Log::info("STORE IMAGES: Iniciando proceso. Cantidad de archivos: " . count($newImages));
 
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
             $quoteId = data_get($data, 'cotizacion_id', null);
@@ -239,6 +239,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
     protected function storeImagesQuotation(GpCotizacion $cotizacion, array $files)
     {
+        Log::info("STORE IMAGES: Iniciando proceso. Cantidad de archivos: " . count($files));
         foreach ($files as $file) {
             // Validamos que sea un archivo real antes de procesar
             if (!$file instanceof \Illuminate\Http\UploadedFile) {

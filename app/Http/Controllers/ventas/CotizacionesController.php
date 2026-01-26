@@ -190,25 +190,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function llenarcotizacion(Request $request)
-    {
-        $data = $request->validate([
-            'cliente_id' => '',
-            'puntodeventa_id' => '',
-            'sucursal_id' => '',
-            'serial' => '',
-            'registro_copia' => '',
-            'test' => '', // copiarpedido se creo un  campo test para que no se sincronice el check alternativo cuando se copia un pedido, se creo en el frontend cuando se copia
-        ]);
-        $user = Auth::user();
-        try {
-            $art = $this->quotationService->fillQuotation($data, $user);
-            return $this->successResponse('Información Obtenida Correctamente', $art, 200);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
-    }
-
+ 
 
 
 

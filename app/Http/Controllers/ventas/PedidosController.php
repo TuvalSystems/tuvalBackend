@@ -14,12 +14,14 @@ use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
+use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use DomainException;
 use Illuminate\Database\QueryException;
@@ -40,8 +42,63 @@ class PedidosController extends Controller
         protected readonly FunctionsServiceInterface $functionService,
 
         //prueba
-        protected readonly ReInvoiceServiceInterface $reInvoice
+        protected readonly ReInvoiceServiceInterface $reInvoice,
+        protected readonly OrderCreatorServiceInterface $orderCreator
     ) {}
+
+
+
+    /** proceso de guardar pedido v2 */
+    public function storeOrderV2(ValidateStoreQuotationRequest $request)
+    {
+        $imagenesExistentes = $request->input('imagenes_existentes', []);
+        $imagenesNuevas     = $request->file('imagenes_nuevas', []);
+        $maxRetries         = 3;
+        $attempt            = 0;
+        while (true) {
+            try {
+                $pedido =  $this->orderCreator->createOrder($request->validated(), Auth::user(), $imagenesExistentes, $imagenesNuevas);
+                return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
+            } catch (QueryException $e) {
+                $mysqlCode = $e->errorInfo[1] ?? null;
+                // ¿es un error de concurrencia y aún puedo reintentar?
+                if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
+                    $attempt++;
+                    usleep(200000);
+                    Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
+                        'attempt' => $attempt,
+                        'mysqlCode' => $mysqlCode,
+                        'msg' => $e->getMessage(),
+                    ]);
+
+                    // pasa al siguiente ciclo del while
+                    continue;
+                }
+
+                // si no es 1213/1205 o ya superó los reintentos, lo tratamos como error real
+                Log::error('Error in storeOrderV2 (guardar pedido)', [
+                    'error'     => $e->getMessage(),
+                    'line'      => $e->getLine(),
+                    'file'      => $e->getFile(),
+                    'trace'     => $e->getTraceAsString(),
+                ]);
+                return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
+            } catch (DomainException $e) {
+                // 👈 este es el que puede lanzar tu flujo de stock
+                return $this->buildErrorResponse($e->getMessage(), 422);
+            } catch (\Throwable $e) {
+                // cualquier otra excepción que no sea de SQL
+                Log::error('Error in storeOrderV2 (guardar pedido)', [
+                    'error'     => $e->getMessage(),
+                    'line'      => $e->getLine(),
+                    'file'      => $e->getFile(),
+                    'trace'     => $e->getTraceAsString(),
+                ]);
+
+                return $this->buildErrorResponse($e->getMessage(), 500);
+            }
+        }
+    }
 
 
     //en proceso de mejora

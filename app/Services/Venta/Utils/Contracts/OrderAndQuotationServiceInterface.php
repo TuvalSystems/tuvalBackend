@@ -20,5 +20,5 @@ interface OrderAndQuotationServiceInterface
 
 
 
-    public function getAllImagensOperations($quotationId);
+    public function getAllImagensOperations($quotationId, $type = 'cotizacion');
 }

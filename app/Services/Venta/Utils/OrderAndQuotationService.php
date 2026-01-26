@@ -10,6 +10,7 @@ use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpPedidoImagen;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -140,20 +141,9 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
     public function getPriceListByItem($articulo, $nivelPrice)
     {
-        $prices = $this->getApiPriceArticle($articulo);
+        $prices = $this->stockWarehouseService->fetchListPricesArticle($articulo);
         return collect($prices)->firstWhere('idLista', $nivelPrice);
     }
-    public function getApiPriceArticle($article)
-    {
-        $response = $this->apiGpService->fetchItemPriceListFromGp([
-            'item' => $article . ',',
-        ]);
-        $data = data_get($response, 'data', []);
-        return (array) $data;
-    }
-
-
-
 
 
 
@@ -232,10 +222,12 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
      *  funcion para obtener las imagenes de operaciones para volver a pedir en cotizacion y pedidos
      */
 
-    public function getAllImagensOperations($quotationId)
+    public function getAllImagensOperations($quotationId, $type = 'cotizacion')
     {
-        $imagenesOperaciones = GpCotizacionImagen::where('cotizacion_id', $quotationId)->get();
-        return  $imagenesOperaciones->map(function ($img) {
+       $model = ($type == 'pedido')
+       ? GpPedidoImagen::where('pedido_id', $quotationId)
+       : GpCotizacionImagen::where('cotizacion_id', $quotationId);
+        return  $model->get()->map(function ($img) {
             return [
                 'id' => $img->id,
                 'url' => asset('storage/' . $img->ruta),

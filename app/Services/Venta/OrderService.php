@@ -639,7 +639,7 @@ class OrderService implements OrderServiceInterface
             return $item;
         });
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($order->id);
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($order->id, 'pedido');
         return [
             'pedido'                => $order,
             'cliente'               => $clienteNew,

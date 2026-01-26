@@ -286,6 +286,14 @@ class GpPedido extends Model
     }
 
 
+
+    public function imagenes (){
+        return $this->hasMany(GpPedidoImagen::class, 'pedido_id');
+    }
+
+
+
+
     public function getMsgRegistroCopiaAttribute()
     {
         if (!$this->relationLoaded('gpcotizacion')) {

@@ -31,12 +31,6 @@ interface QuotationServiceInterface
 
     public function getItemsAlternatives(string $item);
 
-    /**
-     * actualizaciones de campos de gp_temp_cart
-     */
-    public function syncAndGetCheckAlternativo($data, $articulo);
-    public function updateCheckAlternativeItem($id, $checkAlternative);
-
 
     /**
      *  imprimir cotizacion pdf
@@ -55,7 +49,6 @@ interface QuotationServiceInterface
     public function detailQuotation($data);
 
     /** funcion para llenar la cotizacion  */
-    public function fillQuotation($data, $user);
 
     /** funcion para obtener el stock del articulo en la cotizacion  */
     public function getStockItemForWarehouse($article, $warehouse, $cotizacionId);

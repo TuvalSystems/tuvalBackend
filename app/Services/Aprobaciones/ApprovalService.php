@@ -872,11 +872,11 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
         if (!$quoteReserve) {
-            return;
+            return null;
         }
         $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
         if (!$logReserve) {
-            return;
+            return null;
         }
         return $logReserve?->cotizacion_origen_id;
     }
