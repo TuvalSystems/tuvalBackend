@@ -7,6 +7,9 @@ use App\Models\traslados\GpTrasladosVentas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * App\Models\GpPedido
@@ -169,7 +172,7 @@ class GpPedido extends Model
 {
     use HasFactory;
 
-    protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
+    protected $appends = ['msg_registro_copia', 'check_traslado_venta', 'has_guide_dispatch'];
     protected $casts = [
         'estado' => OrderStatus::class
     ];
@@ -256,28 +259,28 @@ class GpPedido extends Model
     }
 
 
-    public function detallepedido()
+    public function detallepedido(): HasMany
     {
         return $this->hasMany(GpPedidoDetalle::class, 'pedido_id');
     }
 
-    public function pedidostock()
+    public function pedidostock(): HasMany
     {
         return $this->hasMany(GpPedidoDetalleStock::class, 'pedido_id');
     }
 
-    public function gpcliente()
+    public function gpcliente(): BelongsTo
     {
         return $this->belongsTo(GpCliente::class, 'cliente_id');
     }
 
-    public function gpvendedor()
+    public function gpvendedor(): BelongsTo
     {
 
         return $this->belongsTo(GpVendedor::class, 'VEND_ID', 'VEND_ID');
     }
 
-    public function gpcotizacion()
+    public function gpcotizacion(): BelongsTo
     {
         return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
     }
@@ -360,4 +363,18 @@ class GpPedido extends Model
 
 
 
+    /**
+     *
+     *
+     *  creacion de atributo para verificar si el pedido tiene guias de despacho generadas
+     *
+     */
+
+    public function getHasGuideDispatchAttribute()
+    {
+        return $this->detallepedido()
+            ->whereHas('detalleGuia.guia', function ($query) {
+                $query->whereIn('estado', ['espera', 'enviada', 'recibida']);
+            })->exists();
+    }
 }

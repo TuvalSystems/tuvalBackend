@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\despachos\GpGuiaRemisionDetalle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -151,6 +152,7 @@ class GpPedidoDetalle extends Model
     }
 
 
+
     public function pedido()
     {
         return $this->belongsTo(GpPedido::class, 'pedido_id', 'id');
@@ -180,5 +182,11 @@ class GpPedidoDetalle extends Model
     protected function getApprovalModificadorAttribute(): bool
     {
         return (float)$this->modificador !== 0;
+    }
+
+
+
+    public function detalleGuia (){
+        return $this->hasMany(GpGuiaRemisionDetalle::class, 'detalle_id', 'id');
     }
 }
