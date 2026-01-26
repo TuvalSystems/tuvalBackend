@@ -58,7 +58,34 @@ class ValidateStoreQuotationRequest extends FormRequest
             'cliente_id'                => ['required', 'integer', 'exists:gp_clientes,id'], // Corregido sintaxis array
             'ruc'                       => ['required', 'string', 'max:20'],
             'razon_social'              => ['required', 'string', 'max:255'],
-            'correo_electronico_sri'    => ['required', 'string', 'email', 'max:255'],
+            'correo_electronico_sri' => [
+                'nullable', // 1. Permite que sea null o vacío
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    // 2. Si el valor es nulo o vacío, no validamos nada (retornamos éxito)
+                    if (empty($value)) {
+                        return;
+                    }
+
+                    // Separamos por punto y coma (;) o coma (,)
+                    $emails = preg_split('/[;,]/', $value);
+
+                    foreach ($emails as $email) {
+                        $emailLimpio = trim($email);
+
+                        // 3. Si al separar queda un espacio vacío (ej: "a@a.com;"), lo ignoramos
+                        if ($emailLimpio === '') {
+                            continue;
+                        }
+
+                        // Validamos que sea un email real
+                        if (!filter_var($emailLimpio, FILTER_VALIDATE_EMAIL)) {
+                            $fail('El valor "' . $emailLimpio . '" no es una dirección de correo válida.');
+                        }
+                    }
+                },
+            ],
             'vendedor_id'               => ['required', 'string'],
             'vendedor_nombres'          => ['nullable', 'string', 'max:255'],
             'vendedor_apellidos'        => ['nullable', 'string', 'max:255'],

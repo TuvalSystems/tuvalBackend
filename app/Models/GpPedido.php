@@ -236,7 +236,10 @@ class GpPedido extends Model
         'aprobado_crediticio_mensaje',
         'origen',
         'fe_facturacion_reserva',
-        'pendiente_salida'
+        'pendiente_salida',
+
+        'nota_operaciones',
+        'modificador_global'
     ];
 
     /**
