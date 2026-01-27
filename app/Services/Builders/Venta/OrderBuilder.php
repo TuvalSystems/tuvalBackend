@@ -198,7 +198,7 @@ class OrderBuilder implements OrderBuilderInterface
 
             'requiere_aprobacion_comercial'     => data_get($requiredApprovalCommercial, 'requiere'),
             'motivo_aprobacion_comercial'       => data_get($extras, 'motivo_comercial'),
-            'aprobado_comercial'                => data_get($requiredApprovalCommercial, 'aprobado'),
+            'aprobado_comercial'                => 'no',
             'aprobador_comercial_id'            => null,
             'requiere_aprobacion_crediticia'    => data_get($extras, 'requiere_aprobacion_crediticia'),
             'aprobado_crediticio'               => 'no',

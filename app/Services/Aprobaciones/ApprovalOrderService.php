@@ -96,8 +96,8 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             }
         }
 
-        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-        $motivosDetalle = $this->validateOrdersDetailToApprove($data['cotizacion'], $ptoVenta, $dsctGlobalCliente);
+        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $motivosDetalle = $this->validateOrdersDetailToApprove($data['items'], $ptoVenta, $dsctGlobalCliente);
         if (!empty($motivosDetalle)) {
             $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
         }

@@ -61,7 +61,8 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
         $approvalCommercial = $this->approval->approveOrder($data);
         $motivoLimpio = $this->sanitizeString($approvalCommercial['motivo'] ?? '');
-
+        log::info($motivoLimpio);
+        log::info($approvalCommercial);
         $approvalCredit = $this->prepareApprovalCreditOrder($data);
         $requieresApproval = $approvalCredit != 'no';
         $motivoCrediticio = $requieresApproval ? $approvalCredit : null;

@@ -14,10 +14,7 @@ use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 {
 
-    public function __construct(protected readonly ApprovalFunctionsServiceInterface $approvalFuntions)
-    {
-
-    }
+    public function __construct(protected readonly ApprovalFunctionsServiceInterface $approvalFuntions) {}
 
     public function approveQuotation(array $data): array
     {
@@ -64,7 +61,6 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse(
                 "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
             );
-
         }
 
 
@@ -139,10 +135,9 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
 
             // 2. Descripción de Referencia
-            $refDescripcion = data_get($detalle, 'ART_DESCRIPCION_ORIGINAL');
-
+            $refDescripcion =  $detailOrigin ? $detailOrigin->ART_DESCRIPCION : data_get($detalle, 'ART_DESCRIPCION_ORIGINAL');
             // 3. Valor de Referencia
-            $refValor = data_get($detalle, 'ART_VALOR_ORIGINAL');
+            $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
 
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
@@ -209,5 +204,4 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
         return $detailMotivos;
     }
-
 }
