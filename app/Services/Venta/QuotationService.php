@@ -121,6 +121,7 @@ class QuotationService implements QuotationServiceInterface
         $detalles->transform(function ($item) {
             $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = 'cotizacion';
+            $item->detalle_id = $item->id;
             return $item;
         });
         $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
@@ -229,6 +230,7 @@ class QuotationService implements QuotationServiceInterface
         $detalles->transform(function ($item) {
             $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = 'cotizacion';
+            $item->detalle_id = $item->id;
             return $item;
         });
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');

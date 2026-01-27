@@ -119,12 +119,12 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
     public function validateQuotationDetailToApprove($detalles, $ptoVenta, $dsctGlobalCliente): array
     {
         $detailMotivos = [];
-        $ids = collect($detalles)->pluck('id')->filter();
+        $ids = collect($detalles)->pluck('detalle_id')->filter();
         $dbDetailQuote = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
         $dbDetailOrder = GpPedidoDetalle::whereIn('id', $ids)->get()->keyBy('id');
         foreach ($detalles as $detalle) {
 
-            $detailId = data_get($detalle, 'id');
+            $detailId = data_get($detalle, 'detalle_id');
             $type = data_get($detalle, 'tipo', 'cotizacion');
             $detailOrigin = $type == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
 

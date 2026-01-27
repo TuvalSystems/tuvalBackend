@@ -650,6 +650,7 @@ class OrderService implements OrderServiceInterface
         $detalles->transform(function ($item) {
             $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = 'pedido';
+            $item->detalle_id = $item->id;
             return $item;
         });
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
@@ -683,9 +684,10 @@ class OrderService implements OrderServiceInterface
         $detalles->transform(function ($item) use ($type) {
             $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = $type;
+            $item->detalle_id = $item->id;
             return $item;
         });
-
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
         return [
             'cliente'               => $clienteNew,
             'segmento'              => data_get($cliente, 'segmentos'),
@@ -693,7 +695,7 @@ class OrderService implements OrderServiceInterface
             'registro_copia'        => $registroCopiaId,
             'sucursal_id'           => $sucursalId,
             'items'                 => $detalles,
-            'imagenesOperaciones'   => []
+            'imagenesOperaciones'   => $imagenesOperaciones
         ];
     }
 
