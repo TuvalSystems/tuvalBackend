@@ -667,7 +667,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    /*** funcion para copiar pedido  */
+    /*** funcion para copiar pedido y cotizacion */
 
     public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type): array
     {
@@ -684,7 +684,6 @@ class OrderService implements OrderServiceInterface
         $detalles->transform(function ($item) use ($type) {
             $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = $type;
-            $item->detalle_id = $item->id;
             return $item;
         });
         $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
