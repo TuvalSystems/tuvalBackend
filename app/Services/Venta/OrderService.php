@@ -532,8 +532,8 @@ class OrderService implements OrderServiceInterface
 
     public function hasGuideDispatched($orderId): bool
     {
-        $pedido = GpPedido::find($orderId);
-        $detallesIds = $pedido->detallepedido()->pluck('id')->toArray();
+
+        $detallesIds = GpPedidoDetalle::where('pedido_id', $orderId)->pluck('id')->toArray();
 
         // Si el pedido no tiene detalles, retornamos false directo para ahorrar la consulta al repo
         if (empty($detallesIds)) {
