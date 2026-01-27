@@ -32,4 +32,6 @@ interface OrderRepositoryInterface
 
     /** funcion para obtener todos los pedidos en estado de espera para facturar */
      public function queryInvoiceReservedOrdersForDate($date);
+
+         public function queryHasGuideDispatched($ids): bool;
 }

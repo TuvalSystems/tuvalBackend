@@ -532,12 +532,10 @@ class OrderService implements OrderServiceInterface
 
     public function hasGuideDispatched($orderId): bool
     {
-        return GpPedido::where('id', $orderId)
-            ->whereHas('detallepedido.detalleGuia.guia', function ($q) {
-                $q->whereIn('estado', ['espera', 'enviada', 'recibida'])
-                    ->where('tipo', 'despacho');
-            })
-            ->exists();
+        $pedido = GpPedido::find($orderId);
+        $detallesIds = $pedido->detalles->pluck('id')->toArray();
+
+        return $this->orderRepository->queryHasGuideDispatched($detallesIds);
     }
 
 

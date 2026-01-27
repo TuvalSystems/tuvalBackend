@@ -14,6 +14,7 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -167,5 +168,13 @@ class OrderRepository implements OrderRepositoryInterface
 
 
 
-    
+    public function queryHasGuideDispatched($ids): bool{
+
+    return DB::table('gp_guia_remisions_detalles as grd')
+        ->join('gp_guia_remisions as gr', 'gr.id', '=', 'grd.guia_remision_id')
+        ->whereIn('grd.detalle_id', $ids)
+        ->where('gr.estado', '!=','eliminada')
+        ->where('gr.tipo', 'despacho')
+        ->exists();
+    }
 }
