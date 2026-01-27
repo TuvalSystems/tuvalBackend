@@ -440,18 +440,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function cleanStockQuotationForDeny($quotationId)
     {
-        $ids = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
+        return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
             ->where('seleccionado', '>', 0)
-            ->lockForUpdate()
-            ->pluck('id');
-
-        if ($ids->isEmpty())
-            return 0;
-
-        // 2) Update masivo solo a esas filas
-        $affected = GpCotizacionDetalleStock::whereIn('id', $ids)
             ->update(['seleccionado' => 0]);
-        return $affected;
     }
 
 
@@ -844,15 +835,23 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      */
     public function processReservedQuotationInvoiceDemand($payload, $user)
     {
+        $quoteBlock = GpCotizacion::where('id', $payload['cotizacion']['id'])->lockForUpdate()->first();
+         if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
+            throw new \DomainException('la cotizacion ya se encuentra procesada o facturada');
+        }
+        $reservedBlock = GpReserva::where('id', $payload['id'])->lockForUpdate()->first();
+        if($reservedBlock && ($reservedBlock->estado === 'procesado')) {
+            throw new \DomainException('Esta reserva ya fue procesada anteriormente.');
+        }
         $userReserva = GpUsuario::where('id', $payload['user_ingreso_reserva_id'])->first();
-        $this->updateQuotationStocksAuthorizedDontConsolidate($payload['cotizacion']['id']);
+        $this->updateQuotationStocksAuthorizedDontConsolidate($quoteBlock->id);
         $order = $this->storeReservedHeaderOrder($payload['cotizacion'], $userReserva, $payload['fe_autorizacion_reserva']);
         $this->storeReservedDetailOrder($payload['cotizacion']['detallecotizacion'], $order);
         $rows = $this->formPayloadReservedQuotationLog($payload['id'], $payload['cotizacion'], $order, $user->id);
 
         $this->insertReservedOrderLogs($rows);
-        $this->updateQuotationReservedStatus($payload['id'], $payload, $user);
-        $this->cleanStockQuotationForDeny($payload['cotizacion']['id']);
+        $this->updateQuotationReservedStatus($reservedBlock->id, $payload, $user, $quoteBlock);
+        $this->cleanStockQuotationForDeny($quoteBlock->id);
 
         DB::afterCommit(function () use ($order, $payload) {
             NotifyReservationRequesterOrderCreatedJob::dispatch($order->pedido, $payload['user_ingreso_reserva_id']);
@@ -865,7 +864,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function updateQuotationStocksAuthorizedDontConsolidate(int $quotationId)
     {
         $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
-            ->lockForUpdate()
             ->get();
         foreach ($stocks as $stock) {
             $stock->update([
@@ -925,7 +923,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function fetchCurrentStocksForQuotationDetail($detailId)
     {
         return GpCotizacionDetalleStock::where('detalle_id', $detailId)
-            ->lockForUpdate()
             ->get();
     }
 
@@ -966,9 +963,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function updateQuotationReservedStatus(int $reservedId, $payload, GpUsuario $user)
+    public function updateQuotationReservedStatus(int $reservedId, $payload, GpUsuario $user, GpCotizacion $quoteBlock)
     {
-        GpCotizacion::whereKey($payload['cotizacion_id'])->update(['estado' => 'procesado']);
+        $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
         return GpReserva::whereKey($reservedId)
             ->update([
                 'estado_autorizacion_reserva' => true,
