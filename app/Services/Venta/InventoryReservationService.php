@@ -60,9 +60,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         protected readonly InventoryReservationRepositoryInterface $reservaRepository,
         protected readonly ApiDeliverNoteService $apiDelivery,
         protected readonly FunctionsServiceInterface $functionService
-    ) {
-
-    }
+    ) {}
 
 
     public function hasAnyReserveState(int $quotationId)
@@ -440,18 +438,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function cleanStockQuotationForDeny($quotationId)
     {
-        $ids = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
+        return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
             ->where('seleccionado', '>', 0)
-            ->lockForUpdate()
-            ->pluck('id');
-
-        if ($ids->isEmpty())
-            return 0;
-
-        // 2) Update masivo solo a esas filas
-        $affected = GpCotizacionDetalleStock::whereIn('id', $ids)
             ->update(['seleccionado' => 0]);
-        return $affected;
     }
 
 
@@ -844,15 +833,23 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      */
     public function processReservedQuotationInvoiceDemand($payload, $user)
     {
+        $quoteBlock = GpCotizacion::where('id', $payload['cotizacion']['id'])->lockForUpdate()->first();
+        if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
+            abort(409, 'La cotizacion ya se encuentra procesada o facturada');
+        }
+        $reservedBlock = GpReserva::where('id', $payload['id'])->lockForUpdate()->first();
+        if ($reservedBlock && ($reservedBlock->estado === 'procesado')) {
+            abort(409, 'Esta reserva ya fue procesada anteriormente.');
+        }
         $userReserva = GpUsuario::where('id', $payload['user_ingreso_reserva_id'])->first();
-        $this->updateQuotationStocksAuthorizedDontConsolidate($payload['cotizacion']['id']);
+        $this->updateQuotationStocksAuthorizedDontConsolidate($quoteBlock->id);
         $order = $this->storeReservedHeaderOrder($payload['cotizacion'], $userReserva, $payload['fe_autorizacion_reserva']);
         $this->storeReservedDetailOrder($payload['cotizacion']['detallecotizacion'], $order);
         $rows = $this->formPayloadReservedQuotationLog($payload['id'], $payload['cotizacion'], $order, $user->id);
 
         $this->insertReservedOrderLogs($rows);
-        $this->updateQuotationReservedStatus($payload['id'], $payload, $user);
-        $this->cleanStockQuotationForDeny($payload['cotizacion']['id']);
+        $this->updateQuotationReservedStatus($reservedBlock->id, $payload, $user, $quoteBlock);
+        $this->cleanStockQuotationForDeny($quoteBlock->id);
 
         DB::afterCommit(function () use ($order, $payload) {
             NotifyReservationRequesterOrderCreatedJob::dispatch($order->pedido, $payload['user_ingreso_reserva_id']);
@@ -865,7 +862,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function updateQuotationStocksAuthorizedDontConsolidate(int $quotationId)
     {
         $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
-            ->lockForUpdate()
             ->get();
         foreach ($stocks as $stock) {
             $stock->update([
@@ -925,7 +921,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function fetchCurrentStocksForQuotationDetail($detailId)
     {
         return GpCotizacionDetalleStock::where('detalle_id', $detailId)
-            ->lockForUpdate()
             ->get();
     }
 
@@ -966,9 +961,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function updateQuotationReservedStatus(int $reservedId, $payload, GpUsuario $user)
+    public function updateQuotationReservedStatus(int $reservedId, $payload, GpUsuario $user, GpCotizacion $quoteBlock)
     {
-        GpCotizacion::whereKey($payload['cotizacion_id'])->update(['estado' => 'procesado']);
+        $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
         return GpReserva::whereKey($reservedId)
             ->update([
                 'estado_autorizacion_reserva' => true,
@@ -1240,7 +1235,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'vehiculos' => GpVehiculo::get(),
             'transportistas' => GpTransportista::get()
         ];
-
     }
 
 
@@ -1287,8 +1281,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
         $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
         $sortBy = in_array($sortBy, $sortable, true) ? $sortBy : 'fecha_salida';
-        $q = GpGuiaRemisionReserva::
-            where('estado', 'enviada')
+        $q = GpGuiaRemisionReserva::where('estado', 'enviada')
             ->where('bodega_destino', $bodega)
             ->has('detalleGuiaReservas')
             ->with(['cotizaciones:id,cotizacion'])
@@ -1539,7 +1532,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         if ($pend <= 0)
             return;
         $gd->increment('recibido', min($recibir, $pend));
-
     }
 
     public function updateQtyStockQuotationTransferred(GpGuiaRemisionReserva $guia, array $item, bool $liberarStock)
@@ -1571,7 +1563,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         }
 
         $stockDestino->save();
-
     }
 
     public function updateStatusReservation($itm, $reserva)
@@ -1599,7 +1590,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         if (!$existePendiente && $reserva->estado !== 'aprobado') {
             $reserva->update(['estado' => 'aprobado']); // GpReserva
         }
-
     }
 
 
@@ -1624,7 +1614,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             return true;
         }
         return false;
-
     }
 
 
@@ -1684,7 +1673,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     'ART_DECIMAL_CANTIDAD' => data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
                 ];
             });
-
         })
             ->keyBy('stock_id');
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\despachos\GpGuiaRemisionDetalle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -90,23 +91,23 @@ class GpPedidoDetalle extends Model
     ];
 
       protected $casts = [
-        'ART_DECIMAL_CANTIDAD' => 'integer',
-        'CHECK_ALTERNATIVO' => 'boolean',
-        'ART_VALOR' => 'float',
-        'ART_VALOR_ORIGINAL' => 'float',
-        'ART_DESCUENTO' => 'float',
-        'ART_IVA' => 'float',
-        'ART_CANTIDAD' => 'float',
-        'ART_STOCK' => 'float',
-        'ART_IMP_VTA' => 'float',
-        'ART_COSTO_PROMEDIO' => 'float',
-        'descuento' => 'float',
-        'descuento_original' => 'float',
-        'modificador' => 'float',
-        'approval_descripcion' => 'boolean',
-        'approval_valor' => 'boolean',
-        'approval_descuento' => 'boolean',
-        'approval_modificador' => 'boolean',
+        'ART_DECIMAL_CANTIDAD'      => 'integer',
+        'CHECK_ALTERNATIVO'         => 'boolean',
+        'ART_VALOR'                 => 'float',
+        'ART_VALOR_ORIGINAL'        => 'float',
+        'ART_DESCUENTO'             => 'float',
+        'ART_IVA'                   => 'float',
+        'ART_CANTIDAD'              => 'float',
+        'ART_STOCK'                 => 'float',
+        'ART_IMP_VTA'               => 'float',
+        'ART_COSTO_PROMEDIO'        => 'float',
+        'descuento'                 => 'float',
+        'descuento_original'        => 'float',
+        'modificador'               => 'float',
+        'approval_descripcion'      => 'boolean',
+        'approval_valor'            => 'boolean',
+        'approval_descuento'        => 'boolean',
+        'approval_modificador'      => 'boolean',
     ];
 
 
@@ -151,6 +152,7 @@ class GpPedidoDetalle extends Model
     }
 
 
+
     public function pedido()
     {
         return $this->belongsTo(GpPedido::class, 'pedido_id', 'id');
@@ -180,5 +182,11 @@ class GpPedidoDetalle extends Model
     protected function getApprovalModificadorAttribute(): bool
     {
         return (float)$this->modificador !== 0;
+    }
+
+
+
+    public function detalleGuia (){
+        return $this->hasMany(GpGuiaRemisionDetalle::class, 'detalle_id', 'id');
     }
 }

@@ -413,7 +413,7 @@ class OrderService implements OrderServiceInterface
         $ordenes = $this->getPurchaseOrdersWithReceipts($data['pedido']);
 
         $trasladosVentas = $this->getTransferWithGuides($data['id']);
-
+        $hasGuideDispatched = $this->hasGuideDispatched($data['id']);
 
         // 🔍 6. Obtener despacho, guías y devoluciones
         $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
@@ -425,14 +425,15 @@ class OrderService implements OrderServiceInterface
             'estadodecuenta' => [
                 'cupoDisponible' => $clientQuota
             ],
-            'ordendecompra' => $ordenes,
-            'traslados' => $trasladosVentas,
-            'orden_despacho' => $orderDespacho,
-            'guias_remision' => $guiaRemision,
-            'devoluciones' => $devoluciones,
-            'pendientes' => $status['pendientes'],
-            'existentes' => $status['existentes'],
-            'segmento' => $segmento
+            'ordendecompra'         => $ordenes,
+            'traslados'             => $trasladosVentas,
+            'orden_despacho'        => $orderDespacho,
+            'guias_remision'        => $guiaRemision,
+            'devoluciones'          => $devoluciones,
+            'pendientes'            => $status['pendientes'],
+            'existentes'            => $status['existentes'],
+            'segmento'              => $segmento,
+            'has_guide_dispatched'  => $hasGuideDispatched
         ];
     }
 
@@ -528,6 +529,19 @@ class OrderService implements OrderServiceInterface
         ];
     }
 
+
+    public function hasGuideDispatched($orderId): bool
+    {
+
+        $detallesIds = GpPedidoDetalle::where('pedido_id', $orderId)->pluck('id')->toArray();
+
+        // Si el pedido no tiene detalles, retornamos false directo para ahorrar la consulta al repo
+        if (empty($detallesIds)) {
+            return false;
+        }
+
+        return $this->orderRepository->queryHasGuideDispatched($detallesIds);
+    }
 
 
 

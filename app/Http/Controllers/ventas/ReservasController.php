@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ReservasController extends Controller
 {
@@ -21,8 +22,7 @@ class ReservasController extends Controller
     public function __construct(
         protected readonly InventoryReservationServiceInterface $reserveService,
         protected readonly ApprovalReservationServiceInterface $aprovalReservation
-    ) {
-    }
+    ) {}
 
 
     public function validarGeneracionReservaCotizacion($id)
@@ -66,10 +66,8 @@ class ReservasController extends Controller
         } catch (\DomainException $e) {
             // Captura excepciones de negocio (ej: Cotización no encontrada, No hay ítems seleccionados)
             return $this->buildErrorResponse($e->getMessage(), 404);
-
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
-
         }
     }
 
@@ -263,6 +261,13 @@ class ReservasController extends Controller
             });
             $msg = "Pedido {$response['pedido']} generado.";
             return $this->successResponse($msg, $response, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\DomainException $e) {
+            return $this->buildErrorResponse($e->getMessage(), 422);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion procesarReservaFacturaDemandaCotizacion -ReservasController: ', [
                 'message' => $e->getMessage(),
@@ -519,10 +524,6 @@ class ReservasController extends Controller
             return $this->successResponse('Proceso realizado correctamente', $data, 200);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);
-
         }
     }
-
-
-
 }
