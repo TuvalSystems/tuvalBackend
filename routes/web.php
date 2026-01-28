@@ -3,6 +3,7 @@
 use App\Events\DemoMessage;
 use App\Events\PingArrived;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\bodegas\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\PedidosController;
@@ -242,3 +243,9 @@ Route::get('cotizaciones-web/volvrer-a-pedir-cotizacion-v2', [CotizacionesContro
 Route::get('cotizacion-pedido-web/copiar-cotizacion-pedido', [PedidosController::class, 'copiarCotizacionOPedido']);
 
 Route::get('pedidos-web/voler-a-pedir-pedido-v2', [PedidosController::class, 'volverAPedirPedido']);
+
+
+Route::prefix('dashboard')->group(function () {
+    Route::get('ordenes-despacho-pendientes/{ptovta}', [DashboardController::class, 'listadoDespachosPendientes']);
+    Route::get('contador-items-servicios/{ptovta}', [DashboardController::class, 'contadorItemsServiciosDespachos']);
+});
