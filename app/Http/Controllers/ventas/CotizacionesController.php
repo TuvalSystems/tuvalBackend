@@ -586,8 +586,9 @@ class CotizacionesController extends Controller
         ];
 
         $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion', $parameters);
-
+        Log::info('Nueva Direccion', $nuevaDireccion);
         if (!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])) {
+
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 401);
