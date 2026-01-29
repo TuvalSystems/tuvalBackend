@@ -32,16 +32,24 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $detalles = $this->getQuotationDetailWithSuppliersType($data->id, $copy, $type, $warehouse);
         $this->resetQuotationDiscount($detalles, $cliente, $encera, $data->BOD_BODEGA);
         if ($encera) {
-            $detalles->each(function ($item) use ($cliente) {
+            $codesApi = $detalles->reject(function ($item) {
+                return $item->ART_TIPO_COMPRA ===  'L';
+            })->pluck('ART_CODIGO')->implode(',') . ',';
+
+            $groupPrices = $this->getPriceListByItem($codesApi);
+
+            $detalles->each(function ($item) use ($cliente, $groupPrices) {
                 if ($item->ART_TIPO_COMPRA != 'L') {
-                    $precioActual = data_get($this->getPriceListByItem($item->ART_CODIGO, $cliente->CLI_NIVEL_PRECIO), 'valor', 0);
-                    $item->ART_VALOR = $precioActual;
-                    $item->ART_VALOR_ORIGINAL = $precioActual;
+                    $myPrice = $groupPrices->get($item->ART_CODIGO, collect());
+
+                    $precioEncontrado = $myPrice->firstWhere('idLista', $cliente->CLI_NIVEL_PRECIO);
+                    $valor = $precioEncontrado ? data_get($precioEncontrado, 'valor', 0) : 0;
+                    $item->ART_VALOR = $valor;
+                    $item->ART_VALOR_ORIGINAL = $valor;
                 }
                 return $item;
             });
         }
-
         return $detalles;
     }
 
@@ -139,10 +147,10 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
-    public function getPriceListByItem($articulo, $nivelPrice)
+    public function getPriceListByItem(string $articulo)
     {
-        $prices = $this->stockWarehouseService->fetchListPricesArticle($articulo);
-        return collect($prices)->firstWhere('idLista', $nivelPrice);
+        $resp = $this->stockWarehouseService->fetchListPricesArticle($articulo);
+        return collect($resp)->groupBy('item');
     }
 
 
@@ -224,9 +232,9 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
     public function getAllImagensOperations($quotationId, $type = 'cotizacion')
     {
-       $model = ($type == 'pedido')
-       ? GpPedidoImagen::where('pedido_id', $quotationId)
-       : GpCotizacionImagen::where('cotizacion_id', $quotationId);
+        $model = ($type == 'pedido')
+            ? GpPedidoImagen::where('pedido_id', $quotationId)
+            : GpCotizacionImagen::where('cotizacion_id', $quotationId);
         return  $model->get()->map(function ($img) {
             return [
                 'id' => $img->id,

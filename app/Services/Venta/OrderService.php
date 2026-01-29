@@ -401,27 +401,19 @@ class OrderService implements OrderServiceInterface
 
     public function detailOrderById($data)
     {
-        // 🔍 1. Obtener detalles del pedido
-        $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
-
-        // 🔍 2. Consultar el crédito del cliente
-        $clientQuota = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
-        // 🔍3. Obtener el segmento del cliente
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        // 🔍 3.  Enriquecer detalles con proveedores y stock
-        $enrichedDetails = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
-
-        // 🔍 4. Obtener órdenes de compra optimizadas
-        $ordenes = $this->getPurchaseOrdersWithReceipts($data['pedido']);
-
-        $trasladosVentas = $this->getTransferWithGuides($data['id']);
+        $detalle            = $this->orderRepository->getAllDetailsOrderById($data['id']);
+        $clientQuota        = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        $segmento           = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        $enrichedDetails    = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
+        $ordenes            = $this->getPurchaseOrdersWithReceipts($data['pedido']);
+        $trasladosVentas    = $this->getTransferWithGuides($data['id']);
         $hasGuideDispatched = $this->hasGuideDispatched($data['id']);
+        $orderDespacho      = $this->orderRepository->getDispatchOrder($data['id']);
+        $guiaRemision       = $this->orderRepository->getShipmentGuides($data['pedido']);
+        $devoluciones       = $this->orderRepository->getReturnsByOrder($data['id']);
+        $status             = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        $nivelPrecio        = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
 
-        // 🔍 6. Obtener despacho, guías y devoluciones
-        $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
-        $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
-        $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-        $status = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -435,7 +427,8 @@ class OrderService implements OrderServiceInterface
             'pendientes'            => $status['pendientes'],
             'existentes'            => $status['existentes'],
             'segmento'              => $segmento,
-            'has_guide_dispatched'  => $hasGuideDispatched
+            'has_guide_dispatched'  => $hasGuideDispatched,
+            'nivelPrecio'           => $nivelPrecio
         ];
     }
 
@@ -445,9 +438,13 @@ class OrderService implements OrderServiceInterface
         $hasPending = false;
         $hasExisting = false;
         $itemIds = $details->pluck('id')->toArray();
+        $codesList = $details->reject(function ($item) {
+            return $item->ART_TIPO_COMPRA ===  'L';
+        })->pluck('ART_CODIGO');
+        $groupsByAbc = $this->getApiSegmentsAbcItem($codesList);
         $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
             ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
-        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem) {
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc) {
             $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
             $item->proveedores = $proveedores['proveedores'];
             $hasPending = $proveedores['pendientes'] ?: $hasPending;
@@ -460,6 +457,11 @@ class OrderService implements OrderServiceInterface
             $item->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
             $item->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
 
+
+            /** procesod de segmentacion abc  */
+            $myAbc = $groupsByAbc->get($item->ART_CODIGO, collect());
+            $classAbc = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
+            $item->clasificacion_tuval = $classAbc;
             return $item;
         });
 
@@ -468,6 +470,12 @@ class OrderService implements OrderServiceInterface
             'hasPending' => $hasPending,
             'hasExisting' => $hasExisting
         ];
+    }
+    public function getApiSegmentsAbcItem($articles)
+    {
+        $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
+        $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
+        return  collect($response)->groupBy('item');
     }
 
     public function getPurchaseOrdersWithReceipts($orderNumber)

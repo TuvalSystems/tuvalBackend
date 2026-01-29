@@ -112,7 +112,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
     Route::get('/aprobaciones/verdevolucionesporaprobar', [AprobacionesController::class, 'verdevolucionesporaprobar']);
 
-    Route::post('/pedidos/detallepedido', [PedidosController::class, 'detallepedido']);
     Route::post('/pedidos/consultarexistente', [PedidosController::class, 'consultarexistente']);
     // Route::post('/pedidos/consultardespachado', [PedidosController::class, 'consultardespachado']);
     Route::post('/pedidos/facturarexistente', [PedidosController::class, 'facturarexistente']);
@@ -302,6 +301,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
         Route::post('bloquear-despacho-pedido', [PedidosController::class, 'actualizarBloqueoPendienteDespacho']);
         Route::post('validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
+        Route::post('detallepedido', [PedidosController::class, 'detallepedido']);
+
 
         /** nuevo proceso de copiar pedido y cotizacion */
         Route::post('copiar-cotizacion-o-pedido-v2', [PedidosController::class, 'copiarCotizacionOPedido']);
@@ -363,9 +364,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/pdf', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [ReservasController::class, 'recibirItemsGuiaReserva']);
-
-
-     
     });
 
     Route::group(['prefix' => 'consultas'], function () {

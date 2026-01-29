@@ -150,4 +150,10 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_NUEVA_DIRECCION, 'POST', $params, 'json');
     }
+
+
+     public function fetchSegmentsAbcFromGp(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_LISTA_SEGMENTACION_ARTICULO_ABC, 'POST', $params, 'json');
+    }
 }
