@@ -238,7 +238,10 @@ class GpPedido extends Model
         'aprobado_crediticio_mensaje',
         'origen',
         'fe_facturacion_reserva',
-        'pendiente_salida'
+        'pendiente_salida',
+
+        'nota_operaciones',
+        'modificador_global'
     ];
 
     /**
@@ -283,6 +286,14 @@ class GpPedido extends Model
     {
         return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
     }
+
+
+
+    public function imagenes (){
+        return $this->hasMany(GpPedidoImagen::class, 'pedido_id');
+    }
+
+
 
 
     public function getMsgRegistroCopiaAttribute()

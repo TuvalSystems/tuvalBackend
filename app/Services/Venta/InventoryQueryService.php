@@ -2,10 +2,13 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\bodegas\AbcSegment;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
+use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\GpTerritorio;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
@@ -14,7 +17,6 @@ use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
 
 class InventoryQueryService implements InventoryQueryServiceInterface
 {
@@ -25,9 +27,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly ApiGpService $apiGp,
         protected readonly FunctionsServiceInterface $functionsService,
-    ) {
-
-    }
+    ) {}
 
 
 
@@ -42,9 +42,10 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
         $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-
-        return $art;
-
+        return [
+            'stock' => data_get($art, 'stock', []),
+            'ART_STOCK' => data_get($art, 'ART_STOCK', 0),
+        ];
     }
 
 
@@ -52,17 +53,20 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     public function getConsultStockOthers($data)
     {
 
-        $articulo = $data['articulo'];
+        $articulo = data_get($data, 'articulo', []);
+        $code = data_get($articulo, 'ART_CODIGO', '');
         $warehouses = $this->stockWarehouseService->getWarehouse($data);
         if (empty($warehouses)) {
             return [];
         }
-        $stockRequests = array_map(fn($whr) => ['articulo' => $articulo['ART_CODIGO'], 'bodega' => $whr,], $warehouses);
+        $stockRequests = array_map(fn($whr) => ['articulo' => $code, 'bodega' => $whr,], $warehouses);
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
         $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-        return $art;
-
+        return [
+            'stock' => data_get($art, 'stock', []),
+            'ART_STOCK' => data_get($art, 'ART_STOCK', 0),
+        ];
     }
 
 
@@ -146,7 +150,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function getConsultItemTransito($data): array
     {
-        $articuloCodigo = data_get($data, 'articulo.ART_CODIGO');
+        $articuloCodigo = data_get($data, 'articulo');
         $ptoVentaId = data_get($data, 'puntodeventa_id');
 
         $bodegaDestino = GpRelacionPuntoVentaBodega::query()
@@ -448,7 +452,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
             return $traslado;
         });
-
     }
 
 
@@ -536,7 +539,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             unset($tr->trasladado);
             return $tr;
         });
-
     }
 
 
@@ -554,37 +556,51 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         if ($articulos->isEmpty()) {
             return collect();
         }
+        $serviceTypes = ['VTA-SERV-L', 'VTA-BNS-L'];
 
-        return $articulos->map(function ($art) use ($filters, $isItemL) {
 
-            //Ajustamos el identificador de items tipo L
-            $serviceTypes = ['VTA-SERV-L', 'VTA-BNS-L'];
+        $filtersArt = $articulos->reject(function ($art) use ($serviceTypes) {
+            return in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
+        });
+
+        $groupPrices = collect();
+        if ($filtersArt->isNotEmpty()) {
+            $codesApi = $filtersArt->pluck('ART_CODIGO')->implode(',') . ',';
+            $groupPrices = $this->getApiPriceArticle($codesApi);
+        }
+
+        $groupsByAbc = collect();
+        if ($filtersArt->isNotEmpty()) {
+            $codesList = $filtersArt->pluck('ART_CODIGO');
+            $groupsByAbc = $this->getApiSegmentsAbcItem($codesList);
+        }
+
+        return $articulos->map(function ($art) use ($filters,  $serviceTypes, $groupPrices, $groupsByAbc) {
+
             $isService = in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
-            if (in_array($art->ART_CLASE_ARTICULO, $serviceTypes)) {
+            if ($isService) {
                 $art->ART_TIPO_COMPRA = 'L';
             }
+            $art->ART_VALOR = $art->ART_VALOR ?? 0;
 
-            //inicializamos colleccion vacia
-            $preciosArticulo = collect();
+            $myPrice = $groupPrices->get($art->ART_CODIGO, collect());
+            $nivelPrecio = data_get($filters, 'nivel_precio', null);
 
-
-            if (!$isService) {
-                $codWithFormat = $art->ART_CODIGO . ',';
-                $respApi = $this->getApiPriceArticle($codWithFormat);
-                $preciosArticulo = collect($respApi);
-            }
-
-            $nivelPrecio = $filters['nivel_precio'] ?? null;
             if ($nivelPrecio) {
-                $precioEncontrado = $preciosArticulo->firstWhere('idLista', $nivelPrecio);
-                $valor = $precioEncontrado ? $precioEncontrado['valor'] : 0;
-                $art->ART_VALOR = (float) number_format($valor, 4, '.', '');
+                $precioEncontrado = $myPrice->firstWhere('idLista', $nivelPrecio);
+                $valor = $precioEncontrado ? data_get($precioEncontrado, 'valor', 0) : 0;
+                $art->ART_VALOR = (float) round($valor, 4);
                 $art->ART_VALOR_ORIGINAL = $art->ART_VALOR;
                 $art->ART_DESCRIPCION_ORIGINAL = $art->ART_DESCRIPCION;
             } else {
-                $art->precios = $preciosArticulo->values();
+                $art->precios = $myPrice->values();
             }
 
+            //obtencion de abc
+            $myAbc = $groupsByAbc->get($art->ART_CODIGO, collect());
+            $classAbc = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
+            $art->clasificacion_tuval = $classAbc;
+            $art->debe_resaltar = $this->shouldHighlightSegment($classAbc);
             $art->proveedores = [];
             $art->descuento = 0;
             $art->descuento_original = 0;
@@ -592,8 +608,17 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             $art->imagenes = $this->getImageArticle($art->ART_CODIGO_TRES_LETRAS);
 
             return $art;
-
-        })->filter()->values();
+        })->filter(
+            function ($articulo) use ($filters) {
+                if ($articulo->ART_TIPO_COMPRA === 'L') {
+                    return true;
+                }
+                if (!empty($filters['nivel_precio'])) {
+                    return $articulo->ART_VALOR > 0;
+                }
+                return count($articulo->precios) > 0;
+            }
+        )->sortByDesc('ART_CODIGO_ZAFIRO')->values();
     }
 
     public function isSearchItemsL(array $filters)
@@ -618,13 +643,15 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function getApiPriceArticle($article)
     {
-        $params = [
-            'item' => $article
-        ];
+        $response = $this->stockWarehouseService->fetchListPricesArticle($article);
+        return  collect($response)->groupBy('item');
+    }
 
-        $response = $this->apiGp->fetchItemPriceListFromGp($params);
-        $data = data_get($response, 'data', []);
-        return (array) $data;
+    public function getApiSegmentsAbcItem($articles)
+    {
+        $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
+        $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
+        return  collect($response)->groupBy('item');
     }
 
     public function getImageArticle($codArt)
@@ -634,9 +661,40 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             $path = "images/productos/{$codArt}_{$i}.jpg";
             $pathAbsolute = public_path($path);
             if (File::exists($pathAbsolute)) {
-                $images[] = url($pathAbsolute);
+                $images[] = asset($path);
             }
         }
         return $images;
+    }
+
+    public function shouldHighlightSegment(?string $clase): bool
+    {
+        return AbcSegment::shouldHighlight($clase);
+    }
+
+
+
+
+
+    public function fetchAllTerritories()
+    {
+        return GpTerritorio::orderBy('TERRITORIO_CODIGO', 'desc')->get();
+    }
+
+    public function fetchAllProvinces()
+    {
+        return GpProvinciaCiudadParroquia::selectRaw('MIN(id) as id, provincia')
+            ->groupBy('provincia')
+            ->orderBy('provincia', 'asc')
+            ->get();
+    }
+
+    public function fetchCitiesByProvince(string $provId)
+    {
+        return GpProvinciaCiudadParroquia::selectRaw('MIN(id) as id, ciudad')
+            ->where('provincia', $provId)
+            ->groupBy('ciudad')
+            ->orderBy('ciudad', 'asc')
+            ->get();
     }
 }

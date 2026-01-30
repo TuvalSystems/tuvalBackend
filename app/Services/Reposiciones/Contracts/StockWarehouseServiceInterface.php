@@ -39,7 +39,7 @@ interface StockWarehouseServiceInterface
     public function getFirstAvailablePurchaseArticle($articulo, $excludeItemsL);
 
     public function checkValidateDisponibleItemL($articulo);
-     public function markArticleUnavailable( $articulo);
+    public function markArticleUnavailable($articulo);
 
     public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId = null,  $quoteReservedOriginId = null);
 
@@ -47,5 +47,6 @@ interface StockWarehouseServiceInterface
     public function applyReservedQtyToAvailableStock(&$stock, $article, $orderId, $quotationId = null);
 
 
-     public function fetchListPricesArticle(string $article): array;
+    public function fetchListPricesArticle(string $items): array;
+    public function fetchListSegmentsAbc(array  $items): array;
 }

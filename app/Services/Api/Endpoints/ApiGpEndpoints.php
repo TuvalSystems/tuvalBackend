@@ -14,6 +14,7 @@ class ApiGpEndpoints
     public const GENERAL_CONSULTAR_SUCURSALES_CLIENTE = 'api/consultar-sucursales-clientes';
     public const GENERAL_CONSULTAR_COORDENADAS = 'api/consultar-listado-coordenadas';
     public const GENERAL_CONSULTAR_LISTA_PRECIO_ARTICULO = 'api/consultar-lista-precio-articulos';
+    public const GENERAL_CONSULTA_LISTA_SEGMENTACION_ARTICULO_ABC = 'api/consultar-lista-segmentacion-articulo-abc';
 
     // ---
     // 📦 2. Endpoints de Inventario y Stock ( Bodega )
@@ -43,6 +44,9 @@ class ApiGpEndpoints
     public const COBROS_CONSULTAR_LISTA_SIN_SOPORTE = 'api/cobros/consultar-lista-documentos-sin-soporte-cliente';
 
     public const COBROS_CONSULTA_DIAS_FERIADOS = 'api/cobros/consultar-dias-feriado';
+    public const COBROS_CONSULTA_COBROS_SIN_APLICAR = 'api/cobros/consultar-cobros-sin-aplicar';
+    public const COBROS_CONSULTA_DETALLE_ESTADO_CUENTA_CLIENTE = 'api/cobros/consultar-detalle-estado-cuenta-cliente';
+
 
     // ---
     // 📄 5. Endpoints de Transacciones ( Recibos, Facturación )
@@ -70,6 +74,7 @@ class ApiGpEndpoints
 
     public const CLIENTE_GUARDAR_MODIFICAR = 'api/cliente/crear-modificar-cliente';
     public const CLIENTE_GUARDAR_SUBSEGMENTO_RUC = 'api/cliente/crear-registro-subsegmento-ruc';
+    public const CLIENTE_GUARDAR_NUEVA_DIRECCION = 'api/cliente/crear-nueva-direccion';
     // ---
     // 📜 7. Endpoints de Guías de Remisión ( General y Movimientos )
     // ---

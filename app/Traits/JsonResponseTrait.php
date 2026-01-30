@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\HeaderUtils;
 
 trait JsonResponseTrait
 {
-    protected function successResponse($message, $data = [], int $code): JsonResponse
+    protected function successResponse($message, $data = [], int $code = 200): JsonResponse
     {
         return response()->json([
             'success' => true,
@@ -23,7 +23,7 @@ trait JsonResponseTrait
     }
 
 
-    protected function errorResponse($message, $errors = null, int $code): JsonResponse
+    protected function errorResponse($message, $errors = null, int $code = 500): JsonResponse
     {
         return response()->json([
             'success' => false,

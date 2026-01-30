@@ -23,15 +23,19 @@ interface InventoryQueryServiceInterface
 
     /** funcion de consulta de reservados  */
 
-     public function listReservedInventory();
+    public function listReservedInventory();
 
 
-     public function listReservedWebInventory(?string $item);
+    public function listReservedWebInventory(?string $item);
 
 
-      /**
-       * funcion encargada de buscar articulos
-       * @param array $filters
-       */
-      public function searchWithDetails(array $filters);
+    /**
+     * funcion encargada de buscar articulos
+     * @param array $filters
+     */
+    public function searchWithDetails(array $filters);
+
+    public function fetchAllTerritories();
+    public function fetchAllProvinces();
+    public function fetchCitiesByProvince(string $provId);
 }

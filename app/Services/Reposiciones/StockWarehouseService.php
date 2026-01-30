@@ -19,9 +19,7 @@ use Illuminate\Support\Arr;
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
-    public function __construct(protected readonly ApiGpService $apiGpService, protected readonly ApiGpReturnsIntegrationService $apiReturns)
-    {
-    }
+    public function __construct(protected readonly ApiGpService $apiGpService, protected readonly ApiGpReturnsIntegrationService $apiReturns) {}
 
     public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo): array
     {
@@ -251,7 +249,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->all();
     }
 
-    
     public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null)
     {
         $reservado = 0;
@@ -273,17 +270,17 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 // Aprobación comercial
                 $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no')
                     ->orWhere(function ($q) {
-                    $q->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
-                        ->where('gp_pedidos.aprobado_comercial', 'yes');
-                });
+                        $q->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
+                            ->where('gp_pedidos.aprobado_comercial', 'yes');
+                    });
             })
             ->where(function ($query) {
                 // Aprobación crediticia
                 $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no')
                     ->orWhere(function ($q) {
-                    $q->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes')
-                        ->where('gp_pedidos.aprobado_crediticio', 'yes');
-                });
+                        $q->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes')
+                            ->where('gp_pedidos.aprobado_crediticio', 'yes');
+                    });
             });
 
         if ($pedidoId) {
@@ -659,11 +656,22 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     /** funcion de api para consulta de lista de precio de articulos  */
 
 
-    public function fetchListPricesArticle(string $article): array
+    public function fetchListPricesArticle(string $items): array
     {
         $response = $this->apiGpService->fetchItemPriceListFromGp(
             [
-                'articulo' => $article . ','
+                'item' => $items
+            ]
+        );
+        $data = data_get($response, 'data', []);
+        return (array) $data;
+    }
+
+    public function fetchListSegmentsAbc(array  $items): array
+    {
+        $response = $this->apiGpService->fetchSegmentsAbcFromGp(
+            [
+                'items' => $items
             ]
         );
         $data = data_get($response, 'data', []);

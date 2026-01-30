@@ -3,6 +3,8 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Enums\Ventas\QuotationMode;
+use App\Enums\Ventas\TaxRateEnum;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -20,14 +22,12 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalleStock;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\reservas\GpCotizacionReservaDetalleLog;
-use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
@@ -37,7 +37,9 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Services\Venta\Contracts\QuotationCartServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -61,7 +63,9 @@ class OrderService implements OrderServiceInterface
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly OrderBuilderInterface $orderBuilder,
-        protected readonly ApiGpReceivedItemL $apiGpReceiptService
+        protected readonly ApiGpReceivedItemL $apiGpReceiptService,
+        protected readonly ClientQueryServiceInterface $clientService,
+        protected readonly QuotationCartServiceInterface $cartService,
     ) {}
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -250,7 +254,6 @@ class OrderService implements OrderServiceInterface
         $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
         $newOrder = $this->prepareOrderStoreFill($order, $user);
         $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
-        $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
 
         if ($quoteBlock) {
             $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
@@ -399,27 +402,19 @@ class OrderService implements OrderServiceInterface
 
     public function detailOrderById($data)
     {
-        // 🔍 1. Obtener detalles del pedido
-        $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
-
-        // 🔍 2. Consultar el crédito del cliente
-        $clientQuota = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
-        // 🔍3. Obtener el segmento del cliente
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        // 🔍 3.  Enriquecer detalles con proveedores y stock
-        $enrichedDetails = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
-
-        // 🔍 4. Obtener órdenes de compra optimizadas
-        $ordenes = $this->getPurchaseOrdersWithReceipts($data['pedido']);
-
-        $trasladosVentas = $this->getTransferWithGuides($data['id']);
+        $detalle            = $this->orderRepository->getAllDetailsOrderById($data['id']);
+        $clientQuota        = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        $segmento           = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        $enrichedDetails    = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
+        $ordenes            = $this->getPurchaseOrdersWithReceipts($data['pedido']);
+        $trasladosVentas    = $this->getTransferWithGuides($data['id']);
         $hasGuideDispatched = $this->hasGuideDispatched($data['id']);
+        $orderDespacho      = $this->orderRepository->getDispatchOrder($data['id']);
+        $guiaRemision       = $this->orderRepository->getShipmentGuides($data['pedido']);
+        $devoluciones       = $this->orderRepository->getReturnsByOrder($data['id']);
+        $status             = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        $nivelPrecio        = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
 
-        // 🔍 6. Obtener despacho, guías y devoluciones
-        $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
-        $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
-        $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-        $status = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -433,7 +428,8 @@ class OrderService implements OrderServiceInterface
             'pendientes'            => $status['pendientes'],
             'existentes'            => $status['existentes'],
             'segmento'              => $segmento,
-            'has_guide_dispatched'  => $hasGuideDispatched
+            'has_guide_dispatched'  => $hasGuideDispatched,
+            'nivelPrecio'           => $nivelPrecio
         ];
     }
 
@@ -443,9 +439,13 @@ class OrderService implements OrderServiceInterface
         $hasPending = false;
         $hasExisting = false;
         $itemIds = $details->pluck('id')->toArray();
+        $codesList = $details->reject(function ($item) {
+            return $item->ART_TIPO_COMPRA ===  'L';
+        })->pluck('ART_CODIGO');
+        $groupsByAbc = $this->getApiSegmentsAbcItem($codesList);
         $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
             ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
-        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem) {
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc) {
             $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
             $item->proveedores = $proveedores['proveedores'];
             $hasPending = $proveedores['pendientes'] ?: $hasPending;
@@ -458,6 +458,11 @@ class OrderService implements OrderServiceInterface
             $item->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
             $item->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
 
+
+            /** procesod de segmentacion abc  */
+            $myAbc = $groupsByAbc->get($item->ART_CODIGO, collect());
+            $classAbc = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
+            $item->clasificacion_tuval = $classAbc;
             return $item;
         });
 
@@ -466,6 +471,12 @@ class OrderService implements OrderServiceInterface
             'hasPending' => $hasPending,
             'hasExisting' => $hasExisting
         ];
+    }
+    public function getApiSegmentsAbcItem($articles)
+    {
+        $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
+        $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
+        return  collect($response)->groupBy('item');
     }
 
     public function getPurchaseOrdersWithReceipts($orderNumber)
@@ -631,74 +642,70 @@ class OrderService implements OrderServiceInterface
 
 
 
-    /** function para recuperar el pedido - volver a pedir  */
 
-    public function restoreOrder($data, $user)
+
+    /**
+     *   FUNCION PARA VOLVER A PEDIR UN PEDIDO
+     */
+
+    public function loadOrderForCopy($orderId): array
     {
-        try {
-            $typeCopy = 'pedido';
-            $typeRegisterCopy = 'volver_a_pedir';
-
-            DB::beginTransaction();
-            $cliente = $this->functionsService->getClient($data);
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'pedido');
-            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
-            $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data, $user, 'pedido');
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-            DB::commit();
-            return response([
-                'success' => true,
-                'cliente' => $cliente,
-                'registro_copia' => $registerCopyId,
-                'currentSucursal' => $data['sucursal_id'],
-                'test' => 'volver_a_pedir',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in recoverOrder (recuperar pedido - volver a pedir)', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $user = Auth::user() ?? GpUsuario::find(179);
+        $order = GpPedido::findOrFail($orderId);
+        $cliente = $this->clientService->getAvailabeCreditCustomer($order->CLI_RUC);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($order, $clienteNew, 'pedido', false, false);
+        $this->functionsService->recalculateIva($detalles);
+        $detalles->transform(function ($item) {
+            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = 'pedido';
+            $item->detalle_id = $item->id;
+            return $item;
+        });
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($order->id, 'pedido');
+        return [
+            'pedido'                => $order,
+            'cliente'               => $clienteNew,
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'registro_copia'        => $registroCopiaId,
+            'mode'                  => QuotationMode::REORDER->value,
+        ];
     }
 
 
-    /*** funcion para copiar pedido  */
+    /*** funcion para copiar pedido y cotizacion */
 
-    public function copyOrder($data, $user)
+    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type): array
     {
-        try {
-            $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
-            $typeRegisterCopy = 'copia';
-
-            DB::beginTransaction();
-            $cliente = $this->functionsService->getClient($data);
-            $data['pedido']['sucursal_id'] = $data['sucursal_id'];
-            $data['pedido']['cliente_id'] = $data['cliente_id'];
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
-            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy, $typeRegisterCopy);
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
-
-            $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user, 'pedido');
-            DB::commit();
-            return response([
-                'success' => true,
-                'cliente' => $cliente,
-                'registro_copia' => $registerCopyId,
-                'currentSucursal' => $data['sucursal_id'],
-                'test' => 'copiarpedido',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in copyOrder (copiar pedido)', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $user = Auth::user() ?? GpUsuario::find(179);
+        $initialCLient = GpCliente::find($clienteId);
+        $cliente =  $this->clientService->getAvailabeCreditCustomer($initialCLient->CLI_RUC);
+        $data = ($type === 'cotizacion')
+            ? GpCotizacion::findOrFail($rowId)
+            : GpPedido::findOrFail($rowId);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, $clienteNew, $type, true, true);
+        $this->functionsService->recalculateIva($detalles);
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data->id, $user, $type, 'copia');
+        $detalles->transform(function ($item) use ($type) {
+            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = $type;
+            return $item;
+        });
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
+        $modeEnum = QuotationMode::fromType($type);
+        return [
+            'cliente'               => $clienteNew,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'mode'                  => $modeEnum->value,
+            'registro_copia'        => $registroCopiaId,
+            'sucursal_id'           => $sucursalId,
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => $imagenesOperaciones
+        ];
     }
 
 
@@ -1252,7 +1259,7 @@ class OrderService implements OrderServiceInterface
             'factura_posterior_despacho' => $data['factura_posterior_despacho'],
             'factura_a_demanda' => $data['factura_a_demanda'],
             'factura_siguiente_mes' => $data['factura_siguiente_mes'],
-            'impuesto' => env('IVA_IMPUESTO'),
+            'impuesto' => TaxRateEnum::IVA_15->value,
             'BOD_BODEGA' => $data['BOD_BODEGA'],
             'PTO_VTA_ID' => $data['PTO_VTA_ID'],
             'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION,

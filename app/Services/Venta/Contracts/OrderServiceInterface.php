@@ -20,15 +20,14 @@ interface OrderServiceInterface
 
     //recuperar pedidos
 
-    public function restoreOrder($data, $user);
-
+     public function loadOrderForCopy($orderId): array ;
 
     /** facturar pedido */
     public function generateInvoiceOrder($orderId);
 
     /** funcion de copiar pedido  */
 
-    public function copyOrder($data, $user);
+    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type);
 
     /** pruebas */
     public function buscarItemlTest($item);
@@ -55,10 +54,10 @@ interface OrderServiceInterface
     public function generateInvoiceFromExistingOrder($data, $detalle, $user);
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote);
-     public function updateOrderReservationDate(int $orderId, string $newDate);
+    public function updateOrderReservationDate(int $orderId, string $newDate);
 
 
-     /** listas de pedidos que nacen de una reserva */
+    /** listas de pedidos que nacen de una reserva */
 
     public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId);
 

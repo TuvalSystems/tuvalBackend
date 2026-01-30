@@ -14,12 +14,14 @@ use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
+use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use DomainException;
 use Illuminate\Database\QueryException;
@@ -27,7 +29,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-
 
 
 class PedidosController extends Controller
@@ -41,8 +42,62 @@ class PedidosController extends Controller
         protected readonly FunctionsServiceInterface $functionService,
 
         //prueba
-        protected readonly ReInvoiceServiceInterface $reInvoice
-    ) {
+        protected readonly ReInvoiceServiceInterface $reInvoice,
+        protected readonly OrderCreatorServiceInterface $orderCreator
+    ) {}
+
+
+
+    /** proceso de guardar pedido v2 */
+    public function storeOrderV2(ValidateStoreQuotationRequest $request)
+    {
+        $imagenesExistentes = $request->input('imagenes_existentes', []);
+        $imagenesNuevas     = $request->file('imagenes_nuevas', []);
+        $maxRetries         = 3;
+        $attempt            = 0;
+        while (true) {
+            try {
+                $pedido =  $this->orderCreator->createOrder($request->validated(), Auth::user(), $imagenesExistentes, $imagenesNuevas);
+                return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
+            } catch (QueryException $e) {
+                $mysqlCode = $e->errorInfo[1] ?? null;
+                // ¿es un error de concurrencia y aún puedo reintentar?
+                if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
+                    $attempt++;
+                    usleep(200000);
+                    Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
+                        'attempt' => $attempt,
+                        'mysqlCode' => $mysqlCode,
+                        'msg' => $e->getMessage(),
+                    ]);
+
+                    // pasa al siguiente ciclo del while
+                    continue;
+                }
+
+                // si no es 1213/1205 o ya superó los reintentos, lo tratamos como error real
+                Log::error('Error in storeOrderV2 (guardar pedido)', [
+                    'error'     => $e->getMessage(),
+                    'line'      => $e->getLine(),
+                    'file'      => $e->getFile(),
+                    'trace'     => $e->getTraceAsString(),
+                ]);
+                return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
+            } catch (DomainException $e) {
+                // 👈 este es el que puede lanzar tu flujo de stock
+                return $this->buildErrorResponse($e->getMessage(), 422);
+            } catch (\Throwable $e) {
+                // cualquier otra excepción que no sea de SQL
+                Log::error('Error in storeOrderV2 (guardar pedido)', [
+                    'error'     => $e->getMessage(),
+                    'line'      => $e->getLine(),
+                    'file'      => $e->getFile(),
+                    'trace'     => $e->getTraceAsString(),
+                ]);
+
+                return $this->buildErrorResponse($e->getMessage(), 500);
+            }
+        }
     }
 
 
@@ -83,7 +138,6 @@ class PedidosController extends Controller
                     'trace' => $e->getTraceAsString(),
                 ]);
                 return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
-
             } catch (DomainException $e) {
                 // 👈 este es el que puede lanzar tu flujo de stock
                 return $this->buildErrorResponse($e->getMessage(), 422);
@@ -166,7 +220,6 @@ class PedidosController extends Controller
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
 
@@ -199,7 +252,7 @@ class PedidosController extends Controller
             $pedidos = $pedidos->where('gp_pedidos.CLI_RUC', $data['cliente']['CLI_RUC']);
         }
 
-        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(500)->get();
+        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(50)->get();
 
         foreach ($pedidos as $pedido) {
 
@@ -256,7 +309,6 @@ class PedidosController extends Controller
 
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
     public function facturarexistente(Request $request)
@@ -299,32 +351,61 @@ class PedidosController extends Controller
     public function recalcularpedido($id): void
     {
         $this->functionService->recalculateOrder($id);
-        // $funciones = new FuncionesController();
-        // $pedido = GpPedido::where('id', $id)->first();
-        // $funciones->recalcularpedido($pedido);
     }
 
     public function corregirpedidos()
     {
         $pedidos = GpPedido::whereNotNull('pedido_origen')->get();
         foreach ($pedidos as $pedido) {
-            // $this->recalcularpedido($pedido->id);
             $this->functionService->recalculateOrder($pedido->id);
         }
     }
 
-    public function recuperarpedido(Request $request)
+
+
+    public function volverAPedirPedido(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $user = Auth::user();
-        return $this->orderService->restoreOrder($data, $user);
+        try {
+            $request->validate([
+                'id' => 'required|exists:gp_pedidos,id',
+            ]);
+            $response = $this->orderService->loadOrderForCopy($request->get('id'));
+            return $this->successResponse('Pedido copiado correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en volverAPedirPedido', [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTrace(),
+                'data' => $request->all(),
+                'exception' => $e,
+            ]);
+            return $this->buildErrorResponse('Datos inválidos para volver a pedir el pedido: ' . $e->getMessage(), 500);
+        }
     }
 
-    public function copiarpedido(Request $request)
+
+
+    public function copiarCotizacionOPedido(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $user = Auth::user();
-        return $this->orderService->copyOrder($data, $user);
+        try {
+            $request->validate([
+                'rowId' => 'required|integer',
+                'sucursal_id' => 'required|integer',
+                'cliente_id' => 'required|integer',
+                'tipo' => 'required|string',
+            ]);
+            $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'));
+            return $this->successResponse('Pedido/Cotización copiado correctamente', $response, 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en copiarCotizacionOPedido', [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTrace(),
+                'data' => $request->all(),
+                'exception' => $e,
+            ]);
+            return $this->buildErrorResponse('Datos inválidos para copiar el pedido o cotizacion: ' . $e->getMessage(), 500);
+        }
     }
 
 
@@ -651,7 +732,6 @@ class PedidosController extends Controller
             return $this->successResponse('Bloqueo actualizado correctamente', $order, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
-
         }
     }
 

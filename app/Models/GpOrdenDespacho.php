@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * App\Models\GpOrdenDespacho
@@ -52,4 +53,12 @@ class GpOrdenDespacho extends Model
         'autorizacion_comentario',
         'fecha_hora_liberacion'
     ];
+
+
+
+
+    public function pedido(): BelongsTo
+    {
+        return $this->belongsTo(GpPedido::class, 'pedido_id');
+    }
 }

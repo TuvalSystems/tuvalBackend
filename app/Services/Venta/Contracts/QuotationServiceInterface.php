@@ -15,23 +15,21 @@ interface QuotationServiceInterface
     /**
      *  recuperar cotizacion
      */
-    public function restoreQuotation($data, $user);
+
+    public function restoreQuotationV2($quoteId);
     public function getStockGeneralRestoreQuotation($articulos, $bodegas);
 
-
+    /**
+     *  volver a pedir
+     */
+    public function loadQuotationForCopy($quoteId): array;
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);
 
 
     /** lista de items alternativos para cotizacione s */
 
-    public function getItemsAlternatives($item);
-
-    /**
-     * actualizaciones de campos de gp_temp_cart
-     */
-    public function syncAndGetCheckAlternativo($data, $articulo);
-    public function updateCheckAlternativeItem($id, $checkAlternative);
+    public function getItemsAlternatives(string $item);
 
 
     /**
@@ -51,22 +49,16 @@ interface QuotationServiceInterface
     public function detailQuotation($data);
 
     /** funcion para llenar la cotizacion  */
-    public function fillQuotation($data, $user);
 
     /** funcion para obtener el stock del articulo en la cotizacion  */
     public function getStockItemForWarehouse($article, $warehouse, $cotizacionId);
 
-    /** funcion para volver a pedir cotizacion  */
-    public function requestQuotationAgain($data, $user);
 
-    /** funcion para guardado de cotización  */
-    public function storeQuotation($data, $user);
 
     /** funcion para obtener el margen del item l en cotizaciónes */
     public function getMarginItem($artArticulo);
 
-    /** función dedicada para guardar proveedores */
-    public function saveProviderQuotationTemp(array $data);
+
 
 
     /** procesos de cliente */
@@ -76,8 +68,5 @@ interface QuotationServiceInterface
     public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist($ruc);
-    public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId);
-
-
-
+    public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);
 }

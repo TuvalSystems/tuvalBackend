@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Ventas\TaxRateEnum;
 use App\Imports\PedidosImport;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
@@ -247,7 +248,7 @@ class ImportarPedidosController extends Controller
             $pedido->orden_de_compra = $importado[10];
             $pedido->created_at = Date::excelToDateTimeObject($importado[13])->format('Y-m-d h:i:s');
             $pedido->updated_at = Date::excelToDateTimeObject($importado[13])->format('Y-m-d h:i:s');
-            $pedido->impuesto = env('IVA_IMPUESTO');
+            $pedido->impuesto = TaxRateEnum::IVA_15->value;
             $pedido->save();
         }
     }

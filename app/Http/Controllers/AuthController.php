@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GpUsuario;
 use App\Models\Notificaciones;
 use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -120,5 +121,47 @@ class AuthController extends Controller
     {
         $userId = $request->all();
         return $this->userService->changeStatusGpUser($userId);
+    }
+
+
+
+    public function obtenerBodegasPorPuntoDeVentaUsuario(Request $request)
+    {
+        try {
+            $idUsuario = Auth::check()
+                ? Auth::user()->USERID
+                : 'cchiriguaya';
+            $gpUser = GpUsuario::where('USERID', $idUsuario)->first();
+            $ptoVta = data_get($request->all(), 'ptoVta', null);
+            $warehouses = $this->userService->getWarehouesByUser($gpUser->USERID, $ptoVta);
+            return $this->successResponse('Información Obtenida Correctamente', $warehouses, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+
+    public function obtenerCondicionesDePago()
+    {
+        try {
+            $conditions = $this->userService->getAllPaymentConditions();
+            return $this->successResponse('Condiciones de pago obtenidas correctamente', $conditions, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function obtenerMetodosDePago(Request $request)
+    {
+        try {
+            $request->validate([
+                'condId' => 'required|string',
+            ]);
+            $methods = $this->userService->getAllPaymentMethods($request->condId);
+            return $this->successResponse('Métodos de pago obtenidos correctamente', $methods, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 }

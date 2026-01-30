@@ -16,10 +16,12 @@ use App\Services\Builders\Bodega\ReservationDeliveryNoteParamsBuilder;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
+use App\Services\Builders\Venta\ClientBuilder;
+use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 
 class BodegaBuilderServiceProvider extends ServiceProvider implements DeferrableProvider
 {
-    
+
 
 
     public array $singletons = [
@@ -34,6 +36,7 @@ class BodegaBuilderServiceProvider extends ServiceProvider implements Deferrable
         QuotationBuilderInterface::class                     => QuotationBuilder::class,
         OrderBuilderInterface::class                         => OrderBuilder::class,
         ReservedBuilderInterface::class                      => ReservedBuilder::class,
+        ClientBuilderInterface::class                        => ClientBuilder::class
     ];
 
     /**
@@ -44,35 +47,7 @@ class BodegaBuilderServiceProvider extends ServiceProvider implements Deferrable
         return array_keys($this->singletons);
     }
 
-    // public function register()
-    // {
-    //     $this->app->singleton(
-    //         DeliveryNoteParamsBuilderInterface::class,
-    //         DeliveryNoteParamsBuilder::class
-    //     );
-
-    //     $this->app->singleton(
-    //         DevolucionParamsBuilderInterface::class,
-    //         DevolucionParamsBuilder::class
-    //     );
-
-    //     /** venta */
-    //     $this->app->singleton(
-    //         QuotationBuilderInterface::class,
-    //         QuotationBuilder::class
-    //     );
-
-
-    //     $this->app->singleton(
-    //         OrderBuilderInterface::class,
-    //         OrderBuilder::class
-    //     );
-
-    //     $this->app->singleton(ReservedBuilderInterface::class, ReservedBuilder::class);
-    //     $this->app->singleton(ReservationDeliveryNoteParamsBuilderInterface::class, ReservationDeliveryNoteParamsBuilder::class);
-    // }
 
 
 
-   
 }

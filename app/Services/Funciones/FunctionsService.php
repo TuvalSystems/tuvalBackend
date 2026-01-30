@@ -2,16 +2,11 @@
 
 namespace App\Services\Funciones;
 
-use App\Models\GpCliente;
 use App\Models\GpArticulo;
-use App\Models\GpClienteSucursal;
 use App\Models\GpPedido;
-use App\Models\GpVendedor;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Models\GpTempCart;
-use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
@@ -103,7 +98,6 @@ class FunctionsService implements FunctionsServiceInterface
             $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
             $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
-            // $lineNet = round(($valorUnitario - $descuentoUnitario) * $cantidad, 2);
             $lineaDiscount = $descuentoUnitario * $cantidad;
             $lineaSubtotal = $lineNet + $lineaDiscount;
             $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
@@ -150,30 +144,6 @@ class FunctionsService implements FunctionsServiceInterface
 
 
     /** obtrener clientes getcliente - para recuperacion de cotizacion */
-
-    public function getClient($data)
-    {
-        $cliente = GpCliente::find($data['cliente_id']);
-        if (!$cliente) {
-            throw new \Exception('Cliente no encontrado');
-        }
-        $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-        $cliente->vendedor = $vendedor;
-
-        $sucursales = $this->getClientBranches($cliente->CLI_RUC);
-        $cliente->sucursales = $sucursales;
-        $cliente->sucursalesfacturacion = $sucursales;
-
-        $cupoDisponible = $this->getClientCheckAvailableQuota($cliente->CLI_RUC);
-
-
-        $cliente->suspendido = $cupoDisponible['suspendido'] ?? 0;
-        $cliente->cupo_disponible = $this->formatCurrency($cupoDisponible['cupoDisponibleGp'] ?? 0);
-        $cliente->cupo_asignado = $this->formatCurrency($cupoDisponible['cupoAsignado'] ?? 0);
-
-        return $cliente;
-    }
-
 
     public function getClientCheckAvailableQuota(string $ruc)
     {
@@ -223,19 +193,8 @@ class FunctionsService implements FunctionsServiceInterface
 
     }
 
-    public function getClientBranches($ruc)
-    {
-        return GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
-            ->where('CLI_SUC_RUC', $ruc)
-            ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
-            ->orderby('CLI_SUC_ID_DIRECCION', 'DESC')
-            ->get();
-    }
 
-    public function formatCurrency($value)
-    {
-        return number_format((float) $value, 2, '.', ',');
-    }
+
 
 
     public function findAvailableArticleCodeL($artArrm, $class = 'VTA-BNS-L', $limit = 300)
@@ -257,108 +216,6 @@ class FunctionsService implements FunctionsServiceInterface
         return null;
     }
 
-
-    /** function remplazo de stTempCartForm */
-
-    public function setCartFormQuotation($quotationDetails, $data, $user, $type)
-    {
-        $this->clearExistCart($data['sucursal_id'], $data['cliente_id'], $data['PTO_VTA_ID']);
-        foreach ($quotationDetails as $i => $item) {
-            $cart = $this->storeCartItem($item, $data, $user, $i + 1, $type);
-            $this->storeCartProviders($cart->id, $item->proveedores ?? []);
-            $this->storeCartStockTemp($cart->id, $item->stock ?? []);
-        }
-    }
-
-    public function clearExistCart($sucursal_id, $cliente_id, $PTO_VTA_ID)
-    {
-        GpTempCart::where('sucursal_id', $sucursal_id)
-            ->where('puntodeventa_id', $PTO_VTA_ID)
-            ->where('cliente_id', $cliente_id)
-            ->delete();
-    }
-
-    public function storeCartItem($item, $data, $user, $index, $type): GpTempCart
-    {
-        $cart = new GpTempCart();
-        $cart->detalle_id = $item->id;
-        $cart->sucursal_id = $data['sucursal_id'];
-        $cart->cliente_id = $data['cliente_id'];
-        $cart->puntodeventa_id = $data['PTO_VTA_ID'];
-        $cart->user_id = $user->id;
-        $cart->USERID = $user->USERID;
-        $cart->ART_CODIGO = $item->ART_CODIGO;
-        $cart->ART_DESCRIPCION = $item->ART_DESCRIPCION;
-        $cart->ART_DESCRIPCION_ORIGINAL = $item->ART_DESCRIPCION_ORIGINAL;
-        $cart->ART_CODIGO_TRES_LETRAS = $item->ART_CODIGO_TRES_LETRAS;
-        $cart->ART_DECIMAL_CANTIDAD = $item->ART_DECIMAL_CANTIDAD;
-        $cart->ART_PLAN_UMEDIDA = $item->ART_PLAN_UMEDIDA;
-        $cart->ART_MARCA = $item->ART_MARCA;
-        $cart->ART_MATERIAL = $item->ART_MATERIAL;
-        $cart->ART_PESO = $item->ART_PESO;
-        $cart->ART_TIPO_COMPRA = $item->ART_TIPO_COMPRA;
-        $cart->ART_VALOR = $item->ART_VALOR;
-        $cart->ART_IVA = $item->ART_IVA;
-        $cart->ART_VALOR_ORIGINAL = $item->ART_VALOR_ORIGINAL;
-        $cart->ART_DESCUENTO = $item->ART_DESCUENTO;
-        $cart->ART_CANTIDAD = $item->ART_CANTIDAD;
-        $cart->ART_STOCK = $item->ART_STOCK;
-        $cart->ART_IMP_VTA = $item->ART_IMP_VTA;
-        $cart->ART_COSTO_PROMEDIO = $item->ART_COSTO_PROMEDIO;
-        $cart->descuento = $item->descuento;
-        $cart->descuento_original = $item->descuento_original;
-        $cart->modificador = $item->modificador;
-        $cart->orden = $index;
-        $cart->tipo = $type;
-        $cart->save();
-
-        return $cart;
-    }
-
-
-    public function storeCartProviders($cartId, $providers)
-    {
-        if (empty($providers)) {
-            return;
-        }
-
-        foreach ($providers as $prov) {
-            GpTempCartProveedores::create([
-                'id_tempcart' => $cartId,
-                'ID_PROVEEDOR' => $prov->ID_PROVEEDOR,
-                'DESCRIPCION_ARTICULO' => $prov->DESCRIPCION_ARTICULO,
-                'FECHA_ENTREGA' => $prov->FECHA_ENTREGA,
-                'CANTIDAD' => $prov->CANTIDAD,
-                'COSTO_UNITARIO' => $prov->COSTO_UNITARIO,
-                'IMPUESTO' => $prov->IMPUESTO,
-                'TOTAL' => $prov->TOTAL,
-                'TOTALCONIMPUESTO' => $prov->TOTALCONIMPUESTO,
-                'NOTA' => $prov->NOTA,
-                'MARGEN' => $prov->MARGEN
-            ]);
-        }
-    }
-
-    public function storeCartStock($cartId, $stock)
-    {
-        if (empty($stock)) {
-            return;
-        }
-        foreach ($stock as $stockData) {
-            $selected = $stockData['seleccionado'] ?? 0;
-            if (isset($stockData['seleccionado']) && $selected > $stockData['STO_ART_STOCK_DISPONIBLE']) {
-                $selected = $stockData['STO_ART_STOCK_DISPONIBLE'];
-            }
-
-            GpTempCartStock::updateOrCreate(
-                ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
-                [
-                    'STO_ART_STOCK_DISPONIBLE' => $stockData['STO_ART_STOCK_DISPONIBLE'],
-                    'seleccionado' => $selected
-                ]
-            );
-        }
-    }
 
     /**
      *  utilizo este store temporal porque necesito almacecenar el stock

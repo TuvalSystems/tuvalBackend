@@ -11,7 +11,6 @@ interface FunctionsServiceInterface
     public function recalculateIva($detalle);
 
 
-    public function getClient($data);
     public function getClientCheckAvailableQuota(String $ruc);
     public function getClientDocumentExpired($ruc);
     public function getClientDocumentWithoutSupport($ruc);
@@ -21,9 +20,6 @@ interface FunctionsServiceInterface
 
     public function getBodegas($data, $consulta = null);
     public function findAvailableArticleCodeL($artArrm, $class = 'VTA_BNS_L', $limit = 300);
-    public function setCartFormQuotation($quotationDetails, $data, $user, $type);
-
-    public function storeCartStock($cartId, $stock);
 
     public function like_match($pattern, $subject);
 }

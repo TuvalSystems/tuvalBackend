@@ -7,49 +7,49 @@ use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
+use App\Models\GpCotizacionImagen;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\GpTempCart;
-use App\Services\Api\MswService;
+use App\Models\GpPedidoImagen;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
 class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 {
-
-
-
     public function __construct(
         protected readonly ApiGpService $apiGpService,
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly MswService $MsWebService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService
-    ) {
-
-    }
+    ) {}
 
 
 
-    public function getDetailQuotationOrOrder($cliente, $data, $encera = false, $copy = false, $type)
+    public function getDetailQuotationOrOrder($data, $cliente, $type, $encera = false, $copy = false)
     {
 
-        $warehouse = $this->functionService->getBodegas($data['PTO_VTA_ID'], 1);
-        $detalles = $this->getQuotationDetailWithSuppliersType($data['id'], $copy, $type, $warehouse);
-        $this->resetQuotationDiscount($detalles, $cliente, $encera, $data['BOD_BODEGA']);
-        $arrayArticulos = $detalles->pluck('ART_CODIGO')->map(fn($artCode) => ['ART_CODIGO' => $artCode])->toArray();
-        $listaPreciosWs = $this->getPriceListByItems($arrayArticulos);
+        $warehouse = $this->functionService->getBodegas($data->PTO_VTA_ID, 1);
+        $detalles = $this->getQuotationDetailWithSuppliersType($data->id, $copy, $type, $warehouse);
+        $this->resetQuotationDiscount($detalles, $cliente, $encera, $data->BOD_BODEGA);
+        if ($encera) {
+            $codesApi = $detalles->reject(function ($item) {
+                return $item->ART_TIPO_COMPRA ===  'L';
+            })->pluck('ART_CODIGO')->implode(',') . ',';
 
-        $detalles->each(function ($item) use ($listaPreciosWs, $cliente, $encera) {
-            if ($item->ART_TIPO_COMPRA != 'L') {
-                if ($encera) {
-                    $item->ART_VALOR = $listaPreciosWs[$item->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'] ?? 0;
-                    $item->ART_VALOR_ORIGINAL = $item->ART_VALOR;
+            $groupPrices = $this->getPriceListByItem($codesApi);
+
+            $detalles->each(function ($item) use ($cliente, $groupPrices) {
+                if ($item->ART_TIPO_COMPRA != 'L') {
+                    $myPrice = $groupPrices->get($item->ART_CODIGO, collect());
+
+                    $precioEncontrado = $myPrice->firstWhere('idLista', $cliente->CLI_NIVEL_PRECIO);
+                    $valor = $precioEncontrado ? data_get($precioEncontrado, 'valor', 0) : 0;
+                    $item->ART_VALOR = $valor;
+                    $item->ART_VALOR_ORIGINAL = $valor;
                 }
-            }
-            return $item;
-        });
-
+                return $item;
+            });
+        }
         return $detalles;
     }
 
@@ -70,7 +70,6 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $details->each(function ($item) use ($proveedores, $copy, $warehouse, $quotationId) {
             $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
-            // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion') : $this->getStocksRequestQuotation($quotationId, $item->id, 'cotizacion');
             $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion');
         });
         return $details;
@@ -89,7 +88,6 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
         $details->each(function ($item) use ($warehouse, $quotationId, $copy) {
             $item->proveedores = collect();
-            // $item->stock = $copy ? $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido') : $this->getStocksRequestQuotation($quotationId, $item->id, 'pedido');
             $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido');
         });
         return $details;
@@ -116,12 +114,12 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     {
         return collect($items)->map(function ($item) use ($relationKey) {
             return [
-                'id' => $item['id'],
-                $relationKey => $item[$relationKey],
-                'detalle_id' => $item['detalle_id'],
-                'STO_ART_BODEGA' => $item['STO_ART_BODEGA'],
-                'STO_ART_STOCK_DISPONIBLE' => 0,
-                'seleccionado' => 0 //$item['seleccionado'],
+                'id'                        => null,
+                $relationKey                => null,
+                'detalle_id'                => null,
+                'STO_ART_BODEGA'            => $item['STO_ART_BODEGA'],
+                'STO_ART_STOCK_DISPONIBLE'  => 0,
+                'seleccionado'              => 0 //$item['seleccionado'],
             ];
         })->toArray();
     }
@@ -130,12 +128,13 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     {
         if ($encera) {
             $detalles->each(function ($item) use ($cliente, $warehouse) {
-                $item->descuento = $cliente->CLI_DSTO_COMERCIAL;
-                $item->descuento_original = $cliente->CLI_DSTO_COMERCIAL;
-                $item->ART_DESCUENTO = 0;
-                $item->modificador = 0;
-                $item->ART_DESCRIPCION_ORIGINAL = $this->restoreDescriptionItemQuotation($item->ART_CODIGO, $warehouse) ?? $item->ART_DESCRIPCION_ORIGINAL;
-                $item->ART_DESCRIPCION = $item->ART_DESCRIPCION_ORIGINAL;
+                $item->descuento                    = $cliente->CLI_DSTO_COMERCIAL;
+                $item->descuento_original           = $cliente->CLI_DSTO_COMERCIAL;
+                $item->ART_DESCUENTO                = 0;
+                $item->modificador                  = 0;
+                $item->ART_DESCRIPCION_ORIGINAL     = $this->restoreDescriptionItemQuotation($item->ART_CODIGO, $warehouse) ?? $item->ART_DESCRIPCION_ORIGINAL;
+                $item->ART_DESCRIPCION              = $item->ART_DESCRIPCION_ORIGINAL;
+                $item->CHECK_ALTERNATIVO            = false;
             });
         }
     }
@@ -148,28 +147,12 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
-
-    public function getPriceListByItems($arArticulos)
+    public function getPriceListByItem(string $articulo)
     {
-        $prices = $this->MsWebService->listaprecios($arArticulos);
-        $indexedPrices = [];
-        foreach ($prices as $price) {
-            $articleCode = $price['LST_PRC_ARTICULO'];
-            $priceId = $price['LST_PRC_ID'];
-            $indexedPrices[$articleCode][$priceId] = $price;
-        }
-        return $indexedPrices;
+        $resp = $this->stockWarehouseService->fetchListPricesArticle($articulo);
+        return collect($resp)->groupBy('item');
     }
 
-
-    public function clearTempDataQuotation($sucursalId, $PTO_VTA_ID, $clienteId, $userId)
-    {
-        GpTempCart::where('sucursal_id', $sucursalId)
-            ->where('puntodeventa_id', $PTO_VTA_ID)
-            ->where('cliente_id', $clienteId)
-            ->where('user_id', $userId)
-            ->delete();
-    }
 
 
     /** funcion general para el registro de copia para cotizacion y pedido
@@ -242,5 +225,22 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
+    /***
+     *
+     *  funcion para obtener las imagenes de operaciones para volver a pedir en cotizacion y pedidos
+     */
 
+    public function getAllImagensOperations($quotationId, $type = 'cotizacion')
+    {
+        $model = ($type == 'pedido')
+            ? GpPedidoImagen::where('pedido_id', $quotationId)
+            : GpCotizacionImagen::where('cotizacion_id', $quotationId);
+        return  $model->get()->map(function ($img) {
+            return [
+                'id' => $img->id,
+                'url' => asset('storage/' . $img->ruta),
+                'nombre' => $img->nombre_original
+            ];
+        });
+    }
 }

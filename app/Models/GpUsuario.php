@@ -57,4 +57,11 @@ class GpUsuario extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+
+
+    public function relacionptovta()
+    {
+        return $this->hasMany(GpRelacionUsuarioPuntoVenta::class, 'USER_PTO_VTA_USUARIO', 'USERID');
+    }
 }

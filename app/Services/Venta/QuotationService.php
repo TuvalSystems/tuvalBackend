@@ -2,12 +2,11 @@
 
 namespace App\Services\Venta;
 
-
+use App\Enums\Ventas\QuotationMode;
 use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpUsuario;
-use App\Models\GpTempCart;
 use App\Models\GpCotizacion;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDatosItemsL;
@@ -22,10 +21,6 @@ use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpRegistroCopia;
-use App\Models\GpTempCartProveedores;
 use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
 use App\Models\reservas\GpCotizacionReservaLog;
@@ -33,11 +28,11 @@ use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use App\Services\Venta\Contracts\QuotationCartServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -52,15 +47,12 @@ class QuotationService implements QuotationServiceInterface
         protected readonly ApiBillingService $apiBillingService,
         protected readonly FunctionsServiceInterface $functionService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
-        protected readonly OrderAndQuotationServiceInterface $OrderQuotationService,
         protected readonly ApprovalServiceInterface $approvalService,
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly QuotationBuilderInterface $quotationBuilder,
-        protected readonly OrderBuilderInterface $orderBuilder,
-        protected readonly InvoiceServiceInterface $invoiceService
-    ) {
-
-    }
+        protected readonly QuotationCartServiceInterface $cartService,
+        protected readonly ClientQueryServiceInterface $clientService
+    ) {}
 
 
     /**
@@ -83,12 +75,12 @@ class QuotationService implements QuotationServiceInterface
     public function updateNonSaleAndReminderData($data)
     {
         $user = GpUsuario::where('id', Auth::user()->id)->first();
-        $cotizacion = GpCotizacion::where('id', $data['cotizacion_id'])->update([
-            'fecha_recordatorio' => $data['fecha_recordatorio'],
-            'cotizacion_venta_motivo_id' => $data['motivo_id'],
-            'observacion' => $data['observacion'],
-            'recordar' => $data['recordar'],
-            'user_ing_recordatorio' => $user->USERID,
+        GpCotizacion::where('id', $data['cotizacion_id'])->update([
+            'fecha_recordatorio'            => $data['fecha_recordatorio'],
+            'cotizacion_venta_motivo_id'    => $data['motivo_id'],
+            'observacion'                   => $data['observacion'],
+            'recordar'                      => $data['recordar'],
+            'user_ing_recordatorio'         => $user->USERID,
 
         ]);
         $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
@@ -101,7 +93,6 @@ class QuotationService implements QuotationServiceInterface
     public function sendStoreReminderGp($params)
     {
         $this->apiGpService->storeQuoteReminderGp($params);
-
     }
 
     /**
@@ -116,29 +107,40 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    /** PROCESO DE RECUPERAR COTIZACION  --- REFACTORIZACIÓN */
+    /*
+    *
+    * PROCESO DE RECUPERAR COTIZACION
+    *
+    */
 
-    public function restoreQuotation($data, $user)
+    public function restoreQuotationV2($quoteId): array
     {
-        $clientes = $this->functionService->getClient($data);
-        $detalles = $this->getQuotationDetailWithSuppliers($data['id']);
+        $quote = GpCotizacion::findOrFail($quoteId);
+        $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
+        $detalles = $this->getQuotationDetailWithSuppliers($quote->id);
         $this->functionService->recalculateIva($detalles);
-        $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        $detalles->transform(function ($item) {
+            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = 'cotizacion';
+            $item->detalle_id = $item->id;
+            return $item;
+        });
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
         return [
-            'cliente' => $clientes,
-            'currentSucursal' => $data['sucursal_id'],
-            'cotizacion_id' => $data['id'],
-            'test' => 'recuperarcotizacion',
-            'segmento' => $segmento
+            'cotizacion'            => $quote,
+            'cliente'               => data_get($cliente, 'cliente'),
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'mode'                  => QuotationMode::RESTORE_QUOTE->value,
         ];
     }
 
     public function getQuotationDetailWithSuppliers($quotationId)
     {
-        $details = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
-        $proveedores = $this->getQuotatioDetailProviders($quotationId, $details);
-        $detalleStock = $this->getQuotationDetailStock($quotationId, $details);
+        $details        = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
+        $proveedores    = $this->getQuotatioDetailProviders($quotationId, $details);
+        $detalleStock   = $this->getQuotationDetailStock($quotationId, $details);
         $details->each(function ($item) use ($proveedores, $detalleStock) {
             $item->proveedores = collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
@@ -180,6 +182,7 @@ class QuotationService implements QuotationServiceInterface
         return $selectedStock;
     }
 
+
     /** funcion para llenar el stock de llenar cotizacion prospecto */
     public function getStockGeneralRestoreQuotation($articulos, $bodegas)
     {
@@ -210,127 +213,65 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
+    /***
+     *
+     * PROCESO DE VOLVER A PEDIR COTIZACION
+     *
+     */
+
+
+    public function loadQuotationForCopy($quoteId): array
+    {
+        $user = Auth::user() ?? GpUsuario::find(179);
+        $quote = GpCotizacion::findOrFail($quoteId);
+        $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
+        $this->functionService->recalculateIva($detalles);
+        $detalles->transform(function ($item) {
+            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = 'cotizacion';
+            $item->detalle_id = $item->id;
+            return $item;
+        });
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');
+
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        return [
+            'cotizacion'            => $quote,
+            'cliente'               => $clienteNew,
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'registro_copia'        => $registroCopiaId,
+            'mode'                  => QuotationMode::REORDER->value,
+        ];
+    }
 
 
     /**
      * LISTA DE ALTERNATIVAS
      */
 
-    public function getItemsAlternatives($item)
+    public function getItemsAlternatives(string $item)
     {
-        return $this->apiGpService->getListQuotationItemsAlternatives(array('item' => $item));
-    }
-
-
-
-    /**
-     *  ACTUALIZACION DE DATOS DE COTIZACIÓN - GPTEMPCART
-     */
-
-    public function updateCheckAlternativeItem($id, $checkAlternative)
-    {
-
-        GpTempCart::where('id', $id)
-            ->update(['CHECK_ALTERNATIVO' => $checkAlternative]);
-    }
-
-
-    public function syncAndGetCheckAlternativo($data, $articulo)
-    {
-        if (empty($data['test'])) {
-            return 0;
-        }
-
-        $item = GpTempCart::find($articulo->id);
         if (!$item) {
-            return 0;
+            abort(404, 'el parametro no puede estar vacio');
         }
-
-        $checkAlternativo = 0;
-
-        switch ($data['test']) {
-            case 'recuperarcotizacion':
-                $checkAlternativo = $this->handleRecuperarCotizacion($item, $articulo);
-                break;
-            case 'volver_a_pedir':
-                $checkAlternativo = $this->handleVolverAPedir($data, $item, $articulo);
-                break;
+        $resp = $this->apiGpService->getListQuotationItemsAlternatives(['item' => $item]);
+        $success = data_get($resp, 'success', false);
+        $errorMsg = data_get($resp, 'message', '');
+        $data = data_get($resp, 'data', []);
+        if (!$success) {
+            abort(402, $errorMsg);
         }
-
-        return $checkAlternativo ?: 0;
+        if (empty($data)) {
+            abort(404, 'No se encontraron alternativas');
+        }
+        return $data;
     }
 
-    public function handleRecuperarCotizacion($item, $articulo)
-    {
-        if (!$item->detalle_id) {
-            return 0;
-        }
 
-        $detalle = GpCotizacionDetalle::find($articulo->detalle_id);
-        if (!$detalle) {
-            return 0;
-        }
-
-        return $this->updateCheckAlternativeItemType($item, $detalle->CHECK_ALTERNATIVO);
-    }
-
-    public function handleVolverAPedir($data, $item, $articulo)
-    {
-
-        if (empty($data['registro_copia'])) {
-            return 0;
-        }
-
-        $registroCopia = GpRegistroCopia::find($data['registro_copia']);
-        if (!$registroCopia) {
-            return 0;
-        }
-
-        if ($registroCopia->cotizacion_origen) {
-            return $this->processCotizacionOrigen($registroCopia, $item, $articulo);
-        }
-
-        if ($registroCopia->pedido_origen) {
-            return $this->processPedidoOrigen($registroCopia, $item, $articulo);
-        }
-
-        return 0;
-    }
-
-    public function processCotizacionOrigen($registroCopia, $item, $articulo)
-    {
-        $cotizacion = GpCotizacion::find($registroCopia->cotizacion_origen);
-        if (!$cotizacion) {
-            return 0;
-        }
-        $detalle = GpCotizacionDetalle::where('id', $articulo->detalle_id)->where('cotizacion_id', $cotizacion->id)->first();
-        if (!$detalle) {
-            return 0;
-        }
-        return $this->updateCheckAlternativeItemType($item, $detalle->CHECK_ALTERNATIVO);
-    }
-
-    public function processPedidoOrigen($registroCopia, $item, $articulo)
-    {
-        $pedido = GpPedido::find($registroCopia->pedido_origen);
-        if (!$pedido) {
-            return 0;
-        }
-
-        $detalle = GpPedidoDetalle::where('ART_CODIGO', $articulo->ART_CODIGO)->where('orden', $articulo->orden)->where('pedido_id', $pedido->id)->first();
-        if (!$detalle) {
-            return 0;
-        }
-
-        return $this->updateCheckAlternativeItemType($item, $detalle->CHECK_ALTERNATIVO);
-    }
-
-    public function updateCheckAlternativeItemType($item, $checkAlternative)
-    {
-        $item->CHECK_ALTERNATIVO = $checkAlternative;
-        $item->save();
-        return $checkAlternative;
-    }
 
 
 
@@ -344,16 +285,13 @@ class QuotationService implements QuotationServiceInterface
 
         if (!$cotizacion) {
             abort(404, 'Cotización no encontrada');
-
         }
         if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
             abort(403, 'La cotización requiere aprobación comercial y aún no ha sido aprobada');
-
         }
 
         if ($cotizacion['requiere_aprobacion_crediticia'] == 'yes' && $cotizacion['aprobado_crediticio'] == 'no') {
             abort(403, 'La cotización requiere aprobación crediticia y aún no ha sido aprobada');
-
         }
         if ($cotizacion['estado'] == 'caducado') {
             abort(403, 'La cotización ha caducado y no puede ser impresa');
@@ -368,7 +306,6 @@ class QuotationService implements QuotationServiceInterface
         $peso = 0;
         $tipoImpuesto = [];
         $sumaImpuesto = [];
-        // $imagenes = [];
         $subtotalmenosDescuento = 0;
         $sumIva = 0;
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
@@ -421,8 +358,7 @@ class QuotationService implements QuotationServiceInterface
         $cotizacion['sucursal'] = $sucursal;
         $cotizacion['validez'] = $validezTexto;
         $cotizacion['expira'] = $validezReal;
-        $cotizacion['totalCotizacion'] = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');
-        ;
+        $cotizacion['totalCotizacion'] = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');;
         $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         return $cotizacion;
     }
@@ -444,10 +380,6 @@ class QuotationService implements QuotationServiceInterface
             if (data_get($data, 'codigo') == 0) {
                 $validez++;
             }
-            // $respuesta = $webService->cobranzas('ConsultaDiaFeriado', $parameters);
-            // if ($respuesta['ConsultaDiaFeriadoResult']['Retorno'][0]['Codigo'] == 0) {
-            //     $validez++;
-            // }
         }
 
         return date('Y-m-d', strtotime("+$validez days", strtotime($desde)));
@@ -568,17 +500,27 @@ class QuotationService implements QuotationServiceInterface
             'detalle' => $detalle,
             'segmento' => $segmento
         ];
-
     }
 
+
+    public function castDecimalValuesTemp($artTemp, $data = null)
+    {
+        if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
+            if (isset($data['test']) && $data['test'] !== 'recuperarcotizacion') {
+                $artTemp->ART_STOCK = 0;
+            }
+            $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
+            $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
+        }
+    }
 
 
     public function loadProviderDetailQuotation($quotationId, &$detalle, $descuentoGeneral)
     {
         $margenBruto = 0;
         if ($detalle->ART_TIPO_COMPRA == 'L') {
-            $ItemL = $this->getTypeArticleLQuotationOrOrder($detalle->ART_CODIGO);
-            $margenBruto = $ItemL->DATOS_ITEMS_L_MARGEN;
+            $itemL = $this->getTypeArticleLQuotationOrOrder($detalle->ART_CODIGO);
+            $margenBruto = $itemL->DATOS_ITEMS_L_MARGEN;
             $proveedores = $this->getAllProvidersQuotation($quotationId, $detalle->id);
             $detalle->proveedores = $proveedores->map(function ($prov) use ($detalle, $margenBruto, $descuentoGeneral) {
                 $prov->margen = number_format($this->calculateMargen($margenBruto, $descuentoGeneral, $prov->COSTO_UNITARIO), 4, '.', '');
@@ -628,125 +570,6 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    /***
-     *  FUNCION PARA llenar el detalle de la cotizacion - llenarcotizacion
-     */
-
-    public function fillQuotation($data, $user)
-    {
-        $artPrecios = [];
-        $articulosTemp = $this->quotationRepository->getGpTempCartFillQuotation($data['sucursal_id'], $data['puntodeventa_id'], $data['cliente_id'], $user->id);
-        $isCopy = ($data['test'] ?? '') === 'copiarpedido';
-        $serial = data_get($data, 'serial', null);
-        foreach ($articulosTemp as $artTemp) {
-            $artTemp->CHECK_ALTERNATIVO = $isCopy ? 0 : $this->syncAndGetCheckAlternativo($data, $artTemp);
-
-            $artPrecios[] = ['ART_CODIGO' => $artTemp->ART_CODIGO];
-            $this->castDecimalValuesTemp($artTemp, $data);
-            $this->loadProvidersTemp($artTemp);
-            $this->loadStockTemp($artTemp);
-            $this->loadImagesTemp($artTemp);
-        }
-
-        if (($serial === null || $serial === '') && empty($data['registro_copia'])) {
-            $listaPrecios = $this->getPricesByClient($artPrecios);
-            $cliente = GpCliente::find($data['cliente_id']);
-            foreach ($articulosTemp as $artTemp) {
-                $precio = $listaPrecios[$artTemp->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO] ?? null;
-                if (!$precio) {
-                    continue;
-                }
-                $nuevoPrecio = data_get($precio, 'valor', 0);
-                if (!is_null($precio) && $artTemp->ART_VALOR_ORIGINAL != $nuevoPrecio) {
-                    $artTemp->ART_VALOR_ORIGINAL = $nuevoPrecio;
-                    $artTemp->ART_VALOR = $nuevoPrecio;
-                    $artTemp->modificador = 0;
-                }
-            }
-        }
-        $this->functionService->recalculateIva($articulosTemp);
-        return $articulosTemp;
-    }
-
-
-    public function castDecimalValuesTemp($artTemp, $data = null)
-    {
-        if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
-            if (isset($data['test']) && $data['test'] !== 'recuperarcotizacion') {
-                $artTemp->ART_STOCK = 0;
-            }
-            $artTemp->ART_STOCK = (int) $artTemp->ART_STOCK;
-            $artTemp->ART_CANTIDAD = (int) $artTemp->ART_CANTIDAD;
-        }
-    }
-
-    public function loadProvidersTemp(&$artTemp)
-    {
-        $artTemp->proveedores = GpTempCartProveedores::where('id_tempcart', $artTemp->id)
-            ->get()
-            ->map(function ($prov) use ($artTemp) {
-                $prov->CANTIDAD = round($prov->CANTIDAD, $artTemp->ART_DECIMAL_CANTIDAD);
-                return $prov;
-            })->toArray();
-    }
-
-    public function loadStockTemp(&$artTemp)
-    {
-        $artTemp->stock = GpTempCartStock::where('id_tempcart', $artTemp->id)
-            ->get()
-            ->map(function ($st) use ($artTemp) {
-                $st->STO_ART_STOCK_DISPONIBLE = $artTemp->ART_DECIMAL_CANTIDAD == 0 ? (int) $st->STO_ART_STOCK_DISPONIBLE : $st->STO_ART_STOCK_DISPONIBLE;
-                $st->seleccionado = round($st->seleccionado, $artTemp->ART_DECIMAL_CANTIDAD);
-                return $st;
-            })->toArray();
-    }
-
-    public function loadImagesTemp(&$artTemp)
-    {
-        $imagenes = [];
-        for ($i = 1; $i <= 3; $i++) {
-            $file = 'images/productos/' . $artTemp->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-
-            if (File::exists($file)) {
-                $imagenes[] = env('APP_URL') . '/' . $file;
-            }
-        }
-        $artTemp->imagenes = $imagenes;
-    }
-
-    public function getPricesByClient($articulos): array
-    {
-        $listaPreciosAll = [];
-        foreach ($articulos as $articulo) {
-            $art = data_get($articulo, 'ART_CODIGO');
-
-            if (!$art) {
-                continue;
-            }
-
-            // Esto devuelve: array de filas de precios para ese artículo
-            $prices = $this->stockWarehouseService->fetchListPricesArticle($art);
-
-            if (empty($prices) || !is_iterable($prices)) {
-                continue;
-            }
-
-            foreach ($prices as $price) {
-                $articleCode = data_get($price, 'item');
-                $priceListId = data_get($price, 'idLista');
-
-                if (!$articleCode || !$priceListId) {
-                    continue;
-                }
-
-                // Queda: [ART_CODIGO][ID_LISTA] = fila precio
-                $listaPreciosAll[$articleCode][$priceListId] = $price;
-            }
-        }
-
-        return $listaPreciosAll;
-    }
-
 
     /***
      *  Funciones para obtener el stock en tiempo real de los articulos
@@ -757,6 +580,7 @@ class QuotationService implements QuotationServiceInterface
     {
         $quoteReservedOriginId = $this->validateExistsReserve($cotizacionId);
         $warehouses = $this->functionService->getBodegas($warehouse, 1);
+
         $arrArticulos = ['articulo' => $article['ART_CODIGO']];
         $selectedArticleByItem = $this->resolveAndFormatArticleStock($article);
         $stockGeneral = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
@@ -768,9 +592,8 @@ class QuotationService implements QuotationServiceInterface
             $article->ART_CODIGO = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
             $availableArticulos[] = $article['ART_CODIGO'];
         }
-        $this->functionService->storeCartStock($article['id'], $artFormat['stock']);
-        $newStock = $this->reassignStockIds($article, $artFormat['stock']);
-        $article['stock'] = $newStock;
+
+        $article['stock'] = $artFormat['stock'];
         $article['ART_STOCK'] = $artFormat['ART_STOCK'];
         $article['stockListo'] = true;
         return $article;
@@ -846,267 +669,16 @@ class QuotationService implements QuotationServiceInterface
     {
         $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
         if (!$quoteReserve) {
-            return;
+            return null;
         }
         $logReserve = GpCotizacionReservaLog::where('cotizacion_destino_id', $quotationId)->first();
         if (!$logReserve) {
-            return;
+            return null;
         }
         return $logReserve?->cotizacion_origen_id;
     }
 
-    /***
-     *
-     * PROCESO DE VOLVER A PEDIR COTIZACION
-     *
-     */
 
-    public function requestQuotationAgain($data, $user)
-    {
-        $cliente = $this->functionService->getClient($data);
-        $detalles = $this->OrderQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'cotizacion');
-        $this->functionService->recalculateIva($detalles);
-        $this->functionService->setCartFormQuotation($detalles, $data, $user, 'cotizacion');
-        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, 'cotizacion', 'volver_a_pedir');
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-
-        return [
-            'cliente' => $cliente,
-            'registro_copia' => $registroCopiaId,
-            'currentSucursal' => $data['sucursal_id'],
-            'test' => 'volver_a_pedir',
-            'segmento' => $segmento
-        ];
-    }
-
-
-    /***
-     *  funciones para el guardado de la cotizacion
-     *
-     */
-
-    public function storeQuotation($data, $user)
-    {
-
-        $cotizacion = $this->prepareQuotationStoreFill($data, $user);
-
-        if (!empty($data['cotizacion_id'])) {
-            GpCotizacionDetalle::where('cotizacion_id', $data['cotizacion_id'])->delete();
-        }
-        $this->saveQuotationDetail($data['cotizacion'], $cotizacion->id);
-        $this->OrderQuotationService->clearTempDataQuotation($data['sucursal_id'], $data['PTO_VTA_ID'], $data['cliente_id'], $user->id);
-        $this->updateRegisterCopyQuotation($data['registro_copia'], $cotizacion->id);
-        return $cotizacion;
-
-    }
-
-
-    public function prepareQuotationStoreFill($data, $user)
-    {
-        $cotizacion = isset($data['cotizacion_id']) ? GpCotizacion::find($data['cotizacion_id']) : new GpCotizacion();
-        $requiereAprobacionComercial = $this->approvalService->checkoutApprovalCommercialQuotations($data);
-        if ($data['cotizacion_id'] && $cotizacion->id) {
-            $this->mantenerAprobacionSiSigueValida($cotizacion, $requiereAprobacionComercial);
-        } else {
-            $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
-            $requiereAprobacionComercial['aprobado'] = 'no';
-        }
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-        $motivoLimpio = iconv('UTF-8', 'UTF-8//IGNORE', $requiereAprobacionComercial['motivo']);
-
-        // 2. Si iconv falla (a veces pasa en ciertos servidores), usa este fallback robusto:
-        if (!$motivoLimpio) {
-            // Detecta si viene en Latin1 (común en bases de datos viejas) y lo pasa a UTF-8
-            $encoding = mb_detect_encoding($requiereAprobacionComercial['motivo'], mb_detect_order(), true);
-            $motivoLimpio = mb_convert_encoding($requiereAprobacionComercial['motivo'], 'UTF-8', $encoding ?: 'ISO-8859-1');
-        }
-        $cotizacion->fill([
-            'estado' => $requiereAprobacionComercial['estado'],
-            'user_id' => $user->id,
-            'sucursal_id' => $data['sucursal_id'],
-            'sucursal_facturacion_id' => $data['sucursal_facturacion_id'],
-            'cliente_id' => $data['cliente_id'],
-            'factura_posterior_despacho' => $data['factura_posterior_despacho'],
-            'factura_a_demanda' => $data['factura_a_demanda'],
-            'factura_siguiente_mes' => $data['factura_siguiente_mes'],
-            'BOD_BODEGA' => $data['bodega_facturacion'],
-            'PTO_VTA_ID' => $data['PTO_VTA_ID'],
-            'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION ?? '',
-            'USERID' => $user->USERID,
-            'DESC_FORMA_PAGO_CODIGO' => $data['DESC_FORMA_PAGO_CODIGO'],
-            'CLI_RUC' => $data['CLI_RUC'],
-            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
-            'COND_ID' => $data['COND_ID'],
-            'COND_ID_ORIGINAL' => $data['COND_ID_ORIGINAL'],
-            'VEND_ID' => $data['VEND_ID'],
-            'VEND_NOMBRES' => $data['VEND_NOMBRES'],
-            'VEND_APELLIDOS' => $data['VEND_APELLIDOS'],
-            'despacho' => $data['despacho'],
-            'orden_de_compra' => $data['orden_de_compra'],
-            'porcentage_descuentooriginal' => $data['porcentage_descuentooriginal'],
-            'porcentage_descuento' => $data['porcentage_descuento'],
-            'subtotal' => (float) $data['subtotal'] + (float) $data['descuento'],
-            'descuento' => (float) $data['descuento'],
-            'subtotalmenosdescuento' => (float) $data['subtotal'],
-            'iva' => (float) $data['iva'],
-            'total' => (float) $data['total'],
-            'requiere_aprobacion_comercial' => $requiereAprobacionComercial['requiere'],
-            'motivo_aprobacion_comercial' => $motivoLimpio,
-            'aprobado_comercial' => $requiereAprobacionComercial['aprobado'],
-            'aprobador_comercial_id' => null,
-            'requiere_aprobacion_crediticia' => 'no',
-            'aprobado_crediticio' => 'no',
-            'aprobador_crediticio_id' => null,
-            'impreso' => 'no',
-            'nota_interna' => $data['nota_interna'],
-            'nota_cliente' => $data['nota_cliente'],
-            'impuesto' => env('IVA_IMPUESTO'),
-        ]);
-        if ($data['despacho'] === 'Despacho en ruta') {
-            $cotizacion->fecha_entrega = $data['fecha_entrega'];
-        }
-        $cotizacion->save();
-        $cotizacion->cotizacion = 'COT' . str_pad($cotizacion->id, 8, "0", STR_PAD_LEFT);
-        $cotizacion->save();
-        return $cotizacion;
-    }
-
-    public function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
-    {
-        $estabaAprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
-
-        if (!$estabaAprobada) {
-            // Si no estaba aprobada antes, no hay nada que mantener.
-            // Se aplica el estado que diga la nueva validación.
-            $this->resetToPending($requiereAprobacionComercial);
-            return;
-        }
-        // 2. Extraer motivos para comparar
-        $motivoNuevo = $requiereAprobacionComercial['motivo'] ?? '';
-        $motivoGuardado = $cotizacion->motivo_aprobacion_comercial ?? '';
-
-        // 3. Comparación Estricta
-        // Si la nueva validación dice que NO requiere aprobación, genial (aunque raro si antes requería).
-        if (($requiereAprobacionComercial['requiere'] ?? 'no') !== 'yes') {
-            $requiereAprobacionComercial['estado'] = 'aprobado';
-            $requiereAprobacionComercial['aprobado'] = 'yes';
-            return; // Dejamos que pase como 'no requiere'
-        }
-
-        if ($motivoNuevo === $motivoGuardado) {
-            // ... RESTAURAMOS el estado de aprobación de la BD
-            $requiereAprobacionComercial['requiere'] = $cotizacion->requiere_aprobacion_comercial;
-            $requiereAprobacionComercial['motivo'] = $cotizacion->motivo_aprobacion_comercial; // Redundante pero seguro
-            $requiereAprobacionComercial['estado'] = $cotizacion->estado; // Ojo: Asegúrate que 'estado' sea el campo correcto (aprobado/espera)
-            $requiereAprobacionComercial['aprobado'] = $cotizacion->aprobado_comercial; // 'yes'
-        } else {
-            // Si el motivo cambió (ej: pasaste de 20% a 25%), se pierde la aprobación
-            $this->resetToPending($requiereAprobacionComercial);
-        }
-    }
-
-    public function resetToPending(&$data)
-    {
-        // Si requiere aprobación, pasa a 'espera', si no, 'aprobado' (u otro status default)
-        $req = $data['requiere'] ?? 'no';
-        if ($req === 'yes') {
-            $data['estado'] = 'espera';
-            $data['aprobado'] = 'no';
-        } else {
-            $data['estado'] = 'aprobado';
-            $data['aprobado'] = 'yes';
-        }
-    }
-
-
-
-    public function saveQuotationDetail($items, $cotizacionId)
-    {
-        foreach ($items as $item) {
-            $detalle = new GpCotizacionDetalle([
-                'cotizacion_id' => $cotizacionId,
-                'ART_CODIGO' => $item['ART_CODIGO'],
-                'ART_DESCRIPCION' => trim(str_replace('  ', ' ', $item['ART_DESCRIPCION'])),
-                'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
-                'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
-                'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-                'ART_DECIMAL_CANTIDAD' => (int) $item['ART_DECIMAL_CANTIDAD'],
-                'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
-                'ART_MARCA' => $item['ART_MARCA'],
-                'ART_MATERIAL' => $item['ART_MATERIAL'],
-                'ART_PESO' => $item['ART_PESO'],
-                'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
-                'ART_VALOR' => (float) $item['ART_VALOR'],
-                'ART_VALOR_ORIGINAL' => (float) $item['ART_VALOR_ORIGINAL'],
-                'ART_DESCUENTO' => (float) $item['ART_DESCUENTO'],
-                'ART_IVA' => (float) $item['ART_IVA'],
-                'ART_CANTIDAD' => (float) $item['ART_CANTIDAD'],
-                'ART_STOCK' => (float) $item['ART_STOCK'],
-                'ART_IMP_VTA' => (float) $item['ART_IMP_VTA'],
-                'ART_COSTO_PROMEDIO' => (float) $item['ART_COSTO_PROMEDIO'],
-                'descuento' => (float) $item['descuento'],
-                'descuento_original' => (float) $item['descuento_original'],
-                'modificador' => (float) $item['modificador'],
-            ]);
-            $detalle->save();
-            if ($item['proveedores']) {
-                $this->saveQuotationDetailProviders($item['proveedores'], $detalle->id, $cotizacionId);
-            }
-            if ($item['stock']) {
-                $this->saveQuotationDetailStocks($item['stock'], $detalle->id, $cotizacionId);
-            }
-        }
-    }
-
-
-    public function saveQuotationDetailProviders($providers, $detalleId, $cotizacionId)
-    {
-        foreach ($providers as $prov) {
-            GpCotizacionDetalleProveedores::create([
-                'cotizacion_id' => $cotizacionId,
-                'detalle_id' => $detalleId,
-                'ID_PROVEEDOR' => $prov['ID_PROVEEDOR'],
-                'DESCRIPCION_ARTICULO' => $prov['DESCRIPCION_ARTICULO'],
-                'FECHA_ENTREGA' => $prov['FECHA_ENTREGA'],
-                'CANTIDAD' => (float) $prov['CANTIDAD'],
-                'COSTO_UNITARIO' => (float) $prov['COSTO_UNITARIO'],
-                'IMPUESTO' => (float) $prov['IMPUESTO'],
-                'TOTAL' => (float) $prov['TOTAL'],
-                'TOTALCONIMPUESTO' => (float) $prov['TOTALCONIMPUESTO'],
-                'NOTA' => $prov['NOTA'],
-                'MARGEN' => $prov['MARGEN']
-            ]);
-        }
-    }
-
-    public function saveQuotationDetailStocks($stocks, $detalleId, $cotizacionId)
-    {
-        foreach ($stocks as $stock) {
-            GpCotizacionDetalleStock::create([
-                'cotizacion_id' => $cotizacionId,
-                'detalle_id' => $detalleId,
-                'STO_ART_BODEGA' => $stock['STO_ART_BODEGA'],
-                'STO_ART_STOCK_DISPONIBLE' => $stock['STO_ART_STOCK_DISPONIBLE'],
-                'seleccionado' => $stock['seleccionado']
-            ]);
-        }
-    }
-
-
-
-
-    public function updateRegisterCopyQuotation($registerCopyId, $cotizacionId)
-    {
-        if (!$registerCopyId || $registerCopyId == null || $registerCopyId == '' || $registerCopyId == 'null') {
-            return;
-        }
-        $registerCopy = GpRegistroCopia::find($registerCopyId);
-        if ($registerCopy) {
-            $registerCopy->cotizacion_destino = $cotizacionId;
-            $registerCopy->save();
-        }
-    }
 
 
     /**
@@ -1126,7 +698,6 @@ class QuotationService implements QuotationServiceInterface
             abort(404, 'Datos L no encontrados');
         }
         return $datosL;
-
     }
 
 
@@ -1136,47 +707,6 @@ class QuotationService implements QuotationServiceInterface
      *  DE RELIZAR LA COTIZACION
      */
 
-
-    public function saveProviderQuotationTemp(array $data)
-    {
-        if (empty($data['proveedores']) || !is_array($data['proveedores'])) {
-            return;
-        }
-        $this->deleteProviderQuotationTemp($data['id']);
-        $this->saveProviderQuotationItemTemp($data['proveedores'], $data['id']);
-        $this->updateTempCartArtValor($data['id'], $data['ART_VALOR']);
-    }
-
-    public function deleteProviderQuotationTemp($idTempCart)
-    {
-        GpTempCartProveedores::where('id_tempcart', $idTempCart)
-            ->delete();
-    }
-
-    public function saveProviderQuotationItemTemp($providers, $idTempCart)
-    {
-        foreach ($providers as $provider) {
-            GpTempCartProveedores::create([
-                'id_tempcart' => $idTempCart,
-                'ID_PROVEEDOR' => $provider['ID_PROVEEDOR'],
-                'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', $provider['DESCRIPCION_ARTICULO'])),
-                'FECHA_ENTREGA' => $provider['FECHA_ENTREGA'],
-                'CANTIDAD' => $provider['CANTIDAD'],
-                'COSTO_UNITARIO' => (float) $provider['COSTO_UNITARIO'],
-                'IMPUESTO' => (float) $provider['IMPUESTO'],
-                'TOTAL' => (float) $provider['TOTAL'],
-                'TOTALCONIMPUESTO' => (float) $provider['TOTALCONIMPUESTO'],
-                'NOTA' => $provider['NOTA'],
-                'MARGEN' => (float) $provider['MARGEN'] ?? 0,
-            ]);
-        }
-    }
-
-    public function updateTempCartArtValor($idTempCart, $artValor)
-    {
-        GpTempCart::where('id', $idTempCart)
-            ->update(['ART_VALOR' => $artValor]);
-    }
 
 
 
@@ -1202,18 +732,18 @@ class QuotationService implements QuotationServiceInterface
 
         $this->prepareForValidationDirection($data);
 
-        $nivelPrecio = $this->getNivelPriceSeller($data, $user);
-        $params = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
-        $this->apiGpService->StoreClientGp($params);
+        $nivelPrecio            = $this->getNivelPriceSeller($data, $user);
+        $params                 = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
+        $this->apiGpService->storeClientGp($params);
         $this->createClientWeb($data, $nivelPrecio);
         $this->createClientSucursalWeb($data);
         $this->sendToSegmentAndRucToGp($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
-        $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
-        $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-        $cliente->vendedor = $vendedor;
+        $cliente                = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
+        $vendedor               = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
+        $cliente->vendedor      = $vendedor;
 
-        $sucursales = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
-        $cliente->sucursales = $sucursales;
+        $sucursales             = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
+        $cliente->sucursales    = $sucursales;
         $cliente->sucursalesfacturacion = $sucursales;
         return $cliente;
     }
@@ -1244,9 +774,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function getNivelPriceSeller(array $data, GpUsuario $user)
     {
-        // if ($data['CLI_PUNTO_VENTA'] !== '005') {
-        //     return 'GENERAL';
-        // }
+
         $nivelPrecioApi = $this->apiGpService->getTypeBySeller([
             'usuario' => $user->USERID,
             // 'usuario' => 'oficina',
@@ -1274,17 +802,13 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function updateClientWithSegment($cliente, $segmentoId, $subsegmentoId)
+    public function updateClientWithSegment(string $ruc, int $segmentoId, int $subsegmentoId)
     {
-
-        $cliente = GpCliente::find($cliente['id']);
-        $cliente->CLI_SEGMENTO_ID = $segmentoId;
-        $cliente->CLI_SUBSEGMENTO_ID = $subsegmentoId;
+        $cliente                        = GpCliente::where('CLI_RUC', $ruc)->first();
+        $cliente->CLI_SEGMENTO_ID       = $segmentoId;
+        $cliente->CLI_SUBSEGMENTO_ID    = $subsegmentoId;
         $cliente->save();
-        $this->sendToSegmentAndRucToGp($cliente['CLI_RUC'], $subsegmentoId);
-        return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
-
+        $this->sendToSegmentAndRucToGp($cliente->CLI_RUC, $subsegmentoId);
+        return $cliente;
     }
-
-
 }
