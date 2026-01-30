@@ -61,8 +61,8 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $newOrd->fecha_factura              = null;
         $newOrd->estado                     = OrderStatus::ESPERA;
         $newOrd->despachado                 = $isDispatch;
-        $newOrd->sucursal_id                = $orderOrigin->sucursal_id;
-        $newOrd->sucursal_facturacion_id    = $orderOrigin->sucursal_facturacion_id;
+        $newOrd->sucursal_id                = $devolucion->sucursal_id;
+        $newOrd->sucursal_facturacion_id    = $devolucion->sucursal_facturacion_id;
         $newOrd->cliente_id                 = $devolucion->cliente_volver_a_facturar_id;
         $newOrd->orden_de_compra            = $devolucion->orden_de_compra;
         $newOrd->nota_cliente               = $devolucion->nota_cliente;
