@@ -48,6 +48,11 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 $cotizacion->refresh();
             }
             $this->syncImages($cotizacion, $existingImages, $newImages);
+
+            $mode = data_get($data, 'mode', 'create');
+            if ($mode == 'updated') {
+                $cotizacion->update(['estado' => 'procesado', 'facturado' => 1]);
+            }
             return $cotizacion;
         });
     }
