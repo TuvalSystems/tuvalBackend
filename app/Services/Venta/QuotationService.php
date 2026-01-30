@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\QuotationMode;
 use App\Models\GpBodega;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
@@ -74,7 +75,7 @@ class QuotationService implements QuotationServiceInterface
     public function updateNonSaleAndReminderData($data)
     {
         $user = GpUsuario::where('id', Auth::user()->id)->first();
-         GpCotizacion::where('id', $data['cotizacion_id'])->update([
+        GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio'            => $data['fecha_recordatorio'],
             'cotizacion_venta_motivo_id'    => $data['motivo_id'],
             'observacion'                   => $data['observacion'],
@@ -131,7 +132,7 @@ class QuotationService implements QuotationServiceInterface
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
             'segmento'              => data_get($cliente, 'segmentos'),
-            'mode'                  => 'restore_quote',
+            'mode'                  => QuotationMode::RESTORE_QUOTE->value,
         ];
     }
 
@@ -243,7 +244,7 @@ class QuotationService implements QuotationServiceInterface
             'imagenesOperaciones'   => $imagenesOperaciones,
             'segmento'              => data_get($cliente, 'segmentos'),
             'registro_copia'        => $registroCopiaId,
-            'mode'                  => 'volver_a_pedir',
+            'mode'                  => QuotationMode::REORDER->value,
         ];
     }
 

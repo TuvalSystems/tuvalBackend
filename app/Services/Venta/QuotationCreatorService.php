@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\QuotationMode;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionImagen;
@@ -50,7 +51,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             $this->syncImages($cotizacion, $existingImages, $newImages);
 
             $mode = data_get($data, 'mode', 'create');
-            if ($mode == 'updated') {
+            if ($mode == QuotationMode::UPDATE->value) {
                 $cotizacion->update(['estado' => 'procesado', 'facturado' => 1]);
             }
             return $cotizacion;

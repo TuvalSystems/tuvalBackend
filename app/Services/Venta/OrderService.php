@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Enums\Ventas\QuotationMode;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -670,7 +671,7 @@ class OrderService implements OrderServiceInterface
             'imagenesOperaciones'   => $imagenesOperaciones,
             'segmento'              => data_get($cliente, 'segmentos'),
             'registro_copia'        => $registroCopiaId,
-            'mode'                  => 'volver_a_pedir',
+            'mode'                  => QuotationMode::REORDER->value,
         ];
     }
 
@@ -695,10 +696,11 @@ class OrderService implements OrderServiceInterface
             return $item;
         });
         $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
+        $modeEnum = QuotationMode::fromType($type);
         return [
             'cliente'               => $clienteNew,
             'segmento'              => data_get($cliente, 'segmentos'),
-            'mode'                  => "copiar_" . $type,
+            'mode'                  => $modeEnum->value,
             'registro_copia'        => $registroCopiaId,
             'sucursal_id'           => $sucursalId,
             'items'                 => $detalles,
