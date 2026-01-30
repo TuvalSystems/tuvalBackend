@@ -251,9 +251,9 @@ class GpArticulo extends Model
             $query->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', $patron);
         }
 
-        $textNombre = $buscar['text_nombre'] ?? null;
+        $textNombre = $filters['text_nombre'] ?? null;
         if (!empty($textNombre)) {
-            $modo = $buscar['select_nombre'] ?? 'contiene';
+            $modo = $filters['select_nombre'] ?? 'contiene';
 
             $patron = match ($modo) {
                 'empieza' => "$textNombre%",
@@ -264,7 +264,7 @@ class GpArticulo extends Model
             $query->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $patron);
         }
 
-        if (!empty($buscar['terminal'])) {
+        if (!empty($filters['terminal'])) {
             $query->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $filters['terminal']);
         }
 
