@@ -344,12 +344,12 @@ class InvoiceService implements InvoiceServiceInterface
             Log::warning(
                 'Pedido no cumple validación de origen/fecha',
                 [
-                    'pedido_id' => $pedido->id,
-                    'numero' => $pedido->pedido ?? null,
-                    'origen' => $pedido->origen,
-                    'fe_fact_res' => $pedido->fe_facturacion_reserva,
-                    'today' => now()->toDateString(),
-                    'estado_prev' => $pedido->estado,
+                    'pedido_id'     => $pedido->id,
+                    'numero'        => $pedido->pedido ?? null,
+                    'origen'        => $pedido->origen,
+                    'fe_fact_res'   => $pedido->fe_facturacion_reserva,
+                    'today'         => now()->toDateString(),
+                    'estado_prev'   => $pedido->estado,
                 ]
             );
 
