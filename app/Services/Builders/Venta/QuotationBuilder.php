@@ -379,7 +379,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'nota_cliente'                      => data_get($data,'nota_cliente'),
             'nota_operaciones'                  => data_get($data,'nota_operaciones'),
             'origen'                            => 'cotizacion',
-            'modificador_global'                => data_get($data,'modificador_global' ,0),
+            'modificador_global'                => data_get($data, 'modificador_global') ?? 0,
             'fecha_entrega'                     => data_get($data,'fecha_entrega', null),
 
         ]);
