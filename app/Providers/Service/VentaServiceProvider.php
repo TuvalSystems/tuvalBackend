@@ -18,11 +18,9 @@ use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
-use App\Services\Venta\Contracts\QuotationCartServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
-use App\Services\Venta\QuotationCartService;
 use App\Services\Venta\QuotationCreatorService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
@@ -40,7 +38,6 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
         OrderServiceInterface::class                    => OrderService::class,
         InventoryReservationServiceInterface::class     => InventoryReservationService::class,
         ClientQueryServiceInterface::class              => ClientQueryService::class,
-        QuotationCartServiceInterface::class            => QuotationCartService::class,
         QuotationCreatorServiceInterface::class         => QuotationCreatorService::class,
         OrderCreatorServiceInterface::class             => OrderCreatorService::class,
         // Nota: Si descomentas OrderJobService en el futuro, agrégalo aquí:

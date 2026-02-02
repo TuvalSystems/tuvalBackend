@@ -39,7 +39,6 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
-use App\Services\Venta\Contracts\QuotationCartServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -65,7 +64,6 @@ class OrderService implements OrderServiceInterface
         protected readonly OrderBuilderInterface $orderBuilder,
         protected readonly ApiGpReceivedItemL $apiGpReceiptService,
         protected readonly ClientQueryServiceInterface $clientService,
-        protected readonly QuotationCartServiceInterface $cartService,
     ) {}
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -657,7 +655,7 @@ class OrderService implements OrderServiceInterface
         $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($order, $clienteNew, 'pedido', false, false);
         $this->functionsService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
-            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = 'pedido';
             $item->detalle_id = $item->id;
             return $item;
@@ -691,7 +689,7 @@ class OrderService implements OrderServiceInterface
         $this->functionsService->recalculateIva($detalles);
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data->id, $user, $type, 'copia');
         $detalles->transform(function ($item) use ($type) {
-            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = $type;
             return $item;
         });

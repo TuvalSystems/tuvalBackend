@@ -14,6 +14,8 @@ use App\Models\GpPedidoImagen;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use Illuminate\Support\Facades\File;
+
 
 class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 {
@@ -242,5 +244,19 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
                 'nombre' => $img->nombre_original
             ];
         });
+    }
+
+
+    public function getImageArticle($codArt): array
+    {
+        $images = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $path = "images/productos/{$codArt}_{$i}.jpg";
+            $pathAbsolute = public_path($path);
+            if (File::exists($pathAbsolute)) {
+                $images[] = asset($path);
+            }
+        }
+        return $images;
     }
 }

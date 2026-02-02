@@ -21,4 +21,6 @@ interface OrderAndQuotationServiceInterface
 
 
     public function getAllImagensOperations($quotationId, $type = 'cotizacion');
+    public function getImageArticle($codArt): array;
+
 }

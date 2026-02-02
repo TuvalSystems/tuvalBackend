@@ -238,24 +238,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 
 
-    Route::group(['prefix' => 'cart'], function () {
-        Route::post('item/add', [CotizacionCartController::class, 'crearRegistroArticuloTemporal']);
-        Route::post('item/clear-temp', [CotizacionCartController::class, 'limpiarRegistroTemp']);
-        Route::delete('item/delete/{id}', [CotizacionCartController::class, 'eliminarRegistroTemp']);
-        Route::group(['prefix' => 'item/update'], function () {
-            Route::post('descripcion', [CotizacionCartController::class, 'actualizarDescripcionRegistroTemp']);
-            Route::post('descripcion-alternativa', [CotizacionCartController::class, 'actualizarDescripcionAlternativaRegistroTemp']);
-            Route::post('check-alternativo', [CotizacionCartController::class, 'actualizarCheckAlternativo']);
-            Route::post('cantidad', [CotizacionCartController::class, 'actualizarCantidadRegistroTemp']);
-            Route::post('precio', [CotizacionCartController::class, 'actualizarPrecioRegistroTemp']);
-            Route::post('peso', [CotizacionCartController::class, 'actualizarKgRegistroTemp']);
-            Route::post('stock', [CotizacionCartController::class, 'actualizarStockRegistroTemp']);
-            Route::post('descuento', [CotizacionCartController::class, 'actualizarDescuentoRegistroTemp']);
-            Route::post('modificador', [CotizacionCartController::class, 'actualizarModificadorRegistroTemp']);
-        });
-
-        Route::post('item/store/proveedores', [CotizacionCartController::class, 'guardarProveedoresRegistroTemp']);
-    });
 
     Route::group(['prefix' => 'reservas'], function () {
         Route::get('validar-reserva-cotizacion/{id}', [ReservasController::class, 'validarGeneracionReservaCotizacion']);

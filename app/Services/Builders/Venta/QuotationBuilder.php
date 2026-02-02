@@ -8,9 +8,6 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
-use App\Models\GpTempCart;
-use App\Models\GpTempCartProveedores;
-use App\Models\GpTempCartStock;
 use App\Models\GpUsuario;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 
@@ -165,32 +162,32 @@ class QuotationBuilder implements QuotationBuilderInterface
         $line1 = $lines[0] ?? '';
         $line2 = $lines[1] ?? '';
         return [
-            'ruc' => $data['CLI_RUC'],
-            'razonSocial' => $data['CLI_RAZON_SOCIAL'],
-            'nombreCorto' => $data['CLI_NOMBRE_CORTO'],
-            'clase' => 'LOCAL',
-            'prioridad' => '1',
-            'contacto' => $data['CLI_CONTACTO'],
-            'direccion1' => $line1,
-            'direccion2' => $line2,
-            'ciudad' => $data['CLI_CIUDAD'],
-            'provincia' => $data['CLI_PROVINCIA_NOMBRE'],
-            'pais' => 'Ec',
-            'territorio' => $data['CLI_TERRITORIO'],
-            'telefono1' => $data['CLI_TELEFONO_1'],
-            'telefono2' => $data['CLI_TELEFONO_2'],
-            'telefono3' => $data['CLI_TELEFONO_3'],
-            'telefono4' => $data['CLI_TELEFONO_4'],
-            'correoSri' => $data['CLI_CORREO_ELECT_SRI'],
-            'correoNotificacion' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'vendedor' => $data['CLI_VENDEDOR'],
-            'grupo' => $data['CLI_GRUPO_NOMBRE'],
-            'subGrupo' => $data['CLI_SUBGRUPO'],
-            'descComercial' => '25',
-            'condPago' => 'CONTADO',
-            'nivelPrecio' => $nivelPrice,
-            'puntoVenta' => $data['CLI_PUNTO_VENTA'],
-            'tipoId' => $data['CLI_TIPO_ID'],
+            'ruc'                   => $data['CLI_RUC'],
+            'razonSocial'           => $data['CLI_RAZON_SOCIAL'],
+            'nombreCorto'           => $data['CLI_NOMBRE_CORTO'],
+            'clase'                 => 'LOCAL',
+            'prioridad'             => '1',
+            'contacto'              => $data['CLI_CONTACTO'],
+            'direccion1'            => $line1,
+            'direccion2'            => $line2,
+            'ciudad'                => $data['CLI_CIUDAD'],
+            'provincia'             => $data['CLI_PROVINCIA_NOMBRE'],
+            'pais'                  => 'Ec',
+            'territorio'            => $data['CLI_TERRITORIO'],
+            'telefono1'             => $data['CLI_TELEFONO_1'],
+            'telefono2'             => $data['CLI_TELEFONO_2'],
+            'telefono3'             => $data['CLI_TELEFONO_3'],
+            'telefono4'             => $data['CLI_TELEFONO_4'],
+            'correoSri'             => $data['CLI_CORREO_ELECT_SRI'],
+            'correoNotificacion'    => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
+            'vendedor'              => $data['CLI_VENDEDOR'],
+            'grupo'                 => $data['CLI_GRUPO_NOMBRE'],
+            'subGrupo'              => $data['CLI_SUBGRUPO'],
+            'descComercial'         => '25',
+            'condPago'              => 'CONTADO',
+            'nivelPrecio'           => $nivelPrice,
+            'puntoVenta'            => $data['CLI_PUNTO_VENTA'],
+            'tipoId'                => $data['CLI_TIPO_ID'],
         ];
     }
 
@@ -198,137 +195,70 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         $now = now()->toDateTimeString();
         return [
-            'CLI_RUC' => $data['CLI_RUC'],
-            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_NOMBRE_CORTO' => $data['CLI_NOMBRE_CORTO'],
-            'CLI_CLASE' => 'LOCAL',
-            'CLI_PRIORIDAD' => '1',
-            'CLI_ID_DIRECCION' => 'PRINCIPAL',
-            'CLI_CONTACTO' => $data['CLI_CONTACTO'],
-            'CLI_DIRECCION' => $data['CLI_DIRECCION'],
-            'CLI_CIUDAD' => $data['CLI_CIUDAD'],
-            'CLI_PROVINCIA' => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_TERRITORIO' => $data['CLI_TERRITORIO'],
-            'CLI_ESTADO' => 'ACTIVO',
-            'CLI_SUSPENDIDO' => 'NO',
-            'CLI_TELEFONO_1' => $data['CLI_TELEFONO_1'],
-            'CLI_TELEFONO_2' => $data['CLI_TELEFONO_2'],
-            'CLI_TELEFONO_3' => $data['CLI_TELEFONO_3'],
-            'CLI_TELEFONO_4' => $data['CLI_TELEFONO_4'],
-            'CLI_FECHA_MODIFICACION' => $now,
-            'CLI_FECHA_CREACION' => $now,
-            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
+            'CLI_RUC'                               => $data['CLI_RUC'],
+            'CLI_RAZON_SOCIAL'                      => $data['CLI_RAZON_SOCIAL'],
+            'CLI_NOMBRE_CORTO'                      => $data['CLI_NOMBRE_CORTO'],
+            'CLI_CLASE'                             => 'LOCAL',
+            'CLI_PRIORIDAD'                         => '1',
+            'CLI_ID_DIRECCION'                      => 'PRINCIPAL',
+            'CLI_CONTACTO'                          => $data['CLI_CONTACTO'],
+            'CLI_DIRECCION'                         => $data['CLI_DIRECCION'],
+            'CLI_CIUDAD'                            => $data['CLI_CIUDAD'],
+            'CLI_PROVINCIA'                         => $data['CLI_PROVINCIA_NOMBRE'],
+            'CLI_TERRITORIO'                        => $data['CLI_TERRITORIO'],
+            'CLI_ESTADO'                            => 'ACTIVO',
+            'CLI_SUSPENDIDO'                        => 'NO',
+            'CLI_TELEFONO_1'                        => $data['CLI_TELEFONO_1'],
+            'CLI_TELEFONO_2'                        => $data['CLI_TELEFONO_2'],
+            'CLI_TELEFONO_3'                        => $data['CLI_TELEFONO_3'],
+            'CLI_TELEFONO_4'                        => $data['CLI_TELEFONO_4'],
+            'CLI_FECHA_MODIFICACION'                => $now,
+            'CLI_FECHA_CREACION'                    => $now,
+            'CLI_CORREO_ELECT_SRI'                  => $data['CLI_CORREO_ELECT_SRI'],
             'CLI_CORREO_ELECT_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'],
-            'CLI_IMPUESTO' => TaxRateEnum::IVA_15->value,
-            'CLI_DIRECCION_ENVIO' => 'PRINCIPAL',
-            'CLI_DIRECCION_FACTURA' => 'PRINCIPAL',
-            'CLI_VENDEDOR' => $data['CLI_VENDEDOR'],
-            'CLI_DSTO_COMERCIAL' => 25,
-            'CLI_CONDICION_PAGO' => 'CONTADO',
-            'CLI_DIA_GRACIA_VTA_CREDITO' => 0,
-            'CLI_DIA_GRACIA_CHEQUE_A_FECHA' => 0,
-            'CLI_NIVEL_PRECIO' => $nivelPrecio,
-            'CLI_TIPO_CREDITO' => 'SIN CREDITO',
-            'CLI_MONTO_CREDITO' => 0,
-            'CLI_GRUPO_ECONOMICO' => '',
-            'CLI_GRUPO' => $data['CLI_GRUPO_NOMBRE'],
-            'CLI_SUBGRUPO' => $data['CLI_SUBGRUPO'] ?? '',
-            'CLI_DIA_MAXIMO_MES_FACTURACION' => 0,
-            'CLI_FACTURA_POSTERIOR_AL_DESPACHO' => 'NO',
-            'CLI_SEGMENTO_ID' => $data['CLI_SEGMENTO_ID'] ?? null,
-            'CLI_SUBSEGMENTO_ID' => $data['CLI_SUBSEGMENTO_ID'] ?? null,
+            'CLI_IMPUESTO'                          => TaxRateEnum::IVA_15->value,
+            'CLI_DIRECCION_ENVIO'                   => 'PRINCIPAL',
+            'CLI_DIRECCION_FACTURA'                 => 'PRINCIPAL',
+            'CLI_VENDEDOR'                          => $data['CLI_VENDEDOR'],
+            'CLI_DSTO_COMERCIAL'                    => 25,
+            'CLI_CONDICION_PAGO'                    => 'CONTADO',
+            'CLI_DIA_GRACIA_VTA_CREDITO'            => 0,
+            'CLI_DIA_GRACIA_CHEQUE_A_FECHA'         => 0,
+            'CLI_NIVEL_PRECIO'                      => $nivelPrecio,
+            'CLI_TIPO_CREDITO'                      => 'SIN CREDITO',
+            'CLI_MONTO_CREDITO'                     => 0,
+            'CLI_GRUPO_ECONOMICO'                   => '',
+            'CLI_GRUPO'                             => $data['CLI_GRUPO_NOMBRE'],
+            'CLI_SUBGRUPO'                          => $data['CLI_SUBGRUPO'] ?? '',
+            'CLI_DIA_MAXIMO_MES_FACTURACION'        => 0,
+            'CLI_FACTURA_POSTERIOR_AL_DESPACHO'     => 'NO',
+            'CLI_SEGMENTO_ID'                       => $data['CLI_SEGMENTO_ID'] ?? null,
+            'CLI_SUBSEGMENTO_ID'                    => $data['CLI_SUBSEGMENTO_ID'] ?? null,
         ];
     }
 
     public function formPayloadClientSucursal(array $data): array
     {
         return [
-            'CLI_SUC_RUC' => $data['CLI_RUC'],
-            'CLI_SUC_DESCRIPCION' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_SUC_ID_DIRECCION' => 'PRINCIPAL',
-            'CLI_SUC_DIRECCION' => $data['CLI_DIRECCION'],
-            'CLI_SUC_CONTACTO' => $data['CLI_CONTACTO'],
-            'CLI_SUC_REFERENCIA' => $data['CLI_CONTACTO'],
-            'CLI_SUC_VENDEDOR' => $data['CLI_VENDEDOR'],
-            'CLI_SUC_TERRITORIO' => $data['CLI_TERRITORIO'],
-            'CLI_SUC_CIUDAD' => $data['CLI_CIUDAD'],
-            'CLI_SUC_PROVINCIA' => $data['CLI_PROVINCIA_NOMBRE'],
-            'CLI_SUC_PAIS' => 'Ecuador',
-            'CLI_SUC_TELEFONO' => $data['CLI_TELEFONO_1'],
-            'CLI_SUC_CORREO_ELECTRONICO_SRI' => $data['CLI_CORREO_ELECT_SRI'],
-            'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $data['CLI_CORREO_ELECT_SRI'],
+            'CLI_SUC_RUC'                                       => $data['CLI_RUC'],
+            'CLI_SUC_DESCRIPCION'                               => $data['CLI_RAZON_SOCIAL'],
+            'CLI_SUC_ID_DIRECCION'                              => 'PRINCIPAL',
+            'CLI_SUC_DIRECCION'                                 => $data['CLI_DIRECCION'],
+            'CLI_SUC_CONTACTO'                                  => $data['CLI_CONTACTO'],
+            'CLI_SUC_REFERENCIA'                                => $data['CLI_CONTACTO'],
+            'CLI_SUC_VENDEDOR'                                  => $data['CLI_VENDEDOR'],
+            'CLI_SUC_TERRITORIO'                                => $data['CLI_TERRITORIO'],
+            'CLI_SUC_CIUDAD'                                    => $data['CLI_CIUDAD'],
+            'CLI_SUC_PROVINCIA'                                 => $data['CLI_PROVINCIA_NOMBRE'],
+            'CLI_SUC_PAIS'                                      => 'Ecuador',
+            'CLI_SUC_TELEFONO'                                  => $data['CLI_TELEFONO_1'],
+            'CLI_SUC_CORREO_ELECTRONICO_SRI'                    => $data['CLI_CORREO_ELECT_SRI'],
+            'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA'   => $data['CLI_CORREO_ELECT_SRI'],
         ];
     }
 
 
 
-    /** funciones de cart temp */
-
-    public function formPayloadAddCartTemp(int $clienteId, string $ptoVtaId, int $sucursalId, array $article, GpUsuario $user, int $orden): GpTempCart
-    {
-        $cart = new GpTempCart();
-        $cart->fill([
-            'sucursal_id'               => $sucursalId,
-            'puntodeventa_id'           => $ptoVtaId,
-            'cliente_id'                => $clienteId,
-            'user_id'                   => $user->id,
-            'USERID'                    => $user->USERID,
-            'ART_CODIGO'                => data_get($article, 'ART_CODIGO'),
-            'ART_DESCRIPCION'           => data_get($article, 'ART_DESCRIPCION'),
-            'ART_DESCRIPCION_ORIGINAL'  => data_get($article, 'ART_DESCRIPCION_ORIGINAL'),
-            'ART_CODIGO_TRES_LETRAS'    => data_get($article, 'ART_CODIGO_TRES_LETRAS'),
-            'ART_DECIMAL_CANTIDAD'      => data_get($article, 'ART_DECIMAL_CANTIDAD'),
-            'ART_PLAN_UMEDIDA'          => data_get($article, 'ART_PLAN_UMEDIDA'),
-            'ART_MARCA'                 => data_get($article, 'ART_MARCA'),
-            'ART_MATERIAL'              => data_get($article, 'ART_MATERIAL'),
-            'ART_PESO'                  => data_get($article, 'ART_PESO'),
-            'ART_TIPO_COMPRA'           => data_get($article, 'ART_TIPO_COMPRA'),
-            'ART_VALOR'                 => data_get($article, 'ART_VALOR'),
-            'ART_VALOR_ORIGINAL'        => data_get($article, 'ART_VALOR_ORIGINAL'),
-            'ART_CANTIDAD'              => 0,
-            'ART_IVA'                   => 0,
-            'ART_DESCUENTO'             => 0,
-            'ART_STOCK'                 => data_get($article, 'ART_STOCK'),
-            'ART_IMP_VTA'               => data_get($article, 'ART_IMP_VTA'),
-            'ART_COSTO_PROMEDIO'        => data_get($article, 'ART_COSTO_PROMEDIO'),
-            'descuento'                 => data_get($article, 'descuento'),
-            'descuento_original'        => data_get($article, 'descuento_original'),
-            'modificador'               => data_get($article, 'modificador'),
-            'orden'                     => $orden,
-        ]);
-        return $cart;
-    }
-
-
-    public function formPayloadAddCartTempStock(array $stock, int $cartId): GpTempCartStock
-    {
-        $sTemp = new GpTempCartStock();
-        return $sTemp->fill([
-            'id_tempcart' => $cartId,
-            'STO_ART_BODEGA' => data_get($stock, 'STO_ART_BODEGA'),
-            'STO_ART_STOCK_DISPONIBLE' => data_get($stock, 'STO_ART_STOCK_DISPONIBLE'),
-            'seleccionado' => data_get($stock, 'seleccionado'),
-        ]);
-    }
-
-
-    public function formPayloadAddCartTempProvider(array $provider, $cardId): GpTempCartProveedores
-    {
-        $prov = new GpTempCartProveedores();
-        return $prov->fill([
-            'id_tempcart' => $cardId,
-            'ID_PROVEEDOR' => data_get($provider, 'ID_PROVEEDOR'),
-            'DESCRIPCION_ARTICULO' => trim(str_replace('  ', ' ', data_get($provider, 'DESCRIPCION_ARTICULO'))),
-            'FECHA_ENTREGA' => data_get($provider, 'FECHA_ENTREGA'),
-            'CANTIDAD' => data_get($provider, 'CANTIDAD'),
-            'COSTO_UNITARIO' => data_get($provider, 'COSTO_UNITARIO'),
-            'IMPUESTO' => data_get($provider, 'IMPUESTO'),
-            'TOTAL' => data_get($provider, 'TOTAL'),
-            'TOTALCONIMPUESTO' => data_get($provider, 'TOTALCONIMPUESTO'),
-            'NOTA' => data_get($provider, 'NOTA'),
-            'MARGEN' => data_get($provider, 'MARGEN', 0)
-        ]);
-    }
 
 
     /** proces de creacion de cotizacion */
@@ -337,50 +267,50 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         return $quotation->fill([
             'estado'                            => $requiredApprovalCommercial['estado'],
-            'cliente_id'                        => data_get($data,'cliente_id', null),
+            'cliente_id'                        => data_get($data, 'cliente_id', null),
             'user_id'                           => $user->id,
-            'sucursal_id'                       => data_get($data,'direccion_entrega_id'),
-            'sucursal_facturacion_id'           => data_get($data,'direccion_facturacion_id'),
-            'factura_posterior_despacho'        => data_get($data,'factura_posterior_despacho'),
-            'factura_a_demanda'                 => data_get($data,'factura_a_demanda'),
-            'factura_siguiente_mes'             => data_get($data,'factura_siguiente_mes'),
-            'BOD_BODEGA'                        => data_get($data,'bodega_facturacion'),
-            'PTO_VTA_ID'                        => data_get($data,'punto_venta_id'),
+            'sucursal_id'                       => data_get($data, 'direccion_entrega_id'),
+            'sucursal_facturacion_id'           => data_get($data, 'direccion_facturacion_id'),
+            'factura_posterior_despacho'        => data_get($data, 'factura_posterior_despacho'),
+            'factura_a_demanda'                 => data_get($data, 'factura_a_demanda'),
+            'factura_siguiente_mes'             => data_get($data, 'factura_siguiente_mes'),
+            'BOD_BODEGA'                        => data_get($data, 'bodega_facturacion'),
+            'PTO_VTA_ID'                        => data_get($data, 'punto_venta_id'),
             'PTO_VTA_DESCRIPCION'               => $puntoVenta->PTO_VTA_DESCRIPCION ?? '',
             'USERID'                            => $user->USERID,
-            'DESC_FORMA_PAGO_CODIGO'            => data_get($data,'forma_pago_id'),
-            'CLI_RUC'                           => data_get($data,'ruc'),
-            'CLI_RAZON_SOCIAL'                  => data_get($data,'razon_social'),
-            'CLI_CORREO_ELECT_SRI'              => data_get($data,'correo_electronico_sri'),
-            'COND_ID'                           => data_get($data,'condicion_pago_id'),
-            'COND_ID_ORIGINAL'                  => data_get($data,'condicion_pago_original_id'),
-            'VEND_ID'                           => data_get($data,'vendedor_id'),
-            'VEND_NOMBRES'                      => data_get($data,'vendedor_nombres'),
-            'VEND_APELLIDOS'                    => data_get($data,'vendedor_apellidos'),
+            'DESC_FORMA_PAGO_CODIGO'            => data_get($data, 'forma_pago_id'),
+            'CLI_RUC'                           => data_get($data, 'ruc'),
+            'CLI_RAZON_SOCIAL'                  => data_get($data, 'razon_social'),
+            'CLI_CORREO_ELECT_SRI'              => data_get($data, 'correo_electronico_sri'),
+            'COND_ID'                           => data_get($data, 'condicion_pago_id'),
+            'COND_ID_ORIGINAL'                  => data_get($data, 'condicion_pago_original_id'),
+            'VEND_ID'                           => data_get($data, 'vendedor_id'),
+            'VEND_NOMBRES'                      => data_get($data, 'vendedor_nombres'),
+            'VEND_APELLIDOS'                    => data_get($data, 'vendedor_apellidos'),
             'despacho'                          => $tipoDespacho,
-            'orden_de_compra'                   => data_get($data,'orden_de_compra'),
-            'porcentage_descuento'              => data_get($data,'descuento_articulo'),
-            'porcentage_descuentooriginal'      => data_get($data,'descuento_original'),
+            'orden_de_compra'                   => data_get($data, 'orden_de_compra'),
+            'porcentage_descuento'              => data_get($data, 'descuento_articulo'),
+            'porcentage_descuentooriginal'      => data_get($data, 'descuento_original'),
             'impuesto'                          => TaxRateEnum::IVA_15->value,
-            'subtotal'                          => (float) data_get($data,'subtotal') + (float) data_get($data,'descuento'),
-            'descuento'                         => (float) data_get($data,'descuento'),
-            'subtotalmenosdescuento'            => (float) data_get($data,'subtotal'),
-            'iva'                               => (float) data_get($data,'iva'),
-            'total'                             => (float) data_get($data,'total'),
-            'requiere_aprobacion_comercial'     => data_get($requiredApprovalCommercial,'requiere'),
+            'subtotal'                          => (float) data_get($data, 'subtotal') + (float) data_get($data, 'descuento'),
+            'descuento'                         => (float) data_get($data, 'descuento'),
+            'subtotalmenosdescuento'            => (float) data_get($data, 'subtotal'),
+            'iva'                               => (float) data_get($data, 'iva'),
+            'total'                             => (float) data_get($data, 'total'),
+            'requiere_aprobacion_comercial'     => data_get($requiredApprovalCommercial, 'requiere'),
             'motivo_aprobacion_comercial'       => $motivoLimpio,
-            'aprobado_comercial'                => data_get($requiredApprovalCommercial,'aprobado'),
+            'aprobado_comercial'                => data_get($requiredApprovalCommercial, 'aprobado'),
             'aprobador_comercial_id'            => null,
             'requiere_aprobacion_crediticia'    => 'no',
             'aprobado_crediticio'               => 'no',
             'aprobador_crediticio_id'           => null,
             'impreso'                           => 'no',
-            'nota_interna'                      => data_get($data,'nota_interna'),
-            'nota_cliente'                      => data_get($data,'nota_cliente'),
-            'nota_operaciones'                  => data_get($data,'nota_operaciones'),
+            'nota_interna'                      => data_get($data, 'nota_interna'),
+            'nota_cliente'                      => data_get($data, 'nota_cliente'),
+            'nota_operaciones'                  => data_get($data, 'nota_operaciones'),
             'origen'                            => 'cotizacion',
             'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
-            'fecha_entrega'                     => data_get($data,'fecha_entrega', null),
+            'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
 
         ]);
     }
@@ -452,7 +382,4 @@ class QuotationBuilder implements QuotationBuilderInterface
         ]);
         return $st;
     }
-
-
 }
-

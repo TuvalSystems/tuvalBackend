@@ -32,7 +32,6 @@ use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
-use App\Services\Venta\Contracts\QuotationCartServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -50,7 +49,6 @@ class QuotationService implements QuotationServiceInterface
         protected readonly ApprovalServiceInterface $approvalService,
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly QuotationBuilderInterface $quotationBuilder,
-        protected readonly QuotationCartServiceInterface $cartService,
         protected readonly ClientQueryServiceInterface $clientService
     ) {}
 
@@ -120,7 +118,7 @@ class QuotationService implements QuotationServiceInterface
         $detalles = $this->getQuotationDetailWithSuppliers($quote->id);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
-            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = 'cotizacion';
             $item->detalle_id = $item->id;
             return $item;
@@ -229,7 +227,7 @@ class QuotationService implements QuotationServiceInterface
         $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
-            $item->imagenes = $this->cartService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
             $item->tipo = 'cotizacion';
             $item->detalle_id = $item->id;
             return $item;
