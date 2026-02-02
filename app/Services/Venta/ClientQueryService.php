@@ -4,11 +4,13 @@ namespace App\Services\Venta;
 
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
+use App\Models\GpUsuario;
 use App\Services\Api\ApiGpService;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class ClientQueryService implements ClientQueryServiceInterface
 {
@@ -105,7 +107,7 @@ class ClientQueryService implements ClientQueryServiceInterface
 
     public function storeNewAddressClient(array $data)
     {
-
+        $userGp = GpUsuario::where('id', Auth::user()->id)->first();
         $cliente = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
         $email = strtolower(data_get($data, 'email', ''));
         $textoEnvuelto = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
@@ -114,7 +116,7 @@ class ClientQueryService implements ClientQueryServiceInterface
         $payloadGp = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
         $data = $this->sendToGpNewAddress($payloadGp);
         $identificador = strtoupper(data_get($data, 'identificador', ''));
-        return $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir);
+        return $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
     }
 
 

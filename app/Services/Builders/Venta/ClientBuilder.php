@@ -4,7 +4,9 @@ namespace App\Services\Builders\Venta;
 
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
+use App\Models\GpUsuario;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
+use Carbon\Carbon;
 
 class ClientBuilder implements ClientBuilderInterface
 {
@@ -39,7 +41,7 @@ class ClientBuilder implements ClientBuilderInterface
     }
 
 
-    public function formPayloadNewSucursal(array $data, GpCliente $cliente, $identificador, $email, $direccion): GpClienteSucursal{
+    public function formPayloadNewSucursal(array $data, GpCliente $cliente, $identificador, $email, $direccion, GpUsuario   $user): GpClienteSucursal{
         $nw = new GpClienteSucursal();
          $nw->fill([
             'CLI_SUC_RUC'           => $cliente->CLI_RUC,
@@ -56,6 +58,8 @@ class ClientBuilder implements ClientBuilderInterface
             'CLI_SUC_TELEFONO'      => data_get($data, 'telefono', ''),
             'CLI_SUC_CORREO_ELECTRONICO_SRI' => $email,
             'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $email,
+            'user_creator_id'       => $user->id,
+            'fecha_hora_creacion'   => Carbon::now()->toDateTimeString(),
         ]);
         $nw->save();
         return $nw;

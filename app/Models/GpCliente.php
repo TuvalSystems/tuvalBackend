@@ -146,7 +146,9 @@ class GpCliente extends Model
         'CLI_DIA_MAXIMO_MES_FACTURACION',
         'CLI_FACTURA_POSTERIOR_AL_DESPACHO',
         'CLI_SEGMENTO_ID',
-        'CLI_SUBSEGMENTO_ID'
+        'CLI_SUBSEGMENTO_ID',
+        'user_creator_id',
+        'fecha_hora_creacion'
     ];
 
 
