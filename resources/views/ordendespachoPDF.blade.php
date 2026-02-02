@@ -255,6 +255,12 @@
                         </td>
                         <td>{{ $BOD_BODEGA }}</td>
                     </tr>
+                     <tr>
+                        <td>
+                            Nota de Operaciones :
+                        </td>
+                        <td>{{ $nota_operaciones }}</td>
+                    </tr>
                 </table>
             </td>
 
