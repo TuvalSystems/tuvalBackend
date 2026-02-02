@@ -369,7 +369,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::group(['prefix' => 'consultas'], function () {
         Route::post('notificaciones', [ConsultasController::class, 'notificaciones']);
         Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
-        Route::post('territorios', [ConsultasController::class, 'territAPorios']);
+        Route::post('territorios', [ConsultasController::class, 'territorios']);
         Route::get('puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);
         Route::get('cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
         Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
