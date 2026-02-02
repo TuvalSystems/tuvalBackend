@@ -618,7 +618,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 }
                 return count($articulo->precios) > 0;
             }
-        )->sortByDesc('ART_CODIGO_ZAFIRO')->values();
+        )->sortBy('ART_CODIGO_ZAFIRO')->values();
     }
 
     public function isSearchItemsL(array $filters)
