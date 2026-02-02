@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\bodegas;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Events\Bodegas\Dashboard\DispatchPendings;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\WebserviceController;
 use App\Models\cobranzas\GpCobro;
@@ -509,11 +510,11 @@ class DespachosController extends Controller
         ]);
     }
 
-     public function getAllImagensOperations($quotationId, $type = 'cotizacion')
+    public function getAllImagensOperations($quotationId, $type = 'cotizacion')
     {
-       $model = ($type == 'pedido')
-       ? GpPedidoImagen::where('pedido_id', $quotationId)
-       : GpCotizacionImagen::where('cotizacion_id', $quotationId);
+        $model = ($type == 'pedido')
+            ? GpPedidoImagen::where('pedido_id', $quotationId)
+            : GpCotizacionImagen::where('cotizacion_id', $quotationId);
         return  $model->get()->map(function ($img) {
             return [
                 'id' => $img->id,
@@ -711,7 +712,7 @@ class DespachosController extends Controller
         $orden->autorizacion_USERID = $user->USERID;
         $orden->autorizacion_comentario = trim($data['motivo']);
         $orden->save();
-
+        event(new DispatchPendings('refresh'));
         return response([
             'success' => true,
             'message' => 'Órden de despacho ' . $orden->orden . ' liberada',
@@ -1219,7 +1220,7 @@ class DespachosController extends Controller
         $fecha_hasta = $request->input('fecha_hasta', null);
         $ptoVtaDestino = $request->input('ptoVtaDestino', null);
 
-            try {
+        try {
             $data = $this->dispatchService->fecthListReceivedReservations($perPage, $search, $sortBy, $sortOrder, $ptoVtaOrigin, $fecha_desde, $fecha_hasta, $ptoVtaDestino);
             return $this->successResponse('Guias obtenidas correctamente', $data, 200);
         } catch (\Throwable $e) {
@@ -1228,7 +1229,8 @@ class DespachosController extends Controller
     }
 
 
-    public function cancelarOrdenDespacho($id){
+    public function cancelarOrdenDespacho($id)
+    {
 
         return $this->dispatchService->cancelDispatchIfEmptyPicking($id);
     }

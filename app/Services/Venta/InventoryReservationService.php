@@ -181,7 +181,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function getQuotationWithDetails(int $id)
     {
         $reserva = GpReserva::with(['cotizacion', 'cotizacion.detallecotizacion', 'tipoReserva', 'tipoTraslado', 'usuarioIngreso'])->find($id);
-        // $cotizacion = GpCotizacion::with('detallecotizacion', 'tiporeserva','reserva')->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($reserva->cotizacion->CLI_RUC);
         return [
             'reserva' => $reserva,

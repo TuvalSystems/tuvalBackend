@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\bodegas;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Events\Bodegas\Dashboard\DispatchPendings;
 use App\Traits\JsonResponseTrait;
 use RuntimeException;
 use App\Models\GpPedido;
@@ -118,6 +119,7 @@ class GuiasderemisionController extends Controller
         if ($this->deliveryNoteService->isGUideBlockedForOrder($guiaderemision)) {
             $this->deliveryNoteService->createTemporaryDeliveryNoteBlocksOrder($guiaderemision);
         }
+        event(new DispatchPendings('refresh'));
         return response([
             'success' => true,
         ]);

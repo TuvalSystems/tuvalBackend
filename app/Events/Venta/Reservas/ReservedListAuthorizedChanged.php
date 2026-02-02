@@ -15,11 +15,8 @@ class ReservedListAuthorizedChanged implements ShouldBroadcast
 
     public $broadcastQueue = 'broadcasts';
     public $afterCommit = true;
-    public function __construct(public string $action, public int $reservationId, public ?string $byUser = null)
-    {
-
-    }
- public function broadcastOn()
+    public function __construct(public string $action, public int $reservationId, public ?string $byUser = null) {}
+    public function broadcastOn()
     {
         return new PrivateChannel('refresh-authorized-reservations');
     }
