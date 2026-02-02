@@ -733,8 +733,8 @@ class QuotationService implements QuotationServiceInterface
         $nivelPrecio            = $this->getNivelPriceSeller($data, $user);
         $params                 = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
         $this->apiGpService->storeClientGp($params);
-        $this->createClientWeb($data, $nivelPrecio);
-        $this->createClientSucursalWeb($data);
+        $this->createClientWeb($data, $nivelPrecio, $user);
+        $this->createClientSucursalWeb($data,  $user);
         $this->sendToSegmentAndRucToGp($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
         $cliente                = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
         $vendedor               = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
@@ -755,9 +755,9 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function createClientWeb(array $data, string $nivelPrecio)
+    public function createClientWeb(array $data, string $nivelPrecio, GpUsuario $user)
     {
-        $attrs = $this->quotationBuilder->formPayloadClientWeb($data, $nivelPrecio);
+        $attrs = $this->quotationBuilder->formPayloadClientWeb($data, $nivelPrecio, $user);
         Log::info('GpCliente creará con attrs:', $attrs);
         return GpCliente::create($attrs);
     }
@@ -765,9 +765,9 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function createClientSucursalWeb(array $data)
+    public function createClientSucursalWeb(array $data, GpUsuario $user)
     {
-        return GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data));
+        return GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data, $user));
     }
 
     public function getNivelPriceSeller(array $data, GpUsuario $user)

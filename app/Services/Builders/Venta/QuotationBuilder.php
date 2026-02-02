@@ -10,6 +10,7 @@ use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
+use Carbon\Carbon;
 
 class QuotationBuilder implements QuotationBuilderInterface
 {
@@ -191,7 +192,7 @@ class QuotationBuilder implements QuotationBuilderInterface
         ];
     }
 
-    public function formPayloadClientWeb(array $data, string $nivelPrecio): array
+    public function formPayloadClientWeb(array $data, string $nivelPrecio,  GpUsuario $user): array
     {
         $now = now()->toDateTimeString();
         return [
@@ -234,10 +235,13 @@ class QuotationBuilder implements QuotationBuilderInterface
             'CLI_FACTURA_POSTERIOR_AL_DESPACHO'     => 'NO',
             'CLI_SEGMENTO_ID'                       => $data['CLI_SEGMENTO_ID'] ?? null,
             'CLI_SUBSEGMENTO_ID'                    => $data['CLI_SUBSEGMENTO_ID'] ?? null,
+            'user_creator_id'                       => $user->id,
+            'fecha_hora_creacion'                   => Carbon::now()->toDateTimeString(),
+
         ];
     }
 
-    public function formPayloadClientSucursal(array $data): array
+    public function formPayloadClientSucursal(array $data,  GpUsuario $user): array
     {
         return [
             'CLI_SUC_RUC'                                       => $data['CLI_RUC'],
@@ -254,6 +258,8 @@ class QuotationBuilder implements QuotationBuilderInterface
             'CLI_SUC_TELEFONO'                                  => $data['CLI_TELEFONO_1'],
             'CLI_SUC_CORREO_ELECTRONICO_SRI'                    => $data['CLI_CORREO_ELECT_SRI'],
             'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA'   => $data['CLI_CORREO_ELECT_SRI'],
+            'user_creator_id'                                   => $user->id,
+            'fecha_hora_creacion'                               => Carbon::now()->toDateTimeString(),
         ];
     }
 

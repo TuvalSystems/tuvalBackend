@@ -36,9 +36,7 @@ class InvoiceService implements InvoiceServiceInterface
         protected readonly PurchaseOrderServiceInterface $purchaseOrderService,
         protected readonly FunctionsServiceInterface $functionService,
         protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice
-    ) {
-
-    }
+    ) {}
 
     /** Funcion de checkenviarfactura pasada aqui para reutilizar en otros servicios
      *  y que no se me cuelguen los metodos
@@ -507,26 +505,30 @@ class InvoiceService implements InvoiceServiceInterface
     public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO)
     {
         return [
-            'FAC_VTA_DOCU_ORIGEN' => $pedido->pedido,
-            'FAC_VTA_DOC_COMPRA' => $pedido->orden_de_compra,
-            'FAC_VTA_ID_TIPO' => 3,
-            'FAC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
-            'FAC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
-            'FAC_VTA_ID_CLIENTE' => $pedido->CLI_RUC,
-            'FAC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
-            'FAC_VTA_ID_DIRECCION' => $sucursalFacturacion->CLI_SUC_ID_DIRECCION,
-            'FAC_VTA_ID_DIRECCION_ENVIO' => $FAC_VTA_ID_DIRECCION_ENVIO,
-            'FAC_VTA_COND_PAGO' => $pedido->COND_ID,
-            'FAC_VTA_NOTA_DOCU' => $pedido->factura_origen,
-            'FAC_VTA_DATE_DOCU' => date('Y-m-d H:i:s'),
-            'FAC_VTA_FORMA_PAGO' => $pedido->DESC_FORMA_PAGO_CODIGO,
-            'FAC_VTA_BODEGA' => $pedido->BOD_BODEGA,
-            'FAC_VTA_SUBTOTAL' => number_format($pedido->subtotal - $pedido->descuento, 2, '.', ''),
-            'FAC_VTA_DESCUENTO_COMERCIAL' => 0,
-            'FAC_VTA_IMPUESTO' => $pedido->iva,
-            'FAC_VTA_TOTAL' => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
-            'FAC_VTA_TIPO_DESPACHO' => $pedido->despacho,
-            'FAC_VTA_NOTA_CLIENTE' => $this->normalizeTextNoteClient($pedido->nota_cliente),
+            'FAC_VTA_DOCU_ORIGEN'           => $pedido->pedido,
+            'FAC_VTA_DOC_COMPRA'            => $pedido->orden_de_compra,
+            'FAC_VTA_ID_TIPO'               => 3,
+            'FAC_VTA_PUNTO_VENTA'           => $pedido->PTO_VTA_ID,
+            'FAC_VTA_DOC_ID'                => $docId->PTO_VTA_ID_FACTURA_NC,
+            'FAC_VTA_ID_CLIENTE'            => $pedido->CLI_RUC,
+            'FAC_VTA_ID_VENDEDOR'           => $pedido->VEND_ID,
+            'FAC_VTA_ID_DIRECCION'          => $sucursalFacturacion->CLI_SUC_ID_DIRECCION,
+            'FAC_VTA_ID_DIRECCION_ENVIO'    => $FAC_VTA_ID_DIRECCION_ENVIO,
+            'FAC_VTA_COND_PAGO'             => $pedido->COND_ID,
+            'FAC_VTA_NOTA_DOCU'             => $pedido->factura_origen,
+            'FAC_VTA_DATE_DOCU'             => date('Y-m-d H:i:s'),
+            'FAC_VTA_FORMA_PAGO'            => $pedido->DESC_FORMA_PAGO_CODIGO,
+            'FAC_VTA_BODEGA'                => $pedido->BOD_BODEGA,
+            'FAC_VTA_SUBTOTAL'              => number_format($pedido->subtotal - $pedido->descuento, 2, '.', ''),
+            'FAC_VTA_DESCUENTO_COMERCIAL'   => 0,
+            'FAC_VTA_IMPUESTO'              => $pedido->iva,
+            'FAC_VTA_TOTAL'                 => number_format($pedido->subtotal - $pedido->descuento + $pedido->iva, 2, '.', ''), //$pedido->total,
+            'FAC_VTA_TIPO_DESPACHO'         => $pedido->despacho,
+            'FAC_VTA_NOTA_CLIENTE'          => $this->normalizeTextNoteClient($pedido->nota_cliente),
+
+            //campos aidicionales para el envio a sp de creacion de facturas
+            'userIdCreator'                => auth()->user()->USERID,
+            'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
         ];
     }
 
@@ -542,24 +544,24 @@ class InvoiceService implements InvoiceServiceInterface
     {
         return $detalles->values()->map(function ($detalle, $index) use ($pedido) {
             return [
-                'FAC_VTA_DET_LINEA' => $index + 1,
-                'FAC_VTA_DET_DOCU_ORIGEN' => $pedido->pedido,
-                'FAC_VTA_DET_ID_TIPO' => 3,
-                'FAC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
-                'FAC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
-                'FAC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
-                'FAC_VTA_DET_BODEGA' => $pedido->BOD_BODEGA,
-                'FAC_VTA_DET_CANTIDAD' => $detalle->ART_CANTIDAD,
-                'FAC_VTA_DET_COSTO_UNITARIO' => $detalle->ART_VALOR,
-                'FAC_VTA_DET_PRECIO_UNITARIO' => $detalle->ART_VALOR,
-                'FAC_VTA_DET_DESCUENTO' => $detalle->ART_DESCUENTO,
-                'FAC_VTA_DET_IMPUESTO_IVA' => $detalle->ART_IVA,
-                'FAC_VTA_DET_TOTAL' => number_format(
-                    ($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD,
-                    2,
-                    '.',
-                    ''
-                ),
+                'FAC_VTA_DET_LINEA'             => $index + 1,
+                'FAC_VTA_DET_DOCU_ORIGEN'       => $pedido->pedido,
+                'FAC_VTA_DET_ID_TIPO'           => 3,
+                'FAC_VTA_DET_ARTICULO'          => $detalle->ART_CODIGO,
+                'FAC_VTA_DET_DESC_ARTICULO'     => $detalle->ART_DESCRIPCION,
+                'FAC_VTA_DET_UNIDAD_MEDIDA'     => $detalle->ART_PLAN_UMEDIDA,
+                'FAC_VTA_DET_BODEGA'            => $pedido->BOD_BODEGA,
+                'FAC_VTA_DET_CANTIDAD'          => $detalle->ART_CANTIDAD,
+                'FAC_VTA_DET_COSTO_UNITARIO'    => $detalle->ART_VALOR,
+                'FAC_VTA_DET_PRECIO_UNITARIO'   => $detalle->ART_VALOR,
+                'FAC_VTA_DET_DESCUENTO'         => $detalle->ART_DESCUENTO,
+                'FAC_VTA_DET_IMPUESTO_IVA'      => $detalle->ART_IVA,
+                'FAC_VTA_DET_TOTAL'             => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD,2,'.',''),
+
+                   //campos aidicionales para el envio a sp de creacion de facturas
+                'descripcionOrginal'            => $detalle->ART_DESCRIPCION_ORIGINAL,
+                'valorOrginal'                  => $detalle->ART_VALOR_ORIGINAL,
+                'descuentoOrginal'              => $detalle->descuento_original,
             ];
         })->toArray();
     }
@@ -602,7 +604,7 @@ class InvoiceService implements InvoiceServiceInterface
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === false) {
             $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? 'Error no definido por GP';
-            $pedido->estado =OrderStatus::ESPERA;
+            $pedido->estado = OrderStatus::ESPERA;
             throw new \Exception("Ocurrio un error al obtener la factura: {$existInvoice['message']}");
         }
         $info = $existInvoice['data'];
@@ -615,7 +617,6 @@ class InvoiceService implements InvoiceServiceInterface
         try {
             $pedido->save();
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
-
         } catch (\Throwable $e) {
             logger()->error("Error guardando pedido en repuesta de factura {$pedido->id}: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
@@ -749,7 +750,7 @@ class InvoiceService implements InvoiceServiceInterface
 
             $reserva->save();
             GpCotizacion::where('id', $reserva->cotizacion_id) // O la columna ID real
-            ->update(['estado' => 'procesado']);
+                ->update(['estado' => 'procesado']);
         }
     }
 }
