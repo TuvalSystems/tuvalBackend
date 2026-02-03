@@ -261,7 +261,7 @@ class OrderBuilder implements OrderBuilderInterface
             'requiere_aprobacion_crediticia'    => data_get($data, 'requiere_aprobacion_crediticia'),
             'aprobado_crediticio'               => data_get($data, 'aprobado_crediticio'),
             // 'motivo_crediticio'                 => data_get($data, 'motivo_crediticio'),
-            'aprobador_crediticio_id'           => data_get($data, 'aprobador_crediticio_id'),,
+            'aprobador_crediticio_id'           => data_get($data, 'aprobador_crediticio_id'),
             'nota_interna'                      => data_get($data, 'nota_interna'),
             'nota_cliente'                      => data_get($data, 'nota_cliente'),
             'nota_operaciones'                  => data_get($data, 'nota_operaciones'),
