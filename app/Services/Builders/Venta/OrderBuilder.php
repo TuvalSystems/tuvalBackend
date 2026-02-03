@@ -87,30 +87,30 @@ class OrderBuilder implements OrderBuilderInterface
     {
         $det = new GpPedidoDetalle();
         $det->fill([
-            'pedido_id' => $orderId,
-            'orden' => $i + 1,
-            'ART_CODIGO' => $item['ART_CODIGO'],
-            'ART_DESCRIPCION' => $item['ART_DESCRIPCION'],
-            'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
-            'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
-            'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-            'ART_DECIMAL_CANTIDAD' => (int) $item['ART_DECIMAL_CANTIDAD'],
-            'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
-            'ART_MARCA' => $item['ART_MARCA'],
-            'ART_MATERIAL' => $item['ART_MATERIAL'],
-            'ART_PESO' => $item['ART_PESO'],
-            'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
-            'ART_VALOR' => $item['ART_VALOR'],
-            'ART_VALOR_ORIGINAL' => $item['ART_VALOR_ORIGINAL'],
-            'ART_DESCUENTO' => $item['ART_DESCUENTO'],
-            'ART_IVA' => $item['ART_IVA'],
-            'ART_CANTIDAD' => $item['ART_CANTIDAD'],
-            'ART_STOCK' => $item['ART_STOCK'],
-            'ART_IMP_VTA' => $item['ART_IMP_VTA'],
-            'ART_COSTO_PROMEDIO' => $item['ART_COSTO_PROMEDIO'],
-            'descuento' => $item['descuento'],
-            'descuento_original' => $item['descuento_original'],
-            'modificador' => $item['modificador'],
+            'pedido_id'                 => $orderId,
+            'orden'                     => $i + 1,
+            'ART_CODIGO'                => $item['ART_CODIGO'],
+            'ART_DESCRIPCION'           => $item['ART_DESCRIPCION'],
+            'ART_DESCRIPCION_ORIGINAL'  => $item['ART_DESCRIPCION_ORIGINAL'],
+            'CHECK_ALTERNATIVO'         => $item['CHECK_ALTERNATIVO'] ?? 0,
+            'ART_CODIGO_TRES_LETRAS'    => $item['ART_CODIGO_TRES_LETRAS'],
+            'ART_DECIMAL_CANTIDAD'      => (int) $item['ART_DECIMAL_CANTIDAD'],
+            'ART_PLAN_UMEDIDA'          => $item['ART_PLAN_UMEDIDA'],
+            'ART_MARCA'                 => $item['ART_MARCA'],
+            'ART_MATERIAL'              => $item['ART_MATERIAL'],
+            'ART_PESO'                  => $item['ART_PESO'],
+            'ART_TIPO_COMPRA'           => $item['ART_TIPO_COMPRA'],
+            'ART_VALOR'                 => $item['ART_VALOR'],
+            'ART_VALOR_ORIGINAL'        => $item['ART_VALOR_ORIGINAL'],
+            'ART_DESCUENTO'             => $item['ART_DESCUENTO'],
+            'ART_IVA'                   => $item['ART_IVA'],
+            'ART_CANTIDAD'              => $item['ART_CANTIDAD'],
+            'ART_STOCK'                 => $item['ART_STOCK'],
+            'ART_IMP_VTA'               => $item['ART_IMP_VTA'],
+            'ART_COSTO_PROMEDIO'        => $item['ART_COSTO_PROMEDIO'],
+            'descuento'                 => $item['descuento'],
+            'descuento_original'        => $item['descuento_original'],
+            'modificador'               => $item['modificador'],
         ]);
         return $det;
     }
@@ -212,6 +212,66 @@ class OrderBuilder implements OrderBuilderInterface
             'modificador_global'                => data_get($data, 'modificador_global', 0),
             'fe_facturacion_reserva'            =>  data_get($extras, 'facturacion_reserva'),
         ]);
+        return $od;
+    }
+
+
+
+    /** builder para facturar existentes */
+    public function formPayloadInvoiceExistence(array $data, GpUsuario $user, GpPuntoVenta $ptoVta): GpPedido
+    {
+        $od = new GpPedido();
+        $od->fill([
+            'cotizacion_id'                     => data_get($data, 'cotizacion_id'),
+            'user_id'                           => $user->id,
+            'USERID'                            => $user->USERID,
+            'sucursal_id'                       => data_get($data, 'sucursal_id'),
+            'sucursal_facturacion_id'           => data_get($data, 'sucursal_facturacion_id'),
+            'cliente_id'                        => data_get($data, 'cliente_id', null),
+            'factura_posterior_despacho'        => data_get($data, 'factura_posterior_despacho'),
+            'factura_a_demanda'                 => data_get($data, 'factura_a_demanda'),
+            'factura_siguiente_mes'             => data_get($data, 'factura_siguiente_mes'),
+            'impuesto'                          => TaxRateEnum::IVA_15->value,
+            'BOD_BODEGA'                        => data_get($data, 'BOD_BODEGA'),
+            'PTO_VTA_ID'                        => data_get($data, 'PTO_VTA_ID'),
+            'PTO_VTA_DESCRIPCION'               => $ptoVta->PTO_VTA_DESCRIPCION,
+            'DESC_FORMA_PAGO_CODIGO'            => data_get($data, 'DESC_FORMA_PAGO_CODIGO'),
+            'CLI_RUC'                           => data_get($data, 'CLI_RUC'),
+            'CLI_RAZON_SOCIAL'                  => data_get($data, 'CLI_RAZON_SOCIAL'),
+            'CLI_CORREO_ELECT_SRI'              => data_get($data, 'CLI_CORREO_ELECT_SRI'),
+            'COND_ID'                           => data_get($data, 'COND_ID'),
+            'COND_ID_ORIGINAL'                  => data_get($data, 'COND_ID_ORIGINAL'),
+            'VEND_ID'                           => data_get($data, 'VEND_ID'),
+            'VEND_NOMBRES'                      => data_get($data, 'VEND_NOMBRES'),
+            'VEND_APELLIDOS'                    => data_get($data, 'VEND_APELLIDOS'),
+            'despacho'                          => data_get($data, 'despacho'),
+            'orden_de_compra'                   => data_get($data, 'orden_de_compra'),
+            'porcentage_descuento'              => data_get($data, 'porcentage_descuento'),
+            'porcentage_descuentooriginal'      => data_get($data, 'porcentage_descuentooriginal'),
+            'subtotal'                          => (float) data_get($data, 'subtotal') + (float) data_get($data, 'descuento'),
+            'descuento'                         => (float) data_get($data, 'descuento'),
+            'subtotalmenosdescuento'            => (float) data_get($data, 'subtotal'),
+            'iva'                               => (float) data_get($data, 'iva'),
+            'total'                             => (float) data_get($data, 'total'),
+
+            'requiere_aprobacion_comercial'     => data_get($data, 'requiere_aprobacion_comercial'),
+            // 'motivo_aprobacion_comercial'       => data_get($data, 'motivo_comercial'),
+            'aprobado_comercial'                => data_get($data, 'aprobado_comercial'),
+            'aprobador_comercial_id'            => data_get($data, 'aprobador_comercial_id'),
+            'requiere_aprobacion_crediticia'    => data_get($data, 'requiere_aprobacion_crediticia'),
+            'aprobado_crediticio'               => data_get($data, 'aprobado_crediticio'),
+            // 'motivo_crediticio'                 => data_get($data, 'motivo_crediticio'),
+            'aprobador_crediticio_id'           => data_get($data, 'aprobador_crediticio_id'),,
+            'nota_interna'                      => data_get($data, 'nota_interna'),
+            'nota_cliente'                      => data_get($data, 'nota_cliente'),
+            'nota_operaciones'                  => data_get($data, 'nota_operaciones'),
+            'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
+            'origen'                            => 'facturar_existente',
+            'modificador_global'                => data_get($data, 'modificador_global', 0),
+            'fe_facturacion_reserva'            => data_get($data, 'facturacion_reserva'),
+            'pedido_origen'                     => data_get($data, 'pedido'),
+        ]);
+
         return $od;
     }
 }

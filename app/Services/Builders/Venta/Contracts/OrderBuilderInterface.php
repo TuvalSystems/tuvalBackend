@@ -19,4 +19,8 @@ interface OrderBuilderInterface
 
     /** builder que arma un pedido desde crearcotizacion */
     public function formPayloadOrderV2(array $data, $user, GpPuntoVenta $ptoVta,  array $requiredApprovalCommercial, array $extras): GpPedido;
-}
+
+    
+    public function formPayloadInvoiceExistence(array $data, GpUsuario $user, GpPuntoVenta $ptoVta): GpPedido;
+
+    }
