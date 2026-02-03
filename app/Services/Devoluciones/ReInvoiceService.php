@@ -68,6 +68,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $newOrd->CLI_RUC                    = $cliente->CLI_RUC;
         $newOrd->CLI_RAZON_SOCIAL           = $cliente->CLI_RAZON_SOCIAL;
         $newOrd->CLI_CORREO_ELECT_SRI       = $cliente->CLI_CORREO_ELECT_SRI;
+        $newOrd->origen                     = 'devolucion';
         // Lógica de facturación
         $this->setBillingLogic($newOrd, $cliente);
         $newOrd->save();
