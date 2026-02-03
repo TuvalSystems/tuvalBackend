@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpCotizacion;
+use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Observers\Devoluciones\GpDevolucionesObserver;
 use App\Observers\Ventas\GpCotizacionObserver;
+use App\Observers\Ventas\GpOrdenDespachoObserver;
 use App\Observers\Ventas\GpPedidoObserver;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -35,5 +37,6 @@ class EventServiceProvider extends ServiceProvider
         GpPedido::observe(GpPedidoObserver::class);
         GpCotizacion::observe(GpCotizacionObserver::class);
         GpDevoluciones::observe(GpDevolucionesObserver::class);
+        GpOrdenDespacho::observe(GpOrdenDespachoObserver::class);
     }
 }

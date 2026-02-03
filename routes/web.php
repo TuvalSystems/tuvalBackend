@@ -1,7 +1,5 @@
 <?php
 
-use App\Events\DemoMessage;
-use App\Events\PingArrived;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\bodegas\DashboardController;
 use Illuminate\Support\Facades\Route;
