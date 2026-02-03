@@ -452,7 +452,6 @@ class PedidosController extends Controller
             $pdf = PDF::loadView('pedidoridePDF', $pedido);
             return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
         } catch (\Throwable $e) {
-            // report($e);
             return $this->buildErrorResponse($e->getMessage(), 404);
         }
     }
@@ -581,7 +580,11 @@ class PedidosController extends Controller
         $pedido->fecha_hora_cancelado = date('Y-m-d H:i:s');
         $pedido->save();
 
-        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
+        GpTrasladosVentas::where('pedido_id', $pedido->id)->update(
+            [
+                'cantidad' => 0
+            ]
+        );
         GpOrdenDespacho::where('pedido_id', $pedido->id)->update(['estado' => 'cancelada']);
 
         return response([
