@@ -124,14 +124,14 @@ class OrderBuilder implements OrderBuilderInterface
             'ID_PROVEEDOR'          => data_get($provider, 'ID_PROVEEDOR', ''),
             'DESCRIPCION_ARTICULO'  => data_get($provider, 'DESCRIPCION_ARTICULO', ''),
             'FECHA_ENTREGA'         => data_get($provider, 'FECHA_ENTREGA', ''),
-            'CANTIDAD'              => data_get($provider, 'CANTIDAD', ''),
-            'COSTO_UNITARIO'        => data_get($provider, 'COSTO_UNITARIO', ''),
-            'IMPUESTO'              => data_get($provider, 'IMPUESTO', ''),
-            'TOTAL'                 => data_get($provider, 'TOTAL', ''),
-            'TOTALCONIMPUESTO'      => data_get($provider, 'TOTALCONIMPUESTO', ''),
+            'CANTIDAD'              => data_get($provider, 'CANTIDAD', 0),
+            'COSTO_UNITARIO'        => (float)data_get($provider, 'COSTO_UNITARIO', 0),
+            'IMPUESTO'              => (float)data_get($provider, 'IMPUESTO', 0),
+            'TOTAL'                 => (float)data_get($provider, 'TOTAL', 0),
+            'TOTALCONIMPUESTO'      => (float)data_get($provider, 'TOTALCONIMPUESTO', 0),
             'NOTA'                  => data_get($provider, 'NOTA', ''),
             'recibido'              => $recibido,
-            'MARGEN'                => data_get($provider, 'MARGEN', '')
+            'MARGEN'                => (float)data_get($provider, 'MARGEN', 0)
         ]);
 
         return $prov;
