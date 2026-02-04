@@ -990,15 +990,9 @@ class GuiasderemisionController extends Controller
                         }
                         $pedido->save();
                     }
-
-                    // $pedidosControl->checkenviarfactura($pedido, true);
                     $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
                     $this->invoiceService->checkSendInvoice($pedido, true);
-                    // $this->notifyService->sendNotification(
-                    //     $pedido->user_id,
-                    //     'Artículo/s recibidos',
-                    //     'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
-                    // );
+
                     $creatorUser->notify(new UserNotification('Articulo/s recibidos', 'Articulo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA));
                 }
                 //aqui la notifiacion
@@ -1016,20 +1010,11 @@ class GuiasderemisionController extends Controller
                     ->first();
 
                 if ($pedido) {
-                    //  $pedidosControl->checktrasladado($pedido);
                     $this->invoiceService->checkTrasladado($pedido);
 
                     if ($pedido->estado == OrderStatus::ESPERA) {
-                        // $pedidosControl->checkenviarfactura($pedido, true);
                         $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
                         $this->invoiceService->checkSendInvoice($pedido, true);
-                        //aqui la notifiacion
-
-                        // $this->notifyService->sendNotification(
-                        //     $pedido->user_id,
-                        //     'Artículo/s recibidos',
-                        //     'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
-                        // );
                         $creatorUser->notify(new UserNotification('Articulo/s recibidos', 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA));
 
                     }

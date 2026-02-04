@@ -11,6 +11,8 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpUsuario;
+use App\Notifications\User\UserNotification;
 use App\Repositories\Devoluciones\DevolucionRepository;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\ApiGpService;
@@ -46,6 +48,11 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $this->processDetailOrder($detailOrigin, $newOrderHeader, $orderOrigin, $devolucion, $isDispatch);
         $this->functions->recalculateOrder($newOrderHeader->id);
         $this->invoice->checkSendInvoice($newOrderHeader);
+        $userOrder = GpUsuario::where('id', $newOrderHeader->user_id)->first();
+        //notificar al usuario
+        $mensaje = "El pedido {$newOrderHeader->pedido} ha sido creado exitosamente tras el proceso de refacturación por devolución.";
+        $userOrder->notify(new UserNotification('Pedido Refacturado', $mensaje));
+
         return $newOrderHeader->refresh();
     }
 
@@ -175,7 +182,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
             return;
         }
         foreach ($stocks as $st) {
-            if($qty <= 0) {
+            if ($qty <= 0) {
                 break;
             }
             $nwSt               = $st->replicate();
