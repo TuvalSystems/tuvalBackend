@@ -190,7 +190,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
- 
+
 
 
 
@@ -302,7 +302,7 @@ class CotizacionesController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -444,7 +444,7 @@ class CotizacionesController extends Controller
 
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
 
         //        echo '<pre>';
@@ -455,7 +455,7 @@ class CotizacionesController extends Controller
         if (!isset($CLI_SUC_ID_DIRECCION[1])) {
             return response([
                 'error' => $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']
-            ], 401);
+            ], 409);
         }
 
 
@@ -494,7 +494,7 @@ class CotizacionesController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 

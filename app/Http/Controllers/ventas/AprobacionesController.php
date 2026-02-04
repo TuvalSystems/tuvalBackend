@@ -257,7 +257,7 @@ class AprobacionesController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -280,7 +280,7 @@ class AprobacionesController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -339,23 +339,7 @@ class AprobacionesController extends Controller
         }
     }
 
-    // public function aprobarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    // {
-
-    //     $data = $request->all();
-    //     $user = Auth::user();
-
-    //     if (GpCotizacion::where('id', $data['id'])->update(['aprobado_comercial' => 'yes', 'aprobador_comercial_id' => $user->id, 'estado' => 'aprobado'])) {
-    //         return response([
-    //             'success' => true,
-    //             'message' => 'Cotización ' . $data['cotizacion'] . ' aprobada'
-    //         ]);
-    //     } else {
-    //         return response([
-    //             'error' => 'Hubo un error al guardar'
-    //         ], 401);
-    //     }
-    // }
+ 
 
     public function aprobacionComercialCotizacion(Request $request): JsonResponse
     {
@@ -387,7 +371,7 @@ class AprobacionesController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 

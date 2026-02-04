@@ -92,7 +92,7 @@ class ConsultasController extends Controller
             if (!count($articulos)) {
                 return response([
                     'error' => 'No existen resultados'
-                ], 401);
+                ], 409);
             }
 
 
@@ -184,7 +184,7 @@ class ConsultasController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al buscar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -346,7 +346,7 @@ class ConsultasController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al buscar'
-            ], 401);
+            ], 409);
         }
     }
 

@@ -19,7 +19,6 @@ use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\UserNotificationController;
-use App\Http\Controllers\ventas\CotizacionCartController;
 use App\Http\Controllers\ventas\ReservasController;
 
 /*

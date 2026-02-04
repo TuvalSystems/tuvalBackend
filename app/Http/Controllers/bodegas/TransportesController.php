@@ -45,7 +45,7 @@ class TransportesController extends Controller
         }else{
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -72,7 +72,7 @@ class TransportesController extends Controller
         }else{
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -86,7 +86,7 @@ class TransportesController extends Controller
         }else{
             return response([
                 'error' => 'Hubo un error al eliminar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -100,7 +100,7 @@ class TransportesController extends Controller
         }else{
             return response([
                 'error' => 'Hubo un error al eliminar'
-            ], 401);
+            ], 409);
         }
     }
 }

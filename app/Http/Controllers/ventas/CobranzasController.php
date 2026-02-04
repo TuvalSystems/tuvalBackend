@@ -1393,7 +1393,7 @@ class CobranzasController extends Controller
         if (!$caja) {
             return response([
                 'error' => 'No existe caja asignada al usuario en este punto de venta'
-            ], 401);
+            ], 404);
         }
 
         return response([
@@ -1731,7 +1731,7 @@ class CobranzasController extends Controller
         if (!$caja) {
             return response([
                 'error' => 'No existe caja asignada al usuario en este punto de venta'
-            ], 401);
+            ], 404);
         }
 
         if (strlen($fechaActual) == 3)
