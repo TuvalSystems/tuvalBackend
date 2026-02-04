@@ -105,4 +105,29 @@ class ApiGpEndpoints
     // ---
     public const COTIZACIONES_GUARDAR_RECORDATORIO = 'api/cotizaciones/guardar-cotizacion-recordatorio';
     public const COTIZACIONES_LISTA_ITEMS_ALTERNATIVOS = 'api/cotizaciones/lista-items-alternativos';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // ---
+    // 🏷️ 9. Endpoints para actualizaciones masivas
+    // ---
+    public const UPDATE_BATCH_GET_ORDERS_HEADER = 'api/facturas-cabecera-pendientes';
+    public const UPDATE_BATCH_GET_ORDERS_DETAIL = 'api/facturas-detalles-pendientes';
+
+
+    public const UPDATE_BATCH_UPDATE_ORDERS = 'api/update-headers';
+    public const UPDATE_BATCH_UPDATE_ORDERS_DETAIL = 'api/update-details';
 }

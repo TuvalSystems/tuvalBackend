@@ -14,6 +14,7 @@ use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Http\Controllers\ImportarPedidosController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\ReservasController;
@@ -246,4 +247,9 @@ Route::get('pedidos-web/voler-a-pedir-pedido-v2', [PedidosController::class, 'vo
 Route::prefix('dashboard')->group(function () {
     Route::get('ordenes-despacho-pendientes/{ptovta}', [DashboardController::class, 'listadoDespachosPendientes']);
     Route::get('contador-items-servicios/{ptovta}', [DashboardController::class, 'contadorItemsServiciosDespachos']);
+});
+
+
+Route::prefix('actualizaciones-masivas')->group(function (){
+    Route::get('actualizar-pedidos-detalles', [ImportarPedidosController::class, 'actualizarPedidosYDetallesSqlServer']);
 });
