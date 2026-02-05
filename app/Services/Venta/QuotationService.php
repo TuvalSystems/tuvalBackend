@@ -608,7 +608,7 @@ class QuotationService implements QuotationServiceInterface
             foreach ($article['stock'] as $st) {
                 $artSt = is_array($st) ? $st : $st->toArray();
                 $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
-                $artSt['seleccionado'] = (int) $artSt['seleccionado'];
+                $artSt['seleccionado'] =  round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
                 $result[] = $artSt;
             }
             return $result;
@@ -631,7 +631,7 @@ class QuotationService implements QuotationServiceInterface
         foreach ($article['stock'] as $st) {
             $artSt = is_array($st) ? $st : $st->toArray();
             $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
-            $artSt['seleccionado'] = (int) $artSt['seleccionado'];
+            $artSt['seleccionado'] = round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
             $result[] = $artSt;
         }
 
@@ -646,19 +646,6 @@ class QuotationService implements QuotationServiceInterface
         }
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         return $this->stockWarehouseService->transformStockQuotationResponse($stockResults);
-    }
-
-    public function reassignStockIds($article, $stockArticle)
-    {
-        $result = [];
-        foreach ($stockArticle as $item) {
-            $tempStock = GpTempCartStock::where('id_tempcart', $article['id'])
-                ->where('STO_ART_BODEGA', $item['STO_ART_BODEGA'])->first();
-            $item['id'] = $tempStock->id;
-            $item['seleccionado'] = (int) $tempStock->seleccionado;
-            $result[] = $item;
-        }
-        return $result;
     }
 
 

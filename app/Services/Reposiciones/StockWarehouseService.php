@@ -88,33 +88,30 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         $bodegas = array_values(array_unique(array_map(static fn($i) => (string) $i['STO_ART_BODEGA'], $filtered)));
         // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
         $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, false, $quotationId);
-
+        $decimals = data_get($articulo, 'ART_DECIMAL_CANTIDAD', 0);
         $total = 0;
         $normalizados = [];
         foreach ($filtered as $item) {
-            $bodega = (string) $item['STO_ART_BODEGA'];
-            $stockBase = (float) $item['STO_ART_STOCK_DISPONIBLE'];
-            $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
-                ? (int) $stockBase
-                : round($stockBase, 2);
+            $bodega = (string) data_get($item, 'STO_ART_BODEGA', '');
+            $stockDisponible = (float) data_get($item, 'STO_ART_STOCK_DISPONIBLE', 0);
+
+
+            $stockBase =  round($stockDisponible, $decimals);
             $resta = (float) ($reservas[$bodega] ?? 0);
-            $disponible = max(0, $stockBase - $resta);
-            $disponible = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
-                ? (int) $disponible
-                : round($disponible, 2);
+            $disponible = round(max(0, $stockBase - $resta), $decimals);
 
             $normalizados[] = [
-                'DESCRIPCION_ARTICULO' => (string) $item['DESCRIPCION_ARTICULO'],
-                'STO_ART_ARTICULO' => (string) $item['STO_ART_ARTICULO'],
-                'STO_ART_BODEGA' => $bodega,
-                'STO_ART_STOCK_DISPONIBLE' => $disponible,
-                'seleccionado' => $item['seleccionado']
+                'DESCRIPCION_ARTICULO'      => (string) $item['DESCRIPCION_ARTICULO'],
+                'STO_ART_ARTICULO'          => (string) $item['STO_ART_ARTICULO'],
+                'STO_ART_BODEGA'            => $bodega,
+                'STO_ART_STOCK_DISPONIBLE'  => $disponible,
+                'seleccionado'              => $item['seleccionado']
             ];
 
             $total += $disponible;
         }
         $articulo['stock'] = $normalizados;
-        $articulo['ART_STOCK'] = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0 ? (int) $total : round((float) $total, 2);
+        $articulo['ART_STOCK'] = (float) round($total, $decimals);
         return $articulo;
     }
 

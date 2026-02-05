@@ -1223,7 +1223,7 @@ class OrderService implements OrderServiceInterface
             }
 
             if ($provList->isNotEmpty()) {
-                if ($artL->ART_CANTIDAD == 0) {
+                if ($artL->ART_CANTIDAD <= 0) {
                     $deteleArticle['articulos'][] = $artL;
                 } else {
                     $artL->save();
