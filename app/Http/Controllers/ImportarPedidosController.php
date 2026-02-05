@@ -17,6 +17,9 @@ class ImportarPedidosController extends Controller
 
     public function actualizarPedidosYDetallesSqlServer(Request $request)
     {
+
+        set_time_limit(0);       // 0 = Sin límite de tiempo
+        ini_set('memory_limit', '1024M'); // Aumentar memoria a 1GB si es necesario
         $request->validate([
             'fechaInicio' => 'required|date_format:Y-m-d',
             'fechaFin' => 'required|date_format:Y-m-d',

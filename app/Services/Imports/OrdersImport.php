@@ -6,6 +6,7 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
 use App\Services\Imports\Contracts\OrdersImportInterface;
+use Illuminate\Support\Facades\Log;
 
 class OrdersImport implements OrdersImportInterface
 {
@@ -44,16 +45,37 @@ class OrdersImport implements OrdersImportInterface
 
 
 
-        $detailsSql = $this->getAllOrdersDetailSqlPendingUpdate($keyOrders);
+        $detailsSql = [];
+        $chunks = array_chunk($keyOrders, 1000);
+        foreach ($chunks as $LotePedidos) {
+            $resultadoLote = $this->getAllOrdersDetailSqlPendingUpdate($LotePedidos);
+            if (!empty($resultadoLote)) {
+                $detailsSql = array_merge($detailsSql, $resultadoLote);
+            }
+        }
+
+        Log::info("DEBUG DETALLES SQL: Se encontraron " . count($detailsSql) . " filas pendientes en SQL Server.");
+        if (count($detailsSql) > 0) {
+            // Muestra el primer item para ver cómo viene el 'artCodigo' y 'docOrigen'
+            Log::info("DEBUG ITEM SQL EJEMPLO:", $detailsSql[0]);
+        }
 
         $mapaSqlDetails = $this->extractOrdersDetails($detailsSql);
+        Log::info("map keys", [$mapaSqlDetails]);
+
         //obtener todos los pedidos web por $ordersSql
         $detailOrdersWeb = GpPedidoDetalle::whereIn('pedido_id', $ordersWeb->pluck('id'))->with(['pedido:id,pedido'])->get();
-
+        Log::info("DEBUG DETALLES WEB: Se encontraron " . count($detailOrdersWeb) . " filas en Laravel.");
         $payloadDetalles = [];
+        $coincidencias = 0;
         foreach ($detailOrdersWeb as $detalleWeb) {
-            $llaveWeb = trim($detalleWeb->pedido->pedido) . '-' . trim($detalleWeb->ART_CODIGO);
+            $docWeb  = strtoupper(trim($detalleWeb->pedido->pedido));
+            $artWeb  = strtoupper(trim($detalleWeb->ART_CODIGO));
+            $lineaWeb = (int) $detalleWeb->orden;
+            $llaveWeb = $docWeb . '-' . $artWeb . '-' . $lineaWeb;
+
             if ($mapaSqlDetails->has($llaveWeb)) {
+                $coincidencias++;
                 $datoSql = $mapaSqlDetails->get($llaveWeb);
                 $payloadDetalles[] = [
                     'dexRowId'              => $datoSql['dexRowId'],
@@ -67,15 +89,22 @@ class OrdersImport implements OrdersImportInterface
                 ];
             }
         }
-        if (!empty($payloadCabeceras)) {
-            $this->api->updateAllOrdersPendingSql($payloadCabeceras);
-        }
+        Log::info("DEBUG MATCH FINAL: Se encontraron {$coincidencias} coincidencias para actualizar.");
+        // if (!empty($payloadCabeceras)) {
+        //     foreach (array_chunk($payloadCabeceras, 1000) as $loteCabeceras) {
+        //         $this->api->updateAllOrdersPendingSql($loteCabeceras);
+        //     }
+        // }
         if (!empty($payloadDetalles)) {
-            $this->api->updateAllOrdersDetailPendingSql($payloadDetalles);
+            foreach (array_chunk($payloadDetalles, 1000) as $loteDetalles) {
+                Log::info("Detalle enviado  a actualizar:", $loteDetalles);
+
+                $this->api->updateAllOrdersDetailPendingSql($loteDetalles);
+            }
         }
         return [
             'cabeceras_procesadas' => count($payloadCabeceras),
-            'detalles_procesados'  => count($payloadDetalles )// $payloadDetalles
+            'detalles_procesados'  => count($payloadDetalles) // $payloadDetalles
         ];
     }
 
@@ -120,7 +149,10 @@ class OrdersImport implements OrdersImportInterface
     protected function extractOrdersDetails($detailsSql)
     {
         return collect($detailsSql)->mapWithKeys(function ($item) {
-            $key = trim($item['docOrigen']) . '-' . trim($item['artCodigo']);
+            $doc = strtoupper(trim($item['docOrigen']));
+            $art = strtoupper(trim($item['artCodigo']));
+            $linea = isset($item['linea']) ? (int)$item['linea'] : 0;
+            $key = $doc . '-' . $art . '-' . $linea;
             return [$key => $item];
         });
     }
