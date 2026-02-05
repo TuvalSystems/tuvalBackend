@@ -364,10 +364,10 @@ class QuotationBuilder implements QuotationBuilderInterface
             'DESCRIPCION_ARTICULO'  => data_get($provider, 'DESCRIPCION_ARTICULO'),
             'FECHA_ENTREGA'         => data_get($provider, 'FECHA_ENTREGA'),
             'CANTIDAD'              => data_get($provider, 'CANTIDAD'),
-            'COSTO_UNITARIO'        => data_get($provider, 'COSTO_UNITARIO'),
-            'IMPUESTO'              => data_get($provider, 'IMPUESTO'),
-            'TOTAL'                 => data_get($provider, 'TOTAL'),
-            'TOTALCONIMPUESTO'      => data_get($provider, 'TOTALCONIMPUESTO'),
+            'COSTO_UNITARIO'        => (float)data_get($provider, 'COSTO_UNITARIO'),
+            'IMPUESTO'              => (float)data_get($provider, 'IMPUESTO'),
+            'TOTAL'                 => (float)data_get($provider, 'TOTAL'),
+            'TOTALCONIMPUESTO'      => (float)data_get($provider, 'TOTALCONIMPUESTO'),
             'NOTA'                  => data_get($provider, 'NOTA'),
             'MARGEN'                => data_get($provider, 'MARGEN', 0)
         ]);
