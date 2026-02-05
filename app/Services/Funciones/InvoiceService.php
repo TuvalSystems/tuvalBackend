@@ -84,6 +84,7 @@ class InvoiceService implements InvoiceServiceInterface
         $this->purchaseOrderService->checkPurchaseOrder($pedido);
         $this->purchaseOrderService->sendPurchaseOrders();
         $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
+        $pedido->refresh();
         return \in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true);
     }
 
