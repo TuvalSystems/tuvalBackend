@@ -47,6 +47,12 @@ class ValidateStoreQuotationRequest extends FormRequest
                 $this->merge([$field => null]);
             }
         }
+
+        $this->merge([
+            'nota_interna'     => $this->nota_interna ?? '',
+            'nota_cliente'     => $this->nota_cliente ?? '',
+            'nota_operaciones' => $this->nota_operaciones ?? '',
+        ]);
     }
     public function rules()
     {
