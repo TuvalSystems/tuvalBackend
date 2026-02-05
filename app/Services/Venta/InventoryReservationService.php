@@ -849,7 +849,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->insertReservedOrderLogs($rows);
         $this->updateQuotationReservedStatus($reservedBlock->id, $payload, $user, $quoteBlock);
         $this->cleanStockQuotationForDeny($quoteBlock->id);
-
+        $this->functionService->recalculateOrder($order->id);
+        $order->refresh();
         DB::afterCommit(function () use ($order, $payload) {
             NotifyReservationRequesterOrderCreatedJob::dispatch($order->pedido, $payload['user_ingreso_reserva_id']);
             $this->invoiceService->checkSendInvoice($order);
