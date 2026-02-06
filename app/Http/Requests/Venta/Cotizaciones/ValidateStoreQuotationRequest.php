@@ -39,20 +39,19 @@ class ValidateStoreQuotationRequest extends FormRequest
             'cotizacion_id',
             'cotizacion_codigo',
             'fecha_entrega',
-            'orden_de_compra'
+            'orden_de_compra',
+            'nota_interna',
+            'nota_cliente',
+            'nota_operaciones'
         ];
 
         foreach ($fieldsToNull as $field) {
-            if ($this->$field === 'false' || $this->$field === 'null' || $this->$field === '') {
+            $value = $this->$field;
+            if ($value === 'false' || $value === 'null' || $value === '' || $value === 'undefined') {
                 $this->merge([$field => null]);
             }
         }
 
-        $this->merge([
-            'nota_interna'     => $this->nota_interna ?? '',
-            'nota_cliente'     => $this->nota_cliente ?? '',
-            'nota_operaciones' => $this->nota_operaciones ?? '',
-        ]);
     }
     public function rules()
     {
