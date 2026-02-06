@@ -1628,67 +1628,72 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function validateStockAgainstSelection($normalize): string|null
     {
-        $selectedStock = $normalize->filter(function ($item) {
-            return data_get($item, 'seleccionado', 0) > 0;
-        });
+        $selectedStock = $normalize->filter(fn($item) => data_get($item, 'seleccionado', 0) > 0);
 
         if ($selectedStock->isEmpty()) {
             throw new \DomainException("No se ha seleccionado cantidades para esta cotización");
         }
 
-        $stockRequests = $selectedStock->map(function ($item) {
-            return ['articulo' => $item['articulo'], 'bodega' => $item['bodega']];
-        })->unique() // Evita consultar el mismo Articulo/Bodega varias veces
-            ->values()
-            ->all();
+        //esto me consolida y agrupa los articulos por un key de articulo_bodega para considerar tambien items repetidos
+        $totalDemanda = $selectedStock->groupBy(fn($item) => "{$item['articulo']}_{$item['bodega']}")
+            ->map(function ($group) {
+                return [
+                    'articulo' => $group->first()['articulo'],
+                    'bodega' => $group->first()['bodega'],
+                    'total_a_reservar' => $group->sum('seleccionado'),
+                    'ART_DECIMAL_CANTIDAD' => $group->first()['ART_DECIMAL_CANTIDAD'],
+                ];
+            });
+
+        $stockRequests = $totalDemanda->map(fn($item) => [
+            'articulo' => $item['articulo'],
+            'bodega' => $item['bodega'],
+        ])->values()->all();
+
 
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $currentStocksLookup = $this->stockWarehouseService->transformStockReservationResponse($stockResults);
-        $messages = [];
+
+
         $articulosOverStock = [];
 
-        $updatedStock = $selectedStock->map(function ($item, $stockId) use ($currentStocksLookup, &$messages, &$articulosOverStock) {
-            $articulo = data_get($item, 'articulo');
-            $bodega = data_get($item, 'bodega');
-            $reservado = data_get($item, 'seleccionado');
-            $articleForReservedCheck = [
+        //validar articulo_bodega acumulado contra el stock disponible 
+        foreach ($totalDemanda as $key => $demanda) {
+            $articulo = data_get($demanda, 'articulo');
+            $bodega = data_get($demanda, 'bodega');
+            $totalRequerido = data_get($demanda, 'total_a_reservar', 0);
+            $decimals = data_get($demanda, 'ART_DECIMAL_CANTIDAD', 0);
+
+            $currentStockData = data_get($currentStocksLookup, $key);
+            $this->stockWarehouseService->applyReservedQtyToAvailableStock($currentStockData, [
                 'ART_CODIGO' => $articulo,
-                'ART_DECIMAL_CANTIDAD' => data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
-            ];
+                'ART_DECIMAL_CANTIDAD' => $decimals,
+            ], null, null);
 
-            //generamos una key
-            $lockUpKey = "{$articulo}_{$bodega}";
-            $currentStockData = data_get($currentStocksLookup, $lockUpKey);
-            $this->stockWarehouseService->applyReservedQtyToAvailableStock($currentStockData, $articleForReservedCheck, null, null);
-
-            $currentStock = data_get($currentStockData, 'STO_ART_STOCK_DISPONIBLE', 0);
-            $stockRestante = $currentStock - $reservado;
-
-            if ($stockRestante < 0) { //ser coloca menor a 0 porque si tiene disponible 1 y seleccionado 1 me da 0
-                $articulosOverStock["{$articulo} ({$bodega})"] = $articulo;
-                $messages[] = [
-                    'ART_CODIGO' => $articulo,
-                    'ART_DESCRIPCION' => '',
-                    'BODEGA' => $bodega,
-                    'STOCK_DISPONIBLE' => $stockRestante,
-                    'STOCK_RESERVADO' => $reservado,
-                    'MENSAJE' => "El stock disponible para el articulo $articulo en la bodega $bodega es de $currentStock, pero se quiere reservar $reservado",
-                ];
-                $item['STOCK_DISPONIBLE_AJUSTADO'] = 0.00;
-            } else {
-                $item['STOCK_DISPONIBLE_AJUSTADO'] = $stockRestante;
+            $stockDisponibleReal = data_get($currentStockData, 'STO_ART_STOCK_DISPONIBLE', 0);
+            if ($totalRequerido > $stockDisponibleReal) {
+                $articulosOverStock["{$articulo} ({$bodega})"] = "Disponible: $stockDisponibleReal, Requerido Total: $totalRequerido";
             }
-            $this->updateDisponibleStockReserved($stockId, $currentStock);
-            return $item;
-        });
-
-        $finalMessage = null;
-        if (!empty($articulosOverStock)) {
-            $listaArticulos = implode(', ', array_keys($articulosOverStock));
-            $totalArticulos = count($articulosOverStock);
-            $finalMessage = "⚠️ Se encontraron **{$totalArticulos} artículos** que superan el stock disponible. Revise el detalle de los siguientes ítems: **{$listaArticulos}** antes de solicitar una reserva.";
         }
-        return $finalMessage;
+
+
+        //actualizacion de stock disponible visual para el usuario en todas las filas
+        foreach ($selectedStock as $stockId => $item) {
+            $key = "{$item['articulo']}_{$item['bodega']}";
+            $realStock = data_get($currentStocksLookup, "{$key}.STO_ART_STOCK_DISPONIBLE", 0);
+            $this->updateDisponibleStockReserved($stockId, $realStock);
+        }
+
+        //  mensaje final para el usuario
+        if (!empty($articulosOverStock)) {
+            $detalles = [];
+            foreach ($articulosOverStock as $identificador => $msg) {
+                $detalles[] = "**$identificador**: ($msg)";
+            }
+            $lista = implode(",", $detalles);
+            return "⚠️ Stock insuficiente para: $lista. Ajuste las cantidades antes de continuar.";
+        }
+        return null;
     }
 
 

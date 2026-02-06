@@ -497,15 +497,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->map(function ($item) {
                 $disp = (float) (data_get($item, 'STOCK_DISPONIBLE', 0));
                 return [
-                    'STO_ART_ARTICULO' => (string) (data_get($item, 'ARTICULO', '')),
-                    'DESCRIPCION_ARTICULO' => (string) (data_get($item, 'DESCRIPCION_ARTICULO', '')),
-                    'STO_ART_BODEGA' => (string) (data_get($item, 'BODEGA', '')),
-                    'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''),
+                    'STO_ART_ARTICULO'          => (string) (data_get($item, 'ARTICULO', '')),
+                    'DESCRIPCION_ARTICULO'      => (string) (data_get($item, 'DESCRIPCION_ARTICULO', '')),
+                    'STO_ART_BODEGA'            => (string) (data_get($item, 'BODEGA', '')),
+                    'STO_ART_STOCK_DISPONIBLE'  => $disp,
                 ];
-            })->keyBy(function ($item) {
-
-                return $item['STO_ART_ARTICULO'] . '_' . $item['STO_ART_BODEGA'];
-            });
+            })->keyBy(fn($item) => "{$item['STO_ART_ARTICULO']}_{$item['STO_ART_BODEGA']}");
     }
 
 
