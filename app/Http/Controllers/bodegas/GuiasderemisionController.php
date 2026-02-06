@@ -453,10 +453,9 @@ class GuiasderemisionController extends Controller
                 }
                 $peso += (float) number_format($articulo->ART_PESO * $det->GUI_REM_CANTIDAD, 2, '.', '');
             }
-            $detTemp = GpPedidoDetalle::where('id', $det->detalle_id)
-                ->select('CHECK_ALTERNATIVO')
-                ->first();
-            $det['CHECK_ALTERNATIVO'] = $detTemp->CHECK_ALTERNATIVO;
+            $detTemp = GpPedidoDetalle::where('id', $det->detalle_id)->value('CHECK_ALTERNATIVO');
+
+            $det['CHECK_ALTERNATIVO'] = $detTemp ?? 0;
         }
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $guia->GUI_REM_ESTABLECIMIENTO)->first()->toarray();
@@ -578,7 +577,6 @@ class GuiasderemisionController extends Controller
                 $e->getMessage(),
                 $e->getStatusCode()
             );
-
         } catch (\Throwable $e) {
             Log::error('Error en despachar guia de remision (despacharguia)', [
                 'error' => $e->getMessage(),
@@ -721,23 +719,23 @@ class GuiasderemisionController extends Controller
         $documentos = array();
 
         foreach ($data['detalle'] as $item) {
-            if($item['recibido'] > 0){
+            if ($item['recibido'] > 0) {
                 $traslado = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
-                ->where('gp_traslados_ventas.id', $item['detalle_id'])
-                ->select('gp_traslados_ventas.*', 'gp_pedidos.pedido')
-                ->first();
+                    ->where('gp_traslados_ventas.id', $item['detalle_id'])
+                    ->select('gp_traslados_ventas.*', 'gp_pedidos.pedido')
+                    ->first();
                 $item['traslado'] = $traslado;
 
                 $transferencia = GpGuiaRemisionTransferencia::where('pedido', $traslado->pedido)
-                ->where('guia_remision_id', $data['id'])
-                ->first();
+                    ->where('guia_remision_id', $data['id'])
+                    ->first();
 
                 $documentos[$traslado->pedido]['pedido'] = $traslado->pedido;
                 $documentos[$traslado->pedido]['transferencia'] = '';
                 if (isset($transferencia->codigo))
                     $documentos[$traslado->pedido]['transferencia'] = $transferencia->codigo;
                 $documentos[$traslado->pedido]['items'][] = $item;
-                }
+            }
         }
 
         $documentos = array_values($documentos);
@@ -869,7 +867,6 @@ class GuiasderemisionController extends Controller
                         $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
                         $this->invoiceService->checkSendInvoice($pedido, true);
                         $creatorUser->notify(new UserNotification('Articulo/s recibidos', 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA));
-
                     }
                 }
             }
@@ -1215,7 +1212,6 @@ class GuiasderemisionController extends Controller
             return $this->buildPdfResponse($data);
         } catch (ValidationException $ve) {
             return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
-
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion generarPdfGuiaRemisionReserva -GuiasderemisionController: ', [
                 'message' => $e->getMessage(),
