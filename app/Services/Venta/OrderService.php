@@ -400,19 +400,19 @@ class OrderService implements OrderServiceInterface
 
     public function detailOrderById($data)
     {
-        $detalle            = $this->orderRepository->getAllDetailsOrderById($data['id']);
-        $clientQuota        = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
-        $segmento           = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        $enrichedDetails    = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
-        $ordenes            = $this->getPurchaseOrdersWithReceipts($data['pedido']);
-        $trasladosVentas    = $this->getTransferWithGuides($data['id']);
-        $hasGuideDispatched = $this->hasGuideDispatched($data['id']);
-        $orderDespacho      = $this->orderRepository->getDispatchOrder($data['id']);
-        $guiaRemision       = $this->orderRepository->getShipmentGuides($data['pedido']);
-        $devoluciones       = $this->orderRepository->getReturnsByOrder($data['id']);
-        $status             = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
-        $nivelPrecio        = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
-
+        $detalle                = $this->orderRepository->getAllDetailsOrderById($data['id']);
+        $clientQuota            = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        $segmento               = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        $enrichedDetails        = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
+        $ordenes                = $this->getPurchaseOrdersWithReceipts($data['pedido']);
+        $trasladosVentas        = $this->getTransferWithGuides($data['id']);
+        $hasGuideDispatched     = $this->hasGuideDispatched($data['id']);
+        $orderDespacho          = $this->orderRepository->getDispatchOrder($data['id']);
+        $guiaRemision           = $this->orderRepository->getShipmentGuides($data['pedido']);
+        $devoluciones           = $this->orderRepository->getReturnsByOrder($data['id']);
+        $status                 = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        $nivelPrecio            = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data['id'], 'pedido');
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -427,7 +427,8 @@ class OrderService implements OrderServiceInterface
             'existentes'            => $status['existentes'],
             'segmento'              => $segmento,
             'has_guide_dispatched'  => $hasGuideDispatched,
-            'nivelPrecio'           => $nivelPrecio
+            'nivelPrecio'           => $nivelPrecio,
+            'imagenesOperaciones'  => $imagenesOperaciones
         ];
     }
 
