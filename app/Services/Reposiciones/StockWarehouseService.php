@@ -473,7 +473,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             return [
                 'STO_ART_ARTICULO' => (string) ($item['ARTICULO'] ?? ''),
                 'STO_ART_BODEGA' => (string) ($item['BODEGA'] ?? ''),
-                'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''), // "0.00"
+                'STO_ART_STOCK_DISPONIBLE' => $disp,
             ];
         }, $payload));
     }

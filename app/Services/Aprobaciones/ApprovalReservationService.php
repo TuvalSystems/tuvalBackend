@@ -26,7 +26,6 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
         $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
         return $this->getAlertWithoutStockArticles($detalleQuote, $newFormatStock, null, null);
-
     }
 
     public function getDetailReserveWithStock($quoteId)
@@ -48,13 +47,13 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
             ->map(function ($stock) use ($detalles) {
                 $detalle = $detalles->firstWhere('id', $stock->detalle_id);
                 return [
-                    'stock_id' => $stock->id,
-                    'cotizacion_id' => $stock->cotizacion_id,
-                    'detalle_id' => $stock->detalle_id,
-                    'STO_ART_ARTICULO' => $detalle->ART_CODIGO,
-                    'STO_ART_BODEGA' => $stock->STO_ART_BODEGA,
-                    'STO_ART_STOCK_DISPONIBLE' => $stock->STO_ART_STOCK_DISPONIBLE,
-                    'seleccionado' => $stock->seleccionado
+                    'stock_id'                  => $stock->id,
+                    'cotizacion_id'             => $stock->cotizacion_id,
+                    'detalle_id'                => $stock->detalle_id,
+                    'STO_ART_ARTICULO'          => $detalle->ART_CODIGO,
+                    'STO_ART_BODEGA'            => $stock->STO_ART_BODEGA,
+                    'STO_ART_STOCK_DISPONIBLE'  => $stock->STO_ART_STOCK_DISPONIBLE,
+                    'seleccionado'              => $stock->seleccionado
                 ];
             })->toArray();
     }
@@ -114,15 +113,24 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
         if ($allFormattedStock->isEmpty()) {
             return null;
         }
-        $alert = null;
-        foreach ($allFormattedStock as $stock) {
-            if ($stock['STO_ART_STOCK_DISPONIBLE'] < $stock['seleccionado']) {
-                $alert .= "El artículo {$stock['STO_ART_ARTICULO']} tiene stock insuficiente. " .
-                    "Stock disponible: {$stock['STO_ART_STOCK_DISPONIBLE']} - " .
-                    "Cantidad solicitada: {$stock['seleccionado']}<br>";
+
+        $alert = "";
+        $groupStock = $allFormattedStock->unique('stock_id')->groupBy(fn($item) => $item['STO_ART_ARTICULO'] . '|' . $item['STO_ART_BODEGA']);
+        foreach ($groupStock as $group) {
+            $firstItemStock     = $group->first();
+            $art                = data_get($firstItemStock, 'STO_ART_ARTICULO', '');
+            $bodega             = data_get($firstItemStock, 'STO_ART_BODEGA', '');
+            $disponibleReal     = (float) data_get($firstItemStock, 'STO_ART_STOCK_DISPONIBLE', 0);
+
+
+            $totalRequerido = $group->sum('seleccionado');
+
+            if ($disponibleReal < $totalRequerido) {
+                $alert .= "El artículo <b>{$art}</b> en bodega <b>{$bodega}</b> tiene stock insuficiente.<br>" .
+                    "Disponible Neto: <b>{$disponibleReal}</b> <br>" .
+                    "Requerido Total (Suma filas): <b>{$totalRequerido}</b><br><hr>";
             }
         }
-        return $alert;
+        return empty($alert) ? null : $alert;
     }
-
 }
