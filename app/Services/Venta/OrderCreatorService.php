@@ -29,7 +29,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     ) {
         // Inyecta dependencias si es necesario
     }
-    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = []): GpPedido
+    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = []): array
     {
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
             $quoteBlock = GpCotizacion::where('id', data_get($data, 'cotizacion_id'))->lockForUpdate()->first();

@@ -64,7 +64,7 @@ class PedidosController extends Controller
                     $msg = "Pedido #{$order->pedido} generado con éxito, pero no se pudo procesar la factura. Detalle: {$invoiceError}";
                     return $this->buildSuccessResponse($msg, 201);
                 }
-                return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
+                return $this->buildSuccessResponse("Pedido {$order->pedido} guardado", 200);
             } catch (QueryException $e) {
                 $mysqlCode = $e->errorInfo[1] ?? null;
                 // ¿es un error de concurrencia y aún puedo reintentar?
