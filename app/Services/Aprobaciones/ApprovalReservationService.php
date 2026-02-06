@@ -127,8 +127,8 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
 
             if ($disponibleReal < $totalRequerido) {
                 $alert .= "El artículo <b>{$art}</b> en bodega <b>{$bodega}</b> tiene stock insuficiente.<br>" .
-                    "Disponible Neto: <b>{$disponibleReal}</b> <br>" .
-                    "Requerido Total (Suma filas): <b>{$totalRequerido}</b><br><hr>";
+                    "Stock Disponible: <b>{$disponibleReal}</b> <br>" .
+                    "Cantidad Requerida (Suma filas): <b>{$totalRequerido}</b><br><hr>";
             }
         }
         return empty($alert) ? null : $alert;

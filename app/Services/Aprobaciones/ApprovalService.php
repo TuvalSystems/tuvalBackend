@@ -46,9 +46,7 @@ class ApprovalService implements ApprovalServiceInterface
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly ApiGpService $apiGpService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService
-    ) {
-
-    }
+    ) {}
 
 
     /*
@@ -100,7 +98,6 @@ class ApprovalService implements ApprovalServiceInterface
             $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
                 "Cotización desde Volver a Pedir ($desde original: $codigoVisual, fecha: $fechaTxt)"
             );
-
         }
 
 
@@ -351,7 +348,6 @@ class ApprovalService implements ApprovalServiceInterface
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente && $detalle['descuento'] != $descuentoOriginalReal) {
                 // $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - ID: " . ($detailId ?? 'Nuevo'));
                 $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
-
             }
 
             // B. Validación de Valor (Precio)
@@ -895,15 +891,21 @@ class ApprovalService implements ApprovalServiceInterface
         if ($allFormattedStock->isEmpty()) {
             return null;
         }
-        $alert = null;
-        foreach ($allFormattedStock as $stock) {
-            if ($stock['STO_ART_STOCK_DISPONIBLE'] < $stock['seleccionado']) {
-                $alert .= "El artículo {$stock['STO_ART_ARTICULO']} tiene stock insuficiente. " .
-                    "Stock disponible: {$stock['STO_ART_STOCK_DISPONIBLE']} - " .
-                    "Cantidad pedido: {$stock['seleccionado']}<br>";
+        $alert = "";
+        $groupStock = $allFormattedStock->unique('stock_id')->groupBy(fn($item) => $item['STO_ART_ARTICULO'] . '|' . $item['STO_ART_BODEGA']);
+        foreach ($groupStock as $group) {
+            $firstItemStock     = $group->first();
+            $art                = data_get($firstItemStock, 'STO_ART_ARTICULO', '');
+            $bodega             = data_get($firstItemStock, 'STO_ART_BODEGA', '');
+            $disponibleReal     = (float) data_get($firstItemStock, 'STO_ART_STOCK_DISPONIBLE', 0);
+            $totalRequerido     = $group->sum('seleccionado');
+            if ($disponibleReal < $totalRequerido) {
+                $alert .= "El artículo <b>{$art}</b> en bodega <b>{$bodega}</b> tiene stock insuficiente.<br>" .
+                    "Stock Disponible: <b>{$disponibleReal}</b> <br>" .
+                    "Cantidad Requerida (Suma filas): <b>{$totalRequerido}</b><br><hr>";
             }
         }
-        return $alert;
+        return empty($alert) ? null : $alert;
     }
 
 
@@ -1115,13 +1117,13 @@ class ApprovalService implements ApprovalServiceInterface
             ->map(function ($stock) use ($detalles) {
                 $detalle = $detalles->firstWhere('id', $stock->detalle_id);
                 return [
-                    'stock_id' => $stock->id,
-                    'pedido_id' => $stock->pedido_id,
-                    'detalle_id' => $stock->detalle_id,
-                    'STO_ART_ARTICULO' => $detalle->ART_CODIGO,
-                    'STO_ART_BODEGA' => $stock->STO_ART_BODEGA,
-                    'STO_ART_STOCK_DISPONIBLE' => $stock->STO_ART_STOCK_DISPONIBLE,
-                    'seleccionado' => $stock->seleccionado
+                    'stock_id'                  => $stock->id,
+                    'pedido_id'                 => $stock->pedido_id,
+                    'detalle_id'                => $stock->detalle_id,
+                    'STO_ART_ARTICULO'          => $detalle->ART_CODIGO,
+                    'STO_ART_BODEGA'            => $stock->STO_ART_BODEGA,
+                    'STO_ART_STOCK_DISPONIBLE'  => $stock->STO_ART_STOCK_DISPONIBLE,
+                    'seleccionado'              => $stock->seleccionado
                 ];
             })->toArray();
     }
@@ -1425,7 +1427,7 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         $hasFullAccessRule = $rules->contains(function (GpReglaAprobacion $rule) {
-            return data_get($rule, 'zona') === "ALL" && data_get($rule, 'tipo_vendedor') === "ALL";//&& $rule->descuento_min == 0.000 && $rule->descuento_max == 0.000;
+            return data_get($rule, 'zona') === "ALL" && data_get($rule, 'tipo_vendedor') === "ALL"; //&& $rule->descuento_min == 0.000 && $rule->descuento_max == 0.000;
         });
 
         // Si existe esa regla, el usuario ve todos los pedidos pendientes
@@ -1482,7 +1484,6 @@ class ApprovalService implements ApprovalServiceInterface
                     return $matchesPrice && $matchesDiscount;
                 });
             });
-
         })->values();
     }
 
@@ -1566,7 +1567,6 @@ class ApprovalService implements ApprovalServiceInterface
                     return $matchesPrice && $matchesDiscount;
                 });
             });
-
         })->values();
     }
 
@@ -1610,6 +1610,4 @@ class ApprovalService implements ApprovalServiceInterface
         $rgCopy->destino_aprobado = true;
         $rgCopy->save();
     }
-
-
 }
