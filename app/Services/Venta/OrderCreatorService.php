@@ -46,11 +46,21 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
             }
 
-            DB::afterCommit(function () use ($pedido) {
-                $this->invoiceService->checkSendInvoice($pedido);
+            $invoiceError = null;
+            DB::afterCommit(function () use ($invoiceError, $pedido) {
+                try {
+
+                    $this->invoiceService->checkSendInvoice($pedido);
+                } catch (\Exception $e) {
+                    Log::error("Error facturando pedido {$pedido->id}: " . $e->getMessage());
+                    $invoiceError = $e->getMessage();
+                }
             });
 
-            return $pedido;
+            return [
+                'pedido' => $pedido,
+                'invoice_error' => $invoiceError
+            ];
         });
     }
 

@@ -57,7 +57,13 @@ class PedidosController extends Controller
         $attempt            = 0;
         while (true) {
             try {
-                $pedido =  $this->orderCreator->createOrder($request->validated(), Auth::user(), $imagenesExistentes, $imagenesNuevas);
+                $pedido         =  $this->orderCreator->createOrder($request->validated(), Auth::user(), $imagenesExistentes, $imagenesNuevas);
+                $order          = data_get($pedido, 'pedido');
+                $invoiceError   = data_get($pedido, 'invoice_error');
+                if($invoiceError){
+                    $msg = "Pedido #{$order->pedido} generado con éxito, pero no se pudo procesar la factura. Detalle: {$invoiceError}";
+                    return $this->buildSuccessResponse($msg, 201);
+                }
                 return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
             } catch (QueryException $e) {
                 $mysqlCode = $e->errorInfo[1] ?? null;
