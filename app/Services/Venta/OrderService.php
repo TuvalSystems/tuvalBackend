@@ -1117,12 +1117,6 @@ class OrderService implements OrderServiceInterface
 
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
-
-        // $hasInvoicedChildren = $this->getOrderExistenceByQuotation($data['id']);
-        // if ($hasInvoicedChildren) {
-        //     abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
-        // }
-
         //Bloqueo de permisos
         $parentOder = GpPedido::where('id', $data['id'])->lockForUpdate()->firstOrFail();
         $detailsCheck = GpPedidoDetalle::where('pedido_id', $parentOder->id)->lockForUpdate()->get()->keyBy('id');
@@ -1175,19 +1169,18 @@ class OrderService implements OrderServiceInterface
 
             // si no tiene stock lo almacena en array sigue
             if (!$stock) {
-                // $skippedDetails[] = $articulo->id;
                 continue;
             }
 
             // // Si seleccionado == cantidad -> omitir (no eliminar la línea original)
-            if ((int) $stock->seleccionado === (int) $articulo->ART_CANTIDAD) {
+            if ((float) $stock->seleccionado === (float) $articulo->ART_CANTIDAD) {
                 $this->clearStockArticleOrderExistence($data['id'], $articulo->id);
                 $articulo->delete();
                 continue;
             }
 
             // si el seleccionado es mayor a 0 y si es menor que ART_CANTIDAD RESTA para actualizar el nuevo detalle
-            if ($stock->seleccionado > 0 && $stock->seleccionado < $articulo->ART_CANTIDAD) {
+            if ((float)$stock->seleccionado > 0 && (float)$stock->seleccionado < (float)$articulo->ART_CANTIDAD) {
                 $articulo->ART_CANTIDAD = $articulo->ART_CANTIDAD - $stock->seleccionado;
                 $stock->seleccionado = 0;
                 $stock->reservado = 0;
@@ -1209,17 +1202,17 @@ class OrderService implements OrderServiceInterface
             }
 
             foreach ($provList as $prov) {
-                $pendiente = max(0, (int) $prov->ingresado - (int) $prov->ejecutado);
+                $pendiente = max(0, (float) $prov->ingresado - (float) $prov->ejecutado);
                 if ($pendiente <= 0) {
                     continue;
                 }
 
-                $toDeduct = min((int) $artL->ART_CANTIDAD, $pendiente);
+                $toDeduct = min((float) $artL->ART_CANTIDAD, $pendiente);
                 if ($toDeduct <= 0) {
                     break;
                 }
 
-                $artL->ART_CANTIDAD = (int) $artL->ART_CANTIDAD - $toDeduct;
+                $artL->ART_CANTIDAD = (float) $artL->ART_CANTIDAD - $toDeduct;
             }
 
             if ($provList->isNotEmpty()) {
@@ -1305,12 +1298,12 @@ class OrderService implements OrderServiceInterface
                 continue;
             }
 
-            $delta = (int) ($oldDetailOrder['ART_CANTIDAD'] ?? 0);
+            $delta = (float) ($oldDetailOrder['ART_CANTIDAD'] ?? 0);
             if ($delta <= 0) {
                 break;
             }
-            $prev = (int) ($oldProv->ejecutado ?? 0);
-            $cap = (int) ($oldProv->CANTIDAD ?? 0);
+            $prev = (float) ($oldProv->ejecutado ?? 0);
+            $cap = (float) ($oldProv->CANTIDAD ?? 0);
 
             if ($cap <= 0 || $prev >= $cap) {
                 break; // ya completo o sin cantidad base
@@ -1323,7 +1316,7 @@ class OrderService implements OrderServiceInterface
             if (!$ordCGD) {
                 continue;
             }
-            if ($oldProv->ejecutado >= $cap) {
+            if (($oldProv->ejecutado + 0.00001) >= $cap) {
                 $ordCGD->estado = 'recibido';
                 $ordCGD->save();
             }

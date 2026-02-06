@@ -60,7 +60,7 @@ class PedidosController extends Controller
                 $pedido         =  $this->orderCreator->createOrder($request->validated(), Auth::user(), $imagenesExistentes, $imagenesNuevas);
                 $order          = data_get($pedido, 'pedido');
                 $invoiceError   = data_get($pedido, 'invoice_error');
-                if($invoiceError){
+                if ($invoiceError) {
                     $msg = "Pedido #{$order->pedido} generado con éxito, pero no se pudo procesar la factura. Detalle: {$invoiceError}";
                     return $this->buildSuccessResponse($msg, 201);
                 }
@@ -320,17 +320,18 @@ class PedidosController extends Controller
     public function facturarexistente(Request $request)
     {
         try {
-            $facturarExistente = $request->all();
-            $data = $facturarExistente['pedido'];
-            $detalle = $facturarExistente['detalle'];
+            $validated = $request->validate([
+                'pedido'  => 'required|array',
+                'detalle' => 'required|array',
+            ]);
+            $pedidoId = data_get($validated, 'pedido.id');
             $user = Auth::user();
             //new sintaxis
             $pedido = DB::transaction(
                 fn() =>
-                $this->orderService->generateInvoiceFromExistingOrder($data, $detalle, $user)
+                $this->orderService->generateInvoiceFromExistingOrder($validated['pedido'], $validated['detalle'], $user)
             );
 
-            //old sintaxis
             return $this->buildSuccessResponse('Pedido Generado Correctamente' . ' ' . $pedido->pedido . ' ' . ' en Facturar Existente', 200);
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
@@ -340,7 +341,7 @@ class PedidosController extends Controller
         } catch (\Throwable $e) {
             Log::error('Error in facturarexistente', [
                 'error' => $e->getMessage(),
-                'data' => $data['id'],
+                'data' => $pedidoId,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTrace()

@@ -250,9 +250,10 @@ Route::prefix('dashboard')->group(function () {
 });
 
 
-Route::prefix('actualizaciones-masivas')->group(function (){
+Route::prefix('actualizaciones-masivas')->group(function () {
     Route::get('actualizar-pedidos-detalles', [ImportarPedidosController::class, 'actualizarPedidosYDetallesSqlServer']);
 });
 
 
- Route::get('guia-remision-web/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
+Route::get('guia-remision-web/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
+Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'facturarexistente']);
