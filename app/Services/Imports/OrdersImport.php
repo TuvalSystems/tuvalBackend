@@ -21,6 +21,8 @@ class OrdersImport implements OrdersImportInterface
         if (empty($ordersSql)) {
             return 0;
         }
+        Log::info("SQL ejecutado: " . count($ordersSql));
+        Log::info("Registros a procesar: " . count($ordersSql));
         $keyOrders = $this->extractOrderIds($ordersSql);
         $chunks = array_chunk($keyOrders, 500);
 

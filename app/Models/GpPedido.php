@@ -175,6 +175,8 @@ class GpPedido extends Model
     protected $casts = [
         'estado' => OrderStatus::class
     ];
+
+    protected $table = 'gp_pedidos';
     protected $fillable = [
         'pedido',
         'factura',

@@ -2,12 +2,14 @@
 
 namespace App\Jobs\Venta\Pedidos;
 
+use App\Models\GpPedido;
 use App\Services\Imports\Contracts\OrdersImportInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SyncGpOrdersJob implements ShouldQueue
 {
@@ -22,6 +24,7 @@ class SyncGpOrdersJob implements ShouldQueue
 
     public function handle(OrdersImportInterface $import)
     {
+
         $import->updateDataSqlServerOrdersAndDetail($this->fechaIni, $this->fechaFin);
     }
 }
