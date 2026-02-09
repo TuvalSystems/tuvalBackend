@@ -14,6 +14,7 @@ use App\Models\GpPedidoImagen;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 
 
@@ -258,5 +259,14 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             }
         }
         return $images;
+    }
+
+
+    /**funcioon para obtener la clasificacion tuval de los items para cotizaciones y pedidos */
+    public function getApiSegmentsAbcItem($articles): Collection
+    {
+        $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
+        $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
+        return  collect($response)->groupBy('item');
     }
 }

@@ -441,7 +441,7 @@ class OrderService implements OrderServiceInterface
         $codesList = $details->reject(function ($item) {
             return $item->ART_TIPO_COMPRA ===  'L';
         })->pluck('ART_CODIGO');
-        $groupsByAbc = $this->getApiSegmentsAbcItem($codesList);
+        $groupsByAbc = $this->orderAndQuotationService->getApiSegmentsAbcItem($codesList);
         $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
             ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
         $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc) {
@@ -471,12 +471,12 @@ class OrderService implements OrderServiceInterface
             'hasExisting' => $hasExisting
         ];
     }
-    public function getApiSegmentsAbcItem($articles)
-    {
-        $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
-        $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
-        return  collect($response)->groupBy('item');
-    }
+    // public function getApiSegmentsAbcItem($articles)
+    // {
+    //     $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
+    //     $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
+    //     return  collect($response)->groupBy('item');
+    // }
 
     public function getPurchaseOrdersWithReceipts($orderNumber)
     {

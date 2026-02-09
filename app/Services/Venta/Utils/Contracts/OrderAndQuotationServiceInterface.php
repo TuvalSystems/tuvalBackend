@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta\Utils\Contracts;
 
+use Illuminate\Support\Collection;
+
 interface OrderAndQuotationServiceInterface
 {
     public function getDetailQuotationOrOrder($data, $cliente, $type, $encera = false, $copy = false);
@@ -22,5 +24,8 @@ interface OrderAndQuotationServiceInterface
 
     public function getAllImagensOperations($quotationId, $type = 'cotizacion');
     public function getImageArticle($codArt): array;
+
+
+     public function getApiSegmentsAbcItem($articles): Collection;
 
 }

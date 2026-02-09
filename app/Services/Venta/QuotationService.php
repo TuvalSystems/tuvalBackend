@@ -484,19 +484,31 @@ class QuotationService implements QuotationServiceInterface
             'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
         ];
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
+        $codesList = $detalle->reject(function ($item) {
+            return $item->ART_TIPO_COMPRA ===  'L';
+        })->pluck('ART_CODIGO');
+        $groupsByAbc =  $this->orderAndQuotationService->getApiSegmentsAbcItem($codesList);
+
 
         $descuentoGeneral = $data['porcentage_descuento'] ?? 0;
-
+        $nivelPrecio            = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
         foreach ($detalle as $det) {
             $this->castDecimalValuesTemp($det);
             $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
             $this->calculatePorcentilDiscountAndPrice($det);
         }
+        $detalle->transform(function ($item) use ($groupsByAbc) {
+            $myAbc = $groupsByAbc->get($item->ART_CODIGO, collect());
+            $classAbc = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
+            $item->clasificacion_tuval = $classAbc;
+            return $item;
+        });
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
         return [
             'estadodecuenta' => $estadoCuenta,
             'detalle' => $detalle,
-            'segmento' => $segmento
+            'segmento' => $segmento,
+            'nivelPrecio' => $nivelPrecio
         ];
     }
 
