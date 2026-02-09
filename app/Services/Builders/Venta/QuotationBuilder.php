@@ -284,7 +284,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'PTO_VTA_ID'                        => data_get($data, 'punto_venta_id'),
             'PTO_VTA_DESCRIPCION'               => $puntoVenta->PTO_VTA_DESCRIPCION ?? '',
             'USERID'                            => $user->USERID,
-            'DESC_FORMA_PAGO_CODIGO'            => data_get($data, 'forma_pago_id'),
+            'DESC_FORMA_PAGO_CODIGO'            => data_get($data, 'forma_pago_id', null),
             'CLI_RUC'                           => data_get($data, 'ruc'),
             'CLI_RAZON_SOCIAL'                  => data_get($data, 'razon_social'),
             'CLI_CORREO_ELECT_SRI'              => data_get($data, 'correo_electronico_sri'),
