@@ -183,6 +183,8 @@ class GpCotizacion extends Model
         'pedido_generado_at',
         'fe_rechazo',
         'user_rechazo_id',
+        'nota_operaciones',
+        'modificador_global',
     ];
 
     /**
@@ -242,6 +244,13 @@ class GpCotizacion extends Model
     {
 
         return $this->belongsTo(GpVendedor::class, 'VEND_ID', 'VEND_ID');
+    }
+
+
+
+    public function imagenes()
+    {
+        return $this->hasMany(GpCotizacionImagen::class, 'cotizacion_id');
     }
 
 

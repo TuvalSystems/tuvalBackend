@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\bodegas;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Events\Bodegas\Dashboard\DispatchPendings;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\WebserviceController;
 use App\Models\cobranzas\GpCobro;
@@ -22,12 +23,14 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpCobrosAplicacionFactura;
 use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
+use App\Models\GpCotizacionImagen;
 use App\Models\GpCronLog;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpPedidoImagen;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
@@ -464,6 +467,7 @@ class DespachosController extends Controller
             $orden->direccion = $envio['CLI_SUC_DIRECCION'];
             $orden->ciudad = $envio['CLI_SUC_CIUDAD'];
             $orden->fecha_entrega = $pedido->fecha_entrega;
+            $orden->pedido_imagenes = $this->getAllImagensOperations($pedido->id, 'pedido');
 
             $peso_total = 0;
             $orden->peso = $peso_total;
@@ -504,6 +508,20 @@ class DespachosController extends Controller
             'ordenes' => $ordenes,
             'ultimaguia' => $ultimaguia,
         ]);
+    }
+
+    public function getAllImagensOperations($quotationId, $type = 'cotizacion')
+    {
+        $model = ($type == 'pedido')
+            ? GpPedidoImagen::where('pedido_id', $quotationId)
+            : GpCotizacionImagen::where('cotizacion_id', $quotationId);
+        return  $model->get()->map(function ($img) {
+            return [
+                'id' => $img->id,
+                'url' => asset('storage/' . $img->ruta),
+                'nombre' => $img->nombre_original
+            ];
+        });
     }
 
     public function getultimaguia($puntodeventa_id): Response|Application|ResponseFactory
@@ -694,7 +712,7 @@ class DespachosController extends Controller
         $orden->autorizacion_USERID = $user->USERID;
         $orden->autorizacion_comentario = trim($data['motivo']);
         $orden->save();
-
+        event(new DispatchPendings('refresh'));
         return response([
             'success' => true,
             'message' => 'Órden de despacho ' . $orden->orden . ' liberada',
@@ -1202,7 +1220,7 @@ class DespachosController extends Controller
         $fecha_hasta = $request->input('fecha_hasta', null);
         $ptoVtaDestino = $request->input('ptoVtaDestino', null);
 
-            try {
+        try {
             $data = $this->dispatchService->fecthListReceivedReservations($perPage, $search, $sortBy, $sortOrder, $ptoVtaOrigin, $fecha_desde, $fecha_hasta, $ptoVtaDestino);
             return $this->successResponse('Guias obtenidas correctamente', $data, 200);
         } catch (\Throwable $e) {
@@ -1211,7 +1229,8 @@ class DespachosController extends Controller
     }
 
 
-    public function cancelarOrdenDespacho($id){
+    public function cancelarOrdenDespacho($id)
+    {
 
         return $this->dispatchService->cancelDispatchIfEmptyPicking($id);
     }

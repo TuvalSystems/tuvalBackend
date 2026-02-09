@@ -116,7 +116,7 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_SEGMENTO, 'GET', $params);
     }
 
-    public function StoreClientGp(array $params = [])
+    public function storeClientGp(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_MODIFICAR, 'POST', $params, 'json');
     }
@@ -144,4 +144,52 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TIPO_VENDEDOR_DETALLE, 'GET', $params);
     }
+
+
+    public function storeNewAddressClient(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_NUEVA_DIRECCION, 'POST', $params, 'json');
+    }
+
+
+     public function fetchSegmentsAbcFromGp(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_LISTA_SEGMENTACION_ARTICULO_ABC, 'POST', $params, 'json');
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
+     * actualizacion masiva
+     */
+
+    public function fetchAllOrdersPendingSql(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_GET_ORDERS_HEADER, 'GET', $params);
+    }
+
+
+    public function fetchAllordersDetailPendingSql(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_GET_ORDERS_DETAIL, 'POST', $params, 'json');
+    }
+
+
+    public function updateAllOrdersPendingSql(array $params = []){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_ORDERS, 'POST', $params, 'json');
+    }
+
+    public function updateAllOrdersDetailPendingSql(array $params = []){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_ORDERS_DETAIL, 'POST', $params, 'json');
+    }
+
 }

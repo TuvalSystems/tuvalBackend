@@ -19,9 +19,7 @@ use Illuminate\Support\Arr;
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
 
-    public function __construct(protected readonly ApiGpService $apiGpService, protected readonly ApiGpReturnsIntegrationService $apiReturns)
-    {
-    }
+    public function __construct(protected readonly ApiGpService $apiGpService, protected readonly ApiGpReturnsIntegrationService $apiReturns) {}
 
     public function computeAvailableStockByWarehouseForArticle(array $stockResults, array $articulo): array
     {
@@ -90,33 +88,30 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         $bodegas = array_values(array_unique(array_map(static fn($i) => (string) $i['STO_ART_BODEGA'], $filtered)));
         // Traer reservas por bodega en 2 consultas totales (pedidos + traslados)
         $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, null, false, $quotationId);
-
+        $decimals = data_get($articulo, 'ART_DECIMAL_CANTIDAD', 0);
         $total = 0;
         $normalizados = [];
         foreach ($filtered as $item) {
-            $bodega = (string) $item['STO_ART_BODEGA'];
-            $stockBase = (float) $item['STO_ART_STOCK_DISPONIBLE'];
-            $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
-                ? (int) $stockBase
-                : round($stockBase, 2);
+            $bodega = (string) data_get($item, 'STO_ART_BODEGA', '');
+            $stockDisponible = (float) data_get($item, 'STO_ART_STOCK_DISPONIBLE', 0);
+
+
+            $stockBase =  round($stockDisponible, $decimals);
             $resta = (float) ($reservas[$bodega] ?? 0);
-            $disponible = max(0, $stockBase - $resta);
-            $disponible = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
-                ? (int) $disponible
-                : round($disponible, 2);
+            $disponible = round(max(0, $stockBase - $resta), $decimals);
 
             $normalizados[] = [
-                'DESCRIPCION_ARTICULO' => (string) $item['DESCRIPCION_ARTICULO'],
-                'STO_ART_ARTICULO' => (string) $item['STO_ART_ARTICULO'],
-                'STO_ART_BODEGA' => $bodega,
-                'STO_ART_STOCK_DISPONIBLE' => $disponible,
-                'seleccionado' => $item['seleccionado']
+                'DESCRIPCION_ARTICULO'      => (string) $item['DESCRIPCION_ARTICULO'],
+                'STO_ART_ARTICULO'          => (string) $item['STO_ART_ARTICULO'],
+                'STO_ART_BODEGA'            => $bodega,
+                'STO_ART_STOCK_DISPONIBLE'  => $disponible,
+                'seleccionado'              => $item['seleccionado']
             ];
 
             $total += $disponible;
         }
         $articulo['stock'] = $normalizados;
-        $articulo['ART_STOCK'] = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0 ? (int) $total : round((float) $total, 2);
+        $articulo['ART_STOCK'] = (float) round($total, $decimals);
         return $articulo;
     }
 
@@ -251,7 +246,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->all();
     }
 
-    
     public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null)
     {
         $reservado = 0;
@@ -273,17 +267,17 @@ class StockWarehouseService implements StockWarehouseServiceInterface
                 // Aprobación comercial
                 $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no')
                     ->orWhere(function ($q) {
-                    $q->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
-                        ->where('gp_pedidos.aprobado_comercial', 'yes');
-                });
+                        $q->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
+                            ->where('gp_pedidos.aprobado_comercial', 'yes');
+                    });
             })
             ->where(function ($query) {
                 // Aprobación crediticia
                 $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no')
                     ->orWhere(function ($q) {
-                    $q->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes')
-                        ->where('gp_pedidos.aprobado_crediticio', 'yes');
-                });
+                        $q->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes')
+                            ->where('gp_pedidos.aprobado_crediticio', 'yes');
+                    });
             });
 
         if ($pedidoId) {
@@ -479,7 +473,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             return [
                 'STO_ART_ARTICULO' => (string) ($item['ARTICULO'] ?? ''),
                 'STO_ART_BODEGA' => (string) ($item['BODEGA'] ?? ''),
-                'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''), // "0.00"
+                'STO_ART_STOCK_DISPONIBLE' => $disp,
             ];
         }, $payload));
     }
@@ -503,15 +497,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->map(function ($item) {
                 $disp = (float) (data_get($item, 'STOCK_DISPONIBLE', 0));
                 return [
-                    'STO_ART_ARTICULO' => (string) (data_get($item, 'ARTICULO', '')),
-                    'DESCRIPCION_ARTICULO' => (string) (data_get($item, 'DESCRIPCION_ARTICULO', '')),
-                    'STO_ART_BODEGA' => (string) (data_get($item, 'BODEGA', '')),
-                    'STO_ART_STOCK_DISPONIBLE' => number_format($disp, 2, '.', ''),
+                    'STO_ART_ARTICULO'          => (string) (data_get($item, 'ARTICULO', '')),
+                    'DESCRIPCION_ARTICULO'      => (string) (data_get($item, 'DESCRIPCION_ARTICULO', '')),
+                    'STO_ART_BODEGA'            => (string) (data_get($item, 'BODEGA', '')),
+                    'STO_ART_STOCK_DISPONIBLE'  => $disp,
                 ];
-            })->keyBy(function ($item) {
-
-                return $item['STO_ART_ARTICULO'] . '_' . $item['STO_ART_BODEGA'];
-            });
+            })->keyBy(fn($item) => "{$item['STO_ART_ARTICULO']}_{$item['STO_ART_BODEGA']}");
     }
 
 
@@ -659,11 +650,22 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     /** funcion de api para consulta de lista de precio de articulos  */
 
 
-    public function fetchListPricesArticle(string $article): array
+    public function fetchListPricesArticle(string $items): array
     {
         $response = $this->apiGpService->fetchItemPriceListFromGp(
             [
-                'articulo' => $article . ','
+                'item' => $items
+            ]
+        );
+        $data = data_get($response, 'data', []);
+        return (array) $data;
+    }
+
+    public function fetchListSegmentsAbc(array  $items): array
+    {
+        $response = $this->apiGpService->fetchSegmentsAbcFromGp(
+            [
+                'items' => $items
             ]
         );
         $data = data_get($response, 'data', []);

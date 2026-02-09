@@ -42,6 +42,18 @@ use Illuminate\Database\Eloquent\Model;
 class GpVendedor extends Model
 {
     use HasFactory;
+    protected $fillable = [
+        'VEND_ID',
+        'VEND_NOMBRES',
+        'VEND_APELLIDOS',
+        'VEND_ID_EMPLEADO',
+        'VEND_DIRECCION',
+        'VEND_CIUDAD',
+        'VEND_PROVINCIA',
+        'VEND_TERRITORIO',
+        'VEND_ESTADO',
+        'VEND_CORREO_ELECTRONICO',
+    ];
 
     protected $table = 'gp_vendedors';
 

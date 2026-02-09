@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\TaxRateEnum;
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\FuncionesController;
@@ -84,7 +85,7 @@ class CobranzasController extends Controller
         foreach ($facturas as $key => &$factura) {
             $factura['ECD_DET_SALDO'] = $factura['ECD_DET_SALDO_CLIENTE'];
             $total = number_format($factura['ECD_DET_MONTO_ORIGINAL'], 2, '.', '');
-            $subtotal = number_format($total / env('IVA_MAS'), 2, '.', '');
+            $subtotal =  round(TaxRateEnum::IVA_12->calculateSubtotal($total), 4);
             $iva = number_format($total - $subtotal, 2, '.', '');
             $factura['ECD_DET_SUBTOTAL'] = $subtotal;
             $factura['ECD_DET_IVA'] = $iva;
@@ -1392,7 +1393,7 @@ class CobranzasController extends Controller
         if (!$caja) {
             return response([
                 'error' => 'No existe caja asignada al usuario en este punto de venta'
-            ], 401);
+            ], 404);
         }
 
         return response([
@@ -1730,7 +1731,7 @@ class CobranzasController extends Controller
         if (!$caja) {
             return response([
                 'error' => 'No existe caja asignada al usuario en este punto de venta'
-            ], 401);
+            ], 404);
         }
 
         if (strlen($fechaActual) == 3)

@@ -3,6 +3,8 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Enums\Ventas\QuotationMode;
+use App\Enums\Ventas\TaxRateEnum;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -20,14 +22,12 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalleStock;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\reservas\GpCotizacionReservaDetalleLog;
-use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
@@ -37,6 +37,7 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -61,7 +62,8 @@ class OrderService implements OrderServiceInterface
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly OrderBuilderInterface $orderBuilder,
-        protected readonly ApiGpReceivedItemL $apiGpReceiptService
+        protected readonly ApiGpReceivedItemL $apiGpReceiptService,
+        protected readonly ClientQueryServiceInterface $clientService,
     ) {}
 
     //me obtiene la informacion del documento xml_notificaciones
@@ -250,7 +252,6 @@ class OrderService implements OrderServiceInterface
         $this->ensureAllItemsHaveValidQuantity($order['cotizacion']);
         $newOrder = $this->prepareOrderStoreFill($order, $user);
         $this->prepareOrderDetailStoreFill($order['cotizacion'], $newOrder);
-        $this->orderAndQuotationService->clearTempDataQuotation($order['sucursal_id'], $order['PTO_VTA_ID'], $order['cliente_id'], $user->id);
 
         if ($quoteBlock) {
             $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
@@ -399,27 +400,19 @@ class OrderService implements OrderServiceInterface
 
     public function detailOrderById($data)
     {
-        // 🔍 1. Obtener detalles del pedido
-        $detalle = $this->orderRepository->getAllDetailsOrderById($data['id']);
-
-        // 🔍 2. Consultar el crédito del cliente
-        $clientQuota = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
-        // 🔍3. Obtener el segmento del cliente
-        $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        // 🔍 3.  Enriquecer detalles con proveedores y stock
-        $enrichedDetails = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
-
-        // 🔍 4. Obtener órdenes de compra optimizadas
-        $ordenes = $this->getPurchaseOrdersWithReceipts($data['pedido']);
-
-        $trasladosVentas = $this->getTransferWithGuides($data['id']);
-        $hasGuideDispatched = $this->hasGuideDispatched($data['id']);
-
-        // 🔍 6. Obtener despacho, guías y devoluciones
-        $orderDespacho = $this->orderRepository->getDispatchOrder($data['id']);
-        $guiaRemision = $this->orderRepository->getShipmentGuides($data['pedido']);
-        $devoluciones = $this->orderRepository->getReturnsByOrder($data['id']);
-        $status = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        $detalle                = $this->orderRepository->getAllDetailsOrderById($data['id']);
+        $clientQuota            = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
+        $segmento               = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        $enrichedDetails        = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
+        $ordenes                = $this->getPurchaseOrdersWithReceipts($data['pedido']);
+        $trasladosVentas        = $this->getTransferWithGuides($data['id']);
+        $hasGuideDispatched     = $this->hasGuideDispatched($data['id']);
+        $orderDespacho          = $this->orderRepository->getDispatchOrder($data['id']);
+        $guiaRemision           = $this->orderRepository->getShipmentGuides($data['pedido']);
+        $devoluciones           = $this->orderRepository->getReturnsByOrder($data['id']);
+        $status                 = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
+        $nivelPrecio            = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data['id'], 'pedido');
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -433,7 +426,9 @@ class OrderService implements OrderServiceInterface
             'pendientes'            => $status['pendientes'],
             'existentes'            => $status['existentes'],
             'segmento'              => $segmento,
-            'has_guide_dispatched'  => $hasGuideDispatched
+            'has_guide_dispatched'  => $hasGuideDispatched,
+            'nivelPrecio'           => $nivelPrecio,
+            'imagenesOperaciones'  => $imagenesOperaciones
         ];
     }
 
@@ -443,9 +438,13 @@ class OrderService implements OrderServiceInterface
         $hasPending = false;
         $hasExisting = false;
         $itemIds = $details->pluck('id')->toArray();
+        $codesList = $details->reject(function ($item) {
+            return $item->ART_TIPO_COMPRA ===  'L';
+        })->pluck('ART_CODIGO');
+        $groupsByAbc = $this->orderAndQuotationService->getApiSegmentsAbcItem($codesList);
         $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
             ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
-        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem) {
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc) {
             $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
             $item->proveedores = $proveedores['proveedores'];
             $hasPending = $proveedores['pendientes'] ?: $hasPending;
@@ -458,6 +457,11 @@ class OrderService implements OrderServiceInterface
             $item->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
             $item->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
 
+
+            /** procesod de segmentacion abc  */
+            $myAbc = $groupsByAbc->get($item->ART_CODIGO, collect());
+            $classAbc = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
+            $item->clasificacion_tuval = $classAbc;
             return $item;
         });
 
@@ -467,6 +471,12 @@ class OrderService implements OrderServiceInterface
             'hasExisting' => $hasExisting
         ];
     }
+    // public function getApiSegmentsAbcItem($articles)
+    // {
+    //     $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
+    //     $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
+    //     return  collect($response)->groupBy('item');
+    // }
 
     public function getPurchaseOrdersWithReceipts($orderNumber)
     {
@@ -631,74 +641,70 @@ class OrderService implements OrderServiceInterface
 
 
 
-    /** function para recuperar el pedido - volver a pedir  */
 
-    public function restoreOrder($data, $user)
+
+    /**
+     *   FUNCION PARA VOLVER A PEDIR UN PEDIDO
+     */
+
+    public function loadOrderForCopy($orderId): array
     {
-        try {
-            $typeCopy = 'pedido';
-            $typeRegisterCopy = 'volver_a_pedir';
-
-            DB::beginTransaction();
-            $cliente = $this->functionsService->getClient($data);
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data, false, false, 'pedido');
-            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['id'], $user, $typeCopy, $typeRegisterCopy);
-            $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data, $user, 'pedido');
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-            DB::commit();
-            return response([
-                'success' => true,
-                'cliente' => $cliente,
-                'registro_copia' => $registerCopyId,
-                'currentSucursal' => $data['sucursal_id'],
-                'test' => 'volver_a_pedir',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in recoverOrder (recuperar pedido - volver a pedir)', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $user = Auth::user() ?? GpUsuario::find(179);
+        $order = GpPedido::findOrFail($orderId);
+        $cliente = $this->clientService->getAvailabeCreditCustomer($order->CLI_RUC);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($order, $clienteNew, 'pedido', false, false);
+        $this->functionsService->recalculateIva($detalles);
+        $detalles->transform(function ($item) {
+            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = 'pedido';
+            $item->detalle_id = $item->id;
+            return $item;
+        });
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($order->id, 'pedido');
+        return [
+            'pedido'                => $order,
+            'cliente'               => $clienteNew,
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'registro_copia'        => $registroCopiaId,
+            'mode'                  => QuotationMode::REORDER->value,
+        ];
     }
 
 
-    /*** funcion para copiar pedido  */
+    /*** funcion para copiar pedido y cotizacion */
 
-    public function copyOrder($data, $user)
+    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type): array
     {
-        try {
-            $typeCopy = ($data['tipo'] == 'cotizacion') ? 'cotizacion' : 'pedido';
-            $typeRegisterCopy = 'copia';
-
-            DB::beginTransaction();
-            $cliente = $this->functionsService->getClient($data);
-            $data['pedido']['sucursal_id'] = $data['sucursal_id'];
-            $data['pedido']['cliente_id'] = $data['cliente_id'];
-            $detalle = $this->orderAndQuotationService->getDetailQuotationOrOrder($cliente, $data['pedido'], true, true, $typeCopy);
-            $registerCopyId = $this->orderAndQuotationService->createRegisterCopy($data['pedido']['id'], $user, $typeCopy, $typeRegisterCopy);
-            $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['pedido']['CLI_RUC']);
-
-            $this->functionsService->recalculateIva($detalle);
-            $this->functionsService->setCartFormQuotation($detalle, $data['pedido'], $user, 'pedido');
-            DB::commit();
-            return response([
-                'success' => true,
-                'cliente' => $cliente,
-                'registro_copia' => $registerCopyId,
-                'currentSucursal' => $data['sucursal_id'],
-                'test' => 'copiarpedido',
-                'segmento' => $segmento
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error in copyOrder (copiar pedido)', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $user = Auth::user() ?? GpUsuario::find(179);
+        $initialCLient = GpCliente::find($clienteId);
+        $cliente =  $this->clientService->getAvailabeCreditCustomer($initialCLient->CLI_RUC);
+        $data = ($type === 'cotizacion')
+            ? GpCotizacion::findOrFail($rowId)
+            : GpPedido::findOrFail($rowId);
+        $clienteNew =  data_get($cliente, 'cliente');
+        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, $clienteNew, $type, true, true);
+        $this->functionsService->recalculateIva($detalles);
+        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data->id, $user, $type, 'copia');
+        $detalles->transform(function ($item) use ($type) {
+            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo = $type;
+            return $item;
+        });
+        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
+        $modeEnum = QuotationMode::fromType($type);
+        return [
+            'cliente'               => $clienteNew,
+            'segmento'              => data_get($cliente, 'segmentos'),
+            'mode'                  => $modeEnum->value,
+            'registro_copia'        => $registroCopiaId,
+            'sucursal_id'           => $sucursalId,
+            'items'                 => $detalles,
+            'imagenesOperaciones'   => $imagenesOperaciones
+        ];
     }
 
 
@@ -1112,12 +1118,6 @@ class OrderService implements OrderServiceInterface
 
     public function generateInvoiceFromExistingOrder($data, $detalle, $user)
     {
-
-        // $hasInvoicedChildren = $this->getOrderExistenceByQuotation($data['id']);
-        // if ($hasInvoicedChildren) {
-        //     abort(409, 'El pedido (o sus derivados) ya se encuentra facturado');
-        // }
-
         //Bloqueo de permisos
         $parentOder = GpPedido::where('id', $data['id'])->lockForUpdate()->firstOrFail();
         $detailsCheck = GpPedidoDetalle::where('pedido_id', $parentOder->id)->lockForUpdate()->get()->keyBy('id');
@@ -1170,19 +1170,18 @@ class OrderService implements OrderServiceInterface
 
             // si no tiene stock lo almacena en array sigue
             if (!$stock) {
-                // $skippedDetails[] = $articulo->id;
                 continue;
             }
 
             // // Si seleccionado == cantidad -> omitir (no eliminar la línea original)
-            if ((int) $stock->seleccionado === (int) $articulo->ART_CANTIDAD) {
+            if ((float) $stock->seleccionado === (float) $articulo->ART_CANTIDAD) {
                 $this->clearStockArticleOrderExistence($data['id'], $articulo->id);
                 $articulo->delete();
                 continue;
             }
 
             // si el seleccionado es mayor a 0 y si es menor que ART_CANTIDAD RESTA para actualizar el nuevo detalle
-            if ($stock->seleccionado > 0 && $stock->seleccionado < $articulo->ART_CANTIDAD) {
+            if ((float)$stock->seleccionado > 0 && (float)$stock->seleccionado < (float)$articulo->ART_CANTIDAD) {
                 $articulo->ART_CANTIDAD = $articulo->ART_CANTIDAD - $stock->seleccionado;
                 $stock->seleccionado = 0;
                 $stock->reservado = 0;
@@ -1204,19 +1203,21 @@ class OrderService implements OrderServiceInterface
             }
 
             foreach ($provList as $prov) {
-                $pendiente = max(0, (int) $prov->ingresado - (int) $prov->ejecutado);
-                if ($pendiente <= 0)
+                $pendiente = max(0, (float) $prov->ingresado - (float) $prov->ejecutado);
+                if ($pendiente <= 0) {
                     continue;
+                }
 
-                $toDeduct = min((int) $artL->ART_CANTIDAD, $pendiente);
-                if ($toDeduct <= 0)
+                $toDeduct = min((float) $artL->ART_CANTIDAD, $pendiente);
+                if ($toDeduct <= 0) {
                     break;
+                }
 
-                $artL->ART_CANTIDAD = (int) $artL->ART_CANTIDAD - $toDeduct;
+                $artL->ART_CANTIDAD = (float) $artL->ART_CANTIDAD - $toDeduct;
             }
 
             if ($provList->isNotEmpty()) {
-                if ($artL->ART_CANTIDAD == 0) {
+                if ($artL->ART_CANTIDAD <= 0) {
                     $deteleArticle['articulos'][] = $artL;
                 } else {
                     $artL->save();
@@ -1242,53 +1243,7 @@ class OrderService implements OrderServiceInterface
     {
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
-        $newOrder = new GpPedido();
-        $newOrder->fill([
-            'cotizacion_id' => $data['cotizacion_id'],
-            'user_id' => $user->id,
-            'sucursal_id' => $data['sucursal_id'],
-            'sucursal_facturacion_id' => $data['sucursal_facturacion_id'],
-            'cliente_id' => $data['cliente_id'],
-            'factura_posterior_despacho' => $data['factura_posterior_despacho'],
-            'factura_a_demanda' => $data['factura_a_demanda'],
-            'factura_siguiente_mes' => $data['factura_siguiente_mes'],
-            'impuesto' => env('IVA_IMPUESTO'),
-            'BOD_BODEGA' => $data['BOD_BODEGA'],
-            'PTO_VTA_ID' => $data['PTO_VTA_ID'],
-            'PTO_VTA_DESCRIPCION' => $puntoVenta->PTO_VTA_DESCRIPCION,
-            'USERID' => $user->USERID,
-            'DESC_FORMA_PAGO_CODIGO' => $data['DESC_FORMA_PAGO_CODIGO'],
-            'CLI_RUC' => $data['CLI_RUC'],
-            'CLI_RAZON_SOCIAL' => $data['CLI_RAZON_SOCIAL'],
-            'CLI_CORREO_ELECT_SRI' => $data['CLI_CORREO_ELECT_SRI'],
-            'COND_ID' => $data['COND_ID'],
-            'COND_ID_ORIGINAL' => $data['COND_ID_ORIGINAL'],
-            'VEND_ID' => $data['VEND_ID'],
-            'VEND_NOMBRES' => $data['VEND_NOMBRES'],
-            'VEND_APELLIDOS' => $data['VEND_APELLIDOS'],
-            'despacho' => $data['despacho'],
-            'porcentage_descuentooriginal' => $data['porcentage_descuentooriginal'],
-            'porcentage_descuento' => $data['porcentage_descuento'],
-            'descuento' => number_format((float) $data['descuento'], 2, '.', ''),
-            'subtotal' => number_format((float) $data['subtotal'] + (float) $data['descuento'], 2, '.', ''),
-            'subtotalmenosdescuento' => number_format((float) $data['subtotal'], 2, '.', ''),
-            'iva' => number_format((float) $data['iva'], 2, '.', ''),
-            'total' => number_format((float) $data['total'], 2, '.', ''),
-            'requiere_aprobacion_comercial' => $data['requiere_aprobacion_comercial'],
-            // 'motivo_aprobacion_comercial' => $data['motivo'],
-            'aprobado_comercial' => $data['aprobado_comercial'],
-            'aprobador_comercial_id' => $data['aprobador_comercial_id'],
-            'requiere_aprobacion_crediticia' => $data['requiere_aprobacion_crediticia'],
-            'aprobado_crediticio' => $data['aprobado_crediticio'],
-            'aprobador_crediticio_id' => $data['aprobador_crediticio_id'],
-            // 'motivo_crediticio' => $motivoCrediticio,
-            'nota_interna' => $data['nota_interna'],
-            'nota_cliente' => $data['nota_cliente'],
-            'orden_de_compra' => $data['orden_de_compra'],
-            'pedido_origen' => $data['pedido'],
-        ]);
-        $newOrder->save();
-        $newOrder->pedido = 'PED' . str_pad($newOrder->id, 8, "0", STR_PAD_LEFT);
+        $newOrder = $this->orderBuilder->formPayloadInvoiceExistence($data, $user, $puntoVenta);
         $newOrder->save();
         Log::info('Pedido creado con exito desde Facturar existente: ' . $newOrder->pedido);
         return $newOrder;
@@ -1298,33 +1253,7 @@ class OrderService implements OrderServiceInterface
     {
 
         foreach ($detailOrder as $i => $item) {
-            $newOrderDetail = new GpPedidoDetalle();
-            $newOrderDetail->fill([
-                'pedido_id' => $newOrder->id,
-                'orden' => $i + 1,
-                'ART_CODIGO' => $item['ART_CODIGO'],
-                'ART_DESCRIPCION' => $item['ART_DESCRIPCION'],
-                'ART_DESCRIPCION_ORIGINAL' => $item['ART_DESCRIPCION_ORIGINAL'],
-                'CHECK_ALTERNATIVO' => $item['CHECK_ALTERNATIVO'] ?? 0,
-                'ART_CODIGO_TRES_LETRAS' => $item['ART_CODIGO_TRES_LETRAS'],
-                'ART_DECIMAL_CANTIDAD' => $item['ART_DECIMAL_CANTIDAD'],
-                'ART_PLAN_UMEDIDA' => $item['ART_PLAN_UMEDIDA'],
-                'ART_MARCA' => $item['ART_MARCA'],
-                'ART_MATERIAL' => $item['ART_MATERIAL'],
-                'ART_PESO' => $item['ART_PESO'],
-                'ART_TIPO_COMPRA' => $item['ART_TIPO_COMPRA'],
-                'ART_VALOR' => $item['ART_VALOR'],
-                'ART_VALOR_ORIGINAL' => $item['ART_VALOR_ORIGINAL'],
-                'ART_DESCUENTO' => $item['ART_DESCUENTO'],
-                'ART_IVA' => $item['ART_IVA'],
-                'ART_CANTIDAD' => $item['ART_CANTIDAD'],
-                'ART_STOCK' => $item['ART_STOCK'],
-                'ART_IMP_VTA' => $item['ART_IMP_VTA'],
-                'ART_COSTO_PROMEDIO' => $item['ART_COSTO_PROMEDIO'],
-                'descuento' => $item['descuento'],
-                'descuento_original' => $item['descuento_original'],
-                'modificador' => $item['modificador'],
-            ]);
+            $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($newOrder->id, $item, $i);
             $newOrderDetail->save();
             if ($item['ART_TIPO_COMPRA'] != 'SERV' && count($item['proveedores']) > 0) {
                 $this->storeFillProviderDetailExistence($item['proveedores'], $newOrderDetail, $newOrder, $item);
@@ -1339,24 +1268,8 @@ class OrderService implements OrderServiceInterface
     public function storeFillProviderDetailExistence($providers, $newOrderDetail, $newOrder, $oldDetailOrder)
     {
         foreach ($providers as $provider) {
-            $newProv = new GpPedidoDetalleProveedores();
-            $newProv->fill([
-                'pedido_id' => $newOrder->id,
-                'detalle_id' => $newOrderDetail->id,
-                'ID_PROVEEDOR' => $provider['ID_PROVEEDOR'],
-                'DESCRIPCION_ARTICULO' => $provider['DESCRIPCION_ARTICULO'],
-                'FECHA_ENTREGA' => $provider['FECHA_ENTREGA'],
-                'CANTIDAD' => $provider['CANTIDAD'],
-                'COSTO_UNITARIO' => $provider['COSTO_UNITARIO'],
-                'IMPUESTO' => $provider['IMPUESTO'],
-                'TOTAL' => $provider['TOTAL'],
-                'TOTALCONIMPUESTO' => $provider['TOTALCONIMPUESTO'],
-                'NOTA' => $provider['NOTA'],
-                'recibido' => "yes", // se asigna recibido porque ya hay items que se recibieron y seran despachados para que no me genere el pedido en orden de compra
-                'MARGEN' => $provider['MARGEN']
-            ]);
+            $newProv = $this->orderBuilder->formPayloadOrderDetailProvider($provider, $newOrder->id, $newOrderDetail->id, "yes");
             $newProv->save();
-
             if ($provider['orden_detalle']) {
                 $this->storeOrUpdateOrderSalesProvider($provider['orden_detalle'], $oldDetailOrder, $provider);
             }
@@ -1386,12 +1299,12 @@ class OrderService implements OrderServiceInterface
                 continue;
             }
 
-            $delta = (int) ($oldDetailOrder['ART_CANTIDAD'] ?? 0);
+            $delta = (float) ($oldDetailOrder['ART_CANTIDAD'] ?? 0);
             if ($delta <= 0) {
                 break;
             }
-            $prev = (int) ($oldProv->ejecutado ?? 0);
-            $cap = (int) ($oldProv->CANTIDAD ?? 0);
+            $prev = (float) ($oldProv->ejecutado ?? 0);
+            $cap = (float) ($oldProv->CANTIDAD ?? 0);
 
             if ($cap <= 0 || $prev >= $cap) {
                 break; // ya completo o sin cantidad base
@@ -1404,7 +1317,7 @@ class OrderService implements OrderServiceInterface
             if (!$ordCGD) {
                 continue;
             }
-            if ($oldProv->ejecutado >= $cap) {
+            if (($oldProv->ejecutado + 0.00001) >= $cap) {
                 $ordCGD->estado = 'recibido';
                 $ordCGD->save();
             }
@@ -1417,12 +1330,12 @@ class OrderService implements OrderServiceInterface
 
         $nwStock = new GpPedidoDetalleStock();
         $nwStock->fill(attributes: [
-            'pedido_id' => $newOrderId,
-            'detalle_id' => $newDetailId,
-            'STO_ART_BODEGA' => $stock['STO_ART_BODEGA'],
-            'STO_ART_STOCK_DISPONIBLE' => $stock['STO_ART_STOCK_DISPONIBLE'],
-            'seleccionado' => $stock['seleccionado'],
-            'reservado' => $stock['reservado'],
+            'pedido_id'                     => $newOrderId,
+            'detalle_id'                    => $newDetailId,
+            'STO_ART_BODEGA'                => data_get($stock, 'STO_ART_BODEGA', ''),
+            'STO_ART_STOCK_DISPONIBLE'      => data_get($stock, 'STO_ART_STOCK_DISPONIBLE', 0),
+            'seleccionado'                  => data_get($stock, 'seleccionado', 0),
+            'reservado'                     => data_get($stock, 'reservado', 0),
         ]);
         $nwStock->save();
     }

@@ -53,12 +53,12 @@ class ReservasController extends Controller
 
     public function verificarStockCotizacionActual(Request $request)
     {
-        $validate = $request->validate([
+        $request->validate([
             'id' => 'required|integer',
         ]);
 
         try {
-            $response = $this->reserveService->validateAndProcessQuotationStock($validate['id']);
+            $response = $this->reserveService->validateAndProcessQuotationStock($request->input('id'));
             if ($response) {
                 return $this->buildExistResponse(false, $response, 400);
             }

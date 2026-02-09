@@ -93,12 +93,15 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereUpdatedAt($value)
- *
- *
- *
- * @property  $suspendido
- * @property  $cupo_disponible
+ * @property $suspendido
+ * @property $cupo_disponible
  * @property $cupo_asignado
+ * @property-read \App\Models\GpVendedor|null $gpvendedor
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpClienteSucursal> $sucursales
+ * @property-read int|null $sucursales_count
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISEGMENTOID($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISUBSEGMENTOID($value)
+ * @mixin \Eloquent
  */
 
 class GpCliente extends Model
@@ -143,13 +146,21 @@ class GpCliente extends Model
         'CLI_DIA_MAXIMO_MES_FACTURACION',
         'CLI_FACTURA_POSTERIOR_AL_DESPACHO',
         'CLI_SEGMENTO_ID',
-        'CLI_SUBSEGMENTO_ID'
+        'CLI_SUBSEGMENTO_ID',
+        'user_creator_id',
+        'fecha_hora_creacion'
     ];
 
 
 
 
-    public function gpvendedor(){
+    public function gpvendedor()
+    {
         return $this->belongsTo(GpVendedor::class, 'CLI_VENDEDOR', 'VEND_ID');
+    }
+
+    public function sucursales()
+    {
+        return $this->hasMany(GpClienteSucursal::class, 'CLI_SUC_RUC', 'CLI_RUC');
     }
 }

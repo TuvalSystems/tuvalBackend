@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\TaxRateEnum;
 use App\Http\Controllers\Controller;
 use App\Models\GpCronLog;
 use App\Models\GpProspecto;
@@ -20,12 +21,15 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\FuncionesController;
+use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,13 +38,40 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class CotizacionesController extends Controller
 {
     use JsonResponseTrait;
-    protected $quotationService;
-    protected $approvalService;
 
-    public function __construct(QuotationServiceInterface $quotationService, ApprovalServiceInterface $approvalService)
+    public function __construct(
+        protected readonly QuotationServiceInterface $quotationService,
+        protected readonly ClientQueryServiceInterface $clientService,
+        protected readonly QuotationCreatorServiceInterface $quotationCreator
+    ) {}
+
+
+
+
+    public function store(ValidateStoreQuotationRequest $request): JsonResponse
     {
-        $this->quotationService = $quotationService;
-        $this->approvalService = $approvalService;
+
+        try {
+            $imagenesExistentes = $request->input('imagenes_existentes', []);
+            $imagenesNuevas = $request->file('imagenes_nuevas', []);
+            $cotizacion = $this->quotationCreator->createOrUpdate(
+                $request->validated(),
+                Auth::user(),
+                $imagenesExistentes,
+                $imagenesNuevas
+            );
+            $msg = "Cotización {$cotizacion->cotizacion} guardada correctamente";
+            return $this->buildSuccessResponse($msg, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
+        } catch (\Throwable $e) {
+            Log::error('Error in CotizacionesController@store', [
+                'error' => $e->getMessage(),
+                'linea' => $e->getLine(),
+                'file'  => $e->getFile(),
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -135,6 +166,8 @@ class CotizacionesController extends Controller
         ]);
     }
 
+
+
     public function selectarticuloprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
@@ -157,189 +190,9 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function llenarcotizacion(Request $request)
-    {
-        $data = $request->validate([
-            'cliente_id' => '',
-            'puntodeventa_id' => '',
-            'sucursal_id' => '',
-            'serial' => '',
-            'registro_copia' => '',
-            'test' => '', // copiarpedido se creo un  campo test para que no se sincronice el check alternativo cuando se copia un pedido, se creo en el frontend cuando se copia
-        ]);
-        $user = Auth::user();
-        try {
-            $art = $this->quotationService->fillQuotation($data, $user);
-            return $this->successResponse('Información Obtenida Correctamente', $art, 200);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
 
-    }
 
-    public function eliminararticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
 
-        $data = $request->validate([
-            'id' => 'required',
-        ]);
-        GpTempCart::where('id', $data['id'])
-            ->delete();
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatecantidad(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'cantidad' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_CANTIDAD' => $data['cantidad']]);
-
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatepeso(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'peso' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_PESO' => $data['peso']]);
-
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatemodificador(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'modificador' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['modificador' => $data['modificador']]);
-
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatestock(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-        foreach ($data as $stock) {
-
-            GpTempCartStock::where('id', $stock['id'])
-                ->update(['seleccionado' => $stock['seleccionado']]);
-        }
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatedescripcion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'ART_DESCRIPCION' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_DESCRIPCION' => trim(str_replace('  ', ' ', $data['ART_DESCRIPCION']))]);
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatevalor(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'articulo' => 'required',
-            'ART_VALOR' => '',
-            'modificador' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['ART_VALOR' => $data['ART_VALOR'], 'modificador' => $data['modificador']]);
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updatedescuento(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'articulo' => 'required',
-            'descuento' => '',
-        ]);
-        GpTempCart::where('id', $data['articulo'])
-            ->update(['descuento' => $data['descuento']]);
-        return response([
-            'success' => true,
-        ]);
-    }
-
-    public function updateCheckAlternativo(Request $request)
-    {
-        $data = $request->validate([
-            'articulo' => 'required',
-            'CHECK_ALTERNATIVO' => 'required|boolean',
-        ]);
-        try {
-            $this->quotationService->updateCheckAlternativeItem($data['articulo'], $data['CHECK_ALTERNATIVO']);
-            return $this->buildSuccessResponse(
-                'Check alternativo actualizado correctamente',
-                200
-            );
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-
-    }
-
-    public function saveproveedor(Request $request)
-    {
-        try {
-            $data = $request->all();
-            $this->quotationService->saveProviderQuotationTemp($data);
-            return $this->buildSuccessResponse('Proveedores guardados correctamente', 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
-    public function guardarcotizacion(Request $request)
-    {
-        try {
-            $data = $request->all();
-            $user = Auth::user();
-            $quote = DB::transaction(fn() => $this->quotationService->storeQuotation($data, $user));
-            return $this->buildSuccessResponse(
-                "Cotización {$quote->cotizacion} guardada correctamente",
-                200
-            );
-        } catch (\Throwable $th) {
-            Log::error('Error in guardarcotizacion (Guardar cotización)', [
-                'error' => $th->getMessage(),
-                'linea' => $th->getLine(),
-                'file' => $th->getFile(),
-            ]);
-            return $this->buildErrorResponse($th->getMessage(), 500);
-
-        }
-
-    }
 
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -411,7 +264,7 @@ class CotizacionesController extends Controller
         $cotizacion->nota_interna = $data['nota_interna'];
         $cotizacion->nota_cliente = $data['nota_cliente'];
         $cotizacion->orden_de_compra = $data['orden_de_compra'];
-        $cotizacion->impuesto = env('IVA_IMPUESTO');
+        $cotizacion->impuesto = TaxRateEnum::IVA_15->value;
 
         if ($cotizacion->save()) {
 
@@ -449,7 +302,7 @@ class CotizacionesController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -499,7 +352,7 @@ class CotizacionesController extends Controller
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '<=', $data['fecha_hasta'] . ' 23:59:59');
         }
-        $cotizaciones = $cotizaciones->orderBy('created_at', 'desc')->limit(1000)->get();
+        $cotizaciones = $cotizaciones->orderBy('created_at', 'desc')->limit(500)->get();
 
 
 
@@ -586,11 +439,12 @@ class CotizacionesController extends Controller
         ];
 
         $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion', $parameters);
-
+        Log::info('Nueva Direccion', $nuevaDireccion);
         if (!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])) {
+
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
 
         //        echo '<pre>';
@@ -601,7 +455,7 @@ class CotizacionesController extends Controller
         if (!isset($CLI_SUC_ID_DIRECCION[1])) {
             return response([
                 'error' => $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']
-            ], 401);
+            ], 409);
         }
 
 
@@ -640,7 +494,7 @@ class CotizacionesController extends Controller
         } else {
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 409);
         }
     }
 
@@ -653,9 +507,22 @@ class CotizacionesController extends Controller
             return $this->successResponse('Información Obtenida Correctamente', $cliente, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
-
         }
+    }
 
+
+    public function guardarNuevaDireccionSucursal(Request $request)
+    {
+        try {
+            $data = data_get($request->all(), 'form', []);
+            $sucursal = $this->clientService->storeNewAddressClient($data);
+            return $this->successResponse('Información Obtenida Correctamente', $sucursal, 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
+        } catch (\Throwable $e) {
+
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function detallecotizacion(Request $request)
@@ -669,25 +536,27 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function recuperarcotizacion(Request $request)
+
+
+    /** proceso de recuperar cotizacion optimizado para el nuevo front  */
+
+    public function recuperarCotizacionV2(Request $request): JsonResponse
     {
-        ini_set('max_execution_time', -1);
-        $data = $request->all();
-        $user = Auth::user();
-
         try {
-            $info = $this->quotationService->restoreQuotation($data, $user);
-            return response([
-                'success' => true,
-                'cliente' => $info['cliente'],
-                'currentSucursal' => $info['currentSucursal'],
-                'cotizacion_id' => $info['cotizacion_id'],
-                'test' => $info['test'],
-                'segmento' => $info['segmento']
+            $request->validate([
+                'id' => 'required|exists:gp_cotizacions,id',
             ]);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-
+            $cotizacion = $this->quotationService->restoreQuotationV2($request->input('id'));
+            return $this->successResponse('Información Obtenida Correctamente', $cotizacion, 200);
+        } catch (ModelNotFoundException $e) {
+            return $this->buildErrorResponse("La cotización no existe.", 404);
+        } catch (\Throwable $th) {
+            Log::error('Error in recuperarCotizacionV2 (Recuperar cotización V2)', [
+                'error' => $th->getMessage(),
+                'linea' => $th->getLine(),
+                'file' => $th->getFile(),
+            ]);
+            return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
 
@@ -712,16 +581,22 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function volverapedircotizacion(Request $request)
+
+    public function volverAPedirCotizacionV2(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $user = Auth::user();
         try {
-            $info = $this->quotationService->requestQuotationAgain($data, $user);
+            $request->validate([
+                'id' => 'required|exists:gp_cotizacions,id',
+            ]);
+            $info = $this->quotationService->loadQuotationForCopy($request->input('id'));
             return $this->successResponse('Información Obtenida Correctamente', $info, 200);
+        } catch (ModelNotFoundException $e) {
+            return $this->buildErrorResponse("La cotización no existe.", 404);
         } catch (\Throwable $th) {
-            Log::error('Error in volverapedircotizacion (Volver a pedir cotización)', [
+            Log::error('Error in volverAPedirCotizacionV2 (Volver a pedir cotización V2)', [
                 'error' => $th->getMessage(),
+                'linea' => $th->getLine(),
+                'file' => $th->getFile(),
             ]);
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
@@ -918,7 +793,6 @@ class CotizacionesController extends Controller
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
     public function imprimircotizacionprospecto($id): \Illuminate\Http\Response|string
@@ -1059,8 +933,18 @@ class CotizacionesController extends Controller
 
     public function getItemsAlternatives(Request $request)
     {
-        $item = $request['item'];
-        return $this->quotationService->getItemsAlternatives($item);
+        try {
+            $item = data_get($request, 'item', '');
+            $lista = $this->quotationService->getItemsAlternatives($item);
+            return $this->successResponse('Datos Obtenidos Correctamente', $lista, 200);
+        } catch (HttpException $th) {
+            return $this->buildErrorResponse(
+                $th->getMessage(),
+                $th->getStatusCode()
+            );
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
     }
 
 
@@ -1073,7 +957,6 @@ class CotizacionesController extends Controller
         try {
             $resumen = $this->quotationService->consultQuotationsNews($request->all());
             return $this->successResponse('Datos Obtenidos Correctamente', $resumen, 200);
-
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
                 $e->getMessage(),
@@ -1120,11 +1003,9 @@ class CotizacionesController extends Controller
         $request->validate([
             'articulo' => 'required',
         ]);
-        $articulo = $request->get('articulo', null);
         try {
-            $datosL = $this->quotationService->getMarginItem($articulo['ART_CODIGO']);
+            $datosL = $this->quotationService->getMarginItem($request->articulo);
             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
-
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
                 $e->getMessage(),
@@ -1143,7 +1024,6 @@ class CotizacionesController extends Controller
         try {
             $resp = $this->quotationService->getAllSegments();
             return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1155,24 +1035,20 @@ class CotizacionesController extends Controller
             $coAtrPadre = $request->get('segmento', null);
             $resp = $this->quotationService->getSubSegmentBySegment($coAtrPadre);
             return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
-
         }
-
     }
 
     public function validarSegmentoCliente(Request $request)
     {
-        $cliente = $request->get('cliente', null);
+        $ruc = $request->get('ruc', null);
         try {
-            $hasSegment = $this->quotationService->checkClientWithSegmentExist($cliente['CLI_RUC']);
+            $hasSegment = $this->quotationService->checkClientWithSegmentExist($ruc);
             if ($hasSegment['success'] === true) {
                 return $this->buildExistResponse(true, 'Segmento encontrado', 200);
             }
             return $this->buildExistResponse(false, 'Segmento no encontrado', 202);
-
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -1180,16 +1056,14 @@ class CotizacionesController extends Controller
 
     public function actualizarSegmentoCliente(Request $request)
     {
-        $cliente = $request->get('cliente', null);
+        $ruc = $request->get('ruc', null);
         $segmento = $request->get('segmento', null);
         $subsegmento = $request->get('subsegmento', null);
-
         try {
-            $this->quotationService->updateClientWithSegment($cliente, $segmento, $subsegmento);
+            $this->quotationService->updateClientWithSegment($ruc, $segmento, $subsegmento);
             return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
-
         }
     }
 }

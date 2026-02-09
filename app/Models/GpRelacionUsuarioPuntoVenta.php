@@ -26,4 +26,9 @@ use Illuminate\Database\Eloquent\Model;
 class GpRelacionUsuarioPuntoVenta extends Model
 {
     use HasFactory;
+
+
+    public function usuario(){
+        return $this->belongsTo(GpUsuario::class,'USER_PTO_VTA_USUARIO');
+    }
 }

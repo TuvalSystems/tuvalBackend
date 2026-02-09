@@ -11,6 +11,8 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpUsuario;
+use App\Notifications\User\UserNotification;
 use App\Repositories\Devoluciones\DevolucionRepository;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\ApiGpService;
@@ -31,8 +33,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         protected readonly FunctionsServiceInterface $functions,
         protected readonly InvoiceServiceInterface $invoice,
         protected readonly ApiGpService $api
-    ) {
-    }
+    ) {}
 
 
 
@@ -47,7 +48,12 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $this->processDetailOrder($detailOrigin, $newOrderHeader, $orderOrigin, $devolucion, $isDispatch);
         $this->functions->recalculateOrder($newOrderHeader->id);
         $this->invoice->checkSendInvoice($newOrderHeader);
-        return $newOrderHeader;
+        $userOrder = GpUsuario::where('id', $newOrderHeader->user_id)->first();
+        //notificar al usuario
+        $mensaje = "El pedido {$newOrderHeader->pedido} ha sido creado exitosamente tras el proceso de refacturación por devolución.";
+        $userOrder->notify(new UserNotification('Pedido Refacturado', $mensaje));
+
+        return $newOrderHeader->refresh();
     }
 
 
@@ -69,6 +75,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $newOrd->CLI_RUC                    = $cliente->CLI_RUC;
         $newOrd->CLI_RAZON_SOCIAL           = $cliente->CLI_RAZON_SOCIAL;
         $newOrd->CLI_CORREO_ELECT_SRI       = $cliente->CLI_CORREO_ELECT_SRI;
+        $newOrd->origen                     = 'devolucion';
         // Lógica de facturación
         $this->setBillingLogic($newOrd, $cliente);
         $newOrd->save();
@@ -96,11 +103,12 @@ class ReInvoiceService implements ReInvoiceServiceInterface
 
         foreach ($detailOrigin as $dtOr) {
             $cantidad = $this->calculateQuantity($dtOr, $devolucion, $isDispatch);
-            if (!$cantidad)
+            if ($cantidad <= 0) {
                 continue;
+            }
             $newDetail                  = $dtOr->replicate();
             $newDetail->pedido_id       = $newOrderHeader->id;
-            $newDetail->devuelto        = null;
+            $newDetail->devuelto        = 0;
             $newDetail->ART_CANTIDAD    = $cantidad;
             $newDetail->ART_IMP_VTA     = $impuestoArt[$dtOr->ART_CODIGO]->ART_IMP_VTA;
             $newDetail->save();
@@ -108,7 +116,6 @@ class ReInvoiceService implements ReInvoiceServiceInterface
             $this->replicateProviders($orderOrigin, $newOrderHeader, $dtOr, $newDetail);
             $this->replicateStock($orderOrigin, $newOrderHeader, $dtOr, $newDetail, $devolucion, $cantidad);
         }
-
     }
 
 
@@ -117,18 +124,16 @@ class ReInvoiceService implements ReInvoiceServiceInterface
     {
         $artDevOrigin = GpDevolucionesDetalle::where('detalle_id', $detail->id)
             ->where('devolucion_id', $devolucion->id)->first();
-        if (!$artDevOrigin)
-            return null;
+        if (!$artDevOrigin) {
+            return 0;
+        }
+        $quantity = $artDevOrigin->disponible;
 
         if ($devolucion->tipo_devolucion == 'parcial') {
-            if ($isDispatch) {
-                return $artDevOrigin->disponible - $artDevOrigin->recibido;
-            } else {
-                return $artDevOrigin->disponible - $artDevOrigin->seleccionado;
-            }
-        } else {
-            return $artDevOrigin->disponible;
+            $deduction = $isDispatch ? $artDevOrigin->recibido : $artDevOrigin->seleccionado;
+            $quantity -= $deduction;
         }
+        return max(0, $quantity);
     }
 
 
@@ -136,7 +141,9 @@ class ReInvoiceService implements ReInvoiceServiceInterface
     {
         $providers = GpPedidoDetalleProveedores::where('pedido_id', $detailOrigin->id)
             ->where('detalle_id', $detailOrigin->id)->get();
-
+        if ($providers->isEmpty()) {
+            return;
+        }
         foreach ($providers as $prov) {
             $newProv                    = $prov->replicate();
             $newProv->pedido_id         = $newOrder->id;
@@ -171,8 +178,13 @@ class ReInvoiceService implements ReInvoiceServiceInterface
     {
         $stocks = GpPedidoDetalleStock::where('pedido_id', $orderOrigin->id)
             ->where('detalle_id', $detailOrigin->id)->get();
-
+        if ($stocks->isEmpty()) {
+            return;
+        }
         foreach ($stocks as $st) {
+            if ($qty <= 0) {
+                break;
+            }
             $nwSt               = $st->replicate();
             $nwSt->pedido_id    = $newOrder->id;
             $nwSt->detalle_id   = $newDetail->id;

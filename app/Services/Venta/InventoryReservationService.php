@@ -181,7 +181,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function getQuotationWithDetails(int $id)
     {
         $reserva = GpReserva::with(['cotizacion', 'cotizacion.detallecotizacion', 'tipoReserva', 'tipoTraslado', 'usuarioIngreso'])->find($id);
-        // $cotizacion = GpCotizacion::with('detallecotizacion', 'tiporeserva','reserva')->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($reserva->cotizacion->CLI_RUC);
         return [
             'reserva' => $reserva,
@@ -1154,8 +1153,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function fetchItemCompartmentByWarehouse($artCode, $warehouse)
     {
         $params = ['articulo' => $artCode, 'bodega' => $warehouse, 'compartimento' => ''];
-        $resp = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
-        return $resp;
+        return $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
     }
 
 
@@ -1402,53 +1400,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return GpGuiaRemisionReservaMovimiento::where('guia_id', $guiaId)->where('tipo_movimiento', 'TRC')->whereIn('cotizacion', $quotes)->get()->keyBy('cotizacion');
     }
 
-
-    // public function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, $params, $items, $quote, GpUsuario $user): bool
-    // {
-    //     $cabecera = data_get($params, 'cabecera', []);
-    //     $pyValidate = $this->reservaBuilder->buildRecievedDeliveryNoteValidationPayload($cabecera);
-    //     $resValidate = $this->apiDelivery->checkReceiveGuideReservationAjustment($pyValidate);
-    //     $headerRespValidate = data_get($resValidate, 'data');
-    //     $validateSuccess = data_get($resValidate, 'success');
-    //     $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
-
-    //     /** en caso de que ya se encuentre el registro */
-    //     if (!empty($headerRespValidate) && filled($docGpValidate)) {
-    //         $already = $this->movementExistsWeb($guia->id, $quote, $docGpValidate);
-    //         DB::transaction(function () use ($guia, $items, $headerRespValidate, $quote, $already, $user) {
-    //             $this->updateQtyTransferedItems($guia, $items);
-    //             if (!$already) {
-    //                 $this->createMovementReservation($guia, $headerRespValidate, $quote);
-    //                 $this->createRegisterHistoryIng($guia, $items, $user, $quote);
-    //             }
-    //         });
-    //         return true;
-    //     }
-
-    //     /** en caso de que no exista el movimiento lo crea */
-    //     if (empty($headerRespValidate) && $validateSuccess === false) {
-    //         $resp = $this->apiDelivery->createReceiveGuideReservationAjustment($params);
-    //         $success = data_get($resp, 'success', false);
-    //         $data = data_get($resp, 'data', []);
-    //         $msg = data_get($resp, 'message');
-    //         $docGp = trim(data_get($resp, 'data.docGp', ''));
-
-    //         if (!$success) {
-    //             throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
-    //         }
-    //         if ($docGp === '') {
-    //             throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
-    //         }
-    //         DB::transaction(function () use ($items, $guia, $data, $quote, $user) {
-    //             $this->updateQtyTransferedItems($guia, $items);
-    //             $this->createMovementReservation($guia, $data, $quote);
-    //             $this->createRegisterHistoryIng($guia, $items, $user, $quote);
-    //         });
-    //         return true;
-    //     }
-    //     return false;
-    // }
-
     public function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, $params, $items, $quote, GpUsuario $user): bool
     {
 
@@ -1578,9 +1529,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             return;
         }
 
-        // $trasladoId = data_get($itm, 'traslado_id');
-        // $tras = GpTrasladosReservas::find($trasladoId);
-        // $reserva = GpReserva::find($tras->reserva_id);
+
 
         $existePendiente = GpCotizacionDetalleStock::query()
             ->from('gp_cotizacion_detalle_stocks as ds')
@@ -1651,11 +1600,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         if (!$quote) {
             throw new \DomainException("Cotización no encontrada");
         }
-        // $warehouses = $this->functionService->getBodegas($quote->PTO_VTA_ID, 1);
+
         $detWithStock = GpCotizacionDetalle::with('stock')->where('cotizacion_id', $quoteId)->get();
         $normalizeStock = $this->normalizeStockDataForReservation($detWithStock);
-        $stock = $this->validateStockAgainstSelection($normalizeStock);
-        return $stock;
+        return  $this->validateStockAgainstSelection($normalizeStock);
     }
 
 
@@ -1664,14 +1612,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return collect($detailStock)->flatMap(function ($item) {
             return $item->stock->map(function ($sto) use ($item) {
                 return [
-                    'cotizacion_id' => data_get($item, 'cotizacion_id'),
-                    'detalle_id' => data_get($item, 'id'),
-                    'stock_id' => data_get($sto, 'id'),
-                    'articulo' => data_get($item, 'ART_CODIGO'),
-                    'bodega' => data_get($sto, 'STO_ART_BODEGA'),
-                    'STO_ART_STOCK_DISPONIBLE' => data_get($sto, 'STO_ART_STOCK_DISPONIBLE', 0),
-                    'seleccionado' => data_get($sto, 'seleccionado', 0),
-                    'ART_DECIMAL_CANTIDAD' => data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
+                    'cotizacion_id'             => data_get($item, 'cotizacion_id'),
+                    'detalle_id'                => data_get($item, 'id'),
+                    'stock_id'                  => data_get($sto, 'id'),
+                    'articulo'                  => data_get($item, 'ART_CODIGO'),
+                    'bodega'                    => data_get($sto, 'STO_ART_BODEGA'),
+                    'STO_ART_STOCK_DISPONIBLE'  => data_get($sto, 'STO_ART_STOCK_DISPONIBLE', 0),
+                    'seleccionado'              => data_get($sto, 'seleccionado', 0),
+                    'ART_DECIMAL_CANTIDAD'      => data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
                 ];
             });
         })
@@ -1680,67 +1628,72 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function validateStockAgainstSelection($normalize): string|null
     {
-        $selectedStock = $normalize->filter(function ($item) {
-            return data_get($item, 'seleccionado', 0) > 0;
-        });
+        $selectedStock = $normalize->filter(fn($item) => data_get($item, 'seleccionado', 0) > 0);
 
         if ($selectedStock->isEmpty()) {
             throw new \DomainException("No se ha seleccionado cantidades para esta cotización");
         }
 
-        $stockRequests = $selectedStock->map(function ($item) {
-            return ['articulo' => $item['articulo'], 'bodega' => $item['bodega']];
-        })->unique() // Evita consultar el mismo Articulo/Bodega varias veces
-            ->values()
-            ->all();
+        //esto me consolida y agrupa los articulos por un key de articulo_bodega para considerar tambien items repetidos
+        $totalDemanda = $selectedStock->groupBy(fn($item) => "{$item['articulo']}_{$item['bodega']}")
+            ->map(function ($group) {
+                return [
+                    'articulo' => $group->first()['articulo'],
+                    'bodega' => $group->first()['bodega'],
+                    'total_a_reservar' => $group->sum('seleccionado'),
+                    'ART_DECIMAL_CANTIDAD' => $group->first()['ART_DECIMAL_CANTIDAD'],
+                ];
+            });
+
+        $stockRequests = $totalDemanda->map(fn($item) => [
+            'articulo' => $item['articulo'],
+            'bodega' => $item['bodega'],
+        ])->values()->all();
+
 
         $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
         $currentStocksLookup = $this->stockWarehouseService->transformStockReservationResponse($stockResults);
-        $messages = [];
+
+
         $articulosOverStock = [];
 
-        $updatedStock = $selectedStock->map(function ($item, $stockId) use ($currentStocksLookup, &$messages, &$articulosOverStock) {
-            $articulo = data_get($item, 'articulo');
-            $bodega = data_get($item, 'bodega');
-            $reservado = data_get($item, 'seleccionado');
-            $articleForReservedCheck = [
+        //validar articulo_bodega acumulado contra el stock disponible 
+        foreach ($totalDemanda as $key => $demanda) {
+            $articulo = data_get($demanda, 'articulo');
+            $bodega = data_get($demanda, 'bodega');
+            $totalRequerido = data_get($demanda, 'total_a_reservar', 0);
+            $decimals = data_get($demanda, 'ART_DECIMAL_CANTIDAD', 0);
+
+            $currentStockData = data_get($currentStocksLookup, $key);
+            $this->stockWarehouseService->applyReservedQtyToAvailableStock($currentStockData, [
                 'ART_CODIGO' => $articulo,
-                'ART_DECIMAL_CANTIDAD' => data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
-            ];
+                'ART_DECIMAL_CANTIDAD' => $decimals,
+            ], null, null);
 
-            //generamos una key
-            $lockUpKey = "{$articulo}_{$bodega}";
-            $currentStockData = data_get($currentStocksLookup, $lockUpKey);
-            $this->stockWarehouseService->applyReservedQtyToAvailableStock($currentStockData, $articleForReservedCheck, null, null);
-
-            $currentStock = data_get($currentStockData, 'STO_ART_STOCK_DISPONIBLE', 0);
-            $stockRestante = $currentStock - $reservado;
-
-            if ($stockRestante < 0) { //ser coloca menor a 0 porque si tiene disponible 1 y seleccionado 1 me da 0
-                $articulosOverStock["{$articulo} ({$bodega})"] = $articulo;
-                $messages[] = [
-                    'ART_CODIGO' => $articulo,
-                    'ART_DESCRIPCION' => '',
-                    'BODEGA' => $bodega,
-                    'STOCK_DISPONIBLE' => $stockRestante,
-                    'STOCK_RESERVADO' => $reservado,
-                    'MENSAJE' => "El stock disponible para el articulo $articulo en la bodega $bodega es de $currentStock, pero se quiere reservar $reservado",
-                ];
-                $item['STOCK_DISPONIBLE_AJUSTADO'] = 0.00;
-            } else {
-                $item['STOCK_DISPONIBLE_AJUSTADO'] = $stockRestante;
+            $stockDisponibleReal = data_get($currentStockData, 'STO_ART_STOCK_DISPONIBLE', 0);
+            if ($totalRequerido > $stockDisponibleReal) {
+                $articulosOverStock["{$articulo} ({$bodega})"] = "Disponible: $stockDisponibleReal, Requerido Total: $totalRequerido";
             }
-            $this->updateDisponibleStockReserved($stockId, $currentStock);
-            return $item;
-        });
-
-        $finalMessage = null;
-        if (!empty($articulosOverStock)) {
-            $listaArticulos = implode(', ', array_keys($articulosOverStock));
-            $totalArticulos = count($articulosOverStock);
-            $finalMessage = "⚠️ Se encontraron **{$totalArticulos} artículos** que superan el stock disponible. Revise el detalle de los siguientes ítems: **{$listaArticulos}** antes de solicitar una reserva.";
         }
-        return $finalMessage;
+
+
+        //actualizacion de stock disponible visual para el usuario en todas las filas
+        foreach ($selectedStock as $stockId => $item) {
+            $key = "{$item['articulo']}_{$item['bodega']}";
+            $realStock = data_get($currentStocksLookup, "{$key}.STO_ART_STOCK_DISPONIBLE", 0);
+            $this->updateDisponibleStockReserved($stockId, $realStock);
+        }
+
+        //  mensaje final para el usuario
+        if (!empty($articulosOverStock)) {
+            $detalles = [];
+            foreach ($articulosOverStock as $identificador => $msg) {
+                $detalles[] = "**$identificador**: ($msg)";
+            }
+            $lista = implode(",", $detalles);
+            return "⚠️ Stock insuficiente para: $lista. Ajuste las cantidades antes de continuar.";
+        }
+        return null;
     }
 
 

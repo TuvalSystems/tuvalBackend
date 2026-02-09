@@ -131,7 +131,7 @@ class SectionsController extends Controller
         }else{
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 404);
         }
 
     }
@@ -200,7 +200,7 @@ class SectionsController extends Controller
         }else{
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 404);
         }
 
     }
@@ -235,7 +235,7 @@ class SectionsController extends Controller
             }else{
                 return response([
                     'error' => 'Hubo un error al guardar'
-                ], 401);
+                ], 404);
             }
         }
     }
@@ -254,7 +254,7 @@ class SectionsController extends Controller
         }else{
             return response([
                 'error' => 'Hubo un error al guardar'
-            ], 401);
+            ], 404);
         }
     }
 }

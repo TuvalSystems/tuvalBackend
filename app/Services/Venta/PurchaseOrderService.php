@@ -20,9 +20,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     const ORDER_STATUS = 'iniciado';
     const SENT_STATUS = 'enviado';
     const GENERATED_STATUS = 'generado';
-    public function __construct(protected readonly MswService $mswService)
-    {
-    }
+    public function __construct(protected readonly MswService $mswService) {}
 
     public function getViewPurchaseOrder()
     {
@@ -78,29 +76,28 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
                 }
 
                 GpOrdenDeCompra::create([
-                    'detalle_id' => $detalle->id,
-                    'detalle_proveedores_id' => $proveedor->id,
-                    'estado' => self::ORDER_STATUS,
-                    'ORDEN_COMPRA_DOCU_ORIGEN' => $pedido->pedido,
-                    'ORDEN_COMPRA_LINEA' => "{$lineNumber}-" . str_pad($subLineNumber, 2, "0", STR_PAD_LEFT),
-                    'ORDEN_COMPRA_FECHA_DOCUMENTO' => $pedido->created_at,
-                    'ORDEN_COMPRA_FECHA_ENTREGA' => $proveedor->FECHA_ENTREGA . ' 12:00:00',
-                    'ORDEN_COMPRA_ID_CLIENTE' => $pedido->CLI_RUC,
-                    'ORDEN_COMPRA_ID_PROVEEDOR' => $proveedorData->PROV_RUC,
-                    'ORDEN_COMPRA_ID_DIRECCION' => $proveedorData->PROV_ID_DIRECCION,
-                    'ORDEN_COMPRA_NOTA_DOCU' => $proveedor->NOTA,
-                    'ORDEN_COMPRA_BODEGA' => $pedido->BOD_BODEGA,
-                    'ORDEN_COMPRA_ARTICULO' => $detalle->ART_CODIGO,
+                    'detalle_id'                        => $detalle->id,
+                    'detalle_proveedores_id'            => $proveedor->id,
+                    'estado'                            => self::ORDER_STATUS,
+                    'ORDEN_COMPRA_DOCU_ORIGEN'          => $pedido->pedido,
+                    'ORDEN_COMPRA_LINEA'                => "{$lineNumber}-" . str_pad($subLineNumber, 2, "0", STR_PAD_LEFT),
+                    'ORDEN_COMPRA_FECHA_DOCUMENTO'      => $pedido->created_at,
+                    'ORDEN_COMPRA_FECHA_ENTREGA'        => $proveedor->FECHA_ENTREGA . ' 12:00:00',
+                    'ORDEN_COMPRA_ID_CLIENTE'           => $pedido->CLI_RUC,
+                    'ORDEN_COMPRA_ID_PROVEEDOR'         => $proveedorData->PROV_RUC,
+                    'ORDEN_COMPRA_ID_DIRECCION'         => $proveedorData->PROV_ID_DIRECCION,
+                    'ORDEN_COMPRA_NOTA_DOCU'            => $proveedor->NOTA,
+                    'ORDEN_COMPRA_BODEGA'               => $pedido->BOD_BODEGA,
+                    'ORDEN_COMPRA_ARTICULO'             => $detalle->ART_CODIGO,
                     'ORDEN_COMPRA_DESCRIPCION_ARTICULO' => $proveedor->DESCRIPCION_ARTICULO,
-                    'ORDEN_COMPRA_UMEDIDA' => $detalle->ART_PLAN_UMEDIDA,
-                    'ORDEN_COMPRA_CANTIDAD' => $proveedor->CANTIDAD,
-                    'ORDEN_COMPRA_COSTO_UNITARIO' => $proveedor->COSTO_UNITARIO,
-                    'ORDEN_COMPRA_TOTAL' => $proveedor->TOTAL,
-                    'ORDEN_COMPRA_IMPUESTO' => $proveedor->IMPUESTO,
-                    'ORDEN_COMPRA_ID_USUARIO' => $pedido->USERID,
+                    'ORDEN_COMPRA_UMEDIDA'              => $detalle->ART_PLAN_UMEDIDA,
+                    'ORDEN_COMPRA_CANTIDAD'             => $proveedor->CANTIDAD,
+                    'ORDEN_COMPRA_COSTO_UNITARIO'       => $proveedor->COSTO_UNITARIO,
+                    'ORDEN_COMPRA_TOTAL'                => $proveedor->TOTAL,
+                    'ORDEN_COMPRA_IMPUESTO'             => $proveedor->IMPUESTO,
+                    'ORDEN_COMPRA_ID_USUARIO'           => $pedido->USERID,
                 ]);
                 $subLineNumber++;
-
             }
             $lineNumber++;
         }
@@ -109,7 +106,6 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
             $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
             $pedido->save();
         }
-
     }
 
 
@@ -147,30 +143,28 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 
         $response = $this->mswService->transaccional('MST_Respuesta_Orden_Compra', array('documento_origen' => $firstOrder['ORDEN_COMPRA_DOCU_ORIGEN'], 'linea' => $firstOrder['ORDEN_COMPRA_LINEA']));
         $this->processResponse($providerOrders, $response);
-
-
     }
 
     public function buildHeaderForOrder($order)
     {
         return [
-            'ORDEN_COMPRA_DOCU_ORIGEN' => $order['ORDEN_COMPRA_DOCU_ORIGEN'],
-            'ORDEN_COMPRA_LINEA' => $order['ORDEN_COMPRA_LINEA'],
-            'ORDEN_COMPRA_FECHA_DOCUMENTO' => $order['ORDEN_COMPRA_FECHA_DOCUMENTO'],
-            'ORDEN_COMPRA_FECHA_ENTREGA' => $order['ORDEN_COMPRA_FECHA_ENTREGA'],
-            'ORDEN_COMPRA_ID_CLIENTE' => $order['ORDEN_COMPRA_ID_CLIENTE'],
-            'ORDEN_COMPRA_ID_PROVEEDOR' => $order['ORDEN_COMPRA_ID_PROVEEDOR'],
-            'ORDEN_COMPRA_ID_DIRECCION' => $order['ORDEN_COMPRA_ID_DIRECCION'],
-            'ORDEN_COMPRA_NOTA_DOCU' => $order['ORDEN_COMPRA_NOTA_DOCU'],
-            'ORDEN_COMPRA_BODEGA' => $order['ORDEN_COMPRA_BODEGA'],
-            'ORDEN_COMPRA_ARTICULO' => $order['ORDEN_COMPRA_ARTICULO'],
+            'ORDEN_COMPRA_DOCU_ORIGEN'          => $order['ORDEN_COMPRA_DOCU_ORIGEN'],
+            'ORDEN_COMPRA_LINEA'                => $order['ORDEN_COMPRA_LINEA'],
+            'ORDEN_COMPRA_FECHA_DOCUMENTO'      => $order['ORDEN_COMPRA_FECHA_DOCUMENTO'],
+            'ORDEN_COMPRA_FECHA_ENTREGA'        => $order['ORDEN_COMPRA_FECHA_ENTREGA'],
+            'ORDEN_COMPRA_ID_CLIENTE'           => $order['ORDEN_COMPRA_ID_CLIENTE'],
+            'ORDEN_COMPRA_ID_PROVEEDOR'         => $order['ORDEN_COMPRA_ID_PROVEEDOR'],
+            'ORDEN_COMPRA_ID_DIRECCION'         => $order['ORDEN_COMPRA_ID_DIRECCION'],
+            'ORDEN_COMPRA_NOTA_DOCU'            => $order['ORDEN_COMPRA_NOTA_DOCU'],
+            'ORDEN_COMPRA_BODEGA'               => $order['ORDEN_COMPRA_BODEGA'],
+            'ORDEN_COMPRA_ARTICULO'             => $order['ORDEN_COMPRA_ARTICULO'],
             'ORDEN_COMPRA_DESCRIPCION_ARTICULO' => $this->sanitizeDescription($order['ORDEN_COMPRA_DESCRIPCION_ARTICULO']),
-            'ORDEN_COMPRA_UMEDIDA' => $order['ORDEN_COMPRA_UMEDIDA'],
-            'ORDEN_COMPRA_CANTIDAD' => $order['ORDEN_COMPRA_CANTIDAD'],
-            'ORDEN_COMPRA_COSTO_UNITARIO' => $order['ORDEN_COMPRA_COSTO_UNITARIO'],
-            'ORDEN_COMPRA_TOTAL' => $order['ORDEN_COMPRA_TOTAL'],
-            'ORDEN_COMPRA_IMPUESTO' => $order['ORDEN_COMPRA_IMPUESTO'],
-            'ORDEN_COMPRA_ID_USUARIO' => $order['ORDEN_COMPRA_ID_USUARIO'],
+            'ORDEN_COMPRA_UMEDIDA'              => $order['ORDEN_COMPRA_UMEDIDA'],
+            'ORDEN_COMPRA_CANTIDAD'             => $order['ORDEN_COMPRA_CANTIDAD'],
+            'ORDEN_COMPRA_COSTO_UNITARIO'       => $order['ORDEN_COMPRA_COSTO_UNITARIO'],
+            'ORDEN_COMPRA_TOTAL'                => $order['ORDEN_COMPRA_TOTAL'],
+            'ORDEN_COMPRA_IMPUESTO'             => $order['ORDEN_COMPRA_IMPUESTO'],
+            'ORDEN_COMPRA_ID_USUARIO'           => $order['ORDEN_COMPRA_ID_USUARIO'],
         ];
     }
     public function sanitizeDescription(string $description): string
@@ -272,16 +266,16 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         $matchingDetailId = $this->findMatchingDetailId($order, trim($detail['ORDEN_COMPRA_DETALLE_ARTICULO']));
 
         GpOrdenDeCompraGeneradoDetalle::create([
-            'orden_generada_id' => $header->id,
-            'detalle_proveedores_id' => $matchingDetailId,
-            'ORDEN_COMPRA_DETALLE_BODEGA' => $detail['ORDEN_COMPRA_DETALLE_BODEGA'] ?? '',
-            'ORDEN_COMPRA_DETALLE_ARTICULO' => $detail['ORDEN_COMPRA_DETALLE_ARTICULO'] ?? '',
+            'orden_generada_id'                         => $header->id,
+            'detalle_proveedores_id'                    => $matchingDetailId,
+            'ORDEN_COMPRA_DETALLE_BODEGA'               => $detail['ORDEN_COMPRA_DETALLE_BODEGA'] ?? '',
+            'ORDEN_COMPRA_DETALLE_ARTICULO'             => $detail['ORDEN_COMPRA_DETALLE_ARTICULO'] ?? '',
             'ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO' => $detail['ORDEN_COMPRA_DETALLE_DESCRIPCION_ARTICULO'] ?? '',
-            'ORDEN_COMPRA_DETALLE_UMEDIDA' => $detail['ORDEN_COMPRA_DETALLE_UMEDIDA'] ?? '',
-            'ORDEN_COMPRA_DETALLE_CANTIDAD' => $detail['ORDEN_COMPRA_DETALLE_CANTIDAD'] ?? 0,
-            'ORDEN_COMPRA_DETALLE_COSTO_UNITARIO' => $detail['ORDEN_COMPRA_DETALLE_COSTO_UNITARIO'] ?? 0,
-            'ORDEN_COMPRA_DETALLE_TOTAL' => $detail['ORDEN_COMPRA_DETALLE_TOTAL'] ?? 0,
-            'ORDEN_COMPRA_DETALLE_IMPUESTO' => $detail['ORDEN_COMPRA_DETALLE_IMPUESTO'] ?? 0,
+            'ORDEN_COMPRA_DETALLE_UMEDIDA'              => $detail['ORDEN_COMPRA_DETALLE_UMEDIDA'] ?? '',
+            'ORDEN_COMPRA_DETALLE_CANTIDAD'             => $detail['ORDEN_COMPRA_DETALLE_CANTIDAD'] ?? 0,
+            'ORDEN_COMPRA_DETALLE_COSTO_UNITARIO'       => $detail['ORDEN_COMPRA_DETALLE_COSTO_UNITARIO'] ?? 0,
+            'ORDEN_COMPRA_DETALLE_TOTAL'                => $detail['ORDEN_COMPRA_DETALLE_TOTAL'] ?? 0,
+            'ORDEN_COMPRA_DETALLE_IMPUESTO'             => $detail['ORDEN_COMPRA_DETALLE_IMPUESTO'] ?? 0,
         ]);
 
         $this->markOrderAsGenerated($order, $detail['ORDEN_COMPRA_DETALLE_ARTICULO']);
@@ -307,20 +301,17 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 
     public function checkPurchaseOrderRecib(GpPedido $pedido)
     {
+        $hasPending = GpPedidoDetalleProveedores::query()
+            ->join('gp_pedido_detalles as d', 'gp_pedido_detalle_proveedores.detalle_id', '=', 'd.id')
+            ->where('d.pedido_id', $pedido->id)
+            ->where('d.ART_TIPO_COMPRA', 'L')
+            ->where('gp_pedido_detalle_proveedores.recibido', 'no')
+            ->exists();
 
-        $hasPending = GpPedidoDetalleProveedores::whereHas('pedidodetalle', function ($query) use ($pedido) {
-            $query->where('pedido_id', $pedido->id)
-                ->where('ART_TIPO_COMPRA', 'L');
-
-        })->where('recibido', 'no')->exists();
-
-        if ($hasPending) {
+        if ($hasPending && $pedido->estado !== OrderStatus::ORDEN_DE_COMPRA) {
             $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
             $pedido->save();
         }
-
         return $hasPending;
     }
-
-
 }
