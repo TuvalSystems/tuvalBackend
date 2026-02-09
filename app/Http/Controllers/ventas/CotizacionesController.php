@@ -352,7 +352,7 @@ class CotizacionesController extends Controller
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '<=', $data['fecha_hasta'] . ' 23:59:59');
         }
-        $cotizaciones = $cotizaciones->orderBy('created_at', 'desc')->limit(30)->get();
+        $cotizaciones = $cotizaciones->orderBy('created_at', 'desc')->limit(500)->get();
 
 
 
