@@ -224,10 +224,10 @@ class UserService implements UserServiceInterface
     /**
      * Reset password
      */
-    public function resetPassword($data)
+    public function resetPassword($userID)
     {
         try {
-            $user = GpUsuario::where('USERID', $data[0])->first();
+            $user = GpUsuario::where('USERID', $userID)->first();
             $user->must_change_password = true;
             $user->password = Hash::make($user->USERID);
             $user->process_job = 1;
