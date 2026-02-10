@@ -150,9 +150,10 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                     $descRef = substr($refDescripcion, 0, 20);
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva...' vs Original: '$descRef...'");
                 }
-
-                if ($detalle['ART_VALOR'] != (float) $refValor) {
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $refValor");
+                $price    = round((float)$detalle['ART_VALOR'], 4);
+                $priceOrigin = round((float)$refValor, 4);
+                if ($price != $priceOrigin) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ha cambiado. Nuevo: {$price} vs Original: $priceOrigin");
                 }
 
                 /** proceso para calculo de porcetaje maximo de precio de venta */
