@@ -286,13 +286,14 @@ class CotizacionesController extends Controller
                 $detalle->save();
             }
 
+            $cotizacion->refresh();
             return response([
                 'success' => true,
-                'message' => 'La cotización ha sido guardada'
+                'message' => "La cotización #{$cotizacion->cotizacion} ha sido guardada"
             ]);
         } else {
             return response([
-                'error' => 'Hubo un error al guardar'
+                'error' => "Hubo un error al guardar"
             ], 409);
         }
     }
