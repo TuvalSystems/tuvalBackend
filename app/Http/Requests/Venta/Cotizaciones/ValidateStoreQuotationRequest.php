@@ -155,10 +155,6 @@ class ValidateStoreQuotationRequest extends FormRequest
             'cliente_id'            => 'cliente',
             'items'                 => 'artículos',
             'items.*.ART_CANTIDAD'  => 'cantidad del artículo',
-            // 'direccion_entrega_id'   => 'dirección de entrega',
-            // 'fecha_entrega'          => 'fecha de entrega',
-            // 'nota_interna'           => 'nota interna',
-
             'imagenes_nuevas'       => 'nuevas imágenes',
             'imagenes_nuevas.*'     => 'nueva imagen',
             'cotizacion_id'         => 'ID de cotización',
