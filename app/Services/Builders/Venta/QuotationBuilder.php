@@ -383,8 +383,8 @@ class QuotationBuilder implements QuotationBuilderInterface
             'cotizacion_id'                 => $quoteId,
             'detalle_id'                    => $detailId,
             'STO_ART_BODEGA'                => data_get($stock, 'STO_ART_BODEGA'),
-            'STO_ART_STOCK_DISPONIBLE'      => data_get($stock, 'STO_ART_STOCK_DISPONIBLE'),
-            'seleccionado'                  => data_get($stock, 'seleccionado')
+            'STO_ART_STOCK_DISPONIBLE'      => data_get($stock, 'STO_ART_STOCK_DISPONIBLE', 0),
+            'seleccionado'                  => data_get($stock, 'seleccionado' , 0),
         ]);
         return $st;
     }

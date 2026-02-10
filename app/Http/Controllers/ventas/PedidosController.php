@@ -15,6 +15,7 @@ use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
+use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
@@ -49,7 +50,7 @@ class PedidosController extends Controller
 
 
     /** proceso de guardar pedido v2 */
-    public function storeOrderV2(ValidateStoreQuotationRequest $request)
+    public function storeOrderV2(ValidateStoreOrderRequest $request)
     {
         $imagenesExistentes = $request->input('imagenes_existentes', []);
         $imagenesNuevas     = $request->file('imagenes_nuevas', []);
