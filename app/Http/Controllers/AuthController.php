@@ -112,8 +112,7 @@ class AuthController extends Controller
 
     public function resetPassword(Request $request)
     {
-        $data = $request->all();
-        return $this->userService->resetPassword($data);
+        return $this->userService->resetPassword($request->input('USERID'));
     }
 
 
