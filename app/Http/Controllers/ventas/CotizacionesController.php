@@ -214,15 +214,6 @@ class CotizacionesController extends Controller
 
         $cotizacion = new GpCotizacion;
 
-        $ultimaCotizacion = GpCotizacion::orderBy('id', 'DESC')->first();
-
-        if (!$ultimaCotizacion) {
-            $ultimaCotizacion = new \stdClass();
-            $ultimaCotizacion->id = 0;
-            $cotizacion->id = $ultimaCotizacion->id + 1;
-        }
-        $cotizacion->cotizacion = 'COT' . str_pad($ultimaCotizacion->id + 1, 8, "0", STR_PAD_LEFT);
-
         $cotizacion->user_id = $user->id;
         $cotizacion->sucursal_id = $data['sucursal_id'];
         $cotizacion->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
@@ -286,7 +277,7 @@ class CotizacionesController extends Controller
                 $detalle->ART_DESCUENTO = (float) $det['ART_DESCUENTO'];
                 $detalle->ART_IVA = (float) $det['ART_IVA'];
                 $detalle->ART_CANTIDAD = (float) $det['ART_CANTIDAD'];
-                $detalle->ART_STOCK = (float) $det['ART_STOCK'];
+                $detalle->ART_STOCK = (float)data_get( $det, 'ART_STOCK', 0);
                 $detalle->ART_IMP_VTA = (float) $det['ART_IMP_VTA'];
                 $detalle->ART_COSTO_PROMEDIO = (float) $det['ART_COSTO_PROMEDIO'];
                 $detalle->descuento = (float) $det['descuento'];
