@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ordendecompra\GpOrdenDeCompra;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -80,6 +81,13 @@ class GpPedidoDetalleProveedores extends Model
 
     public function pedidodetalle(){
         return $this->belongsTo(GpPedidoDetalle::class, 'detalle_id');
+    }
+    public function proveedores(){
+        return $this->belongsTo(GpProveedor::class, 'ID_PROVEEDOR', 'id');
+    }
+
+    public function ordenCompra(){
+        return $this->hasOne(GpOrdenDeCompra::class, 'detalle_proveedores_id', 'id');
     }
 
 }

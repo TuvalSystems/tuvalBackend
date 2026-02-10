@@ -19,6 +19,7 @@ use App\Models\traslados\GpTrasladosVentas;
 use App\Models\reservas\GpCotizacionReservaLog;
 use App\Models\reservas\GpCotizacionReservaDetalleLog;
 use App\Models\reservas\GpReserva;
+use App\Repositories\Pedidos\OrderRepository;
 use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -35,7 +36,8 @@ class InvoiceService implements InvoiceServiceInterface
     public function __construct(
         protected readonly PurchaseOrderServiceInterface $purchaseOrderService,
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice
+        protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice,
+        protected readonly OrderRepository $orderRepository
     ) {}
 
     /** Funcion de checkenviarfactura pasada aqui para reutilizar en otros servicios
@@ -92,7 +94,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTrasladado(GpPedido $pedido)
     {
-        $tieneTraslado = $this->getDataCheckTraslado($pedido);
+        $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
 
         $pedido->estado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
         $pedido->save();
@@ -100,18 +102,10 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    protected function getDataCheckTraslado(GpPedido $pedido): bool
-    {
-        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
-            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)->exists();
-    }
-
     public function checkTraslado(GpPedido $pedido)
     {
-        $hayTraslado = $this->getDataCheckTraslado($pedido);
-        $detalles = $this->getDetailForTraslate($pedido);
+        $hayTraslado = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
+        $detalles = $this->orderRepository->getDetailForTraslate($pedido->id, $pedido->BOD_BODEGA);
         $nuevoEstado = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
         $pedido->estado = $nuevoEstado;
 
@@ -122,20 +116,7 @@ class InvoiceService implements InvoiceServiceInterface
         return $hayTraslado;
     }
 
-    protected function getDetailForTraslate(GpPedido $pedido)
-    {
-        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
-            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-            ->whereNull('traslado')
-            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)
-            ->select([
-                'gp_pedido_detalles.*',
-                'gp_pedido_detalle_stocks.STO_ART_BODEGA',
-                'gp_pedido_detalle_stocks.seleccionado',
-                'gp_pedido_detalle_stocks.id AS detalle_stocks_id'
-            ])->get();
-    }
+  
 
     /**
      *  remplaza a la funcion savetransferenciasventas que esta en TrasnferenciasController
@@ -399,7 +380,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function checkOrderHaveItemTransferPending(GpPedido $order): bool
     {
-        $tieneTraslado = $this->getDataCheckTraslado($order);
+        $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($order->id, $order->BOD_BODEGA);
         $nuevoEstado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
 
         if ($order->estado !== $nuevoEstado) {

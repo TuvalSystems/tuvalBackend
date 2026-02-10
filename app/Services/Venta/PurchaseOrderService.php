@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Enums\Ventas\PurchaseOrdersL;
 use App\Models\GpPedido;
 use App\Models\GpProveedor;
 use App\Models\GpPedidoDetalle;
@@ -13,13 +14,10 @@ use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
+use Illuminate\Support\Facades\Log;
 
 class PurchaseOrderService implements PurchaseOrderServiceInterface
 {
-    const ORDER_STATE = 'orden_de_compra';
-    const ORDER_STATUS = 'iniciado';
-    const SENT_STATUS = 'enviado';
-    const GENERATED_STATUS = 'generado';
     public function __construct(protected readonly MswService $mswService) {}
 
     public function getViewPurchaseOrder()
@@ -78,7 +76,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
                 GpOrdenDeCompra::create([
                     'detalle_id'                        => $detalle->id,
                     'detalle_proveedores_id'            => $proveedor->id,
-                    'estado'                            => self::ORDER_STATUS,
+                    'estado'                            => PurchaseOrdersL::INICIADO->value,
                     'ORDEN_COMPRA_DOCU_ORIGEN'          => $pedido->pedido,
                     'ORDEN_COMPRA_LINEA'                => "{$lineNumber}-" . str_pad($subLineNumber, 2, "0", STR_PAD_LEFT),
                     'ORDEN_COMPRA_FECHA_DOCUMENTO'      => $pedido->created_at,
@@ -108,6 +106,72 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         }
     }
 
+    public function checkPurchaseOrdersV2(GpPedido $pedido): GpPedido
+    {
+        $detalles = GpPedidoDetalle::whith(['detalleProveedores' => function ($query) {
+            $query->where('recibido', 'no')
+                ->doesntHave('ordenCompra')
+                ->with('proveedor');
+        }])
+            ->where('pedido_id', $pedido->id)
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->get();
+
+        if ($detalles->isEmpty()) {
+            return $pedido;
+        }
+
+        $ordenCreado = false;
+        $lineNumber = 0;
+
+        foreach ($detalles as $detalle) {
+            if ($detalle->detalleProveedores->isEmpty()) {
+                $lineNumber++;
+                continue;
+            }
+            $subLineNumber = 1;
+            foreach ($detalle->detalleProveedores as $prov) {
+                $datosProveedor = $prov->proveedor;
+                if (!$datosProveedor) {
+                    Log::warning("Proveedor maestro no encontrado ID: {$prov->ID_PROVEEDOR}");
+                    continue;
+                }
+                $ordenCreado = true;
+                 /** crea la orden de compra web */
+                 GpOrdenDeCompra::create([
+                    'detalle_id'                        => $detalle->id,
+                    'detalle_proveedores_id'            => $prov->id,
+                    'estado'                            => PurchaseOrdersL::INICIADO->value,
+                    'ORDEN_COMPRA_DOCU_ORIGEN'          => $pedido->pedido,
+                    'ORDEN_COMPRA_LINEA'                => "{$lineNumber}-" . str_pad($subLineNumber, 2, "0", STR_PAD_LEFT),
+                    'ORDEN_COMPRA_FECHA_DOCUMENTO'      => $pedido->created_at,
+                    'ORDEN_COMPRA_FECHA_ENTREGA'        => $prov->FECHA_ENTREGA . ' 12:00:00',
+                    'ORDEN_COMPRA_ID_CLIENTE'           => $pedido->CLI_RUC,
+                    'ORDEN_COMPRA_ID_PROVEEDOR'         => $datosProveedor->PROV_RUC,
+                    'ORDEN_COMPRA_ID_DIRECCION'         => $datosProveedor->PROV_ID_DIRECCION,
+                    'ORDEN_COMPRA_NOTA_DOCU'            => $prov->NOTA,
+                    'ORDEN_COMPRA_BODEGA'               => $pedido->BOD_BODEGA,
+                    'ORDEN_COMPRA_ARTICULO'             => $detalle->ART_CODIGO,
+                    'ORDEN_COMPRA_DESCRIPCION_ARTICULO' => $prov->DESCRIPCION_ARTICULO,
+                    'ORDEN_COMPRA_UMEDIDA'              => $detalle->ART_PLAN_UMEDIDA,
+                    'ORDEN_COMPRA_CANTIDAD'             => $prov->CANTIDAD,
+                    'ORDEN_COMPRA_COSTO_UNITARIO'       => $prov->COSTO_UNITARIO,
+                    'ORDEN_COMPRA_TOTAL'                => $prov->TOTAL,
+                    'ORDEN_COMPRA_IMPUESTO'             => $prov->IMPUESTO,
+                    'ORDEN_COMPRA_ID_USUARIO'           => $pedido->USERID,
+                ]);
+                 $subLineNumber++;
+            }
+            $lineNumber++;
+        }
+
+        if ($ordenCreado) {
+            $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
+            $pedido->save();
+        }
+        return $pedido->refresh();
+    }
+
 
     public function sendPurchaseOrders()
     {
@@ -128,7 +192,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 
     public function getPendingPurchaseOrders()
     {
-        return GpOrdenDeCompra::where('estado', self::ORDER_STATUS)->get();
+        return GpOrdenDeCompra::where('estado', PurchaseOrdersL::INICIADO->value)->get();
     }
     public function groupOrdersByProviders($orders)
     {
@@ -187,7 +251,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     public function updateOrdersAsSent($orders, $docGenerated)
     {
         foreach ($orders as $order) {
-            GpOrdenDeCompra::where('id', $order['id'])->update(['estado' => self::SENT_STATUS, 'DOC_GENERADO' => $docGenerated]);
+            GpOrdenDeCompra::where('id', $order['id'])->update(['estado' => PurchaseOrdersL::ENVIADO->value, 'DOC_GENERADO' => $docGenerated]);
         }
     }
     public function updateOrdersWithError($orders, $result)
@@ -234,17 +298,17 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     public function saveGeneratedOrderheader($order, $generated)
     {
         return GpOrdenDeCompraGenerado::create([
-            'orden_id' => $order[0]['id'],
-            'detalle_id' => $order[0]['detalle_id'],
-            'detalle_proveedores_id' => $order[0]['detalle_proveedores_id'],
-            'estado' => self::GENERATED_STATUS,
-            'ORDEN_COMPRA_DOCUMENTO' => $generated['ORDEN_COMPRA_DOCUMENTO'] ?? '',
-            'ORDEN_COMPRA_FECHA_DOCUMENTO' => $this->parseSoapDate($generated['ORDEN_COMPRA_FECHA_DOCUMENTO']),
-            'ORDEN_COMPRA_FECHA_ENTREGA' => $this->parseSoapDate($generated['ORDEN_COMPRA_FECHA_ENTREGA']),
-            'ORDEN_COMPRA_ID_PROVEEDOR' => $generated['ORDEN_COMPRA_ID_PROVEEDOR'] ?? '',
-            'ORDEN_COMPRA_DIRECCION' => $generated['ORDEN_COMPRA_DIRECCION'] ?? '',
-            'ORDEN_COMPRA_NOTA_DOCU' => $generated['ORDEN_COMPRA_NOTA_DOCU'] ?? '',
-            'recibidos' => 1,
+            'orden_id'                      => $order[0]['id'],
+            'detalle_id'                    => $order[0]['detalle_id'],
+            'detalle_proveedores_id'        => $order[0]['detalle_proveedores_id'],
+            'estado'                        => PurchaseOrdersL::GENERADO->value,
+            'ORDEN_COMPRA_DOCUMENTO'        => $generated['ORDEN_COMPRA_DOCUMENTO'] ?? '',
+            'ORDEN_COMPRA_FECHA_DOCUMENTO'  => $this->parseSoapDate($generated['ORDEN_COMPRA_FECHA_DOCUMENTO']),
+            'ORDEN_COMPRA_FECHA_ENTREGA'    => $this->parseSoapDate($generated['ORDEN_COMPRA_FECHA_ENTREGA']),
+            'ORDEN_COMPRA_ID_PROVEEDOR'     => $generated['ORDEN_COMPRA_ID_PROVEEDOR'] ?? '',
+            'ORDEN_COMPRA_DIRECCION'        => $generated['ORDEN_COMPRA_DIRECCION'] ?? '',
+            'ORDEN_COMPRA_NOTA_DOCU'        => $generated['ORDEN_COMPRA_NOTA_DOCU'] ?? '',
+            'recibidos'                     => 1,
         ]);
     }
 
@@ -294,7 +358,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
     {
         foreach ($order as $ord) {
             if ($ord['ORDEN_COMPRA_ARTICULO'] == $articulo) {
-                GpOrdenDeCompra::where('id', $ord['id'])->update(['estado' => self::GENERATED_STATUS]);
+                GpOrdenDeCompra::where('id', $ord['id'])->update(['estado' => PurchaseOrdersL::GENERADO->value]);
             }
         }
     }
