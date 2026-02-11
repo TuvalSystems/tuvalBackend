@@ -18,10 +18,10 @@ class ImportDataToGp extends Command
         $start = Carbon::parse($this->argument('start_date'));
         $end = Carbon::parse($this->argument('end_date'));
         while ($start->lte($end)) {
-            $fechaIni = $start->copy()->format('Y-m-d');
+            $fechaIni = $start->copy()->format('Y-m-d 00:00:00');
             $fechaFin = $start->copy()->endOfMonth()->lte($end)
-                ? $start->copy()->endOfMonth()->format('Y-m-d')
-                : $end->format('Y-m-d');
+                ? $start->copy()->endOfMonth()->format('Y-m-d 23:59:59')
+                : $end->format('Y-m-d 23:59:59');
             $this->info("Encolando periodo: $fechaIni al $fechaFin");
 
             SyncGpOrdersJob::dispatch($fechaIni, $fechaFin)->onQueue('migration_local_history');
