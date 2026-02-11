@@ -25,6 +25,6 @@ class SyncGpOrdersJob implements ShouldQueue
     public function handle(OrdersImportInterface $import)
     {
 
-        $import->updateDataSqlServerOrdersAndDetail($this->fechaIni, $this->fechaFin);
+        // $import->updateDataSqlServerOrdersAndDetail($this->fechaIni, $this->fechaFin);
     }
 }

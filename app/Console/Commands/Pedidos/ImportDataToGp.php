@@ -14,19 +14,19 @@ class ImportDataToGp extends Command
 
 
     public function handle(OrdersImportInterface $import)
-    {
-        $start = Carbon::parse($this->argument('start_date'));
-        $end = Carbon::parse($this->argument('end_date'));
-        while ($start->lte($end)) {
-            $fechaIni = $start->copy()->format('Y-m-d');
-            $fechaFin = $start->copy()->endOfMonth()->lte($end)
-                ? $start->copy()->endOfMonth()->format('Y-m-d')
-                : $end->format('Y-m-d');
-            $this->info("Encolando periodo: $fechaIni al $fechaFin");
+     {
+    //     $start = Carbon::parse($this->argument('start_date'));
+    //     $end = Carbon::parse($this->argument('end_date'));
+    //     while ($start->lte($end)) {
+    //         $fechaIni = $start->copy()->format('Y-m-d');
+    //         $fechaFin = $start->copy()->endOfMonth()->lte($end)
+    //             ? $start->copy()->endOfMonth()->format('Y-m-d')
+    //             : $end->format('Y-m-d');
+    //         $this->info("Encolando periodo: $fechaIni al $fechaFin");
 
-            SyncGpOrdersJob::dispatch($fechaIni, $fechaFin)->onQueue('migration_local_history');
-            $start->addMonthNoOverflow();
-        }
-        $this->info("Todos los periodos han sido encolados.");
+    //         SyncGpOrdersJob::dispatch($fechaIni, $fechaFin)->onQueue('migration_local_history');
+    //         $start->addMonthNoOverflow();
+    //     }
+    //     $this->info("Todos los periodos han sido encolados.");
     }
 }
