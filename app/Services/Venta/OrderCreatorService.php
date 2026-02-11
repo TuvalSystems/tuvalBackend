@@ -31,7 +31,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     }
     public function createOrder(array $data, $user, array $existingImages = [], array $newImages = []): array
     {
-        return DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
+        $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
             $quoteBlock = GpCotizacion::where('id', data_get($data, 'cotizacion_id'))->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
                 throw new \DomainException('la cotizacion ya se encuentra procesada o facturada');
@@ -42,26 +42,28 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 $this->saveOrderDetails($pedido, $data['items'] ?? []);
             }
             $this->syncImages($pedido, $existingImages, $newImages);
-            if ($quoteBlock) {
-                $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
+            if ($pedido->exists && $pedido->cotizacion_id) {
+                // Actualizamos directamente a través de la relación del pedido
+                $pedido->gpcotizacion()->update([
+                    'estado' => 'procesado',
+                    'facturado' => 1
+                ]);
             }
 
-            $invoiceError = null;
-            DB::afterCommit(function () use ($invoiceError, $pedido) {
-                try {
-
-                    $this->invoiceService->checkSendInvoice($pedido);
-                } catch (\Exception $e) {
-                    Log::error("Error facturando pedido {$pedido->id}: " . $e->getMessage());
-                    $invoiceError = $e->getMessage();
-                }
-            });
-
-            return [
-                'pedido' => $pedido,
-                'invoice_error' => $invoiceError
-            ];
+            return $pedido;
         });
+
+        $invoiceError = null;
+        try {
+            $this->invoiceService->checkSendInvoice($pedido);
+        } catch (\Exception $e) {
+            Log::error("Error facturando pedido {$pedido->id}: " . $e->getMessage());
+            $invoiceError = $e->getMessage();
+        }
+        return [
+            'pedido' => $pedido->refresh(),
+            'invoice_error' => $invoiceError
+        ];
     }
 
 
