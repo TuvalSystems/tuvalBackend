@@ -13,12 +13,13 @@ use App\Models\GpPedidoDetalleProveedores;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Services\Builders\Venta\Contracts\PurchaseOrderBuilderInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 class PurchaseOrderService implements PurchaseOrderServiceInterface
 {
-    public function __construct(protected readonly MswService $mswService) {}
+    public function __construct(protected readonly MswService $mswService, protected readonly PurchaseOrderBuilderInterface $purchaseBuilder) {}
 
     public function getViewPurchaseOrder()
     {
@@ -108,10 +109,10 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 
     public function checkPurchaseOrdersV2(GpPedido $pedido): GpPedido
     {
-        $detalles = GpPedidoDetalle::whith(['detalleProveedores' => function ($query) {
+        $detalles = GpPedidoDetalle::with(['detalleProveedores' => function ($query) {
             $query->where('recibido', 'no')
                 ->doesntHave('ordenCompra')
-                ->with('proveedor');
+                ->with('proveedores');
         }])
             ->where('pedido_id', $pedido->id)
             ->where('ART_TIPO_COMPRA', 'L')
@@ -131,35 +132,17 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
             }
             $subLineNumber = 1;
             foreach ($detalle->detalleProveedores as $prov) {
-                $datosProveedor = $prov->proveedor;
+                $datosProveedor = $prov->proveedores;
                 if (!$datosProveedor) {
-                    Log::warning("Proveedor maestro no encontrado ID: {$prov->ID_PROVEEDOR}");
+                    Log::channel('invoice')->warning("Proveedor maestro no encontrado ID: {$prov->ID_PROVEEDOR}");
                     continue;
                 }
                 $ordenCreado = true;
+                $line = "{$lineNumber}-" . str_pad($subLineNumber, 2, "0", STR_PAD_LEFT);
                  /** crea la orden de compra web */
-                 GpOrdenDeCompra::create([
-                    'detalle_id'                        => $detalle->id,
-                    'detalle_proveedores_id'            => $prov->id,
-                    'estado'                            => PurchaseOrdersL::INICIADO->value,
-                    'ORDEN_COMPRA_DOCU_ORIGEN'          => $pedido->pedido,
-                    'ORDEN_COMPRA_LINEA'                => "{$lineNumber}-" . str_pad($subLineNumber, 2, "0", STR_PAD_LEFT),
-                    'ORDEN_COMPRA_FECHA_DOCUMENTO'      => $pedido->created_at,
-                    'ORDEN_COMPRA_FECHA_ENTREGA'        => $prov->FECHA_ENTREGA . ' 12:00:00',
-                    'ORDEN_COMPRA_ID_CLIENTE'           => $pedido->CLI_RUC,
-                    'ORDEN_COMPRA_ID_PROVEEDOR'         => $datosProveedor->PROV_RUC,
-                    'ORDEN_COMPRA_ID_DIRECCION'         => $datosProveedor->PROV_ID_DIRECCION,
-                    'ORDEN_COMPRA_NOTA_DOCU'            => $prov->NOTA,
-                    'ORDEN_COMPRA_BODEGA'               => $pedido->BOD_BODEGA,
-                    'ORDEN_COMPRA_ARTICULO'             => $detalle->ART_CODIGO,
-                    'ORDEN_COMPRA_DESCRIPCION_ARTICULO' => $prov->DESCRIPCION_ARTICULO,
-                    'ORDEN_COMPRA_UMEDIDA'              => $detalle->ART_PLAN_UMEDIDA,
-                    'ORDEN_COMPRA_CANTIDAD'             => $prov->CANTIDAD,
-                    'ORDEN_COMPRA_COSTO_UNITARIO'       => $prov->COSTO_UNITARIO,
-                    'ORDEN_COMPRA_TOTAL'                => $prov->TOTAL,
-                    'ORDEN_COMPRA_IMPUESTO'             => $prov->IMPUESTO,
-                    'ORDEN_COMPRA_ID_USUARIO'           => $pedido->USERID,
-                ]);
+                 $ord = $this->purchaseBuilder->formBuilderPruchaseOrder($pedido, $detalle, $prov, $datosProveedor, $line);
+                 $ord->save();
+                 Log::channel('invoice')->info("Orden de compra creada: {$ord->ORDEN_COMPRA_DOCU_ORIGEN} - {$ord->ORDEN_COMPRA_LINEA}");
                  $subLineNumber++;
             }
             $lineNumber++;

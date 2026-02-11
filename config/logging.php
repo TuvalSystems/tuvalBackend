@@ -142,10 +142,14 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/redis_log.log'),
         ],
-         'reservas_log' => [
+        'reservas_log' => [
             'driver' => 'single',
             'path' => storage_path('logs/reservas_log.log'),
         ],
+        'invoice' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/invoice.log')
+        ]
     ],
 
 ];
