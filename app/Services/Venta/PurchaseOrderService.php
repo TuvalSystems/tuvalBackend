@@ -214,7 +214,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
             'ORDEN_COMPRA_ID_USUARIO'           => $order['ORDEN_COMPRA_ID_USUARIO'],
         ];
     }
-    public function sanitizeDescription(string $description): string
+    private function sanitizeDescription(string $description): string
     {
         $clean = str_replace(['*', '`', '  ', ';'], ['', '', ' ', '-'], $description);
         return substr($clean, 0, 99);
@@ -257,17 +257,35 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         if ($orders->isEmpty()) {
             return;
         }
-        foreach ($orders as $keyProv => $prov) {
-            
-        }
 
-        return $orders;
+        return $orders->map(
+            fn($groupProv) =>
+            $this->transformGroupToPurchaseOrders($groupProv)
+        )->all();
     }
 
     private function getSentPurchaseOrdersGroupedByProvider()
     {
         return GpOrdenDeCompra::where('estado', PurchaseOrdersL::INICIADO->value)->get()->groupBy('ORDEN_COMPRA_ID_PROVEEDOR');
     }
+
+    private function transformGroupToPurchaseOrders($groupProv): array
+    {
+        return $groupProv->map(
+            fn($order) =>
+            $this->purchaseBuilder->formBuilderHeaderOrderSendGp(
+                $order,
+                $this->formatDescription($order->ORDEN_COMPRA_DESCRIPCION_ARTICULO)
+            )
+        )->all();
+    }
+
+    private function formatDescription(string $description): string
+    {
+        $clean = str_replace(['*', '`', '  ', ';'], ['', '', ' ', '-'], $description);
+        return substr($clean, 0, 99);
+    }
+
 
 
     /**

@@ -8,4 +8,6 @@ interface PurchaseOrderBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
      public function formBuilderPruchaseOrder($order, $detalle, $prov, $dataProvider, $line): GpOrdenDeCompra;
+
+     public function formBuilderHeaderOrderSendGp($order, string $descripcion): array;
 }

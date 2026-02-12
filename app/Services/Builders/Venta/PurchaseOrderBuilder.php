@@ -38,7 +38,7 @@ class PurchaseOrderBuilder implements PurchaseOrderBuilderInterface
         return $nOrdL;
     }
 
-    public function formBuilderHeaderOrderSendGp($order): array
+    public function formBuilderHeaderOrderSendGp($order, string $descripcion): array
     {
         return [
             'docuOrigen'            => $order->ORDEN_COMPRA_DOCU_ORIGEN,
@@ -51,12 +51,12 @@ class PurchaseOrderBuilder implements PurchaseOrderBuilderInterface
             'notaDocu'              => $order->ORDEN_COMPRA_NOTA_DOCU,
             'bodega'                => $order->ORDEN_COMPRA_BODEGA,
             'articulo'              => $order->ORDEN_COMPRA_ARTICULO,
-            'descripcionArticulo'   => $order->ORDEN_COMPRA_DESCRIPCION_ARTICULO,
+            'descripcionArticulo'   => $descripcion,
             'umedida'               => $order->ORDEN_COMPRA_UMEDIDA,
-            'cantidad'              => $order->ORDEN_COMPRA_CANTIDAD,
-            'costoUnitario'         => $order->ORDEN_COMPRA_COSTO_UNITARIO,
-            'total'                 => $order->ORDEN_COMPRA_TOTAL,
-            'impuesto'              => $order->ORDEN_COMPRA_IMPUESTO,
+            'cantidad'              => (float)$order->ORDEN_COMPRA_CANTIDAD,
+            'costoUnitario'         => (float)$order->ORDEN_COMPRA_COSTO_UNITARIO,
+            'total'                 => (float)$order->ORDEN_COMPRA_TOTAL,
+            'impuesto'              => (float)$order->ORDEN_COMPRA_IMPUESTO,
             'idUsuario'             => $order->ORDEN_COMPRA_ID_USUARIO
         ];
     }
