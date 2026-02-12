@@ -147,6 +147,7 @@ class ValidateStoreQuotationRequest extends FormRequest
 
             'imagenes_existentes'       => ['nullable', 'array'],
             'imagenes_existentes.*'     => ['string'],
+            'origen'                    => ['required', 'string'],
         ];
     }
 
