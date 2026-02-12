@@ -36,4 +36,15 @@ class TestController extends Controller
             return $this->errorResponse("Opps! $msg", [], 500);
         }
     }
+
+
+    public function enviarOrdenesCompraLIniciadas(): JsonResponse
+    {
+        try {
+            $ordenes = $this->purchase->sendPurchaseOrdersV2();
+            return $this->successResponse('Información obtenida', $ordenes, 200);
+        } catch (\Throwable $th) {
+            return $this->buildErrorResponse($th->getMessage(), 500);
+        }
+    }
 }

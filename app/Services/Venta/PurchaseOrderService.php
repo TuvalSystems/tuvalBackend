@@ -139,11 +139,11 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
                 }
                 $ordenCreado = true;
                 $line = "{$lineNumber}-" . str_pad($subLineNumber, 2, "0", STR_PAD_LEFT);
-                 /** crea la orden de compra web */
-                 $ord = $this->purchaseBuilder->formBuilderPruchaseOrder($pedido, $detalle, $prov, $datosProveedor, $line);
-                 $ord->save();
-                 Log::channel('invoice')->info("Orden de compra creada: {$ord->ORDEN_COMPRA_DOCU_ORIGEN} - {$ord->ORDEN_COMPRA_LINEA}");
-                 $subLineNumber++;
+                /** crea la orden de compra web */
+                $ord = $this->purchaseBuilder->formBuilderPruchaseOrder($pedido, $detalle, $prov, $datosProveedor, $line);
+                $ord->save();
+                Log::channel('invoice')->info("Orden de compra creada: {$ord->ORDEN_COMPRA_DOCU_ORIGEN} - {$ord->ORDEN_COMPRA_LINEA}");
+                $subLineNumber++;
             }
             $lineNumber++;
         }
@@ -247,6 +247,27 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         }
     }
 
+
+
+    /** version 2 de sendPurchaseOrders  */
+
+    public function sendPurchaseOrdersV2()
+    {
+        $orders = $this->getSentPurchaseOrdersGroupedByProvider();
+        if ($orders->isEmpty()) {
+            return;
+        }
+        foreach ($orders as $keyProv => $prov) {
+            
+        }
+
+        return $orders;
+    }
+
+    private function getSentPurchaseOrdersGroupedByProvider()
+    {
+        return GpOrdenDeCompra::where('estado', PurchaseOrdersL::INICIADO->value)->get()->groupBy('ORDEN_COMPRA_ID_PROVEEDOR');
+    }
 
 
     /**

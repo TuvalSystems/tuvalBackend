@@ -10,7 +10,8 @@ class PurchaseOrderBuilder implements PurchaseOrderBuilderInterface
 {
 
 
-    public function formBuilderPruchaseOrder($order, $detalle, $prov, $dataProvider, $line): GpOrdenDeCompra{
+    public function formBuilderPruchaseOrder($order, $detalle, $prov, $dataProvider, $line): GpOrdenDeCompra
+    {
         $nOrdL = new GpOrdenDeCompra();
         $nOrdL->fill([
             'detalle_id'                        => $detalle->id,
@@ -32,8 +33,31 @@ class PurchaseOrderBuilder implements PurchaseOrderBuilderInterface
             'ORDEN_COMPRA_COSTO_UNITARIO'       => $prov->COSTO_UNITARIO,
             'ORDEN_COMPRA_TOTAL'                => $prov->TOTAL,
             'ORDEN_COMPRA_IMPUESTO'             => $prov->IMPUESTO,
-            'ORDEN_COMPRA_ID_USUARIO'           => $prov->USERID,
+            'ORDEN_COMPRA_ID_USUARIO'           => $order->USERID,
         ]);
         return $nOrdL;
+    }
+
+    public function formBuilderHeaderOrderSendGp($order): array
+    {
+        return [
+            'docuOrigen'            => $order->ORDEN_COMPRA_DOCU_ORIGEN,
+            'linea'                 => $order->ORDEN_COMPRA_LINEA,
+            'fechaDocumento'        => $order->ORDEN_COMPRA_FECHA_DOCUMENTO,
+            'fechaEntrega'          => $order->ORDEN_COMPRA_FECHA_ENTREGA,
+            'idCliente'             => $order->ORDEN_COMPRA_ID_CLIENTE,
+            'idProveedor'           => $order->ORDEN_COMPRA_ID_PROVEEDOR,
+            'idDireccion'           => $order->ORDEN_COMPRA_ID_DIRECCION,
+            'notaDocu'              => $order->ORDEN_COMPRA_NOTA_DOCU,
+            'bodega'                => $order->ORDEN_COMPRA_BODEGA,
+            'articulo'              => $order->ORDEN_COMPRA_ARTICULO,
+            'descripcionArticulo'   => $order->ORDEN_COMPRA_DESCRIPCION_ARTICULO,
+            'umedida'               => $order->ORDEN_COMPRA_UMEDIDA,
+            'cantidad'              => $order->ORDEN_COMPRA_CANTIDAD,
+            'costoUnitario'         => $order->ORDEN_COMPRA_COSTO_UNITARIO,
+            'total'                 => $order->ORDEN_COMPRA_TOTAL,
+            'impuesto'              => $order->ORDEN_COMPRA_IMPUESTO,
+            'idUsuario'             => $order->ORDEN_COMPRA_ID_USUARIO
+        ];
     }
 }
