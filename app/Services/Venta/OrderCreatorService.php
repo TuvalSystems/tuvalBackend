@@ -79,7 +79,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         $requieresApproval = $approvalCredit != 'no';
         $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
         $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
-        $despacho = data_get($data, 'tipo_despacho', 'retiro');
+        $despacho = data_get($data, 'tipo_entrega', 'retiro');
         $tipoDespacho = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
         $arStrings = [
             'motivo_comercial'                  => $motivoLimpio,
