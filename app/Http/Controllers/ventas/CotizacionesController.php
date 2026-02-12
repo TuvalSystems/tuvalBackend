@@ -277,7 +277,7 @@ class CotizacionesController extends Controller
                 $detalle->ART_DESCUENTO = (float) $det['ART_DESCUENTO'];
                 $detalle->ART_IVA = (float) $det['ART_IVA'];
                 $detalle->ART_CANTIDAD = (float) $det['ART_CANTIDAD'];
-                $detalle->ART_STOCK = (float)data_get( $det, 'ART_STOCK', 0);
+                $detalle->ART_STOCK = (float)data_get($det, 'ART_STOCK', 0);
                 $detalle->ART_IMP_VTA = (float) $det['ART_IMP_VTA'];
                 $detalle->ART_COSTO_PROMEDIO = (float) $det['ART_COSTO_PROMEDIO'];
                 $detalle->descuento = (float) $det['descuento'];
@@ -595,78 +595,14 @@ class CotizacionesController extends Controller
     }
 
 
-    public function llenarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function actualizarCotizacionPropectoV2(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $user = Auth::user();
-
-        $funciones = new FuncionesController();
-        $cliente = $funciones->getcliente($data);
-        $arr_bodegas = $funciones->gebodegas($data, 1);
-        $consulta_bodega = array();
-        $consulta_precio = array();
-        $stock_bodega_arr = array();
-        $arrArticulos = array();
-        $cotizacion = GpCotizacion::where('id', $data['id'])->first();
-
-        $detalle = GpCotizacionDetalle::where('cotizacion_id', $data['id'])->get();
-
-        foreach ($detalle as $articulo) {
-            $articulo->proveedores = array();
-
-            $stockbodega = GpCotizacionDetalleStock::where('cotizacion_id', $data['id'])
-                ->where('detalle_id', $articulo->id)
-                ->get()->toArray();
-            $stock_bodega_arr[$articulo->ART_CODIGO] = $stockbodega;
-
-
-            $arrArticulos[] = array(
-                'articulo' => $articulo->ART_CODIGO,
-            );
-            $consulta_precio[] = array(
-                'ART_CODIGO' => $articulo->ART_CODIGO,
-            );
+        try {
+            $quote = $this->quotationService->updateQuoteClientData($request->input('id'), $request->input('cliente_id'));
+            return $this->successResponse('Cotización actualizada', $quote,  200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
-        $webservices = new WebserviceController;
-        $precios = $webservices->listaprecios($consulta_precio);
-        $lista_precios_general = array();
-        foreach ($precios as $precio) {
-            $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
-        }
-
-        // $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-        $stock_general = $this->quotationService->getStockGeneralRestoreQuotation($arrArticulos, $arr_bodegas);
-        $stock_general = collect($stock_general)->groupBy('STO_ART_ARTICULO') // Agrupamos primero por artículo
-            ->map(function ($items) {
-                return $items->keyBy('STO_ART_BODEGA'); // Agrupamos dentro por bodega
-            })
-            ->toArray();
-
-        foreach ($stock_bodega_arr as $key => $bodegas) {
-            foreach ($bodegas as $bodega) {
-                $stock_general[$key][$bodega['STO_ART_BODEGA']]['seleccionado'] = $bodega['seleccionado'];
-            }
-        }
-
-        foreach ($detalle as $articulo) {
-            $funciones->formatStock($articulo, $stock_general);
-            if ($articulo->ART_TIPO_COMPRA != 'L') {
-                $articulo->ART_VALOR = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-                $articulo->ART_VALOR_ORIGINAL = $lista_precios_general[$articulo->ART_CODIGO][$cliente->CLI_NIVEL_PRECIO]['LST_PRC_VALOR'];
-            }
-        }
-
-        $data['sucursal_id'] = $cliente->sucursales[0]->id;
-        $funciones->recalculariva($detalle);
-        $funciones->setTempCartFrom($detalle, $data, $user);
-
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'currentSucursal' => $cliente->sucursales[0]->id,
-            'cotizacion' => $cotizacion,
-        ]);
     }
 
     public function limpiarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

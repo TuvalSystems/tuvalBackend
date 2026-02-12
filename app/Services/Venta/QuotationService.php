@@ -181,17 +181,22 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    /** funcion para llenar el stock de llenar cotizacion prospecto */
-    public function getStockGeneralRestoreQuotation($articulos, $bodegas)
+    /**
+     *
+     * PROCESO DE ACTUALIZAR CIENTE Y SUCURSALES EN UNA COTIZACION DE PROSPECTO
+     */
+
+    public function updateQuoteClientData($quoteId, $clientId)
     {
-        $stockRequests = [];
-        foreach ($articulos as $art) {
-            foreach ($bodegas as $bod) {
-                $stockRequests[] = ['articulo' => $art['articulo'], 'bodega' => $bod];
-            }
-        }
-        $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
-        return $this->stockWarehouseService->transformStockQuotationResponse($stockResults);
+        $quote                           = GpCotizacion::findOrFail($quoteId);
+        $cliente                         = GpCliente::findOrFail($clientId);
+        $sucursal = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)
+            ->firstOrFail();
+        $quote->cliente_id               = $cliente->id;
+        $quote->sucursal_id              = $sucursal->id;
+        $quote->sucursal_facturacion_id  = $sucursal->id;
+        $quote->save();
+        return $quote;
     }
 
 

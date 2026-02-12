@@ -234,6 +234,11 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('crear-cotizacion-v2', [CotizacionesController::class, 'store']);
         Route::post('recuperar-cotizacion-v2', [CotizacionesController::class, 'recuperarCotizacionV2']);
         Route::post('volver-a-pedir-cotizacion-v2', [CotizacionesController::class, 'volverAPedirCotizacionV2']);
+
+
+        /** proceso de actualizacion de registros de prospecto s */
+        Route::post('prospecto/actualizar', [CotizacionesController::class, 'actualizarCotizacionPropectoV2']);
+
     });
 
 
