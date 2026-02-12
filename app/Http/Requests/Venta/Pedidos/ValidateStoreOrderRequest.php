@@ -47,6 +47,9 @@ class ValidateStoreOrderRequest extends FormRequest
             $value = $this->$field;
             if ($value === 'false' || $value === 'null' || $value === '' || $value === 'undefined') {
                 $this->merge([$field => null]);
+            } else {
+                // Aseguramos que el valor limpio se use en la validación
+                $this->merge([$field => $value]);
             }
         }
     }
