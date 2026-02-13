@@ -32,9 +32,16 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     public function createOrder(array $data, $user, array $existingImages = [], array $newImages = []): array
     {
         $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
-            $quoteBlock = GpCotizacion::where('id', data_get($data, 'cotizacion_id'))->lockForUpdate()->first();
+            $quotationId = data_get($data, 'cotizacion_id');
+            $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
-                throw new \DomainException('la cotizacion ya se encuentra procesada o facturada');
+                $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
+                    ->where('estado', '!=', 'anulada') // Importante: ignorar anulados
+                    ->first();
+                if ($pedidoExistente) {
+                    return $pedidoExistente;
+                }
+                Log::warning("Inconsistencia detectada: Cotización {$quotationId} estaba marcada como procesada pero sin pedido. Creando pedido ahora...");
             }
 
             $pedido = $this->prepareOrderHeader($data, $user);
@@ -79,7 +86,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         $requieresApproval = $approvalCredit != 'no';
         $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
         $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
-        $despacho = data_get($data, 'tipo_despacho', 'retiro');
+        $despacho = data_get($data, 'tipo_entrega', 'retiro');
         $tipoDespacho = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
         $arStrings = [
             'motivo_comercial'                  => $motivoLimpio,
