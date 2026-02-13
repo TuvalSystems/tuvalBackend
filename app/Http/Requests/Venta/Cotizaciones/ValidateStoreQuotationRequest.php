@@ -82,14 +82,14 @@ class ValidateStoreQuotationRequest extends FormRequest
                     }
 
                     // Separamos por punto y coma (;) o coma (,)
-                    $emails = preg_split('/[;,]/', $value, -1, PREG_SPLIT_NO_EMPTY);
+                    $emails = preg_split('/[;]/', $value, -1, PREG_SPLIT_NO_EMPTY);
 
                     foreach ($emails as $email) {
                         $emailLimpio = trim($email);
 
                         // Validación estricta
                         if (!filter_var($emailLimpio, FILTER_VALIDATE_EMAIL)) {
-                            $fail('El valor "' . $emailLimpio . '" no es un correo válido.');
+                            $fail('El correo "' . $emailLimpio . '" no es válido. Asegúrese de separar múltiples correos usando SOLO punto y coma (;).');
                         }
                     }
                 },

@@ -265,7 +265,7 @@ class QuotationBuilder implements QuotationBuilderInterface
 
 
 
-    
+
 
     /** proces de creacion de cotizacion */
 
@@ -337,17 +337,18 @@ class QuotationBuilder implements QuotationBuilderInterface
             'ART_MATERIAL'                  => data_get($articles, 'ART_MATERIAL'),
             'ART_PESO'                      => data_get($articles, 'ART_PESO'),
             'ART_TIPO_COMPRA'               => data_get($articles, 'ART_TIPO_COMPRA'),
-            'ART_VALOR'                     => data_get($articles, 'ART_VALOR'),
-            'ART_VALOR_ORIGINAL'            => data_get($articles, 'ART_VALOR_ORIGINAL'),
-            'ART_DESCUENTO'                 => data_get($articles, 'ART_DESCUENTO'),
-            'ART_IVA'                       => data_get($articles, 'ART_IVA'),
+            'ART_VALOR'                     => (float)data_get($articles, 'ART_VALOR'),
+            'ART_VALOR_ORIGINAL'            => (float)data_get($articles, 'ART_VALOR_ORIGINAL'),
+            'ART_DESCUENTO'                 => (float)data_get($articles, 'ART_DESCUENTO'),
+            'ART_IVA'                       => (float)data_get($articles, 'ART_IVA'),
             'ART_CANTIDAD'                  => data_get($articles, 'ART_CANTIDAD'),
             'ART_STOCK'                     => data_get($articles, 'ART_STOCK', 0),
-            'ART_IMP_VTA'                   => data_get($articles, 'ART_IMP_VTA'),
-            'ART_COSTO_PROMEDIO'            => data_get($articles, 'ART_COSTO_PROMEDIO'),
-            'descuento'                     => data_get($articles, 'descuento'),
-            'descuento_original'            => data_get($articles, 'descuento_original'),
-            'modificador'                   => data_get($articles, 'modificador'),
+            'ART_IMP_VTA'                   => (float)data_get($articles, 'ART_IMP_VTA'),
+            'ART_COSTO_PROMEDIO'            => (float)data_get($articles, 'ART_COSTO_PROMEDIO'),
+            'descuento'                     => (float)data_get($articles, 'descuento'),
+            'descuento_original'            => (float)data_get($articles, 'descuento_original'),
+            'modificador'                   => (float)data_get($articles, 'modificador'),
+            'valor_original_l'              => (float)data_get($articles, 'valor_original_l' , 0),
         ]);
 
         return $qd;
