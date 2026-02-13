@@ -243,7 +243,7 @@ class GpPedido extends Model
         'pendiente_salida',
 
         'nota_operaciones',
-        'modificador_global'
+        'modificador_global',
     ];
 
     /**
@@ -291,7 +291,8 @@ class GpPedido extends Model
 
 
 
-    public function imagenes (){
+    public function imagenes()
+    {
         return $this->hasMany(GpPedidoImagen::class, 'pedido_id');
     }
 
@@ -372,6 +373,4 @@ class GpPedido extends Model
             })
             ->exists();
     }
-
-
 }

@@ -176,28 +176,22 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
         // validaciones para tipo L
         if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+            //validacion de precio de item L
+            $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
+            $valor = round(data_get($detalle, 'ART_VALOR', 0), 4);
+
+            if ($valorOriginalL > $valor) {
+                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");
+
+            }
+
             $porcentajeMargen = $this->approvalFuntions->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
             if (!$porcentajeMargen) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
             }
             $margenConfigurado = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
             foreach ($detalle['proveedores'] as $proveedor) {
-
-                $denominadorMargen = 1 - ($margenConfigurado / 100);
-                $denominadorDesc = 1 - ($detalle['descuento'] / 100);
-                // Evitar división por cero
-                if ($denominadorMargen == 0 || $denominadorDesc == 0) {
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Error en cálculo de márgenes (división por cero).");
-                    continue;
-                }
-
-                $valorMinimoCalculado = ($proveedor['COSTO_UNITARIO'] / $denominadorMargen) / $denominadorDesc;
-                $valorMinimoCalculado = round($valorMinimoCalculado, 4);
-
-                if ($valorMinimoCalculado > $detalle['ART_VALOR']) {
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
-                }
-                if ($proveedor['MARGEN'] < $margenConfigurado) {
+                if ((float)$proveedor['MARGEN'] < (float)$margenConfigurado) {
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
                 }
             }
