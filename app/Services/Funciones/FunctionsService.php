@@ -151,7 +151,7 @@ class FunctionsService implements FunctionsServiceInterface
             'ruc' => $ruc,
             'idCompania' => config('services.api_gp.company'),
         ]);
-        return $response['data'] ?? [];
+        return data_get($response, 'data', []);
     }
 
 

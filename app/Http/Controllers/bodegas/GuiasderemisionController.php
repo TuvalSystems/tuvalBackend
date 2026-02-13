@@ -591,7 +591,7 @@ class GuiasderemisionController extends Controller
         }
     }
 
-    
+
 
     public function recibirguia(Request $request)
     {
@@ -878,52 +878,7 @@ class GuiasderemisionController extends Controller
         }
     }
 
-    // public function tempcheck($id)
-    // {
-    //     $guia = GpGuiaRemision::where('id', $id)->where('estado', 'enviada')->first();
 
-    //     if ($guia) {
-    //         $listo = $this->checkguiacompleta($guia);
-
-    //         if ($listo) {
-    //             echo '<pre>';
-    //             print_r($guia);
-    //             die();
-    //             // $guia->estado = 'recibida';
-    //             $guia->save();
-
-    //             $pedido = GpPedido::where('pedido', $guia->pedido)->first();
-    //             if ($pedido->estado != 'facturado') {
-    //                 // $pedidosControl->checkenviarfactura($pedido, true);
-    //                 $this->invoiceService->checkSendInvoice($pedido, true);
-    //             }
-    //             //aqui la notifiacion
-    //             $this->notifyService->sendNotification(
-    //                 $pedido->user_id,
-    //                 'Artículo/s recibidos',
-    //                 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA
-    //             );
-
-    //             return response([
-    //                 'success' => true,
-    //                 'message' => 'Guía de remisión recibida completamente',
-    //             ]);
-    //         } else {
-    //             $pedido = GpPedido::where('pedido', $guia->pedido)->first();
-    //             //aqui la notifiacion
-    //             $this->notifyService->sendNotification(
-    //                 $pedido->user_id,
-    //                 'Artículo/s recibidos',
-    //                 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA
-    //             );
-
-    //             return response([
-    //                 'success' => true,
-    //                 'message' => 'Guía de remisión recibida parcialmente',
-    //             ]);
-    //         }
-    //     }
-    // }
 
     public function generarguiatemp()
     {

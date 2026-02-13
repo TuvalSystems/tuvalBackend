@@ -32,9 +32,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         protected readonly ReservationDeliveryNoteParamsBuilderInterface $builder,
         protected readonly ApiDeliverNoteService $apiDelivery,
         protected readonly LogisticsOperationsServiceInterface $logistic
-    ) {
-
-    }
+    ) {}
 
 
     public function createDeliveryNoteFromReservation($payload)
@@ -76,16 +74,16 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     public function makeIdemKey(array $payload)
     {
         $base = [
-            'pto_origen' => $payload['pto_origen'],
-            'pto_destino' => $payload['pto_destino'],
-            'bod_origen' => $payload['bod_origen'] ?? null,
-            'vehiculo' => $payload['vehiculo_id'] ?? $payload['placa'] ?? null,
-            'transportista' => $payload['transporte_id'] ?? $payload['identificacion'] ?? null,
-            'fecha_inicio' => $payload['fecha_inicio'] ?? null,
-            'fecha_fin' => $payload['fecha_fin'] ?? null,
-            'detalle' => collect($payload['detalle'])->map(fn($d) => [
-                'id' => $d['id'],
-                'sel' => (float) ($d['seleccionado'] ?? 0),
+            'pto_origen'        => data_get($payload, 'pto_origen'),
+            'pto_destino'       => data_get($payload, 'pto_destino'),
+            'bod_origen'        => data_get($payload, 'bod_origen', null),
+            'vehiculo'          => data_get($payload, 'vehiculo_id', null) ?? data_get($payload, 'placa', null),
+            'transportista'     => data_get($payload, 'transporte_id') ?? data_get($payload, 'identificacion', null),
+            'fecha_inicio'      => data_get($payload, 'fecha_inicio', null),
+            'fecha_fin'         => data_get($payload, 'fecha_fin', null),
+            'detalle'           => collect($payload['detalle'])->map(fn($d) => [
+                'id'            => data_get($d, 'id'),
+                'sel'           => (float) (data_get($d, 'seleccionado',  0)),
             ])->sortBy('id')->values()->all(),
         ];
         return hash('sha256', json_encode($base));
@@ -131,7 +129,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
             if ($sumQty > $sumHistory) {
                 $arrMsg[] = "Item {$itemProcess['art_code']} sel={$selectNow} excede disponible: guia={$pending} + autoriz={$qtyStockAuth}";
-
             }
         }
         if ($arrMsg) {
@@ -164,7 +161,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     public function getWarehouseDescriptionOrigin($ptoWarehouse)
     {
         return GpBodega::where('BOD_BODEGA', $ptoWarehouse)->value('BOD_DESCRIPCION');
-
     }
 
 
@@ -198,7 +194,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         ];
 
         return $datos;
-
     }
 
     public function formatGuideNumber($ptoVta, $ptoEmision, $secuencia): string
@@ -393,7 +388,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         }
         if (!$processed) {
             throw new \Exception('No se pudo procesar el ajuste de la guía de Reserva');
-
         }
         $guia->update(['estado' => 'enviada']);
         return $guia->fresh();
@@ -507,5 +501,4 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $guia = GpGuiaRemisionReserva::find($id);
         return $this->getDataReservationDeliveryNote($guia);
     }
-
 }
