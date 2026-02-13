@@ -14,7 +14,6 @@ use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
