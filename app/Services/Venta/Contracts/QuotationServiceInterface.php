@@ -17,7 +17,9 @@ interface QuotationServiceInterface
      */
 
     public function restoreQuotationV2($quoteId);
-    public function getStockGeneralRestoreQuotation($articulos, $bodegas);
+
+    /** prospecto*/
+    public function updateQuoteClientData($quoteId, $clientId);
 
     /**
      *  volver a pedir

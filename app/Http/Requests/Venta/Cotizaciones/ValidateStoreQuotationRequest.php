@@ -43,16 +43,22 @@ class ValidateStoreQuotationRequest extends FormRequest
             'nota_interna',
             'nota_cliente',
             'nota_operaciones',
-            'forma_pago_id'
+            'forma_pago_id',
+            'correo_electronico_sri'
         ];
 
         foreach ($fieldsToNull as $field) {
             $value = $this->$field;
+            if (is_string($value)) {
+                $value = trim($value);
+            }
             if ($value === 'false' || $value === 'null' || $value === '' || $value === 'undefined') {
                 $this->merge([$field => null]);
+            } else {
+                // Aseguramos que el valor limpio se use en la validación
+                $this->merge([$field => $value]);
             }
         }
-
     }
     public function rules()
     {
@@ -67,27 +73,23 @@ class ValidateStoreQuotationRequest extends FormRequest
             'correo_electronico_sri' => [
                 'nullable', // 1. Permite que sea null o vacío
                 'string',
-                'max:255',
+                'max:500',
                 function ($attribute, $value, $fail) {
                     // 2. Si el valor es nulo o vacío, no validamos nada (retornamos éxito)
-                    if (empty($value)) {
+                    $value = (string) $value;
+                    if (trim($value) === '') {
                         return;
                     }
 
                     // Separamos por punto y coma (;) o coma (,)
-                    $emails = preg_split('/[;,]/', $value);
+                    $emails = preg_split('/[;,]/', $value, -1, PREG_SPLIT_NO_EMPTY);
 
                     foreach ($emails as $email) {
                         $emailLimpio = trim($email);
 
-                        // 3. Si al separar queda un espacio vacío (ej: "a@a.com;"), lo ignoramos
-                        if ($emailLimpio === '') {
-                            continue;
-                        }
-
-                        // Validamos que sea un email real
+                        // Validación estricta
                         if (!filter_var($emailLimpio, FILTER_VALIDATE_EMAIL)) {
-                            $fail('El valor "' . $emailLimpio . '" no es una dirección de correo válida.');
+                            $fail('El valor "' . $emailLimpio . '" no es un correo válido.');
                         }
                     }
                 },
@@ -112,7 +114,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             // -- pago
             'condicion_pago_id'          => ['required', 'string'],
             'condicion_pago_original_id' => ['required', 'string'],
-            'forma_pago_id'              => ['nullable','required', 'string'],
+            'forma_pago_id'              => ['nullable', 'required', 'string'],
 
             // -- notas y textos
             'nota_interna'              => ['nullable', 'string', 'max:1000'], // CORREGIDO: decía 'nota_internas' (plural)
@@ -145,6 +147,7 @@ class ValidateStoreQuotationRequest extends FormRequest
 
             'imagenes_existentes'       => ['nullable', 'array'],
             'imagenes_existentes.*'     => ['string'],
+            'origen'                    => ['required', 'string'],
         ];
     }
 

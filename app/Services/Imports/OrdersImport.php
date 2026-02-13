@@ -16,12 +16,17 @@ class OrdersImport implements OrdersImportInterface
 
     public function updateDataSqlServerOrdersAndDetail(string $fechaIni, string $fechaFin)
     {
-
+        Log::info("Iniciando sincronizacion de pedidos", [
+            'fechaIni' => $fechaIni,
+            'fechaFin' => $fechaFin
+        ]);
         $ordersSql = $this->getAllOrdersSqlPendingUpdate($fechaIni, $fechaFin);
         if (empty($ordersSql)) {
             return 0;
         }
-        Log::info("SQL ejecutado: " . count($ordersSql));
+        Log::info("SQL ejecutado: ", [
+            'ordersSql' => $ordersSql
+        ]);
         Log::info("Registros a procesar: " . count($ordersSql));
         $keyOrders = $this->extractOrderIds($ordersSql);
         $chunks = array_chunk($keyOrders, 500);
@@ -31,9 +36,14 @@ class OrdersImport implements OrdersImportInterface
         $totalDetails = 0;
 
         foreach ($chunks as $lotesIds) {
+            Log::info("Procesando lotes de :", [
+                'lotes' => $lotesIds
+            ]);
             $ordersWeb = GpPedido::whereIn('pedido', $lotesIds)->get();
             $ordersIdsWeb = $ordersWeb->pluck('id');
-
+            Log::info("Registros a procesar: ", [
+                'ordersIdsWeb' => $ordersIdsWeb
+            ]);
             $payloadHeaders = $this->buildPaylaodHeader($ordersWeb, $ordersSql);
             if (!empty($payloadHeaders)) {
                 $this->api->updateAllOrdersPendingSql($payloadHeaders);

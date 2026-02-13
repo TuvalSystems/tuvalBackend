@@ -265,7 +265,7 @@ class QuotationBuilder implements QuotationBuilderInterface
 
 
 
-
+    
 
     /** proces de creacion de cotizacion */
 
@@ -314,7 +314,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'nota_interna'                      => data_get($data, 'nota_interna', null),
             'nota_cliente'                      => data_get($data, 'nota_cliente', null),
             'nota_operaciones'                  => data_get($data, 'nota_operaciones', null),
-            'origen'                            => 'cotizacion',
+            'origen'                            => data_get($data, 'origen', 'cotizacion'),
             'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
             'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
 

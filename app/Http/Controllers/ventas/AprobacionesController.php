@@ -46,39 +46,6 @@ class AprobacionesController extends Controller
     }
 
 
-    // public function estadodecuenta(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    // {
-    //     $data = $request->all();
-    //     $user = Auth::user();
-
-    //     $detalle = array();
-
-    //     $webservices = new WebserviceController();
-    //     $parameters = array(
-    //         'IDCompania' => env('ID_COMPANIA'),
-    //         'Ruc' => $data['CLI_RUC'],
-    //     );
-
-    //     $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
-
-    //     $detalle['cupoDisponible'] = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0];
-
-    //     $documentosVencidos = $webservices->cobranzas('ConsultaDocumentosVencidosCliente', $parameters);
-    //     if ($documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'][0]['DV_SALDO_PENDIENTE'] > 0) {
-    //         $detalle['documentosVencidos'] = $documentosVencidos['ConsultaDocumentosVencidosClienteResult']['DOCUMENTOS_VENCIDOS'];
-    //     }
-
-    //     $documentosSinSoporte = $webservices->cobranzas('ConsultaDocumentosSinSoporteCliente', $parameters);
-    //     if ($documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'][0]['DS_SALDO_PENDIENTE'] > 0) {
-    //         $detalle['documentosSinSoporte'] = $documentosSinSoporte['ConsultaDocumentosSinSoporteClienteResult']['DOCUMENTOS_SIN_SOPORTE'];
-    //     }
-
-    //     return response([
-    //         'success' => true,
-    //         'detalle' => $detalle
-    //     ]);
-    // }
-
     public function verpedidosycotizacionesporaprobar(Request $request): JsonResponse
     {
 
@@ -91,43 +58,6 @@ class AprobacionesController extends Controller
         } catch (\Throwable $e) {
             return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
         }
-
-        // $pedidos = GpPedido::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
-        //     ->join('gp_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')
-        //     ->select('gp_pedidos.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
-        //     ->where('requiere_aprobacion_comercial', 'yes')
-        //     ->where('aprobado_comercial', 'no')
-        //     ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
-
-        //     ->orderBy('created_at', 'ASC')->get();
-
-        // foreach ($pedidos as $key => $pedido) {
-        //     $res = $this->getSegmentoCliente($pedido->CLI_RUC);
-        //     $pedido->segmento = data_get($res, 'segmento', null);
-        //     $pedido->subsegmento = data_get($res, 'subsegmento', null);
-        // }
-        // //where('PTO_VTA_ID', $data['puntodeventa_id'])
-
-        // $cotizaciones = GpCotizacion::join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
-        //     ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO')
-        //     ->whereNotIn('estado', ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'])
-        //     ->where('requiere_aprobacion_comercial', 'yes')
-        //     ->where('aprobado_comercial', 'no')
-        //     ->orderBy('created_at', 'ASC')->get();
-        // foreach ($cotizaciones as $key => $cot) {
-
-        //     $res2 = $this->getSegmentoCliente($cot->CLI_RUC);
-        //     $cot->segmento = data_get($res2, 'segmento', null);
-        //     $cot->subsegmento = data_get($res2, 'subsegmento', null);
-        // }
-
-        // //where('PTO_VTA_ID', $data['puntodeventa_id'])
-
-        // return response([
-        //     'success' => true,
-        //     'pedidos' => $pedidos,
-        //     'cotizaciones' => $cotizaciones,
-        // ]);
     }
 
     public function listaCotizacionesPendientesPorAprobar(Request $request): JsonResponse
@@ -339,7 +269,7 @@ class AprobacionesController extends Controller
         }
     }
 
- 
+
 
     public function aprobacionComercialCotizacion(Request $request): JsonResponse
     {
