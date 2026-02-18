@@ -3,6 +3,7 @@
 namespace App\Services\Bodegas;
 
 use App\Models\GpUsuario;
+use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
+
 
 class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterface
 {
@@ -53,10 +55,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'bodGuide'          => $bodGuide,
             'dirOrigin'         => $dirOrigin,
             'pedido'            => $pedido,
-            'direccionEnvio'    => $direccionEnvio
+            'direccionEnvio'    => $direccionEnvio,
+            'docuSustento'      => '01',
+            'motivoTraslado'    => 'Venta',
         ];
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
-
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
                 ->lockForUpdate()
                 ->first();
@@ -69,23 +72,15 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             }
 
             //proceso de creacion de guia de remision web
-            $guia = $this->saveDeliveryNoteDispatchWeb(
-                $payload,
-                  $infoGuia
-            );
+            $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
+            $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
+            $this->updateDetailOrder($items);
+            return $guia;
         });
-
-
-        return [
-            'payload'           => $payload,
-            'idemKey'           => $idemKey,
-            'direccionEnvio'    => $direccionEnvio,
-            'secuencial'        => $secuencial,
-            'dirOrigin'         => $dirOrigin,
-            'bodGuide'          => $bodGuide,
-            'user'              => $user,
-            'numGuide'          => $numGuide
-        ];
+        //despues de que se completara la guia procede a enviarse a gp para que este proceso no entre en el
+        //flujo de la transaccion de mysql
+        $this->sendDeliveryNoteDispatchToGp($guia);
+        return $guia->refresh();
     }
 
 
@@ -104,6 +99,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'detalle'       => collect(data_get($payload, 'items'))->map(fn($d) => [
                 'id'            => data_get($d, 'id'),
                 'sel'           => (float) (data_get($d, 'seleccionado',  0)),
+                'pendiente'      => (float) (data_get($d, 'pendiente',  0)),
             ])->sortBy('id')->values()->all(),
         ];
 
@@ -111,23 +107,34 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function saveDeliveryNoteDispatchWeb(
-        $payload,
-       $infoGuia
-    ) {
-        $guia = $this->builder->buildDeliveryNoteDispatchHeader(
-            $payload,
-            $infoGuia
-        );
+    protected function saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia)
+    {
+        $guia = $this->builder->buildDeliveryNoteDispatchHeader($payload, $infoGuia);
         $guia->save();
         return $guia->refresh();
+    }
+
+    protected function saveDetaildeliveryNoteDispatchWeb($guideId, $detalle)
+    {
+        foreach ($detalle as $val) {
+            $detail = $this->builder->buildDeliveryNoteDispatchDetail($guideId, $val);
+            $detail->save();
+        }
+    }
+
+    protected function updateDetailOrder($items)
+    {
+        foreach ($items as $item) {
+            GpPedidoDetalle::where('id', $item['id'])
+                ->increment('reservado', data_get($item, 'seleccionado', 0));
+        }
     }
 
 
 
     protected function sendDeliveryNoteDispatchToGp($guide)
     {
-        $detalle = GpGuiaRemisionDetalle::where('guia_id', $guide->id)->get();
+        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
         $validate = $this->validateExistenceDeliveryNoteDisptach($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
         $status = data_get($validate, 'success', false);
         if ($status) {

@@ -21,13 +21,53 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
     {
         $gr = new GpGuiaRemision();
         $gr->fill([
-            'tipo'              => data_get($infoGuia, 'tipo'),
-            'idempotency_key'   => data_get($infoGuia, 'idemKey'),
-            'estado'            => 'pendiente',
-            'bodega_origen'     => data_get($infoGuia, 'pedido.BOD_BODEGA'),
+            'tipo'                                      => data_get($infoGuia, 'tipo'),
+            'estado'                                    => 'pendiente',
+            'pedido'                                    => data_get($infoGuia, 'pedido.pedido'),
+            'bodega_origen'                             => data_get($infoGuia, 'pedido.BOD_BODEGA'),
+            'bodega_destino'                            => null,
+            'user_id'                                   => data_get($infoGuia, 'user.id'),
+            'GUI_REM_BODEGA'                            => data_get($infoGuia, 'bodGuide'),
+            'GUI_REM_PTO_EMISION'                       => data_get($infoGuia, key: 'ptoEmision'),
+            'GUI_REM_ESTABLECIMIENTO'                   => data_get($payload, 'orden.PTO_VTA_ID'),
+            'GUI_REM_SECUENCIAL'                        => data_get($infoGuia, 'secuencial'),
+            'GUI_REM_GUIA_REMISION'                     => data_get($infoGuia, 'numeroGuia'),
+            'GUI_REM_DIRECCION_PARTIDA'                 => data_get($infoGuia, 'dirOrigin'),
+            'idempotency_key'                           => data_get($infoGuia, 'idemKey'),
+            'GUI_REM_RAZON_SOCIAL_TRANSPORTISTA'        => data_get($payload, 'transportista.nombre'),
+            'GUI_REM_IDENTIFICACION_TRANSPORTISTA'      => data_get($payload, 'transportista.identificacion'),
+            'GUI_REM_TIPO_IDENTIFICACION_TRANSPORTISTA' => data_get($payload, 'transportista.tipo_identificacion'),
+            'GUI_REM_FECHA_INICIO'                      => data_get($payload, 'fecha_inicio'),
+            'GUI_REM_FECHA_FIN'                         => data_get($payload, 'fecha_fin'),
+            'GUI_REM_PLACA'                             => data_get($payload, 'vehiculo.placa'),
+            'GUI_REM_OBSERVACION'                       => data_get($payload, 'observacion'),
+            'GUI_REM_RAZON_SOCIAL_DESTINATARIO'         => data_get($infoGuia, 'pedido.CLI_RAZON_SOCIAL'),
+            'GUI_REM_DIRECCION_DESTINATARIO'            => data_get($infoGuia, 'direccionEnvio'),
+            'GUI_REM_IDENTIFICACION_DESTINATARIO'       => data_get($infoGuia, 'pedido.CLI_RUC'),
+            'GUI_REM_MOTIVO_TRASLADO'                   => data_get($infoGuia, 'motivoTraslado'),
+            'GUI_REM_RUTA'                              => data_get($payload, 'ruta', ''),
+            'GUI_REM_CODI_DOCU_SUSTENTO'                => data_get($infoGuia, 'docuSustento', '01'),
+            'GUI_REM_NUME_DOCU_SUSTENTO'                => data_get($infoGuia, 'pedido.factura', ''),
+            'GUI_REM_NUME_AUTO_DOCU_SUSTENTO'           => '',
+            'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'       => Carbon::parse(data_get($infoGuia, 'pedido.factura_fecha', '1900-01-01 00:00:00'))->format('Y-m-d H:i:s'),
         ]);
-
         return $gr;
+    }
+
+
+    public function buildDeliveryNoteDispatchDetail($guiaId, $detalle): GpGuiaRemisionDetalle
+    {
+        $new = new GpGuiaRemisionDetalle();
+        $new->fill([
+            'guia_remision_id'          => $guiaId,
+            'detalle_id'                => data_get($detalle, 'id'),
+            'GUI_REM_CODI_INTERNO'      => data_get($detalle, 'ART_CODIGO'),
+            'GUI_REM_DESCRIPCION'       => data_get($detalle, 'ART_DESCRIPCION'),
+            'GUI_REM_CODI_ADICIONAL'    => data_get($detalle, 'ART_CODIGO_TRES_LETRAS'),
+            'GUI_REM_CANTIDAD'          => (float)data_get($detalle, 'seleccionado'),
+            'GUI_REM_UNIDAD_MEDIDA'     => data_get($detalle, 'ART_PLAN_UMEDIDA'),
+        ]);
+        return $new;
     }
 
     public function buildDeliveryNoteHeaderToGp($guia): array

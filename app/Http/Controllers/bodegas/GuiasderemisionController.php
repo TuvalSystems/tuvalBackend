@@ -48,7 +48,7 @@ class GuiasderemisionController extends Controller
         protected readonly ReservationDeliveryNoteServiceInterface $reservedDeliveryNoteService,
         protected readonly DeliveryNoteDispatchServiceInterface $dispatch
     ) {}
-    public function generarguiaventa(Request $request): array //Response|Application|ResponseFactory
+    public function generarguiaventa(Request $request):  Response|Application|ResponseFactory
     {
         $data = $request->all();
 
