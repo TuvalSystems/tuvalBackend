@@ -2,13 +2,11 @@
 
 namespace App\Services\Bodegas;
 
-use App\Models\GpBodega;
+
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
-use App\Models\GpTransportista;
 use App\Models\GpUsuario;
-use App\Models\GpVehiculo;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpGuiaRemisionReservaDetalle;
 use App\Models\reservas\GpGuiaRemisionReservaMovimiento;
@@ -37,11 +35,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function createDeliveryNoteFromReservation($payload)
     {
-        $datavehicle = $this->getVehicleAndCarrierInfo($payload);
-        $dirOrigin = $this->getDirection($payload['pto_origen']);
-        $dirDestination = $this->getDirection($payload['pto_destino']);
-        $bodGuide = $this->getWarehouseDescriptionOrigin($payload['bod_origen']);
-        $idemKey = $this->makeIdemKey($payload);
+        $datavehicle    = $this->common->getVehicleAndCarrierInfo($payload);
+        $dirOrigin      = $this->common->getDirection($payload['pto_origen']);
+        $dirDestination = $this->common->getDirection($payload['pto_destino']);
+        $bodGuide       = $this->common->getWarehouseDescriptionOrigin($payload['bod_origen']);
+        $idemKey        = $this->makeIdemKey($payload);
         $guia = DB::transaction(function () use ($payload, $datavehicle, $dirOrigin, $dirDestination, $bodGuide, $idemKey) {
 
             $existing = GpGuiaRemisionReserva::where('idempotency_key', $idemKey)
@@ -55,10 +53,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
                 return $existing;
             }
             $this->validateItemsTransferReserved($payload['detalle']);
-            $user = GpUsuario::find(Auth::user()->id);
+            $user       = GpUsuario::find(Auth::user()->id);
             $secuencial = $this->common->getNextGuideSequential($payload['pto_origen'], '001');
-            $numGuide = $this->formatGuideNumber($payload['pto_origen'], '001', $secuencial);
-            $guia = $this->saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin);
+            $numGuide   = $this->common->formatGuideNumber($payload['pto_origen'], '001', $secuencial);
+            $guia       = $this->saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin);
             $guia->idempotency_key = $idemKey;
             $guia->save();
             $this->saveDetailGuideRemisionReservation($payload['detalle'], $guia->id);
@@ -150,57 +148,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             ->update(['picking' => 1]);
     }
 
-    public function getDirection($ptoWarehouse)
-    {
-        $pto = GpPuntoVenta::where('PTO_VTA_ID', $ptoWarehouse)->select('PTO_VTA_DIRECCION_1', 'PTO_VTA_DIRECCION_2')->first();
-        return $pto ? trim($pto->PTO_VTA_DIRECCION_1 . ' ' . $pto->PTO_VTA_DIRECCION_2) : '';
-    }
-
-
-
-    public function getWarehouseDescriptionOrigin($ptoWarehouse)
-    {
-        return GpBodega::where('BOD_BODEGA', $ptoWarehouse)->value('BOD_DESCRIPCION');
-    }
-
-
-    public function getVehicleAndCarrierInfo($payload)
-    {
-        $datos = [
-            'vehiculo' => [],
-            'transportista' => [],
-        ];
-
-        if ($payload['modo'] === 'local') {
-            $transportista = GpTransportista::where('id', $payload['transporte_id'])->first();
-            $vehiculo = GpVehiculo::where('id', $payload['vehiculo_id'])->first();
-            $datos['vehiculo'] = [
-                'placa' => $vehiculo?->placa,
-            ];
-            $datos['transportista'] = [
-                'nombre' => $transportista?->nombre,
-                'identificacion' => $transportista?->identificacion,
-                'tipo_identificacion' => $transportista?->tipo_identificacion
-            ];
-            return $datos;
-        }
-        $datos['vehiculo'] = [
-            'placa' => $payload['placa'],
-        ];
-        $datos['transportista'] = [
-            'nombre' => $payload['nombre_transporte'],
-            'identificacion' => $payload['identificacion'],
-            'tipo_identificacion' => $payload['tipo_identificacion']
-        ];
-
-        return $datos;
-    }
-
-    public function formatGuideNumber($ptoVta, $ptoEmision, $secuencia): string
-    {
-        return (string) trim($ptoVta . '-' . $ptoEmision . '-' . $secuencia);
-    }
-
 
     public function saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin): GpGuiaRemisionReserva
     {
@@ -285,20 +232,20 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function generatePdfReservedDeliveryNote($payload)
     {
-        $id = data_get($payload, 'id');
-        $guia = GpGuiaRemisionReserva::find($id);
-        $vieData = $this->getDataReservationDeliveryNote($guia);
+        $id         = data_get($payload, 'id');
+        $guia       = GpGuiaRemisionReserva::find($id);
+        $vieData    = $this->getDataReservationDeliveryNote($guia);
 
-        $html = view('pdf.guia-remision-reserva-pendiente', $vieData)->render();
-        $pdf = app('dompdf.wrapper');
+        $html       = view('pdf.guia-remision-reserva-pendiente', $vieData)->render();
+        $pdf        = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
-        $binary = $pdf->output();
-        $filename = 'guia-remision-' . Str::slug(data_get($guia, 'numero_guia')) . '.pdf';
+        $binary     = $pdf->output();
+        $filename   = 'guia-remision-' . Str::slug(data_get($guia, 'numero_guia')) . '.pdf';
         return [
-            'binary' => $binary,
-            'filename' => $filename,
-            'content_type' => 'application/pdf'
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf'
 
         ];
     }
@@ -313,13 +260,13 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         ])->where('guia_id', $guia->id)->get();
 
         return [
-            'guia' => $guia,
-            'claveAcceso' => $guia->clave_acceso,
-            'detalle' => $detalle,
-            'direccion' => $this->getDirection($guia->establecimiento),
-            'descripcion' => $this->getDescriptionWarehouse($guia->establecimiento),
-            'pesoTotal' => $this->calculateKgTotal($detalle->pluck('traslado_id')->toArray()),
-            'quoteList' => $this->getListQuotesTranfers($detalle->pluck('traslado_id')->toArray())
+            'guia'          => $guia,
+            'claveAcceso'   => $guia->clave_acceso,
+            'detalle'       => $detalle,
+            'direccion'     => $this->common->getDirection($guia->establecimiento),
+            'descripcion'   => $this->getDescriptionWarehouse($guia->establecimiento),
+            'pesoTotal'     => $this->calculateKgTotal($detalle->pluck('traslado_id')->toArray()),
+            'quoteList'     => $this->getListQuotesTranfers($detalle->pluck('traslado_id')->toArray())
         ];
     }
 

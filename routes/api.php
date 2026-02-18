@@ -350,6 +350,11 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/pdf', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [ReservasController::class, 'recibirItemsGuiaReserva']);
+
+
+
+        //generacion de guia de remision de despachos
+        Route::post('despachos/guia-remision/crear-guia-despacho', [GuiasderemisionController::class, 'crearGuiaRemisionDespacho']);
     });
 
     Route::group(['prefix' => 'consultas'], function () {
