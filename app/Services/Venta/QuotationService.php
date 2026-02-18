@@ -189,12 +189,21 @@ class QuotationService implements QuotationServiceInterface
     public function updateQuoteClientData($quoteId, $clientId)
     {
         $quote                           = GpCotizacion::findOrFail($quoteId);
-        $cliente                         = GpCliente::findOrFail($clientId);
+        $cliente                         = GpCliente::with(['gpvendedor:id,VEND_ID,VEND_NOMBRES,VEND_APELLIDOS'])
+            ->findOrFail($clientId);
         $sucursal = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)
             ->firstOrFail();
         $quote->cliente_id               = $cliente->id;
         $quote->sucursal_id              = $sucursal->id;
         $quote->sucursal_facturacion_id  = $sucursal->id;
+        $quote->CLI_RUC                  = $cliente->CLI_RUC;
+        $quote->CLI_RAZON_SOCIAL         = $cliente->CLI_RAZON_SOCIAL;
+        $quote->CLI_CORREO_ELECT_SRI     = $cliente->CLI_CORREO_ELECT_SRI;
+        if ($cliente->gpvendedor) {
+            $quote->VEND_ID                  = $cliente->gpvendedor->VEND_ID;
+            $quote->VEND_NOMBRES             = $cliente->gpvendedor->VEND_NOMBRES;
+            $quote->VEND_APELLIDOS           = $cliente->gpvendedor->VEND_APELLIDOS;
+        }
         $quote->save();
         return $quote;
     }
