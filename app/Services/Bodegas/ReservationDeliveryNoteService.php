@@ -48,7 +48,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             if ($existing) {
                 DB::afterCommit(function () use ($existing) {
                     $this->sendReservationDeliveryNoteToGp($existing);
-                    $existing->update(['estado' => 'enviada']);
+                    $existing->update(['estado' => 'pendiente']);
                 });
                 return $existing;
             }
@@ -118,12 +118,12 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
                 continue;
             }
             // calculos
-            $selectNow = (float) $itemProcess['seleccionado'];
-            $pending = (float) $itemProcess['pending_transfer'];
-            $qtyStockAuth = (float) $stockRow->cantidad_autorizada_reserva;
-            $qtyGuiaRemision = $rowsDetalle->where('art_code', $itemProcess['art_code'])->sum('cantidad');
-            $sumQty = $qtyGuiaRemision + $selectNow;
-            $sumHistory = $pending + $qtyStockAuth;
+            $selectNow          = (float) $itemProcess['seleccionado'];
+            $pending            = (float) $itemProcess['pending_transfer'];
+            $qtyStockAuth       = (float) $stockRow->cantidad_autorizada_reserva;
+            $qtyGuiaRemision    = $rowsDetalle->where('art_code', $itemProcess['art_code'])->sum('cantidad');
+            $sumQty             = $qtyGuiaRemision + $selectNow;
+            $sumHistory         = $pending + $qtyStockAuth;
 
             if ($sumQty > $sumHistory) {
                 $arrMsg[] = "Item {$itemProcess['art_code']} sel={$selectNow} excede disponible: guia={$pending} + autoriz={$qtyStockAuth}";
@@ -171,7 +171,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         if (!$tr) {
             throw new \RuntimeException('Traslado de reserva no encontrado');
         }
-        $seleccionado = (float) $value['seleccionado'] ?? 0;
+        $seleccionado = (float) data_get($value, 'seleccionado', 0);
         $tr->increment('reservado', $seleccionado);
     }
 
@@ -207,7 +207,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             'destinatario' => $this->builder->buildReservationDestinationToGp($guide),
             'detalle' => $this->prepateDetailReservation($detalle, $guide)
         ]);
-        $success = $response['success'] ?? false;
+        $success = data_get($response, 'success', false);
         if (!$success) {
             throw new \Exception($response['message']);
         }
@@ -217,10 +217,9 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function validateExistenceDeliveryNote($guia)
     {
-        $response = $this->apiDelivery->checkExistenceDeliveryNote([
+        return $this->apiDelivery->checkExistenceDeliveryNote([
             'numDoc' => $guia->numero_guia
         ]);
-        return $response;
     }
 
 
@@ -359,12 +358,12 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function validateExistenceReservationGuideAdjustment(GpGuiaRemisionReserva $guia, array $params, array $groupItems, string $quote): bool
     {
-        $cabecera = data_get($params, 'cabecera', []);
-        $payloadValidate = $this->builder->buildReservationGuideValidationPayload($cabecera);
-        $resValidate = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+        $cabecera           = data_get($params, 'cabecera', []);
+        $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera);
+        $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
         $headerRespValidate = data_get($resValidate, 'data');
-        $validateSuccess = data_get($resValidate, 'success');
-        $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
+        $validateSuccess    = data_get($resValidate, 'success');
+        $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
 
         /** cuando existe y solo necesita reasignar y procesar los movimientos de entrada y salida */
         if (!empty($headerRespValidate) && filled($docGpValidate)) {
@@ -380,11 +379,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         }
         /** en caso de que no exista la guia de reserva debe crearla */
         if (empty($headerRespValidate) && $validateSuccess === false) {
-            $resp = $this->apiDelivery->createReservationGuideAjustment($params);
-            $success = data_get($resp, 'success', false);
-            $data = data_get($resp, 'data', []);
-            $msg = data_get($resp, 'message');
-            $docGp = trim(data_get($resp, 'data.docGp', '')); // null si no existe
+            $resp       = $this->apiDelivery->createReservationGuideAjustment($params);
+            $success    = data_get($resp, 'success', false);
+            $data       = data_get($resp, 'data', []);
+            $msg        = data_get($resp, 'message');
+            $docGp      = trim(data_get($resp, 'data.docGp', '')); // null si no existe
             if (!$success) {
                 throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
             }
@@ -423,11 +422,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     public function createMovementReservation($guia, $responseApi, $quote): GpGuiaRemisionReservaMovimiento
     {
         return GpGuiaRemisionReservaMovimiento::firstOrCreate([
-            'guia_id' => $guia->id,
-            'tipo_movimiento' => 'TRC',
-            'cotizacion' => $quote,
-            'id_movimiento' => data_get($responseApi, 'idMovimiento'),
-            'codigo' => trim((string) data_get($responseApi, 'docGp', '')),
+            'guia_id'           => $guia->id,
+            'tipo_movimiento'   => 'TRC',
+            'cotizacion'        => $quote,
+            'id_movimiento'     => data_get($responseApi, 'idMovimiento'),
+            'codigo'            => trim((string) data_get($responseApi, 'docGp', '')),
         ]);
     }
 

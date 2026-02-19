@@ -2,6 +2,10 @@
 
 namespace App\Services\Bodegas;
 
+use App\Constants\Bodegas\DeliveryNoteConstants;
+use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
+use App\Enums\bodegas\guiaremision\DeliveryNoteType;
+use App\Enums\bodegas\guiaremision\ReasonForTransfer;
 use App\Models\GpUsuario;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
@@ -33,8 +37,8 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     public function createDeliveryNoteFromDispatch($payload)
     {
-        $tipo           = 'despacho';
-        $ptoEmision     = '001';
+        $tipo           = DeliveryNoteType::DESPACHO->value;
+        $ptoEmision     = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $user           = GpUsuario::find(Auth::user()->id);
         $pedido         = data_get($payload, 'orden.pedido', []);
         $direccionEnvio = GpClienteSucursal::where('id', data_get($pedido, 'sucursal_id'))->value('CLI_SUC_DIRECCION');
@@ -56,8 +60,8 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'dirOrigin'         => $dirOrigin,
             'pedido'            => $pedido,
             'direccionEnvio'    => $direccionEnvio,
-            'docuSustento'      => '01',
-            'motivoTraslado'    => 'Venta',
+            'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
+            'motivoTraslado'    => ReasonForTransfer::VENTA->value,
         ];
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
@@ -66,7 +70,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             if ($existing) {
                 DB::afterCommit(function () use ($existing) {
                     $this->sendDeliveryNoteDispatchToGp($existing);
-                    $existing->update(['estado' => 'pendiente']);
+                    $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
                 });
                 return $existing;
             }
@@ -160,7 +164,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'destinatario'  => $this->builder->buildDeliveryNoteDestinationToGp($guide),
             'detalle'       => $this->prepateDetailReservation($guide, $detalle)
         ]);
-        $success = $response['success'] ?? false;
+        $success = data_get($response, 'success', false);
         if (!$success) {
             throw new \Exception(data_get($response, 'message', 'Opps! Algo salio mal'));
         }

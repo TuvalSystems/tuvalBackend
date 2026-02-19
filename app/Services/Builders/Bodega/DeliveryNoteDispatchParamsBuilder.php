@@ -2,6 +2,8 @@
 
 namespace App\Services\Builders\Bodega;
 
+use App\Constants\Bodegas\DeliveryNoteConstants;
+use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
@@ -22,7 +24,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
         $gr = new GpGuiaRemision();
         $gr->fill([
             'tipo'                                      => data_get($infoGuia, 'tipo'),
-            'estado'                                    => 'pendiente',
+            'estado'                                    => DeliveryNoteStatus::PENDIENTE->value,
             'pedido'                                    => data_get($infoGuia, 'pedido.pedido'),
             'bodega_origen'                             => data_get($infoGuia, 'pedido.BOD_BODEGA'),
             'bodega_destino'                            => null,
@@ -85,9 +87,9 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'fechaInicio'                       => $guia->GUI_REM_FECHA_INICIO,
             'fechaFin'                          => $guia->GUI_REM_FECHA_FIN,
             'placa'                             => $guia->GUI_REM_PLACA,
-            'correoElectronico'                 => 'guias@tuvalsa.com',
+            'correoElectronico'                 => DeliveryNoteConstants::CORREO_NOTIFICACION,
             'observacion'                       => $guia->GUI_REM_OBSERVACION,
-            'fechaEmisionSustento'              => Carbon::parse('1900-01-01 00:00:00')->format('Y-m-d H:i:s'),
+            'fechaEmisionSustento'              => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATETIME)->format('Y-m-d H:i:s'),
         ];
     }
 
