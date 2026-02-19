@@ -109,9 +109,9 @@ class GuiasderemisionController extends Controller
         }
 
         $this->getguiaremision($guiaderemision);
-        if ($this->deliveryNoteService->isGUideBlockedForOrder($guiaderemision)) {
-            $this->deliveryNoteService->createTemporaryDeliveryNoteBlocksOrder($guiaderemision);
-        }
+        // if ($this->deliveryNoteService->isGUideBlockedForOrder($guiaderemision)) {
+        //     $this->deliveryNoteService->createTemporaryDeliveryNoteBlocksOrder($guiaderemision);
+        // }
         event(new DispatchPendings('refresh'));
         return response([
             'success' => true,

@@ -20,4 +20,9 @@ interface DeliveryNoteCommonServiceInterface
     public function formatGuideNumber(string $ptoVta, string $ptoEmision, string $secuencia): string;
 
     public function assigmentAccessCodeToGuidePending($guia);
+
+    /** funciones temporales para el bloque de guias */
+
+    public function isGUideBlockedForOrder($guia): bool;
+    public function createTemporaryDeliveryNoteBlocksOrder($guia);
 }

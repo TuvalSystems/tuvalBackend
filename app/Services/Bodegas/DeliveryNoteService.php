@@ -12,7 +12,6 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\GpTempGuiasDespachoBlock;
 use App\Models\GpUsuario;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
@@ -20,7 +19,6 @@ use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -32,14 +30,11 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     // protected $invoiceService;
     public function __construct(
-       protected readonly DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, 
-       protected readonly ApiDeliverNoteService $apiDeliveryNote, 
-       protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService, 
-       protected readonly DeliveryNoteCommonServiceInterface $common, )
-    {
-        
-
-    }
+        protected readonly DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder,
+        protected readonly ApiDeliverNoteService $apiDeliveryNote,
+        protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService,
+        protected readonly DeliveryNoteCommonServiceInterface $common,
+    ) {}
 
 
     /**
@@ -225,8 +220,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
     {
         /** proceso temporal de guia de despacho  */
-        if ($this->isGUideBlockedForOrder($guia)) {
-           abort(422, 'El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).');
+        if ($this->common->isGUideBlockedForOrder($guia)) {
+            abort(422, 'El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).');
         }
 
 
@@ -284,7 +279,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 } else {
                     $results[] = "Grupo {$index} procesado exitosamente";
                 }
-
             } catch (\Throwable $e) {
                 $errorMsg = "Grupo {$index} (Pedido: {$grupo['pedido']}): {$e->getMessage()}";
                 $errors[] = $errorMsg;
@@ -325,19 +319,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         ];
     }
 
-
-    public function isGUideBlockedForOrder($guia): bool
-    {
-        return GpPedido::where('pedido', $guia->pedido)->where('pendiente_salida', true)->exists();
-    }
-
-    public function createTemporaryDeliveryNoteBlocksOrder( $guia){
-        $new = new GpTempGuiasDespachoBlock();
-        $new->guia_id = $guia->id;
-        $new->pedido = $guia->pedido;
-        $new->user_id = Auth::user()->id;
-        $new->save();
-    }
 
     public function markGuideSentAndUpdateOrder(GpGuiaRemision $guia, $why)
     {
@@ -1106,5 +1087,4 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
         return $this->common->getNextGuideSequential($establecimiento, $ptoEmision);
     }
-
 }

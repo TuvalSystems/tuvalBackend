@@ -6,6 +6,7 @@ use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\DeliveryNoteType;
 use App\Enums\bodegas\guiaremision\ReasonForTransfer;
+use App\Events\Bodegas\Dashboard\DispatchPendings;
 use App\Models\GpUsuario;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
@@ -84,6 +85,10 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         //despues de que se completara la guia procede a enviarse a gp para que este proceso no entre en el
         //flujo de la transaccion de mysql
         $this->sendDeliveryNoteDispatchToGp($guia);
+        if ($this->common->isGUideBlockedForOrder($guia)) {
+            $this->common->createTemporaryDeliveryNoteBlocksOrder($guia);
+        }
+        event(new DispatchPendings('refresh')); //evento para la actualizadon de dashboard de items serv pendientes y ordenes de despachos
         return $guia->refresh();
     }
 

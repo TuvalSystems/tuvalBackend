@@ -5,13 +5,16 @@ namespace App\Services\Bodegas;
 use App\Enums\EstablishmentGuideSequential;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpBodega;
+use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
+use App\Models\GpTempGuiasDespachoBlock;
 use App\Models\GpTransportista;
 use App\Models\GpVehiculo;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 {
@@ -197,4 +200,21 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 
         return $updated ? $code : (string) $guia->fresh()->GUI_REM_CODIGO;
     }
+
+
+    /** funciones temporales de bloqueo de guia */
+
+    public function isGUideBlockedForOrder($guia): bool
+    {
+        return GpPedido::where('pedido', $guia->pedido)->where('pendiente_salida', true)->exists();
+    }
+
+    public function createTemporaryDeliveryNoteBlocksOrder( $guia){
+        $new            = new GpTempGuiasDespachoBlock();
+        $new->guia_id   = $guia->id;
+        $new->pedido    = $guia->pedido;
+        $new->user_id   = Auth::user()->id;
+        $new->save();
+    }
+
 }
