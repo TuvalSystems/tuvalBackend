@@ -117,6 +117,7 @@ class GpGuiaRemision extends Model
         'rebajado',
         'procesado',
         'GUI_REM_CODIGO',
+        'idempotency_key'
     ];
 
     public function guiadetalle()

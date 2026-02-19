@@ -2,13 +2,11 @@
 
 namespace App\Services\Bodegas;
 
-use App\Models\GpBodega;
+
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
-use App\Models\GpTransportista;
 use App\Models\GpUsuario;
-use App\Models\GpVehiculo;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpGuiaRemisionReservaDetalle;
 use App\Models\reservas\GpGuiaRemisionReservaMovimiento;
@@ -37,11 +35,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function createDeliveryNoteFromReservation($payload)
     {
-        $datavehicle = $this->getVehicleAndCarrierInfo($payload);
-        $dirOrigin = $this->getDirection($payload['pto_origen']);
-        $dirDestination = $this->getDirection($payload['pto_destino']);
-        $bodGuide = $this->getWarehouseDescriptionOrigin($payload['bod_origen']);
-        $idemKey = $this->makeIdemKey($payload);
+        $datavehicle    = $this->common->getVehicleAndCarrierInfo($payload);
+        $dirOrigin      = $this->common->getDirection($payload['pto_origen']);
+        $dirDestination = $this->common->getDirection($payload['pto_destino']);
+        $bodGuide       = $this->common->getWarehouseDescriptionOrigin($payload['bod_origen']);
+        $idemKey        = $this->makeIdemKey($payload);
         $guia = DB::transaction(function () use ($payload, $datavehicle, $dirOrigin, $dirDestination, $bodGuide, $idemKey) {
 
             $existing = GpGuiaRemisionReserva::where('idempotency_key', $idemKey)
@@ -50,15 +48,15 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             if ($existing) {
                 DB::afterCommit(function () use ($existing) {
                     $this->sendReservationDeliveryNoteToGp($existing);
-                    $existing->update(['estado' => 'enviada']);
+                    $existing->update(['estado' => 'pendiente']);
                 });
                 return $existing;
             }
             $this->validateItemsTransferReserved($payload['detalle']);
-            $user = GpUsuario::find(Auth::user()->id);
+            $user       = GpUsuario::find(Auth::user()->id);
             $secuencial = $this->common->getNextGuideSequential($payload['pto_origen'], '001');
-            $numGuide = $this->formatGuideNumber($payload['pto_origen'], '001', $secuencial);
-            $guia = $this->saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin);
+            $numGuide   = $this->common->formatGuideNumber($payload['pto_origen'], '001', $secuencial);
+            $guia       = $this->saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin);
             $guia->idempotency_key = $idemKey;
             $guia->save();
             $this->saveDetailGuideRemisionReservation($payload['detalle'], $guia->id);
@@ -120,12 +118,12 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
                 continue;
             }
             // calculos
-            $selectNow = (float) $itemProcess['seleccionado'];
-            $pending = (float) $itemProcess['pending_transfer'];
-            $qtyStockAuth = (float) $stockRow->cantidad_autorizada_reserva;
-            $qtyGuiaRemision = $rowsDetalle->where('art_code', $itemProcess['art_code'])->sum('cantidad');
-            $sumQty = $qtyGuiaRemision + $selectNow;
-            $sumHistory = $pending + $qtyStockAuth;
+            $selectNow          = (float) $itemProcess['seleccionado'];
+            $pending            = (float) $itemProcess['pending_transfer'];
+            $qtyStockAuth       = (float) $stockRow->cantidad_autorizada_reserva;
+            $qtyGuiaRemision    = $rowsDetalle->where('art_code', $itemProcess['art_code'])->sum('cantidad');
+            $sumQty             = $qtyGuiaRemision + $selectNow;
+            $sumHistory         = $pending + $qtyStockAuth;
 
             if ($sumQty > $sumHistory) {
                 $arrMsg[] = "Item {$itemProcess['art_code']} sel={$selectNow} excede disponible: guia={$pending} + autoriz={$qtyStockAuth}";
@@ -148,57 +146,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     {
         return GpTrasladosReservas::whereIn('id', $items)
             ->update(['picking' => 1]);
-    }
-
-    public function getDirection($ptoWarehouse)
-    {
-        $pto = GpPuntoVenta::where('PTO_VTA_ID', $ptoWarehouse)->select('PTO_VTA_DIRECCION_1', 'PTO_VTA_DIRECCION_2')->first();
-        return $pto ? trim($pto->PTO_VTA_DIRECCION_1 . ' ' . $pto->PTO_VTA_DIRECCION_2) : '';
-    }
-
-
-
-    public function getWarehouseDescriptionOrigin($ptoWarehouse)
-    {
-        return GpBodega::where('BOD_BODEGA', $ptoWarehouse)->value('BOD_DESCRIPCION');
-    }
-
-
-    public function getVehicleAndCarrierInfo($payload)
-    {
-        $datos = [
-            'vehiculo' => [],
-            'transportista' => [],
-        ];
-
-        if ($payload['modo'] === 'local') {
-            $transportista = GpTransportista::where('id', $payload['transporte_id'])->first();
-            $vehiculo = GpVehiculo::where('id', $payload['vehiculo_id'])->first();
-            $datos['vehiculo'] = [
-                'placa' => $vehiculo?->placa,
-            ];
-            $datos['transportista'] = [
-                'nombre' => $transportista?->nombre,
-                'identificacion' => $transportista?->identificacion,
-                'tipo_identificacion' => $transportista?->tipo_identificacion
-            ];
-            return $datos;
-        }
-        $datos['vehiculo'] = [
-            'placa' => $payload['placa'],
-        ];
-        $datos['transportista'] = [
-            'nombre' => $payload['nombre_transporte'],
-            'identificacion' => $payload['identificacion'],
-            'tipo_identificacion' => $payload['tipo_identificacion']
-        ];
-
-        return $datos;
-    }
-
-    public function formatGuideNumber($ptoVta, $ptoEmision, $secuencia): string
-    {
-        return (string) trim($ptoVta . '-' . $ptoEmision . '-' . $secuencia);
     }
 
 
@@ -224,7 +171,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         if (!$tr) {
             throw new \RuntimeException('Traslado de reserva no encontrado');
         }
-        $seleccionado = (float) $value['seleccionado'] ?? 0;
+        $seleccionado = (float) data_get($value, 'seleccionado', 0);
         $tr->increment('reservado', $seleccionado);
     }
 
@@ -260,7 +207,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             'destinatario' => $this->builder->buildReservationDestinationToGp($guide),
             'detalle' => $this->prepateDetailReservation($detalle, $guide)
         ]);
-        $success = $response['success'] ?? false;
+        $success = data_get($response, 'success', false);
         if (!$success) {
             throw new \Exception($response['message']);
         }
@@ -270,10 +217,9 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function validateExistenceDeliveryNote($guia)
     {
-        $response = $this->apiDelivery->checkExistenceDeliveryNote([
+        return $this->apiDelivery->checkExistenceDeliveryNote([
             'numDoc' => $guia->numero_guia
         ]);
-        return $response;
     }
 
 
@@ -285,20 +231,20 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function generatePdfReservedDeliveryNote($payload)
     {
-        $id = data_get($payload, 'id');
-        $guia = GpGuiaRemisionReserva::find($id);
-        $vieData = $this->getDataReservationDeliveryNote($guia);
+        $id         = data_get($payload, 'id');
+        $guia       = GpGuiaRemisionReserva::find($id);
+        $vieData    = $this->getDataReservationDeliveryNote($guia);
 
-        $html = view('pdf.guia-remision-reserva-pendiente', $vieData)->render();
-        $pdf = app('dompdf.wrapper');
+        $html       = view('pdf.guia-remision-reserva-pendiente', $vieData)->render();
+        $pdf        = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
-        $binary = $pdf->output();
-        $filename = 'guia-remision-' . Str::slug(data_get($guia, 'numero_guia')) . '.pdf';
+        $binary     = $pdf->output();
+        $filename   = 'guia-remision-' . Str::slug(data_get($guia, 'numero_guia')) . '.pdf';
         return [
-            'binary' => $binary,
-            'filename' => $filename,
-            'content_type' => 'application/pdf'
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf'
 
         ];
     }
@@ -313,13 +259,13 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         ])->where('guia_id', $guia->id)->get();
 
         return [
-            'guia' => $guia,
-            'claveAcceso' => $guia->clave_acceso,
-            'detalle' => $detalle,
-            'direccion' => $this->getDirection($guia->establecimiento),
-            'descripcion' => $this->getDescriptionWarehouse($guia->establecimiento),
-            'pesoTotal' => $this->calculateKgTotal($detalle->pluck('traslado_id')->toArray()),
-            'quoteList' => $this->getListQuotesTranfers($detalle->pluck('traslado_id')->toArray())
+            'guia'          => $guia,
+            'claveAcceso'   => $guia->clave_acceso,
+            'detalle'       => $detalle,
+            'direccion'     => $this->common->getDirection($guia->establecimiento),
+            'descripcion'   => $this->getDescriptionWarehouse($guia->establecimiento),
+            'pesoTotal'     => $this->calculateKgTotal($detalle->pluck('traslado_id')->toArray()),
+            'quoteList'     => $this->getListQuotesTranfers($detalle->pluck('traslado_id')->toArray())
         ];
     }
 
@@ -412,12 +358,12 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function validateExistenceReservationGuideAdjustment(GpGuiaRemisionReserva $guia, array $params, array $groupItems, string $quote): bool
     {
-        $cabecera = data_get($params, 'cabecera', []);
-        $payloadValidate = $this->builder->buildReservationGuideValidationPayload($cabecera);
-        $resValidate = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+        $cabecera           = data_get($params, 'cabecera', []);
+        $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera);
+        $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
         $headerRespValidate = data_get($resValidate, 'data');
-        $validateSuccess = data_get($resValidate, 'success');
-        $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
+        $validateSuccess    = data_get($resValidate, 'success');
+        $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
 
         /** cuando existe y solo necesita reasignar y procesar los movimientos de entrada y salida */
         if (!empty($headerRespValidate) && filled($docGpValidate)) {
@@ -433,11 +379,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         }
         /** en caso de que no exista la guia de reserva debe crearla */
         if (empty($headerRespValidate) && $validateSuccess === false) {
-            $resp = $this->apiDelivery->createReservationGuideAjustment($params);
-            $success = data_get($resp, 'success', false);
-            $data = data_get($resp, 'data', []);
-            $msg = data_get($resp, 'message');
-            $docGp = trim(data_get($resp, 'data.docGp', '')); // null si no existe
+            $resp       = $this->apiDelivery->createReservationGuideAjustment($params);
+            $success    = data_get($resp, 'success', false);
+            $data       = data_get($resp, 'data', []);
+            $msg        = data_get($resp, 'message');
+            $docGp      = trim(data_get($resp, 'data.docGp', '')); // null si no existe
             if (!$success) {
                 throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
             }
@@ -476,11 +422,11 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     public function createMovementReservation($guia, $responseApi, $quote): GpGuiaRemisionReservaMovimiento
     {
         return GpGuiaRemisionReservaMovimiento::firstOrCreate([
-            'guia_id' => $guia->id,
-            'tipo_movimiento' => 'TRC',
-            'cotizacion' => $quote,
-            'id_movimiento' => data_get($responseApi, 'idMovimiento'),
-            'codigo' => trim((string) data_get($responseApi, 'docGp', '')),
+            'guia_id'           => $guia->id,
+            'tipo_movimiento'   => 'TRC',
+            'cotizacion'        => $quote,
+            'id_movimiento'     => data_get($responseApi, 'idMovimiento'),
+            'codigo'            => trim((string) data_get($responseApi, 'docGp', '')),
         ]);
     }
 

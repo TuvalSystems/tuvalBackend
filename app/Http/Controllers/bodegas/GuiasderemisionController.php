@@ -29,6 +29,7 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Notifications\User\UserNotification;
+use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -41,21 +42,13 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class GuiasderemisionController extends Controller
 {
     use JsonResponseTrait;
-    protected $deliveryNoteService;
-    protected $invoiceService;
-    protected $notifyService;
-    protected $reservedDeliveryNoteService;
     public function __construct(
-        DeliveryNoteServiceInterface $deliveryNoteService,
-        InvoiceServiceInterface $invoiceServiceInterface,
-        ReservationDeliveryNoteServiceInterface $reservedDeliveryNoteService
-
-    ) {
-        $this->deliveryNoteService = $deliveryNoteService;
-        $this->invoiceService = $invoiceServiceInterface;
-        $this->reservedDeliveryNoteService = $reservedDeliveryNoteService;
-    }
-    public function generarguiaventa(Request $request): Response|Application|ResponseFactory
+        protected readonly DeliveryNoteServiceInterface $deliveryNoteService,
+        protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly ReservationDeliveryNoteServiceInterface $reservedDeliveryNoteService,
+        protected readonly DeliveryNoteDispatchServiceInterface $dispatch
+    ) {}
+    public function generarguiaventa(Request $request):  Response|Application|ResponseFactory
     {
         $data = $request->all();
 
@@ -1191,6 +1184,31 @@ class GuiasderemisionController extends Controller
             return $this->buildErrorResponse($r->getMessage(), 409);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error en la funcion enviarGuiaRemisionReservaAGp -GuiasderemisionController: ', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'linea' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    /**
+     *
+     *  PROCESO DE CREACION DE GUIA DE DESPACHO
+     */
+
+    public function crearGuiaRemisionDespacho(Request $request)
+    {
+        try {
+            $payload = $request->all();
+            $response = $this->dispatch->createDeliveryNoteFromDispatch($payload);
+            return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
+        } catch (RuntimeException $r) {
+            return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (\Throwable $e) {
+            Log::channel('despachos')->error('Error en la funcion crearGuiaDespacho -GuiasderemisionController: ', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'linea' => $e->getLine(),

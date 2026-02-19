@@ -4,12 +4,19 @@ namespace App\Services\Bodegas;
 
 use App\Enums\EstablishmentGuideSequential;
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\GpBodega;
+use App\Models\GpPuntoVenta;
+use App\Models\GpTransportista;
+use App\Models\GpVehiculo;
 use App\Models\reservas\GpGuiaRemisionReserva;
+use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use Illuminate\Support\Collection;
 
 class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 {
+
+    public function __construct(protected readonly ApiDeliverNoteService $apiDeliveryNote) {}
 
 
     public function getNextGuideSequential(string $establecimiento, string $ptoEmision): string
@@ -35,7 +42,7 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
     }
 
 
-    public function toSequentialInt(?string $value): int
+    protected function toSequentialInt(?string $value): int
     {
         if (empty($value)) {
             return 0;
@@ -44,7 +51,7 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
     }
 
 
-    public function getBaseSequentialByEstablishment(string $establecimiento): int
+    protected function getBaseSequentialByEstablishment(string $establecimiento): int
     {
         $enum = EstablishmentGuideSequential::tryFromCode($establecimiento);
         $base = $enum?->baseSequential() ?? '000000';
@@ -102,4 +109,92 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
         $trl->save();
     }
 
+
+    /** obtencion de informacion de vehiculo */
+
+    public function getVehicleAndCarrierInfo($payload): array
+    {
+        $datos = [
+            'vehiculo' => [],
+            'transportista' => [],
+        ];
+
+        if ($payload['modo'] === 'local') {
+            $transportista = GpTransportista::where('id', $payload['transporte_id'])->first();
+            $vehiculo = GpVehiculo::where('id', $payload['vehiculo_id'])->first();
+            $datos['vehiculo'] = [
+                'placa' => $vehiculo?->placa,
+            ];
+            $datos['transportista'] = [
+                'nombre' => $transportista?->nombre,
+                'identificacion' => $transportista?->identificacion,
+                'tipo_identificacion' => $transportista?->tipo_identificacion
+            ];
+            return $datos;
+        }
+        $datos['vehiculo'] = [
+            'placa' => $payload['placa'],
+        ];
+        $datos['transportista'] = [
+            'nombre' => $payload['nombre_transporte'],
+            'identificacion' => $payload['identificacion'],
+            'tipo_identificacion' => $payload['tipo_identificacion']
+        ];
+
+        return $datos;
+    }
+
+
+
+    public function getDirection($ptoWarehouse): string
+    {
+        $pto = GpPuntoVenta::where('PTO_VTA_ID', $ptoWarehouse)->select('PTO_VTA_DIRECCION_1', 'PTO_VTA_DIRECCION_2')->first();
+        return $pto ? trim($pto->PTO_VTA_DIRECCION_1 . ' ' . $pto->PTO_VTA_DIRECCION_2) : '';
+    }
+
+
+
+    public function getWarehouseDescriptionOrigin($ptoWarehouse)
+    {
+        return GpBodega::where('BOD_BODEGA', $ptoWarehouse)->value('BOD_DESCRIPCION');
+    }
+
+
+    public function formatGuideNumber(string $ptoVta, string $ptoEmision, string $secuencia): string
+    {
+        $pv = str_pad($ptoVta, 3, '0', STR_PAD_LEFT);
+        $pe = str_pad($ptoEmision, 3, '0', STR_PAD_LEFT);
+        $sec = str_pad($secuencia, 9, '0', STR_PAD_LEFT);
+        return "$pv-$pe-$sec";
+    }
+
+
+    /** proceso de reasignacion de clave de acceso para guias de remision global  */
+
+    public function assigmentAccessCodeToGuidePending($guia)
+    {
+        if (!empty($guia->GUI_REM_CODIGO)) {
+            return $guia->GUI_REM_CODIGO;
+        }
+
+        $res = $this->apiDeliveryNote->getAccessCodeByNumberDocDelivery([
+            'numDoc' => $guia->GUI_REM_GUIA_REMISION,
+        ]);
+        $ok = data_get($res, 'success') === true;
+        $msg = data_get($res, 'message', 'Error desconocido');
+        $code = data_get($res, 'data.claveAcceso');
+
+        if (!$ok) {
+            throw new \DomainException($msg);
+        }
+        if (!is_string($code) || $code === '') {
+            throw new \UnexpectedValueException('La API no retornó una claveAcceso válida.');
+        }
+
+        $updated = GpGuiaRemision::whereKey($guia->getKey())
+            ->whereNull('GUI_REM_CODIGO')
+            ->update(['GUI_REM_CODIGO' => $code]);
+
+        return $updated ? $code : (string) $guia->fresh()->GUI_REM_CODIGO;
+    }
 }

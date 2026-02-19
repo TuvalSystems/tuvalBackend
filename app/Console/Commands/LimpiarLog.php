@@ -26,6 +26,7 @@ class LimpiarLog extends Command
             'sql_errors.log',
             'reservas_log.log',
             'redis_log.log',
+            'despachos.log',
         ];
 
         // Detectamos grupo del directorio storage para alinear los archivos
