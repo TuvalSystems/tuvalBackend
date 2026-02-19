@@ -157,13 +157,13 @@ class DevolucionService implements DevolucionServiceInterface
         $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
         $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
         $calculatedData = [
-            'status' => $requiredApproval === 'yes' ? DevolutionStatus::ESPERA : DevolutionStatus::SOLICITADO,
-            'requiredApproval' => $requiredApproval,
-            'USERID' => $gpUser->USERID,
-            'userId' => $gpUser->id,
-            'canNullify' => $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status),
-            'anulacionHabilitada' => $this->canBeAnulledByLimitDate(Arr::get($data, 'pedido', [])),
-            'isDispatched' => $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detalle', []), Arr::get($data, 'devolucion', [])),
+            'status'                => $requiredApproval === 'yes' ? DevolutionStatus::ESPERA : DevolutionStatus::SOLICITADO,
+            'requiredApproval'      => $requiredApproval,
+            'USERID'                => $gpUser->USERID,
+            'userId'                => $gpUser->id,
+            'canNullify'            => $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status),
+            'anulacionHabilitada'   => $this->canBeAnulledByLimitDate(Arr::get($data, 'pedido', [])),
+            'isDispatched'          => $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detalle', []), Arr::get($data, 'devolucion', [])),
         ];
         $devolucion = $this->devolucionBuilder->formPayloadDevolutionHeader($data, $calculatedData);
         $devolucion->save();
@@ -221,8 +221,9 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function canBeAnulledByLimitDate($pedido)
     {
-        $fechaFactura = $pedido['fecha_factura'] ?? null;
-        $ptoVtaId = $pedido['PTO_VTA_ID'] ?? null;
+
+        $fechaFactura = data_get($pedido, 'fecha_factura', null);
+        $ptoVtaId = data_get($pedido, 'PTO_VTA_ID', null);
 
         if (!$fechaFactura || !$ptoVtaId) {
             return false;
