@@ -727,13 +727,13 @@ class ApprovalService implements ApprovalServiceInterface
     public function checkoutApprovalDevoluciones($data)
     {
 
-        $tipoDevolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $volverAFacturar = Arr::get($data, 'devolucion.volver_a_facturar', false);
-        $detallePedido = Arr::get($data, 'detallepedido', []);
-        $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
-        $daysDifference = $this->daysDifference($fechaFactura);
-        $hasTypeLItems = collect($detallePedido)->contains(
-            fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l'
+        $tipoDevolucion     = Arr::get($data, 'devolucion.tipo_devolucion');
+        $volverAFacturar    = Arr::get($data, 'devolucion.volver_a_facturar', false);
+        $detallePedido      = Arr::get($data, 'detallepedido', []);
+        $fechaFactura       = Arr::get($data, 'pedido.fecha_factura', null);
+        $daysDifference     = $this->daysDifference($fechaFactura);
+        $hasTypeLItems      = collect($detallePedido)->contains(
+            fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'L'
         );
 
         // Verifica si el pedido tiene detalles de orden despachados
@@ -799,7 +799,7 @@ class ApprovalService implements ApprovalServiceInterface
                 ->exists();
         }
 
-        $pedidoConsulta = GpPedido::find($pedido['id']);
+        $pedidoConsulta     = GpPedido::find($pedido['id']);
         $tieneFacturaOrigen = !empty($pedidoConsulta->factura_origen);
         if ($tieneFacturaOrigen) {
 
