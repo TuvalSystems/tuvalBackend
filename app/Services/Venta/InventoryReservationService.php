@@ -467,7 +467,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
             ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id');
         if ($gpUser->perfil_id !== 2) {
-            $query->where('gp_reservas.user_ingreso_reserva_id', $userId);
+            $query->where('gp_reservas.user_ingreso_reserva_id', $gpUser->id);
         }
 
         if ($fecha_desde && $fecha_hasta) {
