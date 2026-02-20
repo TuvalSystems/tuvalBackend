@@ -100,7 +100,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
     public function getClientsByClientId($cliente_id)
     {
-        return GpCliente::where('ID', $cliente_id)->get();
+        return GpCliente::where('id', $cliente_id)->get();
         ;
     }
     public function getClientsByClientRuc($ruc)
