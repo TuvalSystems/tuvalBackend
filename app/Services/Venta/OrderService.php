@@ -647,9 +647,8 @@ class OrderService implements OrderServiceInterface
      *   FUNCION PARA VOLVER A PEDIR UN PEDIDO
      */
 
-    public function loadOrderForCopy($orderId): array
+    public function loadOrderForCopy($orderId, GpUsuario $user): array
     {
-        $user = Auth::user() ?? GpUsuario::find(179);
         $order = GpPedido::findOrFail($orderId);
         $cliente = $this->clientService->getAvailabeCreditCustomer($order->CLI_RUC);
         $clienteNew =  data_get($cliente, 'cliente');

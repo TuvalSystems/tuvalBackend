@@ -376,7 +376,8 @@ class PedidosController extends Controller
             $request->validate([
                 'id' => 'required|exists:gp_pedidos,id',
             ]);
-            $response = $this->orderService->loadOrderForCopy($request->get('id'));
+            $user = Auth::user();
+            $response = $this->orderService->loadOrderForCopy($request->get('id'),  $user);
             return $this->successResponse('Pedido copiado correctamente', $response, 200);
         } catch (\Throwable $e) {
             Log::error('Error en volverAPedirPedido', [

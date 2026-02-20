@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
+use App\Models\GpUsuario;
+
 interface OrderServiceInterface
 {
     public function getOrderInfo($id);
@@ -20,7 +22,7 @@ interface OrderServiceInterface
 
     //recuperar pedidos
 
-     public function loadOrderForCopy($orderId): array ;
+     public function loadOrderForCopy($orderId, GpUsuario $user): array ;
 
     /** facturar pedido */
     public function generateInvoiceOrder($orderId);
