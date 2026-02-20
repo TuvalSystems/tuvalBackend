@@ -2,6 +2,7 @@
 
 namespace App\Services\Bodegas\Contracts;
 
+use App\Models\GpUsuario;
 use Illuminate\Support\Collection;
 
 interface DeliveryNoteCommonServiceInterface
@@ -24,5 +25,5 @@ interface DeliveryNoteCommonServiceInterface
     /** funciones temporales para el bloque de guias */
 
     public function isGUideBlockedForOrder($guia): bool;
-    public function createTemporaryDeliveryNoteBlocksOrder($guia);
+    public function createTemporaryDeliveryNoteBlocksOrder($guia, GpUsuario $user);
 }

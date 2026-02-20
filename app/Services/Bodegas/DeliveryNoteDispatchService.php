@@ -11,7 +11,6 @@ use App\Models\GpUsuario;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
@@ -36,11 +35,10 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
      * PROCESO DE CREACION DE GUIA DE DESPACHO
      */
 
-    public function createDeliveryNoteFromDispatch($payload)
+    public function createDeliveryNoteFromDispatch($payload, GpUsuario $user)
     {
         $tipo           = DeliveryNoteType::DESPACHO->value;
         $ptoEmision     = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
-        $user           = GpUsuario::find(Auth::user()->id);
         $pedido         = data_get($payload, 'orden.pedido', []);
         $direccionEnvio = GpClienteSucursal::where('id', data_get($pedido, 'sucursal_id'))->value('CLI_SUC_DIRECCION');
         $secuencial     = $this->common->getNextGuideSequential(data_get($payload, 'orden.PTO_VTA_ID'), $ptoEmision);
@@ -86,7 +84,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         //flujo de la transaccion de mysql
         $this->sendDeliveryNoteDispatchToGp($guia);
         if ($this->common->isGUideBlockedForOrder($guia)) {
-            $this->common->createTemporaryDeliveryNoteBlocksOrder($guia);
+            $this->common->createTemporaryDeliveryNoteBlocksOrder($guia, $user);
         }
         event(new DispatchPendings('refresh')); //evento para la actualizadon de dashboard de items serv pendientes y ordenes de despachos
         return $guia->refresh();

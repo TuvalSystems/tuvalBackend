@@ -9,6 +9,7 @@ use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use App\Models\GpTempGuiasDespachoBlock;
 use App\Models\GpTransportista;
+use App\Models\GpUsuario;
 use App\Models\GpVehiculo;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
@@ -209,11 +210,11 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
         return GpPedido::where('pedido', $guia->pedido)->where('pendiente_salida', true)->exists();
     }
 
-    public function createTemporaryDeliveryNoteBlocksOrder( $guia){
+    public function createTemporaryDeliveryNoteBlocksOrder( $guia, GpUsuario $user){
         $new            = new GpTempGuiasDespachoBlock();
         $new->guia_id   = $guia->id;
         $new->pedido    = $guia->pedido;
-        $new->user_id   = Auth::user()->id;
+        $new->user_id   = $user->id;
         $new->save();
     }
 

@@ -1024,7 +1024,7 @@ class GuiasderemisionController extends Controller
     {
         $payload = $request->all();
         try {
-            $response = $this->reservedDeliveryNoteService->createDeliveryNoteFromReservation($payload);
+            $response = $this->reservedDeliveryNoteService->createDeliveryNoteFromReservation($payload, $request->user());
             return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
@@ -1086,7 +1086,7 @@ class GuiasderemisionController extends Controller
             $validated = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
             ]);
-            $response = $this->reservedDeliveryNoteService->dispatchGuideReservation($validated);
+            $response = $this->reservedDeliveryNoteService->dispatchGuideReservation($validated, $request->user());
             return $this->successResponse('Guia de reserva Despachada', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
@@ -1111,7 +1111,7 @@ class GuiasderemisionController extends Controller
     {
         try {
             $payload = $request->all();
-            $response = $this->dispatch->createDeliveryNoteFromDispatch($payload);
+            $response = $this->dispatch->createDeliveryNoteFromDispatch($payload, $request->user());
             return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);

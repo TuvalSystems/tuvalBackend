@@ -17,7 +17,6 @@ use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -33,14 +32,14 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     ) {}
 
 
-    public function createDeliveryNoteFromReservation($payload)
+    public function createDeliveryNoteFromReservation($payload, GpUsuario $user)
     {
         $datavehicle    = $this->common->getVehicleAndCarrierInfo($payload);
         $dirOrigin      = $this->common->getDirection($payload['pto_origen']);
         $dirDestination = $this->common->getDirection($payload['pto_destino']);
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin($payload['bod_origen']);
         $idemKey        = $this->makeIdemKey($payload);
-        $guia = DB::transaction(function () use ($payload, $datavehicle, $dirOrigin, $dirDestination, $bodGuide, $idemKey) {
+        $guia = DB::transaction(function () use ($payload, $datavehicle, $dirOrigin, $dirDestination, $bodGuide, $idemKey, $user) {
 
             $existing = GpGuiaRemisionReserva::where('idempotency_key', $idemKey)
                 ->lockForUpdate()
@@ -53,7 +52,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
                 return $existing;
             }
             $this->validateItemsTransferReserved($payload['detalle']);
-            $user       = GpUsuario::find(Auth::user()->id);
             $secuencial = $this->common->getNextGuideSequential($payload['pto_origen'], '001');
             $numGuide   = $this->common->formatGuideNumber($payload['pto_origen'], '001', $secuencial);
             $guia       = $this->saveGuideRemisionReservation($payload, $user, $datavehicle, $secuencial, $dirDestination, $numGuide, $bodGuide, $dirOrigin);
@@ -311,10 +309,9 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
      *
      *
      * */
-    public function dispatchGuideReservation($payload): array|Collection|GpGuiaRemisionReserva|Model|null
+    public function dispatchGuideReservation($payload, GpUsuario $user): array|Collection|GpGuiaRemisionReserva|Model|null
     {
         $processed = false;
-        $user = GpUsuario::whereKey(Auth::id())->value('USERID') ?: 'adminWeb';
         $id = (int) data_get($payload, 'id');
         $guia = GpGuiaRemisionReserva::find($id);
         $details = $this->getDetailsGuideWithTransfers($guia->id);
