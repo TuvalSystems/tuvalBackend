@@ -441,13 +441,13 @@ class DevolucionService implements DevolucionServiceInterface
             abort(409, 'El pedido está siendo despachado');
         }
 
-        $detalles = $this->orderRepository->getAllDetailsOrderById($orderId);
-        $motivos = $this->devolucionRepository->getMotivosDevolucion();
-        $cliente = $this->devolucionRepository->getClientsByClientId($clientId)[0] ?? null;
+        $detalles   = $this->orderRepository->getAllDetailsOrderById($orderId);
+        $motivos    = $this->devolucionRepository->getMotivosDevolucion();
+        $cliente    = $this->devolucionRepository->getClientsByClientId($clientId);
 
 
         $grupoEconomico = $this->apiGpReturnsIntegrationService->consultGroupEconomicByClient([
-            'ruc' => $cliente->CLI_RUC ?? null,
+            'ruc' => data_get($cliente, 'CLI_RUC', null),
         ]);
 
         if (!$grupoEconomico['success']) {
