@@ -360,7 +360,8 @@ class AprobacionesController extends Controller
     {
         $id = data_get($request->all(), 'id');
         try {
-            $quote = $this->approvalService->denyQuotationBeenWaiting($id);
+
+            $quote = $this->approvalService->denyQuotationBeenWaiting($id, $request->user());
             return $this->successResponse('Cotización rechazada', $quote, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse('Error al rechazar la cotización: ' . $e->getMessage(), 500);

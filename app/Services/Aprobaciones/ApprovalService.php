@@ -1205,12 +1205,12 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function denyQuotationBeenWaiting(int $id)
+    public function denyQuotationBeenWaiting(int $id , GpUsuario $user)
     {
         $quote = GpCotizacion::find($id);
         $quote->estado = 'rechazado';
         $quote->fe_rechazo = Carbon::now()->format('Y-m-d H:i:s');
-        $quote->user_rechazo_id = auth()->user()->id;
+        $quote->user_rechazo_id = $user->id;
         $quote->save();
         return $quote;
     }

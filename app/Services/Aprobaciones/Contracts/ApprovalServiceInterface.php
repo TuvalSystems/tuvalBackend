@@ -1,6 +1,8 @@
 <?php
 namespace App\Services\Aprobaciones\Contracts;
 
+use App\Models\GpUsuario;
+
 interface ApprovalServiceInterface
 {
 
@@ -40,7 +42,7 @@ interface ApprovalServiceInterface
     public function accountStatusClient($ruc);
 
 
-    public function denyQuotationBeenWaiting(int $id);
+    public function denyQuotationBeenWaiting(int $id, GpUsuario $user);
     public function denyOrderBeenWaiting(int $id);
 
     public function getAllPendingApprovals(int $ptoVta);
