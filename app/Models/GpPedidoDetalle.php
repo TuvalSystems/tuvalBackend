@@ -108,6 +108,10 @@ class GpPedidoDetalle extends Model
         'approval_valor'            => 'boolean',
         'approval_descuento'        => 'boolean',
         'approval_modificador'      => 'boolean',
+        'reservado'                 => 'float',
+        'trasladado'                => 'float',
+        'devuelto'                  => 'float',
+        'cancelado'                 => 'float',
     ];
 
 

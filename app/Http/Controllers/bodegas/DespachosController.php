@@ -625,54 +625,29 @@ class DespachosController extends Controller
         $pedido->despacho_en_proceso = 1;
         $pedido->save();
 
-        $detalle = GpPedidoDetalle::where('pedido_id', $id)->get();
-        foreach ($detalle as $key => $det) {
-            if (!$det->reservado)
-                $det->reservado = 0;
+        $detalles = GpPedidoDetalle::where('pedido_id', $id)->get();
 
-            if (!$det->trasladado)
-                $det->trasladado = 0;
-
-            if (!$det->devuelto)
-                $det->devuelto = 0;
-
-            $detTDevuelto = 0;
-            $detTNoDevuelto = 0;
-
-            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
-                ->where('gp_devoluciones_detalles.detalle_id', $det->id)
-                ->sum('gp_devoluciones_detalles.devuelto');
-            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
-                ->where('gp_devoluciones_detalles.detalle_id', $det->id)
-                ->sum('gp_devoluciones_detalles.devuelto');
-
-
-            $detTDevuelto = $det->trasladado - $det->reservado - $devueltoDesp;
+        $resultados = $detalles->map(function ($det) {
+            $devueltoNoDesp = GpDevolucionesDetalle::where('detalle_id', $det->id)
+                ->where('despachado_parcial', 0)
+                ->sum('devuelto');
             $detTNoDevuelto = ($det->ART_CANTIDAD - $det->trasladado) - $det->reservado - $devueltoNoDesp;
 
             $det->pendiente = number_format($detTNoDevuelto, 2, '.', '');
+            $det->seleccionado  = 0;
+            $det->ART_CANTIDAD  = round($det->ART_CANTIDAD, $det->ART_DECIMAL_CANTIDAD);
+            $det->pendiente     = round($det->pendiente, $det->ART_DECIMAL_CANTIDAD);
+            $det->reservado     = round($det->reservado, $det->ART_DECIMAL_CANTIDAD);
+            $det->trasladado    = round($det->trasladado, $det->ART_DECIMAL_CANTIDAD);
 
-            $det->seleccionado = 0;
-            if ($det->pendiente <= 0) {
-                unset($detalle[$key]);
-            }
-
-            if ($det->ART_DECIMAL_CANTIDAD == 0) {
-                $det->ART_CANTIDAD = (int) $det->ART_CANTIDAD;
-                $det->pendiente = (int) $det->pendiente;
-                $det->reservado = (int) $det->reservado;
-                $det->trasladado = (int) $det->trasladado;
-            }
-        }
-
-        $detalle = $detalle->toArray();
-        $detalle = array_values($detalle);
+            return $det;
+        })->filter(function ($det) {
+            return $det->pendiente > 0;
+        })->values();
 
         return response([
             'success' => true,
-            'detalle' => $detalle,
+            'detalle' => $resultados,
         ]);
     }
 
@@ -940,7 +915,7 @@ class DespachosController extends Controller
 
         if ($listo) {
             $pedido->despachado = 1;
-            $pedido->despacho_en_proceso = null;
+            $pedido->despacho_en_proceso = 0;
             $pedido->save();
 
             $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();

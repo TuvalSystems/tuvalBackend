@@ -87,7 +87,7 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
         if (!$hasPending) {
             $pedido->fill([
                 'despachado' => 1,
-                'despacho_en_proceso' => null
+                'despacho_en_proceso' => 0
             ])->save();
             GpOrdenDespacho::query()
                 ->where('pedido_id', $pedido->id)

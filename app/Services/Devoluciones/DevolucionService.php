@@ -173,9 +173,9 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function processInvoiceAnulation($data, $newDev)
     {
-        $isCleanOrder = $this->devolucionRepository->isOrderNotDispatchedOrProcessing($data['pedido']);
-        $hasOtherReturns = $this->devolucionRepository->hasOtherActiveReturns($data['pedido'], $newDev);
-        $validateItemsL = $this->devolucionRepository->validateItemLDetailInvoice($newDev);
+        $isCleanOrder       = $this->devolucionRepository->isOrderNotDispatchedOrProcessing($data['pedido']);
+        $hasOtherReturns    = $this->devolucionRepository->hasOtherActiveReturns($data['pedido'], $newDev);
+        $validateItemsL     = $this->devolucionRepository->validateItemLDetailInvoice($newDev);
         $hasPartialDispatch = $this->devolucionRepository->hasPartiallyDispatchedItems($newDev);
 
         $shouldAnulated = (
