@@ -821,28 +821,28 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function getReturnDetailToReceiveById(int $id)
     {
-        $devolucion = GpDevoluciones::find($id);
-        $pedido = $this->devolucionRepository->getOrderbyId($devolucion->pedido_id);
-        $segmento = $this->getSegmentoCliente($pedido->CLI_RUC);
-        $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion->id, 1);
-        $devolucion->orderDespacho = $this->devolucionRepository->getDispatchOrder($devolucion->pedido_id);
-        $detalleEnriquecido = collect($detalle)->map(function ($item) use ($pedido) {
+        $devolucion                 = GpDevoluciones::find($id);
+        $pedido                     = $this->devolucionRepository->getOrderbyId($devolucion->pedido_id);
+        $segmento                   = $this->getSegmentoCliente($pedido->CLI_RUC);
+        $detalle                    = $this->devolucionRepository->getDetailDevolucion($devolucion->id, 1);
+        $devolucion->orderDespacho  = $this->devolucionRepository->getDispatchOrder($devolucion->pedido_id);
+        $detalleEnriquecido         = collect($detalle)->map(function ($item) use ($pedido) {
             $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
-                'item' => $item['ART_CODIGO'],
+                'item'   => $item['ART_CODIGO'],
                 'bodega' => $pedido->BOD_BODEGA
             ]);
-            $bin = data_get($resp, 'detalle.compartimento', null);
-            $lista = data_get($resp, 'lista', []);
-            $item['compartimientos'] = $lista;
-            $item['compartimiento'] = $bin;
+            $bin                        = data_get($resp, 'detalle.compartimento', null);
+            $lista                      = data_get($resp, 'lista', []);
+            $item['compartimientos']    = $lista;
+            $item['compartimiento']     = $bin;
             return $item;
         });
 
         return [
-            'devolucion' => $devolucion,
-            'detalle' => $detalleEnriquecido,
-            'segmento' => $segmento,
-            'pedido' => $pedido
+            'devolucion'    => $devolucion,
+            'detalle'       => $detalleEnriquecido,
+            'segmento'      => $segmento,
+            'pedido'        => $pedido
         ];
     }
 
@@ -850,25 +850,25 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function generatePdfOrderStorageDevolution(array $data)
     {
-        $header = data_get($data, 'header');
-        $detalle = data_get($data, 'details');
+        $header     = data_get($data, 'header');
+        $detalle    = data_get($data, 'details');
 
         $viewData = [
-            'header' => $header,
-            'details' => $detalle,
+            'header'    => $header,
+            'details'   => $detalle,
         ];
 
-        $html = view('pdf.orden-almacenamiento-devolucion', $viewData)->render();
-        $pdf = app('dompdf.wrapper');
+        $html       = view('pdf.orden-almacenamiento-devolucion', $viewData)->render();
+        $pdf        = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
-        $binary = $pdf->output();
-        $filename = 'orden-almacenamiento-' . $header['devolucion'] . '.pdf';
+        $binary     = $pdf->output();
+        $filename   = 'orden-almacenamiento-' . $header['devolucion'] . '.pdf';
 
         return [
-            'binary' => $binary,
-            'filename' => $filename,
-            'content_type' => 'application/pdf',
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
         ];
     }
 
