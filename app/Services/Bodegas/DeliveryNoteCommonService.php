@@ -15,7 +15,6 @@ use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 
 class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 {
