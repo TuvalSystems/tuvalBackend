@@ -88,12 +88,12 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function handleDevolutionTransaction($data)
     {
-        $devolucion = Arr::get($data, 'devolucion');
-        $pedidoDev = Arr::get($data, 'pedido');
-        $detallePedido = Arr::get($data, 'detallepedido');
+        $devolucion     = Arr::get($data, 'devolucion');
+        $pedidoDev      = Arr::get($data, 'pedido');
+        $detallePedido  = Arr::get($data, 'detallepedido');
 
-        $orderId = Arr::get($data, 'pedido.id');
-        $order = GpPedido::find($orderId);
+        $orderId        = Arr::get($data, 'pedido.id');
+        $order          = GpPedido::find($orderId);
         if (!$order) {
             abort(404, 'Pedido no encontrado');
         }
@@ -103,14 +103,14 @@ class DevolucionService implements DevolucionServiceInterface
         }
 
         $detailInfo = [
-            'devolucion' => $devolucion,
-            'pedido' => $pedidoDev,
-            'detalle' => [],
+            'devolucion'    => $devolucion,
+            'pedido'        => $pedidoDev,
+            'detalle'       => [],
         ];
 
         foreach ($detallePedido as $det) {
-            $isRefacturacion = $devolucion['volver_a_facturar'];
-            $isSelected = ($det['seleccionado'] ?? 0) > 0;
+            $isRefacturacion    = $devolucion['volver_a_facturar'];
+            $isSelected         = ($det['seleccionado'] ?? 0) > 0;
             if ($isRefacturacion || $isSelected) {
                 $detailInfo['detalle'][] = $det;
             }
