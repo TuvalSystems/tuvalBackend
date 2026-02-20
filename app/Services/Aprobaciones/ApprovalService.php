@@ -35,7 +35,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -1212,15 +1211,15 @@ class ApprovalService implements ApprovalServiceInterface
         $quote->fe_rechazo = Carbon::now()->format('Y-m-d H:i:s');
         $quote->user_rechazo_id = $user->id;
         $quote->save();
-        return $quote;
+        return $quote->refresh();
     }
 
 
-    public function denyOrderBeenWaiting(int $id)
+    public function denyOrderBeenWaiting(int $id,  GpUsuario $user)
     {
         $order = GpPedido::find($id);
         $order->estado = OrderStatus::RECHAZADO;
-        $order->user_rechazo_id = auth()->user()->id;
+        $order->user_rechazo_id = $user->id;
         $order->fecha_hora_rechazado = Carbon::now()->format('Y-m-d H:i:s');
         $order->rechazado = 1;
         $order->save();
@@ -1232,9 +1231,8 @@ class ApprovalService implements ApprovalServiceInterface
 
     /** listado de aprobaciones de pedidos y cotizaciones */
 
-    public function getAllPendingApprovals(int $ptoVta)
+    public function getAllPendingApprovals(int $ptoVta, GpUsuario $user)
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         // 1. Fetch Orders (Pedidos)
         $query1 = $this->fetchPendingOrders($ptoVta);
 
@@ -1269,9 +1267,8 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
     /** listado de las cotizaciones pendiente de aprobaciones */
-    public function getAllQuotesPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
+    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user, int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         $query = $this->fetchPendingQuotes($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
@@ -1290,9 +1287,8 @@ class ApprovalService implements ApprovalServiceInterface
         return $query->paginate($perPage);
     }
 
-    public function getAllOrdersPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
+    public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user,int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         $query = $this->fetchPendingOrders($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {

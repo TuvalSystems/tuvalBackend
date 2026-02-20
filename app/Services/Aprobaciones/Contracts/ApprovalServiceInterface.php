@@ -43,11 +43,11 @@ interface ApprovalServiceInterface
 
 
     public function denyQuotationBeenWaiting(int $id, GpUsuario $user);
-    public function denyOrderBeenWaiting(int $id);
+    public function denyOrderBeenWaiting(int $id,  GpUsuario $user);
 
-    public function getAllPendingApprovals(int $ptoVta);
-    public function getAllQuotesPendingApprovals($ptoVta);
-    public function getAllOrdersPendingApprovals($ptoVta);
+    public function getAllPendingApprovals(int $ptoVta, GpUsuario $user);
+    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user);
+    public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user);
 
     /**  aprobacicon comercial de cotizacion */
     public function approveComercialQuote($id, $user);
