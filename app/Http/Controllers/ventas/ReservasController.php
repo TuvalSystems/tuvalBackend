@@ -520,7 +520,8 @@ class ReservasController extends Controller
         $guiaId = $request->input('guiaId', null);
         $items = $request->input('items', null);
         try {
-            $data = $this->reserveService->receiveItemsFromTransferred($guiaId, $items);
+             $user = Auth::user() ?? GpUsuario::find(179);
+            $data = $this->reserveService->receiveItemsFromTransferred($guiaId, $items, $user);
             return $this->successResponse('Proceso realizado correctamente', $data, 200);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);

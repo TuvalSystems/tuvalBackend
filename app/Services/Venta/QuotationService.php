@@ -232,9 +232,8 @@ class QuotationService implements QuotationServiceInterface
      */
 
 
-    public function loadQuotationForCopy($quoteId): array
+    public function loadQuotationForCopy($quoteId, GpUsuario $user): array
     {
-        $user = Auth::user() ?? GpUsuario::find(179);
         $quote = GpCotizacion::findOrFail($quoteId);
         $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
         $clienteNew =  data_get($cliente, 'cliente');

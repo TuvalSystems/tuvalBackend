@@ -105,7 +105,7 @@ class DevolucionesController extends Controller
     }
 
 
-   
+
 
     public function enviarDevolucion(Request $request): JsonResponse
     {
@@ -113,7 +113,7 @@ class DevolucionesController extends Controller
         $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
         $gpUser = GpUsuario::where('id', $userId)->first();
         try {
-            $newDev = $this->devolucionService->handleDevolutionTransaction($data);
+            $newDev = $this->devolucionService->handleDevolutionTransaction($data, $gpUser);
             $statusDev = $newDev->estado === 'solicitado';
             $tipoDev = $newDev->tipo_devolucion === 'total';
             $devCode = is_object($newDev) ? $newDev->devolucion : '';
@@ -142,7 +142,6 @@ class DevolucionesController extends Controller
                 }
             }
             return $this->buildSuccessResponse("La devolución  {$devCode} ha sido solicitada. ", 200);
-
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
                 $e->getMessage(),
@@ -223,7 +222,6 @@ class DevolucionesController extends Controller
         try {
             $data = $this->devolucionService->fetchReturnsToReceived($perPage, $search, $sortBy, $sortOrder, $ptoVtaId);
             return $this->successResponse('Lista de devoluciones por recibir obtenida correctamente', $data, 200);
-
         } catch (\Throwable $e) {
             return $this->errorResponse('Error al obtener la lista de devoluciones por recibir: ' . $e->getMessage(), [], 500);
         }
@@ -269,7 +267,6 @@ class DevolucionesController extends Controller
             );
         } catch (\Throwable $th) {
             return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
-
         }
     }
 

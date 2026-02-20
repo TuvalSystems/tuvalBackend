@@ -676,7 +676,7 @@ class OrderService implements OrderServiceInterface
 
     /*** funcion para copiar pedido y cotizacion */
 
-    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type): array
+    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type, GpUsuario $user): array
     {
         $user = Auth::user() ?? GpUsuario::find(179);
         $initialCLient = GpCliente::find($clienteId);

@@ -24,7 +24,7 @@ interface QuotationServiceInterface
     /**
      *  volver a pedir
      */
-    public function loadQuotationForCopy($quoteId): array;
+    public function loadQuotationForCopy($quoteId,  GpUsuario $user): array;
     //  enviar cotizaciones sql server
     public function sendStoreReminderGp($cotizacion);
 

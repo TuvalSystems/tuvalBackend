@@ -1368,11 +1368,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     /** proceso de recibir items  */
 
-    public function receiveItemsFromTransferred(int $guiaId, array $items)
+    public function receiveItemsFromTransferred(int $guiaId, array $items, GpUsuario $user)
     {
         $processed = false;
-        $user = GpUsuario::whereKey(Auth::id())->value('USERID') ?: 'adminWeb';
-        $gpUser = GpUsuario::whereKey(Auth::id())->first() ?? GpUsuario::where('USERID', 'adminWeb')->first();
+        $gpUser = GpUsuario::whereKey($user->id)->first() ?? GpUsuario::where('USERID', 'adminWeb')->first();
         $guia = GpGuiaRemisionReserva::find($guiaId);
         if (!$guia) {
             throw new \Exception("Guia de reserva no encontrada");
@@ -1657,7 +1656,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
         $articulosOverStock = [];
 
-        //validar articulo_bodega acumulado contra el stock disponible 
+        //validar articulo_bodega acumulado contra el stock disponible
         foreach ($totalDemanda as $key => $demanda) {
             $articulo = data_get($demanda, 'articulo');
             $bodega = data_get($demanda, 'bodega');

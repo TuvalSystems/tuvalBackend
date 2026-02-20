@@ -29,7 +29,7 @@ interface OrderServiceInterface
 
     /** funcion de copiar pedido  */
 
-    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type);
+    public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type, GpUsuario $user);
 
     /** pruebas */
     public function buscarItemlTest($item);

@@ -86,7 +86,7 @@ class DevolucionService implements DevolucionServiceInterface
      * @return GpDevoluciones
      */
 
-    public function handleDevolutionTransaction($data)
+    public function handleDevolutionTransaction($data,  GpUsuario $user)
     {
         $devolucion     = Arr::get($data, 'devolucion');
         $pedidoDev      = Arr::get($data, 'pedido');
@@ -123,9 +123,9 @@ class DevolucionService implements DevolucionServiceInterface
         $detailInfo['pedido']['despachado'] = count($itemsDespachados) > 0 ? 1 : 0;
 
 
-        $newDev = DB::transaction(function () use ($detailInfo) {
+        $newDev = DB::transaction(function () use ($detailInfo, $user) {
             if (count($detailInfo['detalle']) > 0) {
-                return $this->executeReturn($detailInfo);
+                return $this->executeReturn($detailInfo, $user);
             }
             throw new Exception("No hay ítems válidos para generar la devolución.");
         });
@@ -151,9 +151,8 @@ class DevolucionService implements DevolucionServiceInterface
     /** proceso de crear devolucion */
 
 
-    public function executeReturn($data): GpDevoluciones
+    public function executeReturn($data, $user): GpDevoluciones
     {
-        $user = Auth::user();
         $gpUser = GpUsuario::where('id', $user->id)->first();
         $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
         $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';

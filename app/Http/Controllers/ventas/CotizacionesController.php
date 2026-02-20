@@ -580,7 +580,8 @@ class CotizacionesController extends Controller
             $request->validate([
                 'id' => 'required|exists:gp_cotizacions,id',
             ]);
-            $info = $this->quotationService->loadQuotationForCopy($request->input('id'));
+             $user = Auth::user() ?? GpUsuario::find(179);
+            $info = $this->quotationService->loadQuotationForCopy($request->input('id'), $user);
             return $this->successResponse('Información Obtenida Correctamente', $info, 200);
         } catch (ModelNotFoundException $e) {
             return $this->buildErrorResponse("La cotización no existe.", 404);

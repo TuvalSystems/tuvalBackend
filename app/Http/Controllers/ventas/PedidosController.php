@@ -30,7 +30,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-
 class PedidosController extends Controller
 {
     use JsonResponseTrait;
@@ -376,7 +375,7 @@ class PedidosController extends Controller
             $request->validate([
                 'id' => 'required|exists:gp_pedidos,id',
             ]);
-            $user = Auth::user();
+            $user = Auth::user() ?? GpUsuario::find(179);
             $response = $this->orderService->loadOrderForCopy($request->get('id'),  $user);
             return $this->successResponse('Pedido copiado correctamente', $response, 200);
         } catch (\Throwable $e) {
@@ -402,7 +401,8 @@ class PedidosController extends Controller
                 'cliente_id' => 'required|integer',
                 'tipo' => 'required|string',
             ]);
-            $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'));
+            $user = Auth::user() ?? GpUsuario::find(179);
+            $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'), $user);
             return $this->successResponse('Pedido/Cotización copiado correctamente', $response, 200);
         } catch (\Throwable $e) {
             Log::error('Error en copiarCotizacionOPedido', [
