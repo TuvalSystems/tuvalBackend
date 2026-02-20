@@ -273,7 +273,7 @@ class PedidosController extends Controller
                 'detalle' => 'required|array',
             ]);
             $pedidoId = data_get($validated, 'pedido.id');
-            $user = Auth::user();
+            $user = $request->user();
             //new sintaxis
             $pedido = DB::transaction(
                 fn() =>
@@ -324,7 +324,7 @@ class PedidosController extends Controller
             $request->validate([
                 'id' => 'required|exists:gp_pedidos,id',
             ]);
-            $user = Auth::user() ?? GpUsuario::find(179);
+            $user = $request->user() ?? GpUsuario::find(179);
             $response = $this->orderService->loadOrderForCopy($request->get('id'),  $user);
             return $this->successResponse('Pedido copiado correctamente', $response, 200);
         } catch (\Throwable $e) {
@@ -350,7 +350,7 @@ class PedidosController extends Controller
                 'cliente_id' => 'required|integer',
                 'tipo' => 'required|string',
             ]);
-            $user = Auth::user() ?? GpUsuario::find(179);
+            $user = $request->user();
             $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'), $user);
             return $this->successResponse('Pedido/Cotización copiado correctamente', $response, 200);
         } catch (\Throwable $e) {
@@ -521,7 +521,7 @@ class PedidosController extends Controller
     function cancelarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
+        $user = $request->user();
 
         $pedido = GpPedido::where('id', $data['id'])->get()->first();
 

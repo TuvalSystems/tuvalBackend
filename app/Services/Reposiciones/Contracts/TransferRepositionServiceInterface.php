@@ -2,6 +2,8 @@
 
 namespace App\Services\Reposiciones\Contracts;
 
+use App\Models\GpUsuario;
+
 interface TransferRepositionServiceInterface
 {
 
@@ -13,5 +15,5 @@ interface TransferRepositionServiceInterface
 
     public function getDetailReceivedReposition($guideId);
 
-    public function processReceivedRepositionWeb($guideId);
+    public function processReceivedRepositionWeb($guideId, GpUsuario $user);
 }

@@ -16,7 +16,6 @@ use App\Models\GpCronLog;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaCaja;
 use App\Models\GpUsuario;
-use App\Models\Notificaciones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\cobranzas\GpCobro;

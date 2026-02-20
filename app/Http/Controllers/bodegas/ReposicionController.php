@@ -12,8 +12,10 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\GpUsuario;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class ReposicionController extends Controller
@@ -255,11 +257,13 @@ class ReposicionController extends Controller
 
     }
 
+    /** funcion creada para el caso en el cual se necesitaba recibir una reposicion de +200 items */
     public function procesarRecibirReposicionWeb($id)
     {
         ini_set('max_execution_time', -1);
         try {
-            $guia = $this->transferRepositionService->processReceivedRepositionWeb($id);
+            $user = GpUsuario::find(179);
+            $guia = $this->transferRepositionService->processReceivedRepositionWeb($id, $user);
             return $this->successResponse('Recibo de reposición procesado con éxito', $guia, 200);
         } catch (\Throwable $e) {
             Log::error('Error al recibir el recibo de reposición: ', [

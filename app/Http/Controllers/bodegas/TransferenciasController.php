@@ -80,7 +80,7 @@ class TransferenciasController extends Controller
         }
     }
 
- 
+
 
     public function recibosventa($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -132,7 +132,7 @@ class TransferenciasController extends Controller
     public function cancelarpicking(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $picking = $request->all();
-        $user = Auth::user();
+        $user = $request->user();
 
         if (GpTrasladosVentas::where('id', $picking['id'])->update(['picking' => null])) {
 

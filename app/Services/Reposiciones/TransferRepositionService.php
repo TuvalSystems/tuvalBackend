@@ -8,10 +8,12 @@ use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpArticulo;
+use App\Models\GpUsuario;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -26,6 +28,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         protected readonly ApiGpService $apiGp,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
+         protected readonly EntryServiceInterface $entryService
     ) {
 
     }
@@ -292,7 +295,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 'item' => $item['GUI_REM_CODI_INTERNO'],
                 'bodega' => $guia->bodega_destino
             ]);
-          
+
             $lista = data_get($resp, 'lista', []);
             $item->pendiente = number_format(round($item->GUI_REM_CANTIDAD - $item->recibido, 2), 2, '.', '');
             $item->recibido = $item->pendiente;
@@ -307,14 +310,14 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     }
 
 
-    /** proceso de recibir reposicion web * */
+    /** proceso de recibir reposicion web -- funcion de pruebas no esta como api * */
 
-    public function processReceivedRepositionWeb($guideId)
+    public function processReceivedRepositionWeb($guideId, GpUsuario $user)
     {
         $guia = GpGuiaRemision::find($guideId);
         $detalle = $this->getDataDetailReceivedReposition($guia);
         //   return $detalle;
-        $traslados = $this->receivedGuideRepositionWeb($guia, $detalle);
+        $traslados = $this->receivedGuideRepositionWeb($guia, $detalle, $user);
         return $traslados;
     }
 
@@ -325,7 +328,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->where('guia_remision_id', $guia->id)
             ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
             ->get();
-     
+
         $response = [];
         foreach ($detalle as $item) {
             $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
@@ -346,7 +349,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     }
 
 
-    public function receivedGuideRepositionWeb($guia, $detalle)
+    public function receivedGuideRepositionWeb($guia, $detalle, GpUsuario $user)
     {
         $itemsInput = collect($detalle)
             ->filter(fn($i) => ($i['recibido'] ?? 0) > 0)
@@ -408,14 +411,14 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 continue;
             }
             $params = [
-                'IDCompania' => env('ID_COMPANIA'),
-                'Documento' => $pack['Documento'],
+                'IDCompania'        => env('ID_COMPANIA'),
+                'Documento'         => $pack['Documento'],
                 'NumeroTransferOri' => $pack['transferencia'],
-                'BodegaOrigen' => $guia['bodega_origen'],
-                'BodegaDestino' => $guia['bodega_destino'],
-                'Observacion' => $guia['GUI_REM_OBSERVACION'],
-                'Usuario' => 'adminWeb',//$user->USERID ,
-                'Items' => array_values($itemsWs),
+                'BodegaOrigen'      => $guia['bodega_origen'],
+                'BodegaDestino'     => $guia['bodega_destino'],
+                'Observacion'       => $guia['GUI_REM_OBSERVACION'],
+                'Usuario'           => 'adminWeb',//$user->USERID ,
+                'Items'             => array_values($itemsWs),
             ];
 
             $resp = $ws->inventario('GeneraRecepcionTransferenciaReposicon', $params);
@@ -461,7 +464,8 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         $data = $guia->toArray();
 
         // Idealmente: después de commit
-        (new IngresosController())->ingreso('traslado_reposicion', $data, $detalle);
+        // (new IngresosController())->ingreso('traslado_reposicion', $data, $detalle);
+        $this->entryService->registerEntity('traslado_reposicion', $data, $detalle, $user);
 
         if ($listo) {
             $guia->estado = 'recibida';

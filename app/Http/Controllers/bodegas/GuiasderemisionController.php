@@ -32,6 +32,8 @@ use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Devoluciones\EntryService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -46,77 +48,78 @@ class GuiasderemisionController extends Controller
         protected readonly DeliveryNoteServiceInterface $deliveryNoteService,
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly ReservationDeliveryNoteServiceInterface $reservedDeliveryNoteService,
-        protected readonly DeliveryNoteDispatchServiceInterface $dispatch
+        protected readonly DeliveryNoteDispatchServiceInterface $dispatch,
+        protected readonly EntryServiceInterface $entryService
     ) {}
-    public function generarguiaventa(Request $request):  Response|Application|ResponseFactory
-    {
-        $data = $request->all();
+    // public function generarguiaventa(Request $request):  Response|Application|ResponseFactory
+    // {
+    //     $data = $request->all();
 
-        $datosguia = array();
+    //     $datosguia = array();
 
-        $data['pedido'] = $data['pedido']['pedido'];
+    //     $data['pedido'] = $data['pedido']['pedido'];
 
-        $sucursalEnvio = GpClienteSucursal::where('id', $data['pedido']['sucursal_id'])->first()->toArray();
+    //     $sucursalEnvio = GpClienteSucursal::where('id', $data['pedido']['sucursal_id'])->first()->toArray();
 
-        $datosguia['bodega_origen'] = $data['pedido']['BOD_BODEGA'];
-        $datosguia['bodega_destino'] = null;
-        $datosguia['pedido'] = $data['pedido']['pedido'];
-        $datosguia['tipo'] = 'despacho';
-        $datosguia['GUI_REM_RAZON_SOCIAL_TRANSPORTISTA'] = $data['transportista']['nombre'];
-        $datosguia['GUI_REM_IDENTIFICACION_TRANSPORTISTA'] = $data['transportista']['identificacion'];
-        $datosguia['GUI_REM_TIPO_IDENTIFICACION_TRANSPORTISTA'] = $data['transportista']['tipo_identificacion'];
+    //     $datosguia['bodega_origen'] = $data['pedido']['BOD_BODEGA'];
+    //     $datosguia['bodega_destino'] = null;
+    //     $datosguia['pedido'] = $data['pedido']['pedido'];
+    //     $datosguia['tipo'] = 'despacho';
+    //     $datosguia['GUI_REM_RAZON_SOCIAL_TRANSPORTISTA'] = $data['transportista']['nombre'];
+    //     $datosguia['GUI_REM_IDENTIFICACION_TRANSPORTISTA'] = $data['transportista']['identificacion'];
+    //     $datosguia['GUI_REM_TIPO_IDENTIFICACION_TRANSPORTISTA'] = $data['transportista']['tipo_identificacion'];
 
-        $datosguia['GUI_REM_FECHA_INICIO'] = substr(str_replace('T', ' ', $data['fecha_inicio']), 0, 16);
-        $datosguia['GUI_REM_FECHA_FIN'] = substr(str_replace('T', ' ', $data['fecha_fin']), 0, 16);
-        $datosguia['GUI_REM_PLACA'] = $data['vehiculo']['placa'];
-        if (!isset($data['observacion']))
-            $data['observacion'] = '';
-        $datosguia['GUI_REM_OBSERVACION'] = $data['observacion'];
-        $datosguia['GUI_REM_RAZON_SOCIAL_DESTINATARIO'] = $data['pedido']['CLI_RAZON_SOCIAL'];
-        $datosguia['GUI_REM_DIRECCION_DESTINATARIO'] = $sucursalEnvio['CLI_SUC_DIRECCION'];
-        $datosguia['GUI_REM_IDENTIFICACION_DESTINATARIO'] = $data['pedido']['CLI_RUC'];
-        $datosguia['GUI_REM_MOTIVO_TRASLADO'] = 'Venta';
-        if (!$data['ruta'])
-            $data['ruta'] = '';
-        $datosguia['GUI_REM_RUTA'] = $data['ruta'];
+    //     $datosguia['GUI_REM_FECHA_INICIO'] = substr(str_replace('T', ' ', $data['fecha_inicio']), 0, 16);
+    //     $datosguia['GUI_REM_FECHA_FIN'] = substr(str_replace('T', ' ', $data['fecha_fin']), 0, 16);
+    //     $datosguia['GUI_REM_PLACA'] = $data['vehiculo']['placa'];
+    //     if (!isset($data['observacion']))
+    //         $data['observacion'] = '';
+    //     $datosguia['GUI_REM_OBSERVACION'] = $data['observacion'];
+    //     $datosguia['GUI_REM_RAZON_SOCIAL_DESTINATARIO'] = $data['pedido']['CLI_RAZON_SOCIAL'];
+    //     $datosguia['GUI_REM_DIRECCION_DESTINATARIO'] = $sucursalEnvio['CLI_SUC_DIRECCION'];
+    //     $datosguia['GUI_REM_IDENTIFICACION_DESTINATARIO'] = $data['pedido']['CLI_RUC'];
+    //     $datosguia['GUI_REM_MOTIVO_TRASLADO'] = 'Venta';
+    //     if (!$data['ruta'])
+    //         $data['ruta'] = '';
+    //     $datosguia['GUI_REM_RUTA'] = $data['ruta'];
 
-        $datosguia['GUI_REM_CODI_DOCU_SUSTENTO'] = '';
+    //     $datosguia['GUI_REM_CODI_DOCU_SUSTENTO'] = '';
 
-        $GUI_REM_NUME_DOCU_SUSTENTO = '';
-        if ($data['pedido']['estado'] == 'facturado') {
-            $GUI_REM_NUME_DOCU_SUSTENTO = $data['pedido']['factura'];
-            $datosguia['GUI_REM_CODI_DOCU_SUSTENTO'] = '01';
-        }
-
-
-        $datosguia['GUI_REM_NUME_DOCU_SUSTENTO'] = $GUI_REM_NUME_DOCU_SUSTENTO;
-        $datosguia['GUI_REM_NUME_AUTO_DOCU_SUSTENTO'] = '';
-        $datosguia['GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'] = $data['pedido']['fecha_factura'];
+    //     $GUI_REM_NUME_DOCU_SUSTENTO = '';
+    //     if ($data['pedido']['estado'] == 'facturado') {
+    //         $GUI_REM_NUME_DOCU_SUSTENTO = $data['pedido']['factura'];
+    //         $datosguia['GUI_REM_CODI_DOCU_SUSTENTO'] = '01';
+    //     }
 
 
-        $datosguia['items'] = $data['items'];
+    //     $datosguia['GUI_REM_NUME_DOCU_SUSTENTO'] = $GUI_REM_NUME_DOCU_SUSTENTO;
+    //     $datosguia['GUI_REM_NUME_AUTO_DOCU_SUSTENTO'] = '';
+    //     $datosguia['GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'] = $data['pedido']['fecha_factura'];
 
-        $guiaderemision = $this->saveguia($datosguia);
 
-        foreach ($datosguia['items'] as $item) {
-            $despacho = GpPedidoDetalle::where('id', $item['id'])->first();
+    //     $datosguia['items'] = $data['items'];
 
-            if (!$despacho->reservado)
-                $despacho->reservado = 0;
+    //     $guiaderemision = $this->saveguia($datosguia);
 
-            $despacho->reservado = $despacho->reservado + $item['seleccionado'];
-            $despacho->save();
-        }
+    //     foreach ($datosguia['items'] as $item) {
+    //         $despacho = GpPedidoDetalle::where('id', $item['id'])->first();
 
-        $this->getguiaremision($guiaderemision);
-        // if ($this->deliveryNoteService->isGUideBlockedForOrder($guiaderemision)) {
-        //     $this->deliveryNoteService->createTemporaryDeliveryNoteBlocksOrder($guiaderemision);
-        // }
-        event(new DispatchPendings('refresh'));
-        return response([
-            'success' => true,
-        ]);
-    }
+    //         if (!$despacho->reservado)
+    //             $despacho->reservado = 0;
+
+    //         $despacho->reservado = $despacho->reservado + $item['seleccionado'];
+    //         $despacho->save();
+    //     }
+
+    //     $this->getguiaremision($guiaderemision);
+    //     // if ($this->deliveryNoteService->isGUideBlockedForOrder($guiaderemision)) {
+    //     //     $this->deliveryNoteService->createTemporaryDeliveryNoteBlocksOrder($guiaderemision);
+    //     // }
+    //     event(new DispatchPendings('refresh'));
+    //     return response([
+    //         'success' => true,
+    //     ]);
+    // }
 
     public function consultarguiagenerada(Request $request): Response|Application|ResponseFactory
     {
@@ -181,6 +184,7 @@ class GuiasderemisionController extends Controller
     public function generarguiatraslado(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
+        $user = $request->user();
         $datosguia = array();
 
         $GUI_REM_DIRECCION_DESTINATARIO = GpRelacionPuntoVentaBodega::join('gp_punto_ventas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
@@ -219,7 +223,7 @@ class GuiasderemisionController extends Controller
 
         $datosguia['items'] = $data['items'];
 
-        $guiaderemision = $this->saveguia($datosguia);
+        $guiaderemision = $this->saveguia($datosguia, $user);
 
 
 
@@ -250,9 +254,8 @@ class GuiasderemisionController extends Controller
         ]);
     }
 
-    public function saveguia($datosguia): GpGuiaRemision
+    public function saveguia($datosguia, GpUsuario $user): GpGuiaRemision
     {
-        $user = Auth::user();
         $bodega = GpRelacionPuntoVentaBodega::join('gp_punto_ventas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
             ->join('gp_bodegas', 'gp_bodegas.BOD_BODEGA', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_BODEGA')
             ->select('gp_punto_ventas.PTO_VTA_ID', 'gp_punto_ventas.PTO_VTA_DIRECCION_1', 'gp_punto_ventas.PTO_VTA_DIRECCION_2', 'gp_bodegas.BOD_DESCRIPCION')
@@ -534,10 +537,9 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function despacharguia($id)
+    public function despacharguia(Request $request, $id)
     {
-        $user = Auth::user();
-
+        $user = $request->user();
         try {
             // return DB::transaction(function () use ($user, $id) {
             $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
@@ -589,23 +591,22 @@ class GuiasderemisionController extends Controller
     public function recibirguia(Request $request)
     {
         $data = $request->all();
-
+        $user = $request->user();
         if ($data['tipo'] == 'transferencia') {
-            return $this->recibirguiatransferencia($data);
+            return $this->recibirguiatransferencia($data, $user);
         }
         if ($data['tipo'] == 'reposicion') {
-            return $this->recibirguiareposicion($data);
+            return $this->recibirguiareposicion($data,  $user);
         }
         return;
     }
 
-    public function recibirguiareposicion($data): Response|Application|ResponseFactory
+    public function recibirguiareposicion($data, GpUsuario $user): Response|Application|ResponseFactory
     {
         // ini_set('max_execution_time', -1);
         set_time_limit(-1);
         ini_set('memory_limit', '-1');
 
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $documentos = array();
 
         foreach ($data['detalle'] as $item) {
@@ -672,8 +673,10 @@ class GuiasderemisionController extends Controller
         $guia = GpGuiaRemision::where('id', $data['id'])->first();
         $listo = $this->checkguiacompleta($guia);
 
-        $ingresos = new IngresosController();
-        $ingresos->ingreso('traslado_reposicion', $data, $data['detalle']);
+        // $ingresos = new IngresosController();
+        // $ingresos->ingreso('traslado_reposicion', $data, $data['detalle']);
+        $this->entryService->registerEntity('traslado_reposicion', $data, $data['detalle'], $user);
+
 
         if ($listo) {
             $guia->estado = 'recibida';
@@ -705,12 +708,10 @@ class GuiasderemisionController extends Controller
         return $listo;
     }
 
-    public function recibirguiatransferencia($data): Response|Application|ResponseFactory
+    public function recibirguiatransferencia($data, GpUsuario $user): Response|Application|ResponseFactory
     {
 
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
         $documentos = array();
-
         foreach ($data['detalle'] as $item) {
             if ($item['recibido'] > 0) {
                 $traslado = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
@@ -810,8 +811,9 @@ class GuiasderemisionController extends Controller
         $guia = GpGuiaRemision::where('id', $data['id'])->first();
         $listo = $this->checkguiacompleta($guia);
 
-        $ingresos = new IngresosController();
-        $ingresos->ingreso('traslado_venta', $data, $data['detalle']);
+        // $ingresos = new IngresosController();
+        // $ingresos->ingreso('traslado_venta', $data, $data['detalle']);
+        $this->entryService->registerEntity('traslado_venta', $data, $data['detalle'], $user);
 
         if ($listo) {
             $guia = GpGuiaRemision::where('id', $data['id'])->first();
