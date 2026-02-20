@@ -9,7 +9,7 @@ interface QuotationServiceInterface
 
     public function getNonSalesReasons();
 
-    public function updateNonSaleAndReminderData($data);
+    public function updateNonSaleAndReminderData($data, GpUsuario $user);
     public function getQuotationsWithReminderToday();
 
     /**

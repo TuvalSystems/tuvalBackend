@@ -8,6 +8,7 @@ use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -43,7 +44,6 @@ class AuthController extends Controller
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
-
     }
 
 
@@ -66,31 +66,6 @@ class AuthController extends Controller
         return response(['success' => true]);
     }
 
-    public function notificaciones(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $user = Auth::user();
-
-        $notificacion = Notificaciones::where('user_id', $user->id)
-            ->where('estado', 'nuevo')->first();
-
-        if ($notificacion) {
-
-            $notificacion->estado = 'enviado';
-            $notificacion->save();
-
-            return response([
-                'notificacion' => true,
-                'titulo' => $notificacion->titulo,
-                'mensaje' => $notificacion->mensaje,
-
-            ]);
-        }
-
-        return response([
-            'notificacion' => false,
-        ]);
-    }
-
 
 
     public function changePassword(Request $request)
@@ -104,22 +79,38 @@ class AuthController extends Controller
                 'password.required' => 'La contraseña es requerida',
             ]
         );
-
-        $data = $request->all();
-        return $this->userService->changePassword($data);
-
+        try {
+            $data = $request->all();
+            $user = $request->user();
+            $response =  $this->userService->changePassword($data, $user);
+            return $this->successResponse('Contraseña actualizada correctamente!', ['must_change_password' => $response->must_change_password], 200);
+        } catch (ValidationException $e) {
+            return $this->validationErrorResponse($e->errors(), 'Validación fallida', 422);
+        } catch (\Exception $th) {
+            return $this->errorResponse('Error', $th->getMessage(), 500);
+        }
     }
 
     public function resetPassword(Request $request)
     {
-        return $this->userService->resetPassword($request->input('USERID'));
+        try {
+            $this->userService->resetPassword($request->input('USERID'));
+            return $this->buildSuccessResponse('Contraseña restaurada correctamente!', 200);
+        } catch (\Throwable $th) {
+            return $this->errorResponse('Error', $th->getMessage(), 500);
+        }
     }
 
 
     public function changeStatusGpUser(Request $request)
     {
-        $userId = $request->all();
-        return $this->userService->changeStatusGpUser($userId);
+        try {
+            $userId = $request->all();
+            $this->userService->changeStatusGpUser($userId);
+            return $this->buildSuccessResponse('Estado actualizado correctamente!', 200);
+        } catch (\Throwable $th) {
+            return $this->errorResponse('Error', $th->getMessage(), 500);
+        }
     }
 
 
@@ -127,10 +118,7 @@ class AuthController extends Controller
     public function obtenerBodegasPorPuntoDeVentaUsuario(Request $request)
     {
         try {
-            $idUsuario = Auth::check()
-                ? Auth::user()->USERID
-                : 'cchiriguaya';
-            $gpUser = GpUsuario::where('USERID', $idUsuario)->first();
+            $gpUser = $request->user();
             $ptoVta = data_get($request->all(), 'ptoVta', null);
             $warehouses = $this->userService->getWarehouesByUser($gpUser->USERID, $ptoVta);
             return $this->successResponse('Información Obtenida Correctamente', $warehouses, 200);

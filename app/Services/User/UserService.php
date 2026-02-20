@@ -9,7 +9,6 @@ use App\Models\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpCondicionPago;
-use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
 use App\Models\GpDescuentoFormaPago;
@@ -19,16 +18,13 @@ use App\Http\Controllers\SectionsController;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\User\Contracts\UserServiceInterface;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class UserService implements UserServiceInterface
 {
     use JsonResponseTrait;
 
-    public function __construct(protected readonly ApiGpService $apiGp)
-    {
-    }
+    public function __construct(protected readonly ApiGpService $apiGp) {}
 
     public function isValidUserWeb(array $credentials): bool
     {
@@ -202,22 +198,12 @@ class UserService implements UserServiceInterface
      * Cambio de contraseña
      */
 
-    public function changePassword($data)
+    public function changePassword($data, GpUsuario $user)
     {
-        try {
-            $user = GpUsuario::where('USERID', Auth::user()->USERID)->first();
             $user->must_change_password = false;
             $user->password = Hash::make($data['password']);
             $user->save();
-            return $this->successResponse('Contraseña actualizada correctamente!', ['must_change_password' => $user->must_change_password], 200);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validación fallida',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
+            return $user->refresh();
 
     }
 
@@ -226,16 +212,12 @@ class UserService implements UserServiceInterface
      */
     public function resetPassword($userID)
     {
-        try {
             $user = GpUsuario::where('USERID', $userID)->first();
             $user->must_change_password = true;
             $user->password = Hash::make($user->USERID);
             $user->process_job = 1;
             $user->save();
-            return $this->buildSuccessResponse('Contraseña restaurada correctamente!', 200);
-        } catch (\Throwable $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
+            return $user->refresh();
     }
 
 
@@ -248,14 +230,11 @@ class UserService implements UserServiceInterface
     public function changeStatusGpUser($userId)
     {
 
-        try {
+
             $user = GpUsuario::where('USERID', $userId[0])->first();
             $user->status = $user->status === 1 ? 0 : 1;
             $user->save();
-            return $this->buildSuccessResponse('Estado actualizado correctamente!', 200);
-        } catch (\Throwable $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
+
     }
 
 
@@ -307,7 +286,6 @@ class UserService implements UserServiceInterface
             'total' => $paginator->total(),
             'unread_count' => $gpUser->unreadNotifications()->count(),
         ];
-
     }
 
 
@@ -344,7 +322,6 @@ class UserService implements UserServiceInterface
                 $query->where('USER_PTO_VTA_USUARIO', $userName);
             })
             ->get();
-
     }
 
 

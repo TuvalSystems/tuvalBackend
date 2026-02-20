@@ -764,16 +764,6 @@ class ConsultasController extends Controller
         );
     }
 
-    public function notificaciones(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
-    {
-        $user = Auth::user();
-        $notificaciones = Notificaciones::where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->get();
-        return response([
-            'notificaciones' => $notificaciones,
-        ]);
-    }
 
 
     public function obtenerListaTerritorio()

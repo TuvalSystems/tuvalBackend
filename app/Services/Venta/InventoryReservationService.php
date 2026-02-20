@@ -44,7 +44,6 @@ use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
 {
@@ -445,11 +444,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null, $clienteRuc, $userId)
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null, $clienteRuc, GpUsuario $gpUser)
     {
-        $gpUser = GpUsuario::find($userId);
-
-
         $query = GpReserva::select([
             'gp_reservas.id',
             'gp_cotizacions.cotizacion',

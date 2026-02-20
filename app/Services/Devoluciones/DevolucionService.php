@@ -19,7 +19,6 @@ use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\GpPedidoDetalleStock;
-use Illuminate\Support\Facades\Auth;
 use App\Services\Api\ApiSalesService;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\devoluciones\GpDevoluciones;
@@ -873,11 +872,8 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
 
-    public function receivedDevolutions(array $header, array $detail)
+    public function receivedDevolutions(array $header, array $detail, GpUsuario $gpuser)
     {
-        $auth = Auth::user();
-        $gpuser = GpUsuario::find($auth->id);
-
         return DB::transaction(function () use ($gpuser, $header, $detail) {
             $dev = GpDevoluciones::lockForUpdate()->find($header['id']);
             if (!$dev) {
@@ -917,16 +913,14 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
 
-    public function dennyDevolucion(int $id)
+    public function dennyDevolucion(int $id, GpUsuario $user)
     {
-        $auth = Auth::user();
-        $gpuser = GpUsuario::find($auth->id);
-        return DB::transaction(function () use ($id, $gpuser) {
+        return DB::transaction(function () use ($id, $user) {
             $devolucion = GpDevoluciones::lockForUpdate()->findOrFail($id);
             $devolucion->update([
-                'estado' => DevolutionStatus::RECHAZADO,
-                'aprobado' => 'no',
-                'aprobador_id' => $gpuser->id
+                'estado'        => DevolutionStatus::RECHAZADO,
+                'aprobado'      => 'no',
+                'aprobador_id'  => $user->id
             ]);
 
             return $devolucion->refresh();

@@ -10,7 +10,6 @@ use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 
 class ClientQueryService implements ClientQueryServiceInterface
 {
@@ -144,9 +143,8 @@ class ClientQueryService implements ClientQueryServiceInterface
 
     /** proceso para crear la nueva direccion del cliente - sucursal */
 
-    public function storeNewAddressClient(array $data)
+    public function storeNewAddressClient(array $data, GpUsuario $userGp)
     {
-        $userGp = GpUsuario::where('id', Auth::user()->id)->first();
         $cliente = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
         $email = strtolower(data_get($data, 'email', ''));
         $textoEnvuelto = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);

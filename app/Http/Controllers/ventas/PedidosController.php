@@ -54,9 +54,10 @@ class PedidosController extends Controller
         $imagenesNuevas     = $request->file('imagenes_nuevas', []);
         $maxRetries         = 3;
         $attempt            = 0;
+        $user               = $request->user();
         while (true) {
             try {
-                $pedido         =  $this->orderCreator->createOrder($request->validated(), Auth::user(), $imagenesExistentes, $imagenesNuevas);
+                $pedido         =  $this->orderCreator->createOrder($request->validated(), $user, $imagenesExistentes, $imagenesNuevas);
                 $order          = data_get($pedido, 'pedido');
                 $invoiceError   = data_get($pedido, 'invoice_error');
                 if ($invoiceError) {
@@ -106,59 +107,7 @@ class PedidosController extends Controller
     }
 
 
-    //en proceso de mejora
-    public function guardarpedido(Request $request)
-    {
-        $orderData = $request->all();
-        $user = Auth::user();
-        $maxRetries = 3;
-        $attempt = 0;
-        while (true) {
-            try {
-                $pedido = DB::transaction(function () use ($orderData, $user) {
-                    return $this->orderService->storeOrder($orderData, $user);
-                });
-                return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
-            } catch (QueryException $e) {
-                $mysqlCode = $e->errorInfo[1] ?? null;
-                // ¿es un error de concurrencia y aún puedo reintentar?
-                if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
-                    $attempt++;
-                    usleep(200000);
-                    Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
-                        'attempt' => $attempt,
-                        'mysqlCode' => $mysqlCode,
-                        'msg' => $e->getMessage(),
-                    ]);
 
-                    // pasa al siguiente ciclo del while
-                    continue;
-                }
-
-                // si no es 1213/1205 o ya superó los reintentos, lo tratamos como error real
-                Log::error('Error in storeOrder (guardar pedido)', [
-                    'error' => $e->getMessage(),
-                    'line' => $e->getLine(),
-                    'file' => $e->getFile(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
-            } catch (DomainException $e) {
-                // 👈 este es el que puede lanzar tu flujo de stock
-                return $this->buildErrorResponse($e->getMessage(), 422);
-            } catch (\Throwable $e) {
-                // cualquier otra excepción que no sea de SQL
-                Log::error('Error in storeOrder (guardar pedido)', [
-                    'error' => $e->getMessage(),
-                    'line' => $e->getLine(),
-                    'file' => $e->getFile(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                return $this->buildErrorResponse($e->getMessage(), 500);
-            }
-        }
-    }
 
     public function facturarpedido(Request $request)
     {
@@ -739,7 +688,8 @@ class PedidosController extends Controller
         try {
             $id = $request->input('id');
             $pendingDispach = $request->input('pendiente_salida');
-            $order = $this->orderService->updateOrderAndBlockDispach($id, $pendingDispach);
+            $user = $request->user();
+            $order = $this->orderService->updateOrderAndBlockDispach($id, $pendingDispach, $user);
             return $this->successResponse('Bloqueo actualizado correctamente', $order, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);

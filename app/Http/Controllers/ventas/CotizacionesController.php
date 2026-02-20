@@ -52,11 +52,12 @@ class CotizacionesController extends Controller
     {
 
         try {
+            $user = $request->user();
             $imagenesExistentes = $request->input('imagenes_existentes', []);
             $imagenesNuevas = $request->file('imagenes_nuevas', []);
             $cotizacion = $this->quotationCreator->createOrUpdate(
                 $request->validated(),
-                Auth::user(),
+                $user,
                 $imagenesExistentes,
                 $imagenesNuevas
             );
@@ -75,7 +76,7 @@ class CotizacionesController extends Controller
     }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-
+        $user = $request->user();
         $data = $request->validate([
             'cliente_id' => '',
             'puntodeventa_id' => '',
@@ -83,7 +84,7 @@ class CotizacionesController extends Controller
             'articulo' => []
         ]);
 
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
+        $user = GpUsuario::where('id', $user->id)->first();
 
         if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
@@ -176,7 +177,7 @@ class CotizacionesController extends Controller
             'articulo' => []
         ]);
 
-        $user = Auth::user();
+        $user = $request->user();
 
         if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
@@ -197,7 +198,8 @@ class CotizacionesController extends Controller
     public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
+        $user = $request->user();
+        $user = GpUsuario::where('id', $user->id)->first();
         if (isset($data['prospecto']['id']) && $data['prospecto']['id'] != '') {
             $prospecto = GpProspecto::where('id', $data['prospecto']['id'])->first();
         } else {
@@ -494,7 +496,7 @@ class CotizacionesController extends Controller
     {
         try {
             $data = $request->all();
-            $user = GpUsuario::where('id', Auth::user()->id)->first();
+            $user = $request->user();
             $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
             return $this->successResponse('Información Obtenida Correctamente', $cliente, 200);
         } catch (\Throwable $e) {
@@ -507,7 +509,8 @@ class CotizacionesController extends Controller
     {
         try {
             $data = data_get($request->all(), 'form', []);
-            $sucursal = $this->clientService->storeNewAddressClient($data);
+            $user = $request->user();
+            $sucursal = $this->clientService->storeNewAddressClient($data, $user);
             return $this->successResponse('Información Obtenida Correctamente', $sucursal, 200);
         } catch (HttpException $e) {
             return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
@@ -580,7 +583,7 @@ class CotizacionesController extends Controller
             $request->validate([
                 'id' => 'required|exists:gp_cotizacions,id',
             ]);
-             $user = Auth::user() ?? GpUsuario::find(179);
+            $user = $request->user();
             $info = $this->quotationService->loadQuotationForCopy($request->input('id'), $user);
             return $this->successResponse('Información Obtenida Correctamente', $info, 200);
         } catch (ModelNotFoundException $e) {
@@ -615,7 +618,7 @@ class CotizacionesController extends Controller
             'sucursal_id' => '',
         ]);
 
-        $user = Auth::user();
+        $user = $request->user();
 
         GpTempCart::where('sucursal_id', $data['sucursal_id'])
             ->where('puntodeventa_id', $data['puntodeventa_id'])
@@ -840,7 +843,7 @@ class CotizacionesController extends Controller
     public function updateNonSaleAndReminderData(Request $request)
     {
         $data = $request->all();
-        return $this->quotationService->updateNonSaleAndReminderData($data);
+        return $this->quotationService->updateNonSaleAndReminderData($data, $request->user());
     }
 
 

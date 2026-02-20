@@ -110,8 +110,7 @@ class DevolucionesController extends Controller
     public function enviarDevolucion(Request $request): JsonResponse
     {
         $data = $request->all();
-        $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
-        $gpUser = GpUsuario::where('id', $userId)->first();
+        $gpUser = $request->user();
         try {
             $newDev = $this->devolucionService->handleDevolutionTransaction($data, $gpUser);
             $statusDev = $newDev->estado === 'solicitado';
@@ -253,11 +252,13 @@ class DevolucionesController extends Controller
 
     public function recibirDevolucion(ValidateReceivedDevolutionsRequest $request)
     {
-        $data = $request->validated();
         try {
+            $data = $request->validated();
+            $user = $request->user();
             $resp = $this->devolucionService->receivedDevolutions(
                 data_get($data, 'header'),
-                data_get($data, 'details')
+                data_get($data, 'details'),
+                $user
             );
             return $this->successResponse('Devoluciones recibidas correctamente', $resp, 200);
         } catch (HttpException $e) {
@@ -286,7 +287,7 @@ class DevolucionesController extends Controller
     {
         $data = $request->all();
         try {
-            $this->devolucionService->dennyDevolucion(data_get($data, 'id'));
+            $this->devolucionService->dennyDevolucion(data_get($data, 'id'), $request->user());
             return $this->buildSuccessResponse("Devolución rechazada correctamente", 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse('Error al rechazar la devolución ' . $th->getMessage(), 500);

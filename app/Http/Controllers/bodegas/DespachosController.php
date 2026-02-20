@@ -675,7 +675,7 @@ class DespachosController extends Controller
     public function liberarordendespacho(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
+        $user = $request->user();
 
         $orden = GpOrdenDespacho::where('id', $data['id'])->first();
         $orden->autorizacion_fecha = date('Y-m-d H:i:s');

@@ -33,8 +33,8 @@ interface DevolucionServiceInterface
 
     public function getReturnDetailToReceiveById(int $id);
     public function generatePdfOrderStorageDevolution(array $data);
-    public function receivedDevolutions(array $header, array $detail);
-    public function dennyDevolucion(int $id);
+    public function receivedDevolutions(array $header, array $detail, GpUsuario $user);
+    public function dennyDevolucion(int $id, GpUsuario $user);
 
     /** funciones a ejecutar en caso de que no se genere la nota de credito o el ajuste  */
     public function generarNotaCreditoDevolucionesFallidas($id);

@@ -475,7 +475,7 @@ class InvoiceService implements InvoiceServiceInterface
             'FAC_VTA_NOTA_CLIENTE'          => $this->normalizeTextNoteClient($pedido->nota_cliente),
 
             //campos aidicionales para el envio a sp de creacion de facturas
-            'userIdCreator'                => auth()->user()->USERID ?? 'adminWeb',
+            'userIdCreator'                => $pedido->USERID,
             'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
         ];
     }

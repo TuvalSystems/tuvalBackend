@@ -9,7 +9,6 @@ interface OrderServiceInterface
     public function getOrderInfo($id);
     public function generateInvoiceRide($id);
     public function generateInvoiceXml($id);
-    public function storeOrder($order, $user);
 
 
     public function verifyOrderDispatchOrItemLRecived($orderId);
@@ -63,7 +62,7 @@ interface OrderServiceInterface
 
     public function fetchOrderFromReservations($perPage = 10, $search, $sortBy = 'gp.created_at', $sortOrder = 'desc', $ptoVtaId);
 
-    public function updateOrderAndBlockDispach($id, $pendingDispach);
+    public function updateOrderAndBlockDispach($id, $pendingDispach, GpUsuario $user);
 
     public function hasDeliveryNoteAjusted($id): bool;
 

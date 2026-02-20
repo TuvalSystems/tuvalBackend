@@ -54,7 +54,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('resetpassword', [AuthController::class, 'resetPassword']);
     Route::post('change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('logout', [AuthController::class, 'logout']);
-    Route::get('notificaciones', [AuthController::class, 'notificaciones']);
 
     Route::group(['prefix' => 'usuario'], function () {
         Route::post('obtener-bodegas-por-punto-de-venta', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
@@ -104,7 +103,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
     Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
-    // Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
     Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
     Route::post('/verpedidosycotizacionesporaprobar', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::post('/aprobaciones/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
@@ -358,7 +356,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 
     Route::group(['prefix' => 'consultas'], function () {
-        Route::post('notificaciones', [ConsultasController::class, 'notificaciones']);
         Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
         Route::post('territorios', [ConsultasController::class, 'territorios']);
         Route::get('puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);

@@ -2,6 +2,7 @@
 
 namespace App\Services\User\Contracts;
 
+use App\Models\GpUsuario;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,7 +19,7 @@ interface UserServiceInterface
     public function buildSuccessResponseUser($user): array;
 
     // cambio de contraseña
-    public function changePassword($data);
+    public function changePassword($data, GpUsuario $user);
 
     /**
      * Reset password

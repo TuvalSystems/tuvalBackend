@@ -34,7 +34,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
 
     /** Proceso de recibir item L en la bodega */
 
-    public function receivedL(array $data, $user)
+    public function receivedL(array $data, GpUsuario $user)
     {
         $ord = $this->purchaseReceipRepository->getPurchaseReceiptLById($data['id']);
         $hasPending = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ord->id)
@@ -133,7 +133,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
                 }
             }
         }
-        $this->entryService->registerEntity('compra', $data, $data['detalle']);
+        $this->entryService->registerEntity('compra', $data, $data['detalle'], $user);
     }
 
 

@@ -74,7 +74,7 @@ class ReservasController extends Controller
 
     public function guardarReservaCotización(Request $request)
     {
-        $gpUser = GpUsuario::find(Auth::user()->id);
+        $gpUser = $request->user();
         $reserva = $request->get('reserva', null);
         try {
             return DB::transaction(function () use ($reserva, $gpUser) {
@@ -163,7 +163,7 @@ class ReservasController extends Controller
     public function rechazarSolicitudReservaCotizacion(Request $request)
     {
         try {
-            $gpUser = GpUsuario::find(Auth::user()->id);
+            $gpUser = $request->user();
             $data = $request->all();
             $reserva = DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->denyApplicationReservedQuotation($data['data'], $gpUser);
@@ -183,9 +183,9 @@ class ReservasController extends Controller
     public function aprobarSolicitudReservaCotizacion(Request $request)
     {
         try {
-            $gpUser = GpUsuario::find(Auth::user()->id);
-            $data = $request->all();
-            $reserva = DB::transaction(function () use ($data, $gpUser) {
+            $gpUser     = $request->user();
+            $data       = $request->all();
+            $reserva    = DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->approvalApplicationReservedQuotation($data['data'], $gpUser);
             });
             $msg = "Reserva autorizada correctamente";
@@ -196,11 +196,11 @@ class ReservasController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 409);
         } catch (\Throwable $e) {
             Log::channel('reservas_log')->error('Error al aprobar la reserva de la cotizacion: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'line' => $e->getLine(),
-                'data' => $request->all(),
-                'user_id' => Auth::user()->id
+                'message'   => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+                'line'      => $e->getLine(),
+                'data'      => $request->all(),
+                'user_id'   => $gpUser->id
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -219,8 +219,9 @@ class ReservasController extends Controller
             $estado = $request->input('status', null);
             $ptoVtaId = $request->input('ptovta', null);
             $clienteRuc = $request->input('cliente', null);
-            $userId = Auth::user()->id; //filto para ver las cotizaciones del usuario logueado
-            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->reserveService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, $userId), 200);
+            $user = $request->user();
+            //filto para ver las cotizaciones del usuario logueado
+            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->reserveService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, $user), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -231,7 +232,7 @@ class ReservasController extends Controller
     public function procesarReservaCotizacion(Request $request)
     {
         $data = $request->all();
-        $gpUser = GpUsuario::find(Auth::user()->id);
+        $gpUser = $request->user();
         try {
             $response = $this->reserveService->processReservedQuotation($data['data'], $gpUser);
             $cot = data_get($response, 'cotizacion', null);
@@ -254,7 +255,7 @@ class ReservasController extends Controller
     public function procesarReservaFacturaDemandaCotizacion(Request $request)
     {
         $data = $request->all();
-        $gpUser = GpUsuario::find(Auth::user()->id);
+        $gpUser = $request->user();
         try {
             $response = DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
@@ -517,11 +518,11 @@ class ReservasController extends Controller
 
     public function recibirItemsGuiaReserva(Request $request)
     {
-        $guiaId = $request->input('guiaId', null);
-        $items = $request->input('items', null);
+        $guiaId     = $request->input('guiaId', null);
+        $items      = $request->input('items', null);
         try {
-             $user = Auth::user() ?? GpUsuario::find(179);
-            $data = $this->reserveService->receiveItemsFromTransferred($guiaId, $items, $user);
+            $user   = $request->user();
+            $data   = $this->reserveService->receiveItemsFromTransferred($guiaId, $items, $user);
             return $this->successResponse('Proceso realizado correctamente', $data, 200);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);

@@ -16,12 +16,10 @@ use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpDescuentoFormaPago;
-use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
 use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
@@ -70,9 +68,8 @@ class QuotationService implements QuotationServiceInterface
      * @throws \Throwable
      */
 
-    public function updateNonSaleAndReminderData($data)
+    public function updateNonSaleAndReminderData($data, GpUsuario $user)
     {
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
         GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio'            => $data['fecha_recordatorio'],
             'cotizacion_venta_motivo_id'    => $data['motivo_id'],
