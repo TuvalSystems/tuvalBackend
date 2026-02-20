@@ -593,45 +593,45 @@ class DevolucionService implements DevolucionServiceInterface
     public function printReturn($devolucion_id)
     {
         $data = [];
-        $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
-        $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
-        $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
-        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalleDev)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
-        $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
+        $devolucion         = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
+        $pedido             = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
+        $detalleDev         = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $articulosImpuesto  = GpArticulo::whereIn('ART_CODIGO', collect($detalleDev)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        $puntoVenta         = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
         $data['devolucion'] = $devolucion;
-        $data['pedido'] = $pedido;
+        $data['pedido']     = $pedido;
 
-        $cliente = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
-        $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
+        $cliente            = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
+        $email              = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
         $cliente['CLI_CORREO_ELECT_SRI'] = $email[0];
-        $data['cliente'] = $cliente;
+        $data['cliente']    = $cliente;
 
-        $sucursal = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
-        $data['sucursal'] = $sucursal;
+        $sucursal           = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
+        $data['sucursal']   = $sucursal;
 
-        $data['subtotal'] = 0.00;
-        $data['descuento'] = 0.00;
+        $data['subtotal']   = 0.00;
+        $data['descuento']  = 0.00;
         $data['subtotalmenosdescuento'] = 0.00;
-        $data['iva'] = 0.00;
+        $data['iva']        = 0.00;
 
-        $detalleGrouped = collect($detalleDev)->groupBy(function ($det) {
+        $detalleGrouped     = collect($detalleDev)->groupBy(function ($det) {
             return $det['detalle_id'] . '_' . $det['ART_CODIGO'];
         })->map(function ($group) {
-            $base = $group->first();
-            $base['seleccionado'] = $group->sum('seleccionado');
-            $base['devuelto'] = $group->sum('devuelto');
-            $base['recibido'] = $group->sum('recibido');
+            $base                   = $group->first();
+            $base['seleccionado']   = $group->sum('seleccionado');
+            $base['devuelto']       = $group->sum('devuelto');
+            $base['recibido']       = $group->sum('recibido');
             return $base;
         })->sortBy('detalle_id')->values();
 
 
 
         foreach ($detalleGrouped as $key => $art) {
-            $valorUnitario = (float) $art['ART_VALOR'];
-            $cantidad = (float) $art['devuelto'];
-            $descuentoUnitario = (float) $art['ART_DESCUENTO'];
+            $valorUnitario      = (float) $art['ART_VALOR'];
+            $cantidad           = (float) $art['devuelto'];
+            $descuentoUnitario  = (float) $art['ART_DESCUENTO'];
             $impuestoPorcentaje = (float) $articulosImpuesto[$art['ART_CODIGO']] ?? 0;
-            $tipoImpuesto = $art['ART_IMP_VTA'];
+            $tipoImpuesto       = $art['ART_IMP_VTA'];
 
             if ($cantidad == 0) {
                 unset($detalleGrouped[$key]);
@@ -639,10 +639,10 @@ class DevolucionService implements DevolucionServiceInterface
             }
 
 
-            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+            $lineNet        = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount  = $descuentoUnitario * $cantidad;
+            $lineaSubtotal  = $lineNet + $lineaDiscount;
+            $lineaIva       = $lineNet * ($impuestoPorcentaje / 100);
 
             if (!isset($data['tipoimpuesto'][$tipoImpuesto])) {
                 $data['tipoimpuesto'][$tipoImpuesto] = 0;
@@ -653,24 +653,24 @@ class DevolucionService implements DevolucionServiceInterface
             $data['tipoimpuesto'][$art['ART_IMP_VTA']] += $lineaSubtotal;
             $data['sumaimpuesto'][$art['ART_IMP_VTA']] += $lineaIva;
 
-            $data['subtotal'] += $lineaSubtotal;
-            $data['descuento'] += $lineaDiscount;
+            $data['subtotal']   += $lineaSubtotal;
+            $data['descuento']  += $lineaDiscount;
             $data['subtotalmenosdescuento'] += $lineNet;
-            $data['iva'] += $lineaIva;
+            $data['iva']        += $lineaIva;
         }
 
         $data['subtotalmenosdescuento'] = (float) round($data['subtotalmenosdescuento'], 2);
-        $data['descuento'] = (float) round($data['descuento'], 2);
-        $data['iva'] = (float) round($data['iva'], 2);
-        $totalMatematico = $data['subtotalmenosdescuento'] + $data['iva'];
-        $data['total'] = number_format($totalMatematico, 2, '.', '');
+        $data['descuento']              = (float) round($data['descuento'], 2);
+        $data['iva']                    = (float) round($data['iva'], 2);
+        $totalMatematico                = $data['subtotalmenosdescuento'] + $data['iva'];
+        $data['total']                  = number_format($totalMatematico, 2, '.', '');
 
 
-        $data['detalle'] = $detalleGrouped;
-        $data['PTO_VTA_DESCRIPCION'] = $puntoVenta->PTO_VTA_DESCRIPCION;
-        $data['direccion'] = $puntoVenta->PTO_VTA_DIRECCION_1 . ' ' . $puntoVenta->PTO_VTA_DIRECCION_2;
-        $data['telefono'] = $puntoVenta->PTO_VTA_FONO_1;
-        $data['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
+        $data['detalle']                = $detalleGrouped;
+        $data['PTO_VTA_DESCRIPCION']    = $puntoVenta->PTO_VTA_DESCRIPCION;
+        $data['direccion']              = $puntoVenta->PTO_VTA_DIRECCION_1 . ' ' . $puntoVenta->PTO_VTA_DIRECCION_2;
+        $data['telefono']               = $puntoVenta->PTO_VTA_FONO_1;
+        $data['vendedor']               = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
 
         return $data;
     }
@@ -678,14 +678,14 @@ class DevolucionService implements DevolucionServiceInterface
     /** para facturas antes del 2026 */
     public function printReturnOld($devolucion_id)
     {
-        $data = [];
-        $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
-        $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
-        $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
-        $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
+        $data               = [];
+        $devolucion         = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
+        $pedido             = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
+        $detalleDev         = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $puntoVenta         = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
         $data['devolucion'] = $devolucion;
-        $data['pedido'] = $pedido;
-        $typeDev = $devolucion['tipo_devolucion'] == 'total' ? 'total' : 'parcial';
+        $data['pedido']     = $pedido;
+        $typeDev            = $devolucion['tipo_devolucion'] == 'total' ? 'total' : 'parcial';
 
         $cliente = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
         $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
