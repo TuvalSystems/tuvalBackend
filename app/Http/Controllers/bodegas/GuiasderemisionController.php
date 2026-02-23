@@ -2,44 +2,40 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use App\Enums\Ventas\OrderStatus;
-use App\Events\Bodegas\Dashboard\DispatchPendings;
-use App\Traits\JsonResponseTrait;
 use RuntimeException;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
+use App\Models\GpUsuario;
 use App\Models\GpPuntoVenta;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\GpOrdenDespacho;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpClienteSucursal;
+use App\Enums\Ventas\OrderStatus;
+use App\Traits\JsonResponseTrait;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Models\GpPedidoDetalleStock;
-use Illuminate\Support\Facades\Auth;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\traslados\GpTrasladosVentas;
+use App\Notifications\User\UserNotification;
 use App\Http\Controllers\WebserviceController;
+use App\Models\reservas\GpGuiaRemisionReserva;
+use Illuminate\Validation\ValidationException;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpUsuario;
-use App\Models\reservas\GpGuiaRemisionReserva;
-use App\Notifications\User\UserNotification;
-use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
-use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
-use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Devoluciones\EntryService;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
+use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 
 class GuiasderemisionController extends Controller
 {
