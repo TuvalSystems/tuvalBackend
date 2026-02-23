@@ -728,7 +728,7 @@ class ApprovalService implements ApprovalServiceInterface
 
         $tipoDevolucion     = Arr::get($data, 'devolucion.tipo_devolucion');
         $volverAFacturar    = Arr::get($data, 'devolucion.volver_a_facturar', false);
-        $detallePedido      = Arr::get($data, 'detallepedido', []);
+        $detallePedido      = Arr::get($data, 'detalle', []);
         $fechaFactura       = Arr::get($data, 'pedido.fecha_factura', null);
         $daysDifference     = $this->daysDifference($fechaFactura);
         $hasTypeLItems      = collect($detallePedido)->contains(
