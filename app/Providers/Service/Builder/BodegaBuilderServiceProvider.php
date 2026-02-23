@@ -18,8 +18,10 @@ use App\Services\Builders\Bodega\ReservationDeliveryNoteParamsBuilder;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
+use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
 use App\Services\Builders\Bodega\DeliveryNoteDispatchParamsBuilder;
+use App\Services\Builders\Bodega\DeliveryNoteSalesTransferBuilder;
 
 class BodegaBuilderServiceProvider extends ServiceProvider implements DeferrableProvider
 {
@@ -39,7 +41,8 @@ class BodegaBuilderServiceProvider extends ServiceProvider implements Deferrable
         QuotationBuilderInterface::class                     => QuotationBuilder::class,
         OrderBuilderInterface::class                         => OrderBuilder::class,
         ReservedBuilderInterface::class                      => ReservedBuilder::class,
-        ClientBuilderInterface::class                        => ClientBuilder::class
+        ClientBuilderInterface::class                        => ClientBuilder::class,
+        DeliveryNoteSalesTransferBuilderInterface::class     => DeliveryNoteSalesTransferBuilder::class
     ];
 
     /**

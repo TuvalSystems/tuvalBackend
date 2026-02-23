@@ -25,7 +25,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     public function __construct(
         protected readonly DeliveryNoteCommonServiceInterface $common,
-        protected readonly ApiDeliverNoteService $apiDelivery,
+        protected readonly ApiDeliverNoteService $api,
         protected readonly LogisticsOperationsServiceInterface $logistic,
         protected readonly DeliveryNoteDispatchParamsBuilderInterface $builder
     ) {}
@@ -64,11 +64,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         ];
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
+                ->where('tipo', DeliveryNoteType::DESPACHO->value)->where('estado', DeliveryNoteStatus::PENDIENTE->value)
                 ->lockForUpdate()
                 ->first();
             if ($existing) {
                 DB::afterCommit(function () use ($existing) {
-                    $this->sendDeliveryNoteDispatchToGp($existing);
                     $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
                 });
                 return $existing;
@@ -91,7 +91,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function makeIdemKeyDispatch(array $payload, array $pedido, string $tipo)
+    protected function makeIdemKeyDispatch(array $payload, array $pedido, string $tipo): string
     {
         $base = [
             'bodega'        => data_get($pedido, 'BOD_BODEGA'),
@@ -106,7 +106,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'detalle'       => collect(data_get($payload, 'items'))->map(fn($d) => [
                 'id'            => data_get($d, 'id'),
                 'sel'           => (float) (data_get($d, 'seleccionado',  0)),
-                'pendiente'      => (float) (data_get($d, 'pendiente',  0)),
+                'pendiente'     => (float) (data_get($d, 'pendiente',  0)),
             ])->sortBy('id')->values()->all(),
         ];
 
@@ -155,14 +155,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     protected function validateExistenceDeliveryNoteDisptach($numGuide)
     {
-        return  $this->apiDelivery->checkExistenceDeliveryNote([
+        return  $this->api->checkExistenceDeliveryNote([
             'numGuia' => $numGuide
         ]);
     }
 
     protected function sendToDataDeliveryNote($guide, $detalle)
     {
-        $response  = $this->apiDelivery->createDeliveryNote([
+        $response  = $this->api->createDeliveryNote([
             'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide),
             'destinatario'  => $this->builder->buildDeliveryNoteDestinationToGp($guide),
             'detalle'       => $this->prepateDetailReservation($guide, $detalle)

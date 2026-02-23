@@ -1087,4 +1087,69 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
         return $this->common->getNextGuideSequential($establecimiento, $ptoEmision);
     }
+
+
+
+    /** verificar la existencia de guias generadas */
+
+    public function consultExistenceGeneratedGuides(array $payload): string
+    {
+        $mensaje    = '';
+        $items      = collect(data_get($payload, 'items', []));
+        $type       = data_get($payload, 'tipo', null);
+        if ($type === 'reposicion') {
+            return $mensaje;
+        }
+
+        $trasladosIds   = $items->pluck('id')->unique();
+        $pedidosIds     = $items->pluck('pedido')->unique();
+        $artCodes       = $items->pluck('ART_CODIGO')->filter()->unique();
+        $existTransfers = GpTrasladosVentas::whereIn('id', $trasladosIds)->pluck('id');
+
+        $detallesOtros  = GpPedidoDetalle::from('gp_pedido_detalles as gpd')
+            ->join('gp_pedidos as gp', 'gp.id', '=', 'gpd.pedido_id')
+            ->whereIn('gp.pedido_origen', $pedidosIds)
+            ->whereIn('ART_CODIGO', $artCodes)
+            ->selectRaw('gp.pedido_origen, gpd.ART_CODIGO, SUM(gpd.ART_CANTIDAD) as total_otros')
+            ->groupBy('gp.pedido_origen', 'gpd.ART_CODIGO')
+            ->get()
+            ->keyBy(fn($item) => $item->pedido_origen . '_' . $item->ART_CODIGO);
+
+        $qtyDispatchs = GpGuiaRemisionDetalle::from('gp_guia_remision_detalles as grd')
+            ->join('gp_guia_remisions as gr', 'gr.id', '=', 'grd.guia_remision_id')
+            ->where('gr.tipo', 'despacho')
+            ->whereIN('gr.pedido', $pedidosIds)
+            ->whereIn('grd.GUI_REM_CODI_INTERNO', $artCodes)
+            ->selectRaw('gr.pedido, grd.GUI_REM_CODI_INTERNO, SUM(grd.GUI_REM_CANTIDAD) as total_despachado')
+            ->groupBy('gr.pedido', 'grd.GUI_REM_CODI_INTERNO')
+            ->get()
+            ->keyBy(fn($item) => $item->pedido . '_' . $item->GUI_REM_CODI_INTERNO);
+
+
+        foreach ($items as $itm) {
+            $id             = data_get($itm, 'id');
+            $pedido         = data_get($itm, 'pedido');
+            $artCodigo      = data_get($itm, 'ART_CODIGO');
+            $seleccionado   = (float) data_get($itm, 'seleccionado', 0);
+            $pendiente      = (float) data_get($itm, 'pendiente', 0);
+
+            if (!$existTransfers->contains($id)) {
+                abort(409, "El pedido {$pedido} ha sido eliminado, por lo que no se necesita traslado, por favor actualizar la página.");
+            }
+
+            //clave para buscar
+            $key = $pedido . '_' . $artCodigo;
+
+            $otros = (float) data_get($detallesOtros->get($key) , 'total_otros', 0);
+            $qtyDispatch = (float) data_get($qtyDispatchs->get($key) , 'total_despachado', 0);
+
+            $totalPermitido = $pendiente + $otros;
+            $totalIntentando = $qtyDispatch + $seleccionado;
+            if ($totalIntentando > $totalPermitido) {
+                $quedan = $totalPermitido - $qtyDispatch;
+                $mensaje .= "El artículo {$artCodigo} del pedido {$pedido} ya fue enviado en otra guía de remisión. Quedan {$quedan} unidades disponibles.<br>";
+            }
+        }
+        return $mensaje;
+    }
 }

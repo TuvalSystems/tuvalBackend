@@ -7,6 +7,7 @@ use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpBodega;
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpTempGuiasDespachoBlock;
 use App\Models\GpTransportista;
 use App\Models\GpUsuario;
@@ -209,7 +210,8 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
         return GpPedido::where('pedido', $guia->pedido)->where('pendiente_salida', true)->exists();
     }
 
-    public function createTemporaryDeliveryNoteBlocksOrder( $guia, GpUsuario $user){
+    public function createTemporaryDeliveryNoteBlocksOrder($guia, GpUsuario $user)
+    {
         $new            = new GpTempGuiasDespachoBlock();
         $new->guia_id   = $guia->id;
         $new->pedido    = $guia->pedido;
@@ -217,4 +219,11 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
         $new->save();
     }
 
+
+    /** funcion para obtener el punto de venta de cada bodega */
+
+    public function getPtoVtaByWarehouse($bodega): ?string
+    {
+        return GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_BODEGA', $bodega)->value('PTO_VTA_BOD_PUNTO_VENTA');
+    }
 }

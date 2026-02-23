@@ -236,7 +236,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         /** proceso de actualizacion de registros de prospecto s */
         Route::post('prospecto/actualizar', [CotizacionesController::class, 'actualizarCotizacionPropectoV2']);
-
     });
 
 
@@ -353,7 +352,14 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         //generacion de guia de remision de despachos
         Route::post('despachos/guia-remision/crear-guia-despacho', [GuiasderemisionController::class, 'crearGuiaRemisionDespacho']);
-    });
+
+
+        //creacion de guia de remision de transferencia de venta
+        Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
+
+        Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
+
+        });
 
     Route::group(['prefix' => 'consultas'], function () {
         Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);

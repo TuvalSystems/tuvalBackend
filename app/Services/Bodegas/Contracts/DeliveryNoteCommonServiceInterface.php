@@ -26,4 +26,6 @@ interface DeliveryNoteCommonServiceInterface
 
     public function isGUideBlockedForOrder($guia): bool;
     public function createTemporaryDeliveryNoteBlocksOrder($guia, GpUsuario $user);
+
+     public function getPtoVtaByWarehouse($bodega): ?string;
 }

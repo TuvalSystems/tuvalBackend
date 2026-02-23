@@ -753,7 +753,7 @@ class ApprovalService implements ApprovalServiceInterface
             if ($hasTypeLItems) {
                 return 'yes';
             }
-            return $daysDifference <= 7 ? 'no' : 'yes';
+            return $daysDifference <= 7 ? 'yes' : 'no';
         }
 
         if ($tipoDevolucion === 'total') {
@@ -763,7 +763,7 @@ class ApprovalService implements ApprovalServiceInterface
             if ($hasTypeLItems) {
                 return 'yes';
             }
-            return $daysDifference <= 7 ? 'no' : 'yes';
+            return $daysDifference <= 7 ? 'yes' : 'no';
         }
 
         return 'yes';

@@ -35,7 +35,10 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use Illuminate\Http\JsonResponse;
 
 class GuiasderemisionController extends Controller
 {
@@ -45,77 +48,10 @@ class GuiasderemisionController extends Controller
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly ReservationDeliveryNoteServiceInterface $reservedDeliveryNoteService,
         protected readonly DeliveryNoteDispatchServiceInterface $dispatch,
-        protected readonly EntryServiceInterface $entryService
+        protected readonly EntryServiceInterface $entryService,
+        protected readonly DeliveryNoteSalesTransferServiceInterface $salesTransfer,
+        protected readonly DeliveryNoteReplenishmentTransferServiceInterface $replenishment
     ) {}
-    // public function generarguiaventa(Request $request):  Response|Application|ResponseFactory
-    // {
-    //     $data = $request->all();
-
-    //     $datosguia = array();
-
-    //     $data['pedido'] = $data['pedido']['pedido'];
-
-    //     $sucursalEnvio = GpClienteSucursal::where('id', $data['pedido']['sucursal_id'])->first()->toArray();
-
-    //     $datosguia['bodega_origen'] = $data['pedido']['BOD_BODEGA'];
-    //     $datosguia['bodega_destino'] = null;
-    //     $datosguia['pedido'] = $data['pedido']['pedido'];
-    //     $datosguia['tipo'] = 'despacho';
-    //     $datosguia['GUI_REM_RAZON_SOCIAL_TRANSPORTISTA'] = $data['transportista']['nombre'];
-    //     $datosguia['GUI_REM_IDENTIFICACION_TRANSPORTISTA'] = $data['transportista']['identificacion'];
-    //     $datosguia['GUI_REM_TIPO_IDENTIFICACION_TRANSPORTISTA'] = $data['transportista']['tipo_identificacion'];
-
-    //     $datosguia['GUI_REM_FECHA_INICIO'] = substr(str_replace('T', ' ', $data['fecha_inicio']), 0, 16);
-    //     $datosguia['GUI_REM_FECHA_FIN'] = substr(str_replace('T', ' ', $data['fecha_fin']), 0, 16);
-    //     $datosguia['GUI_REM_PLACA'] = $data['vehiculo']['placa'];
-    //     if (!isset($data['observacion']))
-    //         $data['observacion'] = '';
-    //     $datosguia['GUI_REM_OBSERVACION'] = $data['observacion'];
-    //     $datosguia['GUI_REM_RAZON_SOCIAL_DESTINATARIO'] = $data['pedido']['CLI_RAZON_SOCIAL'];
-    //     $datosguia['GUI_REM_DIRECCION_DESTINATARIO'] = $sucursalEnvio['CLI_SUC_DIRECCION'];
-    //     $datosguia['GUI_REM_IDENTIFICACION_DESTINATARIO'] = $data['pedido']['CLI_RUC'];
-    //     $datosguia['GUI_REM_MOTIVO_TRASLADO'] = 'Venta';
-    //     if (!$data['ruta'])
-    //         $data['ruta'] = '';
-    //     $datosguia['GUI_REM_RUTA'] = $data['ruta'];
-
-    //     $datosguia['GUI_REM_CODI_DOCU_SUSTENTO'] = '';
-
-    //     $GUI_REM_NUME_DOCU_SUSTENTO = '';
-    //     if ($data['pedido']['estado'] == 'facturado') {
-    //         $GUI_REM_NUME_DOCU_SUSTENTO = $data['pedido']['factura'];
-    //         $datosguia['GUI_REM_CODI_DOCU_SUSTENTO'] = '01';
-    //     }
-
-
-    //     $datosguia['GUI_REM_NUME_DOCU_SUSTENTO'] = $GUI_REM_NUME_DOCU_SUSTENTO;
-    //     $datosguia['GUI_REM_NUME_AUTO_DOCU_SUSTENTO'] = '';
-    //     $datosguia['GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'] = $data['pedido']['fecha_factura'];
-
-
-    //     $datosguia['items'] = $data['items'];
-
-    //     $guiaderemision = $this->saveguia($datosguia);
-
-    //     foreach ($datosguia['items'] as $item) {
-    //         $despacho = GpPedidoDetalle::where('id', $item['id'])->first();
-
-    //         if (!$despacho->reservado)
-    //             $despacho->reservado = 0;
-
-    //         $despacho->reservado = $despacho->reservado + $item['seleccionado'];
-    //         $despacho->save();
-    //     }
-
-    //     $this->getguiaremision($guiaderemision);
-    //     // if ($this->deliveryNoteService->isGUideBlockedForOrder($guiaderemision)) {
-    //     //     $this->deliveryNoteService->createTemporaryDeliveryNoteBlocksOrder($guiaderemision);
-    //     // }
-    //     event(new DispatchPendings('refresh'));
-    //     return response([
-    //         'success' => true,
-    //     ]);
-    // }
 
     public function consultarguiagenerada(Request $request): Response|Application|ResponseFactory
     {
@@ -175,6 +111,22 @@ class GuiasderemisionController extends Controller
         return response([
             'success' => true,
         ]);
+    }
+
+    public function consultarGuiaGeneradaV1(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->all();
+            $response = $this->deliveryNoteService->consultExistenceGeneratedGuides($data);
+            if ($response !== '') {
+                return $this->errorResponse($response, [], 409);
+            }
+            return $this->buildSuccessResponse('Validación exitosa. No existen conflictos con otras guías.', 200);
+        } catch (HttpException $e) {
+            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function generarguiatraslado(Request $request): Response|Application|ResponseFactory
@@ -871,7 +823,7 @@ class GuiasderemisionController extends Controller
 
 
 
-    public function consultarDetalleGuiaPorId(Request $request)
+    public function consultarDetalleGuiaPorId(Request $request): JsonResponse
     {
         try {
             $data = $request->all();
@@ -887,7 +839,7 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function consultarDetalleGuiaReservaPorId(Request $request)
+    public function consultarDetalleGuiaReservaPorId(Request $request): JsonResponse
     {
         try {
             $id = $request->get('id');
@@ -903,7 +855,7 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function verificarYAsignarAjusteGuiaDespacho($id)
+    public function verificarYAsignarAjusteGuiaDespacho($id): JsonResponse
     {
         try {
             $guia = $this->deliveryNoteService->reassignDispatchGuideAdjustment($id);
@@ -916,7 +868,7 @@ class GuiasderemisionController extends Controller
 
 
 
-    public function creacionAjusteGpGuiaRemision($id)
+    public function creacionAjusteGpGuiaRemision($id): JsonResponse
     {
         try {
             $guia = $this->deliveryNoteService->createAdjustmentDeliveryNote($id);
@@ -928,7 +880,7 @@ class GuiasderemisionController extends Controller
 
 
 
-    public function obtenerInfoGUiaRemisionAjustePedido($id)
+    public function obtenerInfoGUiaRemisionAjustePedido($id): JsonResponse
     {
         try {
             $data = $this->deliveryNoteService->getDeliveryNoteAdjustmentInfoByDeliveryNoteId($id);
@@ -939,7 +891,7 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function procesarPedidoDespachoPorGuia($id)
+    public function procesarPedidoDespachoPorGuia($id): JsonResponse
     {
         try {
             $pedido = $this->deliveryNoteService->processAjusteWevOrderGUideRemision($id);
@@ -950,7 +902,7 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function listaGuiaDespachoConAjuste(Request $request)
+    public function listaGuiaDespachoConAjuste(Request $request): JsonResponse
     {
         try {
             $fechaInicio = $request->get('fechaInicio');
@@ -963,7 +915,7 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function listaGuiaTransferenciaReposicionConAjuste(Request $request)
+    public function listaGuiaTransferenciaReposicionConAjuste(Request $request): JsonResponse
     {
         try {
             $fechaInicio = $request->get('fechaInicio');
@@ -977,7 +929,7 @@ class GuiasderemisionController extends Controller
     }
 
     /** proceso para reajuste de guia de transferencias  */
-    public function procesarReajusteGuiaTransferencia(Request $request)
+    public function procesarReajusteGuiaTransferencia(Request $request): JsonResponse
     {
         try {
             $id = $request->get('guiaId');
@@ -991,7 +943,7 @@ class GuiasderemisionController extends Controller
 
     /** proceso para reajuste de guia de reposiciones */
 
-    public function procesarReajusteGuiaReposicion(Request $request)
+    public function procesarReajusteGuiaReposicion(Request $request): JsonResponse
     {
         try {
             $id = $request->get('guiaId');
@@ -1018,7 +970,7 @@ class GuiasderemisionController extends Controller
      * */
 
 
-    public function crearGuiaRemisionReserva(Request $request)
+    public function crearGuiaRemisionReserva(Request $request): JsonResponse
     {
         $payload = $request->all();
         try {
@@ -1038,7 +990,7 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function enviarGuiaRemisionReservaAGp($id)
+    public function enviarGuiaRemisionReservaAGp($id): JsonResponse
     {
         try {
             $guia = GpGuiaRemisionReserva::where('id', $id)->first();
@@ -1078,7 +1030,7 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function despacharGuiaRemisionReserva(Request $request)
+    public function despacharGuiaRemisionReserva(Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -1105,7 +1057,7 @@ class GuiasderemisionController extends Controller
      *  PROCESO DE CREACION DE GUIA DE DESPACHO
      */
 
-    public function crearGuiaRemisionDespacho(Request $request)
+    public function crearGuiaRemisionDespacho(Request $request): JsonResponse
     {
         try {
             $payload = $request->all();
@@ -1119,6 +1071,31 @@ class GuiasderemisionController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'linea' => $e->getLine(),
                 'file' => $e->getFile()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+
+    /***
+     * PROCESO DE CREACION DE GUIA DE VENTA
+     */
+
+    public function crearGuiaRemisionVenta(Request $request): JsonResponse
+    {
+        try {
+            $payload    = $request->all();
+            $user       = $request->user();
+            $response   = $this->salesTransfer->createDeliveryNoteSalesTransfer($payload, $user);
+            return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
+        } catch (RuntimeException $r) {
+            return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (\Throwable $e) {
+            Log::channel('guia_ventas')->error('Error en la funcion crearGuiaRemisionVenta -GuiasderemisionController: ', [
+                'message'   => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+                'linea'     => $e->getLine(),
+                'file'      => $e->getFile()
             ]);
             return $this->buildErrorResponse($e->getMessage(), 500);
         }

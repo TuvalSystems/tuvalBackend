@@ -4,13 +4,11 @@ namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Reservas\ValidateCancelReservationRequest;
-use App\Models\GpUsuario;
 use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;

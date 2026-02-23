@@ -5,6 +5,8 @@ namespace App\Providers\Service;
 use App\Services\Bodegas\Contracts\DashboardServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
+use App\Services\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Bodegas\DispatchService;
@@ -21,6 +23,8 @@ use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Services\Bodegas\DashboardService;
 use App\Services\Bodegas\DeliveryNoteCommonService;
 use App\Services\Bodegas\DeliveryNoteDispatchService;
+use App\Services\Bodegas\DeliveryNoteReplenishmentTransferService;
+use App\Services\Bodegas\DeliveryNoteSalesTransferService;
 use App\Services\Bodegas\LogisticsOperationsService;
 use App\Services\Bodegas\ReservationDeliveryNoteService;
 use App\Services\Bodegas\TransferService;
@@ -39,7 +43,10 @@ class BodegasServiceProvider extends ServiceProvider implements DeferrableProvid
         ReservationDeliveryNoteServiceInterface::class  => ReservationDeliveryNoteService::class,
         DeliveryNoteCommonServiceInterface::class       => DeliveryNoteCommonService::class,
         DashboardServiceInterface::class                => DashboardService::class,
-        DeliveryNoteDispatchServiceInterface::class     => DeliveryNoteDispatchService::class
+        DeliveryNoteDispatchServiceInterface::class     => DeliveryNoteDispatchService::class,
+        DeliveryNoteSalesTransferServiceInterface::class => DeliveryNoteSalesTransferService::class,
+        DeliveryNoteReplenishmentTransferServiceInterface::class => DeliveryNoteReplenishmentTransferService::class
+
     ];
 
 

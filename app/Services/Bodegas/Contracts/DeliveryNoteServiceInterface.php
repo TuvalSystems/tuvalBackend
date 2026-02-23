@@ -43,6 +43,6 @@ interface DeliveryNoteServiceInterface
 
 
 
-     /** funcion temporal para bloqueo de guias de remision */
+      public function consultExistenceGeneratedGuides(array $payload): string;
 
 }
