@@ -1398,21 +1398,21 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, $params, $items, $quote, GpUsuario $user): bool
     {
 
-        $resp = $this->apiDelivery->createReceiveGuideReservationAjustment($params);
-        $success = data_get($resp, 'success', false);
-        $msg = data_get($resp, 'message');
-        $docGp = trim(data_get($resp, 'data.docGp', ''));
+        $resp       = $this->apiDelivery->createReceiveGuideReservationAjustment($params);
+        $success    = data_get($resp, 'success', false);
+        $msg        = data_get($resp, 'message');
+        $docGp      = trim(data_get($resp, 'data.docGp', ''));
 
         if (!$success) {
-            $cabecera = data_get($params, 'cabecera', []);
-            $pyValidate = $this->reservaBuilder->buildRecievedDeliveryNoteValidationPayload($cabecera);
-            $resValidate = $this->apiDelivery->checkReceiveGuideReservationAjustment($pyValidate);
+            $cabecera           = data_get($params, 'cabecera', []);
+            $pyValidate         = $this->reservaBuilder->buildRecievedDeliveryNoteValidationPayload($cabecera);
+            $resValidate        = $this->apiDelivery->checkReceiveGuideReservationAjustment($pyValidate);
             $headerRespValidate = data_get($resValidate, 'data');
-            $docGpValidate = trim(data_get($headerRespValidate, 'docGp', ''));
+            $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
             if (!empty($headerRespValidate) && filled($docGpValidate)) {
                 // Usamos el documento que encontró la validación
-                $docGp = $docGpValidate;
-                $data = $headerRespValidate;
+                $docGp  = $docGpValidate;
+                $data   = $headerRespValidate;
             } else {
                 // Si falló la creación y la validación tampoco trajo nada útil, lanzamos el error.
                 throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
