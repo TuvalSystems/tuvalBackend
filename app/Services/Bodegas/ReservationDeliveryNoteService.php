@@ -52,7 +52,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             if ($existing) {
                 DB::afterCommit(function () use ($existing) {
                     $this->sendReservationDeliveryNoteToGp($existing);
-                    $existing->update(['estado' => 'enviada']);
+                    $existing->update(['estado' => 'pendiente']);
                 });
                 return $existing;
             }
