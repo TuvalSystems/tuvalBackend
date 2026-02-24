@@ -2,7 +2,7 @@
 
 namespace App\Services\Bodegas;
 
-
+use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
@@ -42,12 +42,13 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $guia = DB::transaction(function () use ($payload, $datavehicle, $dirOrigin, $dirDestination, $bodGuide, $idemKey, $user) {
 
             $existing = GpGuiaRemisionReserva::where('idempotency_key', $idemKey)
+                ->where('estado', DeliveryNoteStatus::PENDIENTE->value)
                 ->lockForUpdate()
                 ->first();
             if ($existing) {
                 DB::afterCommit(function () use ($existing) {
                     $this->sendReservationDeliveryNoteToGp($existing);
-                    $existing->update(['estado' => 'pendiente']);
+                    $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
                 });
                 return $existing;
             }
