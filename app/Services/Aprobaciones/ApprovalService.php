@@ -840,12 +840,12 @@ class ApprovalService implements ApprovalServiceInterface
     public function getOrderApprovalData($data)
     {
         try {
-            $quoteReservedOriginId = $this->validateExistsReserve($data['cotizacion_id']);
-            $detalles = $this->getDetailArticlesWithStock($data['id']);
-            $flatDetails = $this->stockFormatterForUpdateApproval($detalles);
-            $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
-            $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
-            $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+            $quoteReservedOriginId  = $this->validateExistsReserve($data['cotizacion_id']);
+            $detalles               = $this->getDetailArticlesWithStock($data['id']);
+            $flatDetails            = $this->stockFormatterForUpdateApproval($detalles);
+            $parmas                 = $this->stockFormatterParametersUpdateApproval($flatDetails);
+            $stocksResult           = $this->getStockWarehouseAsyncAndFormantter($parmas);
+            $newFormatStock         = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
             $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id'], $quoteReservedOriginId);
             if ($alert) {
                 return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
