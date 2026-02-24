@@ -252,7 +252,7 @@
             @else
             {{ $guia['pedido'] }}
             @endif
-            @if($guia['orden_de_compra'])
+            @if($guia['orden_de_compra'] && $guia['tipo'] == 'despacho')
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Orden de Compra:</b> {{ $guia['orden_de_compra'] }}
             @endif
         </p>
