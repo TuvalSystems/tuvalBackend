@@ -826,12 +826,9 @@ class ApprovalService implements ApprovalServiceInterface
     public function hasDetailDispatched($detallepedido): bool
     {
         return collect($detallepedido)
-            ->contains(function ($item) {
-                return !empty($item['despachado'])
-                    && (float) $item['despachado'] > 0
-                    && isset($item['despacho'])
-                    && $item['despacho'] === true;
-            });
+            ->contains(fn($item) =>
+            (float) data_get($item, 'despachado', 0) > 0
+                && data_get($item, 'despacho', false) === true);
     }
 
 
@@ -1204,7 +1201,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function denyQuotationBeenWaiting(int $id , GpUsuario $user)
+    public function denyQuotationBeenWaiting(int $id, GpUsuario $user)
     {
         $quote = GpCotizacion::find($id);
         $quote->estado = 'rechazado';
@@ -1287,7 +1284,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $query->paginate($perPage);
     }
 
-    public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user,int $perPage = 10): LengthAwarePaginator
+    public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user, int $perPage = 10): LengthAwarePaginator
     {
         $query = $this->fetchPendingOrders($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
