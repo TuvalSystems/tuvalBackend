@@ -1100,4 +1100,27 @@ class GuiasderemisionController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * PROCESO DE CREACION DE GUIA DE REPOSICION
+     */
+
+    public function crearGuiaRemisionReposicion(Request $request): JsonResponse
+    {
+        try {
+            $payload    = $request->all();
+            $user       = $request->user();
+            return $this->successResponse('Guia de Despacho creada exitosamente', [], 200);
+        } catch (RuntimeException $r) {
+            return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (\Throwable $e) {
+            Log::channel('guia_ventas')->error('Error en la funcion crearGuiaRemisionVenta -GuiasderemisionController: ', [
+                'message'   => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+                'linea'     => $e->getLine(),
+                'file'      => $e->getFile()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

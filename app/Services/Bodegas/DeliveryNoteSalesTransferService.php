@@ -25,7 +25,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     public function __construct(
         protected readonly DeliveryNoteCommonServiceInterface $common,
         protected readonly ApiDeliverNoteService $api,
-        protected LogisticsOperationsServiceInterface $logistic,
+        protected readonly LogisticsOperationsServiceInterface $logistic,
         protected readonly DeliveryNoteDispatchParamsBuilderInterface $builderDispatch,
         protected readonly DeliveryNoteSalesTransferBuilderInterface $builder
 
