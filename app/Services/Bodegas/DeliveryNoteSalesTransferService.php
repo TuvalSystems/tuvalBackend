@@ -133,7 +133,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     protected function validateExistenceDeliveryNoteDisptach($numGuide)
     {
         return  $this->api->checkExistenceDeliveryNote([
-            'numGuia' => $numGuide
+            'numDoc' => $numGuide
         ]);
     }
 

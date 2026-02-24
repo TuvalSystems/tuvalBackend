@@ -359,6 +359,10 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
 
+        //creacion de guia de reposicion
+        Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasderemisionController::class, 'crearGuiaRemisionReposicion']);
+
+
         });
 
     Route::group(['prefix' => 'consultas'], function () {

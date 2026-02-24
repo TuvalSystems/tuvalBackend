@@ -156,7 +156,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     protected function validateExistenceDeliveryNoteDisptach($numGuide)
     {
         return  $this->api->checkExistenceDeliveryNote([
-            'numGuia' => $numGuide
+            'numDoc' => $numGuide
         ]);
     }
 

@@ -1087,7 +1087,7 @@ class GuiasderemisionController extends Controller
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->salesTransfer->createDeliveryNoteSalesTransfer($payload, $user);
-            return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
+            return $this->successResponse('Guia de Tramsferencia de Venta creada exitosamente', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
         } catch (\Throwable $e) {
@@ -1110,7 +1110,8 @@ class GuiasderemisionController extends Controller
         try {
             $payload    = $request->all();
             $user       = $request->user();
-            return $this->successResponse('Guia de Despacho creada exitosamente', [], 200);
+            $response  = $this->replenishment->createDeliveryNoteReplenishmentTransfer($payload, $user);
+            return $this->successResponse('Guia de Reposicion creada exitosamente', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
         } catch (\Throwable $e) {
