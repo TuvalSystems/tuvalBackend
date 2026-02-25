@@ -788,6 +788,10 @@ class GuiasderemisionController extends Controller
             return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (ValidationException $ve) {
+            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
+        } catch (HttpException $he) {
+            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
         } catch (\Throwable $e) {
             Log::channel('despachos')->error('Error en la funcion crearGuiaDespacho -GuiasderemisionController: ', [
                 'message' => $e->getMessage(),
@@ -810,9 +814,13 @@ class GuiasderemisionController extends Controller
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->salesTransfer->createDeliveryNoteSalesTransfer($payload, $user);
-            return $this->successResponse('Guia de Tramsferencia de Venta creada exitosamente', $response, 200);
+            return $this->successResponse('Guia de Transferencia de Venta creada exitosamente', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (ValidationException $ve) {
+            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
+        } catch (HttpException $he) {
+            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
         } catch (\Throwable $e) {
             Log::channel('guia_ventas')->error('Error en la funcion crearGuiaRemisionVenta -GuiasderemisionController: ', [
                 'message'   => $e->getMessage(),
