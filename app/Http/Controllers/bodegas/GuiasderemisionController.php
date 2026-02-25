@@ -834,6 +834,10 @@ class GuiasderemisionController extends Controller
             return $this->buildSuccessResponse($response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (ValidationException $ve) {
+            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
+        } catch (HttpException $he) {
+            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
         } catch (\Throwable $e) {
             Log::channel('guia_ventas')->error('Error en la funcion recibirGuiaRemisionVenta -GuiasderemisionController: ', [
                 'message'   => $e->getMessage(),
