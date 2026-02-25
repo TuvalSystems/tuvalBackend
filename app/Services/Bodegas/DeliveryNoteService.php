@@ -260,6 +260,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         if ($tocoServ && $guia->estado != 'enviada') {
             $guia->update(['estado' => 'enviada']);
+            return $guia->fresh();
         }
 
         $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
