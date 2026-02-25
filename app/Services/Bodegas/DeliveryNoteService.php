@@ -271,8 +271,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         $errors = [];
         foreach ($groups as $index => $grupo) {
             try {
-                $params = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
-                $processed = $this->validateExistsDispatchGuideAdjustment($guia, $grupo['pedido'], $params, $grupo['items']);
+                $params     = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
+                $processed  = $this->validateExistsDispatchGuideAdjustment($guia, $grupo['pedido'], $params, $grupo['items']);
 
                 if (!$processed) {
                     $errors[] = "Grupo {$index} (Pedido: {$grupo['pedido']}): No se pudo procesar";
@@ -591,6 +591,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
             if ($tocoServ && $guia->estado != 'enviada') {
                 $guia->update(['estado' => 'enviada']);
+                return $guia->fresh();
             }
 
             $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
@@ -1027,13 +1028,13 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function validateExistsDispatchGuideAdjustment($guia, $pedido, $params, $groupItems): bool
     {
 
-        $cabecera = data_get($params, 'cabecera', []);
-        $payloadHeader = $this->deliveryNoteBuilder->buildingDispatchGuideAdjustmentPayload($cabecera);
-        $checkResp = $this->apiDeliveryNote->checkDispatchGuideAdjustment($payloadHeader);
-        $resHeader = data_get($checkResp, 'data');
-        $docGp = data_get($resHeader, 'docGp', '');
+        $cabecera       = data_get($params, 'cabecera', []);
+        $payloadHeader  = $this->deliveryNoteBuilder->buildingDispatchGuideAdjustmentPayload($cabecera);
+        $checkResp      = $this->apiDeliveryNote->checkDispatchGuideAdjustment($payloadHeader);
+        $resHeader      = data_get($checkResp, 'data');
+        $docGp          = data_get($resHeader, 'docGp', '');
         $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
-        $existLocal = $this->hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido);
+        $existLocal     = $this->hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido);
         if (!empty($resHeader) && !blank($docGp)) {
             if ($existLocal) {
                 return DB::transaction(function () use ($guia, $groupItems) {
@@ -1140,8 +1141,8 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             //clave para buscar
             $key = $pedido . '_' . $artCodigo;
 
-            $otros = (float) data_get($detallesOtros->get($key) , 'total_otros', 0);
-            $qtyDispatch = (float) data_get($qtyDispatchs->get($key) , 'total_despachado', 0);
+            $otros = (float) data_get($detallesOtros->get($key), 'total_otros', 0);
+            $qtyDispatch = (float) data_get($qtyDispatchs->get($key), 'total_despachado', 0);
 
             $totalPermitido = $pendiente + $otros;
             $totalIntentando = $qtyDispatch + $seleccionado;
