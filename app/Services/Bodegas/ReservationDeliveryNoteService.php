@@ -46,10 +46,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
                 ->lockForUpdate()
                 ->first();
             if ($existing) {
-                DB::afterCommit(function () use ($existing) {
-                    $this->sendReservationDeliveryNoteToGp($existing);
-                    $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
-                });
+                $existing->touch();
                 return $existing;
             }
             $this->validateItemsTransferReserved($payload['detalle']);

@@ -62,15 +62,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
             'motivoTraslado'    => ReasonForTransfer::VENTA->value,
         ];
+
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
                 ->where('tipo', DeliveryNoteType::DESPACHO->value)->where('estado', DeliveryNoteStatus::PENDIENTE->value)
                 ->lockForUpdate()
                 ->first();
             if ($existing) {
-                DB::afterCommit(function () use ($existing) {
-                    $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
-                });
+                $existing->touch();
                 return $existing;
             }
 
