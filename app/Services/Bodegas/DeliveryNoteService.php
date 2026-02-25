@@ -260,6 +260,12 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         if ($tocoServ && $guia->estado != 'enviada') {
             $guia->update(['estado' => 'enviada']);
+            $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+            return [
+                'success'   => true,
+                'message'   => 'Guía de remisión despachada (Sin ítems para despachar)',
+                'pedido'    => $pedido,
+            ];
         }
 
         $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
@@ -326,9 +332,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $guia->update(['estado' => 'enviada']);
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
             return [
-                'success' => true,
-                'message' => 'Guía de remisión despachada (' . $why . ')',
-                'pedido' => $pedido,
+                'success'   => true,
+                'message'   => 'Guía de remisión despachada (' . $why . ')',
+                'pedido'    => $pedido,
             ];
         }
     }
@@ -337,23 +343,26 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function groupDispatchItemsBySourceOrder(GpGuiaRemision $guia, Collection $detalle): array
     {
 
-        $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
-        $documento = $pedidoOrigen ?: $guia->pedido;
-        $pedidonuevo = $pedidoOrigen ? $guia->pedido : '';
-        $groups = [];
+        $pedidoOrigen       = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
+        $documento          = $pedidoOrigen ?: $guia->pedido;
+        $pedidonuevo        = $pedidoOrigen ? $guia->pedido : '';
+        $idsDetalles        = $detalle->pluck('detalle_id')->filter()->unique();
+        $pedidosDetalles    = GpPedidoDetalle::whereIn('id', $idsDetalles)->get()->keyBy('id');
+        $groups             = [];
+
         foreach ($detalle as $item) {
-            $detallePedido = GpPedidoDetalle::where('id', $item->detalle_id)->first();
-            if ($detallePedido->ART_TIPO_COMPRA == 'SERV') {
+            $detallePedido = $pedidosDetalles->get($item->detalle_id);
+            if (!$detallePedido || $detallePedido->ART_TIPO_COMPRA === 'SERV') {
                 continue;
             }
             $doc = $documento;
-            $groups[$doc]['pedido'] = $documento;
-            $groups[$doc]['pedido_nuevo'] = $pedidonuevo;
-            $groups[$doc]['items'][] = $item;
-            $groups[$doc]['ws_items'][] = [
-                'item' => $item->GUI_REM_CODI_INTERNO,
-                'compartimento' => '',
-                'cantidad' => $item->GUI_REM_CANTIDAD,
+            $groups[$doc]['pedido']             = $documento;
+            $groups[$doc]['pedido_nuevo']       = $pedidonuevo;
+            $groups[$doc]['items'][]            = $item;
+            $groups[$doc]['ws_items'][]         = [
+                'item'                              => $item->GUI_REM_CODI_INTERNO,
+                'compartimento'                     => '',
+                'cantidad'                          => (float)$item->GUI_REM_CANTIDAD,
             ];
         }
 

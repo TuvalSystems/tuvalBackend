@@ -75,8 +75,8 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
         $pedido = GpPedido::where('pedido', $guia->pedido)->lockForUpdate()->first();
         if (!$pedido) {
             Log::warning('Pedido no encontrado al verificar despacho', [
-                'guia_id' => $guia->id,
-                'pedido' => $guia->pedido,
+                'guia_id'   => $guia->id,
+                'pedido'    => $guia->pedido,
             ]);
             return null;
         }
