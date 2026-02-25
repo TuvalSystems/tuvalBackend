@@ -243,16 +243,16 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 continue;
             }
             if ($art->ART_TIPO_COMPRA == 'SERV') {
-                $qty = (float) $row->sum('GUI_REM_CANTIDAD');
-                $qty = max(0.0, $qty);
-                $nuevoReservado = max(0.0, (float) ($art->reservado ?? 0) - $qty);
-                $nuevoTrasladado = (float) ($art->trasladado ?? 0) + $qty;
-                $cap = (float) ($art->ART_CANTIDAD ?? 0);
+                $qty                    = (float) $row->sum('GUI_REM_CANTIDAD');
+                $qty                    = max(0.0, $qty);
+                $nuevoReservado         = max(0.0, (float) ($art->reservado ?? 0) - $qty);
+                $nuevoTrasladado        = (float) ($art->trasladado ?? 0) + $qty;
+                $cap                    = (float) ($art->ART_CANTIDAD ?? 0);
                 if ($cap > 0)
-                    $nuevoTrasladado = min($nuevoTrasladado, $cap);
+                    $nuevoTrasladado    = min($nuevoTrasladado, $cap);
                 $art->fill([
-                    'reservado' => $nuevoReservado,
-                    'trasladado' => $nuevoTrasladado
+                    'reservado'         => $nuevoReservado,
+                    'trasladado'        => $nuevoTrasladado
                 ])->save();
                 $tocoServ = true;
             }
