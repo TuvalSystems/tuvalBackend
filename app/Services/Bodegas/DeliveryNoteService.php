@@ -264,7 +264,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
         if (count($groups) === 0) {
-            return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
+            return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar', $tocoServ);
         }
         $processed = false;
         $results = [];
@@ -320,9 +320,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     }
 
 
-    public function markGuideSentAndUpdateOrder(GpGuiaRemision $guia, $why)
+    public function markGuideSentAndUpdateOrder(GpGuiaRemision $guia, $why, $tocoServ = false)
     {
-        if ($guia->estado != 'enviada') {
+        if ($guia->estado != 'enviada' && !$tocoServ) {
             $guia->update(['estado' => 'enviada']);
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
             return [
@@ -331,7 +331,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
                 'pedido'    => $pedido,
             ];
         }
-        if ($guia->estado === DeliveryNoteStatus::ENVIADA->value) {
+        if ($guia->estado === DeliveryNoteStatus::ENVIADA->value && $tocoServ) {
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
             return [
                 'success'   => true,
