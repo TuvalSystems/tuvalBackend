@@ -2,7 +2,7 @@
 
 namespace App\Services\Bodegas;
 
-
+use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\traslados\GpTrasladosVentas;
@@ -260,12 +260,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
         if ($tocoServ && $guia->estado != 'enviada') {
             $guia->update(['estado' => 'enviada']);
-            $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-            return [
-                'success'   => true,
-                'message'   => 'Guía de remisión despachada (Sin ítems para despachar)',
-                'pedido'    => $pedido,
-            ];
         }
 
         $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
@@ -330,6 +324,14 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     {
         if ($guia->estado != 'enviada') {
             $guia->update(['estado' => 'enviada']);
+            $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+            return [
+                'success'   => true,
+                'message'   => 'Guía de remisión despachada (' . $why . ')',
+                'pedido'    => $pedido,
+            ];
+        }
+        if ($guia->estado === DeliveryNoteStatus::ENVIADA->value) {
             $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
             return [
                 'success'   => true,
