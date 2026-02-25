@@ -330,9 +330,7 @@
         @if($guia['tipo'] == 'despacho')
         <table width="100%" style="margin-top: 30px; margin-bottom: 30px;">
             <tr>
-                <td width="30%"></td>
-
-                <td width="40%">
+                <td width="40%" align="left">
                     <table width="100%" cellpadding="0" cellspacing="0">
                         <tr>
                             <td style="text-align: left; padding-bottom: 40px; font-size: 11px;">
@@ -347,7 +345,7 @@
                     </table>
                 </td>
 
-                <td width="30%"></td>
+                <td width="60%"></td>
             </tr>
         </table>
         @endif
