@@ -373,4 +373,9 @@ class GpPedido extends Model
             })
             ->exists();
     }
+
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
 }

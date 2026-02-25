@@ -1126,11 +1126,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             return (float) ($t->pending_transfer) > 0;
         })->values()
             ->map(function ($item) use ($waOrigin) {
-                $createdAt = $item->created_at instanceof Carbon ? $item->created_at : Carbon::parse($item->created_at);
-                $item->fecha = $createdAt->timezone('America/Guayaquil')->format('Y-m-d H:i:s');
-                $artApi = $this->fetchItemCompartmentByWarehouse($item->art_code, $waOrigin);
-                $item->compartimiento = Arr::get($artApi, 'COMPARTIMIENTO', '');
-                $item->existencia = round(Arr::get($artApi, 'STOCK_DISPONIBLE', 0), 2);
+                $createdAt              = $item->created_at instanceof Carbon ? $item->created_at : Carbon::parse($item->created_at);
+                $item->fecha            = $createdAt->timezone('America/Guayaquil')->format('Y-m-d H:i:s');
+                $artApi                 = $this->fetchItemCompartmentByWarehouse($item->art_code, $waOrigin);
+                $item->compartimiento   = Arr::get($artApi, 'COMPARTIMIENTO', '');
+                $item->existencia       = round(Arr::get($artApi, 'STOCK_DISPONIBLE', 0), 2);
                 return $item;
             })->toArray();
     }
@@ -1366,20 +1366,20 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function receiveItemsFromTransferred(int $guiaId, array $items, GpUsuario $user)
     {
-        $processed = false;
-        $gpUser = GpUsuario::whereKey($user->id)->first() ?? GpUsuario::where('USERID', 'adminWeb')->first();
-        $guia = GpGuiaRemisionReserva::find($guiaId);
+        $processed  = false;
+        $gpUser     = GpUsuario::whereKey($user->id)->first() ?? GpUsuario::where('USERID', 'adminWeb')->first();
+        $guia       = GpGuiaRemisionReserva::find($guiaId);
         if (!$guia) {
             throw new \Exception("Guia de reserva no encontrada");
         }
-        $movimientos = $this->getMovimentsByGuiaId($guia->id, $guia->quotes); // me obtiene todos los movimientos de la guia tomando la cotizacion como clave
-        $itmTrIds = collect($items)->pluck('traslado_id')->filter()->unique()->toArray();
-        $traslados = GpTrasladosReservas::whereIn('id', $itmTrIds)->get()->keyBy('id');
-        $groupsItems = $this->reservaBuilder->formPayloadReservationReceivedDetail($items, $movimientos, $traslados);
+        $movimientos    = $this->getMovimentsByGuiaId($guia->id, $guia->quotes); // me obtiene todos los movimientos de la guia tomando la cotizacion como clave
+        $itmTrIds       = collect($items)->pluck('traslado_id')->filter()->unique()->toArray();
+        $traslados      = GpTrasladosReservas::whereIn('id', $itmTrIds)->get()->keyBy('id');
+        $groupsItems    = $this->reservaBuilder->formPayloadReservationReceivedDetail($items, $movimientos, $traslados);
 
         foreach ($groupsItems as $quote => $group) {
-            $params = $this->reservaBuilder->buildReservationDeliveryNoteReceivedPayload($guia, $quote, $group['ws_items'], $group['transferencia'], $user);
-            $processed = $this->processReceivedReservationAndCreateAdjustment($guia, $params, $group['items'], $quote, $gpUser);
+            $params     = $this->reservaBuilder->buildReservationDeliveryNoteReceivedPayload($guia, $quote, $group['ws_items'], $group['transferencia'], $user);
+            $processed  = $this->processReceivedReservationAndCreateAdjustment($guia, $params, $group['items'], $quote, $gpUser);
         }
         if (!$processed) {
             throw new \Exception('No se pudo procesar la guia de reserva');

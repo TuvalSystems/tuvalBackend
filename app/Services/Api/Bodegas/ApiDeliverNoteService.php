@@ -41,7 +41,7 @@ class ApiDeliverNoteService extends ApiGpService
     }
 
 
-     public function createReservationGuideAjustment(array $params)
+    public function createReservationGuideAjustment(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_MOVIMIENTO_GENERAR, 'POST', $params, 'json');
     }
@@ -85,4 +85,17 @@ class ApiDeliverNoteService extends ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_RECIBIR_ITEMS, 'POST', $params, 'json');
     }
 
+    /**
+     * proceso de recbir guia de transferencia de venta
+     *
+     */
+    public function createReceiveGuideSalesTransfered(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_TRFV_RECIBIR_ITEMS, 'POST', $params, 'json');
+    }
+
+    public function checkReceivedGuideSalesTransfered(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_TRFV_RECIBIDO_CHECK_AJUSTE, 'POST', $params, 'json');
+    }
 }

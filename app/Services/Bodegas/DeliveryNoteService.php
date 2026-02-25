@@ -203,9 +203,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
             //items para webservice
             $grupos[$pedido]['ws_items'][] = [
-                'item' => $det->GUI_REM_CODI_INTERNO,
-                'compartimiento' => '',
-                'cantidad' => $det->GUI_REM_CANTIDAD,
+                'item'          => $det->GUI_REM_CODI_INTERNO,
+                'compartimento' => '',
+                'cantidad'      => $det->GUI_REM_CANTIDAD,
             ];
         }
         return $grupos;
@@ -352,7 +352,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             $groups[$doc]['items'][] = $item;
             $groups[$doc]['ws_items'][] = [
                 'item' => $item->GUI_REM_CODI_INTERNO,
-                'compartimiento' => '',
+                'compartimento' => '',
                 'cantidad' => $item->GUI_REM_CANTIDAD,
             ];
         }
@@ -443,9 +443,9 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
             //items para webservice
             $grupos[$documento]['ws_items'][] = [
-                'item' => $det->GUI_REM_CODI_INTERNO,
-                'compartimiento' => '',
-                'cantidad' => $det->GUI_REM_CANTIDAD,
+                'item'          => $det->GUI_REM_CODI_INTERNO,
+                'compartimento' => '',
+                'cantidad'      => $det->GUI_REM_CANTIDAD,
             ];
         }
         return $grupos;

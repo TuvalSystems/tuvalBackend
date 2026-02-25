@@ -288,7 +288,14 @@ class AprobacionesController extends Controller
         $data = $request->all();
         $user = $request->user();
 
-        if (GpCotizacion::where('id', $data['id'])->update(['aprobado_comercial' => 'yes', 'aprobador_comercial_id' => $user->id, 'estado' => 'rechazado'])) {
+        if (GpCotizacion::where('id', $data['id'])->update(
+            [
+                'aprobado_comercial'    => 'no',
+                'user_rechazo_id'       => $user->id,
+                'estado'                => 'rechazado',
+                'fe_rechazo'            => now()->format('Y-m-d H:i:s'),
+            ]
+        )) {
             return response([
                 'success' => true,
                 'message' => 'Cotización ' . $data['cotizacion'] . ' rechazada'

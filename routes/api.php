@@ -356,8 +356,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         //creacion de guia de remision de transferencia de venta
         Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
-
         Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
+        Route::post('transferencia-venta/guia-remision/recibir-guia-transferencia-venta', [GuiasderemisionController::class, 'recibirGuiaRemisionVenta']);
 
         //creacion de guia de reposicion
         Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasderemisionController::class, 'crearGuiaRemisionReposicion']);

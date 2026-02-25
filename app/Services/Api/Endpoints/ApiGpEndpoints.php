@@ -88,12 +88,16 @@ class ApiGpEndpoints
     public const GUIA_DESPACHO_MOVIMIENTO_GENERAR = 'api/inventario/guardar-generar-movimiento-despacho';
     public const GUIA_RESERVA_MOVIMIENTO_GENERAR = 'api/inventario/reservas/guardar-generar-movimiento/transferencia';
     public const GUIA_RESERVA_RECIBIR_ITEMS = 'api/inventario/reservas/guardar-generar-movimiento/recibir';
+
+    public const GUIA_TRFV_RECIBIR_ITEMS = 'api/inventario/transferencia-ventas/recibir/guardar-generar-movimiento';
+
     // Validaciones
     public const GUIA_DESPACHO_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-despacho';
     public const GUIA_TRANSFERENCIA_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-transferencia';
     public const GUIA_REPOSICION_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-reposicion';
     public const GUIA_RESERVA_CHECK_AJUSTE = 'api/inventario/reservas/validar-existencia-guia';
     public const GUIA_RESERVA_RECIBIDO_CHECK_AJUSTE = 'api/inventario/reservas/validar-existencia-ajuste-recibir';
+    public const GUIA_TRFV_RECIBIDO_CHECK_AJUSTE = 'api/inventario/transferencia-ventas/validar-existencia-ajuste-recibir';
 
     // ---
     // 🔔 8. Endpoints de Reservas y Notificaciones

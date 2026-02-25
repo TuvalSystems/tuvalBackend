@@ -824,6 +824,27 @@ class GuiasderemisionController extends Controller
         }
     }
 
+    /** generar (recibir guias de transferencia de venta) ingreso de guia de transferencia de venta */
+    public function recibirGuiaRemisionVenta(Request $request): JsonResponse
+    {
+        try {
+            $payload    = $request->all();
+            $user       = $request->user();
+            $response   = $this->salesTransfer->receiveDeliveryNoteSalesTransfer($payload, $user);
+            return $this->buildSuccessResponse($response, 200);
+        } catch (RuntimeException $r) {
+            return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (\Throwable $e) {
+            Log::channel('guia_ventas')->error('Error en la funcion recibirGuiaRemisionVenta -GuiasderemisionController: ', [
+                'message'   => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+                'linea'     => $e->getLine(),
+                'file'      => $e->getFile()
+            ]);
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
+    }
+
     /**
      * PROCESO DE CREACION DE GUIA DE REPOSICION
      */

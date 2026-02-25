@@ -5,6 +5,9 @@ namespace App\Services\Builders\Bodega;
 use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\GpIngreso;
+use App\Models\GpIngresosDetalle;
+use App\Models\GpUsuario;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use Carbon\Carbon;
 
@@ -46,5 +49,70 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
             'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'           => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATE)->format('Y-m-d H:i:s'),
         ]);
         return $gr;
+    }
+
+
+
+
+
+
+
+    public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, string $movimiento, array $items, string $user): array
+    {
+        $header = [
+            'idCompany'         => config('services.api_gp.company'),
+            'pedido'            => $documento,
+            'bodegaOrigen'      => $guia->bodega_origen,
+            'bodegaDestino'     => $guia->bodega_destino,
+            'observacion'       => preg_replace('/\s+/', ' ', $guia->GUI_REM_OBSERVACION),
+            'usuario'           => $user,
+            'numTranferencia'   => $movimiento,
+            'idGuiaRemision'    => $guia->id,
+            'guiaRemision'      => $guia->GUI_REM_GUIA_REMISION
+        ];
+        return [
+            'cabecera'          => $header,
+            'detalle'           => $items
+        ];
+    }
+
+
+
+    public function buildDeliveryNoteValidateReceivedSalesTransfer(array $params, string $tipo): array
+    {
+        return [
+            'orderNumber'       => data_get($params, 'pedido'),
+            'origen'            => data_get($params, 'bodegaOrigen'),
+            'destino'           => data_get($params, 'bodegaDestino'),
+            'idGuiaRemision'    => data_get($params, 'idGuiaRemision'),
+            'guiaRemision'      => data_get($params, 'guiaRemision'),
+            'tipo'              => $tipo,
+        ];
+    }
+
+
+
+    public function createRegisterHistoryHeader(GpGuiaRemision $guia, GpUsuario $user, $document, string $type): GpIngreso
+    {
+        $ing = new GpIngreso();
+        $ing->fill([
+            'user_id'               => $user->id,
+            'USERID'                => $user->USERID,
+            'tipo'                  => $type,
+            'documento'             => $document,
+            'GUI_REM_GUIA_REMISION' => $guia->GUI_REM_GUIA_REMISION,
+        ]);
+        return $ing;
+    }
+
+    public function ceateRegisterHistoryDetail($item, $ing): GpIngresosDetalle
+    {
+        $d = new GpIngresosDetalle();
+        $d->fill([
+            'ingreso_id'    => $ing->id,
+            'ART_CODIGO'    => data_get($item, 'GUI_REM_CODI_INTERNO'),
+            'ingresado'     => data_get($item, 'recibido'),
+        ]);
+        return $d;
     }
 }

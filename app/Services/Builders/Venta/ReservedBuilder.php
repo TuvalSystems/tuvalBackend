@@ -142,7 +142,7 @@ class ReservedBuilder implements ReservedBuilderInterface
             $groups[$cot]['transferencia']  = $mov?->codigo ?? '';
             $groups[$cot]['ws_items'][] = [
                 'item'                      => Arr::get($itm, 'art_code', ''),
-                'compartimiento'            => Arr::get($itm, 'compartimiento', ''),
+                'compartimento'             => Arr::get($itm, 'compartimiento', ''),
                 'cantidad'                  => (float) ($itm['recibir'] ?? 0)
             ];
         }

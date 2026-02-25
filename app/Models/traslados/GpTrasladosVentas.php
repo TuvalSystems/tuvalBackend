@@ -2,9 +2,11 @@
 
 namespace App\Models\traslados;
 
+use App\Models\GpPedido;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * App\Models\traslados\GpTrasladosVentas
@@ -80,5 +82,11 @@ class GpTrasladosVentas extends Model
     protected function serializeDate(DateTimeInterface $date): string
     {
         return $date->format('Y-m-d H:i');
+    }
+
+
+    public function pedido(): BelongsTo
+    {
+        return $this->belongsTo(GpPedido::class, 'pedido_id');
     }
 }

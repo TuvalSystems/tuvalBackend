@@ -3,9 +3,20 @@
 namespace App\Services\Builders\Bodega\Contracts;
 
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\GpIngreso;
+use App\Models\GpIngresosDetalle;
+use App\Models\GpUsuario;
 
 interface DeliveryNoteSalesTransferBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
     public function buildDeliveryNoteSalesTransferHeader($payload, $infoGuia): GpGuiaRemision;
+
+    public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, string $movimiento, array $items, string $user): array;
+
+
+    public function buildDeliveryNoteValidateReceivedSalesTransfer(array $params, string $tipo): array;
+
+    public function createRegisterHistoryHeader(GpGuiaRemision $guia, GpUsuario $user, $document, string $type): GpIngreso;
+    public function ceateRegisterHistoryDetail($item, $ing): GpIngresosDetalle;
 }
