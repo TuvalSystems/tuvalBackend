@@ -192,6 +192,19 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                         }
                     }
                 }
+
+                /** validacion del precio total del proveedor <= precio de $300 */
+                $providersDetail = data_get($detalle, 'proveedores', []);
+                // $ids = collect($providersDetail)->pluck('id')->filter();
+                // $proveedoresOrigen = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+                foreach ($providersDetail as $provider) {
+                    $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
+                    if ($valorProvider < 300) {
+                        $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                            "El valor total del proveedor ({$valorProvider}) está por debajo del límite permitido de $300."
+                        );
+                    }
+                }
             }
         }
 
