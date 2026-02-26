@@ -205,7 +205,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 $disponible = max(0, $dbItem->ART_CANTIDAD - $actual);
 
                 if (($actual + $seleccionado) > $dbItem->ART_CANTIDAD) {
-                    return "El ítem {$dbItem->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}). Por favor, refresca la pantalla.";
+                    return "El ítem {$dbItem->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Esta orden de despacho ya ha sido despachada por completo, por favor refresque su ventana.";
                 }
             }
         }
