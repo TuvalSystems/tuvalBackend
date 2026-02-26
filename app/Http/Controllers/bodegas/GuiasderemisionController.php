@@ -37,12 +37,12 @@ use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
-use App\Traits\ExecuteApiTransacctions;
+use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 
 class GuiasderemisionController extends Controller
 {
-    use JsonResponseTrait, ExecuteApiTransacctions;
+    use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
         protected readonly DeliveryNoteServiceInterface $deliveryNoteService,
         protected readonly InvoiceServiceInterface $invoiceService,

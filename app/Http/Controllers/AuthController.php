@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\GpUsuario;
-use App\Models\Notificaciones;
 use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
