@@ -37,6 +37,12 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     public function createDeliveryNoteFromDispatch($payload, GpUsuario $user)
     {
+        $items          = data_get($payload, 'items', []);
+        $error = $this->validateQtyDetails($items);
+        if ($error) {
+            abort(409, $error);
+        }
+
         $tipo           = DeliveryNoteType::DESPACHO->value;
         $ptoEmision     = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $pedido         = data_get($payload, 'orden.pedido', []);
@@ -46,7 +52,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin(data_get($payload, 'orden.BOD_BODEGA'));
         $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo);
         $numGuide       = $this->common->formatGuideNumber(data_get($payload, 'orden.PTO_VTA_ID'), $ptoEmision, $secuencial);
-        $items          = data_get($payload, 'items', []);
+
 
         $infoGuia = [
             'tipo'              => $tipo,
@@ -76,7 +82,6 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             //proceso de creacion de guia de remision web
             $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
             $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
-            $this->updateDetailOrder($items);
             return $guia;
         });
         //despues de que se completara la guia procede a enviarse a gp para que este proceso no entre en el
@@ -85,6 +90,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         if ($this->common->isGUideBlockedForOrder($guia)) {
             $this->common->createTemporaryDeliveryNoteBlocksOrder($guia, $user);
         }
+        $this->updateDetailOrder($items);
         event(new DispatchPendings('refresh')); //evento para la actualizadon de dashboard de items serv pendientes y ordenes de despachos
         return $guia->refresh();
     }
@@ -181,5 +187,28 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             $detail[] = $this->builder->buildDeliveryNoteDetailToGp($guide, $value, $key + 1);
         }
         return $detail;
+    }
+
+    protected function validateQtyDetails(array $items): ?string
+    {
+        $ids = collect($items)->pluck('id');
+        $detalles = GpPedidoDetalle::whereIn('id', $ids)
+            ->get(['id', 'reservado', 'trasladado', 'ART_CANTIDAD'])
+            ->keyBy('id');
+
+        foreach ($items as $itm) {
+            $id = data_get($itm, 'id');
+            $seleccionado = (float) data_get($itm, 'seleccionado', 0);
+            $dbItem = $detalles->get($id);
+            if ($dbItem) {
+                $actual = (float)$dbItem->reservado + (float)$dbItem->trasladado;
+                $disponible = max(0, $dbItem->ART_CANTIDAD - $actual);
+
+                if (($actual + $seleccionado) > $dbItem->ART_CANTIDAD) {
+                    return "El ítem {$dbItem->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible})";
+                }
+            }
+        }
+        return null;
     }
 }
