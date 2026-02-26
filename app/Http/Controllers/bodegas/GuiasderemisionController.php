@@ -784,8 +784,8 @@ class GuiasderemisionController extends Controller
     public function crearGuiaRemisionDespacho(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
-            $payload = $request->all();
-            $response = $this->dispatch->createDeliveryNoteFromDispatch($payload, $request->user());
+            $payload    = $request->all();
+            $response   = $this->dispatch->createDeliveryNoteFromDispatch($payload, $request->user());
             return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
         }, 'despachos', 'crearGuiaRemisionDespacho -GuiasderemisionController');
     }
@@ -825,7 +825,7 @@ class GuiasderemisionController extends Controller
         return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
-            $response  = $this->replenishment->createDeliveryNoteReplenishmentTransfer($payload, $user);
+            $response   = $this->replenishment->createDeliveryNoteReplenishmentTransfer($payload, $user);
             return $this->successResponse('Guia de Reposicion creada exitosamente', $response, 200);
         }, 'guia_ventas', 'crearGuiaRemisionReposicion -GuiasderemisionController');
     }
@@ -835,7 +835,7 @@ class GuiasderemisionController extends Controller
         return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
-            $response   = 'text';
+            $response   = $this->replenishment->receiveDeliveryNoteReplenishmentTransfer($payload, $user);
             return $this->buildSuccessResponse($response, 200);
         }, 'guia_ventas', 'recibirGuiaRemisionReposicion');
     }

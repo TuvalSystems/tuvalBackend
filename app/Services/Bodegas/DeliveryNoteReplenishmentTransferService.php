@@ -218,4 +218,12 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
             return null;
         }
     }
+
+
+
+    /** proceso de recibir una guia de reposicion */
+
+    public function receiveDeliveryNoteReplenishmentTransfer(array $payload, GpUsuario $user){
+        
+    }
 }
