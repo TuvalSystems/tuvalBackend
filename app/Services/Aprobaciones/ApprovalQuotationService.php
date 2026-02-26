@@ -182,7 +182,6 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
             if ($valorOriginalL > $valor) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");
-
             }
 
             $porcentajeMargen = $this->approvalFuntions->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
@@ -193,6 +192,29 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             foreach ($detalle['proveedores'] as $proveedor) {
                 if ((float)$proveedor['MARGEN'] < (float)$margenConfigurado) {
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+                }
+            }
+
+            /** validacion del precio total del proveedor <= precio de $300 */
+            $providersDetail = data_get($detalle, 'proveedores', []);
+            $ids = collect($providersDetail)->pluck('id')->filter();
+            $proveedoresOrigen = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+            foreach ($providersDetail as $provider) {
+                $hasId = data_get($provider, 'id');
+                $valorNuevo = round(data_get($provider, 'TOTAL', 0), 4);
+                if ($valorNuevo >= 300) {
+                    continue;
+                }
+                $providerBD = $proveedoresOrigen->get($hasId);
+                $valorOriginal = round(data_get($providerBD, 'TOTAL', 0), 4);
+
+                if ($valorNuevo < 300) {
+                    $mensaje = "Aprobación requerida: El total del proveedor ha bajado a $" . number_format($valorNuevo, 2);
+                    if ($valorOriginal >= 300) {
+                        $mensaje .= " (Anteriormente era $" . number_format($valorOriginal, 2) . ")";
+                    }
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse($mensaje);
+                    continue;
                 }
             }
         }
