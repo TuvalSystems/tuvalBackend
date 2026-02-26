@@ -78,11 +78,17 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 $existing->touch();
                 return $existing;
             }
-
-            //proceso de creacion de guia de remision web
-            $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
-            $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
-            return $guia;
+            try {
+                //proceso de creacion de guia de remision web
+                $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
+                $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
+                return $guia;
+            } catch (\Throwable $e) {
+                if ($e->errorInfo[1] == 1062) {
+                    abort(409, 'El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
+                }
+                throw $e;
+            }
         });
         //despues de que se completara la guia procede a enviarse a gp para que este proceso no entre en el
         //flujo de la transaccion de mysql
