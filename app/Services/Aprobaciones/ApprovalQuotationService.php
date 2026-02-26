@@ -200,21 +200,11 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             $ids = collect($providersDetail)->pluck('id')->filter();
             $proveedoresOrigen = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
             foreach ($providersDetail as $provider) {
-                $hasId = data_get($provider, 'id');
-                $valorNuevo = round(data_get($provider, 'TOTAL', 0), 4);
-                if ($valorNuevo >= 300) {
-                    continue;
-                }
-                $providerBD = $proveedoresOrigen->get($hasId);
-                $valorOriginal = round(data_get($providerBD, 'TOTAL', 0), 4);
-
-                if ($valorNuevo < 300) {
-                    $mensaje = "Aprobación requerida: El total del proveedor ha bajado a $" . number_format($valorNuevo, 2);
-                    if ($valorOriginal >= 300) {
-                        $mensaje .= " (Anteriormente era $" . number_format($valorOriginal, 2) . ")";
-                    }
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse($mensaje);
-                    continue;
+                $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
+                if ($valorProvider < 300) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                        "El valor total del proveedor ({$valorProvider}) está por debajo del límite permitido de $300."
+                    );
                 }
             }
         }
