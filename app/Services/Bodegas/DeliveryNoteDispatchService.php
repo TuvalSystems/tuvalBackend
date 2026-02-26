@@ -153,7 +153,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     protected function sendDeliveryNoteDispatchToGp($guide)
     {
         $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
-        $validate = $this->validateExistenceDeliveryNoteDisptach($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
+        $validate = $this->validateExistenceDeliveryNoteDispatch($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
         $status = data_get($validate, 'success', false);
         if ($status) {
             $this->common->assigmentAccessCodeToGuidePending($guide);
@@ -164,7 +164,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         return $guide->refresh();
     }
 
-    protected function validateExistenceDeliveryNoteDisptach($numGuide)
+    protected function validateExistenceDeliveryNoteDispatch($numGuide)
     {
         return  $this->api->checkExistenceDeliveryNote([
             'numDoc' => $numGuide
@@ -176,7 +176,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $response  = $this->api->createDeliveryNote([
             'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide),
             'destinatario'  => $this->builder->buildDeliveryNoteDestinationToGp($guide),
-            'detalle'       => $this->prepateDetailReservation($guide, $detalle)
+            'detalle'       => $this->prepareDetailReservation($guide, $detalle)
         ]);
         $success = data_get($response, 'success', false);
         if (!$success) {
@@ -186,7 +186,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function prepateDetailReservation($guide, $items): array
+    protected function prepareDetailReservation($guide, $items): array
     {
         $detail = [];
         foreach ($items as $key => $value) {
