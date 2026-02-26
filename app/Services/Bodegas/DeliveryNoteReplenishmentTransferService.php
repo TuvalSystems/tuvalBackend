@@ -32,6 +32,13 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
 
     public function createDeliveryNoteReplenishmentTransfer(array $payload, GpUsuario $user)
     {
+        $items              = data_get($payload, 'items', []);
+        $error = $this->validateQtyReplenishmentTransfer($items);
+        if ($error) {
+            abort(409, $error);
+        }
+
+
         $tipo               = DeliveryNoteType::REPOSICION->value;
         $ptoEmision         = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $primerItem         = data_get($payload, 'items.0', []);
@@ -46,7 +53,6 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
         $secuencial         = $this->common->getNextGuideSequential($ptoOrigen, $ptoEmision);
         $numGuide           = $this->common->formatGuideNumber($ptoOrigen, $ptoEmision, $secuencial);
         $idemKey            = $this->makeIdempotencyKeyReplenishmentTransfer($payload,  $tipo, $primerItem,  $ptoOrigen, $ptoDestino, $secuencial, $numGuide);
-        $items              = data_get($payload, 'items', []);
 
         $infoGuia = [
             'tipo'              => $tipo,
@@ -77,10 +83,17 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
                 $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
                 return $existing->refresh();
             }
-            $guia = $this->saveHeaderDeliveryNoteReplenishmentTransferWeb($payload, $infoGuia);
-            $this->saveDetailDeliveryNoteReplenishmentTransferWeb($guia->id, $items);
-            $this->updateTransferReposition($items);
-            return $guia;
+            try {
+                $guia = $this->saveHeaderDeliveryNoteReplenishmentTransferWeb($payload, $infoGuia);
+                $this->saveDetailDeliveryNoteReplenishmentTransferWeb($guia->id, $items);
+                $this->updateTransferReposition($items);
+                return $guia;
+            } catch (\Throwable $e) {
+                if ($e->errorInfo[1] == 1062) {
+                    abort(409, 'El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
+                }
+                throw $e;
+            }
         });
         $this->sendDeliveryNoteSalesTransferToGp($guia);
         return $guia->refresh();
@@ -174,10 +187,35 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
     }
 
 
-    protected function updateTransferReposition($items){
+    protected function updateTransferReposition($items)
+    {
         foreach ($items as $item) {
             GpTrasladosReposicion::where('id', data_get($item, 'id'))
-               ->increment('reservado', (float) data_get($item, 'seleccionado', 0));
+                ->increment('reservado', (float) data_get($item, 'seleccionado', 0));
+        }
+    }
+
+
+    protected function validateQtyReplenishmentTransfer(array $items)
+    {
+        $ids = collect($items)->pluck('id');
+        $repositions  = GpTrasladosReposicion::whereIn('id', $ids)
+            ->get(['id', 'cantidad', 'reservado', 'trasladado'])
+            ->keyBy('id');
+
+        foreach ($items as $itm) {
+            $id = data_get($itm, 'id');
+            $seleccionado = (float) data_get($itm, 'seleccionado', 0);
+            $dbReposition = $repositions->get($id);
+
+            if ($dbReposition) {
+                $actual = (float)$dbReposition->reservado + (float)$dbReposition->trasladado;
+                $disponible = max(0, $dbReposition->cantidad - $actual);
+                if (($actual + $seleccionado) > $dbReposition->ART_CANTIDAD) {
+                    return "El ítem {$dbReposition->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
+                }
+            }
+            return null;
         }
     }
 }

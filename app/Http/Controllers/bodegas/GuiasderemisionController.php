@@ -870,8 +870,12 @@ class GuiasderemisionController extends Controller
             return $this->successResponse('Guia de Reposicion creada exitosamente', $response, 200);
         } catch (RuntimeException $r) {
             return $this->buildErrorResponse($r->getMessage(), 409);
+        } catch (ValidationException $ve) {
+            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
+        } catch (HttpException $he) {
+            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
         } catch (\Throwable $e) {
-            Log::channel('guia_ventas')->error('Error en la funcion crearGuiaRemisionVenta -GuiasderemisionController: ', [
+            Log::channel('guia_ventas')->error('Error en la funcion crearGuiaRemisionReposicion -GuiasderemisionController: ', [
                 'message'   => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
                 'linea'     => $e->getLine(),
