@@ -830,5 +830,13 @@ class GuiasderemisionController extends Controller
         }, 'guia_ventas', 'crearGuiaRemisionReposicion -GuiasderemisionController');
     }
 
-    public function recibirGuiaRemisionReposicion(Request $request) {}
+    public function recibirGuiaRemisionReposicion(Request $request)
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $payload    = $request->all();
+            $user       = $request->user();
+            $response   = 'text';
+            return $this->buildSuccessResponse($response, 200);
+        }, 'guia_ventas', 'recibirGuiaRemisionReposicion');
+    }
 }
