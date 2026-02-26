@@ -37,11 +37,12 @@ use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use App\Traits\ExecuteApiTransacctions;
 use Illuminate\Http\JsonResponse;
 
 class GuiasderemisionController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransacctions;
     public function __construct(
         protected readonly DeliveryNoteServiceInterface $deliveryNoteService,
         protected readonly InvoiceServiceInterface $invoiceService,
@@ -782,25 +783,11 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionDespacho(Request $request): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload = $request->all();
             $response = $this->dispatch->createDeliveryNoteFromDispatch($payload, $request->user());
             return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409);
-        } catch (ValidationException $ve) {
-            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
-        } catch (HttpException $he) {
-            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
-        } catch (\Throwable $e) {
-            Log::channel('despachos')->error('Error en la funcion crearGuiaDespacho -GuiasderemisionController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'linea' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'despachos', 'crearGuiaRemisionDespacho -GuiasderemisionController');
     }
 
 
@@ -810,51 +797,23 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionVenta(Request $request): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->salesTransfer->createDeliveryNoteSalesTransfer($payload, $user);
             return $this->successResponse('Guia de Transferencia de Venta creada exitosamente', $response, 200);
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409);
-        } catch (ValidationException $ve) {
-            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
-        } catch (HttpException $he) {
-            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
-        } catch (\Throwable $e) {
-            Log::channel('guia_ventas')->error('Error en la funcion crearGuiaRemisionVenta -GuiasderemisionController: ', [
-                'message'   => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
-                'linea'     => $e->getLine(),
-                'file'      => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'guia_ventas', 'crearGuiaRemisionVenta -GuiasderemisionController');
     }
 
     /** generar (recibir guias de transferencia de venta) ingreso de guia de transferencia de venta */
     public function recibirGuiaRemisionVenta(Request $request): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->salesTransfer->receiveDeliveryNoteSalesTransfer($payload, $user);
             return $this->buildSuccessResponse($response, 200);
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409);
-        } catch (ValidationException $ve) {
-            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
-        } catch (HttpException $he) {
-            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
-        } catch (\Throwable $e) {
-            Log::channel('guia_ventas')->error('Error en la funcion recibirGuiaRemisionVenta -GuiasderemisionController: ', [
-                'message'   => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
-                'linea'     => $e->getLine(),
-                'file'      => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'guia_ventas', 'recibirGuiaRemisionVenta -GuiasderemisionController');
     }
 
     /**
@@ -863,25 +822,13 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionReposicion(Request $request): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
             $response  = $this->replenishment->createDeliveryNoteReplenishmentTransfer($payload, $user);
             return $this->successResponse('Guia de Reposicion creada exitosamente', $response, 200);
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409);
-        } catch (ValidationException $ve) {
-            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
-        } catch (HttpException $he) {
-            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
-        } catch (\Throwable $e) {
-            Log::channel('guia_ventas')->error('Error en la funcion crearGuiaRemisionReposicion -GuiasderemisionController: ', [
-                'message'   => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
-                'linea'     => $e->getLine(),
-                'file'      => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'guia_ventas', 'crearGuiaRemisionReposicion -GuiasderemisionController');
     }
+
+    public function recibirGuiaRemisionReposicion(Request $request) {}
 }
