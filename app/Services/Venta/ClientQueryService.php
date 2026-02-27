@@ -151,8 +151,8 @@ class ClientQueryService implements ClientQueryServiceInterface
         $dir = explode("\n", $textoEnvuelto);
 
         $payloadGp = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
-        $data = $this->sendToGpNewAddress($payloadGp);
-        $identificador = strtoupper(data_get($data, 'identificador', ''));
+        $respInfo = $this->sendToGpNewAddress($payloadGp);
+        $identificador = strtoupper(data_get($respInfo, 'identificador', ''));
         return $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
     }
 
