@@ -236,6 +236,12 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
             throw new \RuntimeException('No se han recibido items para procesar la guia de transferencia de reposición');
         }
 
+        $limiteExcedido = $this->validatePendingForReceivedReplenishmentTransfer($itemsReceived->all());
+        if ($limiteExcedido) {
+            throw new \RuntimeException($limiteExcedido);
+        }
+
+
         $idsTraslados       = $itemsReceived->pluck('detalle_id')->all();
         $traslados          = GpTrasladosReposicion::whereIn('id', $idsTraslados)->get();
         $allDocuments       = $traslados->pluck('Documento')->filter()->unique()->values()->all();
@@ -343,5 +349,26 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
             $detail = $this->builder->ceateRegisterHistoryDetail($item, $ing);
             $detail->save();
         }
+    }
+
+    protected function validatePendingForReceivedReplenishmentTransfer(array $items): ?string
+    {
+        $ids = collect($items)->pluck('id');
+        $detalles =  GpGuiaRemisionDetalle::whereIn('id', $ids)->get(['id', 'GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD', 'recibido'])->keyBy('id');
+
+        foreach ($items as $itm) {
+            $id         = data_get($itm, 'id');
+            $recibido   = data_get($itm, 'recibido', 0);
+            $dbItem     = $detalles->get($id);
+            if ($dbItem) {
+                $actual         = (float)$dbItem->recibido;
+                $disponible     = max(0, $dbItem->GUI_REM_CANTIDAD - $actual);
+
+                if (($actual + $recibido) > $dbItem->GUI_REM_CANTIDAD) {
+                    return "El ítem {$dbItem->GUI_REM_CODI_INTERNO} excede el límite permitido. (Máximo disponible: {$disponible}).";
+                }
+            }
+        }
+        return null;
     }
 }
