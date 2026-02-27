@@ -94,9 +94,9 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             }
             $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia);
             $this->saveDetailDeliveryNoteSalesTransferWeb($guia->id, $items);
+            $this->updateOrderAndDetail($items);
             return $guia;
         });
-        $this->updateOrderAndDetail($items);
         $this->sendDeliveryNoteSalesTransferToGp($guia);
         return $guia->refresh();
     }
@@ -192,8 +192,11 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     protected function updateOrderAndDetail($items)
     {
         foreach ($items as $item) {
-            GpPedido::where('id', data_get($item, 'pedido_id'))->update(['transferencia_en_proceso' => 1]);
-            GpTrasladosVentas::where('id', data_get($item, 'id'))->increment('reservado', data_get($item, 'seleccionado', 0));
+            $pedidoId           = data_get($item, 'pedido_id');
+            $trasladoId         = data_get($item, 'id');
+            $cantSeleccionada   = (float) data_get($item, 'seleccionado', 0);
+            GpTrasladosVentas::where('id', $trasladoId)->increment('reservado', $cantSeleccionada);
+            GpPedido::where('id', $pedidoId)->update(['transferencia_en_proceso' => 1]);
         }
     }
 
