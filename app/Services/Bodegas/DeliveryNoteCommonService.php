@@ -2,8 +2,11 @@
 
 namespace App\Services\Bodegas;
 
+use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\EstablishmentGuideSequential;
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpBodega;
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
@@ -225,5 +228,40 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
     public function getPtoVtaByWarehouse($bodega): ?string
     {
         return GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_BODEGA', $bodega)->value('PTO_VTA_BOD_PUNTO_VENTA');
+    }
+
+
+    /**
+     *  funciones para utilizadas para recibir guias de remision de transferencia y reposicion
+     */
+    public function checkMovementExistsWeb(int $guiaId, string  $order, string $docGp): bool
+    {
+        return GpGuiaRemisionTransferencia::where('guia_remision_id', $guiaId)
+            ->where('pedido', $order)
+            ->where('codigo', trim((string) $docGp))
+            ->exists();
+    }
+
+    public function createMovementTransferSales($guia, $order, $docGp): GpGuiaRemisionTransferencia
+    {
+        $movement = new GpGuiaRemisionTransferencia();
+        $movement->fill([
+            'guia_remision_id'      => $guia->id,
+            'pedido'                => $order,
+            'codigo'                => trim((string) $docGp),
+        ]);
+        $movement->save();
+        return $movement;
+    }
+
+    public function validatePendingForReceivedSalesTransfer(GpGuiaRemision $guia): bool
+    {
+        $completa = !GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)
+            ->whereColumn('recibido', '<', 'GUI_REM_CANTIDAD')->exists();
+        if ($completa) {
+            $guia->estado = DeliveryNoteStatus::RECIBIDA->value;
+            $guia->save();
+        }
+        return $completa;
     }
 }

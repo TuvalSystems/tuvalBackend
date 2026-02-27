@@ -24,6 +24,7 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInte
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServiceInterface
 {
@@ -208,7 +209,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         $itemsReceived  = $detalles->filter(fn($item) => (float) data_get($item, 'recibido', 0) > 0);
 
         if ($itemsReceived->isEmpty()) {
-            abort(400, 'No se han recibido items para procesar la guia de transferencia de venta');
+            throw new \RuntimeException('No se han recibido items para procesar la guia de transferencia de venta');
         }
 
         $idsTraslados       = $itemsReceived->pluck('detalle_id')->all();
@@ -229,7 +230,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             );
             $this->processReceivedSalesTransfer($guia, $items, $params, $order, $user);
         }
-        $isCompleted = $this->validatePendingForReceivedSalesTransfer($guia);
+        $isCompleted = $this->common->validatePendingForReceivedSalesTransfer($guia);
         if ($isCompleted) {
             foreach ($allOrders as $numOrder) {
                 $pedido = GpPedido::with(['gpcliente', 'usuario'])
@@ -256,7 +257,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         } else {
             foreach ($allOrders as $numOrder) {
                 $pedido = GpPedido::with('usuario')->where('pedido', $numOrder)
-                ->where('estado', OrderStatus::TRASLADO)->first();
+                    ->where('estado', OrderStatus::TRASLADO)->first();
                 if ($pedido) {
                     $this->invoiceService->checkTrasladado($pedido);
                     if ($pedido->estado == OrderStatus::ESPERA) {
@@ -268,7 +269,6 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             }
             return 'Guía de remisión recibida parcialmente';
         }
-
     }
 
 
@@ -298,7 +298,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
     protected function processReceivedSalesTransfer(GpGuiaRemision $guia, array $items, array $params, string $order, GpUsuario $user)
     {
-        $resp = $this->api->createReceiveGuideSalesTransfered($params);
+        $resp       = $this->api->createReceiveGuideSalesTransfered($params);
         $success    = data_get($resp, 'success', false);
         $msg        = data_get($resp, 'message');
         $docGp      = trim(data_get($resp, 'data.docGp', ''));
@@ -308,39 +308,31 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             $pyValidate             = $this->builder->buildDeliveryNoteValidateReceivedSalesTransfer($cabecera, 'RTD');
             $respValidate           = $this->api->checkReceivedGuideSalesTransfered($pyValidate);
             $headerRespValidate     = data_get($respValidate, 'data');
-            $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
+            $docGpValidate          = trim(data_get($headerRespValidate, 'docGp', ''));
             if (!empty($headerRespValidate) && filled($docGpValidate)) {
                 // Usamos el documento que encontró la validación
                 $docGp  = $docGpValidate;
                 $data   = $headerRespValidate;
             } else {
                 // Si falló la creación y la validación tampoco trajo nada útil, lanzamos el error.
-                throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
+                throw new \RuntimeException($msg ?: 'Error creando el ajuste de guía en GP.');
             }
         } else {
             $data = data_get($resp, 'data', []);
         }
         if ($docGp === '') {
-            throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+            throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
         }
-        $already = $this->checkMovementExistsWeb($guia->id, $order, $docGp);
+        $already = $this->common->checkMovementExistsWeb($guia->id, $order, $docGp);
         DB::transaction(function () use ($guia, $items, $order, $docGp, $data, $user, $already) {
             if (!$already) {
                 $this->updateQtyTranferedItemsWeb($guia, $items);
                 $this->createRegisterHistorySalesTransfer($guia, $items, $user, $order);
-                $this->createMovementTransferSales($guia, $order, $docGp);
+                $this->common->createMovementTransferSales($guia, $order, $docGp);
             }
         });
     }
 
-
-    protected function checkMovementExistsWeb($guiaId, $order, $docGp)
-    {
-        return GpGuiaRemisionTransferencia::where('guia_remision_id', $guiaId)
-            ->where('pedido', $order)
-            ->where('codigo', trim((string) $docGp))
-            ->exists();
-    }
 
     protected function updateQtyTranferedItemsWeb(GpGuiaRemision $guia, $items)
     {
@@ -382,27 +374,4 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         }
     }
 
-    protected function createMovementTransferSales($guia, $order, $docGp): GpGuiaRemisionTransferencia
-    {
-        $movement = new GpGuiaRemisionTransferencia();
-        $movement->fill([
-            'guia_remision_id'      => $guia->id,
-            'pedido'                => $order,
-            'codigo'                => trim((string) $docGp),
-        ]);
-        $movement->save();
-        return $movement;
-    }
-
-
-    protected function validatePendingForReceivedSalesTransfer(GpGuiaRemision $guia): bool
-    {
-        $completa = !GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)
-            ->whereColumn('recibido', '<', 'GUI_REM_CANTIDAD')->exists();
-        if ($completa) {
-            $guia->estado = DeliveryNoteStatus::RECIBIDA->value;
-            $guia->save();
-        }
-        return $completa;
-    }
 }

@@ -361,9 +361,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         //creacion de guia de reposicion
         Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasderemisionController::class, 'crearGuiaRemisionReposicion']);
-
-
-        });
+        Route::post('reposiciones/guia-remision/recibir-guia-reposicion', [GuiasderemisionController::class, 'recibirGuiaRemisionReposicion']);
+    });
 
     Route::group(['prefix' => 'consultas'], function () {
         Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);

@@ -836,7 +836,8 @@ class GuiasderemisionController extends Controller
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->replenishment->receiveDeliveryNoteReplenishmentTransfer($payload, $user);
-            return $this->buildSuccessResponse($response, 200);
+            return $this->successResponse('Guia de Reposicion recibida exitosamente', $response, 200);
+            // return $this->buildSuccessResponse($response, 200);
         }, 'guia_ventas', 'recibirGuiaRemisionReposicion');
     }
 }

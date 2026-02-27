@@ -2,6 +2,8 @@
 
 namespace App\Services\Bodegas\Contracts;
 
+use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
 use Illuminate\Support\Collection;
 
@@ -27,5 +29,9 @@ interface DeliveryNoteCommonServiceInterface
     public function isGUideBlockedForOrder($guia): bool;
     public function createTemporaryDeliveryNoteBlocksOrder($guia, GpUsuario $user);
 
-     public function getPtoVtaByWarehouse($bodega): ?string;
+    public function getPtoVtaByWarehouse($bodega): ?string;
+    public function checkMovementExistsWeb(int $guiaId, string  $order, string $docGp): bool;
+    public function createMovementTransferSales($guia, $order, $docGp): GpGuiaRemisionTransferencia;
+
+    public function validatePendingForReceivedSalesTransfer(GpGuiaRemision $guia): bool;
 }

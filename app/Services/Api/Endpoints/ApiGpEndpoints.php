@@ -90,6 +90,7 @@ class ApiGpEndpoints
     public const GUIA_RESERVA_RECIBIR_ITEMS = 'api/inventario/reservas/guardar-generar-movimiento/recibir';
 
     public const GUIA_TRFV_RECIBIR_ITEMS = 'api/inventario/transferencia-ventas/recibir/guardar-generar-movimiento';
+    public const GUIA_REPOSICION_RECIBIR_ITEMS = 'api/inventario/reposiciones/recibir/guardar-generar-movimiento';
 
     // Validaciones
     public const GUIA_DESPACHO_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-despacho';

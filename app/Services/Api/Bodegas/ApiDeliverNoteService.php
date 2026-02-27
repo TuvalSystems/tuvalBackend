@@ -98,4 +98,11 @@ class ApiDeliverNoteService extends ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_TRFV_RECIBIDO_CHECK_AJUSTE, 'POST', $params, 'json');
     }
+
+
+
+    public function createReceiveGuideReplenishmentTransfered(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_REPOSICION_RECIBIR_ITEMS, 'POST', $params, 'json');
+    }
 }
