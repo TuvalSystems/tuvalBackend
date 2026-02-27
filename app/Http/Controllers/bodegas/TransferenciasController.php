@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
+
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\traslados\GpTrasladosVentas;
@@ -20,10 +20,11 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 
 class TransferenciasController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
 
     protected $transferService;
     public function __construct(TransferServiceInterface $transferServiceInterface)
@@ -72,12 +73,10 @@ class TransferenciasController extends Controller
 
     public function transferenciasVentas($id, $pedido = null, $compartimiento = null)
     {
-        try {
+        return $this->executeTransaction(function () use ($id, $pedido, $compartimiento) {
             $data = $this->transferService->fetchSalesTransfers($id, $pedido, $compartimiento);
             return $this->successResponse('Transferencias obtenidas', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'laravel', 'transferenciasVentas');
     }
 
 

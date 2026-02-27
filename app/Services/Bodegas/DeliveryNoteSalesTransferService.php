@@ -94,9 +94,9 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             }
             $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia);
             $this->saveDetailDeliveryNoteSalesTransferWeb($guia->id, $items);
-            $this->updateOrderAndDetail($items);
             return $guia;
         });
+        $this->updateOrderAndDetail($items);
         $this->sendDeliveryNoteSalesTransferToGp($guia);
         return $guia->refresh();
     }

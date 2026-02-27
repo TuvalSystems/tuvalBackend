@@ -49,14 +49,14 @@ class TransferService implements TransferServiceInterface
         }
 
         foreach ($trasladosVentas as $t) {
-            $reservado = (float) ($t->reservado ?? 0);
-            $trasladado = (float) ($t->trasladado ?? 0);
-            $cantidad = (float) $t->cantidad;
-            $pendiente = round($cantidad - $reservado - $trasladado, (int) ($t->ART_DECIMAL_CANTIDAD ?? 2));
-            $t->pendiente = $pendiente;
-            $t->fecha = Carbon::parse($t->fecha)->format('Y-m-d H:i');
-            $key = $t->ART_CODIGO . '@' . $bodega;
-            $t->compartimiento = $compMap[$key] ?? '';
+            $reservado          = (float) data_get($t, 'reservado', 0);
+            $trasladado         = (float) data_get($t, 'trasladado', 0);
+            $cantidad           = (float) data_get($t, 'cantidad', 0);
+            $pendiente          = round($cantidad - $reservado - $trasladado, (float) data_get($t, 'ART_DECIMAL_CANTIDAD'), 0);
+            $t->pendiente       = $pendiente;
+            $t->fecha           = Carbon::parse($t->fecha)->format('Y-m-d H:i');
+            $key                = $t->ART_CODIGO . '@' . $bodega;
+            $t->compartimiento  = $compMap[$key] ?? '';
             // Filtro por compartimiento (prefijo)
             if ($compartimiento !== null && $compartimiento !== 'null') {
                 if (!Str::startsWith($t->compartimiento, (string) $compartimiento)) {
@@ -71,20 +71,20 @@ class TransferService implements TransferServiceInterface
             $dest = $t->bodega_destino;
             if (!isset($bodegas[$dest])) {
                 $bodegas[$dest] = [
-                    'bodega' => $t->BOD_DESCRIPCION,
-                    'BOD_BODEGA' => $t->BOD_BODEGA,
-                    'generar' => false,
-                    'traslados' => [],
-                    'pedidos' => [],
-                    'compartimientos' => [],
-                    'tipo' => 'transferencia'
+                    'bodega'            => $t->BOD_DESCRIPCION,
+                    'BOD_BODEGA'        => $t->BOD_BODEGA,
+                    'generar'           => false,
+                    'traslados'         => [],
+                    'pedidos'           => [],
+                    'compartimientos'   => [],
+                    'tipo'              => 'transferencia'
                 ];
             }
 
-            $bodegas[$dest]['traslados'][] = $t;
-            $bodegas[$dest]['pedidos'][$t->pedido] = $t->pedido;
+            $bodegas[$dest]['traslados'][]                  = $t;
+            $bodegas[$dest]['pedidos'][$t->pedido]          = $t->pedido;
             if ($letra !== '') {
-                $bodegas[$dest]['compartimientos'][$letra] = $letra;
+                $bodegas[$dest]['compartimientos'][$letra]  = $letra;
             }
         }
         if (empty($bodegas)) {
@@ -93,13 +93,13 @@ class TransferService implements TransferServiceInterface
 
         // 5) Guías por bodega destino (una sola ida a BD por bodega)
         foreach ($bodegas as $destID => &$bod) {
-            $guias = $this->transferRepository->findGuidesToWarehouseDestinoAndOrigin($bodega, $destID);
-            $bod['guias'] = $guias->values()->all();
-            $bod['ultimaguia'] = $guias->first();
-            $bod['pedidos'] = array_values($bod['pedidos']);
+            $guias                  = $this->transferRepository->findGuidesToWarehouseDestinoAndOrigin($bodega, $destID);
+            $bod['guias']           = $guias->values()->all();
+            $bod['ultimaguia']      = $guias->first();
+            $bod['pedidos']         = array_values($bod['pedidos']);
             $bod['compartimientos'] = array_values($bod['compartimientos']);
-            $bod['peso_total'] = collect($bod['traslados'])->reduce(function ($carry, $t) {
-                $peso = (float) ($t->ART_PESO ?? 0);
+            $bod['peso_total']      = collect($bod['traslados'])->reduce(function ($carry, $t) {
+                $peso               = (float) ($t->ART_PESO ?? 0);
                 return $carry + ($peso * (float) $t->pendiente);
             }, 0.0);
         }
