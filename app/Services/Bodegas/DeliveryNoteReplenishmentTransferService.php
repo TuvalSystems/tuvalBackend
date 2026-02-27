@@ -37,7 +37,7 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
         $items              = data_get($payload, 'items', []);
         $error = $this->validateQtyReplenishmentTransfer($items);
         if ($error) {
-            abort(409, $error);
+            throw new \RuntimeException($error);
         }
 
 

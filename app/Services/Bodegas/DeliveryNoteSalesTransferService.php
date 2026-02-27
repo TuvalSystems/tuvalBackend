@@ -10,7 +10,6 @@ use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpCliente;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpUsuario;
@@ -24,7 +23,6 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInte
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServiceInterface
 {
@@ -45,6 +43,11 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
     public function createDeliveryNoteSalesTransfer(array $payload, GpUsuario $user)
     {
+        $items              = data_get($payload, 'items', []);
+        $limitQty           = $this->validateQtyTransferedItems($items);
+        if ($limitQty) {
+            throw new \RuntimeException($limitQty);
+        }
         $tipo               = DeliveryNoteType::TRANSFERENCIA->value;
         $ptoEmision         = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $primerItem         = data_get($payload, 'items.0', []);
@@ -59,7 +62,6 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         $secuencial         = $this->common->getNextGuideSequential($ptoOrigen, $ptoEmision);
         $numGuide           = $this->common->formatGuideNumber($ptoOrigen, $ptoEmision, $secuencial);
         $idemKey            = $this->makeIdempotencyKeySalesTransfer($payload,  $tipo, $primerItem,  $ptoOrigen, $ptoDestino, $secuencial, $numGuide);
-        $items              = data_get($payload, 'items', []);
 
         $infoGuia = [
             'tipo'              => $tipo,
@@ -195,6 +197,25 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         }
     }
 
+    protected function validateQtyTransferedItems($items): ?string
+    {
+        $ids          = collect($items)->pluck('id');
+        $transfers    = GpTrasladosVentas::whereIn('id', $ids)->get(['id', 'ART_CODIGO', 'ART_CANTIDAD', 'reservado', 'trasladado'])->keyBy('id');
+        foreach ($items as $itm) {
+            $id             = data_get($itm, 'id');
+            $seleccionado   = (float) data_get($itm, 'seleccionado', 0);
+            $dbTransfer     = $transfers->get($id);
+            if ($dbTransfer) {
+                $actual         = (float)$dbTransfer->reservado + (float)$dbTransfer->trasladado;
+                $disponible     = max(0, $dbTransfer->ART_CANTIDAD - $actual);
+                if (($actual + $seleccionado) > $dbTransfer->ART_CANTIDAD) {
+                    return "El ítem {$dbTransfer->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
+                }
+            }
+        }
+        return null;
+    }
+
 
 
     /***
@@ -210,6 +231,10 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
         if ($itemsReceived->isEmpty()) {
             throw new \RuntimeException('No se han recibido items para procesar la guia de transferencia de venta');
+        }
+        $limiteExcedido = $this->validatePendingForReceivedSalesTransfer($itemsReceived->all());
+        if ($limiteExcedido) {
+            throw new \RuntimeException($limiteExcedido);
         }
 
         $idsTraslados       = $itemsReceived->pluck('detalle_id')->all();
@@ -374,4 +399,26 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         }
     }
 
+
+    protected function validatePendingForReceivedSalesTransfer($items): ?string
+    {
+        $ids        = collect($items)->pluck('id');
+        $detalles   = GpGuiaRemisionDetalle::whereIn('id', $ids)->get(
+            ['id', 'GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD', 'recibido']
+        )->keyBy('id');
+        foreach ($items as $itm) {
+            $id         = data_get($itm, 'id');
+            $recibido   = data_get($itm, 'recibido', 0);
+            $dbItem     = $detalles->get($id);
+            if ($dbItem) {
+                $actual         = (float)$dbItem->recibido;
+                $disponible     = max(0, $dbItem->GUI_REM_CANTIDAD - $actual);
+
+                if (($actual + $recibido) > $dbItem->GUI_REM_CANTIDAD) {
+                    return "El ítem {$dbItem->GUI_REM_CODI_INTERNO} excede el límite permitido. (Máximo disponible: {$disponible}).";
+                }
+            }
+        }
+        return null;
+    }
 }
