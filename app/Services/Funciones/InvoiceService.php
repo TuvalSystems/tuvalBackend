@@ -164,6 +164,9 @@ class InvoiceService implements InvoiceServiceInterface
             'cantidad'                  => $detalle->seleccionado,
             'bodega_origen'             => $detalle->STO_ART_BODEGA,
             'bodega_destino'            => $pedido->BOD_BODEGA,
+            'reservado'                 => 0,
+            'trasladado'                => 0,
+            'completado'                => 0
         ];
     }
 
