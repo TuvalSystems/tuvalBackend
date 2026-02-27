@@ -94,6 +94,11 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             }
             $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia);
             $this->saveDetailDeliveryNoteSalesTransferWeb($guia->id, $items);
+
+            // espera de 5 segundos para recargar la pagina manulamente
+            sleep(5);
+    
+
             $this->updateOrderAndDetail($items);
             return $guia;
         });
