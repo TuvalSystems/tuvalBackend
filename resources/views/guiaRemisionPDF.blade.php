@@ -300,6 +300,7 @@
             <table class="table table-striped tablacarrito">
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Código</th>
                         <th>Cód.Let.Itm.</th>
                         <th class="text-right">Cant.</th>
@@ -310,6 +311,7 @@
                 <tbody>
                     @foreach ($detalle as $key => $value)
                     <tr>
+                        <td> {{ $key + 1 }}</td>
                         <td class="nowrap">
                             {{$value->GUI_REM_CODI_INTERNO}}
                         </td>
