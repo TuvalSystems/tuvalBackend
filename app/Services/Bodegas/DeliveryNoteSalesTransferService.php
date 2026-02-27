@@ -200,15 +200,15 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     protected function validateQtyTransferedItems($items): ?string
     {
         $ids          = collect($items)->pluck('id');
-        $transfers    = GpTrasladosVentas::whereIn('id', $ids)->get(['id', 'ART_CODIGO', 'ART_CANTIDAD', 'reservado', 'trasladado'])->keyBy('id');
+        $transfers    = GpTrasladosVentas::whereIn('id', $ids)->get(['id', 'ART_CODIGO', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
         foreach ($items as $itm) {
             $id             = data_get($itm, 'id');
             $seleccionado   = (float) data_get($itm, 'seleccionado', 0);
             $dbTransfer     = $transfers->get($id);
             if ($dbTransfer) {
                 $actual         = (float)$dbTransfer->reservado + (float)$dbTransfer->trasladado;
-                $disponible     = max(0, $dbTransfer->ART_CANTIDAD - $actual);
-                if (($actual + $seleccionado) > $dbTransfer->ART_CANTIDAD) {
+                $disponible     = max(0, $dbTransfer->cantidad - $actual);
+                if (($actual + $seleccionado) > $dbTransfer->cantidad) {
                     return "El ítem {$dbTransfer->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
                 }
             }
