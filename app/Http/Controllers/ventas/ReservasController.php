@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Reservas\ValidateCancelReservationRequest;
 use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ReservasController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
         protected readonly InventoryReservationServiceInterface $reserveService,
         protected readonly ApprovalReservationServiceInterface $aprovalReservation
