@@ -4,24 +4,18 @@ namespace App\Http\Controllers\bodegas;
 
 use RuntimeException;
 use App\Models\GpPedido;
-use App\Models\GpCliente;
-use App\Models\GpUsuario;
 use App\Models\GpPuntoVenta;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\GpOrdenDespacho;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpPedidoDetalle;
-use App\Enums\Ventas\OrderStatus;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
-use App\Models\GpPedidoDetalleStock;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Notifications\User\UserNotification;
-use App\Http\Controllers\WebserviceController;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use Illuminate\Validation\ValidationException;
 use App\Models\despachos\GpGuiaRemisionDetalle;
@@ -257,294 +251,6 @@ class GuiasderemisionController extends Controller
             );
         }
     }
-
-
-
-    public function recibirguia(Request $request)
-    {
-        $data = $request->all();
-        $user = $request->user();
-        if ($data['tipo'] == 'transferencia') {
-            return $this->recibirguiatransferencia($data, $user);
-        }
-        if ($data['tipo'] == 'reposicion') {
-            return $this->recibirguiareposicion($data,  $user);
-        }
-        return;
-    }
-
-    public function recibirguiareposicion($data, GpUsuario $user): Response|Application|ResponseFactory
-    {
-        // ini_set('max_execution_time', -1);
-        set_time_limit(-1);
-        ini_set('memory_limit', '-1');
-
-        $documentos = array();
-
-        foreach ($data['detalle'] as $item) {
-            if ($item['recibido'] > 0) {
-                $traslado = GpTrasladosReposicion::where('id', $item['detalle_id'])
-                    ->first();
-                $item['traslado'] = $traslado;
-
-                $transferencia = GpGuiaRemisionTransferencia::where('pedido', $traslado->Documento)
-                    ->where('guia_remision_id', $data['id'])
-                    ->first();
-
-                $documentos[$traslado->Documento]['Documento'] = $traslado->Documento;
-                $documentos[$traslado->Documento]['transferencia'] = $transferencia->codigo;
-                $documentos[$traslado->Documento]['items'][] = $item;
-            }
-        }
-
-        $documentos = array_values($documentos);
-        $webservices = new WebserviceController();
-
-        foreach ($documentos as $transferencia) {
-            $item_arr = array();
-            foreach ($transferencia['items'] as $key => $item) {
-                if ($item['recibido'] > 0) {
-                    $item_arr[$key]['Item'] = $item['GUI_REM_CODI_INTERNO'];
-                    $item_arr[$key]['Compartimento'] = $item['compartimiento'];
-                    $item_arr[$key]['Cantidad'] = $item['recibido'];
-                }
-            }
-            if (count($item_arr)) {
-                $item_arr = array_values($item_arr);
-
-                $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Documento' => $transferencia['Documento'],
-                    'NumeroTransferOri' => $transferencia['transferencia'],
-                    'BodegaOrigen' => $data['bodega_origen'],
-                    'BodegaDestino' => $data['bodega_destino'],
-                    'Observacion' => $data['GUI_REM_OBSERVACION'],
-                    'Usuario' => $user->USERID,
-                    'Items' => $item_arr
-                );
-
-                $respuesta = $webservices->inventario('GeneraRecepcionTransferenciaReposicon', $parameters);
-                if (isset($respuesta['GeneraRecepcionTransferenciaReposiconResult']['Retorno'][0]['Codigo']) && $respuesta['GeneraRecepcionTransferenciaReposiconResult']['Retorno'][0]['Codigo'] == '0') {
-
-                    foreach ($transferencia['items'] as $item) {
-                        if ($item['recibido'] > 0) {
-                            $recibido = GpGuiaRemisionDetalle::where('id', $item['id'])->first();
-                            $recibido->recibido += $item['recibido'];
-                            $recibido->save();
-                        }
-                    }
-                } else {
-                    return response([
-                        'success' => false,
-                        'message' => $respuesta['GeneraRecepcionTransferenciaReposiconResult']['Retorno'][0]['Mensaje'],
-                    ]);
-                }
-            }
-        }
-
-        $guia = GpGuiaRemision::where('id', $data['id'])->first();
-        $listo = $this->checkguiacompleta($guia);
-
-        // $ingresos = new IngresosController();
-        // $ingresos->ingreso('traslado_reposicion', $data, $data['detalle']);
-        $this->entryService->registerEntity('traslado_reposicion', $data, $data['detalle'], $user);
-
-
-        if ($listo) {
-            $guia->estado = 'recibida';
-            $guia->save();
-
-            return response([
-                'success' => true,
-                'message' => 'Guía de remisión recibida completamente',
-            ]);
-        } else {
-            return response([
-                'success' => true,
-                'message' => 'Guía de remisión recibida parcialmente',
-            ]);
-        }
-    }
-
-    public function checkguiacompleta($guia): bool
-    {
-        $listo = true;
-        $recibidos = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
-
-        foreach ($recibidos as $recibido) {
-            if ($recibido->recibido < $recibido->GUI_REM_CANTIDAD) {
-                $listo = false;
-            }
-        }
-
-        return $listo;
-    }
-
-    public function recibirguiatransferencia($data, GpUsuario $user): Response|Application|ResponseFactory
-    {
-
-        $documentos = array();
-        foreach ($data['detalle'] as $item) {
-            if ($item['recibido'] > 0) {
-                $traslado = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
-                    ->where('gp_traslados_ventas.id', $item['detalle_id'])
-                    ->select('gp_traslados_ventas.*', 'gp_pedidos.pedido')
-                    ->first();
-                $item['traslado'] = $traslado;
-
-                $transferencia = GpGuiaRemisionTransferencia::where('pedido', $traslado->pedido)
-                    ->where('guia_remision_id', $data['id'])
-                    ->first();
-
-                $documentos[$traslado->pedido]['pedido'] = $traslado->pedido;
-                $documentos[$traslado->pedido]['transferencia'] = '';
-                if (isset($transferencia->codigo))
-                    $documentos[$traslado->pedido]['transferencia'] = $transferencia->codigo;
-                $documentos[$traslado->pedido]['items'][] = $item;
-            }
-        }
-
-        $documentos = array_values($documentos);
-
-        //        echo '<pre>';
-        //        print_r($documentos);
-        //        die();
-
-        $webservices = new WebserviceController();
-
-        foreach ($documentos as $transferencia) {
-            $item_arr = array();
-            foreach ($transferencia['items'] as $key => $item) {
-
-
-
-                if ($item['recibido'] > 0) {
-                    $item_arr[$key]['Item'] = $item['GUI_REM_CODI_INTERNO'];
-                    $item_arr[$key]['Compartimento'] = '';
-                    $item_arr[$key]['Cantidad'] = $item['recibido'];
-                }
-            }
-
-            if (count($item_arr)) {
-                $item_arr = array_values($item_arr);
-
-                $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Pedido' => $transferencia['pedido'],
-                    'NumeroTransferOri' => $transferencia['transferencia'],
-                    'BodegaOrigen' => $data['bodega_origen'],
-                    'BodegaDestino' => $data['bodega_destino'],
-                    'Observacion' => $data['GUI_REM_OBSERVACION'],
-                    'Usuario' => $user->USERID,
-                    'Items' => $item_arr
-                );
-
-
-                $respuesta = $webservices->inventario('GeneraRecepcionTransferenciaVenta', $parameters);
-
-
-
-                if (
-                    isset($respuesta['GeneraRecepcionTransferenciaVentaResult']['Retorno'][0]['Codigo'])
-                    && ($respuesta['GeneraRecepcionTransferenciaVentaResult']['Retorno'][0]['Codigo'] == '0'
-                        // || $respuesta['GeneraRecepcionTransferenciaVentaResult']['Retorno'][0]['Codigo'] == '1377'
-                    )
-                ) {
-                    foreach ($transferencia['items'] as $item) {
-
-                        if ($item['recibido'] > 0) {
-                            $stock = GpPedidoDetalleStock::where('detalle_id', $item['traslado']->detalle_id)
-                                ->where('STO_ART_BODEGA', $item['traslado']->bodega_origen)
-                                ->first();
-                            $stock->seleccionado = $stock->seleccionado - $item['recibido'];
-                            $stock->save();
-
-                            $stock2 = GpPedidoDetalleStock::where('detalle_id', $item['traslado']->detalle_id)
-                                ->where('STO_ART_BODEGA', $item['traslado']->bodega_destino)
-                                ->first();
-                            $stock2->seleccionado = $stock2->seleccionado + $item['recibido'];
-                            $stock2->reservado = $stock2->reservado + $item['recibido'];
-                            $stock2->save();
-
-                            $recibido = GpGuiaRemisionDetalle::where('id', $item['id'])->first();
-                            $recibido->recibido += $item['recibido'];
-                            $recibido->save();
-                        }
-                    }
-                } else {
-                    return response([
-                        'success' => false,
-                        'message' => $respuesta['GeneraRecepcionTransferenciaVentaResult']['Retorno'][0]['Mensaje'],
-                    ]);
-                }
-            }
-        }
-
-        $guia = GpGuiaRemision::where('id', $data['id'])->first();
-        $listo = $this->checkguiacompleta($guia);
-
-        // $ingresos = new IngresosController();
-        // $ingresos->ingreso('traslado_venta', $data, $data['detalle']);
-        $this->entryService->registerEntity('traslado_venta', $data, $data['detalle'], $user);
-
-        if ($listo) {
-            $guia = GpGuiaRemision::where('id', $data['id'])->first();
-            $guia->estado = 'recibida';
-            $guia->save();
-
-            foreach ($documentos as $transferencia) {
-                $pedido = GpPedido::where('pedido', $transferencia['pedido'])
-                    ->where('estado', 'traslado')
-                    ->first();
-                if ($pedido) {
-
-                    $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
-                    if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO == 'SI') {
-                        $pedido->factura_posterior_despacho = 1;
-                        if ($cliente->CLI_DIA_MAXIMO_MES_FACTURACION == 1) {
-                            $pedido->factura_a_demanda = 1;
-                        } elseif (date('d') > $cliente->CLI_DIA_MAXIMO_MES_FACTURACION) {
-                            $pedido->factura_siguiente_mes = 1;
-                        }
-                        $pedido->save();
-                    }
-                    $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
-                    $this->invoiceService->checkSendInvoice($pedido, true);
-
-                    $creatorUser->notify(new UserNotification('Articulo/s recibidos', 'Articulo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA));
-                }
-                //aqui la notifiacion
-
-            }
-
-            return response([
-                'success' => true,
-                'message' => 'Guía de remisión recibida completamente',
-            ]);
-        } else {
-            foreach ($documentos as $transferencia) {
-                $pedido = GpPedido::where('pedido', $transferencia['pedido'])
-                    ->where('estado', 'traslado')
-                    ->first();
-
-                if ($pedido) {
-                    $this->invoiceService->checkTrasladado($pedido);
-
-                    if ($pedido->estado == OrderStatus::ESPERA) {
-                        $creatorUser = GpUsuario::where('id', $pedido->user_id)->first();
-                        $this->invoiceService->checkSendInvoice($pedido, true);
-                        $creatorUser->notify(new UserNotification('Articulo/s recibidos', 'Artículo/s del pedido ' . $pedido->pedido . ' han sido recibidos PARCIALMENTE en la bodega ' . $pedido->BOD_BODEGA));
-                    }
-                }
-            }
-
-            return response([
-                'success' => true,
-                'message' => 'Guía de remisión recibida parcialmente',
-            ]);
-        }
-    }
-
 
 
     public function consultarDetalleGuiaPorId(Request $request): JsonResponse
@@ -797,8 +503,6 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionVenta(Request $request): JsonResponse
     {
-
-     
         return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
@@ -824,10 +528,6 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionReposicion(Request $request): JsonResponse
     {
-        if (function_exists('ignore_user_abort')) {
-            ignore_user_abort(true);
-        }
-
         return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
@@ -842,8 +542,8 @@ class GuiasderemisionController extends Controller
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->replenishment->receiveDeliveryNoteReplenishmentTransfer($payload, $user);
-            return $this->successResponse('Guia de Reposicion recibida exitosamente', $response, 200);
-            // return $this->buildSuccessResponse($response, 200);
+            // return $this->successResponse('Guia de Reposicion recibida exitosamente', $response, 200);
+            return $this->buildSuccessResponse($response, 200);
         }, 'guia_ventas', 'recibirGuiaRemisionReposicion');
     }
 }
