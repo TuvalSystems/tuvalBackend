@@ -515,7 +515,7 @@ class ReservasController extends Controller
      * proceso para recibir items de una guia de reserva
      */
 
-    public function recibirItemsGuiaReserva(Request $request)
+    public function recibirItemsGuiaReserva(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
             $guiaId     = $request->input('guiaId', null);

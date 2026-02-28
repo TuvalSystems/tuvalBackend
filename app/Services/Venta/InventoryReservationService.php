@@ -1386,7 +1386,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $groupsItems    = $this->reservaBuilder->formPayloadReservationReceivedDetail($items, $movimientos, $traslados);
 
         foreach ($groupsItems as $quote => $group) {
-            $params     = $this->reservaBuilder->buildReservationDeliveryNoteReceivedPayload($guia, $quote, $group['ws_items'], $group['transferencia'], $user);
+            $params     = $this->reservaBuilder->buildReservationDeliveryNoteReceivedPayload($guia, $quote, $group['ws_items'], $group['transferencia'], $gpUser->USERID);
             $processed  = $this->processReceivedReservationAndCreateAdjustment($guia, $params, $group['items'], $quote, $gpUser);
         }
         if (!$processed) {

@@ -343,7 +343,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             throw new \RuntimeException('No hay items para procesar el ajuste de la guía de reserva');
         }
         foreach ($groups as $quote => $group) {
-            $params = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user);
+            $params = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user->USERID);
             $ok = $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote);
             if ($ok) {
                 $processed = true;
