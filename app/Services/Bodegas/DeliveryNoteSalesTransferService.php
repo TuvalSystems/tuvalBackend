@@ -23,7 +23,6 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInte
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServiceInterface
 {
@@ -82,7 +81,6 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             'motivoTraslado'    => ReasonForTransfer::TRANSFERENCIA->value,
 
         ];
-        Log::info("1. Entrando a transacción DB para IdemKey: " . $infoGuia['idemKey']);
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
                 ->where('tipo', DeliveryNoteType::TRANSFERENCIA->value)
@@ -90,24 +88,17 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                 ->lockForUpdate()
                 ->first();
             if ($existing) {
-                Log::info("2. Guía existente encontrada, retornando.");
                 $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
                 return $existing->refresh();
             }
 
-            Log::info("3. Creando nueva guía...");
             $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia);
             $this->saveDetailDeliveryNoteSalesTransferWeb($guia->id, $items);
 
-            // espera de 5 segundos para recargar la pagina manulamente
-            sleep(5);
 
-            Log::info("4. Iniciando actualización de traslados...");
             $this->updateOrderAndDetail($items);
-            Log::info("5. Actualización de traslados terminada con éxito.");
             return $guia;
         });
-        Log::info("6. Transacción DB completada (COMMIT exitoso).");
         $this->sendDeliveryNoteSalesTransferToGp($guia);
         return $guia->refresh();
     }
@@ -210,7 +201,6 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                 'reservado' => DB::raw("COALESCE(reservado, 0) + {$cantSeleccionada}")
             ]);
             GpPedido::where('id', $pedidoId)->update(['transferencia_en_proceso' => 1]);
-            Log::info(" -> Traslado ID {$trasladoId} incrementado.");
         }
 
     }

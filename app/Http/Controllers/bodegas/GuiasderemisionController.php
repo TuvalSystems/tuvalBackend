@@ -798,10 +798,7 @@ class GuiasderemisionController extends Controller
     public function crearGuiaRemisionVenta(Request $request): JsonResponse
     {
 
-        // if (function_exists('ignore_user_abort')) {
-        //     ignore_user_abort(true);
-        // }
-        // set_time_limit(120);
+     
         return $this->executeTransaction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
