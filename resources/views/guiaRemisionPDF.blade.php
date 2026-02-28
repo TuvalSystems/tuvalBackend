@@ -352,7 +352,13 @@
         </table>
         @endif
 
-
+        @if($guia['tipo'] != 'despacho')
+        <div class="bordered" style="font-size: 7px;">
+            @if($guia['GUI_REM_OBSERVACION'] != '')
+            {{ $guia['GUI_REM_OBSERVACION'] }}
+            @endif
+        </div>
+        @endif
         <div>
             <p class="text-center"><b>Documento sin validez tributaria, consultar documento electrónico en
                     www.ecdatos.com</b></p>

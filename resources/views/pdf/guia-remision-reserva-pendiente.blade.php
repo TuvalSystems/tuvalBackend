@@ -259,9 +259,9 @@
         <!-- lista de cotizaciones -->
         <p style="padding-bottom: 10px;"><b>Cotizaciones:</b>
             @if(count($quoteList))
-                @foreach($quoteList as $trans)
-                    {{$trans}},
-                @endforeach
+            @foreach($quoteList as $trans)
+            {{$trans}},
+            @endforeach
             @endif
         </p>
         <div class="bordered">
@@ -279,7 +279,7 @@
                     <td><b>Razon Social:</b></td>
                     <td>{{ $guia['razon_social_destinatario'] }}
                         @if($guia['bodega_destino'] != '')
-                            - {{$guia['bodega_destino']}}
+                        - {{$guia['bodega_destino']}}
                         @endif
                     </td>
                 </tr>
@@ -311,24 +311,29 @@
                 </thead>
                 <tbody>
                     @foreach ($detalle as $key => $value)
-                        <tr>
-                            <td> {{ $key + 1 }}</td>
-                            <td class="nowrap">
-                                {{$value->art_code}}
-                            </td>
-                            <td>{{$value->art_cod_tres_letras}}</td>
-                            <td class="text-right">{{$value->cantidad}}</td>
-                            <td>{{$value->art_plan_umedida}}</td>
-                            <td>{{$value->art_descripcion}}
-                                @if($value->CHECK_ALTERNATIVO === 1)
-                                    <span class="text-danger" style="color: red;">(Alternativa)</span>
-                                @endif
-                            </td>
-                        </tr>
+                    <tr>
+                        <td> {{ $key + 1 }}</td>
+                        <td class="nowrap">
+                            {{$value->art_code}}
+                        </td>
+                        <td>{{$value->art_cod_tres_letras}}</td>
+                        <td class="text-right">{{$value->cantidad}}</td>
+                        <td>{{$value->art_plan_umedida}}</td>
+                        <td>{{$value->art_descripcion}}
+                            @if($value->CHECK_ALTERNATIVO === 1)
+                            <span class="text-danger" style="color: red;">(Alternativa)</span>
+                            @endif
+                        </td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
+        @if($guia['observacion'] != '')
+        <div class="bordered" style="font-size: 7px;">
+            {{ $guia['observacion'] }}
+        </div>
+        @endif
 
         <!-- foter -->
         <div>
