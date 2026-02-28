@@ -208,7 +208,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             $cantSeleccionada   = (float) data_get($item, 'seleccionado', 0);
             GpTrasladosVentas::where('id', $trasladoId)->update([
                 'reservado' => DB::raw("COALESCE(reservado, 0) + {$cantSeleccionada}")
-            ]);;
+            ]);
             GpPedido::where('id', $pedidoId)->update(['transferencia_en_proceso' => 1]);
             Log::info(" -> Traslado ID {$trasladoId} incrementado.");
         }

@@ -192,8 +192,11 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
     protected function updateTransferReposition($items)
     {
         foreach ($items as $item) {
-            GpTrasladosReposicion::where('id', data_get($item, 'id'))
-                ->increment('reservado', (float) data_get($item, 'seleccionado', 0));
+            $trasladoId         = data_get($item, 'id');
+            $cantSeleccionada   = (float) data_get($item, 'seleccionado', 0);
+                GpTrasladosReposicion::where('id', $trasladoId)->update([
+                'reservado' => DB::raw("COALESCE(reservado, 0) + {$cantSeleccionada}")
+            ]);
         }
     }
 
