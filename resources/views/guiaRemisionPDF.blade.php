@@ -353,9 +353,10 @@
         @endif
 
         @if($guia['tipo'] != 'despacho')
-        <div class="bordered" style="font-size: 7px;">
+        <strong style="font-size:10px;">Observación:</strong><br>
+        <div class="bordered" style="font-size:10px;">
             @if($guia['GUI_REM_OBSERVACION'] != '')
-            {{ $guia['GUI_REM_OBSERVACION'] }}
+             {{ $guia['GUI_REM_OBSERVACION'] }}
             @endif
         </div>
         @endif

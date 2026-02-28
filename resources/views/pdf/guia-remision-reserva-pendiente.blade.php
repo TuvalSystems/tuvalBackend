@@ -330,8 +330,9 @@
             </table>
         </div>
         @if($guia['observacion'] != '')
-        <div class="bordered" style="font-size: 7px;">
-            {{ $guia['observacion'] }}
+        <strong style="font-size:10px;">Observación:</strong><br>
+        <div class="bordered" style="font-size: 10px;">
+             {{ $guia['observacion'] }}
         </div>
         @endif
 
