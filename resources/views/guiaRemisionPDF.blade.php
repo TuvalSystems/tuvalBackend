@@ -353,12 +353,12 @@
         @endif
 
         @if($guia['tipo'] != 'despacho')
-        <strong style="font-size:10px;">Observación:</strong><br>
-        <div class="bordered" style="font-size:10px;">
-            @if($guia['GUI_REM_OBSERVACION'] != '')
-             {{ $guia['GUI_REM_OBSERVACION'] }}
-            @endif
+        @if($guia['GUI_REM_OBSERVACION'] != '')
+        <strong style="font-size:10px;">Observación:</strong>
+        <div class="bordered" style="font-size:10px; width: 100%; word-wrap: break-word;">
+            {{ wordwrap($guia['GUI_REM_OBSERVACION'], 100, "\n", true) }}
         </div>
+        @endif
         @endif
         <div>
             <p class="text-center"><b>Documento sin validez tributaria, consultar documento electrónico en

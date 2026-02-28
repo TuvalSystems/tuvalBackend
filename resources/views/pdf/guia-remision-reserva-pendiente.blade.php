@@ -330,9 +330,11 @@
             </table>
         </div>
         @if($guia['observacion'] != '')
-        <strong style="font-size:10px;">Observación:</strong><br>
-        <div class="bordered" style="font-size: 10px;">
-             {{ $guia['observacion'] }}
+        <strong style="font-size:10px;">Observación:</strong>
+        <div class="bordered" style="font-size:10px; width: 100%; word-wrap: break-word;">
+            @if($guia['observacion'] != '')
+            {{ wordwrap($guia['observacion'], 100, "\n", true) }}
+            @endif
         </div>
         @endif
 
