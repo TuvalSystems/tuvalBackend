@@ -402,21 +402,11 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionReserva(Request $request): JsonResponse
     {
-        $payload = $request->all();
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $payload    = $request->all();
             $response = $this->reservedDeliveryNoteService->createDeliveryNoteFromReservation($payload, $request->user());
-            return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion generarGuiaReserva -GuiasderemisionController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'linea' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+            return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
+        }, 'reservas_log', 'generarGuiaReserva -GuiasderemisionController');
     }
 
 

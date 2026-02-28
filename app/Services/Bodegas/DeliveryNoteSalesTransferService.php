@@ -240,7 +240,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         if ($itemsReceived->isEmpty()) {
             throw new \RuntimeException('No se han recibido items para procesar la guia de transferencia de venta');
         }
-        $limiteExcedido = $this->validatePendingForReceivedSalesTransfer($itemsReceived->all());
+        $limiteExcedido = $this->validatePendingsReceived($itemsReceived->all());
         if ($limiteExcedido) {
             throw new \RuntimeException($limiteExcedido);
         }
@@ -408,7 +408,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function validatePendingForReceivedSalesTransfer($items): ?string
+    protected function validatePendingsReceived($items): ?string
     {
         $ids        = collect($items)->pluck('id');
         $detalles   = GpGuiaRemisionDetalle::whereIn('id', $ids)->get(

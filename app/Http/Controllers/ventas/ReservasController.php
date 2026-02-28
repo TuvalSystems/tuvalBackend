@@ -516,14 +516,13 @@ class ReservasController extends Controller
 
     public function recibirItemsGuiaReserva(Request $request)
     {
-        $guiaId     = $request->input('guiaId', null);
-        $items      = $request->input('items', null);
-        try {
-            $user   = $request->user();
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $guiaId     = $request->input('guiaId', null);
+            $items      = $request->input('items', null);
+            $user       = $request->user();
+
             $data   = $this->reserveService->receiveItemsFromTransferred($guiaId, $items, $user);
             return $this->successResponse('Proceso realizado correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+        }, 'reservas_log', 'recibirItemsGuiaReserva -ReservasController');
     }
 }

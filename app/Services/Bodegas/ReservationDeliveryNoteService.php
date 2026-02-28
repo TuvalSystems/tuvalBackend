@@ -34,13 +34,16 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function createDeliveryNoteFromReservation($payload, GpUsuario $user)
     {
+        $limit          = $this->validateExistenceDeliveryNoteReservation(data_get($payload, 'detalle'));
+        if ($limit) {
+            throw new \RuntimeException($limit);
+        }
         $datavehicle    = $this->common->getVehicleAndCarrierInfo($payload);
         $dirOrigin      = $this->common->getDirection($payload['pto_origen']);
         $dirDestination = $this->common->getDirection($payload['pto_destino']);
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin($payload['bod_origen']);
         $idemKey        = $this->makeIdemKey($payload);
         $guia = DB::transaction(function () use ($payload, $datavehicle, $dirOrigin, $dirDestination, $bodGuide, $idemKey, $user) {
-
             $existing = GpGuiaRemisionReserva::where('idempotency_key', $idemKey)
                 ->where('estado', DeliveryNoteStatus::PENDIENTE->value)
                 ->lockForUpdate()
@@ -91,9 +94,9 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
                 'No hay items para procesar el ajuste de la guía de reserva'
             );
         }
-        $itemsIds = $items->pluck('id')->toArray();
-        $dQoteIds = $items->pluck('stock_id')->toArray();
-        $itemsPkId = $items->keyBy('id');
+        $itemsIds   = $items->pluck('id')->toArray();
+        $dQoteIds   = $items->pluck('stock_id')->toArray();
+        $itemsPkId  = $items->keyBy('id');
         // actualizamos el picking si o si de estos items ya que se va a generar una guia de remision
         $this->updatePickingItemsSelected($itemsIds);
         $detTraslados = GpTrasladosReservas::whereIn('id', $itemsIds)->lockForUpdate()->get();
@@ -106,16 +109,16 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $detStock = GpCotizacionDetalleStock::whereIn('id', $dQoteIds)->lockForUpdate()->get()->keyBy('id');
         foreach ($detTraslados as $tr) {
             // consultas
-            $rowsDetalle = $detallesGuia->get($tr->id, collect());
-            $itemProcess = $itemsPkId->get($tr->id);
-            $stockRow = $detStock->get($tr->stock_id);
+            $rowsDetalle    = $detallesGuia->get($tr->id, collect());
+            $itemProcess    = $itemsPkId->get($tr->id);
+            $stockRow       = $detStock->get($tr->stock_id);
             if (!$stockRow) {
                 $arrMsg[] = "El item {$itemProcess->art_code} no tiene stock asociado válido";
                 continue;
             }
             // calculos
-            $selectNow          = (float) $itemProcess['seleccionado'];
-            $pending            = (float) $itemProcess['pending_transfer'];
+            $selectNow          = (float) data_get($itemProcess, 'seleccionado', 0);
+            $pending            = (float) data_get($itemProcess, 'pending_transfer', 0);
             $qtyStockAuth       = (float) $stockRow->cantidad_autorizada_reserva;
             $qtyGuiaRemision    = $rowsDetalle->where('art_code', $itemProcess['art_code'])->sum('cantidad');
             $sumQty             = $qtyGuiaRemision + $selectNow;
@@ -219,6 +222,25 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     }
 
 
+    protected function validateExistenceDeliveryNoteReservation(array $items): ?string
+    {
+        $items      = collect($items);
+        $itemsIds   = $items->pluck('id')->toArray();
+        $detTraslados = GpTrasladosReservas::whereIn('id', $itemsIds)->get(['id', 'art_code', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
+        foreach ($items as  $value) {
+            $id             = data_get($value, 'id');
+            $dbTransfer           = $detTraslados->get($id);
+            if ($dbTransfer) {
+                $seleccionado   = (float) data_get($value, 'seleccionado', 0);
+                $actual         = (float)$dbTransfer->reservado + (float)$dbTransfer->trasladado;
+                $disponible     = max(0, $dbTransfer->cantidad - $actual);
+                if (($actual + $seleccionado) > $dbTransfer->cantidad) {
+                    return "El ítem {$dbTransfer->art_code} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
+                }
+            }
+        }
+        return null;
+    }
 
 
 

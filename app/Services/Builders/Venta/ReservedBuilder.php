@@ -143,7 +143,7 @@ class ReservedBuilder implements ReservedBuilderInterface
             $groups[$cot]['ws_items'][] = [
                 'item'                      => Arr::get($itm, 'art_code', ''),
                 'compartimento'             => Arr::get($itm, 'compartimiento', ''),
-                'cantidad'                  => (float) ($itm['recibir'] ?? 0)
+                'cantidad'                  => (float) data_get($itm, 'recibir', 0)
             ];
         }
         return $groups;
@@ -186,7 +186,8 @@ class ReservedBuilder implements ReservedBuilderInterface
 
 
     /**guardar en tablas de ingresos */
-     public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso{
+    public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso
+    {
         $ing = new GpIngreso();
         $ing->fill([
             'user_id'               => $user->id,
@@ -198,7 +199,8 @@ class ReservedBuilder implements ReservedBuilderInterface
         return $ing;
     }
 
-    public function createRegisterHistoryDetail($items, $ing): GpIngresosDetalle{
+    public function createRegisterHistoryDetail($items, $ing): GpIngresosDetalle
+    {
         $d = new GpIngresosDetalle();
         $d->fill([
             'ingreso_id'    => $ing->id,
@@ -207,6 +209,4 @@ class ReservedBuilder implements ReservedBuilderInterface
         ]);
         return $d;
     }
-
-
 }

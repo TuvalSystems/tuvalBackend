@@ -1362,10 +1362,18 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    /** proceso de recibir items  */
+    /**
+     *
+     * proceso de recibir items
+     *
+     * */
 
     public function receiveItemsFromTransferred(int $guiaId, array $items, GpUsuario $user)
     {
+        $limitQty = $this->validateReceivedQty($items);
+        if ($limitQty) {
+            throw new \RuntimeException($limitQty);
+        }
         $processed  = false;
         $gpUser     = GpUsuario::whereKey($user->id)->first() ?? GpUsuario::where('USERID', 'adminWeb')->first();
         $guia       = GpGuiaRemisionReserva::find($guiaId);
@@ -1450,11 +1458,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function createMovementReservation($guia, $responseApi, $quote): GpGuiaRemisionReservaMovimiento
     {
         return GpGuiaRemisionReservaMovimiento::firstOrCreate([
-            'guia_id' => $guia->id,
-            'tipo_movimiento' => 'RTC',
-            'cotizacion' => $quote,
-            'id_movimiento' => data_get($responseApi, 'idMovimiento'),
-            'codigo' => trim((string) data_get($responseApi, 'docGp', '')),
+            'guia_id'           => $guia->id,
+            'tipo_movimiento'   => 'RTC',
+            'cotizacion'        => $quote,
+            'id_movimiento'     => data_get($responseApi, 'idMovimiento'),
+            'codigo'            => trim((string) data_get($responseApi, 'docGp', '')),
         ]);
     }
 
@@ -1462,9 +1470,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function updateQtyTransferedItems(GpGuiaRemisionReserva $guia, array $items)
     {
         foreach ($items as $itm) {
-            $trasladoId = data_get($itm, 'traslado_id');
-            $traslado = GpTrasladosReservas::with('reserva')->find($trasladoId);
-            $liberarStock = in_array($traslado->reserva->estado, ['cancelado', 'rechazada']);
+            $trasladoId         = data_get($itm, 'traslado_id');
+            $traslado           = GpTrasladosReservas::with('reserva')->find($trasladoId);
+            $liberarStock       = in_array($traslado->reserva->estado, ['cancelado', 'rechazada']);
             $this->updateQtyReceivedDetailGuide($itm);
             $this->updateQtyStockQuotationTransferred($guia, $itm, $liberarStock);
             $this->updateStatusReservation($itm, $traslado->reserva);
@@ -1473,9 +1481,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function updateQtyReceivedDetailGuide($item)
     {
-        $recibir = max(0, (float) ($item['recibir'] ?? 0));
-        $gd = GpGuiaRemisionReservaDetalle::find($item['id']);
-        $pend = max(0, (float) $gd->cantidad - (float) $gd->recibido);
+        $recibir    = max(0, (float) (data_get($item, 'recibir', 0)));
+        $gd         = GpGuiaRemisionReservaDetalle::find($item['id']);
+        $pend       = max(0, (float) $gd->cantidad - (float) $gd->recibido);
         if ($pend <= 0)
             return;
         $gd->increment('recibido', min($recibir, $pend));
@@ -1567,10 +1575,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $idsItems = collect($items)->pluck('id')->toArray();
         $detalles = GpGuiaRemisionReservaDetalle::with(['cotizacion:id,cotizacion', 'traslado.reserva:id,user_ingreso_reserva_id'])->whereIn('id', $idsItems)->where('guia_id', $guia->id)->get()->keyBy('id');
         foreach ($items as $dt) {
-            $detGuia = $detalles->get($dt['id']);
-            $qtyFmt = number_format((float) $dt['recibir'], 2, '.', '');
-            $title = $exists ? 'Articulo recibido completo' : 'Articulo recibido parcial';
-            $msg = sprintf(
+            $detGuia    = $detalles->get($dt['id']);
+            $qtyFmt     = number_format((float) $dt['recibir'], 2, '.', '');
+            $title      = $exists ? 'Articulo recibido completo' : 'Articulo recibido parcial';
+            $msg        = sprintf(
                 'Se ha recibido la cantidad de %s del artículo %s en la bodega %s (cotización %s) por parte de %s.',
                 $qtyFmt,
                 $detGuia->art_code,
@@ -1583,6 +1591,25 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         }
     }
 
+
+    protected function validateReceivedQty(array $items): ?string
+    {
+        $idsItems       = collect($items)->pluck('id')->toArray();
+        $detalleGuias   = GpGuiaRemisionReservaDetalle::whereIn('id', $idsItems)->get(['id', 'art_code', 'cantidad', 'recibido'])->keyBy('id');
+        foreach ($items as $value) {
+            $detGuia = $detalleGuias->get($value['id']);
+            if ($detGuia) {
+                $recibir        = (float) data_get($value, 'recibir', 0);
+                $actual         = (float) $detGuia->recibido;
+                $disponible     =  max(0,  $detGuia->cantidad - $actual);
+
+                if (($actual + $recibir) > $detGuia->cantidad) {
+                    return "El ítem {$detGuia->art_code} excede el límite permitido. (Máximo disponible: {$disponible}).";
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      *  funcion para la verificacion del stock disponible de una cotizacion que quiere nacer como reserva
@@ -1633,10 +1660,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $totalDemanda = $selectedStock->groupBy(fn($item) => "{$item['articulo']}_{$item['bodega']}")
             ->map(function ($group) {
                 return [
-                    'articulo' => $group->first()['articulo'],
-                    'bodega' => $group->first()['bodega'],
-                    'total_a_reservar' => $group->sum('seleccionado'),
-                    'ART_DECIMAL_CANTIDAD' => $group->first()['ART_DECIMAL_CANTIDAD'],
+                    'articulo'              => $group->first()['articulo'],
+                    'bodega'                => $group->first()['bodega'],
+                    'total_a_reservar'      => $group->sum('seleccionado'),
+                    'ART_DECIMAL_CANTIDAD'  => $group->first()['ART_DECIMAL_CANTIDAD'],
                 ];
             });
 
@@ -1646,23 +1673,23 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ])->values()->all();
 
 
-        $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
-        $currentStocksLookup = $this->stockWarehouseService->transformStockReservationResponse($stockResults);
+        $stockResults           = $this->stockWarehouseService->fetchStock($stockRequests);
+        $currentStocksLookup    = $this->stockWarehouseService->transformStockReservationResponse($stockResults);
 
 
         $articulosOverStock = [];
 
         //validar articulo_bodega acumulado contra el stock disponible
         foreach ($totalDemanda as $key => $demanda) {
-            $articulo = data_get($demanda, 'articulo');
-            $bodega = data_get($demanda, 'bodega');
+            $articulo       = data_get($demanda, 'articulo');
+            $bodega         = data_get($demanda, 'bodega');
             $totalRequerido = data_get($demanda, 'total_a_reservar', 0);
-            $decimals = data_get($demanda, 'ART_DECIMAL_CANTIDAD', 0);
+            $decimals       = data_get($demanda, 'ART_DECIMAL_CANTIDAD', 0);
 
             $currentStockData = data_get($currentStocksLookup, $key);
             $this->stockWarehouseService->applyReservedQtyToAvailableStock($currentStockData, [
-                'ART_CODIGO' => $articulo,
-                'ART_DECIMAL_CANTIDAD' => $decimals,
+                'ART_CODIGO'            => $articulo,
+                'ART_DECIMAL_CANTIDAD'  => $decimals,
             ], null, null);
 
             $stockDisponibleReal = data_get($currentStockData, 'STO_ART_STOCK_DISPONIBLE', 0);
