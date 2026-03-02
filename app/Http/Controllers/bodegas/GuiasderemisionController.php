@@ -486,6 +486,23 @@ class GuiasderemisionController extends Controller
         }, 'despachos', 'crearGuiaRemisionDespacho -GuiasderemisionController');
     }
 
+    public function despacharGuiaRemisionDespacho(Request $request): JsonResponse
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $id = $request->input('id');
+            $response   = $this->dispatch->dispatchGuideTransferShipment($id, $request->user());
+            $tocoServ   = data_get($response, 'tocoServ', false);
+            if ($tocoServ) {
+                $mensaje = 'Guía de remisión despachada, Sin items para despachar';
+            }
+            $mensaje = 'Guía de remisión despachada';
+            return $this->successResponse($mensaje, $response, 200);
+        }, 'despachos', 'despacharGuiaRemisionDespacho -GuiasderemisionController');
+    }
+
+
+
+
 
     /***
      * PROCESO DE CREACION DE GUIA DE VENTA

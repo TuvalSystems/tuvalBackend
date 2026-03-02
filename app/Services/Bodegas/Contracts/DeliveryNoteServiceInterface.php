@@ -39,7 +39,7 @@ interface DeliveryNoteServiceInterface
 
     /** funciones common */
 
-     public function getSecuencialCommon($establecimiento, $ptoEmision): string;
+
 
 
 

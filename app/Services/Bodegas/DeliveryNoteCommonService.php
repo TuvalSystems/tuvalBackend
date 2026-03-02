@@ -208,7 +208,7 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 
     /** funciones temporales de bloqueo de guia */
 
-    public function isGUideBlockedForOrder($guia): bool
+    public function isGuideBlockedForOrder($guia): bool
     {
         return GpPedido::where('pedido', $guia->pedido)->where('pendiente_salida', true)->exists();
     }

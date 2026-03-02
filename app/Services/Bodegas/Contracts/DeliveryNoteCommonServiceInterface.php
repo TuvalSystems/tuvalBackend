@@ -26,7 +26,7 @@ interface DeliveryNoteCommonServiceInterface
 
     /** funciones temporales para el bloque de guias */
 
-    public function isGUideBlockedForOrder($guia): bool;
+    public function isGuideBlockedForOrder($guia): bool;
     public function createTemporaryDeliveryNoteBlocksOrder($guia, GpUsuario $user);
 
     public function getPtoVtaByWarehouse($bodega): ?string;

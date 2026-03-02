@@ -352,6 +352,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         //generacion de guia de remision de despachos
         Route::post('despachos/guia-remision/crear-guia-despacho', [GuiasderemisionController::class, 'crearGuiaRemisionDespacho']);
+        Route::post('despachos/guia-remision/despachar-guia', [GuiasderemisionController::class, 'despacharGuiaRemisionDespacho']);
+
 
 
         //creacion de guia de remision de transferencia de venta

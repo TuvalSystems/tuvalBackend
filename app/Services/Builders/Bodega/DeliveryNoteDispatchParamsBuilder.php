@@ -131,4 +131,38 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'guiaBodega'                    => $header->GUI_REM_BODEGA
         ];
     }
+
+
+    public function buildParameterHeaderAndDetailDispatchShipment(GpGuiaRemision $guia, string $documento, string $newOrder, array $items, $user, string $hashInterno): array
+    {
+        $header = [
+            'idCompany'         => config('services.api_gp.company'),
+            'pedido'            => $documento,
+            'pedidoNuevo'       => $newOrder,
+            'bodegaOrigen'      => $guia->bodega_origen,
+            'observacion'       => $guia->GUI_REM_OBSERVACION,
+            'usuario'           => $user->USERID ?? 'adminWeb',
+            'idGuiaRemision'    => $guia->id,
+            'guiaRemision'      => $guia->GUI_REM_GUIA_REMISION,
+            'hashInterno'       => $hashInterno
+        ];
+        return [
+            'cabecera'          => $header,
+            'detalle'           => $items
+        ];
+    }
+
+
+    public function buildDeliveryNoteValidateDispatchShipment(array $params,  string $tipoMovimiento, string $tipo): array{
+        return [
+            'orderNumber'       => data_get($params, 'pedido'),
+            'newOrderNumber'    => data_get($params, 'pedidoNuevo'),
+            'origen'            => data_get($params, 'bodegaOrigen'),
+            'idGuiaRemision'    => data_get($params, 'idGuiaRemision'),
+            'guiaRemision'      => data_get($params, 'guiaRemision'),
+            'tipoTrx'           => $tipoMovimiento,
+            'tipo'              => $tipo,
+            'hashInterno'       => data_get($params, 'hashInterno'),
+        ];
+    }
 }

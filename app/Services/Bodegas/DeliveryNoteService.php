@@ -220,7 +220,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
     {
         /** proceso temporal de guia de despacho  */
-        if ($this->common->isGUideBlockedForOrder($guia)) {
+        if ($this->common->isGuideBlockedForOrder($guia)) {
             abort(422, 'El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).');
         }
 
@@ -1092,12 +1092,6 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     }
 
 
-
-
-    public function getSecuencialCommon($establecimiento, $ptoEmision): string
-    {
-        return $this->common->getNextGuideSequential($establecimiento, $ptoEmision);
-    }
 
 
 

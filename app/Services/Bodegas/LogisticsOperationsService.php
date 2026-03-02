@@ -72,7 +72,7 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
     //remplaza la funcion de checkdespacho - DespachoController
     public function updateOrderDispatchStatus(GpGuiaRemision $guia)
     {
-        $pedido = GpPedido::where('pedido', $guia->pedido)->lockForUpdate()->first();
+        $pedido = GpPedido::where('pedido', $guia->pedido)->first();
         if (!$pedido) {
             Log::warning('Pedido no encontrado al verificar despacho', [
                 'guia_id'   => $guia->id,

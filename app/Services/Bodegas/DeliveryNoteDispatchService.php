@@ -12,13 +12,17 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use Illuminate\Support\Facades\DB;
 use App\Models\despachos\GpGuiaRemision;
+use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\GpPedido;
+use App\Models\GpPedidoDetalleStock;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
-
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 
 class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterface
 {
@@ -40,7 +44,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $items          = data_get($payload, 'items', []);
         $error = $this->validateQtyDetails($items);
         if ($error) {
-            abort(409, $error);
+            throw new \RuntimeException($error);
         }
 
         $tipo           = DeliveryNoteType::DESPACHO->value;
@@ -85,7 +89,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 return $guia;
             } catch (\Throwable $e) {
                 if ($e->errorInfo[1] == 1062) {
-                    abort(409, 'El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
+                    throw new \RuntimeException('El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
                 }
                 throw $e;
             }
@@ -216,5 +220,238 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             }
         }
         return null;
+    }
+
+
+
+
+    /**
+     *
+     * PROCESO DE DESPACHO DE GUIAS DE REMISION DE DESPACHO
+     *
+     */
+
+    public function dispatchGuideTransferShipment(int $guiaId, GpUsuario $user)
+    {
+        $guia = GpGuiaRemision::findOrFail($guiaId);
+        if ($guia->estado == DeliveryNoteStatus::ENVIADA->value) {
+            throw new \RuntimeException("La guia de despacho ya fue enviada por otro usuario");
+        }
+
+        if ($this->common->isGuideBlockedForOrder($guia)) {
+            throw new \RuntimeException("El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).");
+        }
+        $detalles   = GpGuiaRemisionDetalle::where('guia_remision_id', $guiaId)->get();
+
+        if ($detalles->isEmpty()) {
+            throw new \RuntimeException("La guia de despacho no tiene detalles");
+        }
+
+        $ids        = $detalles->pluck('detalle_id')->filter()->unique()->values();
+        $articulos  = $this->getPhysicalOrderDetailsByIds($ids);
+        $artServs   = $this->getServiceOrderDetailsByIds($ids);
+        $tocoServ   = (bool) $artServs->isNotEmpty();
+
+        foreach ($detalles->groupBy('detalle_id') as $detalleId => $row) {
+            $art = $artServs->get($detalleId);
+            if (!$art) {
+                continue;
+            }
+            $qty                    = (float) $row->sum('GUI_REM_CANTIDAD');
+            $qty                    = max(0.0, $qty);
+            $nuevoReservado         = max(0.0, (float) ($art->reservado ?? 0) - $qty);
+            $nuevoTrasladado        = (float) ($art->trasladado ?? 0) + $qty;
+            $cap                    = (float) ($art->ART_CANTIDAD ?? 0);
+            if ($cap > 0)
+                $nuevoTrasladado    = min($nuevoTrasladado, $cap);
+            $art->fill([
+                'reservado'         => $nuevoReservado,
+                'trasladado'        => $nuevoTrasladado
+            ])->save();
+        }
+
+        $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalles, $articulos);
+        if ($tocoServ && count($groups) === 0) {
+            $pedido = $this->logistic->updateOrderDispatchStatus($guia);
+            $guia->update(['estado' => DeliveryNoteStatus::ENVIADA->value]);
+            return [
+                'guia'      => $guia,
+                'services'  => $tocoServ,
+                'pedido'    => $pedido
+            ];
+        }
+
+        foreach ($groups as $order => $grupo) {
+            $hashInterno = (string) Str::uuid(); //definimos el hasInterno para manejarlo en el proceso de guia de despacho
+            $params      = $this->builder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user, $hashInterno);
+
+            $this->sendItemsDeliveryNoteDispatchToGp($guia, $order, $params, $grupo['items'], $hashInterno);
+        }
+
+        $guia->update(['estado' => DeliveryNoteStatus::ENVIADA->value]);
+        $pedido = $this->logistic->updateOrderDispatchStatus($guia);
+
+        return [
+            'guia'      => $guia,
+            'services'  => $tocoServ,
+            'pedido'    => $pedido
+        ];
+    }
+
+
+    protected function getPhysicalOrderDetailsByIds($ids)
+    {
+        return GpPedidoDetalle::query()->whereIn('id', $ids)
+            ->where('reservado', '>', 0)
+            ->where('ART_TIPO_COMPRA', '!=', 'SERV')
+            ->get()
+            ->keyBy('id');
+    }
+
+    protected function getServiceOrderDetailsByIds($ids)
+    {
+        return GpPedidoDetalle::query()->whereIn('id', $ids)
+            ->where('reservado', '>', 0)
+            ->where('ART_TIPO_COMPRA', 'SERV')
+            ->get()
+            ->keyBy('id');
+    }
+
+    protected function groupDispatchItemsBySourceOrder(GpGuiaRemision $guia, Collection $detalle, Collection $articulos): array
+    {
+        $pedidoOrigen       = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
+        $documento          = $pedidoOrigen ?: $guia->pedido;
+        $pedidoNuevo        = $pedidoOrigen ? $guia->pedido : '';
+        $groups             = [];
+
+        foreach ($detalle as $item) {
+            $detallePedido                      = $articulos->get($item->detalle_id);
+            if (!$detallePedido) {
+                continue;
+            }
+            $doc                                = $documento;
+            $groups[$doc]['pedido']             = $documento;
+            $groups[$doc]['pedido_nuevo']       = $pedidoNuevo;
+            $groups[$doc]['items'][]            = $item;
+            $groups[$doc]['ws_items'][]         = [
+                'item'                              => $item->GUI_REM_CODI_INTERNO,
+                'compartimento'                     => '',
+                'cantidad'                          => (float)$item->GUI_REM_CANTIDAD,
+            ];
+        }
+
+        return $groups;
+    }
+
+
+    protected function sendItemsDeliveryNoteDispatchToGp(GpGuiaRemision $guia, string $pedido, array $params, array $groupItems, string $hashInterno)
+    {
+        $typeMov    = 'DSP';
+        $type       = 'E';
+        $response   = $this->api->createDispatchShipmentGuideVta($params);
+        $success    = data_get($response, 'success', false);
+        $msg        = data_get($response, 'message');
+        $docGp      = trim(data_get($response, 'data.docGp', ''));
+        if (!$success) {
+            $cabecera               = data_get($params, 'cabecera', []);
+            $payloadHeader          = $this->builder->buildDeliveryNoteValidateDispatchShipment($cabecera, $typeMov, $type);
+            $respValidate           = $this->api->checkDispatchGuideAdjustment($payloadHeader);
+            $headerRespValidate     = data_get($respValidate, 'data');
+            $docGpValidate          = trim(data_get($headerRespValidate, 'docGp', ''));
+            if (!empty($headerRespValidate) && filled($docGpValidate)) {
+                // Usamos el documento que encontró la validación
+                $docGp  = $docGpValidate;
+                $data   = $headerRespValidate;
+            } else {
+                // Si falló la creación y la validación tampoco trajo nada útil, lanzamos el error.
+                throw new \RuntimeException($msg ?: 'Error creando el ajuste de guía en GP.');
+            }
+        } else {
+            $data = data_get($response, 'data', []);
+        }
+        if ($docGp === '') {
+            throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
+        }
+        $already = $this->existMovementDispatchWeb($guia->id, $docGp, $pedido, $hashInterno,  $typeMov, $type);
+        return DB::transaction(function () use ($groupItems, $guia, $data, $pedido,  $typeMov, $type, $hashInterno, $already) {
+            if (!$already) {
+                $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
+                $this->createDocumentDispatchTrfv($guia, $data, $pedido, $typeMov, $type, $hashInterno);
+                $guia->update(['rebajado' => 1]);
+            }
+        });
+    }
+
+
+    protected function existMovementDispatchWeb(int $guiaId, string $docGp, string $order, string $hashInterno, string $typeMov, string $type): bool
+    {
+
+        return GpGuiaRemisionDespacho::where([
+            ['guia_remision_id',    $guiaId],
+            ['pedido',              $order],
+            ['codigo',              trim((string) $docGp)],
+            ['hash_interno',        trim((string) $hashInterno)],
+            ['tipo_movimiento',     $typeMov],
+            ['tipo',                $type],
+        ])->exists();
+    }
+
+
+    protected function processReservedDispatchedAndDecrementStock($guia, $groupItems)
+    {
+        foreach ($groupItems as $item) {
+            $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
+            $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
+        }
+    }
+
+    protected function applyDispatchToOrderDetail($item, $qty)
+    {
+        $dt = GpPedidoDetalle::where('id', $item->detalle_id)->lockForUpdate()->first();
+
+        $rsvdac = (float)  data_get($dt, 'reservado', 0);
+        $trlsac = (float)  data_get($dt, 'trasladado', 0);
+        $cantac = (float)  data_get($dt, 'ART_CANTIDAD', 0);
+
+        $newRsvd = max(0.0, $rsvdac - $qty);
+        $newTrls = $trlsac + $qty;
+
+        if ($cantac != null) {
+            $newTrls = min($newTrls, $cantac);
+        }
+
+        $dt->reservado = $newRsvd;
+        $dt->trasladado = $newTrls;
+        $dt->save();
+
+        return $dt->refresh();
+    }
+
+    public function createDocumentDispatchTrfv(GpGuiaRemision $guia, $responseApi, string $documento, string $typeMov, string $type, string $hashInterno)
+    {
+        $dispatchTrfv = new GpGuiaRemisionDespacho();
+        $dispatchTrfv->guia_remision_id     = $guia->id;
+        $dispatchTrfv->id_movimiento        =  data_get($responseApi, 'idMovimiento', '');
+        $dispatchTrfv->pedido               = $documento;
+        $dispatchTrfv->codigo               = data_get($responseApi, 'docGp', '');
+        $dispatchTrfv->hash_interno         = $hashInterno;
+        $dispatchTrfv->tipo_movimiento      = $typeMov;
+        $dispatchTrfv->tipo                 = $type;
+        $dispatchTrfv->save();
+    }
+
+    protected function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse, $qty)
+    {
+        $det = GpPedidoDetalle::find($detalleId);
+        if ($det->ART_TIPO_COMPRA != 'L') {
+            $stock = GpPedidoDetalleStock::where('detalle_id', $detalleId)
+                ->where('STO_ART_BODEGA', $warehouse)
+                ->lockForUpdate()
+                ->first();
+            $reservado = data_get($stock, 'reservado', 0);
+            $nuevo = max(0, $reservado - $qty);
+            $stock->reservado = $nuevo;
+            $stock->save();
+        }
     }
 }

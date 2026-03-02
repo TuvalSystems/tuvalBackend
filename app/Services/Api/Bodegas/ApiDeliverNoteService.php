@@ -49,7 +49,7 @@ class ApiDeliverNoteService extends ApiGpService
 
     public function checkDispatchGuideAdjustment(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_DESPACHO_CHECK_AJUSTE, 'GET', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_DESPACHO_CHECK_AJUSTE, 'POST', $params, 'json');
     }
 
     public function checkTransferGuideAdjustment(array $params)

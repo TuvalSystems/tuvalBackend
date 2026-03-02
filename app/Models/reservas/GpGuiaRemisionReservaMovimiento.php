@@ -13,7 +13,9 @@ class GpGuiaRemisionReservaMovimiento extends Model
         'guia_id',
         'id_movimiento',
         'tipo_movimiento',
+        'tipo',
         'cotizacion',
-        'codigo'
+        'codigo',
+        'hash_interno'
     ];
 }
