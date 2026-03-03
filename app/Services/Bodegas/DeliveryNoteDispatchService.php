@@ -22,7 +22,6 @@ use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Str;
 
 class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterface
 {
