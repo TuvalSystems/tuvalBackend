@@ -221,10 +221,6 @@ class GuiasderemisionController extends Controller
                 case 'transferencia':
                     $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle, $user);
                     break;
-                case 'despacho':
-                    $response = $this->deliveryNoteService->dispatchGuideDispatchShipment($guia, $detalle, $user);
-
-                    break;
                 case 'reposicion':
                     $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle, $user);
                     break;
@@ -284,29 +280,6 @@ class GuiasderemisionController extends Controller
         }
     }
 
-
-    public function verificarYAsignarAjusteGuiaDespacho($id): JsonResponse
-    {
-        try {
-            $guia = $this->deliveryNoteService->reassignDispatchGuideAdjustment($id);
-            $msg = "Ajuste Reasignado para la guia {$guia->id} del pedido {$guia->pedido}";
-            return $this->buildSuccessResponse($msg, 200);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
-    }
-
-
-
-    public function creacionAjusteGpGuiaRemision($id): JsonResponse
-    {
-        try {
-            $guia = $this->deliveryNoteService->createAdjustmentDeliveryNote($id);
-            return $this->buildSuccessResponse('Ajuste de guia creado exitosamente', 200);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
-    }
 
 
 
@@ -412,19 +385,11 @@ class GuiasderemisionController extends Controller
 
     public function enviarGuiaRemisionReservaAGp($id): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($id): JsonResponse {
             $guia = GpGuiaRemisionReserva::where('id', $id)->first();
             $response = $this->reservedDeliveryNoteService->sendReservationDeliveryNoteToGp($guia);
             return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion enviarGuiaRemisionReservaAGp -GuiasderemisionController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'linea' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'enviarGuiaRemisionReservaAGp -GuiasderemisionController');
     }
 
 
@@ -452,23 +417,13 @@ class GuiasderemisionController extends Controller
 
     public function despacharGuiaRemisionReserva(Request $request): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
             $validated = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
             ]);
-            $response = $this->reservedDeliveryNoteService->dispatchGuideReservation($validated, $request->user());
+            $response   = $this->reservedDeliveryNoteService->dispatchGuideReservation($validated, $request->user());
             return $this->successResponse('Guia de reserva Despachada', $response, 200);
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion enviarGuiaRemisionReservaAGp -GuiasderemisionController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'linea' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'despacharGuiaRemisionReserva -GuiasderemisionController');
     }
 
 
@@ -489,13 +444,13 @@ class GuiasderemisionController extends Controller
     public function despacharGuiaRemisionDespacho(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
-            $id = $request->input('id');
+            $id         = $request->input('id');
             $response   = $this->dispatch->dispatchGuideTransferShipment($id, $request->user());
             $tocoServ   = data_get($response, 'tocoServ', false);
+            $mensaje = 'Guía de remisión despachada';
             if ($tocoServ) {
                 $mensaje = 'Guía de remisión despachada, Sin items para despachar';
             }
-            $mensaje = 'Guía de remisión despachada';
             return $this->successResponse($mensaje, $response, 200);
         }, 'despachos', 'despacharGuiaRemisionDespacho -GuiasderemisionController');
     }
@@ -549,7 +504,6 @@ class GuiasderemisionController extends Controller
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->replenishment->receiveDeliveryNoteReplenishmentTransfer($payload, $user);
-            // return $this->successResponse('Guia de Reposicion recibida exitosamente', $response, 200);
             return $this->buildSuccessResponse($response, 200);
         }, 'guia_ventas', 'recibirGuiaRemisionReposicion');
     }

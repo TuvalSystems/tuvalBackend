@@ -34,4 +34,6 @@ interface DeliveryNoteCommonServiceInterface
     public function createMovementTransferSales($guia, $order, $docGp): GpGuiaRemisionTransferencia;
 
     public function validatePendingForReceivedSalesTransfer(GpGuiaRemision $guia): bool;
+
+    public function generateDeterministicUuidDispatch(int $guiaId, string $pedido, array $items, Collection $articulos): string;
 }

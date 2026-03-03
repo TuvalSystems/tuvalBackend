@@ -331,7 +331,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
      * */
     public function dispatchGuideReservation($payload, GpUsuario $user): array|Collection|GpGuiaRemisionReserva|Model|null
     {
-        $processed = false;
         $id = (int) data_get($payload, 'id');
         $guia = GpGuiaRemisionReserva::find($id);
         $details = $this->getDetailsGuideWithTransfers($guia->id);
@@ -344,14 +343,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         }
         foreach ($groups as $quote => $group) {
             $params = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user->USERID);
-            $ok = $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote);
-            if ($ok) {
-                $processed = true;
-            }
+            $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote);
+
         }
-        if (!$processed) {
-            throw new \Exception('No se pudo procesar el ajuste de la guía de Reserva');
-        }
+
         $guia->update(['estado' => 'enviada']);
         return $guia->fresh();
     }
@@ -402,10 +397,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             $msg        = data_get($resp, 'message');
             $docGp      = trim(data_get($resp, 'data.docGp', '')); // null si no existe
             if (!$success) {
-                throw new \Exception($msg ?: 'Error creando el ajuste de guía en GP.');
+                throw new \RuntimeException($msg ?: 'Error creando el ajuste de guía en GP.');
             }
             if ($docGp === '') {
-                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+                throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
             }
 
             return DB::transaction(function () use ($groupItems, $guia, $data, $quote) {

@@ -16,32 +16,50 @@ trait ExecuteApiTransactions
     protected function executeTransaction(\Closure $accion, string $canalLog, string $contextoLog): JsonResponse
     {
         try {
+            // Retorno #1: Éxito
             return $accion();
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409); // Asume que el Trait o el Controller tienen este método
-        } catch (ValidationException $ve) {
-            return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
-        } catch (HttpException $he) {
-            return $this->buildErrorResponse($he->getMessage(), $he->getStatusCode());
-        } catch (ModelNotFoundException $mnf) {
-            return $this->buildErrorResponse('El recurso solicitado no fue encontrado.', 404);
-        } catch (QueryException $qe) {
-            Log::channel($canalLog)->error("Error de Base de Datos en $contextoLog : ", [
-                'message'   => $qe->getMessage(),
-                'sql'       => $qe->getSql(), // Te dirá exactamente qué query falló
-                'request'   => request()->except(['password', 'password_confirmation', 'token']) // MEJORA 4
-            ]);
-            return $this->buildErrorResponse('Error de integridad procesando los datos en la base.', 500);
         } catch (\Throwable $e) {
-           Log::channel($canalLog)->error("Error General en $contextoLog : ", [
-                'message'   => $e->getMessage(),
-                'linea'     => $e->getLine(),
-                'file'      => $e->getFile(),
-                'trace'     => $e->getTraceAsString(),
-                'request'   => request()->except(['password', 'password_confirmation', 'token'])
-            ]);
-            $mensajeError = config('app.debug') ? $e->getMessage() : 'Ha ocurrido un error interno en el servidor.';
-            return $this->buildErrorResponse($mensajeError, 500);
+            // Caso Especial: La validación suele tener una estructura diferente (array de errores)
+            if ($e instanceof ValidationException) {
+                // Retorno #2: Error de Validación
+                return $this->validationErrorResponse($e->errors(), 'validation error', 422);
+            }
+
+            // Para el resto de excepciones, definimos variables por defecto
+            $mensaje = $e->getMessage();
+            $codigo = 500;
+
+            if ($e instanceof RuntimeException) {
+                $codigo = 409;
+            } elseif ($e instanceof HttpException) {
+                $codigo = $e->getStatusCode();
+            } elseif ($e instanceof ModelNotFoundException) {
+                $mensaje = 'El recurso solicitado no fue encontrado.';
+                $codigo = 404;
+            } elseif ($e instanceof QueryException) {
+                // Lógica de Logs para Base de Datos
+                Log::channel($canalLog)->error("Error de Base de Datos en $contextoLog : ", [
+                    'message' => $e->getMessage(),
+                    'sql'     => $e->getSql(),
+                    'request' => request()->except(['password', 'password_confirmation', 'token'])
+                ]);
+                $mensaje = 'Error de integridad procesando los datos en la base.';
+                $codigo = 500;
+            } else {
+                // Throwable General (Error por defecto / Fallback)
+                Log::channel($canalLog)->error("Error General en $contextoLog : ", [
+                    'message' => $e->getMessage(),
+                    'linea'   => $e->getLine(),
+                    'file'    => $e->getFile(),
+                    'trace'   => $e->getTraceAsString(),
+                    'request' => request()->except(['password', 'password_confirmation', 'token'])
+                ]);
+                $mensaje = config('app.debug') ? $e->getMessage() : 'Ha ocurrido un error interno en el servidor.';
+                $codigo = 500;
+            }
+
+            // Retorno #3: Respuesta de Error Estándar (unificada)
+            return $this->buildErrorResponse($mensaje, $codigo);
         }
     }
 }

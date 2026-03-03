@@ -9,6 +9,7 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpBodega;
 use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpTempGuiasDespachoBlock;
@@ -263,5 +264,58 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
             $guia->save();
         }
         return $completa;
+    }
+
+
+    /**
+     * Genera un UUID v3 (Simulado con MD5) determinista.
+     * Mismo Input (Guía + Pedido + Items) = Mismo Hash.
+     * Esto permite idempotencia en reintentos.
+     */
+    public function generateDeterministicUuidDispatch(int $guiaId, string $pedido, array $items, Collection $articulos): string
+    {
+        // 1. Preparamos los datos de cada item involucrado en este grupo
+        $dataPoints = [];
+
+        foreach ($items as $item) {
+            // Buscamos el detalle del pedido original para obtener su "historia" (trasladado)
+            $art = $articulos->get($item->detalle_id);
+
+            // Usamos 0 si por alguna razón no se encuentra el articulo (safety check)
+            $trasladadoHistorico = $art ? (float)$art->trasladado : 0;
+            $cantidadDespachando = (float)$item->GUI_REM_CANTIDAD;
+
+            // Creamos la firma única por item:
+            // ID + CUANTO MUEVO + CUANTO LLEVABA
+            $dataPoints[] = sprintf(
+                "ID:%s|QTY:%s|HIST:%s",
+                $item->detalle_id,
+                $cantidadDespachando,
+                $trasladadoHistorico
+            );
+        }
+
+        // 2. IMPORTANTE: Ordenamos los items.
+        // Si en el reintento la DB devuelve los items en otro orden, el hash NO debe cambiar.
+        sort($dataPoints);
+
+        // 3. Creamos la semilla maestra
+        $seed = sprintf(
+            "GUID:%s|ORD:%s|ITEMS:[%s]",
+            $guiaId,
+            $pedido,
+            implode(';', $dataPoints)
+        );
+
+        // 4. Generamos MD5 y formateamos a UUID (36 chars)
+        $hash = md5($seed);
+
+        return sprintf('%08s-%04s-%04s-%04s-%012s',
+            substr($hash, 0, 8),
+            substr($hash, 8, 4),
+            substr($hash, 12, 4),
+            substr($hash, 16, 4),
+            substr($hash, 20, 12)
+        );
     }
 }

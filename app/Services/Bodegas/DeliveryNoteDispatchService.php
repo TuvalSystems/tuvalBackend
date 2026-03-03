@@ -262,8 +262,9 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             $nuevoReservado         = max(0.0, (float) ($art->reservado ?? 0) - $qty);
             $nuevoTrasladado        = (float) ($art->trasladado ?? 0) + $qty;
             $cap                    = (float) ($art->ART_CANTIDAD ?? 0);
-            if ($cap > 0)
+            if ($cap > 0) {
                 $nuevoTrasladado    = min($nuevoTrasladado, $cap);
+            }
             $art->fill([
                 'reservado'         => $nuevoReservado,
                 'trasladado'        => $nuevoTrasladado
@@ -282,7 +283,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         }
 
         foreach ($groups as $order => $grupo) {
-            $hashInterno = (string) Str::uuid(); //definimos el hasInterno para manejarlo en el proceso de guia de despacho
+            $hashInterno = (string)$this->common->generateDeterministicUuidDispatch($guia->id, $order, $grupo['items'],  $articulos); //definimos el hasInterno para manejarlo en el proceso de guia de despacho
             $params      = $this->builder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user, $hashInterno);
 
             $this->sendItemsDeliveryNoteDispatchToGp($guia, $order, $params, $grupo['items'], $hashInterno);
@@ -299,7 +300,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function getPhysicalOrderDetailsByIds($ids)
+    protected function getPhysicalOrderDetailsByIds($ids): Collection
     {
         return GpPedidoDetalle::query()->whereIn('id', $ids)
             ->where('reservado', '>', 0)
