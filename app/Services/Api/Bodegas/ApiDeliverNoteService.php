@@ -65,7 +65,7 @@ class ApiDeliverNoteService extends ApiGpService
 
     public function checkReservationGuideAdjustment(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_CHECK_AJUSTE, 'GET', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_CHECK_AJUSTE, 'POST', $params, 'json');
     }
 
 
