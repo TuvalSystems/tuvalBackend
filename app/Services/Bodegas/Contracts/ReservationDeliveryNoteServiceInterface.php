@@ -19,4 +19,7 @@ interface ReservationDeliveryNoteServiceInterface
     public function dispatchGuideReservation($payload, GpUsuario $user): array|Collection|GpGuiaRemisionReserva|Model|null;
 
     public function getDetailReservationDeliveryNoteById($id): array;
+
+    public function receiveItemsFromTransferred(int $guiaId, array $items, GpUsuario $user): GpGuiaRemisionReserva;
+
 }

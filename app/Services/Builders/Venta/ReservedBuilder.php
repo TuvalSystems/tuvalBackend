@@ -2,20 +2,16 @@
 
 namespace App\Services\Builders\Venta;
 
-use App\Models\GpIngreso;
-use App\Models\GpIngresosDetalle;
 use App\Models\GpUsuario;
 use App\Models\reservas\GpCotizacionReservaDetalleLog;
 use App\Models\reservas\GpCotizacionReservaLog;
-use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpPedidoReservaDetalleLog;
 use App\Models\reservas\GpPedidoReservaLog;
 use App\Models\reservas\GpReserva;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Arr;
+
 
 class ReservedBuilder implements ReservedBuilderInterface
 {
@@ -125,88 +121,6 @@ class ReservedBuilder implements ReservedBuilderInterface
 
 
 
-    public function formPayloadReservationReceivedDetail(array $items, Collection $movimientos, Collection $traslados): array
-    {
-        $groups = [];
-        foreach ($items as $itm) {
-            $trm = $traslados->get($itm['traslado_id']);
-            if (!$trm) {
-                continue;
-            }
-            $cot                = $itm['c_cotizacion'];
-            $mov                = $movimientos->get($itm['c_cotizacion']) ?? null;
-            $itm['traslado']    = $trm;
-
-            $groups[$cot]['pedido']         = $cot;
-            $groups[$cot]['items'][]        = $itm;
-            $groups[$cot]['transferencia']  = $mov?->codigo ?? '';
-            $groups[$cot]['ws_items'][] = [
-                'item'                      => Arr::get($itm, 'art_code', ''),
-                'compartimento'             => Arr::get($itm, 'compartimiento', ''),
-                'cantidad'                  => (float) data_get($itm, 'recibir', 0)
-            ];
-        }
-        return $groups;
-    }
 
 
-
-    public function buildReservationDeliveryNoteReceivedPayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $movimiento, string $user): array
-    {
-
-        $header = [
-            'idCompany'         => config('services.api_gp.company'),
-            'pedido'            => $documento,
-            'bodegaOrigen'      => $guia->bodega_origen,
-            'bodegaDestino'     => $guia->bodega_destino,
-            'observacion'       => preg_replace('/\s+/', ' ', $guia->observacion),
-            'usuario'           => $user,
-            'numTranferencia'   => $movimiento,
-            'idGuiaRemision'    => $guia->id,
-            'guiaRemision'      => $guia->numero_guia
-        ];
-        return [
-            'cabecera'  => $header,
-            'detalle'   => $items
-        ];
-    }
-
-
-    public function buildRecievedDeliveryNoteValidationPayload(array $params): array
-    {
-        return [
-            'orderNumber'       => data_get($params, 'pedido'),
-            'newOrderNumber'    => "",
-            'origen'            => data_get($params, 'bodegaOrigen'),
-            'idGuiaRemision'    => data_get($params, 'idGuiaRemision'),
-            'guiaRemision'      => data_get($params, 'guiaRemision'),
-        ];
-    }
-
-
-
-    /**guardar en tablas de ingresos */
-    public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso
-    {
-        $ing = new GpIngreso();
-        $ing->fill([
-            'user_id'               => $user->id,
-            'USERID'                => $user->USERID,
-            'tipo'                  => 'traslado_reserva',
-            'documento'             => $quote,
-            'GUI_REM_GUIA_REMISION' => $guia->numero_guia,
-        ]);
-        return $ing;
-    }
-
-    public function createRegisterHistoryDetail($items, $ing): GpIngresosDetalle
-    {
-        $d = new GpIngresosDetalle();
-        $d->fill([
-            'ingreso_id'    => $ing->id,
-            'ART_CODIGO'    => $items['art_code'],
-            'ingresado'     => $items['recibir'],
-        ]);
-        return $d;
-    }
 }

@@ -36,4 +36,9 @@ interface DeliveryNoteCommonServiceInterface
     public function validatePendingForReceivedSalesTransfer(GpGuiaRemision $guia): bool;
 
     public function generateDeterministicUuidDispatch(int $guiaId, string $pedido, array $items, Collection $articulos): string;
+
+
+    //recibir reservas
+
+    public function groupItemsByQuotesToReceivedReserved(array $items, Collection $movimientos, Collection $traslados): array;
 }

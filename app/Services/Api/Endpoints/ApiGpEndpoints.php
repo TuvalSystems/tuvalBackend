@@ -97,7 +97,6 @@ class ApiGpEndpoints
     public const GUIA_TRANSFERENCIA_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-transferencia';
     public const GUIA_REPOSICION_CHECK_AJUSTE = 'api/inventario/validar-existencia-guia-reposicion';
     public const GUIA_RESERVA_CHECK_AJUSTE = 'api/inventario/reservas/validar-existencia-guia';
-    public const GUIA_RESERVA_RECIBIDO_CHECK_AJUSTE = 'api/inventario/reservas/validar-existencia-ajuste-recibir';
     public const GUIA_TRFV_RECIBIDO_CHECK_AJUSTE = 'api/inventario/transferencia-ventas/validar-existencia-ajuste-recibir';
 
     // ---

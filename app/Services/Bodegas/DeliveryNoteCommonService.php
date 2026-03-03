@@ -9,7 +9,6 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpBodega;
 use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpTempGuiasDespachoBlock;
@@ -19,6 +18,7 @@ use App\Models\GpVehiculo;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
@@ -73,20 +73,44 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 
         $groups = [];
         foreach ($details as $det) {
-            $trr = $det->traslado;
+            $trr    = $det->traslado;
             if (!$trr || !$trr->cotizacion) {
                 continue;
             }
-            $cot = $trr->cotizacion->cotizacion;
+            $cot            = $trr->cotizacion->cotizacion;
             $groups[$cot] ??= ['cotizacion' => $cot, 'items' => [], 'ws_items' => []];
 
             $groups[$cot]['items'][] = $det;
 
             //items para enviar al webservice de la guia de reserva
             $groups[$cot]['ws_items'][] = [
-                'item' => $det->art_code,
-                'compartimiento' => '',
-                'cantidad' => (float) $det->cantidad,
+                'item'              => $det->art_code,
+                'compartimento'     => '',
+                'cantidad'          => (float) $det->cantidad,
+            ];
+        }
+        return $groups;
+    }
+
+    public function groupItemsByQuotesToReceivedReserved(array $items, Collection $movimientos, Collection $traslados): array
+    {
+        $groups = [];
+        foreach ($items as $itm) {
+            $trm = $traslados->get($itm['traslado_id']);
+            if (!$trm) {
+                continue;
+            }
+            $cot                = $itm['c_cotizacion'];
+            $mov                = $movimientos->get($itm['c_cotizacion']) ?? null;
+            $itm['traslado']    = $trm;
+
+            $groups[$cot]['pedido']         = $cot;
+            $groups[$cot]['items'][]        = $itm;
+            $groups[$cot]['transferencia']  = $mov?->codigo ?? '';
+            $groups[$cot]['ws_items'][] = [
+                'item'                      => Arr::get($itm, 'art_code', ''),
+                'compartimento'             => Arr::get($itm, 'compartimiento', ''),
+                'cantidad'                  => (float) data_get($itm, 'recibir', 0)
             ];
         }
         return $groups;

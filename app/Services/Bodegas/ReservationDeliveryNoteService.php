@@ -4,6 +4,7 @@ namespace App\Services\Bodegas;
 
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\TransactionType;
+use App\Jobs\Venta\Reservas\NotifyReceivedReservationsJob;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
@@ -17,6 +18,7 @@ use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -344,7 +346,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         }
         foreach ($groups as $quote => $group) {
             $hashInterno  = $this->generateDeterministicUuidReservation($guia->id, $quote, $group['items']);
-            $params       = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user->USERID, $hashInterno);
+            $params       = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user->USERID, $hashInterno, null);
             $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote, $hashInterno);
         }
 
@@ -486,6 +488,280 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             substr($hash, 20, 12)
         );
     }
+
+
+
+
+
+
+
+
+    /***
+     *
+     *   PROCESO DE RECIBIR GUIAS DE REMISION DE RESERVAS
+     *
+     */
+
+
+    public function receiveItemsFromTransferred(int $guiaId, array $items, GpUsuario $user): GpGuiaRemisionReserva
+    {
+        $limitQty = $this->validateReceivedQty($items);
+        if ($limitQty) {
+            throw new \RuntimeException($limitQty);
+        }
+        $gpUser     = GpUsuario::whereKey($user->id)->first() ?? GpUsuario::where('USERID', 'adminWeb')->first();
+        $guia       = GpGuiaRemisionReserva::with('cotizaciones')->find($guiaId);
+        if (!$guia) {
+            throw new \RuntimeException("Guia de reserva no encontrada");
+        }
+        $movimientos    = $this->getMovimentsByGuiaId($guia->id, $guia->quotes); // me obtiene todos los movimientos de la guia tomando la cotizacion como clave
+        $itmTrIds       = collect($items)->pluck('traslado_id')->filter()->unique()->toArray();
+        $traslados      = GpTrasladosReservas::whereIn('id', $itmTrIds)->get()->keyBy('id');
+        $groupsItems    = $this->common->groupItemsByQuotesToReceivedReserved($items, $movimientos, $traslados);
+
+        foreach ($groupsItems as $quote => $group) {
+            $hashInterno    = $this->generateDeterministicUuidReceivedReservation($guia->id, $quote, $group['transferencia'], $group['items']);
+            $params         = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user->USERID, $hashInterno, $group['transferencia']);
+            $this->processReceivedReservationAndCreateAdjustment($guia, $params, $group['items'], $quote, $gpUser, $hashInterno);
+        }
+
+        $exists = $this->validateExistsForReceivedUpdateStatusGuide($guia);
+        $this->sendNotificacionReceivedItems($guia, $exists, $items, $gpUser);
+        return $guia->refresh();
+    }
+
+
+    protected function getMovimentsByGuiaId(int $guiaId, array $quotes)
+    {
+        return GpGuiaRemisionReservaMovimiento::where('guia_id', $guiaId)->where('tipo_movimiento', TransactionType::TRC->value)->whereIn('cotizacion', $quotes)->get()->keyBy('cotizacion');
+    }
+
+    protected function processReceivedReservationAndCreateAdjustment(GpGuiaRemisionReserva $guia, array $params, array $items, string $quote, GpUsuario $user, string $hashInterno)
+    {
+        $transaction        = TransactionType::RTC;
+        $typeMov            = $transaction->value;
+        $type               = $transaction->type();
+        $resp               = $this->apiDelivery->createReceiveGuideReservationAjustment($params);
+        $success            = data_get($resp, 'success', false);
+        $msg                = data_get($resp, 'message');
+        $docGp              = trim(data_get($resp, 'data.docGp', ''));
+
+        if (!$success) {
+            $cabecera           = data_get($params, 'cabecera', []);
+            $pyValidate         = $this->builder->buildReservationGuideValidationPayload($cabecera,  $typeMov, $type);
+            $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($pyValidate);
+            $headerRespValidate = data_get($resValidate, 'data');
+            $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
+            if (!empty($headerRespValidate) && filled($docGpValidate)) {
+                // Usamos el documento que encontró la validación
+                $docGp  = $docGpValidate;
+                $data   = $headerRespValidate;
+            } else {
+                // Si falló la creación y la validación tampoco trajo nada útil, lanzamos el error.
+                throw new \RuntimeException($msg ?: 'Error creando el ajuste de guía en GP.');
+            }
+        } else {
+            $data = data_get($resp, 'data', []);
+        }
+        if ($docGp === '') {
+            throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
+        }
+
+        $already = $this->movementExistsWeb($guia->id, $quote, $docGp, $typeMov, $type, $hashInterno);
+        DB::transaction(function () use ($guia, $items, $data, $quote, $already, $user, $typeMov, $type, $hashInterno) {
+            if (!$already) {
+                $this->updateQtyTransferedItems($guia, $items);
+                $this->createMovementReservation($guia, $data, $quote, $typeMov, $type, $hashInterno);
+                $this->createRegisterHistoryIng($guia, $items, $user, $quote);
+            }
+        });
+    }
+
+
+
+
+
+    protected function updateQtyTransferedItems(GpGuiaRemisionReserva $guia, array $items)
+    {
+        foreach ($items as $itm) {
+            $trasladoId         = data_get($itm, 'traslado_id');
+            $traslado           = GpTrasladosReservas::with('reserva')->find($trasladoId);
+            $liberarStock       = in_array($traslado->reserva->estado, ['cancelado', 'rechazada']);
+            $this->updateQtyReceivedDetailGuide($itm);
+            $this->updateQtyStockQuotationTransferred($guia, $itm, $liberarStock);
+            $this->updateStatusReservation($itm, $traslado->reserva);
+        }
+    }
+
+    protected function updateQtyReceivedDetailGuide($item)
+    {
+        $recibir    = max(0, (float) (data_get($item, 'recibir', 0)));
+        $gd         = GpGuiaRemisionReservaDetalle::find($item['id']);
+        $pend       = max(0, (float) $gd->cantidad - (float) $gd->recibido);
+        if ($pend <= 0) {
+            return;
+        }
+        $gd->increment('recibido', min($recibir, $pend));
+    }
+
+    protected function updateQtyStockQuotationTransferred(GpGuiaRemisionReserva $guia, array $item, bool $liberarStock)
+    {
+        $detalleId          = (int) Arr::get($item, 'detalle_id');
+        $qty = (float) max(0, Arr::get($item, 'recibir', 0));
+        if ($qty <= 0 || !$detalleId) {
+            return;
+        }
+        $stockOrigen        = GpCotizacionDetalleStock::where('detalle_id', $detalleId)->where('STO_ART_BODEGA', $guia->bodega_origen)->first();
+        $stockDestino       = GpCotizacionDetalleStock::where('detalle_id', $detalleId)->where('STO_ART_BODEGA', $guia->bodega_destino)->first();
+
+        // Evita negativos: limita lo que vas a descontar
+        $decTras                            = min($qty, (float) $stockOrigen->cantidad_traslado);
+        $decSel                             = min($qty, (float) $stockOrigen->seleccionado);
+        $stockOrigen->cantidad_reservada    = max(0, (float) $stockOrigen->cantidad_reservada - $decTras);
+        $stockOrigen->cantidad_traslado     = max(0, (float) $stockOrigen->cantidad_traslado - $decTras);
+        $stockOrigen->seleccionado          = max(0, (float) $stockOrigen->seleccionado - $decSel);
+        $stockOrigen->cantidad_transito     = (float) max(0, $stockOrigen->cantidad_transito - $qty);
+        $stockOrigen->save();
+
+        if ($liberarStock) {
+            $stockDestino->cantidad_reservada   = 0;
+            $stockDestino->seleccionado         = 0;
+            $stockOrigen->cantidad_transito     = 0;
+        } else {
+            // En destino sumas lo recibido a "seleccionado" (ajusta si tu modelo espera otro campo)
+            $stockDestino->cantidad_reservada   = (float) $stockDestino->cantidad_reservada + $qty;
+            $stockDestino->seleccionado         = (float) $stockDestino->seleccionado + $qty;
+        }
+
+        $stockDestino->save();
+    }
+
+    protected function updateStatusReservation($itm, $reserva)
+    {
+        if (!$reserva) {
+            return;
+        }
+
+        // BLOQUEO DE SEGURIDAD:
+        // Si la reserva está cancelada o rechazada, NO la tocamos.
+        // Ya cumplió su ciclo de vida y el stock se liberó en el paso anterior.
+        if (in_array($reserva->estado, ['cancelado', 'rechazada'])) {
+            return;
+        }
+        $existePendiente = GpCotizacionDetalleStock::query()
+            ->from('gp_cotizacion_detalle_stocks as ds')
+            ->join('gp_traslados_reservas as tr', 'tr.cotizacion_id', '=', 'ds.cotizacion_id')
+            ->where('tr.reserva_id', $reserva->id)
+            ->where('ds.cantidad_traslado', '>', 0)
+            ->exists();
+        if (!$existePendiente && $reserva->estado !== 'aprobado') {
+            $reserva->update(['estado' => 'aprobado']); // GpReserva
+        }
+    }
+
+
+
+    protected function createRegisterHistoryIng($guia, $items, GpUsuario $user, $quote)
+    {
+        $ing = $this->builder->createRegisterHistortyHeader($guia, $user, $quote);
+        $ing->save();
+        foreach ($items as $item) {
+            $de = $this->builder->createRegisterHistoryDetail($item, $ing);
+            $de->save();
+        }
+    }
+
+
+    protected function validateExistsForReceivedUpdateStatusGuide(GpGuiaRemisionReserva $guia): bool
+    {
+        $completa = !GpGuiaRemisionReservaDetalle::where('guia_id', $guia->id)
+            ->whereColumn('recibido', '<', 'cantidad')->exists();
+        if ($completa) {
+            $guia->update(['estado' => 'recibida']);
+            return true;
+        }
+        return false;
+    }
+
+
+    protected function sendNotificacionReceivedItems(GpGuiaRemisionReserva $guia, bool $exists, array $items, GpUsuario $userReceived)
+    {
+        $idsItems = collect($items)->pluck('id')->toArray();
+        $detalles = GpGuiaRemisionReservaDetalle::with(['cotizacion:id,cotizacion', 'traslado.reserva:id,user_ingreso_reserva_id'])->whereIn('id', $idsItems)->where('guia_id', $guia->id)->get()->keyBy('id');
+        foreach ($items as $dt) {
+            $detGuia    = $detalles->get($dt['id']);
+            $qtyFmt     = number_format((float) $dt['recibir'], 2, '.', '');
+            $title      = $exists ? 'Articulo recibido completo' : 'Articulo recibido parcial';
+            $msg        = sprintf(
+                'Se ha recibido la cantidad de %s del artículo %s en la bodega %s (cotización %s) por parte de %s.',
+                $qtyFmt,
+                $detGuia->art_code,
+                $guia->bodega_destino,
+                $detGuia->cotizacion?->cotizacion ?? '-',
+                $userReceived->USERID ?? '-'
+            );
+            /** notificacion al usuario que su item fue recibido */
+            NotifyReceivedReservationsJob::dispatch($title, $msg, $detGuia->traslado->reserva->user_ingreso_reserva_id);
+        }
+    }
+
+
+    protected function validateReceivedQty(array $items): ?string
+    {
+        $idsItems       = collect($items)->pluck('id')->toArray();
+        $detalleGuias   = GpGuiaRemisionReservaDetalle::whereIn('id', $idsItems)->get(['id', 'art_code', 'cantidad', 'recibido'])->keyBy('id');
+        foreach ($items as $value) {
+            $detGuia = $detalleGuias->get($value['id']);
+            if ($detGuia) {
+                $recibir        = (float) data_get($value, 'recibir', 0);
+                $actual         = (float) $detGuia->recibido;
+                $disponible     =  max(0,  $detGuia->cantidad - $actual);
+
+                if (($actual + $recibir) > $detGuia->cantidad) {
+                    return "El ítem {$detGuia->art_code} excede el límite permitido. (Máximo disponible: {$disponible}).";
+                }
+            }
+        }
+        return null;
+    }
+
+
+    protected function generateDeterministicUuidReceivedReservation(int $guiaId, string $quote, string $numTransfer, array $items): string
+    {
+        $dataPoints = [];
+        foreach ($items as  $item) {
+            $recibido   = max(0, (float) data_get($item, 'recibir', 0));
+            $pendiente  = max(0, (float) data_get($item, 'pending_received', 0));
+            $dataPoints[] = sprintf(
+                "ROW:%s|QTY:%.4f|ST_RES:%.4f",
+                data_get($item, 'id'),
+                $recibido,
+                $pendiente
+            );
+        }
+        sort($dataPoints);
+        $seed = sprintf(
+            "GUID:%s|QT:%s|TRF:%s|ITEMS:[%s]",
+            $guiaId,
+            $quote,
+            $numTransfer,
+            implode(';', $dataPoints)
+        );
+        $hash = md5($seed);
+        return sprintf(
+            '%08s-%04s-%04s-%04s-%012s',
+            substr($hash, 0, 8),
+            substr($hash, 8, 4),
+            substr($hash, 12, 4),
+            substr($hash, 16, 4),
+            substr($hash, 20, 12)
+        );
+    }
+
+
+
+
+
 
 
 

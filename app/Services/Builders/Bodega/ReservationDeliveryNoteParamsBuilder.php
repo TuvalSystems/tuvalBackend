@@ -5,6 +5,8 @@ namespace App\Services\Builders\Bodega;
 use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\ReasonForTransfer;
+use App\Models\GpIngreso;
+use App\Models\GpIngresosDetalle;
 use App\Models\GpUsuario;
 use App\Models\reservas\GpGuiaRemisionReserva;
 use App\Models\reservas\GpGuiaRemisionReservaDetalle;
@@ -133,7 +135,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
 
 
 
-    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user, string $hashInterno): array
+    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user, string $hashInterno, ?string $numTranferencia): array
     {
         $header = [
             'idCompany'         => config('services.api_gp.company'),
@@ -142,7 +144,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'bodegaDestino'     => $guia->bodega_destino,
             'observacion'       => preg_replace('/\s+/', ' ', $guia->observacion),
             'usuario'           => $user,
-            'numTranferencia'   => '',
+            'numTranferencia'   => $numTranferencia ?? '',
             'idGuiaRemision'    => $guia->id,
             'guiaRemision'      => $guia->numero_guia,
             'hashInterno'       => $hashInterno
@@ -167,5 +169,30 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'tipo'              => $tipo,
             'hashInterno'       => data_get($params, 'hashInterno'),
         ];
+    }
+
+
+     public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso
+    {
+        $ing = new GpIngreso();
+        $ing->fill([
+            'user_id'               => $user->id,
+            'USERID'                => $user->USERID,
+            'tipo'                  => 'traslado_reserva',
+            'documento'             => $quote,
+            'GUI_REM_GUIA_REMISION' => $guia->numero_guia,
+        ]);
+        return $ing;
+    }
+
+    public function createRegisterHistoryDetail($items, $ing): GpIngresosDetalle
+    {
+        $d = new GpIngresosDetalle();
+        $d->fill([
+            'ingreso_id'    => $ing->id,
+            'ART_CODIGO'    => $items['art_code'],
+            'ingresado'     => $items['recibir'],
+        ]);
+        return $d;
     }
 }

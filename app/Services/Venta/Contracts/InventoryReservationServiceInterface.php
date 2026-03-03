@@ -57,11 +57,9 @@ interface InventoryReservationServiceInterface
     public function getTransferToReceiveDetails(int $id);
 
     public function printOrderStorageReceivedTranfered(array $payload);
-    public function receiveItemsFromTransferred(int $guiaId, array $items, GpUsuario $user);
 
 
     /** proceso de validacion y verificacion de stock disponible */
 
     public function validateAndProcessQuotationStock($quoteId);
-
 }

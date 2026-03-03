@@ -426,6 +426,18 @@ class GuiasderemisionController extends Controller
         }, 'reservas_log', 'despacharGuiaRemisionReserva -GuiasderemisionController');
     }
 
+    public function recibirItemsGuiaReserva(Request $request): JsonResponse
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $guiaId     = $request->input('guiaId', null);
+            $items      = $request->input('items', null);
+            $user       = $request->user();
+
+            $data   = $this->reservedDeliveryNoteService->receiveItemsFromTransferred($guiaId, $items, $user);
+            return $this->successResponse('Proceso realizado correctamente', $data, 200);
+        }, 'reservas_log', 'recibirItemsGuiaReserva -ReservasController');
+    }
+
 
     /**
      *
