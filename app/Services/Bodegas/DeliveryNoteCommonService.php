@@ -288,8 +288,9 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
             // Creamos la firma única por item:
             // ID + CUANTO MUEVO + CUANTO LLEVABA
             $dataPoints[] = sprintf(
-                "ID:%s|QTY:%s|HIST:%s",
-                $item->detalle_id,
+                "ROW:%s|DET:%s|QTY:%s|HIST:%s",
+                $item->id, //id del detalle de la guia
+                $item->detalle_id, // id del detalle del pedido
                 $cantidadDespachando,
                 $trasladadoHistorico
             );
@@ -310,7 +311,8 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
         // 4. Generamos MD5 y formateamos a UUID (36 chars)
         $hash = md5($seed);
 
-        return sprintf('%08s-%04s-%04s-%04s-%012s',
+        return sprintf(
+            '%08s-%04s-%04s-%04s-%012s',
             substr($hash, 0, 8),
             substr($hash, 8, 4),
             substr($hash, 12, 4),
