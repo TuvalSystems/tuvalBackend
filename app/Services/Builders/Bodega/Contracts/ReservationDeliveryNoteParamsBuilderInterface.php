@@ -20,6 +20,6 @@ interface ReservationDeliveryNoteParamsBuilderInterface
 
 
     //functions to send GP Ajustment Reservation
-    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user): array;
-     public function buildReservationGuideValidationPayload(array $params): array;
+    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user, string $hashInterno): array;
+     public function buildReservationGuideValidationPayload(array $params,  string $tipoMovimiento, string $tipo): array;
 }

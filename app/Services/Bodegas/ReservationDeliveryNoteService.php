@@ -3,6 +3,7 @@
 namespace App\Services\Bodegas;
 
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
+use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
@@ -342,9 +343,9 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             throw new \RuntimeException('No hay items para procesar el ajuste de la guía de reserva');
         }
         foreach ($groups as $quote => $group) {
-            $params = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user->USERID);
+            $hashInterno  = $this->generateDeterministicUuidReservation($guia->id, $quote, $group['items']);
+            $params       = $this->builder->buildReservedDeliveryNotePayload($guia, $quote, $group['ws_items'], $user->USERID, $hashInterno);
             $this->validateExistenceReservationGuideAdjustment($guia, $params, $group['items'], $quote);
-
         }
 
         $guia->update(['estado' => 'enviada']);
@@ -370,9 +371,22 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function validateExistenceReservationGuideAdjustment(GpGuiaRemisionReserva $guia, array $params, array $groupItems, string $quote): bool
     {
-        $cabecera           = data_get($params, 'cabecera', []);
-        $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera);
-        $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+        $transaction        = TransactionType::TRC;
+        $typeMov            = $transaction->value;
+        $type               = $transaction->type();
+        $resp               = $this->apiDelivery->createReservationGuideAjustment($params);
+        $success            = data_get($resp, 'success', false);
+        $msg                = data_get($resp, 'message');
+        $docGp              = trim(data_get($resp, 'data.docGp', ''));
+
+        if (!$success) {
+            $cabecera           = data_get($params, 'cabecera', []);
+            $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera,  $typeMov, $type);
+            $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+        }
+
+
+
         $headerRespValidate = data_get($resValidate, 'data');
         $validateSuccess    = data_get($resValidate, 'success');
         $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
@@ -412,6 +426,50 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         return false;
     }
 
+    // public function validateExistenceReservationGuideAdjustment(GpGuiaRemisionReserva $guia, array $params, array $groupItems, string $quote): bool
+    // {
+    //     $cabecera           = data_get($params, 'cabecera', []);
+    //     $payloadValidate    = $this->builder->buildReservationGuideValidationPayload($cabecera);
+    //     $resValidate        = $this->apiDelivery->checkReservationGuideAdjustment($payloadValidate);
+    //     $headerRespValidate = data_get($resValidate, 'data');
+    //     $validateSuccess    = data_get($resValidate, 'success');
+    //     $docGpValidate      = trim(data_get($headerRespValidate, 'docGp', ''));
+
+    //     /** cuando existe y solo necesita reasignar y procesar los movimientos de entrada y salida */
+    //     if (!empty($headerRespValidate) && filled($docGpValidate)) {
+    //         $already = $this->movementExistsWeb($guia->id, $quote, $docGpValidate);
+    //         if ($already) {
+    //             return true;
+    //         }
+    //         return DB::transaction(function () use ($groupItems, $guia, $headerRespValidate, $quote, $already) {
+    //             $this->processReservationGuideDecrementStock($groupItems);
+    //             $this->createMovementReservation($guia, $headerRespValidate, $quote);
+    //             return true;
+    //         });
+    //     }
+    //     /** en caso de que no exista la guia de reserva debe crearla */
+    //     if (empty($headerRespValidate) && $validateSuccess === false) {
+    //         $resp       = $this->apiDelivery->createReservationGuideAjustment($params);
+    //         $success    = data_get($resp, 'success', false);
+    //         $data       = data_get($resp, 'data', []);
+    //         $msg        = data_get($resp, 'message');
+    //         $docGp      = trim(data_get($resp, 'data.docGp', '')); // null si no existe
+    //         if (!$success) {
+    //             throw new \RuntimeException($msg ?: 'Error creando el ajuste de guía en GP.');
+    //         }
+    //         if ($docGp === '') {
+    //             throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
+    //         }
+
+    //         return DB::transaction(function () use ($groupItems, $guia, $data, $quote) {
+    //             $this->processReservationGuideDecrementStock($groupItems);
+    //             $this->createMovementReservation($guia, $data, $quote);
+    //             return true;
+    //         });
+    //     }
+    //     return false;
+    // }
+
 
     public function movementExistsWeb($guiaId, $quote, $docGp): bool
     {
@@ -448,6 +506,40 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             ->increment('cantidad_transito', $qty);
     }
 
+
+    protected function generateDeterministicUuidReservation($guiaId, string $quote, array $items): string
+    {
+        $dataPoints = [];
+        foreach ($items as  $item) {
+            $traslado            = $item->traslado;
+            $reservedHistory     = $traslado ? (float) $traslado->reservado : 0;
+            $qtyMovement         = (float) $item->cantidad;
+
+            $dataPoints[] = sprintf(
+                "ROW:%s|QTY:%.4f|ST_RES:%.4f",
+                $item->id,
+                $qtyMovement,
+                $reservedHistory
+            );
+        }
+        sort($dataPoints);
+        $seed = sprintf(
+            "GUID:%s|QT:%s|ITEMS:[%s]",
+            $guiaId,
+            $quote,
+            implode(';', $dataPoints)
+        );
+
+        $hash = md5($seed);
+        return sprintf(
+            '%08s-%04s-%04s-%04s-%012s',
+            substr($hash, 0, 8),
+            substr($hash, 8, 4),
+            substr($hash, 12, 4),
+            substr($hash, 16, 4),
+            substr($hash, 20, 12)
+        );
+    }
 
 
 

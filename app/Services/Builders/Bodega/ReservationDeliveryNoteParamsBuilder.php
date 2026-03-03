@@ -133,7 +133,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
 
 
 
-    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user): array
+    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user, string $hashInterno): array
     {
         $header = [
             'idCompany'         => config('services.api_gp.company'),
@@ -144,23 +144,28 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'usuario'           => $user,
             'numTranferencia'   => '',
             'idGuiaRemision'    => $guia->id,
-            'guiaRemision'      => $guia->numero_guia
+            'guiaRemision'      => $guia->numero_guia,
+            'hashInterno'       => $hashInterno
+
         ];
         return [
-            'cabecera' => $header,
-            'detalle' => $items
+            'cabecera'          => $header,
+            'detalle'           => $items
         ];
     }
 
 
-    public function buildReservationGuideValidationPayload(array $params): array
+    public function buildReservationGuideValidationPayload(array $params, string $tipoMovimiento, string $tipo): array
     {
         return [
             'orderNumber'       => data_get($params, 'pedido'),
-            'newOrderNumber'    => "",
             'origen'            => data_get($params, 'bodegaOrigen'),
+            'destino'           => data_get($params, 'bodegaDestino'),
             'idGuiaRemision'    => data_get($params, 'idGuiaRemision'),
             'guiaRemision'      => data_get($params, 'guiaRemision'),
+            'tipoTrx'           => $tipoMovimiento,
+            'tipo'              => $tipo,
+            'hashInterno'       => data_get($params, 'hashInterno'),
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\DeliveryNoteType;
 use App\Enums\bodegas\guiaremision\ReasonForTransfer;
+use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Events\Bodegas\Dashboard\DispatchPendings;
 use App\Models\GpUsuario;
 use App\Models\GpPedidoDetalle;
@@ -346,12 +347,13 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     protected function sendItemsDeliveryNoteDispatchToGp(GpGuiaRemision $guia, string $pedido, array $params, array $groupItems, string $hashInterno)
     {
-        $typeMov    = 'DSP';
-        $type       = 'E';
-        $response   = $this->api->createDispatchShipmentGuideVta($params);
-        $success    = data_get($response, 'success', false);
-        $msg        = data_get($response, 'message');
-        $docGp      = trim(data_get($response, 'data.docGp', ''));
+        $transaction    = TransactionType::DSP;
+        $typeMov        = $transaction->value;
+        $type           = $transaction->type();
+        $response       = $this->api->createDispatchShipmentGuideVta($params);
+        $success        = data_get($response, 'success', false);
+        $msg            = data_get($response, 'message');
+        $docGp          = trim(data_get($response, 'data.docGp', ''));
         if (!$success) {
             $cabecera               = data_get($params, 'cabecera', []);
             $payloadHeader          = $this->builder->buildDeliveryNoteValidateDispatchShipment($cabecera, $typeMov, $type);
