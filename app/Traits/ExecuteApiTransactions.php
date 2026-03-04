@@ -36,15 +36,24 @@ trait ExecuteApiTransactions
             } elseif ($e instanceof ModelNotFoundException) {
                 $mensaje = 'El recurso solicitado no fue encontrado.';
                 $codigo = 404;
+            } elseif ($e instanceof \DomainException) {
+                // Retorno para errores de lógica de negocio (ej. "Stock insuficiente")
+                $mensaje = $e->getMessage();
+                $codigo = 422; // O 400 (Bad Request) según prefieras
             } elseif ($e instanceof QueryException) {
+                if ($e->getCode() === '40001') {
+                    $mensaje = 'El recurso está ocupado temporalmente por otro proceso. Por favor, reintente.';
+                    $codigo = 409; // Conflict
+                } else {
+                    $mensaje = 'Error de integridad procesando los datos en la base.';
+                    $codigo = 500;
+                }
                 // Lógica de Logs para Base de Datos
                 Log::channel($canalLog)->error("Error de Base de Datos en $contextoLog : ", [
                     'message' => $e->getMessage(),
                     'sql'     => $e->getSql(),
                     'request' => request()->except(['password', 'password_confirmation', 'token'])
                 ]);
-                $mensaje = 'Error de integridad procesando los datos en la base.';
-                $codigo = 500;
             } else {
                 // Throwable General (Error por defecto / Fallback)
                 Log::channel($canalLog)->error("Error General en $contextoLog : ", [

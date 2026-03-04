@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use RuntimeException;
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use Illuminate\Http\Request;
@@ -49,34 +48,22 @@ class GuiasderemisionController extends Controller
 
     public function consultarGuiaGeneradaV1(Request $request): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $response = $this->deliveryNoteService->consultExistenceGeneratedGuides($data);
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $data             = $request->get('id');
+            $response          = $this->deliveryNoteService->consultExistenceGeneratedGuides($data);
             if ($response !== '') {
                 return $this->errorResponse($response, [], 409);
             }
             return $this->buildSuccessResponse('Validación exitosa. No existen conflictos con otras guías.', 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'consultarGuiaGeneradaV1 -GuiasderemisionController');
     }
 
     public function checkguiaremision(): JsonResponse
     {
-        try {
-            DB::beginTransaction();
+        return $this->executeTransaction(function (): JsonResponse {
             $this->deliveryNoteService->mapAssigmentNumberGuideRemision();
-            DB::commit();
             return $this->buildSuccessResponse('Guias de remision actualizadas', 200);
-        } catch (\Throwable $e) {
-            Log::error('Error en la funcion de checkGuiaRemision', [
-                'error' => $e->getMessage(),
-            ]);
-            DB::rollBack();
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'checkguiaremision -GuiasderemisionController');
     }
 
     public function imprimirguia($id): Response
@@ -251,33 +238,21 @@ class GuiasderemisionController extends Controller
 
     public function consultarDetalleGuiaPorId(Request $request): JsonResponse
     {
-        try {
-            $data = $request->all();
-            return $this->successResponse('Detalle de guia obtenido', $this->deliveryNoteService->getDeliveryNoteDetailByType($data['guia']), 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar detalle de guia', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'linea' => $e->getLine()
-            ]);
-            return $this->buildErrorResponse('Error al consultar detalle de guia', 500);
-        }
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $data           = $request->all();
+            $detalle        = $this->deliveryNoteService->getDeliveryNoteDetailByType($data['guia']);
+            return $this->successResponse('Detalle de guia obtenido', $detalle, 200);
+        }, 'reservas_log', 'consultarDetalleGuiaPorId -GuiasderemisionController');
     }
 
 
     public function consultarDetalleGuiaReservaPorId(Request $request): JsonResponse
     {
-        try {
-            $id = $request->get('id');
-            return $this->successResponse('Detalle de guia obtenido', $this->reservedDeliveryNoteService->getDetailReservationDeliveryNoteById($id), 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar detalle de guia reserva', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'linea' => $e->getLine()
-            ]);
-            return $this->buildErrorResponse('Error al consultar detalle de guia reserva', 500);
-        }
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $id             = $request->get('id');
+            $detalle        = $this->reservedDeliveryNoteService->getDetailReservationDeliveryNoteById($id);
+            return $this->successResponse('Detalle de guia obtenido', $detalle, 200);
+        }, 'reservas_log', 'consultarDetalleGuiaReservaPorId -GuiasderemisionController');
     }
 
 
@@ -320,15 +295,13 @@ class GuiasderemisionController extends Controller
 
     public function listaGuiaTransferenciaReposicionConAjuste(Request $request): JsonResponse
     {
-        try {
-            $fechaInicio = $request->get('fechaInicio');
-            $fechaFin = $request->get('fechaFin');
-            $estado = $request->get('estado');
-            $pedido = $this->deliveryNoteService->getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado);
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $fechaInicio    = $request->get('fechaInicio');
+            $fechaFin       = $request->get('fechaFin');
+            $estado         = $request->get('estado');
+            $pedido         = $this->deliveryNoteService->getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado);
             return $this->successResponse('Información obtenida', $pedido, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'listaGuiaTransferenciaReposicionConAjuste -GuiasderemisionController');
     }
 
     /** proceso para reajuste de guia de transferencias  */
@@ -485,7 +458,7 @@ class GuiasderemisionController extends Controller
         }, 'guia_ventas', 'crearGuiaRemisionVenta -GuiasderemisionController');
     }
 
-    /** generar (recibir guias de transferencia de venta) ingreso de guia de transferencia de venta */
+
     public function recibirGuiaRemisionVenta(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
