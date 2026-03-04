@@ -10,7 +10,6 @@ use App\Models\GpOrdenDespacho;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpPedidoDetalle;
 use App\Traits\JsonResponseTrait;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Models\despachos\GpGuiaRemision;
