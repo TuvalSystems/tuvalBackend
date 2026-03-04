@@ -418,7 +418,6 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
     {
         return GpGuiaRemisionReservaMovimiento::query()
             ->where('guia_id', $guiaId)
-            ->where('tipo_movimiento', 'TRC')
             ->where('cotizacion', $quote)
             ->where('codigo', trim((string) $docGp))
             ->where('hash_interno', trim((string) $hashInterno))

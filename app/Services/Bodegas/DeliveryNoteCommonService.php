@@ -121,23 +121,23 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 
     public function moveReservedToTransferredForTrfvLine($trl, $qty)
     {
-        $cantidad = (float) ($trl->cantidad ?? 0);
+        $cantidad   = (float) ($trl->cantidad ?? 0);
         $trasladado = (float) ($trl->trasladado ?? 0);
-        $reservado = (float) ($trl->reservado ?? 0);
+        $reservado  = (float) ($trl->reservado ?? 0);
 
-        $restante = max(0.0, $cantidad - $trasladado);
-        $delta = max(0.0, min((float) $qty, $restante));
+        $restante   = max(0.0, $cantidad - $trasladado);
+        $delta      = max(0.0, min((float) $qty, $restante));
         if ($delta <= 0) {
             $trl->completado = (int) (($trasladado) >= $cantidad);
             $trl->save();
             return;
         }
-        $nuevoTrasladado = min($cantidad, $trasladado + $delta);
-        $nuevoReservado = max(0.0, $reservado - $delta);
+        $nuevoTrasladado    = min($cantidad, $trasladado + $delta);
+        $nuevoReservado     = max(0.0, $reservado - $delta);
 
-        $trl->trasladado = $nuevoTrasladado;
-        $trl->reservado = $nuevoReservado;
-        $trl->completado = (int) (($nuevoTrasladado) >= $cantidad);
+        $trl->trasladado    = $nuevoTrasladado;
+        $trl->reservado     = $nuevoReservado;
+        $trl->completado    = (int) (($nuevoTrasladado) >= $cantidad);
         $trl->save();
     }
 
@@ -259,21 +259,28 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
     /**
      *  funciones para utilizadas para recibir guias de remision de transferencia y reposicion
      */
-    public function checkMovementExistsWeb(int $guiaId, string  $order, string $docGp): bool
+    public function checkMovementExistsWeb(int $guiaId, string $order, string $docGp, string $hash, string $typeMov, string $type): bool
     {
         return GpGuiaRemisionTransferencia::where('guia_remision_id', $guiaId)
             ->where('pedido', $order)
             ->where('codigo', trim((string) $docGp))
+            ->where('hash_interno', trim((string) $hash))
+            ->where('tipo_movimiento', $typeMov)
+            ->where('tipo', $type)
             ->exists();
     }
 
-    public function createMovementTransferSales($guia, $order, $docGp): GpGuiaRemisionTransferencia
+    public function createMovementTransferSales(GpGuiaRemision $guia, string $order, array $data, string $hash, string $typeMov, string $type): GpGuiaRemisionTransferencia
     {
         $movement = new GpGuiaRemisionTransferencia();
         $movement->fill([
             'guia_remision_id'      => $guia->id,
+            'id_movimiento'         => data_get($data, 'idMovimiento', ''),
+            'tipo_movimiento'       => $typeMov,
+            'tipo'                  => $type,
+            'hash_interno'          => $hash,
             'pedido'                => $order,
-            'codigo'                => trim((string) $docGp),
+            'codigo'                => trim((string) data_get($data, 'docGp', '')),
         ]);
         $movement->save();
         return $movement;

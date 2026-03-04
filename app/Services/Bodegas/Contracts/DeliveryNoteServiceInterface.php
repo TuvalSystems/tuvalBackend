@@ -11,7 +11,7 @@ interface DeliveryNoteServiceInterface
     public function getDeliveryNoteDetailByType(int|string $guiaId): array;
     public function mapAssigmentNumberGuideRemision();
     // proceso de despacho de guia
-    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle, $user);
+    // public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle, $user);
     // reposicion
     public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user);
 
@@ -21,19 +21,6 @@ interface DeliveryNoteServiceInterface
 
     public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin);
     public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null);
-
-
-
-    public function processTransferGuideAdjustment($id, $orderNumber = null);
-
-    public function processRepositionGuideAdjustment($id, $documento = null);
-
-
-    /** funciones common */
-
-
-
-
 
     public function consultExistenceGeneratedGuides(array $payload): string;
 }

@@ -230,7 +230,6 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
 
     public function receiveDeliveryNoteReplenishmentTransfer(array $payload, GpUsuario $user): string
     {
-        $idempotencyKey     = (string) Str::uuid();
         $guiaId             = data_get($payload, 'id');
         $guia               = GpGuiaRemision::where('id', $guiaId)->first();
         $detalles           = collect(data_get($payload, 'detalle', []));

@@ -30,8 +30,8 @@ interface DeliveryNoteCommonServiceInterface
     public function createTemporaryDeliveryNoteBlocksOrder($guia, GpUsuario $user);
 
     public function getPtoVtaByWarehouse($bodega): ?string;
-    public function checkMovementExistsWeb(int $guiaId, string  $order, string $docGp): bool;
-    public function createMovementTransferSales($guia, $order, $docGp): GpGuiaRemisionTransferencia;
+    public function checkMovementExistsWeb(int $guiaId, string  $order, string $docGp, string $hash, string $typeMov, string $type): bool;
+    public function createMovementTransferSales(GpGuiaRemision $guia, string $order, array $data, string $hash, string $typeMov, string $type): GpGuiaRemisionTransferencia;
 
     public function validatePendingForReceivedSalesTransfer(GpGuiaRemision $guia): bool;
 

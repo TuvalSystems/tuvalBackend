@@ -57,7 +57,7 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
 
 
 
-    public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, array $items, string $user, ?string $movimiento): array
+    public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, array $items, string $user, string $hash, ?string $movimiento): array
     {
         $header = [
             'idCompany'         => config('services.api_gp.company'),
@@ -68,7 +68,8 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
             'usuario'           => $user,
             'numTranferencia'   => $movimiento ?? '',
             'idGuiaRemision'    => $guia->id,
-            'guiaRemision'      => $guia->GUI_REM_GUIA_REMISION
+            'guiaRemision'      => $guia->GUI_REM_GUIA_REMISION,
+            'hashInterno'       => $hash
         ];
         return [
             'cabecera'          => $header,
@@ -78,7 +79,7 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
 
 
 
-    public function buildDeliveryNoteValidateReceivedSalesTransfer(array $params, string $tipo): array
+    public function buildDeliveryNoteValidateReceivedSalesTransfer(array $params, string $tipoMovimiento, string $tipo): array
     {
         return [
             'orderNumber'       => data_get($params, 'pedido'),
@@ -86,7 +87,9 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
             'destino'           => data_get($params, 'bodegaDestino'),
             'idGuiaRemision'    => data_get($params, 'idGuiaRemision'),
             'guiaRemision'      => data_get($params, 'guiaRemision'),
+            'tipoTrx'           => $tipoMovimiento,
             'tipo'              => $tipo,
+            'hashInterno'       => data_get($params, 'hashInterno'),
         ];
     }
 
