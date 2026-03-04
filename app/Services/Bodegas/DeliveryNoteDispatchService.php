@@ -231,7 +231,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
      *
      */
 
-    public function dispatchGuideTransferShipment(int $guiaId, GpUsuario $user)
+    public function dispatchGuideTransferShipment(int $guiaId, GpUsuario $user): array
     {
         $guia = GpGuiaRemision::findOrFail($guiaId);
         if ($guia->estado == DeliveryNoteStatus::ENVIADA->value) {

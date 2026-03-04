@@ -57,7 +57,7 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
 
 
 
-    public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, string $movimiento, array $items, string $user): array
+    public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, array $items, string $user, ?string $movimiento): array
     {
         $header = [
             'idCompany'         => config('services.api_gp.company'),
@@ -66,7 +66,7 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
             'bodegaDestino'     => $guia->bodega_destino,
             'observacion'       => preg_replace('/\s+/', ' ', $guia->GUI_REM_OBSERVACION),
             'usuario'           => $user,
-            'numTranferencia'   => $movimiento,
+            'numTranferencia'   => $movimiento ?? '',
             'idGuiaRemision'    => $guia->id,
             'guiaRemision'      => $guia->GUI_REM_GUIA_REMISION
         ];

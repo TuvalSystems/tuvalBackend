@@ -457,6 +457,15 @@ class GuiasderemisionController extends Controller
         }, 'guia_ventas', 'crearGuiaRemisionVenta -GuiasderemisionController');
     }
 
+    public function despacharGuiaRemisionVenta(Request $request): JsonResponse
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $id         = $request->input('id');
+            $response   = $this->salesTransfer->dispatchDeliveryNoteSalesTransfer($id, $request->user());
+            return $this->successResponse('Guia de Venta Despachada', $response, 200);
+        }, 'guia_ventas', 'despacharGuiaRemisionVenta -GuiasderemisionController');
+    }
+
 
     public function recibirGuiaRemisionVenta(Request $request): JsonResponse
     {

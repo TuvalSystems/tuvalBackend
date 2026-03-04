@@ -22,6 +22,7 @@ use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServiceInterface
@@ -34,12 +35,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         protected readonly DeliveryNoteDispatchParamsBuilderInterface $builderDispatch,
         protected readonly DeliveryNoteSalesTransferBuilderInterface $builder,
         protected readonly InvoiceServiceInterface $invoiceService,
-
-
-
-    ) {
-        // Inyecta dependencias si es necesario
-    }
+    ) {}
 
     public function createDeliveryNoteSalesTransfer(array $payload, GpUsuario $user)
     {
@@ -131,9 +127,9 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
     protected function sendDeliveryNoteSalesTransferToGp($guide)
     {
-        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
-        $validate = $this->validateExistenceDeliveryNoteDisptach($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
-        $status = data_get($validate, 'success', false);
+        $detalle    = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
+        $validate   = $this->validateExistenceDeliveryNoteDisptach($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
+        $status     = data_get($validate, 'success', false);
         if ($status) {
             $this->common->assigmentAccessCodeToGuidePending($guide);
             return $guide->refresh();
@@ -160,7 +156,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         ]);
         $success = data_get($response, 'success', false);
         if (!$success) {
-            throw new \Exception(data_get($response, 'message', 'Opps! Algo salio mal'));
+            throw new \RuntimeException(data_get($response, 'message', 'Opps! Algo salio mal'));
         }
         return $success;
     }
@@ -202,7 +198,6 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             ]);
             GpPedido::where('id', $pedidoId)->update(['transferencia_en_proceso' => 1]);
         }
-
     }
 
     protected function validateQtyTransferedItems($items): ?string
@@ -223,6 +218,89 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         }
         return null;
     }
+
+
+
+
+    /** proceso de generar el egreso de la transferencia de venta  */
+
+    public function dispatchDeliveryNoteSalesTransfer(int $guiaId, GpUsuario $user)
+    {
+        $guia = GpGuiaRemision::findOrFail($guiaId);
+        if ($guia->estado == DeliveryNoteStatus::ENVIADA->value) {
+            throw new \RuntimeException("La guia de despacho ya fue enviada por otro usuario");
+        }
+        $detalles   = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+        if ($detalles->isEmpty()) {
+            throw new \RuntimeException("Esta guia de Venta no tiene detalles");
+        }
+        $itemsIds = collect($detalles)->pluck('detalle_id')->toArray();
+        $traslados = $this->getTransferSales($itemsIds);
+        if (!$traslados || $traslados->isEmpty()) {
+            throw new \RuntimeException(
+                'No hay traslados de ventas pendientes para procesar esta guía de transferencia'
+            );
+        }
+
+        $grupos = $this->groupItemsByOrderTransferVta($detalles, $traslados);
+        foreach ($grupos as $grupo) {
+            $hashInterno = $this->generateDeterministcUuidDispatchSalesTransfer($guia->id, $grupo['pedido'], $grupo['items'], $traslados);
+            $params = $this->builder->buildDeliveryNoteReceivedPayload(
+                $guia,
+                $grupo['pedido'],
+                $grupo['ws_items'],
+                $user->USERID,
+                null
+            );
+            // $this->validateExistenceTransferGuideAdjustment($guia, $params, $grupo['items'], $grupo['pedido']);
+        }
+    }
+
+
+
+    protected function getTransferSales($itemsIds, $orderId = null): Collection
+    {
+        return GpTrasladosVentas::query()
+            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
+            ->whereIn('gp_traslados_ventas.id', $itemsIds)
+            ->where(function ($q) {
+                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
+            })->when(!is_null($orderId), fn($q) => $q->where('gp_traslados_ventas.pedido_id', $orderId))
+            ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
+            ->keyBy('id');
+    }
+
+    protected function groupItemsByOrderTransferVta(Collection $detalle, Collection $traslados): array
+    {
+        $grupos = [];
+        foreach ($detalle as $det) {
+            $traslado = $traslados->get($det['detalle_id']);
+            if (!$traslado) {
+                continue;
+            }
+            $det->traslado              = $traslado;
+            $pedido                     = $traslado->pedido;
+            $grupos[$pedido]['pedido']  = $pedido;
+            $grupos[$pedido]['items'][] = $det;
+
+            //items para webservice
+            $grupos[$pedido]['ws_items'][] = [
+                'item'          => $det->GUI_REM_CODI_INTERNO,
+                'compartimento' => '',
+                'cantidad'      => $det->GUI_REM_CANTIDAD,
+            ];
+        }
+        return $grupos;
+    }
+
+    protected function generateDeterministcUuidDispatchSalesTransfer(int $guiaId, string $pedido, array  $items, Collection $traslados) {
+        
+    }
+
+
+
+
+
 
 
 
@@ -257,9 +335,9 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             $params = $this->builder->buildDeliveryNoteReceivedPayload(
                 $guia,
                 $order,
-                $itemGrp['transferencia'],
                 $itemGrp['ws_items'],
-                $user->USERID
+                $user->USERID,
+                $itemGrp['transferencia']
             );
             $this->processReceivedSalesTransfer($guia, $items, $params, $order, $user);
         }
