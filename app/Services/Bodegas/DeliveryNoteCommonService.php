@@ -351,4 +351,56 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
             substr($hash, 20, 12)
         );
     }
+
+
+    /**
+     *
+     *  function generada para recibir guias de remision de transferencia de ventas y reposicion
+     *
+     */
+    public function generateDeterministicUuidReceived(int $guiaId, string $order, string $numTransfer, array $items): string
+    {
+        $dataPoints = [];
+        $ids        = collect($items)->pluck('id');
+        $detalles   = GpGuiaRemisionDetalle::whereIn('id', $ids)->get(
+            ['id', 'GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD', 'recibido']
+        )->keyBy('id');
+        foreach ($items as  $itm) {
+            $id         = data_get($itm, 'id');
+            $dbItem     = $detalles->get($id);
+            if (!$dbItem) {
+                continue;
+            }
+            $qty            = data_get($itm, 'recibido', 0);
+            $cantidad       = data_get($itm, 'GUI_REM_CANTIDAD', 0);
+            $recibidoH      = data_get($dbItem, 'recibido', 0);
+            $pendiente  = max(0, $cantidad - $recibidoH);
+
+            $dataPoints[] = sprintf(
+                "ROW:%s|QTY:%.4f|REC_H:%.4f |PEND:%.4f",
+                data_get($itm, 'id'),
+                $qty,
+                $recibidoH,
+                $pendiente
+            );
+        }
+
+        sort($dataPoints);
+        $seed = sprintf(
+            "GUID:%s|QT:%s|TRF:%s|ITEMS:[%s]",
+            $guiaId,
+            $order,
+            $numTransfer,
+            implode(';', $dataPoints)
+        );
+        $hash = md5($seed);
+        return sprintf(
+            '%08s-%04s-%04s-%04s-%012s',
+            substr($hash, 0, 8),
+            substr($hash, 8, 4),
+            substr($hash, 12, 4),
+            substr($hash, 16, 4),
+            substr($hash, 20, 12)
+        );
+    }
 }

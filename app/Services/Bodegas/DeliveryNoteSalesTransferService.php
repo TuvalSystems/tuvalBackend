@@ -433,9 +433,9 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         $groups             = $this->groupItemsByOrder($itemsReceived, $movimientos, $groupKeyTransfers);
 
         foreach ($groups as $order => $itemGrp) {
-            $items = data_get($itemGrp, 'items', []);
-            $hash = $this->generateDeterministicUuidReceivedSalesTransfer($guia->id, $order, $itemGrp['transferencia'], $items);
-            $params = $this->builder->buildDeliveryNoteReceivedPayload(
+            $items      = data_get($itemGrp, 'items', []);
+            $hash       = $this->common->generateDeterministicUuidReceived($guia->id, $order, $itemGrp['transferencia'], $items);
+            $params     = $this->builder->buildDeliveryNoteReceivedPayload(
                 $guia,
                 $order,
                 $itemGrp['ws_items'],
@@ -444,7 +444,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                 $itemGrp['transferencia']
 
             );
-            
+
             $this->processReceivedSalesTransfer($guia, $items, $params, $order, $user, $hash);
         }
         $isCompleted = $this->common->validatePendingForReceivedSalesTransfer($guia);
@@ -619,49 +619,5 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         return null;
     }
 
-    protected function generateDeterministicUuidReceivedSalesTransfer(int $guiaId, string $order, string $numTransfer, array $items): string
-    {
-        $dataPoints = [];
-        $ids        = collect($items)->pluck('id');
-        $detalles   = GpGuiaRemisionDetalle::whereIn('id', $ids)->get(
-            ['id', 'GUI_REM_CODI_INTERNO', 'GUI_REM_CANTIDAD', 'recibido']
-        )->keyBy('id');
-        foreach ($items as  $itm) {
-            $id         = data_get($itm, 'id');
-            $dbItem     = $detalles->get($id);
-            if (!$dbItem) {
-                continue;
-            }
-            $qty            = data_get($itm, 'recibido', 0);
-            $cantidad       = data_get($itm, 'GUI_REM_CANTIDAD', 0);
-            $recibidoH      = data_get($dbItem, 'recibido', 0);
-            $pendiente  = max(0, $cantidad - $recibidoH);
 
-            $dataPoints[] = sprintf(
-                "ROW:%s|QTY:%.4f|REC_H:%.4f |PEND:%.4f",
-                data_get($itm, 'id'),
-                $qty,
-                $recibidoH,
-                $pendiente
-            );
-        }
-
-        sort($dataPoints);
-        $seed = sprintf(
-            "GUID:%s|QT:%s|TRF:%s|ITEMS:[%s]",
-            $guiaId,
-            $order,
-            $numTransfer,
-            implode(';', $dataPoints)
-        );
-        $hash = md5($seed);
-        return sprintf(
-            '%08s-%04s-%04s-%04s-%012s',
-            substr($hash, 0, 8),
-            substr($hash, 8, 4),
-            substr($hash, 12, 4),
-            substr($hash, 16, 4),
-            substr($hash, 20, 12)
-        );
-    }
 }

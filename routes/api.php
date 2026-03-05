@@ -314,7 +314,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('guiasderemision/consultarguiagenerada', [GuiasderemisionController::class, 'consultarguiagenerada']);
         Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
         Route::delete('guiasderemision/eliminarguia/{id}', [GuiasderemisionController::class, 'eliminarguia']);
-        Route::get('guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
+        // Route::get('guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
         Route::post('guiasderemision/recibirguia', [GuiasderemisionController::class, 'recibirguia']);
         Route::get('transferencias/recibosventa/{id}', [TransferenciasController::class, 'recibosventa']);
         Route::post('guiasderemision/generarguiaventa', [GuiasderemisionController::class, 'generarguiaventa']);
@@ -366,7 +366,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         //creacion de guia de reposicion
         Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasderemisionController::class, 'crearGuiaRemisionReposicion']);
+        Route::post('reposiciones/guia-remision/despachar-guia-reposicion', [GuiasderemisionController::class, 'despacharGuiaRemisionReposicion']);
         Route::post('reposiciones/guia-remision/recibir-guia-reposicion', [GuiasderemisionController::class, 'recibirGuiaRemisionReposicion']);
+        
     });
 
     Route::group(['prefix' => 'consultas'], function () {

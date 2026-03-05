@@ -41,4 +41,6 @@ interface DeliveryNoteCommonServiceInterface
     //recibir reservas
 
     public function groupItemsByQuotesToReceivedReserved(array $items, Collection $movimientos, Collection $traslados): array;
-}
+    public function generateDeterministicUuidReceived(int $guiaId, string $order, string $numTransfer, array $items): string;
+
+    }

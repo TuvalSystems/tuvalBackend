@@ -21,7 +21,6 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
@@ -69,7 +68,6 @@ class GuiasderemisionController extends Controller
     {
 
         $guia = GpGuiaRemision::where('id', $id)->first();
-
         if ($guia->tipo == 'despacho') {
             $pedido = GpPedido::where('pedido', $guia->pedido)->first();
             $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
@@ -102,18 +100,12 @@ class GuiasderemisionController extends Controller
                 $peso += (float) number_format($articulo->ART_PESO * $det->GUI_REM_CANTIDAD, 2, '.', '');
             }
             $detTemp = GpPedidoDetalle::where('id', $det->detalle_id)->value('CHECK_ALTERNATIVO');
-
             $det['CHECK_ALTERNATIVO'] = $detTemp ?? 0;
         }
 
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $guia->GUI_REM_ESTABLECIMIENTO)->first()->toarray();
-
         $data = array();
-
-
-
         $transferencias = GpGuiaRemisionTransferencia::where('guia_remision_id', $guia->id)->get()->toArray();
-
         $arr_trans = array();
         foreach ($transferencias as $trans) {
             $arr_trans[$trans['pedido']] = $trans['pedido'];
@@ -125,7 +117,6 @@ class GuiasderemisionController extends Controller
         $data['transferencias'] = $arr_trans;
         $data['PTO_VTA_DESCRIPCION'] = $puntodeventa['PTO_VTA_DESCRIPCION'];
         $data['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
-        //return view('guiaRemisionPDF', $data);
         $pdf = PDF::loadView('guiaRemisionPDF', $data);
         return $pdf->stream('guia_remision.pdf');
     }
@@ -152,9 +143,7 @@ class GuiasderemisionController extends Controller
     public function eliminarguia($id): Response|Application|ResponseFactory
     {
         $guia = GpGuiaRemision::where('id', $id)->first();
-
         $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
-
         if ($guia->tipo == 'transferencia') {
             foreach ($detalle as $item) {
                 $traslado = GpTrasladosVentas::where('id', $item->detalle_id)->first();
@@ -178,62 +167,13 @@ class GuiasderemisionController extends Controller
                 $traslado->save();
             }
         }
-
         $guia->estado = 'eliminada';
         $guia->save();
-
         return response([
             'success' => true,
             'message' => 'Guía de remisión eliminada',
         ]);
     }
-
-
-    public function despacharguia(Request $request, $id)
-    {
-        $user = $request->user();
-        try {
-            // return DB::transaction(function () use ($user, $id) {
-            $guia = GpGuiaRemision::whereKey($id)->lockForUpdate()->firstOrFail();
-
-            // Re-chequea después del lock (otro proceso pudo enviarla)
-            if ($guia->estado === 'enviada') {
-                return $this->buildSuccessResponse('Guía de remisión despachada por otro usuario', 200);
-            }
-            $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
-            $response = null;
-
-            switch ($guia->tipo) {
-                case 'transferencia':
-                    $response = $this->deliveryNoteService->dispatchGuideTransferShipment($guia, $detalle, $user);
-                    break;
-                case 'reposicion':
-                    $response = $this->deliveryNoteService->dispatchGuideReplacementShipment($guia, $detalle, $user);
-                    break;
-                default:
-                    throw new \Exception("Tipo de guía no reconocido: {$guia->tipo}");
-            }
-            return $response;
-            // });
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $e) {
-            Log::error('Error en despachar guia de remision (despacharguia)', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'guia_id' => $id
-            ]);
-
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                500
-            );
-        }
-    }
-
 
     public function consultarDetalleGuiaPorId(Request $request): JsonResponse
     {
@@ -244,7 +184,6 @@ class GuiasderemisionController extends Controller
         }, 'reservas_log', 'consultarDetalleGuiaPorId -GuiasderemisionController');
     }
 
-
     public function consultarDetalleGuiaReservaPorId(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
@@ -253,8 +192,6 @@ class GuiasderemisionController extends Controller
             return $this->successResponse('Detalle de guia obtenido', $detalle, 200);
         }, 'reservas_log', 'consultarDetalleGuiaReservaPorId -GuiasderemisionController');
     }
-
-
 
 
     public function obtenerInfoGUiaRemisionAjustePedido($id): JsonResponse
@@ -303,44 +240,9 @@ class GuiasderemisionController extends Controller
         }, 'reservas_log', 'listaGuiaTransferenciaReposicionConAjuste -GuiasderemisionController');
     }
 
-    /** proceso para reajuste de guia de transferencias  */
-    public function procesarReajusteGuiaTransferencia(Request $request): JsonResponse
-    {
-        try {
-            $id = $request->get('guiaId');
-            $pedido = $request->get('pedido');
-            $guia = $this->deliveryNoteService->processTransferGuideAdjustment($id, $pedido);
-            return $this->successResponse('Reajuste procesado exitosamente para la guia de transferencia', $guia, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
-    /** proceso para reajuste de guia de reposiciones */
-
-    public function procesarReajusteGuiaReposicion(Request $request): JsonResponse
-    {
-        try {
-            $id = $request->get('guiaId');
-            $documento = $request->get('documento');
-            $guia = $this->deliveryNoteService->processRepositionGuideAdjustment($id, $documento);
-            return $this->successResponse('Reajuste procesado exitosamente para la guia de reposición', $guia, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
-
-
     /***
      *
-     *
-     *
-     *
      * proceso de generacion de guia de remision de reservas
-     *
-     *
-     *
      *
      * */
 
@@ -404,12 +306,10 @@ class GuiasderemisionController extends Controller
             $guiaId     = $request->input('guiaId', null);
             $items      = $request->input('items', null);
             $user       = $request->user();
-
             $data   = $this->reservedDeliveryNoteService->receiveItemsFromTransferred($guiaId, $items, $user);
             return $this->successResponse('Proceso realizado correctamente', $data, 200);
         }, 'reservas_log', 'recibirItemsGuiaReserva -ReservasController');
     }
-
 
     /**
      *
@@ -440,9 +340,6 @@ class GuiasderemisionController extends Controller
     }
 
 
-
-
-
     /***
      * PROCESO DE CREACION DE GUIA DE VENTA
      */
@@ -466,7 +363,6 @@ class GuiasderemisionController extends Controller
         }, 'guia_ventas', 'despacharGuiaRemisionVenta -GuiasderemisionController');
     }
 
-
     public function recibirGuiaRemisionVenta(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
@@ -489,6 +385,16 @@ class GuiasderemisionController extends Controller
             $response   = $this->replenishment->createDeliveryNoteReplenishmentTransfer($payload, $user);
             return $this->successResponse('Guia de Reposicion creada exitosamente', $response, 200);
         }, 'guia_ventas', 'crearGuiaRemisionReposicion -GuiasderemisionController');
+    }
+
+    public function despacharGuiaRemisionReposicion(Request $request): JsonResponse
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $id         = $request->input('id');
+            $user       = $request->user();
+            $response   = $this->replenishment->dispatchDeliveryNoteReplenishmentTransfer($id, $user);
+            return $this->successResponse('Guia de Reposicion Despachada', $response, 200);
+        }, 'guia_ventas', 'despacharGuiaRemisionReposicion');
     }
 
     public function recibirGuiaRemisionReposicion(Request $request)

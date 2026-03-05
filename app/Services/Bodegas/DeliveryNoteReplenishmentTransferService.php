@@ -6,6 +6,7 @@ use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\DeliveryNoteType;
 use App\Enums\bodegas\guiaremision\ReasonForTransfer;
+use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
@@ -17,8 +18,9 @@ use App\Services\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInter
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+
 
 class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishmentTransferServiceInterface
 {
@@ -194,7 +196,7 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
         foreach ($items as $item) {
             $trasladoId         = data_get($item, 'id');
             $cantSeleccionada   = (float) data_get($item, 'seleccionado', 0);
-                GpTrasladosReposicion::where('id', $trasladoId)->update([
+            GpTrasladosReposicion::where('id', $trasladoId)->update([
                 'reservado' => DB::raw("COALESCE(reservado, 0) + {$cantSeleccionada}")
             ]);
         }
@@ -216,13 +218,167 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
             if ($dbReposition) {
                 $actual = (float)$dbReposition->reservado + (float)$dbReposition->trasladado;
                 $disponible = max(0, $dbReposition->cantidad - $actual);
-                if (($actual + $seleccionado) > $dbReposition->ART_CANTIDAD) {
+                if (($actual + $seleccionado) > $dbReposition->cantidad) {
                     return "El ítem {$dbReposition->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
                 }
             }
             return null;
         }
     }
+
+
+    /** proceso de generar el egreso de reposicion */
+    public function dispatchDeliveryNoteReplenishmentTransfer(int $guiaId, GpUsuario $user)
+    {
+        $guia = GpGuiaRemision::findOrFail($guiaId);
+        if ($guia->estado == DeliveryNoteStatus::ENVIADA->value) {
+            throw new \RuntimeException("La guia de despacho ya fue enviada por otro usuario, por favor refresque su ventana.");
+        }
+        $detalles   = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
+        if ($detalles->isEmpty()) {
+            throw new \RuntimeException("Esta guia de Venta no tiene detalles");
+        }
+
+        $itemsIds = collect($detalles)->pluck('detalle_id')->toArray();
+        $repositionSales = $this->getRepositionSales($itemsIds);
+        $grupos = $this->groupItemsByOrderReplacementShipment($detalles, $repositionSales);
+        foreach ($grupos as $document  => $grupo) {
+            $hash       = $this->generateDeterministicUuidDispatchReplenishmentTransfer($guia->id, $document, $grupo['items'], $repositionSales);
+            $params     = $this->builder->buildDeliveryNoteReceivedPayload(
+                $guia,
+                $document,
+                $grupo['ws_items'],
+                $user->USERID,
+                $hash,
+                null
+            );
+            $this->processDispatchReplenishmentTransfer($guia, $document, $params, $grupo['items'], $hash);
+        }
+
+        $guia->update(['estado' => DeliveryNoteStatus::ENVIADA->value]);
+        return $guia->fresh();
+    }
+
+
+    protected function processDispatchReplenishmentTransfer(GpGuiaRemision $guia, string $document, array $params, array $items, string $hash)
+    {
+        $transaction    = TransactionType::TRR;
+        $typeMov        = $transaction->value;
+        $type           = $transaction->type();
+        $resp           = $this->api->createReplacementShipmentGuideVta($params);
+        $success        = data_get($resp, 'success', false);
+        $msg            = data_get($resp, 'message');
+        $docGp          = trim(data_get($resp, 'data.docGp', ''));
+        if (!$success) {
+            $cabecera                   = data_get($params, 'cabecera', []);
+            $pyValidate                 = $this->builder->buildDeliveryNoteValidateReceivedSalesTransfer($cabecera, $typeMov, $type);
+            $respValidate               = $this->api->checkReceivedGuideSalesTransfered($pyValidate);
+            $headerRespValidate         = data_get($respValidate, 'data');
+            $docGpValidate              = trim(data_get($headerRespValidate, 'docGp', ''));
+            if (!empty($headerRespValidate) && filled($docGpValidate)) {
+                // Usamos el documento que encontró la validación
+                $docGp  = $docGpValidate;
+                $data   = $headerRespValidate;
+            } else {
+                // Si falló la creación y la validación tampoco trajo nada útil, lanzamos el error.
+                throw new \RuntimeException($msg ?: 'Error creando el ajuste de guía en GP.');
+            }
+        } else {
+            $data = data_get($resp, 'data', []);
+        }
+        if ($docGp === '') {
+            throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
+        }
+        $already = $this->common->checkMovementExistsWeb($guia->id, $document, $docGp, $hash, $typeMov, $type);
+        DB::transaction(function () use ($guia, $items, $document, $data,  $already, $hash, $typeMov, $type) {
+            if (!$already) {
+                $this->generateMovementRepositionAdjustment($items);
+                $this->common->createMovementTransferSales($guia, $document, $data, $hash, $typeMov, $type);
+            }
+        });
+    }
+
+    public function generateMovementRepositionAdjustment(array $items)
+    {
+        foreach ($items as $item) {
+            $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
+        }
+    }
+
+
+    protected function getRepositionSales($itemsIds, $documento = null)
+    {
+        return GpTrasladosReposicion::whereIn('id', $itemsIds)
+            ->where(function ($q) {
+                $q->where('gp_traslados_reposicions.completado', 0)->orWhereNull('gp_traslados_reposicions.completado');
+            })
+            ->when(!is_null($documento), fn($q) => $q->where('gp_traslados_reposicions.Documento', $documento))
+            ->get()->keyBy('id');
+    }
+
+    protected function groupItemsByOrderReplacementShipment(Collection $detalle, Collection $traslados): array
+    {
+        $grupos = [];
+        foreach ($detalle as $det) {
+            $id         = data_get($det, 'detalle_id');
+            $traslado   = $traslados->get($id);
+            if (!$traslado) {
+                // puedes loggear y continuar
+                continue;
+            }
+            $det->traslado                      = $traslado;
+            $documento                          = $traslado->Documento;
+            $grupos[$documento]['documento']    = $documento;
+            $grupos[$documento]['items'][]      = $det;
+
+            //items para webservice
+            $grupos[$documento]['ws_items'][] = [
+                'item'                          => $det->GUI_REM_CODI_INTERNO,
+                'compartimento'                 => '',
+                'cantidad'                      => $det->GUI_REM_CANTIDAD,
+            ];
+        }
+        return $grupos;
+    }
+    protected function generateDeterministicUuidDispatchReplenishmentTransfer(int $guiaId, string $document, array $items, Collection $traslados): string
+    {
+        $dataPoints = [];
+        foreach ($items as $itm) {
+            $id = data_get($itm, 'detalle_id');
+            $traslado = $traslados->get($id);
+            if (!$traslado) {
+                continue;
+            }
+            $dataPoints[] = sprintf(
+                "ROW:%s|TRA:%s|REM:%s|REQ:%s|RES:%s|MOV:%s",
+                data_get($itm, 'id'),              // ID del detalle guía
+                $traslado->id,                      // <--- NUEVO: ID Único del Traslado
+                data_get($itm, 'GUI_REM_CANTIDAD'), // Cantidad en Guía
+                $traslado->cantidad,                // Cantidad Requerida
+                $traslado->reservado,               // Cantidad Reservada
+                $traslado->trasladado               // Cantidad Movida (Histórico)
+            );
+        }
+        sort($dataPoints);
+        $seed = sprintf(
+            "GUID:%s|PED:%s|ITEMS:[%s]",
+            $guiaId,
+            $document,
+            implode(';', $dataPoints)
+        );
+
+        $hash = md5($seed);
+        return sprintf(
+            '%08s-%04s-%04s-%04s-%012s',
+            substr($hash, 0, 8),
+            substr($hash, 8, 4),
+            substr($hash, 12, 4),
+            substr($hash, 16, 4),
+            substr($hash, 20, 12)
+        );
+    }
+
+
 
 
 
@@ -254,8 +410,9 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
             $itemGrp    = data_get($group, 'items', []);
             $movimiento = data_get($group, 'transferencia', '');
             $wsItems    = data_get($group, 'ws_items', []);
-            $params     = $this->builder->buildDeliveryNoteReceivedPayload($guia, $order, $movimiento, $wsItems, $user->USERID);
-            $this->processReceivedDeliveryReplenishmentTransfer($guia,  $itemGrp, $params, $order, $user);
+            $hash       = $this->common->generateDeterministicUuidReceived($guia->id, $order, $movimiento, $itemGrp);
+            $params     = $this->builder->buildDeliveryNoteReceivedPayload($guia, $order, $wsItems, $user->USERID,  $hash, $movimiento);
+            $this->processReceivedDeliveryReplenishmentTransfer($guia,  $itemGrp, $params, $order, $user, $hash);
         }
         $isCompleted = $this->common->validatePendingForReceivedSalesTransfer($guia);
         if ($isCompleted) {
@@ -276,7 +433,6 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
             $pedido             = data_get($trv, 'Documento');
             $mov                = data_get($movimientos->get($pedido), 'codigo');
             $itm['traslado']    = $trv;
-
             $groups[$pedido]['pedido']          = $pedido;
             $groups[$pedido]['transferencia']   = $mov ?? '';
             $groups[$pedido]['items'][]         = $itm;
@@ -290,15 +446,18 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
     }
 
 
-    protected function processReceivedDeliveryReplenishmentTransfer(GpGuiaRemision $guia, array $items, array $params, string $order, GpUsuario $user)
+    protected function processReceivedDeliveryReplenishmentTransfer(GpGuiaRemision $guia, array $items, array $params, string $order, GpUsuario $user, string $hash)
     {
-        $resp       = $this->api->createReceiveGuideReplenishmentTransfered($params);
-        $success    = data_get($resp, 'success', false);
-        $msg        = data_get($resp, 'message');
-        $docGp      = trim(data_get($resp, 'data.docGp', ''));
+        $transaction    = TransactionType::RTR;
+        $typeMov        = $transaction->value;
+        $type           = $transaction->type();
+        $resp           = $this->api->createReceiveGuideReplenishmentTransfered($params);
+        $success        = data_get($resp, 'success', false);
+        $msg            = data_get($resp, 'message');
+        $docGp          = trim(data_get($resp, 'data.docGp', ''));
         if (!$success) {
             $cabecera                   = data_get($params, 'cabecera', []);
-            $pyValidate                 = $this->builder->buildDeliveryNoteValidateReceivedSalesTransfer($cabecera, 'RTR');
+            $pyValidate                 = $this->builder->buildDeliveryNoteValidateReceivedSalesTransfer($cabecera, $typeMov, $type);
             $respValidate               = $this->api->checkReceivedGuideSalesTransfered($pyValidate);
             $headerRespValidate         = data_get($respValidate, 'data');
             $docGpValidate              = trim(data_get($headerRespValidate, 'docGp', ''));
@@ -316,12 +475,12 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
         if ($docGp === '') {
             throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
         }
-        $already = $this->common->checkMovementExistsWeb($guia->id, $order, $docGp);
-        DB::transaction(function () use ($guia, $items, $order, $docGp, $data, $user, $already) {
+        $already = $this->common->checkMovementExistsWeb($guia->id, $order, $docGp, $hash, $typeMov, $type);
+        DB::transaction(function () use ($guia, $items, $order, $data, $user, $already, $hash, $typeMov, $type) {
             if (!$already) {
                 $this->updateQtyTranferedItemsWeb($items);
                 $this->createRegisterHistorySalesTransfer($guia, $items, $user, $order);
-                $this->common->createMovementTransferSales($guia, $order, $docGp);
+                $this->common->createMovementTransferSales($guia, $order, $data, $hash, $typeMov, $type);
             }
         });
     }
