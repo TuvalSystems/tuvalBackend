@@ -110,9 +110,9 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTraslado(GpPedido $pedido)
     {
-        $hayTraslado = $this->getDataCheckTraslado($pedido);
-        $detalles = $this->getDetailForTraslate($pedido);
-        $nuevoEstado = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
+        $hayTraslado    = $this->getDataCheckTraslado($pedido);
+        $detalles       = $this->getDetailForTraslate($pedido);
+        $nuevoEstado    = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
         $pedido->estado = $nuevoEstado;
 
         if ($nuevoEstado == OrderStatus::TRASLADO) {
@@ -164,9 +164,6 @@ class InvoiceService implements InvoiceServiceInterface
             'cantidad'                  => $detalle->seleccionado,
             'bodega_origen'             => $detalle->STO_ART_BODEGA,
             'bodega_destino'            => $pedido->BOD_BODEGA,
-            'reservado'                 => 0,
-            'trasladado'                => 0,
-            'completado'                => 0
         ];
     }
 
