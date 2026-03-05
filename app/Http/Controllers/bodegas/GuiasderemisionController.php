@@ -47,7 +47,7 @@ class GuiasderemisionController extends Controller
     public function consultarGuiaGeneradaV1(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
-            $data             = $request->get('id');
+            $data             = $request->all();
             $response          = $this->deliveryNoteService->consultExistenceGeneratedGuides($data);
             if ($response !== '') {
                 return $this->errorResponse($response, [], 409);
