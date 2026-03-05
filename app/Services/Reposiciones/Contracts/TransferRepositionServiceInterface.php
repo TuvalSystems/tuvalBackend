@@ -7,9 +7,8 @@ use App\Models\GpUsuario;
 interface TransferRepositionServiceInterface
 {
 
-    public function validateRequest($request);
-    public function fectchTransferHeader($request);
-    public function processDocumentsInBatches($request, $transferHeader);
+    public function fectchTransferHeader(array $payload);
+    public function processDocumentsInBatches(array $payload, $transferHeader);
 
     public function buildResponse($processedDocuments);
 

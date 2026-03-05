@@ -33,15 +33,17 @@ class ReposicionController extends Controller
     public function getreposicion(Request $request)
     {
         set_time_limit(300);
+
+       $validated =  $request->validate([
+            'fecha'     => 'required|date_format:Y-m-d',
+            'numDoc'    => 'nullable',
+        ]);
         try {
-            $soapRequest = $request->all();
-            $this->transferRepositionService->validateRequest($soapRequest);
-            $transferHeader = $this->transferRepositionService->fectchTransferHeader($request);
+            $transferHeader = $this->transferRepositionService->fectchTransferHeader($validated);
             if (empty($transferHeader)) {
                 return $this->buildErrorResponse('No existen transferencias que sincronizar', 404);
             }
-            $proccessDocument = $this->transferRepositionService->processDocumentsInBatches($soapRequest, $transferHeader);
-
+            $proccessDocument = $this->transferRepositionService->processDocumentsInBatches($validated, $transferHeader);
             return $this->transferRepositionService->buildResponse($proccessDocument);
         } catch (\Throwable $th) {
             return $this->errorResponse('Error al obtener las transferencias', $th->getMessage(), 500);
@@ -253,7 +255,6 @@ class ReposicionController extends Controller
             ]);
             return $this->errorResponse('Error al obtener el detalle del recibo de reposición', $e->getMessage(), 500);
         }
-
     }
 
     /** funcion creada para el caso en el cual se necesitaba recibir una reposicion de +200 items */

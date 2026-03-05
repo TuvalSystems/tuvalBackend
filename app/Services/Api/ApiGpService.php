@@ -26,12 +26,12 @@ class ApiGpService
 
     public function getTransferHeader(array $params = [])
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_TRANSFERENCIA_CABECERA, 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_TRANSFERENCIA_CABECERA, 'POST', $params, 'json');
     }
 
     public function getTransferDetail(array $params = [])
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE, 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE, 'POST', $params, 'json');
     }
 
     public function getBranchesClientsList(array $params)
