@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Symfony\Component\Process\Process;
 
 class LimpiarLog extends Command
 {
@@ -27,6 +26,7 @@ class LimpiarLog extends Command
             'reservas_log.log',
             'redis_log.log',
             'despachos.log',
+            'guia_ventas.log',
         ];
 
         // Detectamos grupo del directorio storage para alinear los archivos

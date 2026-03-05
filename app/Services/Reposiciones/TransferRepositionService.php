@@ -64,11 +64,11 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     public function processDocumentsInBatches($request, $transferHeader)
     {
 
-        $processedDocuments = [];
-        $documentFilter = $request['numDoc'];
-        $batchSize = 100;
-        $batch = [];
-        $errors = [];
+        $processedDocuments     = [];
+        $documentFilter         = data_get($request, 'numDoc');
+        $batchSize              = 100;
+        $batch                  = [];
+        $errors                 = [];
 
         foreach ($transferHeader as $header) {
             if (empty($documentFilter) || $header['numdoc'] == $documentFilter) {
