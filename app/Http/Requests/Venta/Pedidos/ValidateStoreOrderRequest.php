@@ -145,6 +145,11 @@ class ValidateStoreOrderRequest extends FormRequest
 
             'imagenes_existentes'       => ['nullable', 'array'],
             'imagenes_existentes.*'     => ['string'],
+            'origen' => [
+                'required',
+                'string',
+                'in:cotizacion,reserva,facturar_existente,devolucion,factura_demanda'
+            ],,
         ];
     }
 

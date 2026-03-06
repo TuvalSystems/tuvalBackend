@@ -92,7 +92,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             'requiere_aprobacion_crediticia'    => $requiereAprobacionCrediticia,
             'motivo_crediticio'                 => $motivoCrediticio,
             'tipo_despacho'                     => $tipoDespacho,
-            'origen'                            => 'cotizacion',
+            'origen'                            => data_get($data, 'origen'),
             'facturacion_reserva'               => null
         ];
         $newOrder = $this->builder->formPayloadOrderV2($data, $user, $puntoVenta,  $approvalCommercial, $arStrings);
