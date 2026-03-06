@@ -112,7 +112,7 @@ class ValidateStoreOrderRequest extends FormRequest
             // -- pago
             'condicion_pago_id'          => ['required', 'string'],
             'condicion_pago_original_id' => ['required', 'string'],
-            'forma_pago_id'              => ['nullable', 'required', 'string'],
+            'forma_pago_id'              => ['required', 'string'],
 
             // -- notas y textos
             'nota_interna'              => ['nullable', 'string', 'max:1000'], // CORREGIDO: decía 'nota_internas' (plural)
