@@ -2,6 +2,7 @@
 
 namespace App\Services\Funciones;
 
+use App\Enums\Ventas\OrderOrigenEnum;
 use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
@@ -435,7 +436,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
     {
-        if ($pedido->origen !== 'reserva') {
+        if ($pedido->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value) {
             return true;
         }
 

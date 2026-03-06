@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Pedidos;
 
+use App\Enums\Ventas\OrderOrigenEnum;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\devoluciones\GpDevoluciones;
@@ -136,7 +137,10 @@ class OrderRepository implements OrderRepositoryInterface
             // ->where('origen', '!=', 'reserva')
             ->where(function ($q) {
                 $q->whereNull('origen')
-                    ->orWhere('origen', '!=', 'reserva');
+                    ->orWhereNotIn('origen', [
+                        OrderOrigenEnum::RESERVA->value,
+                        OrderOrigenEnum::FACTURA_DEMANDA->value
+                    ]);
             })
             ->where('factura_siguiente_mes', 1)
             ->whereMonth('created_at', $mes)
@@ -160,7 +164,7 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function queryInvoiceReservedOrdersForDate($date)
     {
-        return GpPedido::where('origen', 'reserva')
+        return GpPedido::where('origen', OrderOrigenEnum::FACTURA_DEMANDA->value)
             ->where('estado', 'espera')
             ->whereNotNull('fe_facturacion_reserva')
             ->whereDate('fe_facturacion_reserva', $date);

@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta;
 
-
+use App\Enums\Ventas\OrderOrigenEnum;
 use Carbon\Carbon;
 use App\Models\GpBodega;
 use App\Models\GpUsuario;
@@ -69,15 +69,17 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function saveQuotationHeaderReserved(array $data, GpUsuario $user)
     {
-
-        $reserved = $this->reservaBuilder->fromPayloadReserved($data, $user);
-        $reserved->save();
-        DB::afterCommit(function () use ($data, $user) {
-            FanoutReservationRequest::dispatch(
-                $data['cotizacion_id'],
-                $user->id
-            )->onQueue('notifications');
+        $reserved =  DB::transaction(function () use ($data, $user) {
+            $reserved = $this->reservaBuilder->fromPayloadReserved($data, $user);
+            $reserved->save();
+            return $reserved;
         });
+        FanoutReservationRequest::dispatch(
+            $data['cotizacion_id'],
+            $user->id
+        )->onQueue('notifications');
+
+        return $reserved;
     }
 
 
@@ -536,12 +538,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 return collect(data_get($d, 'stock', []))->map(function ($st) use ($d) {
                     $s = is_array($st) ? $st : (array) $st;
                     return [
-                        'detalle_id' => $d['id'],
-                        'stock_id' => $s['id'],
-                        'STO_ART_BODEGA' => $s['STO_ART_BODEGA'],
-                        'ART_CODIGO' => $d['ART_CODIGO'],
-                        'to_cancel' => $s['a_cancelar'],
-                        'to_quote' => $s['a_cotizar'],
+                        'detalle_id'        => $d['id'],
+                        'stock_id'          => $s['id'],
+                        'STO_ART_BODEGA'    => $s['STO_ART_BODEGA'],
+                        'ART_CODIGO'        => $d['ART_CODIGO'],
+                        'to_cancel'         => $s['a_cancelar'],
+                        'to_quote'          => $s['a_cotizar'],
                     ];
                 });
             })->filter(fn($i) => $i['to_cancel'] > 0 || $i['to_quote'] > 0)->values();
@@ -609,11 +611,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                     $this->toInvoiceStockQuotationReserved($row, $itm, $user);
                     $totalCotizar += $itm['to_quote'];
                     $toQuote[] = [
-                        'detalle_id' => $itm['detalle_id'],
-                        'stock_id' => $itm['stock_id'],
-                        'STO_ART_BODEGA' => $itm['STO_ART_BODEGA'],
-                        'ART_CODIGO' => $itm['ART_CODIGO'],
-                        'cantidad' => $itm['to_quote'],
+                        'detalle_id'        => $itm['detalle_id'],
+                        'stock_id'          => $itm['stock_id'],
+                        'STO_ART_BODEGA'    => $itm['STO_ART_BODEGA'],
+                        'ART_CODIGO'        => $itm['ART_CODIGO'],
+                        'cantidad'          => $itm['to_quote'],
                     ];
                 }
             }
@@ -625,10 +627,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             }
             $this->closeReservationIfEmpty(Arr::get($payload, 'id'));
             return [
-                'cotizacion' => $new->cotizacion ?? null,
-                'liberado_total' => $totalLiberado,
-                'facturado_total' => $totalCotizar,
-                'lineas_facturar' => count($toQuote)
+                'cotizacion'        => $new->cotizacion ?? null,
+                'liberado_total'    => $totalLiberado,
+                'facturado_total'   => $totalCotizar,
+                'lineas_facturar'   => count($toQuote)
             ];
         });
     }
@@ -674,17 +676,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         // proceso de creación de nueva cotizacion
         $linesGroupedDetail = collect($linesToQuote)->groupBy('detalle_id');
-        $linesGroupStock = collect($linesToQuote)->groupBy('stock_id');
-
-        $linesDetailIds = collect($linesToQuote)->pluck('detalle_id')->unique()->toArray();
-        $lineStocksIds = collect($linesToQuote)->pluck('stock_id')->toArray();
-
-        $oldDetails = GpCotizacionDetalle::whereIn('id', $linesDetailIds)->get();
-        $oldStocks = GpCotizacionDetalleStock::whereIn('id', $lineStocksIds)->orderBy('detalle_id')->get()
+        $linesGroupStock    = collect($linesToQuote)->groupBy('stock_id');
+        $linesDetailIds     = collect($linesToQuote)->pluck('detalle_id')->unique()->toArray();
+        $lineStocksIds      = collect($linesToQuote)->pluck('stock_id')->toArray();
+        $oldDetails         = GpCotizacionDetalle::whereIn('id', $linesDetailIds)->get();
+        $oldStocks          = GpCotizacionDetalleStock::whereIn('id', $lineStocksIds)->orderBy('detalle_id')->get()
             ->groupBy('detalle_id');
 
 
-        $cotizacion = $this->createHeaderQuotationReserve($payload, $user);
+        $cotizacion         = $this->createHeaderQuotationReserve($payload, $user);
         $this->createDetailAndStockQuotationReserve($cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails);
         //al final por si acaso xd
         $this->storeQuotationReservedLogs($payload['id'], $payload['cotizacion']['id'], $cotizacion->id, $payload['cotizacion']['BOD_BODEGA'], $linesToQuote, $user);
@@ -694,14 +694,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function createHeaderQuotationReserve(array $payload, GpUsuario $user)
     {
-        $cotOld = [];
-        $cotOld = Arr::get($payload, 'cotizacion') ?? [];
-        $cotOld['registro_copia'] = null;
-        $cotOld['cotizacion'] = Arr::get($payload, 'cotizacion.detallecotizacion');
-        $requiereAprobacionComercial = $this->approvalService->checkoutApprovalCommercialQuotations($cotOld);
-        $requiereAprobacionComercial['estado'] = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
-        $requiereAprobacionComercial['aprobado'] = 'no';
-        $cotizacion = $this->quotationBuilder->fromPayloadReservedToQuotation($cotOld, $requiereAprobacionComercial, $user, 'reserva');
+        $cotOld                                     = [];
+        $cotOld                                     = Arr::get($payload, 'cotizacion') ?? [];
+        $cotOld['registro_copia']                   = null;
+        $cotOld['cotizacion']                       = Arr::get($payload, 'cotizacion.detallecotizacion');
+        $requiereAprobacionComercial                = $this->approvalService->checkoutApprovalCommercialQuotations($cotOld);
+        $requiereAprobacionComercial['estado']      = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
+        $requiereAprobacionComercial['aprobado']    = 'no';
+        $origen                                     = OrderOrigenEnum::RESERVA->value;
+        $cotizacion                                 = $this->quotationBuilder->fromPayloadReservedToQuotation($cotOld, $requiereAprobacionComercial, $user, $origen);
         $cotizacion->save();
         return $cotizacion;
     }
@@ -710,12 +711,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function createDetailAndStockQuotationReserve(GpCotizacion $cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails)
     {
         foreach ($oldDetails as $oldDetail) {
-            $line = $linesGroupedDetail->get($oldDetail->id);
+            $line       = $linesGroupedDetail->get($oldDetail->id);
             if (empty($line)) {
                 continue;
             }
-            $totalLines = collect($line)->sum('cantidad');
-            $newDetail = $this->quotationBuilder->formPayloadReservedToDetail($cotizacion->id, $oldDetail, $totalLines);
+            $totalLines         = collect($line)->sum('cantidad');
+            $newDetail          = $this->quotationBuilder->formPayloadReservedToDetail($cotizacion->id, $oldDetail, $totalLines);
             $newDetail->save();
             $oldStocksByDetail = $oldStocks->get($oldDetail->id);
             foreach ($oldStocksByDetail as $stkOld) {
@@ -867,20 +868,28 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function storeReservedHeaderOrder($payload, $user, $dateAuthoReserved)
+    public function storeReservedHeaderOrder(array $payload,GpUsuario $user, $dateAuthoReserved)
     {
 
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $payload['PTO_VTA_ID'])->first();
-        $approvalComercial = $this->approvalService->checkOutApprovalCommercialReservedOrder($payload);
-        $approvalCredit = $this->approvalService->checkoutApprovalCredit($payload);
+        $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $payload['PTO_VTA_ID'])->first();
+        $approvalComercial              = $this->approvalService->checkOutApprovalCommercialReservedOrder($payload);
+        $approvalCredit                 = $this->approvalService->checkoutApprovalCredit($payload);
 
-        $requieresApproval = $approvalCredit != 'no';
-        $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
-        $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
+        $requieresApproval              = $approvalCredit != 'no';
+        $motivoCrediticio               = $requieresApproval ? $approvalCredit : null;
+        $requiereAprobacionCrediticia   = $requieresApproval ? 'yes' : 'no';
 
-        $fechaEntrega = $payload['despacho'] == 'Despacho en ruta' ? $payload['fecha_entrega'] : null;
-        $bodega = $payload['BOD_BODEGA'];
-        $newOrder = $this->orderBuilder->fromPayloadOrder($payload['id'], $payload, $approvalComercial, $user, $puntoVenta, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega, 'reserva', $dateAuthoReserved, $bodega);
+        $fechaEntrega   = $payload['despacho'] == 'Despacho en ruta' ? $payload['fecha_entrega'] : null;
+        $infoCreator = [
+            'cotizacion_id'     => data_get($payload, 'id'),
+            'user'              => $user,
+            'origen'            => OrderOrigenEnum::FACTURA_DEMANDA->value,
+            'bodega'            => data_get($payload, 'BOD_BODEGA'),
+            'fecha_entrega'     => $fechaEntrega,
+            'fecha_reserva'     => $dateAuthoReserved,
+            'motivoCrediticio'  => $motivoCrediticio
+        ];
+        $newOrder       = $this->orderBuilder->formPayloadOrderDemand($infoCreator,$payload, $approvalComercial,  $puntoVenta, $requiereAprobacionCrediticia);
         $newOrder->save();
         return $newOrder;
     }
@@ -889,15 +898,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         $usedItemLExcluded = [];
         foreach ($detailOrder as $i => $item) {
-            $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
-            $hasStock = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
+            $isTypeL    = $item['ART_TIPO_COMPRA'] === 'L';
+            $hasStock   = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
             if ($isTypeL && !$hasStock) {
                 $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
                 if (!$replacementCodeL) {
                     throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$item['ART_CODIGO']}");
                 }
-                $item['ART_CODIGO'] = $replacementCodeL;
-                $usedItemLExcluded[] = $replacementCodeL;
+                $item['ART_CODIGO']     = $replacementCodeL;
+                $usedItemLExcluded[]    = $replacementCodeL;
             }
             $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
             $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($order->id, $item, $i);
@@ -960,13 +969,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $quoteBlock->update(['estado' => 'procesado', 'facturado' => 1]);
         return GpReserva::whereKey($reservedId)
             ->update([
-                'estado_autorizacion_reserva' => true,
-                'fe_autorizacion_reserva' => $payload['fe_autorizacion_reserva'],
-                'obs_autorizacion_reserva' => $payload['obs_autorizacion_reserva'],
-                'user_autorizacion_reserva_id' => $user->id,
-                'fe_ingreso_autorizacion_reserva' => Carbon::now()->format('Y-m-d H:i:s'),
-                'estado' => 'procesado',
-                'updated_at' => now()
+                'estado_autorizacion_reserva'       => true,
+                'fe_autorizacion_reserva'           => $payload['fe_autorizacion_reserva'],
+                'obs_autorizacion_reserva'          => $payload['obs_autorizacion_reserva'],
+                'user_autorizacion_reserva_id'      => $user->id,
+                'fe_ingreso_autorizacion_reserva'   => Carbon::now()->format('Y-m-d H:i:s'),
+                'estado'                            => 'procesado',
+                'updated_at'                        => now()
             ]);
     }
 
@@ -974,11 +983,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function formPayloadReservedQuotationLog($reservedId, $quotation, $order, $userId)
     {
         $header = [
-            'reserva_id' => $reservedId,
-            'cotizacion_origen_id' => data_get($quotation, 'id'),
-            'pedido_destino_id' => data_get($order, 'id'),
-            'user_id' => $userId,
-            'bodega' => data_get($quotation, 'BOD_BODEGA'),
+            'reserva_id'            => $reservedId,
+            'cotizacion_origen_id'  => data_get($quotation, 'id'),
+            'pedido_destino_id'     => data_get($order, 'id'),
+            'user_id'               => $userId,
+            'bodega'                => data_get($quotation, 'BOD_BODEGA'),
         ];
         $detalleQuotation = GpCotizacionDetalle::with('stock')->where('cotizacion_id', $quotation['id'])->get();
         $detalles = collect($detalleQuotation)->flatMap(function ($detalle) use ($reservedId, $quotation, $order, $userId) {
@@ -1192,13 +1201,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_BODEGA', $payload['origen'])->first()->toarray();
 
         $viewData = [
-            'origen' => $payload['origen'],
-            'destino' => $payload['destino'],
+            'origen'    => data_get($payload, 'origen'),
+            'destino'   => data_get($payload, 'destino'),
             'pesototal' => (float) str_replace(',', '.', (string) ($payload['pesototal'] ?? 0)) ?? 0,
-            'rows' => $itemsPayload->map(function ($item) {
-                $pesoUnitGr = (float) str_replace(',', '.', (string) ($item['art_peso'] ?? 0));
-                $qty = (int) ($item['seleccionado'] ?? 0);
-                $item['peso_kg'] = round(($pesoUnitGr * $qty), 2);
+            'rows'      => $itemsPayload->map(function ($item) {
+                $pesoUnitGr         = (float) str_replace(',', '.', (string) ($item['art_peso'] ?? 0));
+                $qty                = (int) ($item['seleccionado'] ?? 0);
+                $item['peso_kg']    = round(($pesoUnitGr * $qty), 2);
                 return $item;
             })->values()
                 ->all(),
@@ -1206,8 +1215,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
 
         // 3) Render Blade → PDF (Dompdf)
-        $html = view('pdf.picking-reserva', $viewData)->render();
-        $pdf = app('dompdf.wrapper');
+        $html   = view('pdf.picking-reserva', $viewData)->render();
+        $pdf    = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
         $binary = $pdf->output();
@@ -1215,9 +1224,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $filename = 'picking-' . Str::slug($payload['destino'], '-') . '-' . now()->format('Ymd-His') . '.pdf';
 
         return [
-            'binary' => $binary,
-            'filename' => $filename,
-            'content_type' => 'application/pdf',
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
         ];
     }
 
@@ -1225,8 +1234,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function fetchVehicles()
     {
         return [
-            'vehiculos' => GpVehiculo::get(),
-            'transportistas' => GpTransportista::get()
+            'vehiculos'         => GpVehiculo::get(),
+            'transportistas'    => GpTransportista::get()
         ];
     }
 
@@ -1336,26 +1345,25 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $detail = $this->getTransferToReceiveDetails($id);
 
         $viewData = [
-            'destino' => $header->bodega_destino,
-            'origen' => $header->bodega_origen,
-            'numero_guia' => $header->numero_guia,
-            'detail' => $detail->each(function ($item) {
+            'destino'       => $header->bodega_destino,
+            'origen'        => $header->bodega_origen,
+            'numero_guia'   => $header->numero_guia,
+            'detail'        => $detail->each(function ($item) {
                 $item->co_cotizacion = $item->cotizacion->cotizacion;
             }),
         ];
 
-        $html = view('pdf.orden-almacenamiento-recibir', $viewData)->render();
-        $pdf = app('dompdf.wrapper');
+        $html       = view('pdf.orden-almacenamiento-recibir', $viewData)->render();
+        $pdf        = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
-        $binary = $pdf->output();
-
-        $filename = 'orden-almacenamiento-' . Str::slug($header->bodega_destino, '-') . '-' . Str::slug($header->numero_guia) . '.pdf';
+        $binary     = $pdf->output();
+        $filename   = 'orden-almacenamiento-' . Str::slug($header->bodega_destino, '-') . '-' . Str::slug($header->numero_guia) . '.pdf';
 
         return [
-            'binary' => $binary,
-            'filename' => $filename,
-            'content_type' => 'application/pdf',
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
         ];
     }
 

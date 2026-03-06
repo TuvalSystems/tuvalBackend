@@ -53,7 +53,7 @@ class GuiasderemisionController extends Controller
                 return $this->errorResponse($response, [], 409);
             }
             return $this->buildSuccessResponse('Validación exitosa. No existen conflictos con otras guías.', 200);
-        }, 'reservas_log', 'consultarGuiaGeneradaV1 -GuiasderemisionController');
+        }, 'guia_ventas', 'consultarGuiaGeneradaV1 -GuiasderemisionController');
     }
 
     public function checkguiaremision(): JsonResponse
@@ -61,7 +61,7 @@ class GuiasderemisionController extends Controller
         return $this->executeTransaction(function (): JsonResponse {
             $this->deliveryNoteService->mapAssigmentNumberGuideRemision();
             return $this->buildSuccessResponse('Guias de remision actualizadas', 200);
-        }, 'reservas_log', 'checkguiaremision -GuiasderemisionController');
+        }, 'guia_ventas', 'checkguiaremision -GuiasderemisionController');
     }
 
     public function imprimirguia($id): Response

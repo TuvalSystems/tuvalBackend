@@ -9,9 +9,7 @@ use App\Models\GpUsuario;
 interface OrderBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
-
-    public function fromPayloadOrder($cotizacionId, array $data,  array $approvalComercial, GpUsuario $user, $pv, $requiereAprobacionCrediticia, $motivoCrediticio, $fechaEntrega, $origen, $fFacturacionReserva = null, $bodega);
-
+    public function formPayloadOrderDemand(array $infoCreator, array $payload, array  $approvalComercial, GpPuntoVenta $puntoVenta, string  $requiereAprobacionCrediticia);
     public function formPayloadOrderDetail($orderId,  $item, $i);
     public function formPayloadOrderDetailProvider($provider, $orderId, $detailOrder, $recibido);
     public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado);
@@ -20,7 +18,6 @@ interface OrderBuilderInterface
     /** builder que arma un pedido desde crearcotizacion */
     public function formPayloadOrderV2(array $data, $user, GpPuntoVenta $ptoVta,  array $requiredApprovalCommercial, array $extras): GpPedido;
 
-    
-    public function formPayloadInvoiceExistence(array $data, GpUsuario $user, GpPuntoVenta $ptoVta): GpPedido;
 
-    }
+    public function formPayloadInvoiceExistence(array $data, GpUsuario $user, GpPuntoVenta $ptoVta): GpPedido;
+}

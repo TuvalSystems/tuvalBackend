@@ -24,89 +24,75 @@ class ReservasController extends Controller
     ) {}
 
 
-    public function validarGeneracionReservaCotizacion($id)
+    public function validarGeneracionReservaCotizacion($id): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($id): JsonResponse {
             $existeReserva = $this->reserveService->hasAnyReserveState($id);
             if ($existeReserva) {
                 return $this->buildExistResponse($existeReserva, 'No es posible recuperar, copiar o volver a pedir la cotización porque cuenta con una reserva', 200);
             }
             return $this->buildExistResponse($existeReserva, 'La cotización no tiene reservas registradas. Puede continuar con su actividad', 202);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log',  'validarGeneracionReservaCotizacion');
     }
 
 
     public function cancelarReservaCotizacion(ValidateCancelReservationRequest $request): JsonResponse
     {
-        try {
-            $data = $request->validated();
+
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $data      = $request->validated();
             $reservasId = data_get($data, 'id', null);
             $reserva = $this->reserveService->cancelReservedQuotation($reservasId);
             return $this->successResponse('Reserva cancelada correctamente', $reserva, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log',  'cancelarReservaCotizacion');
     }
 
-    public function verificarStockCotizacionActual(Request $request)
+    public function verificarStockCotizacionActual(Request $request): JsonResponse
     {
-        $request->validate([
-            'id' => 'required|integer',
-        ]);
-
-        try {
-            $response = $this->reserveService->validateAndProcessQuotationStock($request->input('id'));
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'id' => 'required|integer',
+            ]);
+            $id = data_get($validated, 'id');
+            $response = $this->reserveService->validateAndProcessQuotationStock($id);
             if ($response) {
                 return $this->buildExistResponse(false, $response, 400);
             }
             return $this->buildExistResponse(true, 'Cuentas con stock disponible', 200);
-        } catch (\DomainException $e) {
-            // Captura excepciones de negocio (ej: Cotización no encontrada, No hay ítems seleccionados)
-            return $this->buildErrorResponse($e->getMessage(), 404);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log',  'verificarStockCotizacionActual');
     }
 
 
-    public function guardarReservaCotización(Request $request)
+    public function guardarReservaCotización(Request $request): JsonResponse
     {
-        $gpUser = $request->user();
-        $reserva = $request->get('reserva', null);
-        try {
-            return DB::transaction(function () use ($reserva, $gpUser) {
-                $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
-                return $this->buildSuccessResponse('Solicitud de reserva guardada correctamente', 200);
-            });
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $gpUser     = $request->user();
+            $reserva    = $request->get('reserva', null);
+            $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
+            return $this->buildSuccessResponse('Solicitud de reserva guardada correctamente', 200);
+        }, 'reservas_log',  'guardarReservaCotización');
     }
 
-    public function obtenerListaTipoReservas()
+    public function obtenerListaTipoReservas(): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function (): JsonResponse {
             $data = $this->reserveService->fetchListTipeReserved();
             return $this->successResponse('Tipos de reservas obtenidos correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log',  'obtenerListaTipoReservas');
     }
 
 
 
-    public function obtenerListaReservasPendientes(Request $request)
+    public function obtenerListaReservasPendientes(Request $request): JsonResponse
     {
         try {
-            $perPage = $request->input('perPage', 10);
-            $search = $request->input('search', null);
-            $sortBy = $request->input('sortBy', null);
-            $sortOrder = $request->input('sortOrder', 'desc');
-            $tipoReserva = $request->input('tipoReserva', null);
-            $ptoVtaId = $request->input('ptovta', null);
-            $clienteRuc = $request->input('cliente', null);
+            $perPage        = $request->input('perPage', 10);
+            $search         = $request->input('search', null);
+            $sortBy         = $request->input('sortBy', null);
+            $sortOrder      = $request->input('sortOrder', 'desc');
+            $tipoReserva    = $request->input('tipoReserva', null);
+            $ptoVtaId       = $request->input('ptovta', null);
+            $clienteRuc     = $request->input('cliente', null);
             return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->reserveService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
@@ -114,7 +100,7 @@ class ReservasController extends Controller
     }
 
 
-    public function obtenerCotizacionConDetalle($id)
+    public function obtenerCotizacionConDetalle($id): JsonResponse
     {
         try {
             return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetails($id), 200);
@@ -123,7 +109,7 @@ class ReservasController extends Controller
         }
     }
 
-    public function obtenerCotizacionDetalleConStock($id)
+    public function obtenerCotizacionDetalleConStock($id): JsonResponse
     {
         try {
             return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetailsAndStock($id), 200);
@@ -132,7 +118,7 @@ class ReservasController extends Controller
         }
     }
 
-    public function obtenerCotizacionConDetalleYStockActivo($id)
+    public function obtenerCotizacionConDetalleYStockActivo($id): JsonResponse
     {
         try {
             return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetailsAndActiveStockById($id), 200);
@@ -159,24 +145,16 @@ class ReservasController extends Controller
     }
 
 
-    public function rechazarSolicitudReservaCotizacion(Request $request)
+    public function rechazarSolicitudReservaCotizacion(Request $request): JsonResponse
     {
-        try {
-            $gpUser = $request->user();
-            $data = $request->all();
-            $reserva = DB::transaction(function () use ($data, $gpUser) {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $gpUser     = $request->user();
+            $data       = $request->all();
+            DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->denyApplicationReservedQuotation($data['data'], $gpUser);
             });
-            $msg = "Reserva rechazada correctamente:  {$reserva['id']}";
-            return $this->buildSuccessResponse($msg, 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->buildErrorResponse('Cotización no encontrada', 404);
-        } catch (\DomainException $e) { // por si tu service valida estados
-            return $this->buildErrorResponse($e->getMessage(), 409);
-        } catch (\Throwable $e) {
-
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+            return $this->buildSuccessResponse("Reserva rechazada correctamente", 200);
+        }, 'reservas_log', 'rechazarSolicitudReservaCotizacion');
     }
 
     public function aprobarSolicitudReservaCotizacion(Request $request)
@@ -508,9 +486,4 @@ class ReservasController extends Controller
             return $this->errorResponse($e->getMessage(), [], 500);
         }
     }
-
-
-
-
-
 }

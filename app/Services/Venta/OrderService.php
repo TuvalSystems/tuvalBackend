@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\QuotationMode;
 use App\Enums\Ventas\TaxRateEnum;
@@ -442,7 +443,7 @@ class OrderService implements OrderServiceInterface
         if (!empty($order->factura)) {
             abort(409, 'El pedido ya se encuentra facturado');
         }
-        if ($order->origen === 'reserva') {
+        if ($order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value) {
             $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
             $order->save();
         }
@@ -452,7 +453,7 @@ class OrderService implements OrderServiceInterface
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
     {
-        if ($pedido->origen !== 'reserva') {
+        if ($pedido->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value) {
             return true;
         }
 
@@ -1309,7 +1310,7 @@ class OrderService implements OrderServiceInterface
                 'gp.factura_a_demanda',
             ])
             ->join('gp_cotizacions as ct', 'ct.id', '=', 'gp.cotizacion_id')
-            ->where('gp.origen', 'reserva')
+            ->where('gp.origen', OrderOrigenEnum::FACTURA_DEMANDA->value)
             // ->where('gp.PTO_VTA_ID', $ptoVtaId)
             ->whereNotIn('gp.estado', ['eliminado', 'rechazado', 'anulada', 'facturado']);
 

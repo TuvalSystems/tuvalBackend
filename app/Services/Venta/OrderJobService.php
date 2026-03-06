@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
@@ -190,7 +191,7 @@ class OrderJobService
                             ? $fresh->fe_facturacion_reserva->toDateString()
                             : Carbon::parse($fresh->fe_facturacion_reserva)->toDateString();
 
-                        if ($fresh->origen !== 'reserva' || $orderDate !== $today) {
+                        if ($fresh->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value || $orderDate !== $today) {
                             $metrics['skipped']++;
                             Log::channel('cron_process')->info("⏭️ Pedido {$fresh->id} omitido: origen/fecha no coincide.");
                             return;
