@@ -15,7 +15,6 @@ use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
-use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
@@ -192,7 +191,7 @@ class PedidosController extends Controller
 
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $data['puntodeventa_id'])
             ->leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
-            ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion');
+            ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_cotizacions.origen as cotizacion_origen');
 
         if ($data['estado'] != 'todos') {
             $pedidos = $pedidos->where('gp_pedidos.estado', $data['estado']);
