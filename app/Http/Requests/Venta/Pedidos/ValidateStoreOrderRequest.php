@@ -149,7 +149,7 @@ class ValidateStoreOrderRequest extends FormRequest
                 'required',
                 'string',
                 'in:cotizacion,reserva,facturar_existente,devolucion,factura_demanda'
-            ],,
+            ],
         ];
     }
 
