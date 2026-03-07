@@ -138,7 +138,7 @@ class OrderRepository implements OrderRepositoryInterface
             ->where(function ($q) {
                 $q->whereNull('origen')
                     ->orWhereNotIn('origen', [
-                        OrderOrigenEnum::RESERVA->value,
+                        // OrderOrigenEnum::RESERVA->value,
                         OrderOrigenEnum::FACTURA_DEMANDA->value
                     ]);
             })

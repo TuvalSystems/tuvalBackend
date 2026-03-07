@@ -25,24 +25,34 @@ class OrderJobService
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly OrderServiceInterface $orderService,
         protected readonly OrderRepositoryInterface $orderRepository
-    ) {
-
-    }
+    ) {}
 
 
     /** reemplazo de la función de  facturarsiguientemescron */
 
     public function sendInvoiceNextMonthCron()
     {
-        if ($this->isWeekend()) {
-            throw new Exception('No se pueden enviar facturas en fines de semana.');
+        $now = now('America/Guayaquil');
+        $cacheKey = "ejecutar_facturacion_" . $now->format('m_Y');
+
+        if (Cache::has($cacheKey)) {
+            Log::channel('cron_process')->info("⏭️ La facturación de este mes ya fue procesada anteriormente.");
+            return ['abortado' => true, 'razon' => 'Ya ejecutado este mes'];
         }
 
-        if (!$this->isBussinessDay()) {
-           return false;
+        if ($this->isWeekend() || !$this->isBussinessDay()) {
+            Log::channel('cron_process')->info("⏳ Día no hábil. Se reintentará mañana automáticamente.");
+            return false;
         }
 
-        return $this->invoicePreviousMonthOrders();
+        $resultados = $this->invoicePreviousMonthOrders();
+
+        if (isset($resultados['abortado']) && $resultados['abortado'] === false) {
+            Cache::put($cacheKey, true, now()->addDays(32));
+            Log::channel('cron_process')->info("✅ Proceso mensual completado y marcado en caché.");
+        }
+
+        return $resultados;
     }
 
     public function isWeekend(): bool
@@ -54,7 +64,7 @@ class OrderJobService
     {
         $params = [
             'idCompany' => env('ID_COMPANIA'),
-            'fecha' => Carbon::now()->format('Y-m-d'),
+            'fecha'     => Carbon::now()->format('Y-m-d'),
         ];
 
         $resp = $this->apiBilling->validateBusinessDate($params);
@@ -80,14 +90,15 @@ class OrderJobService
         if ($this->shouldAbortBilling($mes)) {
             Log::channel('cron_process')->warning("⚠️ No se ejecuta facturación: Aún no llega el mes: {$mes}");
             return [
-                'abortado' => true,
-                'razon' => "Mes actual no coincide: {$mes}",
-                'total' => 0,
-                'exitosos' => 0,
-                'fallidos' => 0,
-                'errores' => []
+                'abortado'  => true,
+                'razon'     => "Mes actual no coincide: {$mes}",
+                'total'     => 0,
+                'exitosos'  => 0,
+                'fallidos'  => 0,
+                'errores'   => []
             ];
         }
+
         $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
         $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
             foreach ($pedidos as $pedido) {
@@ -126,19 +137,18 @@ class OrderJobService
                         Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
                     } else {
                         Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} no cambió a 'facturado'");
-                        //  throw new Exception("El pedido no cambió a 'facturado'");
                     }
                 } catch (\Throwable $e) {
                     $resultados['fallidos']++;
                     $resultados['errores'][] = [
                         'pedido_id' => $pedido->id,
-                        'pedido' => $pedido->pedido,
-                        'error' => $e->getMessage(),
+                        'pedido'    => $pedido->pedido,
+                        'error'     => $e->getMessage(),
                     ];
                     Log::channel('cron_process')->error("❌ Error facturando pedido {$pedido->pedido}", [
-                        'pedido_id' => $pedido->id,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
+                        'pedido_id'     => $pedido->id,
+                        'error'         => $e->getMessage(),
+                        'trace'         => $e->getTraceAsString(),
                     ]);
                 } finally {
                     optional($lock)->release();
@@ -217,7 +227,4 @@ class OrderJobService
 
         return $metrics;
     }
-
-
-
 }
