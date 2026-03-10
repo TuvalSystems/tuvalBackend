@@ -25,7 +25,7 @@ class CotizacionBorrador extends Model
 
 
     /**
-     * esto lo usamos como comando mode:prune que define el tiempo de vida de los borradores
+     * esto lo usamos como comando model:prune que define el tiempo de vida de los borradores
      * se elimina pasando los 60 dias de inactividad,
      * definimos el tiempo en prueneable y declaramos el comando en el kernel
      */
