@@ -340,7 +340,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'ART_VALOR_ORIGINAL'            => (float)data_get($articles, 'ART_VALOR_ORIGINAL'),
             'ART_DESCUENTO'                 => (float)data_get($articles, 'ART_DESCUENTO'),
             'ART_IVA'                       => (float)data_get($articles, 'ART_IVA'),
-            'ART_CANTIDAD'                  => data_get($articles, 'ART_CANTIDAD'),
+            'ART_CANTIDAD'                  => (float) round(data_get($articles, 'ART_CANTIDAD'), (int)data_get($articles, 'ART_DECIMAL_CANTIDAD')),
             'ART_STOCK'                     => data_get($articles, 'ART_STOCK', 0),
             'ART_IMP_VTA'                   => (float)data_get($articles, 'ART_IMP_VTA'),
             'ART_COSTO_PROMEDIO'            => (float)data_get($articles, 'ART_COSTO_PROMEDIO'),
