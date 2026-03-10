@@ -21,9 +21,11 @@ use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
+use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
 use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
 use App\Services\Venta\QuotationCreatorService;
+use App\Services\Venta\QuoteDraftService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 
 class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
@@ -46,7 +48,8 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
         OrderJobService::class,
 
         //importacion y actualizaciones en batch
-        OrdersImportInterface::class => OrdersImport::class
+        OrdersImportInterface::class                    => OrdersImport::class,
+        QuoteDraftServiceInterface::class               => QuoteDraftService::class
     ];
 
     /**

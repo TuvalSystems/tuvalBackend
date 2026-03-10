@@ -15,9 +15,9 @@ enum QuotationMode: string
     public static function fromType(string $type): self
     {
         return match($type) {
-            'cotizacion' => self::COPY_QUOTATION,
-            'pedido' => self::COPY_ORDER,
-            default      => throw new \InvalidArgumentException("Tipo de copia no válido: $type"),
+            'cotizacion'    => self::COPY_QUOTATION,
+            'pedido'        => self::COPY_ORDER,
+            default         => throw new \InvalidArgumentException("Tipo de copia no válido: $type"),
         };
     }
 }

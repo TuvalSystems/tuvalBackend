@@ -18,6 +18,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
+use App\Http\Controllers\borradores\CotizacionBorradorController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
 
@@ -368,7 +369,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasderemisionController::class, 'crearGuiaRemisionReposicion']);
         Route::post('reposiciones/guia-remision/despachar-guia-reposicion', [GuiasderemisionController::class, 'despacharGuiaRemisionReposicion']);
         Route::post('reposiciones/guia-remision/recibir-guia-reposicion', [GuiasderemisionController::class, 'recibirGuiaRemisionReposicion']);
-        
     });
 
     Route::group(['prefix' => 'consultas'], function () {
@@ -433,6 +433,13 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('orden-almacenamiento', [DevolucionesController::class, 'imprimirOrdenDeAlmacenamiento']);
         Route::post('recibir-devolucion', [DevolucionesController::class, 'recibirDevolucion']);
         Route::post('rechazar-devolucion', [DevolucionesController::class, 'rechazarDevolucion']);
+    });
+
+    Route::prefix('borradores')->group(function () {
+        Route::post('sync', [CotizacionBorradorController::class, 'sincronizarBorrador']);
+        Route::post('list', [CotizacionBorradorController::class, 'listarBorradores']);
+        Route::post('get', [CotizacionBorradorController::class, 'obtenerBorrador']);
+        Route::post('delete', [CotizacionBorradorController::class, 'eliminarBorrador']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);
