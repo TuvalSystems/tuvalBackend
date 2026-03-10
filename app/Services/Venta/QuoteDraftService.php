@@ -6,6 +6,7 @@ use App\Enums\Ventas\QuotationMode;
 use App\Models\borradores\CotizacionBorrador;
 use App\Models\GpUsuario;
 use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class QuoteDraftService implements QuoteDraftServiceInterface
@@ -19,14 +20,16 @@ class QuoteDraftService implements QuoteDraftServiceInterface
 
     public function sync(string $draftId, string $ptoVtaId, array $data, GpUsuario $user)
     {
-        return DB::transaction(function () use ($draftId, $ptoVtaId, $data, $user) {
-            CotizacionBorrador::updateOrCreate([
-                'draft_id'  => $draftId,
-                'user_id'   => $user->id
-            ], [
-                'punto_venta_id' => $ptoVtaId,
-                'data'           => $data
-            ]);
+        return Cache::lock("sync_draft_{$draftId}", 10)->get(function () use ($draftId, $ptoVtaId, $data, $user) {
+            return DB::transaction(function () use ($draftId, $ptoVtaId, $data, $user) {
+                CotizacionBorrador::updateOrCreate([
+                    'draft_id'  => $draftId,
+                    'user_id'   => $user->id
+                ], [
+                    'punto_venta_id' => $ptoVtaId,
+                    'data'           => $data
+                ]);
+            });
         });
     }
 
