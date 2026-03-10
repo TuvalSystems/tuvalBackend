@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Jobs\Devoluciones\EnqueueDevoluciones;
+use App\Models\borradores\CotizacionBorrador;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -16,10 +17,7 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping(5)
             ->runInBackground();
-        // $schedule->command('devoluciones:procesar')
-        //     ->everyMinute()
-        //     ->withoutOverlapping(60)
-        //     ->runInBackground();
+
 
         //se ejecuta una vez al dia a las 08:00
         $schedule->command('cotizaciones:notificar-noventa')
@@ -30,7 +28,7 @@ class Kernel extends ConsoleKernel
         //se ejecuta el 1 de cada mez
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
             ->monthlyOn(1, '02:00')
-            ->when(function(){
+            ->when(function () {
                 return now()->day <= 7;
             })
             ->timezone('America/Guayaquil')->withoutOverlapping(10)
@@ -62,6 +60,12 @@ class Kernel extends ConsoleKernel
             ->dailyAt('07:30')
             ->withoutOverlapping(30)
             ->runInBackground();
+
+        $schedule->command('model:prune', [
+            '--model' => [CotizacionBorrador::class]
+        ])
+            ->timezone('America/Guayaquil')
+            ->dailyAt('02:00');
     }
 
 
