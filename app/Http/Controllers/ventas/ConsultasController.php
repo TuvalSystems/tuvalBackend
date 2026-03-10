@@ -314,14 +314,14 @@ class ConsultasController extends Controller
 
             foreach ($clientes as $key => $cliente) {
 
-                if (isset($data['tipo']) && $data['tipo'] == 'cobranza') {
-                } else {
+                // if (isset($data['tipo']) && $data['tipo'] == 'cobranza') {
+                // } else {
 
-                    if ($cliente->CLI_SUSPENDIDO == 'SI') {
-                        unset($clientes[$key]);
-                        continue;
-                    }
-                }
+                //     if ($cliente->CLI_SUSPENDIDO == 'SI') {
+                //         unset($clientes[$key]);
+                //         continue;
+                //     }
+                // }
 
                 $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
                 $cliente->vendedor = $vendedor;
