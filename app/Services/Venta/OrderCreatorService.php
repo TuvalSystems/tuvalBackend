@@ -151,7 +151,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 $this->storeDetailProviders($item['proveedores'], $detail, $order);
             }
             if ($item['stock']) {
-                $this->storeDetailStock($item['stock'], $detail, $order);
+                $this->storeDetailStock($item['stock'], $detail, $order, $detail->ART_DECIMAL_CANTIDAD);
             }
 
             if ($isTypeL) {
@@ -172,14 +172,14 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     }
 
 
-    protected function storeDetailStock($stock, $detail, $newOrder)
+    protected function storeDetailStock($stock, $detail, $newOrder, int $decimalQty)
     {
         $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes' || $newOrder->requiere_aprobacion_comercial === 'yes';
         $quoteReservedId = $this->getReservedOriginQuote($newOrder->cotizacion_id);
 
 
         foreach ($stock as $item) {
-            $seleccionado   = data_get($item, 'seleccionado', 0);
+            $seleccionado   = round(data_get($item, 'seleccionado', 0), $decimalQty);
             $disponible     = data_get($item, 'STO_ART_STOCK_DISPONIBLE', 0);
             $bodegaItem     = data_get($item, 'STO_ART_BODEGA', '');
 
@@ -197,7 +197,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 }
             }
             $reservado = $requiereAprobacion ? 0 : $seleccionado;
-            $newStock = $this->builder->formPayloadOrderDetailStock($item, $newOrder->id, $detail->id, $stockValidado, $reservado);
+            $newStock = $this->builder->formPayloadOrderDetailStock($item, $newOrder->id, $detail->id, $stockValidado, $reservado, $decimalQty);
             $newStock->save();
         }
     }

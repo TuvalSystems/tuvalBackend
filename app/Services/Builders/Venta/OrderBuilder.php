@@ -136,7 +136,7 @@ class OrderBuilder implements OrderBuilderInterface
     }
 
 
-    public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado)
+    public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado, int $decimalQty)
     {
         $newStock = new GpPedidoDetalleStock();
         $newStock->fill([
@@ -144,7 +144,7 @@ class OrderBuilder implements OrderBuilderInterface
             'detalle_id'                => $detailOrderId,
             'STO_ART_BODEGA'            => data_get($item, 'STO_ART_BODEGA', ''),
             'STO_ART_STOCK_DISPONIBLE'  => $disponible,
-            'seleccionado'              => data_get($item, 'seleccionado', ''),
+            'seleccionado'              => (float)round(data_get($item, 'seleccionado', 0), $decimalQty),
             'reservado'                 => $reservado,
         ]);
         return $newStock;
