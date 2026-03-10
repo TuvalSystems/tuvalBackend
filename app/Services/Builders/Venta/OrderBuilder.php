@@ -143,9 +143,9 @@ class OrderBuilder implements OrderBuilderInterface
             'pedido_id'                 => $orderId,
             'detalle_id'                => $detailOrderId,
             'STO_ART_BODEGA'            => data_get($item, 'STO_ART_BODEGA', ''),
-            'STO_ART_STOCK_DISPONIBLE'  => $disponible,
+            'STO_ART_STOCK_DISPONIBLE'  => (float)$disponible,
             'seleccionado'              => (float)round(data_get($item, 'seleccionado', 0), $decimalQty),
-            'reservado'                 => $reservado,
+            'reservado'                 => (float)$reservado,
         ]);
         return $newStock;
     }
