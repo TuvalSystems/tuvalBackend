@@ -12,7 +12,7 @@ interface OrderBuilderInterface
     public function formPayloadOrderDemand(array $infoCreator, array $payload, array  $approvalComercial, GpPuntoVenta $puntoVenta, string  $requiereAprobacionCrediticia);
     public function formPayloadOrderDetail($orderId,  $item, $i);
     public function formPayloadOrderDetailProvider($provider, $orderId, $detailOrder, $recibido);
-    public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado, int $decimalQty);
+    public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado);
 
 
     /** builder que arma un pedido desde crearcotizacion */

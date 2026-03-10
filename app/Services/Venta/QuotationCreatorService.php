@@ -160,7 +160,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             }
             $stocks = data_get($it, 'stock', []);
             if (!empty($stocks)) {
-                $this->saveQuotationDetailStocks($quoteId, $detail->id, $stocks, $detail->ART_DECIMAL_CANTIDAD);
+                $this->saveQuotationDetailStocks($quoteId, $detail->id, $stocks);
             }
         }
     }
@@ -173,10 +173,10 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             $providerModel->save();
         }
     }
-    protected function saveQuotationDetailStocks(int $quoteId, int $detailId, array $stocks, int $decimalQty)
+    protected function saveQuotationDetailStocks(int $quoteId, int $detailId, array $stocks)
     {
         foreach ($stocks as $st) {
-            $stockModel = $this->builder->formPayloadStocksDetailQuotation($quoteId, $detailId, $st, $decimalQty);
+            $stockModel = $this->builder->formPayloadStocksDetailQuotation($quoteId, $detailId, $st);
             $stockModel->save();
         }
     }

@@ -347,7 +347,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'descuento'                     => (float)data_get($articles, 'descuento'),
             'descuento_original'            => (float)data_get($articles, 'descuento_original'),
             'modificador'                   => (float)data_get($articles, 'modificador'),
-            'valor_original_l'              => (float)data_get($articles, 'valor_original_l' , 0),
+            'valor_original_l'              => (float)data_get($articles, 'valor_original_l', 0),
         ]);
 
         return $qd;
@@ -376,7 +376,7 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-    public function formPayloadStocksDetailQuotation(int $quoteId, int $detailId, array $stock, int $decimalQty): GpCotizacionDetalleStock
+    public function formPayloadStocksDetailQuotation(int $quoteId, int $detailId, array $stock): GpCotizacionDetalleStock
     {
         $st = new GpCotizacionDetalleStock();
         $st->fill([
@@ -384,7 +384,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'detalle_id'                    => $detailId,
             'STO_ART_BODEGA'                => data_get($stock, 'STO_ART_BODEGA'),
             'STO_ART_STOCK_DISPONIBLE'      => data_get($stock, 'STO_ART_STOCK_DISPONIBLE', 0),
-            'seleccionado'                  => round(data_get($stock, 'seleccionado' , 0), $decimalQty),
+            'seleccionado'                  => (float) data_get($stock, 'seleccionado', 0),
         ]);
         return $st;
     }

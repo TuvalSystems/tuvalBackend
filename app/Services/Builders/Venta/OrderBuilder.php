@@ -102,7 +102,7 @@ class OrderBuilder implements OrderBuilderInterface
             'ART_VALOR_ORIGINAL'        => data_get($item, 'ART_VALOR_ORIGINAL', 0),
             'ART_DESCUENTO'             => data_get($item, 'ART_DESCUENTO', 0),
             'ART_IVA'                   => data_get($item, 'ART_IVA', 0),
-            'ART_CANTIDAD'              => round(data_get($item, 'ART_CANTIDAD'), (int)data_get($item, 'ART_DECIMAL_CANTIDAD')),
+            'ART_CANTIDAD'              => data_get($item, 'ART_CANTIDAD',0),
             'ART_STOCK'                 => data_get($item, 'ART_STOCK', 0),
             'ART_IMP_VTA'               => data_get($item, 'ART_IMP_VTA'),
             'ART_COSTO_PROMEDIO'        => data_get($item, 'ART_COSTO_PROMEDIO'),
@@ -136,7 +136,7 @@ class OrderBuilder implements OrderBuilderInterface
     }
 
 
-    public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado, int $decimalQty)
+    public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado): GpPedidoDetalleStock
     {
         $newStock = new GpPedidoDetalleStock();
         $newStock->fill([
@@ -144,7 +144,7 @@ class OrderBuilder implements OrderBuilderInterface
             'detalle_id'                => $detailOrderId,
             'STO_ART_BODEGA'            => data_get($item, 'STO_ART_BODEGA', ''),
             'STO_ART_STOCK_DISPONIBLE'  => (float)$disponible,
-            'seleccionado'              => (float)round(data_get($item, 'seleccionado', 0), $decimalQty),
+            'seleccionado'              => (float) data_get($item, 'seleccionado', 0),
             'reservado'                 => (float)$reservado,
         ]);
         return $newStock;
