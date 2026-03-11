@@ -229,7 +229,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             if (!$dbTransfer) {
                 continue;
             }
-            $precision              = (int) data_get($decimalesArticulos, $dbTransfer->ART_CODIGO, 3);
+            $precision              = (int) data_get($decimalesArticulos, $dbTransfer->ART_CODIGO, 0);
             $seleccionado           = (float) data_get($itm, 'seleccionado', 0);
             $yaGenerado             = (float) data_get($detalleGuias->get($id), 'total_generado', 0);
             $yaComprometido         = max(((float)$dbTransfer->reservado + (float)$dbTransfer->trasladado), $yaGenerado);

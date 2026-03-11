@@ -5,6 +5,7 @@ namespace App\Services\Bodegas;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Jobs\Venta\Reservas\NotifyReceivedReservationsJob;
+use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
@@ -232,6 +233,13 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $items      = collect($items);
         $itemsIds   = $items->pluck('id')->toArray();
         $detTraslados = GpTrasladosReservas::whereIn('id', $itemsIds)->get(['id', 'art_code', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
+
+
+        $codigosArticulos = $detTraslados->pluck('art_code')->unique();
+        $decimalesArticulos = GpArticulo::whereIn('ART_CODIGO', $codigosArticulos)
+            ->pluck('ART_DECIMAL_CANTIDAD', 'ART_CODIGO')
+            ->all();
+
         $detalleGuias = GpGuiaRemisionReservaDetalle::whereIn('traslado_id', $itemsIds)
             ->select('traslado_id', DB::raw('SUM(cantidad) as total_generado'))
             ->groupBy('traslado_id')
@@ -244,11 +252,13 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             if (!$dbTransfer) {
                 continue;
             }
-            $seleccionado       = (float) data_get($value, 'seleccionado', 0);
-            $yaGenerado         = data_get($detalleGuias->get($id), 'total_generado', 0);
-            $yaComprometido     = max(((float)$dbTransfer->reservado + (float)$dbTransfer->trasladado), $yaGenerado);
-            $totalFinal         = $yaComprometido + $seleccionado;
-            if ($totalFinal > (float)$dbTransfer->cantidad) {
+            $precision              = (int) data_get($decimalesArticulos, $dbTransfer->art_code, 0);
+            $seleccionado           = (float) data_get($value, 'seleccionado', 0);
+            $yaGenerado             = data_get($detalleGuias->get($id), 'total_generado', 0);
+            $yaComprometido         = max(((float)$dbTransfer->reservado + (float)$dbTransfer->trasladado), $yaGenerado);
+            $totalFinal             = $yaComprometido + $seleccionado;
+            $totalFinalRedondeado   = round($totalFinal, $precision);
+            if ($totalFinalRedondeado > (float)$dbTransfer->cantidad) {
                 $disponible = max(0, (float)$dbTransfer->cantidad - $yaComprometido);
                 return "El ítem {$dbTransfer->art_code} excede el límite. " .
                     "Máximo original: {$dbTransfer->cantidad}. " .

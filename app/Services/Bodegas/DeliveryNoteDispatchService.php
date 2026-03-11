@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleStock;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
@@ -204,8 +205,13 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $ids = collect($items)->pluck('id');
         $detalles = GpPedidoDetalle::whereIn('id', $ids)
             ->lockForUpdate()
-            ->get(['id', 'reservado', 'trasladado', 'ART_CANTIDAD'])
+            ->get(['id', 'ART_CODIGO', 'reservado', 'trasladado', 'ART_CANTIDAD'])
             ->keyBy('id');
+
+        $codigosArticulos = $detalles->pluck('ART_CODIGO')->unique();
+        $decimalesArticulos = GpArticulo::whereIn('ART_CODIGO', $codigosArticulos)
+            ->pluck('ART_DECIMAL_CANTIDAD', 'ART_CODIGO')
+            ->all();
 
         $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $ids)
             ->whereHas('guia', function ($q) {
@@ -222,11 +228,13 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             if (!$dbItem) {
                 continue;
             }
-            $seleccionado   = (float) data_get($itm, 'seleccionado', 0);
-            $yaGenerado     = data_get($detalleGuias->get($id), 'total_generado', 0);
-            $yaComprometido = max(((float)$dbItem->reservado + (float)$dbItem->trasladado), $yaGenerado);
-            $totalFinal = $yaComprometido + $seleccionado;
-            if ($totalFinal > (float)$dbItem->ART_CANTIDAD) {
+            $precision              = (int) data_get($decimalesArticulos, $dbItem->ART_CODIGO, 0);
+            $seleccionado           = (float) data_get($itm, 'seleccionado', 0);
+            $yaGenerado             = data_get($detalleGuias->get($id), 'total_generado', 0);
+            $yaComprometido         = max(((float)$dbItem->reservado + (float)$dbItem->trasladado), $yaGenerado);
+            $totalFinal             = $yaComprometido + $seleccionado;
+            $totalFinalRedondeado   = round($totalFinal, $precision);
+            if ($totalFinalRedondeado > (float)$dbItem->ART_CANTIDAD) {
                 $disponible = max(0, (float)$dbItem->ART_CANTIDAD - $yaComprometido);
                 return "El ítem {$dbItem->ART_CODIGO} excede el límite. " .
                     "Máximo original: {$dbItem->ART_CANTIDAD}. " .
