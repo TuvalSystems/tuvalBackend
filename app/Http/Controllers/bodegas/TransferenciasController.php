@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
@@ -58,7 +59,7 @@ class TransferenciasController extends Controller
 
     public function checktransferencias()
     {
-        $pedidos = GpPedido::where('estado', 'traslado')->get();
+        $pedidos = GpPedido::where('estado', OrderStatus::TRASLADO)->get();
 
         foreach ($pedidos as $pedido) {
             $detalles = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)

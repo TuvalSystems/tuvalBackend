@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
@@ -125,7 +126,7 @@ class FuncionesController extends Controller
     {
         $arr_bodegas = array();
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $data['PTO_VTA_ID'])->first()->toArray();
-//        $arr_bodegas[$bodega['PTO_VTA_BOD_BODEGA']] = $bodega['PTO_VTA_BOD_BODEGA'];
+        //        $arr_bodegas[$bodega['PTO_VTA_BOD_BODEGA']] = $bodega['PTO_VTA_BOD_BODEGA'];
 
         $masbodegas = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $data['PTO_VTA_ID']);
         if ($consulta) {
@@ -197,8 +198,8 @@ class FuncionesController extends Controller
                     });
             })
             ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
-            ->where('gp_pedidos.estado', '!=', 'eliminado')
-            ->where('gp_pedidos.estado', '!=', 'rechazado');
+            ->where('gp_pedidos.estado', '!=', OrderStatus::ELIMINADO)
+            ->where('gp_pedidos.estado', '!=', OrderStatus::RECHAZADO);
         if ($pedido_id) {
             $stockReservado = $stockReservado->where('gp_pedidos.id', '!=', $pedido_id);
         }
@@ -217,7 +218,7 @@ class FuncionesController extends Controller
 
         $trasladosreposicion = GpTrasladosReposicion::where('bodega_origen', $bodega)
             ->where('ART_CODIGO', $articulo)
-             ->where(function ($q) {
+            ->where(function ($q) {
                 $q->whereNull('gp_traslados_reposicions.completado')
                     ->orWhere('gp_traslados_reposicions.completado', 0);
             })
@@ -235,12 +236,11 @@ class FuncionesController extends Controller
         if ($articulo->ART_TIPO_COMPRA != 'L')
             return true;
 
-        $busqueda = GpPedidoDetalle::
-            join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+        $busqueda = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
             ->where(function ($query) {
-                $query->where('gp_pedidos.estado', 'espera');
-                $query->orWhere('gp_pedidos.estado', 'traslado');
-                $query->orWhere('gp_pedidos.estado', 'orden_de_compra');
+                $query->where('gp_pedidos.estado', OrderStatus::ESPERA);
+                $query->orWhere('gp_pedidos.estado', OrderStatus::TRASLADO);
+                $query->orWhere('gp_pedidos.estado', OrderStatus::ORDEN_DE_COMPRA);
             })
             ->where('ART_CODIGO', $articulo->ART_CODIGO)
             ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
@@ -250,9 +250,8 @@ class FuncionesController extends Controller
         if ($busqueda)
             return false;
 
-        $busqueda = GpPedidoDetalle::
-            join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-            ->where('gp_pedidos.estado', 'facturado')
+        $busqueda = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+            ->where('gp_pedidos.estado', OrderStatus::FACTURADO)
             ->where('ART_CODIGO', $articulo->ART_CODIGO)
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado');
@@ -269,8 +268,7 @@ class FuncionesController extends Controller
 
             $datos_l = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $articulo->ART_CLASE_ARTICULO)->first();
 
-            $busqueda = GpPedidoDetalle::
-                join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+            $busqueda = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
                 ->where('gp_pedidos.estado', 'facturado')
                 ->where('ART_CODIGO', $articulo->ART_CODIGO)
                 ->where('gp_pedidos.despachado', 1)
@@ -355,7 +353,6 @@ class FuncionesController extends Controller
                 $articulo['stock'] = $stock_general[$articulo['ART_CODIGO']];
 
                 $articulo['stock'] = array_values($articulo['stock']);
-
             } else {
                 $articulo['stock'] = array();
             }
@@ -375,8 +372,8 @@ class FuncionesController extends Controller
         $articulo->disponible = $this->checkarticulodisponible($articulo);
 
         //        echo '<pre>';
-//        print_r($stock_general);
-//        die();
+        //        print_r($stock_general);
+        //        die();
 
         if (isset($stock_general[$articulo->ART_CODIGO])) {
             foreach ($stock_general[$articulo->ART_CODIGO] as $key => $st) {

@@ -151,7 +151,7 @@ class PedidosController extends Controller
 
     public function corregirenviando(): void
     {
-        $enviando = GpPedido::where('estado', 'enviando')
+        $enviando = GpPedido::where('estado', OrderStatus::ENVIANDO)
             ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())->get();
 
         foreach ($enviando as $pedido) {

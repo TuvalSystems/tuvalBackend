@@ -2,6 +2,7 @@
 
 namespace App\Services\Devoluciones;
 
+use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -75,7 +76,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $newOrd->CLI_RUC                    = $cliente->CLI_RUC;
         $newOrd->CLI_RAZON_SOCIAL           = $cliente->CLI_RAZON_SOCIAL;
         $newOrd->CLI_CORREO_ELECT_SRI       = $cliente->CLI_CORREO_ELECT_SRI;
-        $newOrd->origen                     = 'devolucion';
+        $newOrd->origen                     = OrderOrigenEnum::DEVOLUCION->value;
         // Lógica de facturación
         $this->setBillingLogic($newOrd, $cliente);
         $newOrd->save();

@@ -2,6 +2,7 @@
 
 namespace App\Services\Reposiciones;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpArticulo;
 use App\Models\GpDatosItemsL;
 use App\Models\GpTempCart;
@@ -38,13 +39,17 @@ class ItemsLService
         $active = DB::table('gp_pedido_detalles as d')
             ->join('gp_pedidos as p', 'p.id', '=', 'd.pedido_id')
             ->where('d.ART_CODIGO', $articulo)
-            ->whereIn('p.estado', ['espera', 'traslado', 'orden_de_compra'])
+            ->whereIn('p.estado', [
+                OrderStatus::ESPERA->value,
+                OrderStatus::TRASLADO->value,
+                OrderStatus::ORDEN_DE_COMPRA->value
+            ])
             ->max('p.created_at');
 
         $invoicedPendingDispatch = DB::table('gp_pedido_detalles as d')
             ->join('gp_pedidos as p', 'p.id', '=', 'd.pedido_id')
             ->where('d.ART_CODIGO', $articulo)
-            ->where('p.estado', 'facturado')
+            ->where('p.estado', OrderStatus::FACTURADO->value)
             ->where(function ($q) {
                 $q->whereNull('p.despachado')->orWhere('p.despachado', 0);
             })
@@ -53,7 +58,7 @@ class ItemsLService
         $invoicedDispatched = DB::table('gp_pedido_detalles as d')
             ->join('gp_pedidos as p', 'p.id', '=', 'd.pedido_id')
             ->where('d.ART_CODIGO', $articulo)
-            ->where('p.estado', 'facturado')
+            ->where('p.estado', OrderStatus::FACTURADO->value)
             ->where('p.despachado', 1)
             ->max('p.created_at');
         $candidatas = collect([$active, $invoicedPendingDispatch, $invoicedDispatched])->filter();

@@ -3,6 +3,7 @@
 namespace App\Services\Devoluciones;
 
 use App\Enums\devoluciones\DevolutionStatus;
+use App\Enums\Ventas\OrderStatus;
 use Exception;
 use Carbon\Carbon;
 use App\Models\GpPedido;
@@ -58,8 +59,7 @@ class DevolucionService implements DevolucionServiceInterface
         protected readonly ReturnCancellationServiceInterface $anulationService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly EntryServiceInterface $entryService
-    ) {
-    }
+    ) {}
 
 
     /**
@@ -72,7 +72,7 @@ class DevolucionService implements DevolucionServiceInterface
     {
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
             ->where('cliente_id', $cienteId)
-            ->whereIn('estado', ['facturado', 'anulada'])
+            ->whereIn('estado', [OrderStatus::FACTURADO, OrderStatus::ANULADA])
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
     }
 
@@ -210,7 +210,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function validateItemLDetailInvoice($devolucion)
     {
-        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion, );
+        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion,);
     }
 
     public function validateItemPartialDispatch($devolucion)
@@ -251,7 +251,7 @@ class DevolucionService implements DevolucionServiceInterface
         // Verifica si la devolucion es de volver a facturar
         if ($devolucion['volver_a_facturar'] === true) {
             $pedidoIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-                ->where('estado', '!=', 'anulada')
+                ->where('estado', '!=', OrderStatus::ANULADA)
                 ->orderByDesc('id')
                 ->first();
             if (!$pedidoIds) {
@@ -315,7 +315,6 @@ class DevolucionService implements DevolucionServiceInterface
         );
         $succes = data_get($response, 'success', false);
         return (bool) $succes;
-
     }
 
     public function storeReturnDetail($returnId, $pedido, $details): void
@@ -786,7 +785,7 @@ class DevolucionService implements DevolucionServiceInterface
             ])
             ->join('gp_pedidos as gp', 'gd.pedido_id', '=', 'gp.id')
             ->join('gp_punto_ventas as gpv', 'gp.PTO_VTA_ID', '=', 'gpv.PTO_VTA_ID')
-            ->whereIn('gd.estado', ['aprobado', 'solicitado'])
+            ->whereIn('gd.estado', [DevolutionStatus::APROBADO, DevolutionStatus::SOLICITADO])
             ->where('gd.despachado', '=', 1)
             ->where('gp.BOD_BODEGA', '=', $bodega)
             ->where(function ($p) {
@@ -879,7 +878,7 @@ class DevolucionService implements DevolucionServiceInterface
             if (!$dev) {
                 abort(409, 'devolución no encontrada');
             }
-            if (in_array($dev->estado, [DevolutionStatus::RECIBIDO,DevolutionStatus::PROCESADO])) {
+            if (in_array($dev->estado, [DevolutionStatus::RECIBIDO, DevolutionStatus::PROCESADO])) {
                 abort(409, 'Esta devolución ya fue recibida en otra instancia');
             }
             foreach ($detail as $dt) {
@@ -1076,7 +1075,6 @@ class DevolucionService implements DevolucionServiceInterface
     public function getApiResponseNoteCredit($params)
     {
         return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($params);
-
     }
 
     public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $order)

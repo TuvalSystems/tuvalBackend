@@ -202,7 +202,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             'pedido' => [
                 'id' => $order->id,
                 'pedido' => $order->pedido,
-                'estado' => $order->estado,
+                'estado' => $order->estado->value,
                 'despachado' => (bool) $order->despachado,
             ],
             'stocks' => $stocks,
@@ -226,8 +226,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     public function processAjusteWevOrderGUideRemision($id)
     {
         $guia   = GpGuiaRemision::find($id);
-        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-        return $pedido;
+        return $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
     }
 
     public function fecthAjustmentGuideDispatch($orderNumber, $newOrderNumber)

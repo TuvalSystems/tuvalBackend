@@ -255,7 +255,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         }
 
         if ($this->common->isGuideBlockedForOrder($guia)) {
-            throw new \RuntimeException("El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).");
+            throw new \RuntimeException("El pedido {$guia->pedido} tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).");
         }
         $detalles   = GpGuiaRemisionDetalle::where('guia_remision_id', $guiaId)->get();
 

@@ -69,11 +69,7 @@ class DespachosController extends Controller
             return;
         }
 
-        if ($pedido->estado === OrderStatus::ORDEN_DE_COMPRA) {
-            return;
-        }
-
-        if ($pedido->estado === OrderStatus::TRASLADO) {
+        if (in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true)) {
             return;
         }
 

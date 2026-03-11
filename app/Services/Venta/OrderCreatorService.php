@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\OrderOrigenEnum;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpPedidoImagen;
@@ -37,7 +38,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
                 $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
-                    ->where('estado', '!=', 'anulada') // Importante: ignorar anulados
+                    ->where('estado', '!=', OrderStatus::ANULADA) // Importante: ignorar anulados
                     ->first();
                 if ($pedidoExistente) {
                     return $pedidoExistente;

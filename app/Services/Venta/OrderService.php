@@ -101,7 +101,7 @@ class OrderService implements OrderServiceInterface
     {
         return ($pedido['requiere_aprobacion_comercial'] === 'yes' && $pedido['aprobado_comercial'] === 'no') ||
             ($pedido['requiere_aprobacion_crediticia'] === 'yes' && $pedido['aprobado_crediticio'] === 'no') ||
-            $pedido['estado'] === 'eliminado';
+            $pedido['estado'] === OrderStatus::ELIMINADO->value;
     }
 
     public function buildOrderDetail(array $pedido)
@@ -1311,8 +1311,12 @@ class OrderService implements OrderServiceInterface
             ])
             ->join('gp_cotizacions as ct', 'ct.id', '=', 'gp.cotizacion_id')
             ->where('gp.origen', OrderOrigenEnum::FACTURA_DEMANDA->value)
-            // ->where('gp.PTO_VTA_ID', $ptoVtaId)
-            ->whereNotIn('gp.estado', ['eliminado', 'rechazado', 'anulada', 'facturado']);
+            ->whereNotIn('gp.estado', [
+                OrderStatus::ELIMINADO,
+                OrderStatus::RECHAZADO,
+                OrderStatus::ANULADA,
+                OrderStatus::FACTURADO
+            ]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -1372,15 +1376,15 @@ class OrderService implements OrderServiceInterface
 
     public function sendInvoicesToGp()
     {
-        GpPedido::where('estado', 'espera')->chunk(100, function ($orders) {
+        GpPedido::where('estado', OrderStatus::ESPERA)->chunk(100, function ($orders) {
             foreach ($orders as $ord) {
                 $this->invoiceService->checkSendInvoice($ord);
             }
         });
-        $ordersL = GpPedido::where('estado', 'orden_de_compra')->get();
+        $ordersL = GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)->get();
         foreach ($ordersL as $ord) {
             if ($this->valdidateOrdersProviders($ord)) {
-                $ord->estado = 'espera';
+                $ord->estado = OrderStatus::ESPERA;
                 $ord->save();
                 $this->invoiceService->generateDisptachOrder($ord);
                 $this->invoiceService->sendInvoiceGp($ord);

@@ -3,6 +3,7 @@
 namespace App\Services\Venta;
 
 use App\Enums\bodegas\AbcSegment;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
@@ -198,7 +199,11 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->join('gp_pedido_detalles as d', 'd.id', 'st.detalle_id')
             ->join('gp_pedidos as p', 'p.id', '=', 'st.pedido_id')
             ->where('st.reservado', '>', 0)
-            ->whereNotIn('p.estado', ['eliminado', 'rechazado', 'anulada'])
+            ->whereNotIn('p.estado', [
+                OrderStatus::ELIMINADO->value,
+                OrderStatus::RECHAZADO->value,
+                OrderStatus::ANULADA->value
+            ])
             ->where(function ($q) {
                 $q->whereNull('p.despachado')->orWhere('p.despachado', 0);
             })
@@ -355,7 +360,11 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->join('gp_pedidos as p', 'p.id', '=', 'st.pedido_id')
             ->join('gp_clientes as c', 'c.id', '=', 'p.cliente_id')
             ->where('st.reservado', '>', 0)
-            ->whereNotIn('p.estado', ['eliminado', 'rechazado', 'anulada']);
+            ->whereNotIn('p.estado', [
+                OrderStatus::ELIMINADO->value,
+                OrderStatus::RECHAZADO->value,
+                OrderStatus::ANULADA->value
+            ]);
         $query->where(function ($q) {
             $q->whereNull('p.despachado')
                 ->orWhere('p.despachado', 0);

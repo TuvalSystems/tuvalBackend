@@ -934,7 +934,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
 
         $pedido = GpPedido::where('id', $data['id'])
-            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->whereNotIn('estado', [OrderStatus::ELIMINADO, OrderStatus::ANULADA])
             ->lockForUpdate()->first();
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
@@ -1307,17 +1307,17 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function fetchPendingOrders(int $ptoVta): Builder
     {
-        $excludedStates = ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'];
+        $excludedStates = [
+            OrderStatus::ELIMINADO,
+            OrderStatus::ANULADA,
+            OrderStatus::RECHAZADO,
+            OrderStatus::FACTURADO,
+            OrderStatus::ENVIANDO,
+        ];
         $query = GpPedido::query()
             ->with([
                 'detallepedido',
                 'gpcotizacion',
-                // 'gpcliente' => function ($query) {
-                //     $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
-                // },
-                //  'gpvendedor' => function ($query) {
-                //     $query->select('id', 'VEND_ID', 'VEND_TERRITORIO');
-                // }
             ])
             ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
             ->join('gp_punto_ventas as pv', 'pv.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')

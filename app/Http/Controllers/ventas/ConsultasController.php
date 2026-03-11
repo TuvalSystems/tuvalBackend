@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCaja;
 use App\Models\GpCliente;
 use App\Models\GpArticulo;
@@ -11,13 +12,11 @@ use App\Models\GpTerritorio;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpGrupoCliente;
-use App\Models\Notificaciones;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
 use App\Models\GpSubGrupoCliente;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\traslados\GpTrasladosVentas;
@@ -40,8 +39,7 @@ class ConsultasController extends Controller
     public function __construct(
         protected readonly InventoryQueryServiceInterface $inventoryService,
         protected readonly ClientQueryServiceInterface $clientService
-    ) {
-    }
+    ) {}
 
     public function buscararticulo(Request $request): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
@@ -205,7 +203,6 @@ class ConsultasController extends Controller
         try {
             $st = $this->inventoryService->getConsultStock($data);
             return $this->successResponse('Stock obtenido correctamente', $st, 200);
-
         } catch (\Throwable $e) {
             Log::error('Error al consultar Stock (getConsultStock)' . [
                 'error' => $e->getMessage(),
@@ -233,7 +230,6 @@ class ConsultasController extends Controller
                 'data' => $data,
             ]);
             return $this->buildErrorResponse('Stock insuficiente', 500);
-
         }
     }
 
@@ -471,8 +467,8 @@ class ConsultasController extends Controller
 
         $pedidos = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
             ->where(function ($query) {
-                $query->where('gp_pedidos.estado', 'traslado');
-                $query->orWhere('gp_pedidos.estado', 'orden_de_compra');
+                $query->where('gp_pedidos.estado', OrderStatus::TRASLADO->value);
+                $query->orWhere('gp_pedidos.estado', OrderStatus::ORDEN_DE_COMPRA->value);
             })
             ->join('gp_guia_remision_transferencias', 'gp_guia_remision_transferencias.pedido', 'gp_pedidos.pedido')
             ->join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_transferencias.guia_remision_id')
@@ -608,7 +604,7 @@ class ConsultasController extends Controller
                 $q->whereNull('gp_traslados_ventas.completado')
                     ->orWhere('gp_traslados_ventas.completado', 0);
             })
-            ->where('gp_pedidos.estado', '!=', 'eliminado');
+            ->where('gp_pedidos.estado', '!=', OrderStatus::ELIMINADO->value);
         $trasladosventas = $trasladosventas->select(
             'gp_traslados_ventas.ART_CODIGO',
             'gp_traslados_ventas.cantidad',
@@ -797,5 +793,4 @@ class ConsultasController extends Controller
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
     }
-
 }

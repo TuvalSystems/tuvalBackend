@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\devoluciones;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpUsuario;
@@ -45,8 +46,8 @@ class DevolucionesController extends Controller
         $pedidos = GpPedido::with('direccion_entrega')->where('PTO_VTA_ID', $puntodeventa_id)
             ->where('cliente_id', $cliente_id)
             ->where(function ($query) {
-                $query->where('estado', 'facturado')
-                    ->orWhere('estado', 'anulada');
+                $query->where('estado', OrderStatus::FACTURADO)
+                    ->orWhere('estado', OrderStatus::ANULADA);
             })
             ->orderBy('created_at', 'desc')->limit(10000)->get();
 

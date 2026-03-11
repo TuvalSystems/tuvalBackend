@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Enums\devoluciones\DevolutionStatus;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
@@ -109,7 +110,16 @@ class AprobacionesController extends Controller
                     ->orWhere('requiere_aprobacion_comercial', 'yes')
                     ->where('aprobado_comercial', 'yes');
             })
-            ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
+            // ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
+            ->whereNotIn('estado', [
+                OrderStatus::ELIMINADO,
+                OrderStatus::ANULADA,
+                OrderStatus::RECHAZADO,
+                OrderStatus::FACTURADO,
+                OrderStatus::ENVIANDO,
+                OrderStatus::PROCESADO,
+                // Agrega los demás casos si existen en tu Enum
+            ])
             ->orderBy('created_at', 'DESC')->get();
 
         foreach ($pedidos as $key => $pedido) {

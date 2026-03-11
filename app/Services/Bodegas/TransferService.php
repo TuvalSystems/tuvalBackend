@@ -2,6 +2,7 @@
 
 namespace App\Services\Bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
@@ -119,10 +120,9 @@ class TransferService implements TransferServiceInterface
 
     public function checkOrderTranfer()
     {
-        $pedidos = GpPedido::where('estado', 'traslado')
+        $pedidos = GpPedido::where('estado', OrderStatus::TRASLADO)
             ->get();
         foreach ($pedidos as $pedido) {
-            // $pedidosControl->checkenviarfactura($pedido, true);
             $this->invoiceService->checkSendInvoice($pedido, true);
         }
     }

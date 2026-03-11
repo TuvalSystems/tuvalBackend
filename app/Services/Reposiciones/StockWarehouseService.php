@@ -2,6 +2,7 @@
 
 namespace App\Services\Reposiciones;
 
+use App\Enums\Ventas\OrderStatus;
 use Carbon\Carbon;
 use App\Models\GpArticulo;
 use App\Models\GpTempCart;
@@ -127,7 +128,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->whereIn('gp_pedido_detalle_stocks.STO_ART_BODEGA', $bodegas)
             ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
             ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'rechazado', 'anulada'])
+            ->whereNotIn('gp_pedidos.estado', [
+                OrderStatus::ELIMINADO,
+                OrderStatus::RECHAZADO,
+                OrderStatus::ANULADA
+            ])
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado')
                     ->orWhere('gp_pedidos.despachado', 0);
@@ -258,7 +263,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', $bodega)
             ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
             ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'rechazado'])
+            ->whereNotIn('gp_pedidos.estado', [
+                OrderStatus::ELIMINADO,
+                OrderStatus::RECHAZADO,
+                OrderStatus::ANULADA
+            ])
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado')
                     ->orWhere('gp_pedidos.despachado', 0);
@@ -337,9 +346,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     {
         return GpPedidoDetalle::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-            ->whereIn('gp_pedidos.estado', ['espera', 'traslado', 'orden_de_compra'])
+            ->whereIn('gp_pedidos.estado', [
+                OrderStatus::ESPERA->value,
+                OrderStatus::TRASLADO->value,
+                OrderStatus::ORDEN_DE_COMPRA->value
+            ])
             ->where('gp_pedido_detalles.ART_CODIGO', $articulo)
-            // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
             ->whereBetween('gp_pedidos.created_at', [
                 Carbon::now()->subMonths(6)->startOfDay(),
                 Carbon::now()->endOfDay()
@@ -351,7 +363,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     {
         return GpPedidoDetalle::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-            ->where('gp_pedidos.estado', 'facturado')
+            ->where('gp_pedidos.estado', OrderStatus::FACTURADO->value)
             ->where('gp_pedido_detalles.ART_CODIGO', $articulo)
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado')
