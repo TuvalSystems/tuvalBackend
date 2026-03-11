@@ -215,7 +215,7 @@ class PedidosController extends Controller
                 $pedido->imprimir = 'no';
             } elseif ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
                 $pedido->imprimir = 'no';
-            } elseif ($pedido->estado ==  OrderStatus::RECHAZADO) {
+            } elseif ($pedido->estado ===  OrderStatus::RECHAZADO) {
                 $pedido->imprimir = 'no';
             } else {
                 $pedido->imprimir = 'yes';
@@ -524,7 +524,7 @@ class PedidosController extends Controller
 
         $pedido = GpPedido::where('id', $data['id'])->get()->first();
 
-        if ($pedido->estado == OrderStatus::FACTURADO) {
+        if ($pedido->estado === OrderStatus::FACTURADO) {
             return response([
                 'success' => true,
                 'message' => 'Pedido ' . $pedido->pedido . ' ya está facturado y no se puede eliminar',

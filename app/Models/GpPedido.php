@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $pedido
  * @property string|null $factura
  * @property string|null $factura_origen
- * @property string $estado
+ * @property OrderStatus $estado
  * @property int|null $user_id
  * @property int|null $sucursal_id
  * @property int|null $sucursal_facturacion_id
@@ -173,7 +173,8 @@ class GpPedido extends Model
 
     protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
     protected $casts = [
-        'estado' => OrderStatus::class
+        'estado'            => OrderStatus::class,
+        'pendiente_salida'  => 'boolean'
     ];
 
     protected $table = 'gp_pedidos';

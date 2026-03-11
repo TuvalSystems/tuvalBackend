@@ -493,7 +493,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                     ->where('estado', OrderStatus::TRASLADO)->first();
                 if ($pedido) {
                     $this->invoiceService->checkTrasladado($pedido);
-                    if ($pedido->estado == OrderStatus::ESPERA) {
+                    if ($pedido->estado === OrderStatus::ESPERA) {
                         $this->invoiceService->checkSendInvoice($pedido, true);
                         $creatorUser = $pedido->usuario;
                         $creatorUser->notify(new UserNotification('Articulo/s recibidos', "Artículo/s del pedido {$pedido->pedido} han sido recibidos PARCIALMENTE en la bodega {$pedido->BOD_BODEGA}"));

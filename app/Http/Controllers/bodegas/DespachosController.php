@@ -69,11 +69,11 @@ class DespachosController extends Controller
             return;
         }
 
-        if ($pedido->estado == OrderStatus::ORDEN_DE_COMPRA) {
+        if ($pedido->estado === OrderStatus::ORDEN_DE_COMPRA) {
             return;
         }
 
-        if ($pedido->estado == OrderStatus::TRASLADO) {
+        if ($pedido->estado === OrderStatus::TRASLADO) {
             return;
         }
 
@@ -356,7 +356,7 @@ class DespachosController extends Controller
         foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if ($pedido->estado == OrderStatus::RECHAZADO) {
+            if ($pedido->estado === OrderStatus::RECHAZADO) {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();
@@ -454,7 +454,7 @@ class DespachosController extends Controller
         foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if ($pedido->estado == OrderStatus::RECHAZADO) {
+            if ($pedido->estado === OrderStatus::RECHAZADO) {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();

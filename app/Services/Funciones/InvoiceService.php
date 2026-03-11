@@ -298,11 +298,11 @@ class InvoiceService implements InvoiceServiceInterface
         }
 
         // verifica si el pedido esta en estado 'orden_de_compra'
-        if ($pedido->estado == OrderStatus::ORDEN_DE_COMPRA) {
+        if ($pedido->estado === OrderStatus::ORDEN_DE_COMPRA) {
             return;
         }
         // cuando el pedido esta en estado espera realiza otras validaciones adicionales
-        if ($pedido->estado == OrderStatus::ESPERA) {
+        if ($pedido->estado === OrderStatus::ESPERA) {
             Log::info("Pedido {$pedido->pedido} en estado 'espera', verificando si puede cambiar a 'enviando'...");
             if (!$this->orderReadyToShip($pedido)) {
                 Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
@@ -319,7 +319,7 @@ class InvoiceService implements InvoiceServiceInterface
                         'origen'        => $pedido->origen,
                         'fe_fact_res'   => $pedido->fe_facturacion_reserva,
                         'today'         => now()->toDateString(),
-                        'estado_prev'   => $pedido->estado,
+                        'estado_prev'   => $pedido->estado->value,
                     ]
                 );
 
@@ -338,7 +338,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         // 🚫 Validación final antes de facturar
         if (!$this->checkFinalInvoiceValidation($pedido)) {
-            Log::info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual:" . ($pedido->estado instanceof OrderStatus ? $pedido->estado->value : $pedido->estado));
+            Log::info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual: {$pedido->estado->value}");
             return;
         }
 
@@ -411,7 +411,7 @@ class InvoiceService implements InvoiceServiceInterface
         $order->refresh();
         Log::info('Estado del pedido actualizado', [
             'pedido_id' => $order->pedido,
-            'nuevo_estado' => $order->estado,
+            'nuevo_estado' => $order->estado->value,
             'motivo_traslado' => $tieneTraslado ? 'requiere_traslado' : 'no_requiere_traslado'
         ]);
         return $tieneTraslado;
@@ -534,7 +534,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         if ($isInvalidStatus || $hasInvoice || $missingCommercial || $missingCredit) {
             Log::warning("Validación fallida facturación pedido {$pedido->pedido}", [
-                'status'            => ($pedido->estado instanceof OrderStatus) ? $pedido->estado->value  : $pedido->estado,
+                'status'            => $pedido->estado->value,
                 'invoice'           => $hasInvoice,
                 'comm_approval'     => $missingCommercial,
                 'credit_approval'   => $missingCredit
