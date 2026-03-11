@@ -337,7 +337,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         // 🚫 Validación final antes de facturar
         if (!$this->checkFinalInvoiceValidation($pedido)) {
-            Log::info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual: {$pedido->estado}");
+            Log::info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual:" . ($pedido->estado instanceof OrderStatus ? $pedido->estado->value : $pedido->estado));
             return;
         }
 
@@ -533,7 +533,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         if ($isInvalidStatus || $hasInvoice || $missingCommercial || $missingCredit) {
             Log::warning("Validación fallida facturación pedido {$pedido->pedido}", [
-                'status'            => $isInvalidStatus,
+                'status'            => ($pedido->estado instanceof OrderStatus) ? $pedido->estado->value  : $pedido->estado,
                 'invoice'           => $hasInvoice,
                 'comm_approval'     => $missingCommercial,
                 'credit_approval'   => $missingCredit
