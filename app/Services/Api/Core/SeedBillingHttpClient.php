@@ -95,10 +95,10 @@ class SeedBillingHttpClient
             str_contains(strtoupper($apiMessage), $successKeyword);
 
         return [
-            'success' => $isSuccess, // Ahora sí devolvemos un booleano real
-            'message' => $apiMessage ?: 'Sin respuesta del servidor',
+            'success'   => $isSuccess, // Ahora sí devolvemos un booleano real
+            'message'   => $apiMessage ?: 'Sin respuesta del servidor',
             'respuesta' => $apiMessage, // Mantenemos compatibilidad si lo usas en otro lado
-            'data' => $body
+            'data'      => $body
         ];
     }
 }

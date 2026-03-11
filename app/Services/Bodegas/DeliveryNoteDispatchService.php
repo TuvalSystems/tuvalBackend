@@ -42,11 +42,6 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     public function createDeliveryNoteFromDispatch($payload, GpUsuario $user)
     {
         $items          = data_get($payload, 'items', []);
-        $error = $this->validateQtyDetails($items);
-        if ($error) {
-            throw new \RuntimeException($error);
-        }
-
         $tipo           = DeliveryNoteType::DESPACHO->value;
         $ptoEmision     = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $pedido         = data_get($payload, 'orden.pedido', []);
@@ -74,6 +69,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         ];
 
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
+            $error = $this->validateQtyDetails($items);
+            if ($error) {
+                throw new \RuntimeException($error);
+            }
+
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
                 ->where('tipo', DeliveryNoteType::DESPACHO->value)->where('estado', DeliveryNoteStatus::PENDIENTE->value)
                 ->lockForUpdate()
@@ -203,20 +203,36 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     {
         $ids = collect($items)->pluck('id');
         $detalles = GpPedidoDetalle::whereIn('id', $ids)
+            ->lockForUpdate()
             ->get(['id', 'reservado', 'trasladado', 'ART_CANTIDAD'])
             ->keyBy('id');
 
-        foreach ($items as $itm) {
-            $id = data_get($itm, 'id');
-            $seleccionado = (float) data_get($itm, 'seleccionado', 0);
-            $dbItem = $detalles->get($id);
-            if ($dbItem) {
-                $actual = (float)$dbItem->reservado + (float)$dbItem->trasladado;
-                $disponible = max(0, $dbItem->ART_CANTIDAD - $actual);
+        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $ids)
+            ->whereHas('guia', function ($q) {
+                $q->where('tipo', DeliveryNoteType::DESPACHO->value);
+            })
+            ->select('detalle_id', DB::raw('SUM(GUI_REM_CANTIDAD) as total_generado'))
+            ->groupBy('detalle_id')
+            ->get()
+            ->keyBy('detalle_id');
 
-                if (($actual + $seleccionado) > $dbItem->ART_CANTIDAD) {
-                    return "El ítem {$dbItem->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Esta orden de despacho ya ha sido despachada por completo, por favor refresque su ventana.";
-                }
+        foreach ($items as $itm) {
+            $id             = data_get($itm, 'id');
+            $dbItem         = $detalles->get($id);
+            if (!$dbItem) {
+                continue;
+            }
+            $seleccionado   = (float) data_get($itm, 'seleccionado', 0);
+            $yaGenerado     = data_get($detalleGuias->get($id), 'total_generado', 0);
+            $yaComprometido = max(((float)$dbItem->reservado + (float)$dbItem->trasladado), $yaGenerado);
+            $totalFinal = $yaComprometido + $seleccionado;
+            if ($totalFinal > (float)$dbItem->ART_CANTIDAD) {
+                $disponible = max(0, (float)$dbItem->ART_CANTIDAD - $yaComprometido);
+                return "El ítem {$dbItem->ART_CODIGO} excede el límite. " .
+                    "Máximo original: {$dbItem->ART_CANTIDAD}. " .
+                    "Ya procesado/en guías: {$yaComprometido}. " .
+                    "Disponible: {$disponible}. " .
+                    "Por favor, refresque la ventana.";
             }
         }
         return null;

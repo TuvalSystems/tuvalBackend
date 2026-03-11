@@ -37,11 +37,6 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
     public function createDeliveryNoteReplenishmentTransfer(array $payload, GpUsuario $user)
     {
         $items              = data_get($payload, 'items', []);
-        $error = $this->validateQtyReplenishmentTransfer($items);
-        if ($error) {
-            throw new \RuntimeException($error);
-        }
-
 
         $tipo               = DeliveryNoteType::REPOSICION->value;
         $ptoEmision         = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
@@ -78,6 +73,10 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
         ];
 
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
+            $error = $this->validateQtyReplenishmentTransfer($items);
+            if ($error) {
+                throw new \RuntimeException($error);
+            }
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
                 ->where('tipo', DeliveryNoteType::REPOSICION->value)
                 ->where('estado', DeliveryNoteStatus::PENDIENTE->value)
@@ -207,23 +206,38 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
     {
         $ids = collect($items)->pluck('id');
         $repositions  = GpTrasladosReposicion::whereIn('id', $ids)
+            ->lockForUpdate()
             ->get(['id', 'cantidad', 'reservado', 'trasladado'])
             ->keyBy('id');
+        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $ids)
+            ->where(function ($q) {
+                $q->where('tipo', DeliveryNoteType::REPOSICION->value);
+            })
+            ->select('detalle_id', DB::raw('SUM(GUI_REM_CANTIDAD) as total_generado'))
+            ->groupBy('detalle_id')
+            ->get()
+            ->keyBy('detalle_id');
 
         foreach ($items as $itm) {
             $id = data_get($itm, 'id');
-            $seleccionado = (float) data_get($itm, 'seleccionado', 0);
             $dbReposition = $repositions->get($id);
-
-            if ($dbReposition) {
-                $actual = (float)$dbReposition->reservado + (float)$dbReposition->trasladado;
-                $disponible = max(0, $dbReposition->cantidad - $actual);
-                if (($actual + $seleccionado) > $dbReposition->cantidad) {
-                    return "El ítem {$dbReposition->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
-                }
+            if (!$dbReposition) {
+                continue;
             }
-            return null;
+            $seleccionado       = (float) data_get($itm, 'seleccionado', 0);
+            $yaGenerado         = data_get($detalleGuias->get($id), 'total_generado', 0);
+            $yaComprometido     = max(((float)$dbReposition->reservado + (float)$dbReposition->trasladado), $yaGenerado);
+            $totalFinal         = $yaComprometido + $seleccionado;
+            if ($totalFinal > (float)$dbReposition->cantidad) {
+                $disponible = max(0, (float)$dbReposition->cantidad - $yaComprometido);
+                return "El ítem {$dbReposition->ART_CODIGO} excede el límite. " .
+                    "Máximo original: {$dbReposition->cantidad}. " .
+                    "Ya procesado/en guías: {$yaComprometido}. " .
+                    "Disponible: {$disponible}. " .
+                    "Por favor, refresque la ventana.";
+            }
         }
+        return null;
     }
 
 

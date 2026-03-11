@@ -42,10 +42,6 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     public function createDeliveryNoteSalesTransfer(array $payload, GpUsuario $user)
     {
         $items              = data_get($payload, 'items', []);
-        $limitQty           = $this->validateQtyTransferedItems($items);
-        if ($limitQty) {
-            throw new \RuntimeException($limitQty);
-        }
         $tipo               = DeliveryNoteType::TRANSFERENCIA->value;
         $ptoEmision         = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $primerItem         = data_get($payload, 'items.0', []);
@@ -80,6 +76,10 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
         ];
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
+            $limitQty           = $this->validateQtyTransferedItems($items);
+            if ($limitQty) {
+                throw new \RuntimeException($limitQty);
+            }
             $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
                 ->where('tipo', DeliveryNoteType::TRANSFERENCIA->value)
                 ->where('estado', DeliveryNoteStatus::PENDIENTE->value)
@@ -205,17 +205,33 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     protected function validateQtyTransferedItems($items): ?string
     {
         $ids          = collect($items)->pluck('id');
-        $transfers    = GpTrasladosVentas::whereIn('id', $ids)->get(['id', 'ART_CODIGO', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
+        $transfers    = GpTrasladosVentas::whereIn('id', $ids)->lockForUpdate()->get(['id', 'ART_CODIGO', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
+        $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $ids)
+            ->whereHas('guia', function ($q) {
+                $q->where('tipo', DeliveryNoteType::TRANSFERENCIA->value);
+            })
+            ->select('detalle_id', DB::raw('SUM(GUI_REM_CANTIDAD) as total_generado'))
+            ->groupBy('detalle_id')
+            ->get()
+            ->keyBy('detalle_id');
+
         foreach ($items as $itm) {
             $id             = data_get($itm, 'id');
-            $seleccionado   = (float) data_get($itm, 'seleccionado', 0);
             $dbTransfer     = $transfers->get($id);
-            if ($dbTransfer) {
-                $actual         = (float)$dbTransfer->reservado + (float)$dbTransfer->trasladado;
-                $disponible     = max(0, $dbTransfer->cantidad - $actual);
-                if (($actual + $seleccionado) > $dbTransfer->cantidad) {
-                    return "El ítem {$dbTransfer->ART_CODIGO} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
-                }
+            if (!$dbTransfer) {
+                continue;
+            }
+            $seleccionado       = (float) data_get($itm, 'seleccionado', 0);
+            $yaGenerado         = data_get($detalleGuias->get($id), 'total_generado', 0);
+            $yaComprometido     = max(((float)$dbTransfer->reservado + (float)$dbTransfer->trasladado), $yaGenerado);
+            $totalFinal         = $yaComprometido + $seleccionado;
+            if ($totalFinal > (float)$dbTransfer->cantidad) {
+                $disponible = max(0, (float)$dbTransfer->cantidad - $yaComprometido);
+                return "El ítem {$dbTransfer->ART_CODIGO} excede el límite. " .
+                    "Máximo original: {$dbTransfer->cantidad}. " .
+                    "Ya procesado/en guías: {$yaComprometido}. " .
+                    "Disponible: {$disponible}. " .
+                    "Por favor, refresque la ventana.";
             }
         }
         return null;
@@ -618,6 +634,4 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         }
         return null;
     }
-
-
 }

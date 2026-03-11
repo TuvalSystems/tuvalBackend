@@ -37,16 +37,18 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function createDeliveryNoteFromReservation($payload, GpUsuario $user)
     {
-        $limit          = $this->validateExistenceDeliveryNoteReservation(data_get($payload, 'detalle'));
-        if ($limit) {
-            throw new \RuntimeException($limit);
-        }
+
         $datavehicle    = $this->common->getVehicleAndCarrierInfo($payload);
         $dirOrigin      = $this->common->getDirection($payload['pto_origen']);
         $dirDestination = $this->common->getDirection($payload['pto_destino']);
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin($payload['bod_origen']);
         $idemKey        = $this->makeIdemKey($payload);
         $guia = DB::transaction(function () use ($payload, $datavehicle, $dirOrigin, $dirDestination, $bodGuide, $idemKey, $user) {
+            $limit          = $this->validateExistenceDeliveryNoteReservation(data_get($payload, 'detalle'));
+            if ($limit) {
+                throw new \RuntimeException($limit);
+            }
+
             $existing = GpGuiaRemisionReserva::where('idempotency_key', $idemKey)
                 ->where('estado', DeliveryNoteStatus::PENDIENTE->value)
                 ->lockForUpdate()
@@ -230,16 +232,29 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         $items      = collect($items);
         $itemsIds   = $items->pluck('id')->toArray();
         $detTraslados = GpTrasladosReservas::whereIn('id', $itemsIds)->get(['id', 'art_code', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
+        $detalleGuias = GpGuiaRemisionReservaDetalle::whereIn('traslado_id', $itemsIds)
+            ->select('traslado_id', DB::raw('SUM(cantidad) as total_generado'))
+            ->groupBy('traslado_id')
+            ->get()
+            ->keyBy('traslado_id');
+
         foreach ($items as  $value) {
-            $id             = data_get($value, 'id');
-            $dbTransfer           = $detTraslados->get($id);
-            if ($dbTransfer) {
-                $seleccionado   = (float) data_get($value, 'seleccionado', 0);
-                $actual         = (float)$dbTransfer->reservado + (float)$dbTransfer->trasladado;
-                $disponible     = max(0, $dbTransfer->cantidad - $actual);
-                if (($actual + $seleccionado) > $dbTransfer->cantidad) {
-                    return "El ítem {$dbTransfer->art_code} excede el límite permitido. (Máximo disponible: {$disponible}).  Este traslado ya ha sido generado, por favor refresque su ventana.";
-                }
+            $id                     = data_get($value, 'id');
+            $dbTransfer             = $detTraslados->get($id);
+            if (!$dbTransfer) {
+                continue;
+            }
+            $seleccionado       = (float) data_get($value, 'seleccionado', 0);
+            $yaGenerado         = data_get($detalleGuias->get($id), 'total_generado', 0);
+            $yaComprometido     = max(((float)$dbTransfer->reservado + (float)$dbTransfer->trasladado), $yaGenerado);
+            $totalFinal         = $yaComprometido + $seleccionado;
+            if ($totalFinal > (float)$dbTransfer->cantidad) {
+                $disponible = max(0, (float)$dbTransfer->cantidad - $yaComprometido);
+                return "El ítem {$dbTransfer->art_code} excede el límite. " .
+                    "Máximo original: {$dbTransfer->cantidad}. " .
+                    "Ya procesado/en guías: {$yaComprometido}. " .
+                    "Disponible: {$disponible}. " .
+                    "Por favor, refresque la ventana.";
             }
         }
         return null;
