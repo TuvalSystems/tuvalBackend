@@ -361,9 +361,9 @@ class InvoiceService implements InvoiceServiceInterface
         // verificar si el pedido ya fue facturado
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === true) {
-            $info               = $existInvoice['data'];
+            $info               = data_get($existInvoice, 'data', []);
             $pedido             = GpPedido::where('pedido', $pedido->pedido)->first();
-            $pedido->factura    = $info['numeroDocGenerado'];
+            $pedido->factura    = data_get($info, 'numeroDocGenerado', null);
             $pedido->estado     = OrderStatus::FACTURADO;
             $pedido->save();
             return $pedido;
