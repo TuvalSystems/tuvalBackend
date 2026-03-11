@@ -391,7 +391,7 @@ class InvoiceService implements InvoiceServiceInterface
         if ($result['success'] === false) {
             throw new \Exception("Error al facturar el pedido {$pedido->pedido}: {$result['message']}");
         }
-
+        
         $pedido->MST_FAC_VTAResult = $result['message'];
         $pedido->save();
         $this->respuestaFacturaVenta($pedido);
@@ -561,8 +561,7 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->estado             = OrderStatus::FACTURADO;
         $pedido->fecha_factura      = now()->toDateString();
         $pedido->fecha_hora_factura = now();
-
-
+        Log::info("Pedido {$pedido->pedido} fcturado. numero de factura: {$pedido->factura}");
         $pedido->save();
         try {
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
