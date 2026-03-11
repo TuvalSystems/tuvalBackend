@@ -11,6 +11,7 @@ use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
@@ -75,6 +76,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             'motivoTraslado'    => ReasonForTransfer::TRANSFERENCIA->value,
 
         ];
+
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
             $limitQty           = $this->validateQtyTransferedItems($items);
             if ($limitQty) {
@@ -206,6 +208,12 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     {
         $ids          = collect($items)->pluck('id');
         $transfers    = GpTrasladosVentas::whereIn('id', $ids)->lockForUpdate()->get(['id', 'ART_CODIGO', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
+
+        $codigosArticulos = $transfers->pluck('ART_CODIGO')->unique();
+        $decimalesArticulos = GpArticulo::whereIn('ART_CODIGO', $codigosArticulos)
+            ->pluck('ART_DECIMAL_CANTIDAD', 'ART_CODIGO')
+            ->all();
+
         $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $ids)
             ->whereHas('guia', function ($q) {
                 $q->where('tipo', DeliveryNoteType::TRANSFERENCIA->value);
@@ -221,11 +229,13 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             if (!$dbTransfer) {
                 continue;
             }
-            $seleccionado       = (float) data_get($itm, 'seleccionado', 0);
-            $yaGenerado         = data_get($detalleGuias->get($id), 'total_generado', 0);
-            $yaComprometido     = max(((float)$dbTransfer->reservado + (float)$dbTransfer->trasladado), $yaGenerado);
-            $totalFinal         = $yaComprometido + $seleccionado;
-            if ($totalFinal > (float)$dbTransfer->cantidad) {
+            $precision              = (int) data_get($decimalesArticulos, $dbTransfer->ART_CODIGO, 3);
+            $seleccionado           = (float) data_get($itm, 'seleccionado', 0);
+            $yaGenerado             = (float) data_get($detalleGuias->get($id), 'total_generado', 0);
+            $yaComprometido         = max(((float)$dbTransfer->reservado + (float)$dbTransfer->trasladado), $yaGenerado);
+            $totalFinal             = (float) $yaComprometido + $seleccionado;
+            $totalFinalRedondeado   = round($totalFinal, $precision);
+            if ($totalFinalRedondeado > (float)$dbTransfer->cantidad) {
                 $disponible = max(0, (float)$dbTransfer->cantidad - $yaComprometido);
                 return "El ítem {$dbTransfer->ART_CODIGO} excede el límite. " .
                     "Máximo original: {$dbTransfer->cantidad}. " .
