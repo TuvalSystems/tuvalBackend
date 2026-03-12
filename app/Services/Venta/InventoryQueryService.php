@@ -623,7 +623,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                     return true;
                 }
                 if (!empty($filters['nivel_precio'])) {
-                    return $articulo->ART_VALOR > 0;
+                    return $articulo->ART_VALOR >= 0;
                 }
                 return count($articulo->precios) > 0;
             }
