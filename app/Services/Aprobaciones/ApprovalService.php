@@ -921,6 +921,7 @@ class ApprovalService implements ApprovalServiceInterface
         }
         $pedido->aprobado_crediticio = 'yes';
         $pedido->aprobador_crediticio_id = $user->id;
+        $pedido->fecha_hora_aprobacion_crediticia = Carbon::now()->format('Y-m-d H:i:s');
         $pedido->save();
         $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
 
@@ -997,6 +998,7 @@ class ApprovalService implements ApprovalServiceInterface
         }
         $pedido->aprobado_comercial = 'yes';
         $pedido->aprobador_comercial_id = $user->id;
+        $pedido->fecha_hora_aprobacion_comercial = Carbon::now()->format('Y-m-d H:i:s');
         $pedido->save();
         $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
         DB::afterCommit(function () use ($pedido) {
@@ -1589,6 +1591,7 @@ class ApprovalService implements ApprovalServiceInterface
         $quote->aprobado_comercial = 'yes';
         $quote->aprobador_comercial_id = $gpUser->id;
         $quote->estado = 'aprobado';
+        $quote->fecha_hora_aprobacion_comercial = Carbon::now()->format('Y-m-d H:i:s');
         $quote->save();
         $this->updateRegisterCopyApprovalComercialDestination($quote->id);
         return $quote;

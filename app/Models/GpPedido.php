@@ -165,6 +165,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUSERIDCancelado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUserBlockId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUserRechazoId($value)
+ * @property string $modificador_global
+ * @property string|null $fecha_hora_aprobacion_comercial
+ * @property string|null $fecha_hora_aprobacion_crediticia
+ * @property string|null $nota_operaciones
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoImagen> $imagenes
+ * @property-read int|null $imagenes_count
+ * @property-read \App\Models\GpUsuario|null $usuario
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaHoraAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaHoraAprobacionCrediticia($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereModificadorGlobal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereNotaOperaciones($value)
  * @mixin \Eloquent
  */
 class GpPedido extends Model
@@ -245,6 +256,8 @@ class GpPedido extends Model
 
         'nota_operaciones',
         'modificador_global',
+        'fecha_hora_aprobacion_comercial',
+        'fecha_hora_aprobacion_crediticia',
     ];
 
     /**
