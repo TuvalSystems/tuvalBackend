@@ -208,6 +208,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
         Route::post('articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
+        Route::post('articulo-stock-por-bodega-v2', [CotizacionesController::class, 'obtenerStockItemsLote']);
 
         Route::post('obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
 

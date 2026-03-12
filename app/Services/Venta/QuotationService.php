@@ -596,7 +596,7 @@ class QuotationService implements QuotationServiceInterface
      *  Ya se manda filtrado los items L desde el Front End
      */
 
-    public function getStockItemForWarehouse($article, $warehouse, $cotizacionId)
+    public function getStockItemsForWarehouse($article, $warehouse, $cotizacionId)
     {
         $quoteReservedOriginId = $this->validateExistsReserve($cotizacionId);
         $warehouses = $this->functionService->getBodegas($warehouse, 1);
@@ -629,21 +629,22 @@ class QuotationService implements QuotationServiceInterface
         if (!empty($article['stock'])) {
             foreach ($article['stock'] as $st) {
                 $artSt = is_array($st) ? $st : $st->toArray();
-                $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
-                $artSt['seleccionado'] =  round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
-                $result[] = $artSt;
+                $artSt['ART_CODIGO']    = $article['ART_CODIGO'];
+                $artSt['seleccionado']  = round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
+                $result[]               = $artSt;
             }
             return $result;
         }
 
         // ✅ Caso 2: Si está vacío, intentar cargar de GpCotizacionDetalleStock
-        $stockDetalle = GpCotizacionDetalleStock::where('detalle_id', $article['detalle_id'])
-            ->get()
-            ->map(function ($item) use ($article) {
-                return array_merge($item->toArray(), ['ART_CODIGO' => $article['ART_CODIGO']]);
-            })
-            ->toArray();
-
+        if (!empty($article['detalle_id'])) {
+            $stockDetalle = GpCotizacionDetalleStock::where('detalle_id', $article['detalle_id'])
+                ->get()
+                ->map(function ($item) use ($article) {
+                    return array_merge($item->toArray(), ['ART_CODIGO' => $article['ART_CODIGO']]);
+                })
+                ->toArray();
+        }
         // ✅ Caso 2a: Si lo de la BD trajo datos, úsalo
         if (!empty($stockDetalle)) {
             return $stockDetalle;
@@ -652,8 +653,8 @@ class QuotationService implements QuotationServiceInterface
         // ✅ Caso 3: Si la BD tampoco tiene → fallback al stock original (aunque esté vacío)
         foreach ($article['stock'] as $st) {
             $artSt = is_array($st) ? $st : $st->toArray();
-            $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
-            $artSt['seleccionado'] = round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
+            $artSt['ART_CODIGO']    = $article['ART_CODIGO'];
+            $artSt['seleccionado']  = round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
             $result[] = $artSt;
         }
 
@@ -686,12 +687,36 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
+    public function getStockItemsForWarehouseV2($articles, $warehouse, $quoteId)
+    {
+        $data                   = [];
+        $quoteReservedOriginId  = $this->validateExistsReserve($quoteId);
+        $warehouses             = $this->functionService->getBodegas($warehouse, 1);
+        foreach ($articles as $article) {
+            $articleCode            = data_get($article, 'ART_CODIGO');
+            $arrArticulos           = ['articulo' => $articleCode];
+            $selectedArticleByItem  = $this->resolveAndFormatArticleStock($article);
+            $stockGeneral           = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+            $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
+            $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article, $quoteReservedOriginId);
+            $data[$articleCode]     = [
+                'stock'             => data_get($artFormat, 'stock', []),
+                'ART_STOCK'         => data_get($artFormat, 'ART_STOCK', 0),
+                'stockListo'        => true,
+            ];
+        }
+        return $data;
+    }
+
+
+
+
 
 
     /**
      *  funcion para obtener el margen de un item L
      * @param mixed $artArticulo
-     * @return JsonResponse
+     *
      */
     public function getMarginItem($artArticulo)
     {

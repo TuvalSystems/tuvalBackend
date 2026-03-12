@@ -7,12 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\GpCronLog;
 use App\Models\GpProspecto;
 use App\Traits\JsonResponseTrait;
-use Illuminate\Support\Facades\Auth;
 use App\Models\GpTempCart;
 use App\Models\GpTempCartStock;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpClienteSucursal;
 use App\Models\GpVendedor;
@@ -27,6 +25,7 @@ use App\Models\GpUsuario;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -37,7 +36,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CotizacionesController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
 
     public function __construct(
         protected readonly QuotationServiceInterface $quotationService,
@@ -913,7 +912,7 @@ class CotizacionesController extends Controller
         $bodega = $request->get('bodega', null);
         $cotizacionId = $request->get('cotizacion_id', null);
         try {
-            $response = $this->quotationService->getStockItemForWarehouse($articulo, $bodega, $cotizacionId);
+            $response = $this->quotationService->getStockItemsForWarehouse($articulo, $bodega, $cotizacionId);
             return $this->successResponse('Stock obtenido correctamente', $response, 200);
         } catch (\Throwable $e) {
             Log::error(
@@ -929,6 +928,26 @@ class CotizacionesController extends Controller
             return $this->buildErrorResponse('Error al obtener stock', 500);
         }
     }
+
+    public function obtenerStockItemsLote(Request $request)
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'articulos'     => 'required|array',
+                'bodega'        => 'required|string',
+                'tipo'          => 'nullable|string',
+                'cotizacion_id' => 'nullable|integer',
+            ]);
+
+            $items          = data_get($validated, 'articulos');
+            $bodega         = data_get($validated, 'bodega');
+            $cotizacionId   = data_get($validated, 'cotizacion_id', null);
+            $response = $this->quotationService->getStockItemsForWarehouseV2($items, $bodega, $cotizacionId);
+            return $this->successResponse('Lote obtenido correctamente', $response, 200);
+        }, 'laravel', 'obtenerStockItemsLote');
+    }
+
+
 
     public function obteneMargenItemlL(Request $request)
     {

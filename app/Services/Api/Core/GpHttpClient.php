@@ -68,7 +68,6 @@ class GpHttpClient
             // Formato del body
             $client = ($format === 'json') ? $client->asJson() : $client->asForm();
 
-            // $response = ($method === 'GET' && !empty($data)) ? $client->get($url . '?' . http_build_query($data)) : $client->{$method}($url, $data);
             switch ($method) {
                 case 'GET':
                     $response = $client->get($url, $data);

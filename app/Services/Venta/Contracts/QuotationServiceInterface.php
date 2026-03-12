@@ -53,9 +53,11 @@ interface QuotationServiceInterface
     /** funcion para llenar la cotizacion  */
 
     /** funcion para obtener el stock del articulo en la cotizacion  */
-    public function getStockItemForWarehouse($article, $warehouse, $cotizacionId);
+    public function getStockItemsForWarehouse($article, $warehouse, $cotizacionId);
 
 
+    /** funcion para obtener el stock del articuo en la cotizacion v2  */
+     public function getStockItemsForWarehouseV2($articles, $warehouse, $quoteId);
 
     /** funcion para obtener el margen del item l en cotizaciónes */
     public function getMarginItem($artArticulo);
