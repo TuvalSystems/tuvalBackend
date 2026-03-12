@@ -609,19 +609,19 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->map(fn($i) => (string) $i)
             ->toArray();
         $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId, false, $quoteReservedOriginId);
+        $numDecimales = (int) data_get($articulo, 'ART_DECIMAL_CANTIDAD', 0);
 
         return collect($stockFormatted)
             ->filter(function ($item) use ($articulo) {
                 return isset($item['STO_ART_STOCK_DISPONIBLE'], $item['STO_ART_BODEGA'], $item['STO_ART_ARTICULO']) &&
                     $item['STO_ART_ARTICULO'] === $articulo['ART_CODIGO'];
             })
-            ->map(function ($stockItem) use ($articulo, $reservas) {
+            ->map(function ($stockItem) use ($reservas, $numDecimales) {
                 $bodega = (string) $stockItem['STO_ART_BODEGA'];
                 $stockBase = $stockItem['STO_ART_STOCK_DISPONIBLE'];
-
-                $stockBase = ($articulo['ART_DECIMAL_CANTIDAD'] ?? 0) == 0
+                $stockBase = $numDecimales == 0
                     ? (int) $stockBase
-                    : round($stockBase, 2);
+                    : round($stockBase, $numDecimales);
 
                 $resta = (float) ($reservas[$bodega] ?? 0);
                 $stockItem['STO_ART_STOCK_DISPONIBLE'] = max(0, $stockBase - $resta);

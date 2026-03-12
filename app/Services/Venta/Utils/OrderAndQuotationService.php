@@ -191,8 +191,8 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     public function getAndValidateOrderDetailStock($detailOrder, $stock, $orderId, $quotationId = null)
     {
         $params = [
-            'articulo' => $detailOrder->ART_CODIGO,
-            'bodega' => $stock['STO_ART_BODEGA'],
+            'articulo'  => $detailOrder->ART_CODIGO,
+            'bodega'    =>  data_get($stock, 'STO_ART_BODEGA'),
         ];
         $stocksResult = $this->stockWarehouseService->fetchStockByOnlyWarehouse($params);
         $this->assignmentDisponibleStock($stock, $stocksResult, $detailOrder);
