@@ -107,6 +107,11 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         }
     }
 
+    /**
+     *
+     * generatePurchaseOrders
+     * @return GpPedido
+     */
     public function checkPurchaseOrdersV2(GpPedido $pedido): GpPedido
     {
         $detalles = GpPedidoDetalle::with(['detalleProveedores' => function ($query) {
