@@ -8,8 +8,8 @@ use App\Enums\bodegas\guiaremision\ReasonForTransfer;
 use App\Models\GpIngreso;
 use App\Models\GpIngresosDetalle;
 use App\Models\GpUsuario;
-use App\Models\reservas\GpGuiaRemisionReserva;
-use App\Models\reservas\GpGuiaRemisionReservaDetalle;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
 use Carbon\Carbon;
 

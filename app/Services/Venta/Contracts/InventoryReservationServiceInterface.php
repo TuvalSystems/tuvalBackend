@@ -3,7 +3,7 @@
 namespace App\Services\Venta\Contracts;
 
 use App\Models\GpUsuario;
-use App\Models\reservas\GpReserva;
+use App\Models\Reservas\GpReserva;
 use Illuminate\Database\Eloquent\Builder;
 
 interface InventoryReservationServiceInterface

@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpVendedor;
-use App\Models\reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
@@ -231,10 +231,10 @@ class QuotationService implements QuotationServiceInterface
 
     public function loadQuotationForCopy($quoteId, GpUsuario $user): array
     {
-        $quote = GpCotizacion::findOrFail($quoteId);
-        $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
+        $quote      = GpCotizacion::findOrFail($quoteId);
+        $cliente    = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
         $clienteNew =  data_get($cliente, 'cliente');
-        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
+        $detalles   = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
             $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
@@ -243,7 +243,6 @@ class QuotationService implements QuotationServiceInterface
             return $item;
         });
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');
-
         $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
         return [
             'cotizacion'            => $quote,
@@ -318,15 +317,15 @@ class QuotationService implements QuotationServiceInterface
         $sumIva = 0;
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalle)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
         foreach ($detalle as &$item) {
-            $valorUnitario = (float) $item['ART_VALOR'];
-            $cantidad = (float) $item['ART_CANTIDAD'];
-            $descuentoUnitario = (float) $item['ART_DESCUENTO'];
+            $valorUnitario      = (float) $item['ART_VALOR'];
+            $cantidad           = (float) $item['ART_CANTIDAD'];
+            $descuentoUnitario  = (float) $item['ART_DESCUENTO'];
             $impuestoPorcentaje = (float) $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
-            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
-            $peso += $item['ART_PESO'] * $item['ART_CANTIDAD'];
+            $lineNet            = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount      = $descuentoUnitario * $cantidad;
+            $lineaSubtotal      = $lineNet + $lineaDiscount;
+            $lineaIva           = $lineNet * ($impuestoPorcentaje / 100);
+            $peso               += $item['ART_PESO'] * $item['ART_CANTIDAD'];
 
             //proceso de imagenes
             if ($withImages) {
@@ -348,26 +347,25 @@ class QuotationService implements QuotationServiceInterface
         }
         unset($item);
 
-        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toArray();
-        $cliente = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toArray();
-        $sucursal = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toArray();
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toArray();
+        $formadepago    = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toArray();
+        $cliente        = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toArray();
+        $sucursal       = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toArray();
+        $puntodeventa   = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toArray();
+        $validezDias    = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] ?? 0;
+        $validezTexto   = $validezDias === 0 ? '0 días' : $validezDias . " días habiles";
+        $validezReal    = $this->calcularDiasHabiles($validezDias, $cotizacion['created_at']);
 
-        $validezDias = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] ?? 0;
-        $validezTexto = $validezDias === 0 ? '0 días' : $validezDias . " días habiles";
-        $validezReal = $this->calcularDiasHabiles($validezDias, $cotizacion['created_at']);
-
-        $cotizacion['peso'] = $peso;
-        $cotizacion['detalle'] = $detalle;
-        $cotizacion['tipoimpuesto'] = $tipoImpuesto;
-        $cotizacion['sumaimpuesto'] = $sumaImpuesto;
-        $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'] ?? '';
-        $cotizacion['cliente'] = $cliente;
-        $cotizacion['sucursal'] = $sucursal;
-        $cotizacion['validez'] = $validezTexto;
-        $cotizacion['expira'] = $validezReal;
-        $cotizacion['totalCotizacion'] = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');;
-        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
+        $cotizacion['peso']             = $peso;
+        $cotizacion['detalle']          = $detalle;
+        $cotizacion['tipoimpuesto']     = $tipoImpuesto;
+        $cotizacion['sumaimpuesto']     = $sumaImpuesto;
+        $cotizacion['formadepago']      = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'] ?? '';
+        $cotizacion['cliente']          = $cliente;
+        $cotizacion['sucursal']         = $sucursal;
+        $cotizacion['validez']          = $validezTexto;
+        $cotizacion['expira']           = $validezReal;
+        $cotizacion['totalCotizacion']  = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');;
+        $cotizacion['direccion']        = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         return $cotizacion;
     }
 
@@ -763,7 +761,6 @@ class QuotationService implements QuotationServiceInterface
     {
 
         $this->prepareForValidationDirection($data);
-
         $nivelPrecio            = $this->getNivelPriceSeller($data, $user);
         $params                 = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
         $this->apiGpService->storeClientGp($params);

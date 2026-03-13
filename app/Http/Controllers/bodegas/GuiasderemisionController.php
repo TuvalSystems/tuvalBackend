@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Models\reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReserva;
 use Illuminate\Validation\ValidationException;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\reservas;
+namespace App\Models\Reservas;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\reservas\GpTrasladosReservas;
+use App\Models\Reservas\GpTrasladosReservas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

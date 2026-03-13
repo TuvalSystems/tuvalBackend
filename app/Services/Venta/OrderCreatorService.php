@@ -8,7 +8,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpPedidoImagen;
 use App\Models\GpPuntoVenta;
-use App\Models\reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;

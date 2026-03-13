@@ -3,12 +3,12 @@
 namespace App\Services\Builders\Venta;
 
 use App\Models\GpUsuario;
-use App\Models\reservas\GpCotizacionReservaDetalleLog;
-use App\Models\reservas\GpCotizacionReservaLog;
-use App\Models\reservas\GpPedidoReservaDetalleLog;
-use App\Models\reservas\GpPedidoReservaLog;
-use App\Models\reservas\GpReserva;
-use App\Models\reservas\GpTrasladosReservas;
+use App\Models\Reservas\GpCotizacionReservaDetalleLog;
+use App\Models\Reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpPedidoReservaDetalleLog;
+use App\Models\Reservas\GpPedidoReservaLog;
+use App\Models\Reservas\GpReserva;
+use App\Models\Reservas\GpTrasladosReservas;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use Carbon\Carbon;
 

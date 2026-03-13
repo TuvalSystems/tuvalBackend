@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\reservas;
+namespace App\Models\Reservas;
 
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;

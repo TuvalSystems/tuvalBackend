@@ -4,7 +4,7 @@ namespace App\Jobs\Venta\Reservas;
 
 use App\Events\Venta\Reservas\ReservedListAuthorizedChanged;
 use App\Models\GpUsuario;
-use App\Models\reservas\GpReserva;
+use App\Models\Reservas\GpReserva;
 use App\Notifications\User\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

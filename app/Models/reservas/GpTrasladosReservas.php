@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\reservas;
+namespace App\Models\Reservas;
 
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * App\Models\reservas\GpTrasladosReservas
+ * App\Models\Reservas\GpTrasladosReservas
  *
  * @property int $id
  * @property int|null $reserva_id
@@ -32,11 +32,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read GpCotizacion|null $cotizacion
  * @property-read GpCotizacionDetalle|null $detalleCotizacion
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\reservas\GpGuiaRemisionReservaDetalle> $detalleguia
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Reservas\GpGuiaRemisionReservaDetalle> $detalleguia
  * @property-read int|null $detalleguia_count
  * @property-read bool $check_disable_button_picking
  * @property-read int|float $pending_transfer
- * @property-read \App\Models\reservas\GpReserva|null $reserva
+ * @property-read \App\Models\Reservas\GpReserva|null $reserva
  * @property-read GpCotizacionDetalleStock|null $stock
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReservas newQuery()

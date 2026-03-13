@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpUsuario;
-use App\Models\reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;

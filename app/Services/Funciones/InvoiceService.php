@@ -17,9 +17,9 @@ use App\Models\GpDescuentoFormaPago;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Models\reservas\GpCotizacionReservaLog;
-use App\Models\reservas\GpCotizacionReservaDetalleLog;
-use App\Models\reservas\GpReserva;
+use App\Models\Reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpCotizacionReservaDetalleLog;
+use App\Models\Reservas\GpReserva;
 use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -391,7 +391,7 @@ class InvoiceService implements InvoiceServiceInterface
         if ($result['success'] === false) {
             throw new \Exception("Error al facturar el pedido {$pedido->pedido}: {$result['message']}");
         }
-        
+
         $pedido->MST_FAC_VTAResult = $result['message'];
         $pedido->save();
         $this->respuestaFacturaVenta($pedido);

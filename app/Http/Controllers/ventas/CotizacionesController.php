@@ -493,14 +493,12 @@ class CotizacionesController extends Controller
 
     public function guardarcliente(Request $request)
     {
-        try {
+        return $this->executeTransaction(function () use ($request) {
             $data = $request->all();
             $user = $request->user();
             $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
-            return $this->successResponse('Información Obtenida Correctamente', $cliente, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+            return $this->successResponse('Cliente Guardado Correctamente', $cliente, 200);
+        }, 'laravel', 'guardarcliente');
     }
 
 
