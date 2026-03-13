@@ -36,11 +36,11 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
 
     public function receivedL(array $data, GpUsuario $user)
     {
-        $ord = $this->purchaseReceipRepository->getPurchaseReceiptLById($data['id']);
-        $hasPending = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ord->id)
+        $ordCompra = $this->purchaseReceipRepository->getPurchaseReceiptLById($data['id']);
+        $hasPending = GpOrdenDeCompraGeneradoDetalle::where('orden_generada_id', $ordCompra->id)
             ->whereRaw('ORDEN_COMPRA_DETALLE_CANTIDAD > COALESCE(recibido, 0)')
             ->exists();
-        $header = $this->formatHeaderPurcharseOrder($ord);
+        $header = $this->formatHeaderPurcharseOrder($ordCompra);
 
         $items = array_values(array_filter($data['detalle'], function ($d) {
             $v = $d['seleccionado'] ?? null;
@@ -54,9 +54,8 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
 
         $this->assertDuplicateArticlesByName($items);
 
-        $detail = $this->formatDetailPurcharseOrder($ord, $items);
-
-        $valHdr = $this->formatHeaderValidation($ord);
+        $detail = $this->formatDetailPurcharseOrder($ordCompra, $items);
+        $valHdr = $this->formatHeaderValidation($ordCompra);
         $resValidate = $this->apiGpReceiptService->validateGenerationReceivedItemL($valHdr);
 
         $successValidate = (bool) ($resValidate['success'] ?? false);
@@ -74,7 +73,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             Log::channel('apiservice')->error("Ya existe un documento en Dynamics GP :", [
                 'res' => $dataValidate
             ]);
-            throw new \RuntimeException("Ya existe un documento en Dynamic GP para la orden {$ord->ORDEN_COMPRA_DOCUMENTO}_{$ord->recibidos}");
+            throw new \RuntimeException("Ya existe un documento en Dynamic GP para la orden {$ordCompra->ORDEN_COMPRA_DOCUMENTO}_{$ordCompra->recibidos}");
         }
 
         if (!$successValidate) {
@@ -104,10 +103,10 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             // $mensajeRcOrd = (string)($resRcOrd['message'] ? $resultRcOrdG['message'] : 'Error desconocido');
             if ($successRcOrd) {
                 if ($resRcOrd['codigo'] === '0' && $resRcOrd['numDocGenerado'] != '') {
-                    $ord->ORDEN_COMPRA_RECIBO .= '_' . $resRcOrd['numDocGenerado'];
-                    $ord->increment('recibidos');
-                    $ord->refresh();
-                    $this->checkOrderReception($ord, $data['detalle'], $user);
+                    $ordCompra->ORDEN_COMPRA_RECIBO .= '_' . $resRcOrd['numDocGenerado'];
+                    $ordCompra->increment('recibidos');
+                    $ordCompra->refresh();
+                    $this->checkOrderReception($ordCompra, $data['detalle'], $user);
                 }
                 if ($resRcOrd['codigo'] != '0') {
                     throw new \RuntimeException("Error al contabilizar el recibo de compra");
@@ -122,10 +121,10 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
 
             if ($successRcOrd) {
                 if ($resRcOrd['codigo'] === '0' && $resRcOrd['numDocGenerado'] != '') {
-                    $ord->ORDEN_COMPRA_RECIBO .= '_' . $resRcOrd['numDocGenerado'];
-                    $ord->increment('recibidos');
-                    $ord->refresh();
-                    $this->checkOrderReception($ord, $data['detalle'], $user);
+                    $ordCompra->ORDEN_COMPRA_RECIBO .= '_' . $resRcOrd['numDocGenerado'];
+                    $ordCompra->increment('recibidos');
+                    $ordCompra->refresh();
+                    $this->checkOrderReception($ordCompra, $data['detalle'], $user);
                 }
                 if ($resRcOrd['codigo'] != '0') {
                     // throw new \RuntimeException("Error al contabilizar el recibo de compra: {$msjRcOrdG}");
