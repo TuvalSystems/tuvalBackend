@@ -15,7 +15,6 @@ use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use Illuminate\Support\Arr;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {
@@ -405,18 +404,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     public function fetchStockWarehouseCompartiment(array $params)
     {
         $res = $this->apiGpService->getStockByWarehouseAndCompartment($params);
-
-        // if (!data_get($res, 'success', false)) {
-        //     $message = sprintf(
-        //         '%s | Artículo: %s | Bodega: %s | Compartimento: %s',
-        //         (string) data_get($res, 'message', 'Error'),
-        //         Arr::get($params, 'articulo', 'N/D'),
-        //         Arr::get($params, 'bodega', 'N/D'),
-        //         Arr::get($params, 'compartimento', 'N/D')
-        //     );
-        //     throw new \RuntimeException($message, 500);
-        // }
-
         $data = data_get($res, 'data', []);
         return is_array($data) ? $data : (array) $data;
     }
@@ -435,7 +422,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
         if (!data_get($res, 'success', false)) {
             abort(502, 'No se pudo obtener el stock del artículo: ' . data_get($res, 'message', 'Error'));
-            // throw new \RuntimeException("No se pudo obtener el stock del articulo".  data_get($res, 'message', 'Error'), 500);
         }
 
         $data = data_get($res, 'data', []);
