@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Services\User\Contracts\UserServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
     protected $userService;
 
     public function __construct(UserServiceInterface $userService)
@@ -101,13 +102,14 @@ class AuthController extends Controller
 
     public function changeStatusGpUser(Request $request)
     {
-        try {
-            $userId = $request->all();
+        return $this->executeTransaction(function () use ($request) {
+            $request->validate([
+                'USERID' => 'required|string',
+            ]);
+            $userId = $request->input('USERID');
             $this->userService->changeStatusGpUser($userId);
             return $this->buildSuccessResponse('Estado actualizado correctamente!', 200);
-        } catch (\Throwable $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
+        }, 'laravel', 'AuthController.changeStatusGpUser');
     }
 
 

@@ -30,7 +30,7 @@ interface UserServiceInterface
     /**
      * Cambio de status
      */
-    public function changeStatusGpUser($userId);
+    public function changeStatusGpUser(string $userId);
 
     /**notificaciones */
 
