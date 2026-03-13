@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
+use App\Models\GpUsuario;
+
 interface ClientQueryServiceInterface
 {
 
@@ -12,5 +14,5 @@ interface ClientQueryServiceInterface
     public function getAvailabeCreditCustomer(string $ruc): array;
     public function getCustomerBranches(string $ruc): mixed;
 
-    public function storeNewAddressClient(array $data);
+    public function storeNewAddressClient(array $data, GpUsuario $user);
 }

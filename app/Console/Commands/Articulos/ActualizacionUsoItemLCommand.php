@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Articulos;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpArticulo;
 use App\Services\Reposiciones\ItemsLService;
 use Carbon\Carbon;
@@ -54,7 +55,12 @@ class ActualizacionUsoItemLCommand extends Command
                 $lastMap = DB::table('gp_pedido_detalles as d')
                     ->join('gp_pedidos as p', 'p.id', '=', 'd.pedido_id')
                     ->whereIn('d.ART_CODIGO', $codes)
-                    ->whereIn('p.estado', ['espera', 'traslado', 'orden_de_compra', 'facturado'])
+                    ->whereIn('p.estado', [
+                        OrderStatus::ESPERA->value,
+                        OrderStatus::TRASLADO->value,
+                        OrderStatus::ORDEN_DE_COMPRA->value,
+                        OrderStatus::FACTURADO->value,
+                    ])
                     ->selectRaw('d.ART_CODIGO, MAX(p.created_at) as last')
                     ->groupBy('d.ART_CODIGO')
                     ->pluck('last', 'd.ART_CODIGO')
@@ -114,7 +120,7 @@ class ActualizacionUsoItemLCommand extends Command
                             'dias_restantes'         => $r['dias_restantes'],
                             'dias_enfriamiento'      => $r['dias_enfriamiento'],
                             // opcional: si quieres tocar updated_at manualmente
-                             'updated_at'          => now(),
+                            'updated_at'          => now(),
                         ]);
                 }
             });

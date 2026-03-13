@@ -14,9 +14,7 @@ use Illuminate\Support\Facades\Log;
 class LogisticsOperationsService implements LogisticsOperationsServiceInterface
 {
 
-    public function __construct(protected readonly ApiDeliverNoteService $apiDeliveryNote)
-    {
-    }
+    public function __construct(protected readonly ApiDeliverNoteService $apiDeliveryNote) {}
 
 
     /** funcion para asignar el numero de  GUI_REM_GUIA_REMISION a cada guia de remision */
@@ -28,11 +26,13 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
             $result = $this->apiDeliveryNote->getAccessCodeByNumberDocDelivery([
                 'numDoc' => $guia->GUI_REM_GUIA_REMISION,
             ]);
-            if ($result['success'] === false) {
-                throw new \Exception($result['message']);
+            $success = data_get($result, 'success', false);
+            $mensaje = data_get($result, 'message', '');
+            if ($success === false) {
+                throw new \RuntimeException($mensaje);
             }
-            $response = $result['data'];
-            $guia->GUI_REM_CODIGO = $response['claveAcceso'];
+            $response               = data_get($result, 'data', []);
+            $guia->GUI_REM_CODIGO   = data_get($response, 'claveAcceso');
             $guia->save();
         }
     }
@@ -72,11 +72,11 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
     //remplaza la funcion de checkdespacho - DespachoController
     public function updateOrderDispatchStatus(GpGuiaRemision $guia)
     {
-        $pedido = GpPedido::where('pedido', $guia->pedido)->lockForUpdate()->first();
+        $pedido = GpPedido::where('pedido', $guia->pedido)->first();
         if (!$pedido) {
             Log::warning('Pedido no encontrado al verificar despacho', [
-                'guia_id' => $guia->id,
-                'pedido' => $guia->pedido,
+                'guia_id'   => $guia->id,
+                'pedido'    => $guia->pedido,
             ]);
             return null;
         }
@@ -87,7 +87,7 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
         if (!$hasPending) {
             $pedido->fill([
                 'despachado' => 1,
-                'despacho_en_proceso' => null
+                'despacho_en_proceso' => 0
             ])->save();
             GpOrdenDespacho::query()
                 ->where('pedido_id', $pedido->id)

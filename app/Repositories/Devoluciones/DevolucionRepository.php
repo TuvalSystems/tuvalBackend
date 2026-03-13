@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Devoluciones;
 
+use App\Enums\devoluciones\DevolutionStatus;
 use App\Enums\devoluciones\InvoiceAnulationStatus;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
@@ -37,7 +38,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function hasOtherActiveReturns($pedido, $devolucion): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido['id'])->where('id', '!=', $devolucion['id'])
-            ->whereNotIn('estado', ['no_procesado', 'rechazada'])->exists();
+            ->whereNotIn('estado', [DevolutionStatus::PROCESADO, DevolutionStatus::RECHAZADO])->exists();
     }
 
     public function validateItemLDetailInvoice($devolucion): bool
@@ -100,7 +101,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
     public function getClientsByClientId($cliente_id)
     {
-        return GpCliente::where('ID', $cliente_id)->get();
+        return GpCliente::where('id', $cliente_id)->firstOrFail();
         ;
     }
     public function getClientsByClientRuc($ruc)

@@ -15,7 +15,6 @@ use App\Services\Bodegas\Contracts\DashboardServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -29,7 +28,7 @@ class DashboardController extends Controller
             'puntodeventa_id' => '',
         ]);
 
-        $user = Auth::user();
+        $user = $request->user();
 
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $request->puntodeventa_id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;

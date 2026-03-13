@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,10 @@ class TransferRepository implements TransferRepositoryInterface
             ->where(function ($q) {
                 $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
             })
-            ->whereNotIn('gp_pedidos.estado', ['eliminado', 'anulada'])
+            ->whereNotIn('gp_pedidos.estado', [
+                OrderStatus::ELIMINADO->value,
+                OrderStatus::ANULADA->value
+            ])
             ->when($orderNumber, function ($q) use ($orderNumber) {
                 $q->where('gp_pedidos.pedido', $orderNumber);
             })->select([
@@ -35,8 +39,9 @@ class TransferRepository implements TransferRepositoryInterface
     }
 
 
-    public function findGuidesToWarehouseDestinoAndOrigin($bodOrigin, $destId){
-       return GpGuiaRemision::query()
+    public function findGuidesToWarehouseDestinoAndOrigin($bodOrigin, $destId)
+    {
+        return GpGuiaRemision::query()
             ->join('gp_bodegas', 'gp_guia_remisions.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')
             ->where('gp_guia_remisions.bodega_origen', $bodOrigin)
             ->where('gp_guia_remisions.bodega_destino', $destId)

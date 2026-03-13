@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $pedido
  * @property string|null $factura
  * @property string|null $factura_origen
- * @property string $estado
+ * @property OrderStatus $estado
  * @property int|null $user_id
  * @property int|null $sucursal_id
  * @property int|null $sucursal_facturacion_id
@@ -165,6 +165,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUSERIDCancelado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUserBlockId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereUserRechazoId($value)
+ * @property string $modificador_global
+ * @property string|null $fecha_hora_aprobacion_comercial
+ * @property string|null $fecha_hora_aprobacion_crediticia
+ * @property string|null $nota_operaciones
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoImagen> $imagenes
+ * @property-read int|null $imagenes_count
+ * @property-read \App\Models\GpUsuario|null $usuario
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaHoraAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereFechaHoraAprobacionCrediticia($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereModificadorGlobal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereNotaOperaciones($value)
  * @mixin \Eloquent
  */
 class GpPedido extends Model
@@ -173,7 +184,8 @@ class GpPedido extends Model
 
     protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
     protected $casts = [
-        'estado' => OrderStatus::class
+        'estado'            => OrderStatus::class,
+        'pendiente_salida'  => 'boolean'
     ];
 
     protected $table = 'gp_pedidos';
@@ -243,7 +255,9 @@ class GpPedido extends Model
         'pendiente_salida',
 
         'nota_operaciones',
-        'modificador_global'
+        'modificador_global',
+        'fecha_hora_aprobacion_comercial',
+        'fecha_hora_aprobacion_crediticia',
     ];
 
     /**
@@ -291,7 +305,8 @@ class GpPedido extends Model
 
 
 
-    public function imagenes (){
+    public function imagenes()
+    {
         return $this->hasMany(GpPedidoImagen::class, 'pedido_id');
     }
 
@@ -373,5 +388,8 @@ class GpPedido extends Model
             ->exists();
     }
 
-
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
 }

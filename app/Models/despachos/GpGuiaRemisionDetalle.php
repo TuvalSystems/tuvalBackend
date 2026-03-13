@@ -38,6 +38,17 @@ class GpGuiaRemisionDetalle extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'detalle_id',
+        'guia_remision_id',
+        'GUI_REM_CODI_INTERNO',
+        'GUI_REM_DESCRIPCION',
+        'GUI_REM_CODI_ADICIONAL',
+        'GUI_REM_CANTIDAD',
+        'GUI_REM_UNIDAD_MEDIDA',
+        'recibido',
+    ];
+
 
 
 

@@ -16,12 +16,10 @@ use Illuminate\Http\JsonResponse;
 use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpDescuentoFormaPago;
-use Illuminate\Support\Facades\Auth;
 use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpTempCartStock;
 use App\Models\GpVendedor;
 use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
@@ -70,9 +68,8 @@ class QuotationService implements QuotationServiceInterface
      * @throws \Throwable
      */
 
-    public function updateNonSaleAndReminderData($data)
+    public function updateNonSaleAndReminderData($data, GpUsuario $user)
     {
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
         GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio'            => $data['fecha_recordatorio'],
             'cotizacion_venta_motivo_id'    => $data['motivo_id'],
@@ -189,12 +186,21 @@ class QuotationService implements QuotationServiceInterface
     public function updateQuoteClientData($quoteId, $clientId)
     {
         $quote                           = GpCotizacion::findOrFail($quoteId);
-        $cliente                         = GpCliente::findOrFail($clientId);
+        $cliente                         = GpCliente::with(['gpvendedor:id,VEND_ID,VEND_NOMBRES,VEND_APELLIDOS'])
+            ->findOrFail($clientId);
         $sucursal = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)
             ->firstOrFail();
         $quote->cliente_id               = $cliente->id;
         $quote->sucursal_id              = $sucursal->id;
         $quote->sucursal_facturacion_id  = $sucursal->id;
+        $quote->CLI_RUC                  = $cliente->CLI_RUC;
+        $quote->CLI_RAZON_SOCIAL         = $cliente->CLI_RAZON_SOCIAL;
+        $quote->CLI_CORREO_ELECT_SRI     = $cliente->CLI_CORREO_ELECT_SRI;
+        if ($cliente->gpvendedor) {
+            $quote->VEND_ID                  = $cliente->gpvendedor->VEND_ID;
+            $quote->VEND_NOMBRES             = $cliente->gpvendedor->VEND_NOMBRES;
+            $quote->VEND_APELLIDOS           = $cliente->gpvendedor->VEND_APELLIDOS;
+        }
         $quote->save();
         return $quote;
     }
@@ -223,9 +229,8 @@ class QuotationService implements QuotationServiceInterface
      */
 
 
-    public function loadQuotationForCopy($quoteId): array
+    public function loadQuotationForCopy($quoteId, GpUsuario $user): array
     {
-        $user = Auth::user() ?? GpUsuario::find(179);
         $quote = GpCotizacion::findOrFail($quoteId);
         $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
         $clienteNew =  data_get($cliente, 'cliente');
@@ -591,7 +596,7 @@ class QuotationService implements QuotationServiceInterface
      *  Ya se manda filtrado los items L desde el Front End
      */
 
-    public function getStockItemForWarehouse($article, $warehouse, $cotizacionId)
+    public function getStockItemsForWarehouse($article, $warehouse, $cotizacionId)
     {
         $quoteReservedOriginId = $this->validateExistsReserve($cotizacionId);
         $warehouses = $this->functionService->getBodegas($warehouse, 1);
@@ -624,21 +629,22 @@ class QuotationService implements QuotationServiceInterface
         if (!empty($article['stock'])) {
             foreach ($article['stock'] as $st) {
                 $artSt = is_array($st) ? $st : $st->toArray();
-                $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
-                $artSt['seleccionado'] =  round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
-                $result[] = $artSt;
+                $artSt['ART_CODIGO']    = $article['ART_CODIGO'];
+                $artSt['seleccionado']  = round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
+                $result[]               = $artSt;
             }
             return $result;
         }
 
         // ✅ Caso 2: Si está vacío, intentar cargar de GpCotizacionDetalleStock
-        $stockDetalle = GpCotizacionDetalleStock::where('detalle_id', $article['detalle_id'])
-            ->get()
-            ->map(function ($item) use ($article) {
-                return array_merge($item->toArray(), ['ART_CODIGO' => $article['ART_CODIGO']]);
-            })
-            ->toArray();
-
+        if (!empty($article['detalle_id'])) {
+            $stockDetalle = GpCotizacionDetalleStock::where('detalle_id', $article['detalle_id'])
+                ->get()
+                ->map(function ($item) use ($article) {
+                    return array_merge($item->toArray(), ['ART_CODIGO' => $article['ART_CODIGO']]);
+                })
+                ->toArray();
+        }
         // ✅ Caso 2a: Si lo de la BD trajo datos, úsalo
         if (!empty($stockDetalle)) {
             return $stockDetalle;
@@ -647,8 +653,8 @@ class QuotationService implements QuotationServiceInterface
         // ✅ Caso 3: Si la BD tampoco tiene → fallback al stock original (aunque esté vacío)
         foreach ($article['stock'] as $st) {
             $artSt = is_array($st) ? $st : $st->toArray();
-            $artSt['ART_CODIGO'] = $article['ART_CODIGO'];
-            $artSt['seleccionado'] = round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
+            $artSt['ART_CODIGO']    = $article['ART_CODIGO'];
+            $artSt['seleccionado']  = round($artSt['seleccionado'], $article['ART_DECIMAL_CANTIDAD']);
             $result[] = $artSt;
         }
 
@@ -681,12 +687,36 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
+    public function getStockItemsForWarehouseV2($articles, $warehouse, $quoteId)
+    {
+        $data                   = [];
+        $quoteReservedOriginId  = $this->validateExistsReserve($quoteId);
+        $warehouses             = $this->functionService->getBodegas($warehouse, 1);
+        foreach ($articles as $article) {
+            $articleCode            = data_get($article, 'ART_CODIGO');
+            $arrArticulos           = ['articulo' => $articleCode];
+            $selectedArticleByItem  = $this->resolveAndFormatArticleStock($article);
+            $stockGeneral           = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
+            $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
+            $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article, $quoteReservedOriginId);
+            $data[$articleCode]     = [
+                'stock'             => data_get($artFormat, 'stock', []),
+                'ART_STOCK'         => data_get($artFormat, 'ART_STOCK', 0),
+                'stockListo'        => true,
+            ];
+        }
+        return $data;
+    }
+
+
+
+
 
 
     /**
      *  funcion para obtener el margen de un item L
      * @param mixed $artArticulo
-     * @return JsonResponse
+     *
      */
     public function getMarginItem($artArticulo)
     {

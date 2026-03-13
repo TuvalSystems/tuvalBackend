@@ -107,14 +107,13 @@ class RecibosdecompraeleController extends Controller
     {
         try {
             $data = $request->all();
-            $user = Auth::user();
-            DB::beginTransaction();
-            $this->purchaseReceiptLItemService->receivedL($data, $user);
-            DB::commit();
+            $user = $request->user();
+            DB::transaction(function () use ($data, $user) {
+                $this->purchaseReceiptLItemService->receivedL($data, $user);
+            });
             return $this->buildSuccessResponse('Orden de compra recibida', 200);
         } catch (\Throwable $th) {
             Log::channel('soap_errors')->error('Error al recibir la orden de compra de Item L en (recibir): ' . $th->getMessage());
-            DB::rollBack();
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }

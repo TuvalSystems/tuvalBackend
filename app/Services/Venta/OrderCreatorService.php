@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderOrigenEnum;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpPedidoImagen;
@@ -36,7 +38,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
                 $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
-                    ->where('estado', '!=', 'anulada') // Importante: ignorar anulados
+                    ->where('estado', '!=', OrderStatus::ANULADA) // Importante: ignorar anulados
                     ->first();
                 if ($pedidoExistente) {
                     return $pedidoExistente;
@@ -77,23 +79,21 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
     protected function prepareOrderHeader(array $data, $user): GpPedido
     {
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
-        $approvalCommercial = $this->approval->approveOrder($data);
-        $motivoLimpio = $this->sanitizeString($approvalCommercial['motivo'] ?? '');
-        log::info($motivoLimpio);
-        log::info($approvalCommercial);
-        $approvalCredit = $this->prepareApprovalCreditOrder($data);
-        $requieresApproval = $approvalCredit != 'no';
-        $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
-        $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
-        $despacho = data_get($data, 'tipo_entrega', 'retiro');
-        $tipoDespacho = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
+        $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $approvalCommercial             = $this->approval->approveOrder($data);
+        $motivoLimpio                   = $this->sanitizeString($approvalCommercial['motivo'] ?? '');
+        $approvalCredit                 = $this->prepareApprovalCreditOrder($data);
+        $requieresApproval              = $approvalCredit != 'no';
+        $motivoCrediticio               = $requieresApproval ? $approvalCredit : null;
+        $requiereAprobacionCrediticia   = $requieresApproval ? 'yes' : 'no';
+        $despacho                       = data_get($data, 'tipo_entrega', 'retiro');
+        $tipoDespacho                   = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
         $arStrings = [
             'motivo_comercial'                  => $motivoLimpio,
             'requiere_aprobacion_crediticia'    => $requiereAprobacionCrediticia,
             'motivo_crediticio'                 => $motivoCrediticio,
             'tipo_despacho'                     => $tipoDespacho,
-            'origen'                            => 'cotizacion',
+            'origen'                            => data_get($data, 'origen'),
             'facturacion_reserva'               => null
         ];
         $newOrder = $this->builder->formPayloadOrderV2($data, $user, $puntoVenta,  $approvalCommercial, $arStrings);
@@ -209,7 +209,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             return null;
         }
         $esReserva = GpCotizacion::where('id', $quoteId)
-            ->where('origen', 'reserva')
+            ->where('origen', OrderOrigenEnum::RESERVA->value)
             ->exists();
         if (!$esReserva) {
             return null; // Si no es reserva, salimos inmediatamente

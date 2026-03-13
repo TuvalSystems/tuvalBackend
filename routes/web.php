@@ -68,11 +68,7 @@ Route::get('/consultas/transferenciaspendientes', [ConsultasController::class, '
 //Route::get('/transferircompartimiento', [DevolucionesController::class, 'transferircompartimiento']);
 Route::get('/generadevolucionventaurl', [DevolucionesController::class, 'generadevolucionventaurl']);
 Route::get('/generadevolucionventaurlalt', [DevolucionesController::class, 'generadevolucionventaurlalt']);
-//Route::get('/pedidos/imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
-//Route::get('/volverafacturartesturl/{id}', [DevolucionesController::class, 'volverafacturartesturl']);
-//Route::get('/checkfacturasdespachos/{id}', [DespachosController::class, 'checkfacturasdespachos']);
-//Route::get('/checkcobrosenviados/', [CobranzasController::class, 'checkcobrosenviados']);
-//Route::get('/checkeliminardespachourl', [DevolucionesController::class, 'checkeliminardespachourl']);
+
 Route::get('pedidos/volver-facturar-test/{id}', [PedidosController::class, 'volveraFacuturarTest']);
 Route::get('pedidos/volver-facturar-prueba/{id}', [PedidosController::class, 'volverAFacturarPrueba']);
 Route::get('/procesardevolucionestest', [DevolucionesController::class, 'procesardevolucionestest']);
@@ -82,7 +78,6 @@ Route::get('/sincronizacion/testchucknorris', [SincronizacionController::class, 
 Route::get('/bodegas/getreposicion/{fecha}/{documento?}', [ReposicionController::class, 'getreposicion']);
 Route::get('/consultastockarticulopuntodeventa/{articulo}/{puntodeventa}', [ConsultasController::class, 'consultastockarticulopuntodeventa']);
 Route::get('/pedidos/facturarfaltante', [PedidosController::class, 'facturarfaltante']);
-Route::get('/generarguiatemp', [GuiasderemisionController::class, 'generarguiatemp']);
 Route::get('/despachos/checkdespachadoscompletos', [DespachosController::class, 'checkdespachadoscompletos']);
 Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
 
@@ -142,7 +137,7 @@ Route::prefix('cotizaciones')->group(function () {
 Route::prefix('bodegas')->group(function () {
     Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
 
-    Route::get('/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
+    // Route::get('/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
     Route::get('/guiasderemision/checkguiasremisiones', [GuiasderemisionController::class, 'checkguiaremision']);
     Route::get('/guiasderemision/verificar-ajuste-guia-despacho/{id}', [GuiasderemisionController::class, 'verificarYAsignarAjusteGuiaDespacho']);
 
@@ -156,9 +151,6 @@ Route::prefix('bodegas')->group(function () {
 
     Route::get('guiasderemision/lista-guia-reposicion-transferencia', [GuiasderemisionController::class, 'listaGuiaTransferenciaReposicionConAjuste']);
 
-
-    Route::get('guiasderemision/verificar-ajuste-guia-transferencia', [GuiasderemisionController::class, 'procesarReajusteGuiaTransferencia']);
-    Route::get('guiasderemision/verificar-ajuste-guia-reposicion', [GuiasderemisionController::class, 'procesarReajusteGuiaReposicion']);
 });
 
 

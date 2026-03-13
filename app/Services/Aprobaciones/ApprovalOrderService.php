@@ -172,6 +172,12 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
             // D. Validaciones Tipo L
             if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+                $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
+                $valor = round(data_get($detalle, 'ART_VALOR', 0), 4);
+
+                if ($valorOriginalL > $valor) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");
+                }
                 // ... (resto de tu lógica L se mantiene igual) ...
                 // Solo recuerda revisar lo de las consultas N+1 aquí si el rendimiento es crítico
                 $porcentajeMargen =  $this->approvalFuntions->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
@@ -180,30 +186,23 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
                 } else {
                     foreach ($detalle['proveedores'] as $proveedor) {
-                        $margenOld = $this->approvalFuntions->getProviderToValidateMargen($proveedor);
-
-                        // ... Lógica de calculo ...
-                        $marginOld = (float) ($margenOld);
-                        $marginNew = (float) ($proveedor['MARGEN'] ?? 0);
-                        $EPS = 0.0001;
-
-                        if (abs($marginOld - $marginNew) < $EPS) {
-                            continue;
-                        }
-
                         $margenPermitido = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
-                        $divisorMargen = (1 - ($margenPermitido / 100));
-                        $divisorDescuento = (1 - ($detalle['descuento'] / 100));
-
-                        if ($divisorMargen > 0 && $divisorDescuento > 0) {
-                            $valorCalculado = number_format(($proveedor['COSTO_UNITARIO'] / $divisorMargen) / $divisorDescuento, 4, '.', '');
-                            if ($valorCalculado > $detalle['ART_VALOR']) {
-                                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
-                            }
-                        }
                         if ($proveedor['MARGEN'] < $margenPermitido) {
                             $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
                         }
+                    }
+                }
+
+                /** validacion del precio total del proveedor <= precio de $300 */
+                $providersDetail = data_get($detalle, 'proveedores', []);
+                // $ids = collect($providersDetail)->pluck('id')->filter();
+                // $proveedoresOrigen = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+                foreach ($providersDetail as $provider) {
+                    $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
+                    if ($valorProvider < 300) {
+                        $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                            "El valor total del proveedor ({$valorProvider}) está por debajo del límite permitido de $300."
+                        );
                     }
                 }
             }

@@ -39,5 +39,5 @@ interface OrderRepositoryInterface
 
     /** para facturacion   */
     public function getDataCheckoutTraslate(int $orderId, String $warehouse): bool;
-     public function getDetailForTraslate(int $orderId, String $warehouse);
+    public function getDetailForTraslate(int $orderId, String $warehouse);
 }

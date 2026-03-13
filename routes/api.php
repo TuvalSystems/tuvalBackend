@@ -18,6 +18,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
+use App\Http\Controllers\borradores\CotizacionBorradorController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
 
@@ -54,7 +55,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('resetpassword', [AuthController::class, 'resetPassword']);
     Route::post('change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('logout', [AuthController::class, 'logout']);
-    Route::get('notificaciones', [AuthController::class, 'notificaciones']);
 
     Route::group(['prefix' => 'usuario'], function () {
         Route::post('obtener-bodegas-por-punto-de-venta', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
@@ -104,7 +104,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/cotizaciones/limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
     Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
     Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
-    // Route::post('/pedidos/guardarpedido', [PedidosController::class, 'guardarpedido']);
     Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
     Route::post('/verpedidosycotizacionesporaprobar', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::post('/aprobaciones/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
@@ -209,6 +208,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
         Route::post('articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
+        Route::post('articulo-stock-por-bodega-v2', [CotizacionesController::class, 'obtenerStockItemsLote']);
 
         Route::post('obtener-magen-item-l', [CotizacionesController::class, 'obteneMargenItemlL']);
 
@@ -238,7 +238,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         /** proceso de actualizacion de registros de prospecto s */
         Route::post('prospecto/actualizar', [CotizacionesController::class, 'actualizarCotizacionPropectoV2']);
-
     });
 
 
@@ -317,7 +316,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('guiasderemision/consultarguiagenerada', [GuiasderemisionController::class, 'consultarguiagenerada']);
         Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
         Route::delete('guiasderemision/eliminarguia/{id}', [GuiasderemisionController::class, 'eliminarguia']);
-        Route::get('guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
+        // Route::get('guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
         Route::post('guiasderemision/recibirguia', [GuiasderemisionController::class, 'recibirguia']);
         Route::get('transferencias/recibosventa/{id}', [TransferenciasController::class, 'recibosventa']);
         Route::post('guiasderemision/generarguiaventa', [GuiasderemisionController::class, 'generarguiaventa']);
@@ -349,11 +348,31 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('reservas/guia-remision/lista-transferencias-por-recibir', [ReservasController::class, 'listaTransferenciasReservasPorRecibir']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
         Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/pdf', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
-        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [ReservasController::class, 'recibirItemsGuiaReserva']);
+        Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [GuiasderemisionController::class, 'recibirItemsGuiaReserva']);
+
+
+
+        //generacion de guia de remision de despachos
+        Route::post('despachos/guia-remision/crear-guia-despacho', [GuiasderemisionController::class, 'crearGuiaRemisionDespacho']);
+        Route::post('despachos/guia-remision/despachar-guia', [GuiasderemisionController::class, 'despacharGuiaRemisionDespacho']);
+
+
+
+        //creacion de guia de remision de transferencia de venta
+        Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
+        Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
+        Route::post('transferencia-venta/guia-remision/despachar-guia-transferencia-venta', [GuiasderemisionController::class, 'despacharGuiaRemisionVenta']);
+        Route::post('transferencia-venta/guia-remision/recibir-guia-transferencia-venta', [GuiasderemisionController::class, 'recibirGuiaRemisionVenta']);
+
+
+
+        //creacion de guia de reposicion
+        Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasderemisionController::class, 'crearGuiaRemisionReposicion']);
+        Route::post('reposiciones/guia-remision/despachar-guia-reposicion', [GuiasderemisionController::class, 'despacharGuiaRemisionReposicion']);
+        Route::post('reposiciones/guia-remision/recibir-guia-reposicion', [GuiasderemisionController::class, 'recibirGuiaRemisionReposicion']);
     });
 
     Route::group(['prefix' => 'consultas'], function () {
-        Route::post('notificaciones', [ConsultasController::class, 'notificaciones']);
         Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
         Route::post('territorios', [ConsultasController::class, 'territorios']);
         Route::get('puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);
@@ -415,6 +434,13 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('orden-almacenamiento', [DevolucionesController::class, 'imprimirOrdenDeAlmacenamiento']);
         Route::post('recibir-devolucion', [DevolucionesController::class, 'recibirDevolucion']);
         Route::post('rechazar-devolucion', [DevolucionesController::class, 'rechazarDevolucion']);
+    });
+
+    Route::prefix('borradores')->group(function () {
+        Route::post('sync', [CotizacionBorradorController::class, 'sincronizarBorrador']);
+        Route::post('list', [CotizacionBorradorController::class, 'listarBorradores']);
+        Route::post('get', [CotizacionBorradorController::class, 'obtenerBorrador']);
+        Route::post('delete', [CotizacionBorradorController::class, 'eliminarBorrador']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

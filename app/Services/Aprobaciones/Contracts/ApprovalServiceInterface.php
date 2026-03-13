@@ -1,12 +1,12 @@
 <?php
 namespace App\Services\Aprobaciones\Contracts;
 
+use App\Models\GpUsuario;
+
 interface ApprovalServiceInterface
 {
 
     public function checkoutApprovalCommercialQuotations($data);
-    public function checkoutApprovalCommercialOrders($data);
-    // public function checkOutApprovalCommercial($data, $type);
     public function checkoutApprovalCredit($data);
 
     public function checkoutApprovalDevoluciones($data);
@@ -40,12 +40,12 @@ interface ApprovalServiceInterface
     public function accountStatusClient($ruc);
 
 
-    public function denyQuotationBeenWaiting(int $id);
-    public function denyOrderBeenWaiting(int $id);
+    public function denyQuotationBeenWaiting(int $id, GpUsuario $user);
+    public function denyOrderBeenWaiting(int $id,  GpUsuario $user);
 
-    public function getAllPendingApprovals(int $ptoVta);
-    public function getAllQuotesPendingApprovals($ptoVta);
-    public function getAllOrdersPendingApprovals($ptoVta);
+    public function getAllPendingApprovals(int $ptoVta, GpUsuario $user);
+    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user);
+    public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user);
 
     /**  aprobacicon comercial de cotizacion */
     public function approveComercialQuote($id, $user);

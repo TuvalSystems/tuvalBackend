@@ -35,7 +35,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -242,196 +241,6 @@ class ApprovalService implements ApprovalServiceInterface
         return $detailMotivos;
     }
 
-    /***
-     *  aprobacion comercial de pedidos
-     *
-     */
-
-    public function checkoutApprovalCommercialOrders($data)
-    {
-        $quoteId = data_get($data, 'cotizacion_id', null);
-        $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
-        $motivosAprobacionComercial = [];
-
-        $rgCopy = GpRegistroCopia::where('cotizacion_destino', $data['cotizacion_id'])->where('tipo', 'volver_a_pedir')->where('destino_aprobado', false)->first();
-        if ($rgCopy) {
-            $esPedido = !empty($rgCopy->pedido_origen);
-            $idOrigen = $esPedido ? $rgCopy->pedido_origen : $rgCopy->cotizacion_origen;
-            $origenEntidad = $esPedido ? GpPedido::find($idOrigen) : GpCotizacion::find($idOrigen);
-            $desde = $esPedido ? 'pedido' : 'cotizacion';
-            $prefijo = $esPedido ? 'PED' : 'COT';
-            $codigoVisual = $prefijo . str_pad($idOrigen, 8, "0", STR_PAD_LEFT);
-            $fechaTxt = optional($origenEntidad)->created_at
-                ? optional($origenEntidad)->created_at->format('Y-m-d')
-                : 'S/F';
-
-
-            if ($origenEntidad && $origenEntidad->requiere_aprobacion_comercial === 'yes' && $origenEntidad->aprobado_comercial !== 'yes') {
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-                    "Requiere aprobación comercial. La Cotización del pedido es desde Volver a Pedir estado 'Espera'. Obligatorio aprobar. Desde $desde: $codigoVisual, fecha: $fechaTxt"
-                );
-            }
-        }
-
-
-        $nivelCliente = $this->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
-        $nivelCotizacion = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
-        $rebajaCotizacion = $this->getPorcentilDiscount('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
-        $prcCLienteDescuento = $this->getPorcentilDiscountCommercialCliente($data['CLI_RUC']);
-
-        $dsctGlobalCliente = (float) $prcCLienteDescuento - (float) $rebajaCotizacion;
-
-        if (!$nivelCliente) {
-            $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
-        }
-
-        if (!$nivelCotizacion) {
-            $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion no encontrada en la base de datos.");
-        }
-
-
-        if ($quoteOrigin) {
-            $nivelCotizacionAnterior = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $quoteOrigin->DESC_FORMA_PAGO_CODIGO);
-            if ($quoteOrigin->requiere_aprobacion_comercial === 'yes' && $quoteOrigin->aprobado_comercial !== 'yes') {
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse(
-                    "Requiere aprobación comercial. La cotización no fue aprobada con anterioridad (ID: $quoteId)."
-                );
-            }
-
-            if ($nivelCotizacion > $nivelCotizacionAnterior && $nivelCotizacion > $nivelCliente) {
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
-            }
-
-            if ($data['porcentage_descuento'] != $data['porcentage_descuentooriginal'] && $data['porcentage_descuento'] != $dsctGlobalCliente) {
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
-            }
-        } else {
-            if ($nivelCotizacion > $nivelCliente) {
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
-            }
-            if ($data['porcentage_descuento'] != $data['porcentage_descuentooriginal'] && $data['porcentage_descuento'] != $dsctGlobalCliente) {
-                $motivosAprobacionComercial[] = $this->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
-            }
-        }
-
-        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-        $motivosDetalle = $this->validateOrdersDetailToApprove($data['cotizacion'], $ptoVenta, $dsctGlobalCliente);
-        if (!empty($motivosDetalle)) {
-            $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
-        }
-
-        return $this->finalizeApprovalReasons($motivosAprobacionComercial);
-    }
-
-    public function validateOrdersDetailToApprove($detalles, $ptoVta, $dsctGlobalCliente): array
-    {
-        $detailMotivos = [];
-
-        // Pre-cargar detalles de BD
-        $ids = collect($detalles)->pluck('detalle_id')->filter();
-        $dbDetails = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
-
-        foreach ($detalles as $detalle) {
-            $detailId = data_get($detalle, 'detalle_id');
-            $detOriginal = $detailId ? $dbDetails->get($detailId) : null;
-
-            // 1. DEFINIR LA "VERDAD" ORIGINAL (Normalización)
-            // La lógica es: Si existe en BD, esa es la verdad. Si no (es nuevo), confiamos en el 'original' que envía el front.
-            $valorOriginalReal = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
-            $descOriginalReal = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
-            $descuentoOriginalReal = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
-
-            // --- VALIDACIONES COMUNES ---
-
-            // A. Validación de Descuento
-            // Comparamos directamente contra la variable normalizada
-            if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente && $detalle['descuento'] != $descuentoOriginalReal) {
-                // $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle diferente al descuento original - ID: " . ($detailId ?? 'Nuevo'));
-                $detailMotivos[] = $this->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
-            }
-
-            // B. Validación de Valor (Precio)
-            // Comparamos directamente contra la variable normalizada
-            if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL'] && $detalle['ART_VALOR'] != $valorOriginalReal) {
-                // Mensaje genérico de cambio
-                $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: {$detalle['ART_VALOR_ORIGINAL']}";
-
-                // Si quieres mantener el mensaje específico que tenías para items existentes:
-                if ($detOriginal) {
-                    $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $valorOriginalReal";
-                }
-                $detailMotivos[] = $this->requiredApprovalResponse($mensaje);
-            }
-
-            // C. Validaciones NO Tipo L (Standard)
-            if ($detalle['ART_TIPO_COMPRA'] != 'L') {
-                // C.1 Descripción
-                if ($detalle['ART_DESCRIPCION'] != $detalle['ART_DESCRIPCION_ORIGINAL'] && $detalle['ART_DESCRIPCION'] != $descOriginalReal) {
-                    $detailMotivos[] = $this->requiredApprovalResponse("La descripción del producto cambió. Nueva: '{$detalle['ART_DESCRIPCION']}...' vs Original: '$descOriginalReal...'");
-                }
-
-                // C.2 Exceso de Precio
-                // Usamos la variable normalizada $valorOriginalReal como base
-                if ($valorOriginalReal > 0) {
-                    $porcMaxSubida = $ptoVta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
-                    $factor = 1 + ($porcMaxSubida / 100);
-                    $precioLimite = $valorOriginalReal * $factor;
-                    $precioActual = $detalle['ART_VALOR'];
-
-                    if ($precioActual > $precioLimite) {
-                        $exceso = $precioActual - $precioLimite;
-                        $excesoPct = round(($exceso / $valorOriginalReal) * 100, 2);
-
-                        $detailMotivos[] = $this->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
-                            . "(límite: {$precioLimite}), excede en {$exceso} "
-                            . "({$excesoPct}% sobre el valor original).");
-                    }
-                }
-            }
-
-            // D. Validaciones Tipo L
-            if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                // ... (resto de tu lógica L se mantiene igual) ...
-                // Solo recuerda revisar lo de las consultas N+1 aquí si el rendimiento es crítico
-                $porcentajeMargen = $this->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
-
-                if (!$porcentajeMargen) {
-                    $detailMotivos[] = $this->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
-                } else {
-                    foreach ($detalle['proveedores'] as $proveedor) {
-                        $porvOrigin = $this->getProviderToValidateMargen($proveedor);
-
-                        // ... Lógica de calculo ...
-                        $marginOld = (float) ($porvOrigin->MARGEN ?? 0);
-                        $marginNew = (float) ($proveedor['MARGEN'] ?? 0);
-                        $EPS = 0.0001;
-
-                        if ($porvOrigin && abs($marginOld - $marginNew) < $EPS) {
-                            continue;
-                        }
-
-                        $margenPermitido = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
-                        $divisorMargen = (1 - ($margenPermitido / 100));
-                        $divisorDescuento = (1 - ($detalle['descuento'] / 100));
-
-                        if ($divisorMargen > 0 && $divisorDescuento > 0) {
-                            $valorCalculado = number_format(($proveedor['COSTO_UNITARIO'] / $divisorMargen) / $divisorDescuento, 4, '.', '');
-                            if ($valorCalculado > $detalle['ART_VALOR']) {
-                                $detailMotivos[] = $this->requiredApprovalResponse("Valor del producto L es mayor al valor del precio minimo");
-                            }
-                        }
-                        if ($proveedor['MARGEN'] < $margenPermitido) {
-                            $detailMotivos[] = $this->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
-                        }
-                    }
-                }
-            }
-        }
-
-        return $detailMotivos;
-    }
-
-
 
     public function requiredApprovalResponse(string $motivo)
     {
@@ -443,12 +252,6 @@ class ApprovalService implements ApprovalServiceInterface
         return ['requiere' => 'no', 'motivo' => $motivo];
     }
 
-
-    public function validarCambioFormaPago($nivelCliente, $nivelCotizacion, $cotizacion)
-    {
-        $nivelAnterior = $this->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $cotizacion->DESC_FORMA_PAGO_CODIGO);
-        return ($nivelCotizacion > $nivelAnterior && $nivelCotizacion > $nivelCliente);
-    }
     public function getNivelFormaPago($columna, $codigo)
     {
         $formaPago = GpDescuentoFormaPago::where($columna, $codigo)
@@ -497,19 +300,6 @@ class ApprovalService implements ApprovalServiceInterface
         $proveedorId = $prov['ID_PROVEEDOR'] ?? null;
 
         $query = GpCotizacionDetalleProveedores::where('detalle_id', $temp->detalle_id);
-        if ($proveedorId !== null) {
-            $query->where('ID_PROVEEDOR', $proveedorId);
-        }
-
-        return $query->first();
-    }
-
-    public function getProviderReservedValidateMargen($prov)
-    {
-
-        $proveedorId = $prov['ID_PROVEEDOR'] ?? null;
-
-        $query = GpCotizacionDetalleProveedores::where('detalle_id', $prov['detalle_id']);
         if ($proveedorId !== null) {
             $query->where('ID_PROVEEDOR', $proveedorId);
         }
@@ -727,13 +517,13 @@ class ApprovalService implements ApprovalServiceInterface
     public function checkoutApprovalDevoluciones($data)
     {
 
-        $tipoDevolucion = Arr::get($data, 'devolucion.tipo_devolucion');
-        $volverAFacturar = Arr::get($data, 'devolucion.volver_a_facturar', false);
-        $detallePedido = Arr::get($data, 'detallepedido', []);
-        $fechaFactura = Arr::get($data, 'pedido.fecha_factura', null);
-        $daysDifference = $this->daysDifference($fechaFactura);
-        $hasTypeLItems = collect($detallePedido)->contains(
-            fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'l'
+        $tipoDevolucion     = Arr::get($data, 'devolucion.tipo_devolucion');
+        $volverAFacturar    = Arr::get($data, 'devolucion.volver_a_facturar', false);
+        $detallePedido      = Arr::get($data, 'detalle', []);
+        $fechaFactura       = Arr::get($data, 'pedido.fecha_factura', null);
+        $daysDifference     = $this->daysDifference($fechaFactura);
+        $hasTypeLItems      = collect($detallePedido)->contains(
+            fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'L'
         );
 
         // Verifica si el pedido tiene detalles de orden despachados
@@ -786,7 +576,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
         if ($volverAFacturar === true) {
             $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-                ->where('estado', '!=', 'anulada')
+                ->whereNotIn('estado', [OrderStatus::ANULADA, OrderStatus::ELIMINADO])
                 ->orderByDesc('id')
                 ->first();
             if (!$lastOrder) {
@@ -799,7 +589,7 @@ class ApprovalService implements ApprovalServiceInterface
                 ->exists();
         }
 
-        $pedidoConsulta = GpPedido::find($pedido['id']);
+        $pedidoConsulta     = GpPedido::find($pedido['id']);
         $tieneFacturaOrigen = !empty($pedidoConsulta->factura_origen);
         if ($tieneFacturaOrigen) {
 
@@ -827,12 +617,9 @@ class ApprovalService implements ApprovalServiceInterface
     public function hasDetailDispatched($detallepedido): bool
     {
         return collect($detallepedido)
-            ->contains(function ($item) {
-                return !empty($item['despachado'])
-                    && (float) $item['despachado'] > 0
-                    && isset($item['despacho'])
-                    && $item['despacho'] === true;
-            });
+            ->contains(fn($item) =>
+            (float) data_get($item, 'despachado', 0) > 0
+                && data_get($item, 'despacho', false) === true);
     }
 
 
@@ -844,12 +631,12 @@ class ApprovalService implements ApprovalServiceInterface
     public function getOrderApprovalData($data)
     {
         try {
-            $quoteReservedOriginId = $this->validateExistsReserve($data['cotizacion_id']);
-            $detalles = $this->getDetailArticlesWithStock($data['id']);
-            $flatDetails = $this->stockFormatterForUpdateApproval($detalles);
-            $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
-            $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
-            $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+            $quoteReservedOriginId  = $this->validateExistsReserve($data['cotizacion_id']);
+            $detalles               = $this->getDetailArticlesWithStock($data['id']);
+            $flatDetails            = $this->stockFormatterForUpdateApproval($detalles);
+            $parmas                 = $this->stockFormatterParametersUpdateApproval($flatDetails);
+            $stocksResult           = $this->getStockWarehouseAsyncAndFormantter($parmas);
+            $newFormatStock         = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
             $alert = $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $data['id'], $quoteReservedOriginId);
             if ($alert) {
                 return response()->json(['success' => false, 'message' => "Pedido {$data['pedido']} rechazado por falta de Stock :" . $alert], 200);
@@ -918,13 +705,15 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function approveCreditOrder($data, $user)
     {
-        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+        $pedido = GpPedido::where('id', $data['id'])
+            ->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->aprobado_crediticio = 'yes';
-        $pedido->aprobador_crediticio_id = $user->id;
+        $pedido->aprobado_crediticio                = 'yes';
+        $pedido->aprobador_crediticio_id            = $user->id;
+        $pedido->fecha_hora_aprobacion_crediticia   = Carbon::now()->format('Y-m-d H:i:s');
         $pedido->save();
         $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
 
@@ -938,16 +727,16 @@ class ApprovalService implements ApprovalServiceInterface
     {
 
         $pedido = GpPedido::where('id', $data['id'])
-            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->whereNotIn('estado', [OrderStatus::ELIMINADO, OrderStatus::ANULADA])
             ->lockForUpdate()->first();
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_crediticio = 'no';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->estado                     = OrderStatus::RECHAZADO;
+        $pedido->aprobado_crediticio        = 'no';
+        $pedido->aprobador_crediticio_id    = $user->id;
+        $pedido->fecha_hora_rechazado       = Carbon::now()->format('Y-m-d H:i:s');
+        $pedido->rechazado                  = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
@@ -959,13 +748,13 @@ class ApprovalService implements ApprovalServiceInterface
     public function rejectCreditOrderForInsufficientStock($data, $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
-            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->whereNotIn('estado', [OrderStatus::ELIMINADO, OrderStatus::ANULADA])
             ->lockForUpdate()->first();
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_crediticio = 'no';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->estado                     = OrderStatus::RECHAZADO;
+        $pedido->aprobado_crediticio        = 'no';
+        $pedido->aprobador_crediticio_id    = $user->id;
+        $pedido->fecha_hora_rechazado       = Carbon::now()->format('Y-m-d H:i:s');
+        $pedido->rechazado                  = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
@@ -994,13 +783,14 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function approveComercialOrder($data, $user)
     {
-        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+        $pedido = GpPedido::where('id', $data['id'])->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->aprobado_comercial = 'yes';
-        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->aprobado_comercial              = 'yes';
+        $pedido->aprobador_comercial_id          = $user->id;
+        $pedido->fecha_hora_aprobacion_comercial = Carbon::now()->format('Y-m-d H:i:s');
         $pedido->save();
         $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
         DB::afterCommit(function () use ($pedido) {
@@ -1016,11 +806,11 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_comercial = 'no';
-        $pedido->aprobador_comercial_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->estado                     = OrderStatus::RECHAZADO;
+        $pedido->aprobado_comercial         = 'no';
+        $pedido->aprobador_comercial_id     = $user->id;
+        $pedido->fecha_hora_rechazado       = date('Y-m-d H:i:s');
+        $pedido->rechazado                  = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
@@ -1043,11 +833,11 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_comercial = 'no';
+        $pedido->estado                 = OrderStatus::RECHAZADO;
+        $pedido->aprobado_comercial     = 'no';
         $pedido->aprobador_comercial_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->fecha_hora_rechazado   = date('Y-m-d H:i:s');
+        $pedido->rechazado              = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
@@ -1205,22 +995,22 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function denyQuotationBeenWaiting(int $id)
+    public function denyQuotationBeenWaiting(int $id, GpUsuario $user)
     {
         $quote = GpCotizacion::find($id);
         $quote->estado = 'rechazado';
         $quote->fe_rechazo = Carbon::now()->format('Y-m-d H:i:s');
-        $quote->user_rechazo_id = auth()->user()->id;
+        $quote->user_rechazo_id = $user->id;
         $quote->save();
-        return $quote;
+        return $quote->refresh();
     }
 
 
-    public function denyOrderBeenWaiting(int $id)
+    public function denyOrderBeenWaiting(int $id,  GpUsuario $user)
     {
         $order = GpPedido::find($id);
         $order->estado = OrderStatus::RECHAZADO;
-        $order->user_rechazo_id = auth()->user()->id;
+        $order->user_rechazo_id = $user->id;
         $order->fecha_hora_rechazado = Carbon::now()->format('Y-m-d H:i:s');
         $order->rechazado = 1;
         $order->save();
@@ -1232,9 +1022,8 @@ class ApprovalService implements ApprovalServiceInterface
 
     /** listado de aprobaciones de pedidos y cotizaciones */
 
-    public function getAllPendingApprovals(int $ptoVta)
+    public function getAllPendingApprovals(int $ptoVta, GpUsuario $user)
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         // 1. Fetch Orders (Pedidos)
         $query1 = $this->fetchPendingOrders($ptoVta);
 
@@ -1269,9 +1058,8 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
     /** listado de las cotizaciones pendiente de aprobaciones */
-    public function getAllQuotesPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
+    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user, int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         $query = $this->fetchPendingQuotes($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
@@ -1290,9 +1078,8 @@ class ApprovalService implements ApprovalServiceInterface
         return $query->paginate($perPage);
     }
 
-    public function getAllOrdersPendingApprovals($ptoVta, int $perPage = 10): LengthAwarePaginator
+    public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user, int $perPage = 10): LengthAwarePaginator
     {
-        $user = Auth::user() ? GpUsuario::find(Auth::user()->id) : GpUsuario::find(179);
         $query = $this->fetchPendingOrders($ptoVta);
         $rules = $this->getApprovalrRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
@@ -1314,17 +1101,17 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function fetchPendingOrders(int $ptoVta): Builder
     {
-        $excludedStates = ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'];
+        $excludedStates = [
+            OrderStatus::ELIMINADO,
+            OrderStatus::ANULADA,
+            OrderStatus::RECHAZADO,
+            OrderStatus::FACTURADO,
+            OrderStatus::ENVIANDO,
+        ];
         $query = GpPedido::query()
             ->with([
                 'detallepedido',
                 'gpcotizacion',
-                // 'gpcliente' => function ($query) {
-                //     $query->select('id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_ID_DIRECCION', 'CLI_TERRITORIO', 'CLI_ESTADO');
-                // },
-                //  'gpvendedor' => function ($query) {
-                //     $query->select('id', 'VEND_ID', 'VEND_TERRITORIO');
-                // }
             ])
             ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
             ->join('gp_punto_ventas as pv', 'pv.PTO_VTA_ID', 'gp_pedidos.PTO_VTA_ID')
@@ -1596,6 +1383,7 @@ class ApprovalService implements ApprovalServiceInterface
         $quote->aprobado_comercial = 'yes';
         $quote->aprobador_comercial_id = $gpUser->id;
         $quote->estado = 'aprobado';
+        $quote->fecha_hora_aprobacion_comercial = Carbon::now()->format('Y-m-d H:i:s');
         $quote->save();
         $this->updateRegisterCopyApprovalComercialDestination($quote->id);
         return $quote;

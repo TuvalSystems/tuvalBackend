@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
@@ -15,82 +16,10 @@ use App\Models\GpVendedor;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpTempCart;
-use App\Models\GpTempCartProveedores;
-use App\Models\GpTempCartStock;
 
 class FuncionesController extends Controller
 {
-    public function setTempCartFrom($detalle, $data, $user)
-    {
-        GpTempCart::where('sucursal_id', $data['sucursal_id'])
-            ->where('cliente_id', $data['cliente_id'])
-            ->where('puntodeventa_id', $data['PTO_VTA_ID'])
-            ->delete();
 
-        foreach ($detalle as $key => $articulo) {
-            $tempcart = new GpTempCart;
-            $tempcart->detalle_id = $articulo->id;
-            $tempcart->sucursal_id = $data['sucursal_id'];
-            $tempcart->cliente_id = $data['cliente_id'];
-            $tempcart->puntodeventa_id = $data['PTO_VTA_ID'];
-            $tempcart->user_id = $user->id;
-            $tempcart->USERID = $user->USERID;
-            $tempcart->ART_CODIGO = $articulo->ART_CODIGO;
-            $tempcart->ART_DESCRIPCION = $articulo->ART_DESCRIPCION;
-            $tempcart->ART_DESCRIPCION_ORIGINAL = $articulo->ART_DESCRIPCION_ORIGINAL;
-            $tempcart->ART_CODIGO_TRES_LETRAS = $articulo->ART_CODIGO_TRES_LETRAS;
-            $tempcart->ART_DECIMAL_CANTIDAD = $articulo->ART_DECIMAL_CANTIDAD;
-            $tempcart->ART_PLAN_UMEDIDA = $articulo->ART_PLAN_UMEDIDA;
-            $tempcart->ART_MARCA = $articulo->ART_MARCA;
-            $tempcart->ART_MATERIAL = $articulo->ART_MATERIAL;
-            $tempcart->ART_PESO = $articulo->ART_PESO;
-            $tempcart->ART_TIPO_COMPRA = $articulo->ART_TIPO_COMPRA;
-            $tempcart->ART_VALOR = $articulo->ART_VALOR;
-            $tempcart->ART_IVA = $articulo->ART_IVA;
-            $tempcart->ART_VALOR_ORIGINAL = $articulo->ART_VALOR_ORIGINAL;
-            $tempcart->ART_DESCUENTO = $articulo->ART_DESCUENTO;
-            $tempcart->ART_CANTIDAD = $articulo->ART_CANTIDAD;
-            $tempcart->ART_STOCK = $articulo->ART_STOCK;
-            $tempcart->ART_IMP_VTA = $articulo->ART_IMP_VTA;
-            $tempcart->ART_COSTO_PROMEDIO = $articulo->ART_COSTO_PROMEDIO;
-            $tempcart->descuento = $articulo->descuento;
-            $tempcart->descuento_original = $articulo->descuento_original;
-            $tempcart->modificador = $articulo->modificador;
-            $tempcart->orden = $key + 1;
-            $tempcart->save();
-
-            $proveedores = $articulo->proveedores;
-            foreach ($proveedores as $pro) {
-                $proveedor = new GpTempCartProveedores;
-                $proveedor->id_tempcart = $tempcart->id;
-                $proveedor->ID_PROVEEDOR = $pro->ID_PROVEEDOR;
-                $proveedor->DESCRIPCION_ARTICULO = $pro->DESCRIPCION_ARTICULO;
-                $proveedor->FECHA_ENTREGA = $pro->FECHA_ENTREGA;
-                $proveedor->CANTIDAD = $pro->CANTIDAD;
-                $proveedor->COSTO_UNITARIO = $pro->COSTO_UNITARIO;
-                $proveedor->IMPUESTO = $pro->IMPUESTO;
-                $proveedor->TOTAL = $pro->TOTAL;
-                $proveedor->TOTALCONIMPUESTO = $pro->TOTALCONIMPUESTO;
-                $proveedor->NOTA = $pro->NOTA;
-                $proveedor->MARGEN = $pro->MARGEN;
-                $proveedor->save();
-            }
-
-            foreach ($articulo->stock as $stockbodega) {
-                $stock = new GpTempCartStock;
-                $stock->id_tempcart = $tempcart->id;
-                $stock->STO_ART_BODEGA = $stockbodega['STO_ART_BODEGA'];
-                $stock->STO_ART_STOCK_DISPONIBLE = $stockbodega['STO_ART_STOCK_DISPONIBLE'];
-                if (!isset($stockbodega['seleccionado'])) {
-                    $stockbodega['seleccionado'] = 0;
-                } elseif ($stockbodega['seleccionado'] > $stock->STO_ART_STOCK_DISPONIBLE) {
-                    $stockbodega['seleccionado'] = $stock->STO_ART_STOCK_DISPONIBLE;
-                }
-                $stock->seleccionado = $stockbodega['seleccionado'];
-                $stock->save();
-            }
-        }
-    }
 
     public function stockarticulobodega($consulta_bodega, $arr_bodegas = null): array
     {
@@ -125,7 +54,7 @@ class FuncionesController extends Controller
     {
         $arr_bodegas = array();
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $data['PTO_VTA_ID'])->first()->toArray();
-//        $arr_bodegas[$bodega['PTO_VTA_BOD_BODEGA']] = $bodega['PTO_VTA_BOD_BODEGA'];
+        //        $arr_bodegas[$bodega['PTO_VTA_BOD_BODEGA']] = $bodega['PTO_VTA_BOD_BODEGA'];
 
         $masbodegas = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $data['PTO_VTA_ID']);
         if ($consulta) {
@@ -197,8 +126,8 @@ class FuncionesController extends Controller
                     });
             })
             ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
-            ->where('gp_pedidos.estado', '!=', 'eliminado')
-            ->where('gp_pedidos.estado', '!=', 'rechazado');
+            ->where('gp_pedidos.estado', '!=', OrderStatus::ELIMINADO)
+            ->where('gp_pedidos.estado', '!=', OrderStatus::RECHAZADO);
         if ($pedido_id) {
             $stockReservado = $stockReservado->where('gp_pedidos.id', '!=', $pedido_id);
         }
@@ -217,7 +146,7 @@ class FuncionesController extends Controller
 
         $trasladosreposicion = GpTrasladosReposicion::where('bodega_origen', $bodega)
             ->where('ART_CODIGO', $articulo)
-             ->where(function ($q) {
+            ->where(function ($q) {
                 $q->whereNull('gp_traslados_reposicions.completado')
                     ->orWhere('gp_traslados_reposicions.completado', 0);
             })
@@ -235,12 +164,11 @@ class FuncionesController extends Controller
         if ($articulo->ART_TIPO_COMPRA != 'L')
             return true;
 
-        $busqueda = GpPedidoDetalle::
-            join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+        $busqueda = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
             ->where(function ($query) {
-                $query->where('gp_pedidos.estado', 'espera');
-                $query->orWhere('gp_pedidos.estado', 'traslado');
-                $query->orWhere('gp_pedidos.estado', 'orden_de_compra');
+                $query->where('gp_pedidos.estado', OrderStatus::ESPERA);
+                $query->orWhere('gp_pedidos.estado', OrderStatus::TRASLADO);
+                $query->orWhere('gp_pedidos.estado', OrderStatus::ORDEN_DE_COMPRA);
             })
             ->where('ART_CODIGO', $articulo->ART_CODIGO)
             ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
@@ -250,9 +178,8 @@ class FuncionesController extends Controller
         if ($busqueda)
             return false;
 
-        $busqueda = GpPedidoDetalle::
-            join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-            ->where('gp_pedidos.estado', 'facturado')
+        $busqueda = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+            ->where('gp_pedidos.estado', OrderStatus::FACTURADO)
             ->where('ART_CODIGO', $articulo->ART_CODIGO)
             ->where(function ($query) {
                 $query->whereNull('gp_pedidos.despachado');
@@ -269,9 +196,8 @@ class FuncionesController extends Controller
 
             $datos_l = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $articulo->ART_CLASE_ARTICULO)->first();
 
-            $busqueda = GpPedidoDetalle::
-                join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-                ->where('gp_pedidos.estado', 'facturado')
+            $busqueda = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
+                ->where('gp_pedidos.estado',    OrderStatus::FACTURADO->value)
                 ->where('ART_CODIGO', $articulo->ART_CODIGO)
                 ->where('gp_pedidos.despachado', 1)
                 ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
@@ -296,78 +222,7 @@ class FuncionesController extends Controller
 
         return true;
     }
-    public function like_match($pattern, $subject)
-    {
-        $pattern = str_replace('%', '.*', preg_quote($pattern, '/'));
-        return (bool) preg_match("/^{$pattern}$/i", $subject);
-    }
-    public function consultastockdetalle($data, $detalle, $pedido_id = null): ?string
-    {
-        $consulta_bodega = array();
-        foreach ($detalle as &$linea) {
-            if ($linea['ART_TIPO_COMPRA'] == 'L') {
-                continue;
-            }
-            if (!isset($linea['stock'])) {
-                $stock = GpPedidoDetalleStock::where('detalle_id', $linea['id'])->get()->toArray();
-                $linea['stock'] = $stock;
-            }
-            foreach ($linea['stock'] as $articulo) {
-                if ($articulo['seleccionado'] > 0) {
-                    $consulta_bodega[] = array(
-                        'STOCK_ARTICULO' => $linea['ART_CODIGO'] . '@' . $articulo['STO_ART_BODEGA'],
-                    );
-                }
-            }
-        }
 
-
-        if (count($consulta_bodega) > 0) {
-
-            $arr_bodegas = $this->gebodegas($data, 1);
-            $stock_general = $this->stockarticulobodega($consulta_bodega, $arr_bodegas);
-        }
-        $alert = null;
-
-        foreach ($detalle as &$articulo) {
-
-            if ($articulo['ART_TIPO_COMPRA'] == 'L' || $articulo['ART_TIPO_COMPRA'] == 'SERV') {
-                continue;
-            }
-            $stocktotal = 0;
-            if (isset($stock_general[$articulo['ART_CODIGO']])) {
-                foreach ($stock_general[$articulo['ART_CODIGO']] as $key => $st) {
-                    if ($articulo['ART_DECIMAL_CANTIDAD'] == 0) {
-                        $st['STO_ART_STOCK_DISPONIBLE'] = (int) $st['STO_ART_STOCK_DISPONIBLE'];
-                    } else {
-                        $st['STO_ART_STOCK_DISPONIBLE'] = number_format((float) $st['STO_ART_STOCK_DISPONIBLE'], 2, '.', '');
-                    }
-
-                    $reservado = $this->stockreservado($articulo['ART_CODIGO'], $st['STO_ART_BODEGA'], $pedido_id);
-
-                    $stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'] -= $reservado;
-
-                    if ($stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'] < 0)
-                        $stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'] = 0;
-
-                    $stocktotal += $stock_general[$articulo['ART_CODIGO']][$key]['STO_ART_STOCK_DISPONIBLE'];
-                }
-                $articulo['stock'] = $stock_general[$articulo['ART_CODIGO']];
-
-                $articulo['stock'] = array_values($articulo['stock']);
-
-            } else {
-                $articulo['stock'] = array();
-            }
-            //if($articulo['ART_CODIGO'] != '881-000044-I') {
-            if ($stocktotal - $articulo['ART_CANTIDAD'] < 0) {
-                $alert .= 'El artículo ' . $articulo['ART_CODIGO'] . ' disminuyó su stock en este tiempo, solo existen ' . $stocktotal . ' disponibles<br>';
-            }
-            //}
-        }
-
-        return $alert;
-    }
 
     public function formatStock($articulo, $stock_general)
     {
@@ -375,8 +230,8 @@ class FuncionesController extends Controller
         $articulo->disponible = $this->checkarticulodisponible($articulo);
 
         //        echo '<pre>';
-//        print_r($stock_general);
-//        die();
+        //        print_r($stock_general);
+        //        die();
 
         if (isset($stock_general[$articulo->ART_CODIGO])) {
             foreach ($stock_general[$articulo->ART_CODIGO] as $key => $st) {
@@ -403,25 +258,7 @@ class FuncionesController extends Controller
         $articulo->ART_STOCK = $stocktotal;
     }
 
-    public function buscareledisponible($articulos_array_l, $clase = 'VTA-BNS-L')
-    {
-        $articulos = GpArticulo::where('ART_TIPO_COMPRA', 'L')
-            ->where('ART_CLASE_ARTICULO', $clase)
-            ->inRandomOrder()
-            ->limit(300)->get();
-        foreach ($articulos as $articulo) {
-            foreach ($articulos_array_l as $artL) {
-                //print_r($articulos_array_l);
-                if ($articulo->ART_CODIGO == $artL) {
-                    continue 2;
-                }
-            }
-            $disponible = $this->checkarticulodisponible($articulo);
-            if ($disponible) {
-                return $articulo->ART_CODIGO;
-            }
-        }
-    }
+
 
     public function dateDiffInDays($date1, $date2): float|int
     {

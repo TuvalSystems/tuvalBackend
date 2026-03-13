@@ -10,10 +10,13 @@ class GpGuiaRemisionDespacho extends Model
     use HasFactory;
 
     protected $fillable = [
+        'id_movimiento',
         'guia_remision_id',
+        'tipo_movimiento',
+        'tipo',
         'codigo',
         'pedido',
-        'id_movimiento'
+        'hash_interno'
     ];
 
 

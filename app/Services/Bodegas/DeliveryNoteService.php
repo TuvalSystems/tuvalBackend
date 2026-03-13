@@ -2,9 +2,7 @@
 
 namespace App\Services\Bodegas;
 
-
 use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
@@ -12,34 +10,23 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\GpTempGuiasDespachoBlock;
-use App\Models\GpUsuario;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class DeliveryNoteService implements DeliveryNoteServiceInterface
 {
-    /**
-     *  SERVICIO DEDICADO AL  GUIAREMISIONCONTROLLER
-     */
 
-    // protected $invoiceService;
     public function __construct(
-       protected readonly DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder, 
-       protected readonly ApiDeliverNoteService $apiDeliveryNote, 
-       protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService, 
-       protected readonly DeliveryNoteCommonServiceInterface $common, )
-    {
-        
-
-    }
+        protected readonly DeliveryNoteParamsBuilderInterface $deliveryNoteBuilder,
+        protected readonly ApiDeliverNoteService $apiDeliveryNote,
+        protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService,
+        protected readonly DeliveryNoteCommonServiceInterface $common,
+    ) {}
 
 
     /**
@@ -108,551 +95,10 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
 
-
-
-    /***
-     *
-     *
-     * PROCESO DE DEPACHO DE GUIA POR TIPO - DESPACHO - REPOSICION - TRANSFERENCIA
-     *
-     *
-     */
-
-
-    /**
-     *
-     *
-     *   TRANSFERENCIA AJUSTE DE GUIA
-     */
-    public function dispatchGuideTransferShipment(GpGuiaRemision $guia, Collection $detalle, $user)
-    {
-        $itemsIds = collect($detalle)->pluck('detalle_id')->toArray();
-        if (empty($itemsIds)) {
-            return;
-        }
-        $traslados = $this->getTransferSales($itemsIds);
-        if (!$traslados || $traslados->isEmpty()) {
-            throw new \RuntimeException(
-                'No hay traslados de ventas pendientes para procesar el ajuste de la guía de transferencia'
-            );
-        }
-        $grupos = $this->groupItemsByOrderTransferVta($detalle, $traslados);
-
-        $almenos_uno = false;
-        foreach ($grupos as $grupo) {
-            $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
-            $almenos_uno = $this->validateExistenceTransferGuideAdjustment($guia, $params, $grupo['items'], $grupo['pedido']);
-        }
-        if ($almenos_uno) {
-            $guia->update(['estado' => 'enviada']);
-        } else {
-            throw new \Exception('No se pudo generar el despacho');
-        }
-        return response([
-            'success' => true,
-            'message' => 'Guía de remisión despachada',
-        ]);
-    }
-
-
-    public function decrementOriginWarehouseReservedStock($trl, $qty)
-    {
-        $dtP = GpPedidoDetalle::find($trl->detalle_id);
-        if ($dtP->ART_TIPO_COMPRA != 'L' && $dtP->ART_TIPO_COMPRA != 'SERV') {
-            $stock = GpPedidoDetalleStock::where('detalle_id', $trl->detalle_id)
-                ->where('STO_ART_BODEGA', $trl->bodega_origen)
-                ->lockForUpdate()
-                ->first();
-            $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
-            $stock->reservado = $nuevo;
-            $stock->save();
-        }
-    }
-    public function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse, $qty)
-    {
-        $det = GpPedidoDetalle::find($detalleId);
-        if ($det->ART_TIPO_COMPRA != 'L') {
-            $stock = GpPedidoDetalleStock::where('detalle_id', $detalleId)
-                ->where('STO_ART_BODEGA', $warehouse)
-                ->lockForUpdate()
-                ->first();
-            $nuevo = max(0, ($stock->reservado ?? 0) - $qty);
-            $stock->reservado = $nuevo;
-            $stock->save();
-        }
-    }
-
-    public function createDocumentGuideTrfv(GpGuiaRemision $guia, $responseApi, $documento)
-    {
-        $newDocuTrfv = new GpGuiaRemisionTransferencia();
-        $newDocuTrfv->guia_remision_id = $guia->id;
-        $newDocuTrfv->pedido = $documento;
-        $newDocuTrfv->codigo = $responseApi['docGp'];
-        $newDocuTrfv->save();
-    }
-
-
-    public function groupItemsByOrderTransferVta(Collection $detalle, Collection $traslados): array
-    {
-        $grupos = [];
-        foreach ($detalle as $det) {
-            $traslado = $traslados->get($det['detalle_id']);
-            if (!$traslado) {
-                // puedes loggear y continuar
-                continue;
-            }
-            $det->traslado = $traslado;
-            $pedido = $traslado->pedido;
-            $grupos[$pedido]['pedido'] = $pedido;
-            $grupos[$pedido]['items'][] = $det;
-
-            //items para webservice
-            $grupos[$pedido]['ws_items'][] = [
-                'item' => $det->GUI_REM_CODI_INTERNO,
-                'compartimiento' => '',
-                'cantidad' => $det->GUI_REM_CANTIDAD,
-            ];
-        }
-        return $grupos;
-    }
-
-
-    /**
-     *
-     *
-     *   DESPACHO AJUSTE DE GUIA
-     */
-    public function dispatchGuideDispatchShipment(GpGuiaRemision $guia, Collection $detalle, $user)
-    {
-        /** proceso temporal de guia de despacho  */
-        if ($this->isGUideBlockedForOrder($guia)) {
-           abort(422, 'El pedido ' . $guia->pedido . ' tiene activo el bloqueo de despacho (Pendiente de registrarse el mov. en Kárdex).');
-        }
-
-
-        if ($detalle->isEmpty()) {
-            return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
-        }
-
-        $ids = $detalle->pluck('detalle_id')->filter()->unique()->values();
-        if ($ids->isEmpty()) {
-            return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems válidos');
-        }
-
-        $articulos = $this->getAllDetailordersByGuideDetailsIds($ids);
-
-        $tocoServ = false;
-        foreach ($detalle->groupBy('detalle_id') as $detalleId => $row) {
-            $art = $articulos->get($detalleId);
-            if (!$art) {
-                continue;
-            }
-            if ($art->ART_TIPO_COMPRA == 'SERV') {
-                $qty = (float) $row->sum('GUI_REM_CANTIDAD');
-                $qty = max(0.0, $qty);
-                $nuevoReservado = max(0.0, (float) ($art->reservado ?? 0) - $qty);
-                $nuevoTrasladado = (float) ($art->trasladado ?? 0) + $qty;
-                $cap = (float) ($art->ART_CANTIDAD ?? 0);
-                if ($cap > 0)
-                    $nuevoTrasladado = min($nuevoTrasladado, $cap);
-                $art->fill([
-                    'reservado' => $nuevoReservado,
-                    'trasladado' => $nuevoTrasladado
-                ])->save();
-                $tocoServ = true;
-            }
-        }
-
-        if ($tocoServ && $guia->estado != 'enviada') {
-            $guia->update(['estado' => 'enviada']);
-        }
-
-        $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
-        if (count($groups) === 0) {
-            return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
-        }
-        $processed = false;
-        $results = [];
-        $errors = [];
-        foreach ($groups as $index => $grupo) {
-            try {
-                $params = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
-                $processed = $this->validateExistsDispatchGuideAdjustment($guia, $grupo['pedido'], $params, $grupo['items']);
-
-                if (!$processed) {
-                    $errors[] = "Grupo {$index} (Pedido: {$grupo['pedido']}): No se pudo procesar";
-                } else {
-                    $results[] = "Grupo {$index} procesado exitosamente";
-                }
-
-            } catch (\Throwable $e) {
-                $errorMsg = "Grupo {$index} (Pedido: {$grupo['pedido']}): {$e->getMessage()}";
-                $errors[] = $errorMsg;
-                Log::error('Error procesando grupo de despacho', [
-                    'guia_id' => $guia->id,
-                    'grupo_index' => $index,
-                    'pedido' => $grupo['pedido'] ?? null,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
-        }
-
-        $successCount = count($results);
-        $totalGroups = count($groups);
-        if ($successCount === 0) {
-            $errorDetail = implode("\n", $errors);
-            throw new \Exception("No se pudo procesar ningún grupo de despacho:\n{$errorDetail}");
-        }
-        if ($guia->estado != 'enviada') {
-            $guia->update(['estado' => 'enviada']);
-        }
-        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-        if (!empty($errors)) {
-            Log::warning('Guía despachada con errores parciales', [
-                'guia_id' => $guia->id,
-                'success_count' => $successCount,
-                'total_groups' => $totalGroups,
-                'errors' => $errors
-            ]);
-        }
-        return [
-            'success' => true,
-            'message' => $successCount === $totalGroups
-                ? 'Guía de remisión despachada completamente'
-                : "Guía despachada parcialmente: {$successCount} de {$totalGroups} grupos procesados",
-            'pedido' => $pedido,
-        ];
-    }
-
-
-    public function isGUideBlockedForOrder($guia): bool
-    {
-        return GpPedido::where('pedido', $guia->pedido)->where('pendiente_salida', true)->exists();
-    }
-
-    public function createTemporaryDeliveryNoteBlocksOrder( $guia){
-        $new = new GpTempGuiasDespachoBlock();
-        $new->guia_id = $guia->id;
-        $new->pedido = $guia->pedido;
-        $new->user_id = Auth::user()->id;
-        $new->save();
-    }
-
-    public function markGuideSentAndUpdateOrder(GpGuiaRemision $guia, $why)
-    {
-        if ($guia->estado != 'enviada') {
-            $guia->update(['estado' => 'enviada']);
-            $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-            return [
-                'success' => true,
-                'message' => 'Guía de remisión despachada (' . $why . ')',
-                'pedido' => $pedido,
-            ];
-        }
-    }
-
-
-    public function groupDispatchItemsBySourceOrder(GpGuiaRemision $guia, Collection $detalle): array
-    {
-
-        $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
-        $documento = $pedidoOrigen ?: $guia->pedido;
-        $pedidonuevo = $pedidoOrigen ? $guia->pedido : '';
-        $groups = [];
-        foreach ($detalle as $item) {
-            $detallePedido = GpPedidoDetalle::where('id', $item->detalle_id)->first();
-            if ($detallePedido->ART_TIPO_COMPRA == 'SERV') {
-                continue;
-            }
-            $doc = $documento;
-            $groups[$doc]['pedido'] = $documento;
-            $groups[$doc]['pedido_nuevo'] = $pedidonuevo;
-            $groups[$doc]['items'][] = $item;
-            $groups[$doc]['ws_items'][] = [
-                'item' => $item->GUI_REM_CODI_INTERNO,
-                'compartimiento' => '',
-                'cantidad' => $item->GUI_REM_CANTIDAD,
-            ];
-        }
-
-        return $groups;
-    }
-
-    public function applyDispatchToOrderDetail($item, $qty)
-    {
-        $dt = GpPedidoDetalle::where('id', $item->detalle_id)->lockForUpdate()->first();
-
-        $rsvdac = (float) ($dt->reservado ?? 0);
-        $trlsac = (float) ($dt->trasladado ?? 0);
-        $cantac = (float) ($dt->ART_CANTIDAD ?? 0);
-
-        $newRsvd = max(0.0, $rsvdac - $qty);
-        $newTrls = $trlsac + $qty;
-
-        if ($cantac != null) {
-            $newTrls = min($newTrls, $cantac);
-        }
-
-        $dt->reservado = $newRsvd;
-        $dt->trasladado = $newTrls;
-        $dt->save();
-
-        return $dt->refresh();
-    }
-
-    public function createDocumentDispatchTrfv(GpGuiaRemision $guia, $responseApi, $documento)
-    {
-        $dispatchTrfv = new GpGuiaRemisionDespacho();
-        $dispatchTrfv->guia_remision_id = $guia->id;
-        $dispatchTrfv->id_movimiento = $responseApi['idMovimiento'];
-        $dispatchTrfv->pedido = $documento;
-        $dispatchTrfv->codigo = $responseApi['docGp'];
-        $dispatchTrfv->save();
-    }
-
-    /**
-     *
-     *
-     *   REPOSICION AJUSTE DE GUIA
-     */
-    public function dispatchGuideReplacementShipment(GpGuiaRemision $guia, Collection $detalle, $user)
-    {
-        $itemsIds = collect($detalle)->pluck('detalle_id')->toArray();
-        if (empty($itemsIds)) {
-            return;
-        }
-
-        $repositionSales = $this->getRepositionSales($itemsIds);
-        if (!$repositionSales || $repositionSales->isEmpty()) {
-            throw new \RuntimeException(
-                'No hay items para procesar el ajuste de la guía de reposición'
-            );
-        }
-        $grupos = $this->groupItemsByOrderReplacementShipment($detalle, $repositionSales);
-        $checkList = false;
-        foreach ($grupos as $grupo) {
-            $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['documento'], $grupo['ws_items'], $user);
-            $checkList = $this->validateExistsRepositionGuideAjustment($guia, $grupo['documento'], $params, $grupo['items']);
-        }
-        if ($checkList) {
-            $guia->update(['estado' => 'enviada']);
-        } else {
-            throw new \Exception('No se pudo despachar la guia de reposición');
-        }
-        return response([
-            'success' => true,
-            'message' => 'Guía de remisión despachada',
-        ]);
-    }
-
-    public function groupItemsByOrderReplacementShipment(Collection $detalle, Collection $traslados): array
-    {
-        $grupos = [];
-        foreach ($detalle as $det) {
-            $traslado = $traslados->get($det['detalle_id']);
-            if (!$traslado) {
-                // puedes loggear y continuar
-                continue;
-            }
-            $det->traslado = $traslado;
-            $documento = $traslado->Documento;
-            $grupos[$documento]['documento'] = $documento;
-            $grupos[$documento]['items'][] = $det;
-
-            //items para webservice
-            $grupos[$documento]['ws_items'][] = [
-                'item' => $det->GUI_REM_CODI_INTERNO,
-                'compartimiento' => '',
-                'cantidad' => $det->GUI_REM_CANTIDAD,
-            ];
-        }
-        return $grupos;
-    }
-
-
     public function mapAssigmentNumberGuideRemision()
     {
         $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
     }
-
-
-
-
-
-    public function reassignDispatchGuideAdjustment($id)
-    {
-        $guia = GpGuiaRemision::find($id);
-        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
-
-        $pedidoOrigen = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
-        $documento = $pedidoOrigen ?: $guia->pedido;
-        $pedidoNuevo = $pedidoOrigen ? $guia->pedido : '';
-        $dataAjuste = $this->fecthAjustmentGuideDispatch($documento, $pedidoNuevo);
-
-
-        $ids = $detalle->pluck('detalle_id')->filter()->unique()->values();
-        $articulos = $this->getAllDetailordersByGuideDetailsIds($ids);
-        $tocoServ = false;
-        foreach ($detalle->groupBy('detalle_id') as $detalleId => $row) {
-            $art = $articulos->get($detalleId);
-            if (!$art) {
-                continue;
-            }
-            if ($art->ART_TIPO_COMPRA == 'SERV') {
-                $qty = (float) $row->sum('GUI_REM_CANTIDAD');
-                $qty = max(0.0, $qty);
-                $nuevoReservado = max(0.0, (float) ($art->reservado ?? 0) - $qty);
-                $nuevoTrasladado = (float) ($art->trasladado ?? 0) + $qty;
-                $cap = (float) ($art->ART_CANTIDAD ?? 0);
-                if ($cap > 0)
-                    $nuevoTrasladado = min($nuevoTrasladado, $cap);
-                $art->fill([
-                    'reservado' => $nuevoReservado,
-                    'trasladado' => $nuevoTrasladado
-                ])->save();
-                $tocoServ = true;
-            }
-        }
-
-        if ($tocoServ && $guia->estado != 'enviada') {
-            $guia->update(['estado' => 'enviada']);
-        }
-        $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
-        if (count($groups) === 0) {
-            return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
-        }
-        $wsOk = false;
-        foreach ($groups as $grupo) {
-            if ($guia->rebajado) {
-                $wsOk = true;
-            }
-            foreach ($grupo['items'] as $item) {
-                $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
-                $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
-            }
-            $guia->update(['rebajado' => 1]);
-            $this->createDocumentDispatchTrfv($guia, $dataAjuste, $grupo['pedido']);
-            $wsOk = true;
-        }
-        if ($wsOk) {
-            if ($guia->estado !== 'enviada') {
-                $guia->update(['estado' => 'enviada']);
-            }
-        }
-        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-        $guia->refresh();
-        return $guia;
-    }
-
-
-    public function getAllDetailordersByGuideDetailsIds($ids)
-    {
-        return GpPedidoDetalle::query()->whereIn('id', $ids)
-            ->where('reservado', '>', 0)
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
-    }
-
-
-    public function fecthAjustmentGuideDispatch($orderNumber, $newOrderNumber)
-    {
-        $response = $this->apiDeliveryNote->checkDispatchGuideAdjustment([
-            'orderNumber' => $orderNumber,
-            'newOrderNumber' => $newOrderNumber
-        ]);
-        if ($response['success'] === false) {
-            throw new \Exception($response['message']);
-        }
-        return data_get($response, 'data', []);
-    }
-
-
-
-
-    public function createAdjustmentDeliveryNote($id)
-    {
-        return DB::transaction(function () use ($id) {
-            $user = GpUsuario::find(6);
-            $guia = GpGuiaRemision::find($id);
-            $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
-
-
-            $ids = $detalle->pluck('detalle_id')->filter()->unique()->values();
-            if ($ids->isEmpty()) {
-                return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems válidos');
-            }
-
-            $articulos = $this->getAllDetailordersByGuideDetailsIds($ids);
-
-            $tocoServ = false;
-            foreach ($detalle->groupBy('detalle_id') as $detalleId => $row) {
-                $art = $articulos->get($detalleId);
-                if (!$art) {
-                    continue;
-                }
-                if ($art->ART_TIPO_COMPRA == 'SERV') {
-                    $qty = (float) $row->sum('GUI_REM_CANTIDAD');
-                    $qty = max(0.0, $qty);
-                    $nuevoReservado = max(0.0, (float) ($art->reservado ?? 0) - $qty);
-                    $nuevoTrasladado = (float) ($art->trasladado ?? 0) + $qty;
-                    $cap = (float) ($art->ART_CANTIDAD ?? 0);
-                    if ($cap > 0)
-                        $nuevoTrasladado = min($nuevoTrasladado, $cap);
-                    $art->fill([
-                        'reservado' => $nuevoReservado,
-                        'trasladado' => $nuevoTrasladado
-                    ])->save();
-                    $tocoServ = true;
-                }
-            }
-
-            if ($tocoServ && $guia->estado != 'enviada') {
-                $guia->update(['estado' => 'enviada']);
-            }
-
-            $groups = $this->groupDispatchItemsBySourceOrder($guia, $detalle);
-            if (count($groups) === 0) {
-                return $this->markGuideSentAndUpdateOrder($guia, 'Sin ítems para despachar');
-            }
-            $wsOk = false;
-            foreach ($groups as $grupo) {
-                $params = $this->deliveryNoteBuilder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user);
-                $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
-                if ($response['success'] === false) {
-                    $guia->update(['procesando' => null]);
-                    throw new \Exception($response['message']);
-                }
-                $docGp = data_get($response, 'data.docGp'); // null si no existe
-                if (blank($docGp)) {
-                    throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
-                }
-
-                if ($guia->rebajado) {
-                    $wsOk = true;
-                }
-                foreach ($grupo['items'] as $item) {
-                    $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
-                    $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
-                }
-                $guia->update(['rebajado' => 1]);
-                $this->createDocumentDispatchTrfv($guia, $response['data'], $grupo['pedido']);
-                $wsOk = true;
-            }
-
-            if ($wsOk) {
-                if ($guia->estado !== 'enviada') {
-                    $guia->update(['estado' => 'enviada']);
-                }
-            }
-            $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-
-            return $guia->fresh();
-        });
-    }
-
-
 
 
 
@@ -756,7 +202,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
             'pedido' => [
                 'id' => $order->id,
                 'pedido' => $order->pedido,
-                'estado' => $order->estado,
+                'estado' => $order->estado->value,
                 'despachado' => (bool) $order->despachado,
             ],
             'stocks' => $stocks,
@@ -779,9 +225,20 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
     public function processAjusteWevOrderGUideRemision($id)
     {
-        $guia = GpGuiaRemision::find($id);
-        $pedido = $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
-        return $pedido;
+        $guia   = GpGuiaRemision::find($id);
+        return $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
+    }
+
+    public function fecthAjustmentGuideDispatch($orderNumber, $newOrderNumber)
+    {
+        $response = $this->apiDeliveryNote->checkDispatchGuideAdjustment([
+            'orderNumber'   => $orderNumber,
+            'newOrderNumber' => $newOrderNumber
+        ]);
+        if ($response['success'] === false) {
+            throw new \Exception($response['message']);
+        }
+        return data_get($response, 'data', []);
     }
 
 
@@ -823,288 +280,66 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
 
-    /***
-     *
-     *
-     *
-     *  procesos de reajuste de guias de transferencias y reposiciones -JGMS
-     *
-     *
-     *
-     * */
+    /** verificar la existencia de guias generadas */
 
-
-    public function processTransferGuideAdjustment($id, $orderNumber = null)
+    public function consultExistenceGeneratedGuides(array $payload): string
     {
-        $processed = false;
-        $user = GpUsuario::find(6); //adminweb
-        $order = $orderNumber ? GpPedido::where('pedido', $orderNumber)->first() : null;
-        $orderId = $order ? $order->id : null;
-        $guia = GpGuiaRemision::find($id);
-        $detalles = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
-        $itemsIds = collect($detalles)->pluck('detalle_id')->toArray();
-        $transferSales = $this->getTransferSales($itemsIds, $orderId);
-        if (!$transferSales || $transferSales->isEmpty()) {
-            throw new \RuntimeException(
-                'No hay traslados de ventas pendientes para procesar el ajuste de la guía de transferencia'
-            );
-        }
-        $grupos = $this->groupItemsByOrderTransferVta($detalles, $transferSales);
-
-        foreach ($grupos as $grupo) {
-            $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['pedido'], $grupo['ws_items'], $user);
-            $processed = $this->validateExistenceTransferGuideAdjustment($guia, $params, $grupo['items'], $grupo['pedido']);
-        }
-        if ($processed) {
-            $guia->update(['estado' => 'enviada']);
-        } else {
-            throw new \Exception('No se pudo procesar el ajuste de la guía de transferencia');
-        }
-        return $guia->fresh();
-    }
-
-    public function getTransferSales($itemsIds, $orderId = null): Collection
-    {
-        return GpTrasladosVentas::query()
-            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
-            ->whereIn('gp_traslados_ventas.id', $itemsIds)
-            ->where(function ($q) {
-                $q->where('gp_traslados_ventas.completado', 0)->orWhereNull('gp_traslados_ventas.completado');
-            })->when(!is_null($orderId), fn($q) => $q->where('gp_traslados_ventas.pedido_id', $orderId))
-            ->get(['gp_traslados_ventas.*', 'gp_pedidos.pedido'])
-            ->keyBy('id');
-    }
-
-
-    /** validar existencia de guia de transferencia */
-    public function validateExistenceTransferGuideAdjustment($guia, $params, $groupItems, $pedido): bool
-    {
-        $cabecera = data_get($params, 'cabecera', []);
-        $payloadHeader = $this->deliveryNoteBuilder->buildingTransferGuideAdjustmentPayload($cabecera);
-        $responseHeaderValidate = $this->apiDeliveryNote->checkTransferGuideAdjustment($payloadHeader);
-        $resHeader = data_get($responseHeaderValidate, 'data');
-
-        $docGp = data_get($resHeader, 'docGp', '');
-        $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
-        if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido);
-            if ($already) {
-                return DB::transaction(function () use ($groupItems) {
-                    $this->processReservedTransferedAndDecrementStock($groupItems);
-                    return true;
-                });
-            }
-            return DB::transaction(function () use ($groupItems, $guia, $resHeader, $pedido) {
-                $this->processReservedTransferedAndDecrementStock($groupItems);
-                $this->createDocumentGuideTrfv($guia, $resHeader, $pedido);
-                return true;
-            });
-        }
-        /** en caso de que no exista la guia de transferencia debe crearla */
-        if (empty($resHeader) && (($responseHeaderValidate['success'] ?? null) === false)) {
-            $response = $this->apiDeliveryNote->createTransferGuideVta($params);
-            if ($response['success'] === false) {
-                throw new \Exception($response['message']);
-            }
-            $docGp = data_get($response, 'data.docGp'); // null si no existe
-            if (blank($docGp)) {
-                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
-            }
-            return DB::transaction(function () use ($guia, $pedido, $response, $groupItems) {
-                $this->processReservedTransferedAndDecrementStock($groupItems);
-                $this->createDocumentGuideTrfv($guia, $response['data'], $pedido);
-                return true;
-            });
-        }
-        return false;
-    }
-
-    public function transferMovementExistsWeb($docGp, $idGuiaRemision, $pedido)
-    {
-        return GpGuiaRemisionTransferencia::query()
-            ->where('guia_remision_id', $idGuiaRemision) // ← sin doble $
-            ->where('pedido', $pedido)
-            ->where('codigo', trim((string) $docGp))
-            ->exists();
-    }
-
-    public function hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido)
-    {
-        return GpGuiaRemisionDespacho::where([
-            ['guia_remision_id', $idGuiaRemision],
-            ['pedido', $pedido],
-            ['codigo', trim((string) $docGp)],
-        ])->exists();
-    }
-    public function processReservedTransferedAndDecrementStock($groupItems)
-    {
-        foreach ($groupItems as $item) {
-            $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
-            $this->decrementOriginWarehouseReservedStock($item->traslado, $item->GUI_REM_CANTIDAD);
-        }
-    }
-
-
-    /** procso para reajuste y validacion para reposiciones */
-
-    public function processRepositionGuideAdjustment($id, $documento = null)
-    {
-        $processed = false;
-        $user = GpUsuario::find(6); //adminweb
-        $guia = GpGuiaRemision::find($id);
-        $detalles = GpGuiaRemisionDetalle::where('guia_remision_id', $guia->id)->get();
-        $itemsIds = collect($detalles)->pluck('detalle_id')->toArray();
-        if (empty($itemsIds)) {
-            return;
+        $mensaje    = '';
+        $items      = collect(data_get($payload, 'items', []));
+        $type       = data_get($payload, 'tipo', null);
+        if ($type === 'reposicion') {
+            return $mensaje;
         }
 
-        $repositionSales = $this->getRepositionSales($itemsIds, $documento);
-        if (!$repositionSales || $repositionSales->isEmpty()) {
-            throw new \RuntimeException(
-                'No hay items para procesar el ajuste de la guía de reposición'
-            );
-        }
-        $grupos = $this->groupItemsByOrderReplacementShipment($detalles, $repositionSales);
-        foreach ($grupos as $grupo) {
-            $params = $this->deliveryNoteBuilder->buildParamsHeaderTransfer($guia, $grupo['documento'], $grupo['ws_items'], $user);
-            $processed = $this->validateExistsRepositionGuideAjustment($guia, $grupo['documento'], $params, $grupo['items']);
-        }
-        if ($processed) {
-            $guia->update(['estado' => 'enviada']);
-        } else {
-            throw new \Exception('No se pudo despachar la guia de reposición');
-        }
-        return $guia->fresh();
-    }
+        $trasladosIds   = $items->pluck('id')->unique();
+        $pedidosIds     = $items->pluck('pedido')->unique();
+        $artCodes       = $items->pluck('ART_CODIGO')->filter()->unique();
+        $existTransfers = GpTrasladosVentas::whereIn('id', $trasladosIds)->pluck('id');
+
+        $detallesOtros  = GpPedidoDetalle::from('gp_pedido_detalles as gpd')
+            ->join('gp_pedidos as gp', 'gp.id', '=', 'gpd.pedido_id')
+            ->whereIn('gp.pedido_origen', $pedidosIds)
+            ->whereIn('ART_CODIGO', $artCodes)
+            ->selectRaw('gp.pedido_origen, gpd.ART_CODIGO, SUM(gpd.ART_CANTIDAD) as total_otros')
+            ->groupBy('gp.pedido_origen', 'gpd.ART_CODIGO')
+            ->get()
+            ->keyBy(fn($item) => $item->pedido_origen . '_' . $item->ART_CODIGO);
+
+        $qtyDispatchs = GpGuiaRemisionDetalle::from('gp_guia_remision_detalles as grd')
+            ->join('gp_guia_remisions as gr', 'gr.id', '=', 'grd.guia_remision_id')
+            ->where('gr.tipo', 'despacho')
+            ->whereIN('gr.pedido', $pedidosIds)
+            ->whereIn('grd.GUI_REM_CODI_INTERNO', $artCodes)
+            ->selectRaw('gr.pedido, grd.GUI_REM_CODI_INTERNO, SUM(grd.GUI_REM_CANTIDAD) as total_despachado')
+            ->groupBy('gr.pedido', 'grd.GUI_REM_CODI_INTERNO')
+            ->get()
+            ->keyBy(fn($item) => $item->pedido . '_' . $item->GUI_REM_CODI_INTERNO);
 
 
-    public function getRepositionSales($itemsIds, $documento = null)
-    {
-        return GpTrasladosReposicion::whereIn('id', $itemsIds)
-            ->where(function ($q) {
-                $q->where('gp_traslados_reposicions.completado', 0)->orWhereNull('gp_traslados_reposicions.completado');
-            })
-            ->when(!is_null($documento), fn($q) => $q->where('gp_traslados_reposicions.Documento', $documento))
-            ->get()->keyBy('id');
-    }
+        foreach ($items as $itm) {
+            $id             = data_get($itm, 'id');
+            $pedido         = data_get($itm, 'pedido');
+            $artCodigo      = data_get($itm, 'ART_CODIGO');
+            $seleccionado   = (float) data_get($itm, 'seleccionado', 0);
+            $pendiente      = (float) data_get($itm, 'pendiente', 0);
 
-    public function validateExistsRepositionGuideAjustment($guia, $documento, $params, $groupItems): bool
-    {
-
-        $cabecera = data_get($params, 'cabecera', []);
-        $payloadHeader = $this->deliveryNoteBuilder->buildingRepositionGuideAdjustmentPayload($cabecera);
-        $responseHeaderValidate = $this->apiDeliveryNote->checkRepositionGuideAdjustment($payloadHeader);
-        $resHeader = data_get($responseHeaderValidate, 'data');
-        $docGp = data_get($resHeader, 'docGp', '');
-        $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
-
-        if (!empty($resHeader) && !blank($docGp)) {
-            $already = $this->transferMovementExistsWeb($docGp, $idGuiaRemision, $documento);
-            if ($already) {
-                return DB::transaction(function () use ($groupItems) {
-                    $this->generateMovementRepositionAdjustment($groupItems);
-                    return true;
-                });
-            }
-            // A2: Existe en GP pero no local: aplica ambos pasos en TX
-            return DB::transaction(function () use ($groupItems, $guia, $resHeader, $documento) {
-                $this->generateMovementRepositionAdjustment($groupItems);
-                $this->createDocumentGuideTrfv($guia, $resHeader, $documento);
-                return true;
-            });
-        }
-
-        if (empty($resHeader) && ($responseHeaderValidate['success'] ?? null) === false) {
-            $response = $this->apiDeliveryNote->createReplacementShipmentGuideVta($params);
-            if ($response['success'] === false) {
-                throw new \Exception($response['message']);
-            }
-            $docGp = data_get($response, 'data.docGp'); // null si no existe
-            if (blank($docGp)) {
-                throw new \Exception('No se ha generado el documento de ajuste de guía en Gp.');
+            if (!$existTransfers->contains($id)) {
+                abort(409, "El pedido {$pedido} ha sido eliminado, por lo que no se necesita traslado, por favor actualizar la página.");
             }
 
-            return DB::transaction(function () use ($groupItems, $guia, $response, $documento) {
-                $this->generateMovementRepositionAdjustment($groupItems);
-                $this->createDocumentGuideTrfv($guia, $response['data'], $documento);
-                return true;
-            });
-        }
-        return false;
-    }
+            //clave para buscar
+            $key = $pedido . '_' . $artCodigo;
 
+            $otros = (float) data_get($detallesOtros->get($key), 'total_otros', 0);
+            $qtyDispatch = (float) data_get($qtyDispatchs->get($key), 'total_despachado', 0);
 
-    public function generateMovementRepositionAdjustment($groupItems)
-    {
-        foreach ($groupItems as $item) {
-            $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
-        }
-    }
-
-
-    /** valiuar existencia de guia de despacho  */
-    public function validateExistsDispatchGuideAdjustment($guia, $pedido, $params, $groupItems): bool
-    {
-
-        $cabecera = data_get($params, 'cabecera', []);
-        $payloadHeader = $this->deliveryNoteBuilder->buildingDispatchGuideAdjustmentPayload($cabecera);
-        $checkResp = $this->apiDeliveryNote->checkDispatchGuideAdjustment($payloadHeader);
-        $resHeader = data_get($checkResp, 'data');
-        $docGp = data_get($resHeader, 'docGp', '');
-        $idGuiaRemision = data_get($resHeader, 'idGuiaRemision', null);
-        $existLocal = $this->hasDispatchAdjustmentLocal($docGp, $idGuiaRemision, $pedido);
-        if (!empty($resHeader) && !blank($docGp)) {
-            if ($existLocal) {
-                return DB::transaction(function () use ($guia, $groupItems) {
-                    $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
-                    $guia->update(['rebajado' => 1]);
-                    return true;
-                });
-            }
-            if (!$existLocal) {
-                return DB::transaction(function () use ($groupItems, $guia, $resHeader, $pedido) {
-                    $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
-                    $this->createDocumentDispatchTrfv($guia, $resHeader, $pedido);
-                    $guia->update(['rebajado' => 1]);
-                    return true;
-                });
+            $totalPermitido = $pendiente + $otros;
+            $totalIntentando = $qtyDispatch + $seleccionado;
+            if ($totalIntentando > $totalPermitido) {
+                $quedan = $totalPermitido - $qtyDispatch;
+                $mensaje .= "El artículo {$artCodigo} del pedido {$pedido} ya fue enviado en otra guía de remisión. Quedan {$quedan} unidades disponibles.<br>";
             }
         }
-
-        if (empty($resHeader) || ($checkResp['success'] ?? null) === false) {
-            $response = $this->apiDeliveryNote->createDispatchShipmentGuideVta($params);
-            if (($response['success'] ?? null) === false) {
-                throw new \Exception($response['message'] ?? 'Error creando ajuste de guía en GP.');
-            }
-            $docGp = data_get($response, 'data.docGp'); // null si no existe
-            if (blank($docGp)) {
-                throw new \Exception('No se ha generado el documento de ajuste de guía en GP.');
-            }
-            return DB::transaction(function () use ($groupItems, $guia, $response, $pedido) {
-                $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
-                $this->createDocumentDispatchTrfv($guia, $response['data'], $pedido);
-                $guia->update(['rebajado' => 1]);
-                return true;
-            });
-        }
-        throw new \Exception('Estado inesperado al validar ajuste de despacho. Response: ' . json_encode($checkResp));
+        return $mensaje;
     }
-
-
-    public function processReservedDispatchedAndDecrementStock($guia, $groupItems)
-    {
-        foreach ($groupItems as $item) {
-            $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
-            $this->decrementOriginWarehouseReservedStockDispatch($item->detalle_id, $guia->bodega_origen, $item->GUI_REM_CANTIDAD);
-        }
-    }
-
-
-
-
-    public function getSecuencialCommon($establecimiento, $ptoEmision): string
-    {
-        return $this->common->getNextGuideSequential($establecimiento, $ptoEmision);
-    }
-
 }

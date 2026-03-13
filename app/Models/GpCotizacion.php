@@ -92,7 +92,6 @@ use \DateTimeInterface;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDAPELLIDOS($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDNOMBRES($value)
- * @mixin \Eloquent
  * @property int|null $factura_posterior_despacho
  * @property int|null $factura_a_demanda
  * @property int|null $factura_siguiente_mes
@@ -116,7 +115,51 @@ use \DateTimeInterface;
  * @property string|null $origen
  * @property int|null $pedido_reserva_id
  * @property string|null $pedido_generado_at
- *
+ * @property string $modificador_global
+ * @property string|null $fecha_hora_aprobacion_comercial
+ * @property string|null $nota_operaciones
+ * @property int|null $cotizacion_venta_motivo_id
+ * @property int $recordar
+ * @property string|null $fecha_recordatorio
+ * @property string|null $observacion
+ * @property int|null $user_rechazo_id Usuario que rechazo la cotizacion en estado de espera
+ * @property string|null $fe_rechazo
+ * @property-read \App\Models\GpBodega $bodega
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionDetalle> $detallecotizacion
+ * @property-read int|null $detallecotizacion_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionDetalleStock> $detallecotizacionstock
+ * @property-read int|null $detallecotizacionstock_count
+ * @property-read bool $has_duplicate_items
+ * @property-read bool $has_l_items
+ * @property-read bool $has_reserva
+ * @property-read bool $has_service_items
+ * @property-read mixed $msg_registro_copia
+ * @property-read bool $reserva_disabled
+ * @property-read \App\Models\GpCliente|null $gpcliente
+ * @property-read \App\Models\GpVendedor|null $gpvendedor
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionImagen> $imagenes
+ * @property-read int|null $imagenes_count
+ * @property-read \App\Models\GpCotizacionVentaMotivo|null $motivosNoVenta
+ * @property-read GpReserva|null $reserva
+ * @property-read \App\Models\GpUsuario|null $usuario
+ * @property-read \App\Models\GpUsuario|null $usuariorecordatorio
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCotizacionVentaMotivoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFeRechazo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaHoraAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaRecordatorio($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereImpuesto($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereModificadorGlobal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereMotivoAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereNotaOperaciones($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereObservacion($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereOrigen($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePedidoGeneradoAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePedidoReservaId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereRecordar($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUserIngRecordatorio($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUserRechazoId($value)
+ * @mixin \Eloquent
  */
 class GpCotizacion extends Model
 {
@@ -185,6 +228,7 @@ class GpCotizacion extends Model
         'user_rechazo_id',
         'nota_operaciones',
         'modificador_global',
+        'fecha_hora_aprobacion_comercial',
     ];
 
     /**

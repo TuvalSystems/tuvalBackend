@@ -22,7 +22,7 @@ interface InventoryReservationServiceInterface
     public function getQuotationWithDetailsAndActiveStockById(int $id);
     public function denyApplicationReservedQuotation(array $data, $gpUser);
     public function approvalApplicationReservedQuotation(array $data, $gpUser);
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, $userId);
+    public function fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, GpUsuario $user);
 
     public function processReservedQuotation(array $data, $user);
     public function processReservedQuotationInvoiceDemand($payload, $user);
@@ -57,11 +57,9 @@ interface InventoryReservationServiceInterface
     public function getTransferToReceiveDetails(int $id);
 
     public function printOrderStorageReceivedTranfered(array $payload);
-    public function receiveItemsFromTransferred(int $guiaId, array $items);
 
 
     /** proceso de validacion y verificacion de stock disponible */
 
     public function validateAndProcessQuotationStock($quoteId);
-
 }

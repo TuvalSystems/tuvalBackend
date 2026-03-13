@@ -149,7 +149,15 @@ return [
         'invoice' => [
             'driver' => 'single',
             'path' => storage_path('logs/invoice.log')
-        ]
+        ],
+          'despachos' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/despachos.log'),
+        ],
+         'guia_ventas' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/guia_ventas.log'),
+        ],
     ],
 
 ];

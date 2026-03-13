@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\devoluciones;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpUsuario;
@@ -45,8 +46,8 @@ class DevolucionesController extends Controller
         $pedidos = GpPedido::with('direccion_entrega')->where('PTO_VTA_ID', $puntodeventa_id)
             ->where('cliente_id', $cliente_id)
             ->where(function ($query) {
-                $query->where('estado', 'facturado')
-                    ->orWhere('estado', 'anulada');
+                $query->where('estado', OrderStatus::FACTURADO)
+                    ->orWhere('estado', OrderStatus::ANULADA);
             })
             ->orderBy('created_at', 'desc')->limit(10000)->get();
 
@@ -105,15 +106,14 @@ class DevolucionesController extends Controller
     }
 
 
-   
+
 
     public function enviarDevolucion(Request $request): JsonResponse
     {
         $data = $request->all();
-        $userId = optional(Auth::user())->id ?? ($data['pedido']['user_id'] ?? null);
-        $gpUser = GpUsuario::where('id', $userId)->first();
+        $gpUser = $request->user();
         try {
-            $newDev = $this->devolucionService->handleDevolutionTransaction($data);
+            $newDev = $this->devolucionService->handleDevolutionTransaction($data, $gpUser);
             $statusDev = $newDev->estado === 'solicitado';
             $tipoDev = $newDev->tipo_devolucion === 'total';
             $devCode = is_object($newDev) ? $newDev->devolucion : '';
@@ -142,7 +142,6 @@ class DevolucionesController extends Controller
                 }
             }
             return $this->buildSuccessResponse("La devolución  {$devCode} ha sido solicitada. ", 200);
-
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
                 $e->getMessage(),
@@ -223,7 +222,6 @@ class DevolucionesController extends Controller
         try {
             $data = $this->devolucionService->fetchReturnsToReceived($perPage, $search, $sortBy, $sortOrder, $ptoVtaId);
             return $this->successResponse('Lista de devoluciones por recibir obtenida correctamente', $data, 200);
-
         } catch (\Throwable $e) {
             return $this->errorResponse('Error al obtener la lista de devoluciones por recibir: ' . $e->getMessage(), [], 500);
         }
@@ -255,11 +253,13 @@ class DevolucionesController extends Controller
 
     public function recibirDevolucion(ValidateReceivedDevolutionsRequest $request)
     {
-        $data = $request->validated();
         try {
+            $data = $request->validated();
+            $user = $request->user();
             $resp = $this->devolucionService->receivedDevolutions(
                 data_get($data, 'header'),
-                data_get($data, 'details')
+                data_get($data, 'details'),
+                $user
             );
             return $this->successResponse('Devoluciones recibidas correctamente', $resp, 200);
         } catch (HttpException $e) {
@@ -269,7 +269,6 @@ class DevolucionesController extends Controller
             );
         } catch (\Throwable $th) {
             return $this->buildErrorResponse('Error al recibir la devolución ' . $th->getMessage(), 500);
-
         }
     }
 
@@ -289,7 +288,7 @@ class DevolucionesController extends Controller
     {
         $data = $request->all();
         try {
-            $this->devolucionService->dennyDevolucion(data_get($data, 'id'));
+            $this->devolucionService->dennyDevolucion(data_get($data, 'id'), $request->user());
             return $this->buildSuccessResponse("Devolución rechazada correctamente", 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse('Error al rechazar la devolución ' . $th->getMessage(), 500);
