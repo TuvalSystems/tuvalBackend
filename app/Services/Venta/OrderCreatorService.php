@@ -132,18 +132,23 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         $usedItemLExcluded = [];
 
         foreach ($items  as $key => $item) {
-            $artCodigo = data_get($item, 'ART_CODIGO');
-            $isTypeL = data_get($item, 'ART_TIPO_COMPRA') === 'L';
-            $hasStock = $this->stockService->checkValidateDisponibleItemL($artCodigo);
-
-            if ($isTypeL && !$hasStock) {
-                $replacementCodeL = $this->stockService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
-                if (!$replacementCodeL) {
-                    throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$artCodigo}");
+            $artCodigo          = data_get($item, 'ART_CODIGO');
+            $isTypeL            = data_get($item, 'ART_TIPO_COMPRA') === 'L';
+            $selectedArtCodigo  = $artCodigo;
+            if ($isTypeL) {
+                $hasStock           = $this->stockService->checkValidateDisponibleItemL($artCodigo);
+                $alreadyUsed        = in_array($artCodigo, $usedItemLExcluded, true);
+                if (!$hasStock || $alreadyUsed) {
+                    $replacementCodeL   = $this->stockService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
+                    if (!$replacementCodeL) {
+                        throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$artCodigo}");
+                    }
+                    $item['ART_CODIGO'] = $replacementCodeL;
+                    $selectedArtCodigo  = $replacementCodeL;
                 }
 
-                $item['ART_CODIGO'] = $replacementCodeL;
-                $usedItemLExcluded[] = $replacementCodeL;
+                $usedItemLExcluded[] = $selectedArtCodigo;
+                $usedItemLExcluded = array_values(array_unique($usedItemLExcluded));
             }
             $detail = $this->builder->formPayloadOrderDetail($order->id, $item, $key);
             $detail->save();
@@ -157,7 +162,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
             if ($isTypeL) {
                 // si te daba deadlock aquí, muévelo más abajo (ver comentario)
-                $this->stockService->markArticleUnavailable($artCodigo);
+                $this->stockService->markArticleUnavailable($selectedArtCodigo);
             }
         }
     }
