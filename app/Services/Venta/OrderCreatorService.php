@@ -132,8 +132,8 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         $usedItemLExcluded = [];
 
         foreach ($items  as $key => $item) {
-            $artCodigo          = data_get($item, 'ART_CODIGO');
-            $isTypeL            = data_get($item, 'ART_TIPO_COMPRA') === 'L';
+            $artCodigo          = trim((string) data_get($item, 'ART_CODIGO'));
+            $isTypeL           = trim((string) data_get($item, 'ART_TIPO_COMPRA')) === 'L';
             $selectedArtCodigo  = $artCodigo;
             if ($isTypeL) {
                 $hasStock           = $this->stockService->checkValidateDisponibleItemL($artCodigo);
@@ -143,7 +143,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                     if (!$replacementCodeL) {
                         throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$artCodigo}");
                     }
-                    $item['ART_CODIGO'] = $replacementCodeL;
+                    $item['ART_CODIGO'] = trim((string) $replacementCodeL);
                     $selectedArtCodigo  = $replacementCodeL;
                 }
 
