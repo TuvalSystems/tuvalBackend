@@ -743,18 +743,6 @@ class DespachosController extends Controller
         return $pdf->stream('picking-' . $pedido['pedido'] . '.pdf');
     }
 
-    public function checkeliminardespacho(GpPedido $pedido)
-    {
-        $reporte = $this->reportepicking($pedido);
-        if (!count($reporte)) {
-            $orden_despacho = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
-            if ($orden_despacho) {
-                $orden_despacho->estado = 'cancelada';
-                $orden_despacho->fecha_hora_liberacion = null;
-                $orden_despacho->save();
-            }
-        }
-    }
 
     public function reportepicking(GpPedido $pedido): Collection|array
     {
