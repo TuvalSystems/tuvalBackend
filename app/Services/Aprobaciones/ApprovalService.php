@@ -785,7 +785,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
         if ($volverAFacturar === true) {
             $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-                ->whereNotIn('estado', ['anulada', 'eliminado'])
+                ->whereNotIn('estado', [OrderStatus::ANULADA, OrderStatus::ELIMINADO])
                 ->orderByDesc('id')
                 ->first();
             if (!$lastOrder) {
@@ -992,13 +992,13 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function approveComercialOrder($data, $user)
     {
-        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+        $pedido = GpPedido::where('id', $data['id'])->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->aprobado_comercial = 'yes';
-        $pedido->aprobador_comercial_id = $user->id;
+        $pedido->aprobado_comercial              = 'yes';
+        $pedido->aprobador_comercial_id          = $user->id;
         $pedido->fecha_hora_aprobacion_comercial = Carbon::now()->format('Y-m-d H:i:s');
         $pedido->save();
         $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
@@ -1015,11 +1015,11 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_comercial = 'no';
-        $pedido->aprobador_comercial_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->estado                     = OrderStatus::RECHAZADO;
+        $pedido->aprobado_comercial         = 'no';
+        $pedido->aprobador_comercial_id     = $user->id;
+        $pedido->fecha_hora_rechazado       = date('Y-m-d H:i:s');
+        $pedido->rechazado                  = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
@@ -1042,11 +1042,11 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_comercial = 'no';
+        $pedido->estado                 = OrderStatus::RECHAZADO;
+        $pedido->aprobado_comercial     = 'no';
         $pedido->aprobador_comercial_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->fecha_hora_rechazado   = date('Y-m-d H:i:s');
+        $pedido->rechazado              = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
