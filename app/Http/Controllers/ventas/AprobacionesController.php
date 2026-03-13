@@ -16,13 +16,14 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AprobacionesController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
 
 
     public function __construct(
@@ -45,16 +46,13 @@ class AprobacionesController extends Controller
 
     public function verpedidosycotizacionesporaprobar(Request $request): JsonResponse
     {
-
-        $data = $request->validate([
-            'puntodeventa_id' => 'required',
-        ]);
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $data = $request->validate([
+                'puntodeventa_id' => 'required',
+            ]);
             $data = $this->approvalService->getAllPendingApprovals($data['puntodeventa_id'], $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
-        }
+        }, 'laravel', 'AprobacionesController.verpedidosycotizacionesporaprobar');
     }
 
     public function listaCotizacionesPendientesPorAprobar(Request $request): JsonResponse
