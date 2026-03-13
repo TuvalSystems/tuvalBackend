@@ -145,14 +145,13 @@ class ClientQueryService implements ClientQueryServiceInterface
 
     public function storeNewAddressClient(array $data, GpUsuario $userGp)
     {
-        $cliente = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
-        $email = strtolower(data_get($data, 'email', ''));
-        $textoEnvuelto = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
-        $dir = explode("\n", $textoEnvuelto);
-
-        $payloadGp = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
-        $respInfo = $this->sendToGpNewAddress($payloadGp);
-        $identificador = strtoupper(data_get($respInfo, 'identificador', ''));
+        $cliente        = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
+        $email          = strtolower(data_get($data, 'email', ''));
+        $textoEnvuelto  = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
+        $dir            = explode("\n", $textoEnvuelto);
+        $payloadGp      = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
+        $respInfo       = $this->sendToGpNewAddress($payloadGp);
+        $identificador  = strtoupper(data_get($respInfo, 'identificador', ''));
         return $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
     }
 
