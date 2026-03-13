@@ -914,14 +914,15 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function approveCreditOrder($data, $user)
     {
-        $pedido = GpPedido::where('id', $data['id'])->where('estado', 'espera')
+        $pedido = GpPedido::where('id', $data['id'])
+            ->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->aprobado_crediticio = 'yes';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->fecha_hora_aprobacion_crediticia = Carbon::now()->format('Y-m-d H:i:s');
+        $pedido->aprobado_crediticio                = 'yes';
+        $pedido->aprobador_crediticio_id            = $user->id;
+        $pedido->fecha_hora_aprobacion_crediticia   = Carbon::now()->format('Y-m-d H:i:s');
         $pedido->save();
         $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
 
@@ -940,11 +941,11 @@ class ApprovalService implements ApprovalServiceInterface
         if (!$pedido) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_crediticio = 'no';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->estado                     = OrderStatus::RECHAZADO;
+        $pedido->aprobado_crediticio        = 'no';
+        $pedido->aprobador_crediticio_id    = $user->id;
+        $pedido->fecha_hora_rechazado       = Carbon::now()->format('Y-m-d H:i:s');
+        $pedido->rechazado                  = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);
@@ -956,13 +957,13 @@ class ApprovalService implements ApprovalServiceInterface
     public function rejectCreditOrderForInsufficientStock($data, $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
-            ->whereNotIn('estado', ['eliminado', 'anulada'])
+            ->whereNotIn('estado', [OrderStatus::ELIMINADO, OrderStatus::ANULADA])
             ->lockForUpdate()->first();
-        $pedido->estado = OrderStatus::RECHAZADO;
-        $pedido->aprobado_crediticio = 'no';
-        $pedido->aprobador_crediticio_id = $user->id;
-        $pedido->fecha_hora_rechazado = date('Y-m-d H:i:s');
-        $pedido->rechazado = 1;
+        $pedido->estado                     = OrderStatus::RECHAZADO;
+        $pedido->aprobado_crediticio        = 'no';
+        $pedido->aprobador_crediticio_id    = $user->id;
+        $pedido->fecha_hora_rechazado       = Carbon::now()->format('Y-m-d H:i:s');
+        $pedido->rechazado                  = 1;
         $pedido->save();
         GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
         $this->updateStockOnOrderApproval($pedido);

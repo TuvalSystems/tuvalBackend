@@ -311,9 +311,9 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function checkArticuloDisponible($articulo)
     {
-        $code = data_get($articulo, 'ART_CODIGO', '');
-        $type = data_get($articulo, 'ART_TIPO_COMPRA', '');
-        $artClase = data_get($articulo, 'ART_CLASE_ARTICULO', '');
+        $code       = data_get($articulo, 'ART_CODIGO', '');
+        $type       = data_get($articulo, 'ART_TIPO_COMPRA', '');
+        $artClase   = data_get($articulo, 'ART_CLASE_ARTICULO', '');
         // Artículos que no son tipo 'L' siempre están disponibles
         if ($type !== 'L') {
             return true;
@@ -390,7 +390,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         }
         return GpPedidoDetalle::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-            ->where('gp_pedidos.estado', 'facturado')
+            ->where('gp_pedidos.estado', OrderStatus::FACTURADO->value)
             ->where('gp_pedido_detalles.ART_CODIGO', $artCodigo)
             ->where('gp_pedidos.despachado', 1)
             // ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))

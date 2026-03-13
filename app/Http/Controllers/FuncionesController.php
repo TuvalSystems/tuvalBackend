@@ -269,7 +269,7 @@ class FuncionesController extends Controller
             $datos_l = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', $articulo->ART_CLASE_ARTICULO)->first();
 
             $busqueda = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalles.pedido_id')
-                ->where('gp_pedidos.estado', 'facturado')
+                ->where('gp_pedidos.estado',    OrderStatus::FACTURADO->value)
                 ->where('ART_CODIGO', $articulo->ART_CODIGO)
                 ->where('gp_pedidos.despachado', 1)
                 ->where('gp_pedidos.id', '>', env('ULTIMO_PEDIDO_BUSQUEDA'))
