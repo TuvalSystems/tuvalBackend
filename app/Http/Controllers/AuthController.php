@@ -7,6 +7,8 @@ use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\JsonResponse;
+
 
 class AuthController extends Controller
 {
@@ -100,9 +102,9 @@ class AuthController extends Controller
     }
 
 
-    public function changeStatusGpUser(Request $request)
+    public function changeStatusGpUser(Request $request) : JsonResponse
     {
-        return $this->executeTransaction(function () use ($request) {
+        return $this->executeTransaction(function () use ($request) : JsonResponse {
             $request->validate([
                 'USERID' => 'required|string',
             ]);
