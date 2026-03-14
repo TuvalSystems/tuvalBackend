@@ -19,6 +19,9 @@ class CreateVendedorAtributoOpcionsTable extends Migration
             $table->string('codigo')->unique();
             $table->string('nombre');
             $table->boolean('estado')->default(true);
+             $table->foreignId('user_creator_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
+            $table->foreignId('user_modificator_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
+            $table->dateTime('modified_at')->nullable();
             $table->timestamps();
         });
     }

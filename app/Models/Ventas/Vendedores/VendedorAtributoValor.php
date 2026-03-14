@@ -21,6 +21,9 @@ class VendedorAtributoValor extends Model
         'valor_decimal',
         'valor_boolean',
         'valor_date',
+        'user_creator_id',
+        'user_modificator_id',
+        'modified_at',
     ];
 
     protected $casts = [

@@ -23,6 +23,9 @@ class VendedorAtributo extends Model
         'es_requerido',
         'estado',
         'descripcion',
+        'user_creator_id',
+        'user_modificator_id',
+        'modified_at',
     ];
 
 

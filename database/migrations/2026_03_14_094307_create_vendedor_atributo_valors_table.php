@@ -21,9 +21,12 @@ class CreateVendedorAtributoValorsTable extends Migration
 
             $table->string('valor_string')->nullable();
             $table->integer('valor_integer')->nullable();
-            $table->decimal('valor_decimal', 18,4)->default(0);
+            $table->decimal('valor_decimal', 18, 4)->default(0);
             $table->boolean('valor_boolean')->default(false);
             $table->date('valor_date')->nullable();
+            $table->foreignId('user_creator_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
+            $table->foreignId('user_modificator_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
+            $table->dateTime('modified_at')->nullable();
             $table->timestamps();
         });
     }

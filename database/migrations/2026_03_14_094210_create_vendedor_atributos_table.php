@@ -23,6 +23,9 @@ class CreateVendedorAtributosTable extends Migration
             $table->boolean('es_requerido')->default(false);
             $table->boolean('estado')->default(true);
             $table->string('descripcion')->nullable();
+            $table->foreignId('user_creator_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
+            $table->foreignId('user_modificator_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
+            $table->dateTime('modified_at')->nullable();
             $table->timestamps();
         });
     }

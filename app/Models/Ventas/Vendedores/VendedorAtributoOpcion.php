@@ -16,6 +16,9 @@ class VendedorAtributoOpcion extends Model
         'codigo',
         'nombre',
         'estado',
+        'user_creator_id',
+        'user_modificator_id',
+        'modified_at',
     ];
 
     public function atributo()
