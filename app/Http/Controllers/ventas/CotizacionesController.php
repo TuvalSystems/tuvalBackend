@@ -13,7 +13,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPuntoVenta;
 use App\Models\GpClienteSucursal;
-use App\Models\GpVendedor;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpCliente;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;

@@ -6,7 +6,7 @@ use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCaja;
 use App\Models\GpCliente;
 use App\Models\GpArticulo;
-use App\Models\GpVendedor;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpPuntoVenta;
 use App\Models\GpTerritorio;
 use App\Traits\JsonResponseTrait;

@@ -12,10 +12,10 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Models\GpVendedor;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpTempCart;
+use App\Models\Ventas\Vendedores\GpVendedor;
 
 class FuncionesController extends Controller
 {

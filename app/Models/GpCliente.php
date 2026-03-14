@@ -96,7 +96,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property $suspendido
  * @property $cupo_disponible
  * @property $cupo_asignado
- * @property-read \App\Models\GpVendedor|null $gpvendedor
+ * @property-read \App\Models\Ventas\Vendedores\GpVendedor|null $gpvendedor
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpClienteSucursal> $sucursales
  * @property-read int|null $sucursales_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISEGMENTOID($value)

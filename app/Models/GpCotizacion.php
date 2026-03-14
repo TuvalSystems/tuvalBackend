@@ -136,7 +136,7 @@ use \DateTimeInterface;
  * @property-read mixed $msg_registro_copia
  * @property-read bool $reserva_disabled
  * @property-read \App\Models\GpCliente|null $gpcliente
- * @property-read \App\Models\GpVendedor|null $gpvendedor
+ * @property-read \App\Models\Ventas\Vendedores\GpVendedor|null $gpvendedor
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionImagen> $imagenes
  * @property-read int|null $imagenes_count
  * @property-read \App\Models\GpCotizacionVentaMotivo|null $motivosNoVenta

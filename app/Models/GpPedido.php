@@ -146,7 +146,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \App\Models\GpCotizacion|null $gpcotizacion
  * @property-read \Illuminate\Database\Eloquent\Collection<int, GpTrasladosVentas> $gptrasladoventa
  * @property-read int|null $gptrasladoventa_count
- * @property-read \App\Models\GpVendedor|null $gpvendedor
+ * @property-read \App\Models\Ventas\Vendedores\GpVendedor|null $gpvendedor
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoDetalleStock> $pedidostock
  * @property-read int|null $pedidostock_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereDespachoEnProceso($value)
