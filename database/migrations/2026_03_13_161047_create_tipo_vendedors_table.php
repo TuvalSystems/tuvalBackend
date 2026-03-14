@@ -15,6 +15,10 @@ class CreateTipoVendedorsTable extends Migration
     {
         Schema::create('tipo_vendedors', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('tipo_vendedor');
+            $table->string('codigo', 100);
+            $table->string('descripcion', 400);
+            $table->boolean('estado')->default(1);
             $table->timestamps();
         });
     }
