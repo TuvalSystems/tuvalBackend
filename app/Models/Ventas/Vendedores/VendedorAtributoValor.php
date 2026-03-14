@@ -21,8 +21,8 @@ class VendedorAtributoValor extends Model
         'valor_decimal',
         'valor_boolean',
         'valor_date',
-        'user_creator_id',
-        'user_modificator_id',
+        'created_by_user_id',
+        'updated_by_user_id',
         'modified_at',
     ];
 
