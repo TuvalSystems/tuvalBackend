@@ -146,6 +146,14 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/reservas_log.log'),
         ],
+          'despachos' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/despachos.log'),
+        ],
+         'guia_ventas' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/guia_ventas.log'),
+        ],
     ],
 
 ];

@@ -14,9 +14,7 @@ use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
-use Illuminate\Support\Facades\Auth;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
@@ -30,7 +28,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-
 
 class PedidosController extends Controller
 {
@@ -56,9 +53,10 @@ class PedidosController extends Controller
         $imagenesNuevas     = $request->file('imagenes_nuevas', []);
         $maxRetries         = 3;
         $attempt            = 0;
+        $user               = $request->user();
         while (true) {
             try {
-                $pedido         =  $this->orderCreator->createOrder($request->validated(), Auth::user(), $imagenesExistentes, $imagenesNuevas);
+                $pedido         =  $this->orderCreator->createOrder($request->validated(), $user, $imagenesExistentes, $imagenesNuevas);
                 $order          = data_get($pedido, 'pedido');
                 $invoiceError   = data_get($pedido, 'invoice_error');
                 if ($invoiceError) {
@@ -108,59 +106,7 @@ class PedidosController extends Controller
     }
 
 
-    //en proceso de mejora
-    public function guardarpedido(Request $request)
-    {
-        $orderData = $request->all();
-        $user = Auth::user();
-        $maxRetries = 3;
-        $attempt = 0;
-        while (true) {
-            try {
-                $pedido = DB::transaction(function () use ($orderData, $user) {
-                    return $this->orderService->storeOrder($orderData, $user);
-                });
-                return $this->buildSuccessResponse("Pedido {$pedido->pedido} guardado", 200);
-            } catch (QueryException $e) {
-                $mysqlCode = $e->errorInfo[1] ?? null;
-                // ¿es un error de concurrencia y aún puedo reintentar?
-                if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
-                    $attempt++;
-                    usleep(200000);
-                    Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
-                        'attempt' => $attempt,
-                        'mysqlCode' => $mysqlCode,
-                        'msg' => $e->getMessage(),
-                    ]);
 
-                    // pasa al siguiente ciclo del while
-                    continue;
-                }
-
-                // si no es 1213/1205 o ya superó los reintentos, lo tratamos como error real
-                Log::error('Error in storeOrder (guardar pedido)', [
-                    'error' => $e->getMessage(),
-                    'line' => $e->getLine(),
-                    'file' => $e->getFile(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
-            } catch (DomainException $e) {
-                // 👈 este es el que puede lanzar tu flujo de stock
-                return $this->buildErrorResponse($e->getMessage(), 422);
-            } catch (\Throwable $e) {
-                // cualquier otra excepción que no sea de SQL
-                Log::error('Error in storeOrder (guardar pedido)', [
-                    'error' => $e->getMessage(),
-                    'line' => $e->getLine(),
-                    'file' => $e->getFile(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                return $this->buildErrorResponse($e->getMessage(), 500);
-            }
-        }
-    }
 
     public function facturarpedido(Request $request)
     {
@@ -205,7 +151,7 @@ class PedidosController extends Controller
 
     public function corregirenviando(): void
     {
-        $enviando = GpPedido::where('estado', 'enviando')
+        $enviando = GpPedido::where('estado', OrderStatus::ENVIANDO)
             ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())->get();
 
         foreach ($enviando as $pedido) {
@@ -245,7 +191,7 @@ class PedidosController extends Controller
 
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $data['puntodeventa_id'])
             ->leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
-            ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion');
+            ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_cotizacions.origen as cotizacion_origen');
 
         if ($data['estado'] != 'todos') {
             $pedidos = $pedidos->where('gp_pedidos.estado', $data['estado']);
@@ -269,7 +215,7 @@ class PedidosController extends Controller
                 $pedido->imprimir = 'no';
             } elseif ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no') {
                 $pedido->imprimir = 'no';
-            } elseif ($pedido->estado ==  OrderStatus::RECHAZADO) {
+            } elseif ($pedido->estado ===  OrderStatus::RECHAZADO) {
                 $pedido->imprimir = 'no';
             } else {
                 $pedido->imprimir = 'yes';
@@ -326,7 +272,7 @@ class PedidosController extends Controller
                 'detalle' => 'required|array',
             ]);
             $pedidoId = data_get($validated, 'pedido.id');
-            $user = Auth::user();
+            $user = $request->user();
             //new sintaxis
             $pedido = DB::transaction(
                 fn() =>
@@ -377,7 +323,8 @@ class PedidosController extends Controller
             $request->validate([
                 'id' => 'required|exists:gp_pedidos,id',
             ]);
-            $response = $this->orderService->loadOrderForCopy($request->get('id'));
+            $user = $request->user() ?? GpUsuario::find(179);
+            $response = $this->orderService->loadOrderForCopy($request->get('id'),  $user);
             return $this->successResponse('Pedido copiado correctamente', $response, 200);
         } catch (\Throwable $e) {
             Log::error('Error en volverAPedirPedido', [
@@ -402,7 +349,8 @@ class PedidosController extends Controller
                 'cliente_id' => 'required|integer',
                 'tipo' => 'required|string',
             ]);
-            $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'));
+            $user = $request->user();
+            $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'), $user);
             return $this->successResponse('Pedido/Cotización copiado correctamente', $response, 200);
         } catch (\Throwable $e) {
             Log::error('Error en copiarCotizacionOPedido', [
@@ -572,11 +520,11 @@ class PedidosController extends Controller
     function cancelarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-        $user = GpUsuario::where('id', Auth::user()->id)->first();
+        $user = $request->user();
 
         $pedido = GpPedido::where('id', $data['id'])->get()->first();
 
-        if ($pedido->estado == OrderStatus::FACTURADO) {
+        if ($pedido->estado === OrderStatus::FACTURADO) {
             return response([
                 'success' => true,
                 'message' => 'Pedido ' . $pedido->pedido . ' ya está facturado y no se puede eliminar',
@@ -739,7 +687,8 @@ class PedidosController extends Controller
         try {
             $id = $request->input('id');
             $pendingDispach = $request->input('pendiente_salida');
-            $order = $this->orderService->updateOrderAndBlockDispach($id, $pendingDispach);
+            $user = $request->user();
+            $order = $this->orderService->updateOrderAndBlockDispach($id, $pendingDispach, $user);
             return $this->successResponse('Bloqueo actualizado correctamente', $order, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);

@@ -3,8 +3,8 @@
 namespace App\Services\Builders\Bodega\Contracts;
 
 use App\Models\GpUsuario;
-use App\Models\reservas\GpGuiaRemisionReserva;
-use App\Models\reservas\GpGuiaRemisionReservaDetalle;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
 
 interface ReservationDeliveryNoteParamsBuilderInterface
 {
@@ -20,6 +20,10 @@ interface ReservationDeliveryNoteParamsBuilderInterface
 
 
     //functions to send GP Ajustment Reservation
-    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user): array;
-     public function buildReservationGuideValidationPayload(array $params): array;
+    public function buildReservedDeliveryNotePayload(GpGuiaRemisionReserva $guia, string $documento, array $items, string $user, string $hashInterno, ?string $numTranferencia): array;
+    public function buildReservationGuideValidationPayload(array $params,  string $tipoMovimiento, string $tipo): array;
+
+
+    public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote);
+    public function createRegisterHistoryDetail($items, $ing);
 }

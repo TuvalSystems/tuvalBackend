@@ -8,10 +8,12 @@ use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpArticulo;
+use App\Models\GpUsuario;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\JsonResponseTrait;
@@ -26,25 +28,19 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         protected readonly ApiGpService $apiGp,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
-    ) {
+        protected readonly EntryServiceInterface $entryService
+    ) {}
 
-    }
 
-    public function validateRequest($request)
+
+    public function fectchTransferHeader(array $payload)
     {
-        if (empty($request['fecha'])) {
-            throw new \InvalidArgumentException('La fecha es requerida');
-        }
-    }
-
-    public function fectchTransferHeader($request)
-    {
-        $params = [
+        $resp = $this->apiGp->getTransferHeader([
             'idCompany' => config('services.api_gp.company'),
-            'fecha' => date('Y-m-d', timestamp: strtotime($request->fecha)),
-            'numDoc' => $request->numDoc,
-        ];
-        return $this->apiGp->getTransferHeader($params) ?? [];
+            'fecha'     => date('Y-m-d',  strtotime(data_get($payload, 'fecha'))),
+            'numDoc'    => data_get($payload, 'numDoc', null),
+        ]);
+        return data_get($resp, 'data', []);
     }
 
 
@@ -52,20 +48,20 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     {
         $params = [
             'idCompany' => config('services.api_gp.company'),
-            'numDoc' => $numDoc,
+            'numDoc'    => $numDoc,
         ];
-        return $this->apiGp->getTransferDetail($params) ?? [];
+        $resp =  $this->apiGp->getTransferDetail($params);
+        return data_get($resp, 'data', []);
     }
 
 
-    public function processDocumentsInBatches($request, $transferHeader)
+    public function processDocumentsInBatches($payload, $transferHeader)
     {
-
-        $processedDocuments = [];
-        $documentFilter = $request['numDoc'];
-        $batchSize = 100;
-        $batch = [];
-        $errors = [];
+        $processedDocuments     = [];
+        $documentFilter         = data_get($payload, 'numDoc');
+        $batchSize              = 100;
+        $batch                  = [];
+        $errors                 = [];
 
         foreach ($transferHeader as $header) {
             if (empty($documentFilter) || $header['numdoc'] == $documentFilter) {
@@ -154,11 +150,11 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         return GpTrasladosReposicionCabecera::updateOrCreate(
             ['Documento' => $document['numdoc']],
             [
-                'Bodega_Origen' => $document['origen'],
-                'Bodega_Destino' => $document['destino'],
-                'Codigo_Motivo' => $document['codmotivo'],
-                'Motivo' => $document['motivo'],
-                'Fecha_Documento' => substr($document['fecha'], 0, 10),
+                'Bodega_Origen'     => $document['origen'],
+                'Bodega_Destino'    => $document['destino'],
+                'Codigo_Motivo'     => $document['codmotivo'],
+                'Motivo'            => $document['motivo'],
+                'Fecha_Documento'   => substr($document['fecha'], 0, 10),
             ]
         );
     }
@@ -208,7 +204,6 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         foreach ($transferDetails as $detail) {
             $codigo = $detail['item'];
             $origen = $detail['origen'];
-            //$key = $codigo . '_' . $origen;
 
             // 4. Obtener artículo
             $article = $articles[$codigo] ?? null;
@@ -228,19 +223,19 @@ class TransferRepositionService implements TransferRepositionServiceInterface
 
             // 6. Armar datos
             $data = [
-                'Documento' => $transferHeader->Documento,
-                'Codigo_Motivo' => $transferHeader->Codigo_Motivo,
-                'ART_DESCRIPCION' => $article['ART_DESCRIPCION'],
-                'ART_CODIGO_TRES_LETRAS' => $article['ART_CODIGO_TRES_LETRAS'],
-                'ART_PLAN_UMEDIDA' => $article['ART_PLAN_UMEDIDA'],
-                'ART_PESO' => $article['ART_PESO'],
-                'cantidad' => $detail['cantidad'],
-                'bodega_origen' => $transferHeader->Bodega_Origen,
-                'bodega_destino' => $transferHeader->Bodega_Destino,
-                'compartimiento' => $detail['trd_ubic'] ?? '', // $compartment['compartimento'], ya me devuelve en el detalle
+                'Documento'                 => $transferHeader->Documento,
+                'Codigo_Motivo'             => $transferHeader->Codigo_Motivo,
+                'ART_DESCRIPCION'           => $article['ART_DESCRIPCION'],
+                'ART_CODIGO_TRES_LETRAS'    => $article['ART_CODIGO_TRES_LETRAS'],
+                'ART_PLAN_UMEDIDA'          => $article['ART_PLAN_UMEDIDA'],
+                'ART_PESO'                  => $article['ART_PESO'],
+                'cantidad'                  => $detail['cantidad'],
+                'bodega_origen'             => $transferHeader->Bodega_Origen,
+                'bodega_destino'            => $transferHeader->Bodega_Destino,
+                'compartimiento'            => $detail['trdUbic'] ?? '', // $compartment['compartimento'], ya me devuelve en el detalle
                 // 'compartimiento' => $compartment ?? '',
-                'Fecha_Documento' => $transferHeader->Fecha_Documento,
-                'updated_at' => now()
+                'Fecha_Documento'           => $transferHeader->Fecha_Documento,
+                'updated_at'                 => now()
             ];
 
 
@@ -251,10 +246,10 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                     ->update($data);
             } else {
                 // Insert nuevo
-                $data['cabecera_id'] = $transferHeader->id;
-                $data['ART_CODIGO'] = $codigo;
-                $data['created_at'] = now();
-                $insertData[] = $data;
+                $data['cabecera_id']    = $transferHeader->id;
+                $data['ART_CODIGO']     = $codigo;
+                $data['created_at']     = now();
+                $insertData[]           = $data;
             }
         }
 
@@ -267,9 +262,9 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     public function getArticleCompartment($articleCode, $warehouse)
     {
         $params = [
-            'idCompany' => config('services.api_gp.company'),
-            'articulo' => $articleCode,
-            'bodega' => $warehouse,
+            'idCompany'     => config('services.api_gp.company'),
+            'articulo'      => $articleCode,
+            'bodega'        => $warehouse,
             'compartimento' => '',
         ];
         // MST_Stock_Articulo_Bodega_CompartimientoResult
@@ -287,34 +282,32 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->get();
 
 
-        $response = collect($detalle)->map(function ($item) use ($guia) {
+        return collect($detalle)->map(function ($item) use ($guia) {
             $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
                 'item' => $item['GUI_REM_CODI_INTERNO'],
                 'bodega' => $guia->bodega_destino
             ]);
-          
+
             $lista = data_get($resp, 'lista', []);
             $item->pendiente = number_format(round($item->GUI_REM_CANTIDAD - $item->recibido, 2), 2, '.', '');
             $item->recibido = $item->pendiente;
             $item->compartimientos = $lista;
-            // $item->compartimiento = $compart['bin'] ?? null;
             $item->compartimiento = null;
 
             return $item;
         })->values()->all();
 
-        return $response;
     }
 
 
-    /** proceso de recibir reposicion web * */
+    /** proceso de recibir reposicion web -- funcion de pruebas no esta como api * */
 
-    public function processReceivedRepositionWeb($guideId)
+    public function processReceivedRepositionWeb($guideId, GpUsuario $user)
     {
         $guia = GpGuiaRemision::find($guideId);
         $detalle = $this->getDataDetailReceivedReposition($guia);
         //   return $detalle;
-        $traslados = $this->receivedGuideRepositionWeb($guia, $detalle);
+        $traslados = $this->receivedGuideRepositionWeb($guia, $detalle, $user);
         return $traslados;
     }
 
@@ -325,7 +318,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->where('guia_remision_id', $guia->id)
             ->select('gp_guia_remision_detalles.*', 'gp_articulos.ART_DECIMAL_CANTIDAD')
             ->get();
-     
+
         $response = [];
         foreach ($detalle as $item) {
             $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
@@ -346,7 +339,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     }
 
 
-    public function receivedGuideRepositionWeb($guia, $detalle)
+    public function receivedGuideRepositionWeb($guia, $detalle, GpUsuario $user)
     {
         $itemsInput = collect($detalle)
             ->filter(fn($i) => ($i['recibido'] ?? 0) > 0)
@@ -408,14 +401,14 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 continue;
             }
             $params = [
-                'IDCompania' => env('ID_COMPANIA'),
-                'Documento' => $pack['Documento'],
+                'IDCompania'        => env('ID_COMPANIA'),
+                'Documento'         => $pack['Documento'],
                 'NumeroTransferOri' => $pack['transferencia'],
-                'BodegaOrigen' => $guia['bodega_origen'],
-                'BodegaDestino' => $guia['bodega_destino'],
-                'Observacion' => $guia['GUI_REM_OBSERVACION'],
-                'Usuario' => 'adminWeb',//$user->USERID ,
-                'Items' => array_values($itemsWs),
+                'BodegaOrigen'      => $guia['bodega_origen'],
+                'BodegaDestino'     => $guia['bodega_destino'],
+                'Observacion'       => $guia['GUI_REM_OBSERVACION'],
+                'Usuario'           => 'adminWeb', //$user->USERID ,
+                'Items'             => array_values($itemsWs),
             ];
 
             $resp = $ws->inventario('GeneraRecepcionTransferenciaReposicon', $params);
@@ -461,7 +454,8 @@ class TransferRepositionService implements TransferRepositionServiceInterface
         $data = $guia->toArray();
 
         // Idealmente: después de commit
-        (new IngresosController())->ingreso('traslado_reposicion', $data, $detalle);
+        // (new IngresosController())->ingreso('traslado_reposicion', $data, $detalle);
+        $this->entryService->registerEntity('traslado_reposicion', $data, $detalle, $user);
 
         if ($listo) {
             $guia->estado = 'recibida';
@@ -483,5 +477,4 @@ class TransferRepositionService implements TransferRepositionServiceInterface
 
         return !$hayPendientes;
     }
-
 }

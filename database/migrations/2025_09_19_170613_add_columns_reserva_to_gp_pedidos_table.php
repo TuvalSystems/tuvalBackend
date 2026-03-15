@@ -14,7 +14,7 @@ class AddColumnsReservaToGpPedidosTable extends Migration
     public function up()
     {
         Schema::table('gp_pedidos', function (Blueprint $table) {
-             $table->enum('origen', ['cotizacion','reserva'])
+             $table->enum('origen', ['cotizacion','reserva','facturar_existente', 'devolucion', 'factura_demanda'])
                 ->nullable()
                 ->default('cotizacion')
                 ->index();

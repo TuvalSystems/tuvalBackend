@@ -4,14 +4,13 @@ namespace App\Services\Devoluciones;
 
 use App\Models\GpIngreso;
 use App\Models\GpIngresosDetalle;
+use App\Models\GpUsuario;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use Illuminate\Support\Facades\Auth;
 
 class EntryService implements EntryServiceInterface
 {
-    public function registerEntity($type, $document, $detail)
+    public function registerEntity($type, $document, $detail, GpUsuario $user)
     {
-        $user = Auth::user();
         $document = $this->formatHeaderByType($type, $document);
 
         $entry = GpIngreso::updateOrCreate(

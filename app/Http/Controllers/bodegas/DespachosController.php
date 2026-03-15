@@ -69,11 +69,7 @@ class DespachosController extends Controller
             return;
         }
 
-        if ($pedido->estado == OrderStatus::ORDEN_DE_COMPRA) {
-            return;
-        }
-
-        if ($pedido->estado == OrderStatus::TRASLADO) {
+        if (in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true)) {
             return;
         }
 
@@ -356,7 +352,7 @@ class DespachosController extends Controller
         foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if ($pedido->estado == OrderStatus::RECHAZADO) {
+            if ($pedido->estado === OrderStatus::RECHAZADO) {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();
@@ -454,7 +450,7 @@ class DespachosController extends Controller
         foreach ($ordenes as $key => $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)->first();
 
-            if ($pedido->estado == OrderStatus::RECHAZADO) {
+            if ($pedido->estado === OrderStatus::RECHAZADO) {
                 $orden->estado = 'cancelada';
                 $orden->fecha_hora_liberacion = null;
                 $orden->save();
@@ -625,54 +621,29 @@ class DespachosController extends Controller
         $pedido->despacho_en_proceso = 1;
         $pedido->save();
 
-        $detalle = GpPedidoDetalle::where('pedido_id', $id)->get();
-        foreach ($detalle as $key => $det) {
-            if (!$det->reservado)
-                $det->reservado = 0;
+        $detalles = GpPedidoDetalle::where('pedido_id', $id)->get();
 
-            if (!$det->trasladado)
-                $det->trasladado = 0;
-
-            if (!$det->devuelto)
-                $det->devuelto = 0;
-
-            $detTDevuelto = 0;
-            $detTNoDevuelto = 0;
-
-            $devueltoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where('gp_devoluciones_detalles.despachado_parcial', 1)
-                ->where('gp_devoluciones_detalles.detalle_id', $det->id)
-                ->sum('gp_devoluciones_detalles.devuelto');
-            $devueltoNoDesp = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-                ->where('gp_devoluciones_detalles.despachado_parcial', 0)
-                ->where('gp_devoluciones_detalles.detalle_id', $det->id)
-                ->sum('gp_devoluciones_detalles.devuelto');
-
-
-            $detTDevuelto = $det->trasladado - $det->reservado - $devueltoDesp;
+        $resultados = $detalles->map(function ($det) {
+            $devueltoNoDesp = GpDevolucionesDetalle::where('detalle_id', $det->id)
+                ->where('despachado_parcial', 0)
+                ->sum('devuelto');
             $detTNoDevuelto = ($det->ART_CANTIDAD - $det->trasladado) - $det->reservado - $devueltoNoDesp;
 
             $det->pendiente = number_format($detTNoDevuelto, 2, '.', '');
+            $det->seleccionado  = 0;
+            $det->ART_CANTIDAD  = round($det->ART_CANTIDAD, $det->ART_DECIMAL_CANTIDAD);
+            $det->pendiente     = round($det->pendiente, $det->ART_DECIMAL_CANTIDAD);
+            $det->reservado     = round($det->reservado, $det->ART_DECIMAL_CANTIDAD);
+            $det->trasladado    = round($det->trasladado, $det->ART_DECIMAL_CANTIDAD);
 
-            $det->seleccionado = 0;
-            if ($det->pendiente <= 0) {
-                unset($detalle[$key]);
-            }
-
-            if ($det->ART_DECIMAL_CANTIDAD == 0) {
-                $det->ART_CANTIDAD = (int) $det->ART_CANTIDAD;
-                $det->pendiente = (int) $det->pendiente;
-                $det->reservado = (int) $det->reservado;
-                $det->trasladado = (int) $det->trasladado;
-            }
-        }
-
-        $detalle = $detalle->toArray();
-        $detalle = array_values($detalle);
+            return $det;
+        })->filter(function ($det) {
+            return $det->pendiente > 0;
+        })->values();
 
         return response([
             'success' => true,
-            'detalle' => $detalle,
+            'detalle' => $resultados,
         ]);
     }
 
@@ -700,7 +671,7 @@ class DespachosController extends Controller
     public function liberarordendespacho(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
-        $user = Auth::user();
+        $user = $request->user();
 
         $orden = GpOrdenDespacho::where('id', $data['id'])->first();
         $orden->autorizacion_fecha = date('Y-m-d H:i:s');
@@ -772,18 +743,6 @@ class DespachosController extends Controller
         return $pdf->stream('picking-' . $pedido['pedido'] . '.pdf');
     }
 
-    public function checkeliminardespacho(GpPedido $pedido)
-    {
-        $reporte = $this->reportepicking($pedido);
-        if (!count($reporte)) {
-            $orden_despacho = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
-            if ($orden_despacho) {
-                $orden_despacho->estado = 'cancelada';
-                $orden_despacho->fecha_hora_liberacion = null;
-                $orden_despacho->save();
-            }
-        }
-    }
 
     public function reportepicking(GpPedido $pedido): Collection|array
     {
@@ -940,7 +899,7 @@ class DespachosController extends Controller
 
         if ($listo) {
             $pedido->despachado = 1;
-            $pedido->despacho_en_proceso = null;
+            $pedido->despacho_en_proceso = 0;
             $pedido->save();
 
             $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();

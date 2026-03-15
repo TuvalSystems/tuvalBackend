@@ -3,12 +3,12 @@
 namespace App\Services\Devoluciones;
 
 use App\Enums\devoluciones\DevolutionStatus;
+use App\Enums\Ventas\OrderStatus;
 use Exception;
 use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Models\GpCliente;
-use App\Models\GpVendedor;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use App\Models\GpPedidoDetalle;
@@ -19,7 +19,6 @@ use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\GpPedidoDetalleStock;
-use Illuminate\Support\Facades\Auth;
 use App\Services\Api\ApiSalesService;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\devoluciones\GpDevoluciones;
@@ -28,6 +27,7 @@ use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
@@ -59,8 +59,7 @@ class DevolucionService implements DevolucionServiceInterface
         protected readonly ReturnCancellationServiceInterface $anulationService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly EntryServiceInterface $entryService
-    ) {
-    }
+    ) {}
 
 
     /**
@@ -73,7 +72,7 @@ class DevolucionService implements DevolucionServiceInterface
     {
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
             ->where('cliente_id', $cienteId)
-            ->whereIn('estado', ['facturado', 'anulada'])
+            ->whereIn('estado', [OrderStatus::FACTURADO, OrderStatus::ANULADA])
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
     }
 
@@ -86,14 +85,14 @@ class DevolucionService implements DevolucionServiceInterface
      * @return GpDevoluciones
      */
 
-    public function handleDevolutionTransaction($data)
+    public function handleDevolutionTransaction($data,  GpUsuario $user)
     {
-        $devolucion = Arr::get($data, 'devolucion');
-        $pedidoDev = Arr::get($data, 'pedido');
-        $detallePedido = Arr::get($data, 'detallepedido');
+        $devolucion     = Arr::get($data, 'devolucion');
+        $pedidoDev      = Arr::get($data, 'pedido');
+        $detallePedido  = Arr::get($data, 'detallepedido');
 
-        $orderId = Arr::get($data, 'pedido.id');
-        $order = GpPedido::find($orderId);
+        $orderId        = Arr::get($data, 'pedido.id');
+        $order          = GpPedido::find($orderId);
         if (!$order) {
             abort(404, 'Pedido no encontrado');
         }
@@ -103,14 +102,14 @@ class DevolucionService implements DevolucionServiceInterface
         }
 
         $detailInfo = [
-            'devolucion' => $devolucion,
-            'pedido' => $pedidoDev,
-            'detalle' => [],
+            'devolucion'    => $devolucion,
+            'pedido'        => $pedidoDev,
+            'detalle'       => [],
         ];
 
         foreach ($detallePedido as $det) {
-            $isRefacturacion = $devolucion['volver_a_facturar'];
-            $isSelected = ($det['seleccionado'] ?? 0) > 0;
+            $isRefacturacion    = $devolucion['volver_a_facturar'];
+            $isSelected         = ($det['seleccionado'] ?? 0) > 0;
             if ($isRefacturacion || $isSelected) {
                 $detailInfo['detalle'][] = $det;
             }
@@ -123,9 +122,9 @@ class DevolucionService implements DevolucionServiceInterface
         $detailInfo['pedido']['despachado'] = count($itemsDespachados) > 0 ? 1 : 0;
 
 
-        $newDev = DB::transaction(function () use ($detailInfo) {
+        $newDev = DB::transaction(function () use ($detailInfo, $user) {
             if (count($detailInfo['detalle']) > 0) {
-                return $this->executeReturn($detailInfo);
+                return $this->executeReturn($detailInfo, $user);
             }
             throw new Exception("No hay ítems válidos para generar la devolución.");
         });
@@ -148,22 +147,22 @@ class DevolucionService implements DevolucionServiceInterface
 
 
 
+    /** proceso de crear devolucion */
 
 
-    public function executeReturn($data): GpDevoluciones
+    public function executeReturn($data, $user): GpDevoluciones
     {
-        $user = Auth::user();
         $gpUser = GpUsuario::where('id', $user->id)->first();
         $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
         $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
         $calculatedData = [
-            'status' => $requiredApproval === 'yes' ? DevolutionStatus::ESPERA : DevolutionStatus::SOLICITADO,
-            'requiredApproval' => $requiredApproval,
-            'USERID' => $gpUser->USERID,
-            'userId' => $gpUser->id,
-            'canNullify' => $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status),
-            'anulacionHabilitada' => $this->canBeAnulledByLimitDate(Arr::get($data, 'pedido', [])),
-            'isDispatched' => $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detalle', []), Arr::get($data, 'devolucion', [])),
+            'status'                => $requiredApproval === 'yes' ? DevolutionStatus::ESPERA : DevolutionStatus::SOLICITADO,
+            'requiredApproval'      => $requiredApproval,
+            'USERID'                => $gpUser->USERID,
+            'userId'                => $gpUser->id,
+            'canNullify'            => $this->getCheckoutPaymentInvoiceGp(Arr::get($data, 'pedido', []), Arr::get($data, 'devolucion', []), $status),
+            'anulacionHabilitada'   => $this->canBeAnulledByLimitDate(Arr::get($data, 'pedido', [])),
+            'isDispatched'          => $this->hasDispatchedOrderDetails(Arr::get($data, 'pedido', []), Arr::get($data, 'detalle', []), Arr::get($data, 'devolucion', [])),
         ];
         $devolucion = $this->devolucionBuilder->formPayloadDevolutionHeader($data, $calculatedData);
         $devolucion->save();
@@ -173,9 +172,9 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function processInvoiceAnulation($data, $newDev)
     {
-        $isCleanOrder = $this->devolucionRepository->isOrderNotDispatchedOrProcessing($data['pedido']);
-        $hasOtherReturns = $this->devolucionRepository->hasOtherActiveReturns($data['pedido'], $newDev);
-        $validateItemsL = $this->devolucionRepository->validateItemLDetailInvoice($newDev);
+        $isCleanOrder       = $this->devolucionRepository->isOrderNotDispatchedOrProcessing($data['pedido']);
+        $hasOtherReturns    = $this->devolucionRepository->hasOtherActiveReturns($data['pedido'], $newDev);
+        $validateItemsL     = $this->devolucionRepository->validateItemLDetailInvoice($newDev);
         $hasPartialDispatch = $this->devolucionRepository->hasPartiallyDispatchedItems($newDev);
 
         $shouldAnulated = (
@@ -211,7 +210,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function validateItemLDetailInvoice($devolucion)
     {
-        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion, );
+        return $this->devolucionRepository->validateItemLDetailInvoice($devolucion,);
     }
 
     public function validateItemPartialDispatch($devolucion)
@@ -221,8 +220,9 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function canBeAnulledByLimitDate($pedido)
     {
-        $fechaFactura = $pedido['fecha_factura'] ?? null;
-        $ptoVtaId = $pedido['PTO_VTA_ID'] ?? null;
+
+        $fechaFactura = data_get($pedido, 'fecha_factura', null);
+        $ptoVtaId = data_get($pedido, 'PTO_VTA_ID', null);
 
         if (!$fechaFactura || !$ptoVtaId) {
             return false;
@@ -251,7 +251,7 @@ class DevolucionService implements DevolucionServiceInterface
         // Verifica si la devolucion es de volver a facturar
         if ($devolucion['volver_a_facturar'] === true) {
             $pedidoIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-                ->where('estado', '!=', 'anulada')
+                ->where('estado', '!=', OrderStatus::ANULADA)
                 ->orderByDesc('id')
                 ->first();
             if (!$pedidoIds) {
@@ -315,7 +315,6 @@ class DevolucionService implements DevolucionServiceInterface
         );
         $succes = data_get($response, 'success', false);
         return (bool) $succes;
-
     }
 
     public function storeReturnDetail($returnId, $pedido, $details): void
@@ -440,13 +439,13 @@ class DevolucionService implements DevolucionServiceInterface
             abort(409, 'El pedido está siendo despachado');
         }
 
-        $detalles = $this->orderRepository->getAllDetailsOrderById($orderId);
-        $motivos = $this->devolucionRepository->getMotivosDevolucion();
-        $cliente = $this->devolucionRepository->getClientsByClientId($clientId)[0] ?? null;
+        $detalles   = $this->orderRepository->getAllDetailsOrderById($orderId);
+        $motivos    = $this->devolucionRepository->getMotivosDevolucion();
+        $cliente    = $this->devolucionRepository->getClientsByClientId($clientId);
 
 
         $grupoEconomico = $this->apiGpReturnsIntegrationService->consultGroupEconomicByClient([
-            'ruc' => $cliente->CLI_RUC ?? null,
+            'ruc' => data_get($cliente, 'CLI_RUC', null),
         ]);
 
         if (!$grupoEconomico['success']) {
@@ -592,45 +591,45 @@ class DevolucionService implements DevolucionServiceInterface
     public function printReturn($devolucion_id)
     {
         $data = [];
-        $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
-        $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
-        $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
-        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', collect($detalleDev)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
-        $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
+        $devolucion         = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
+        $pedido             = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
+        $detalleDev         = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $articulosImpuesto  = GpArticulo::whereIn('ART_CODIGO', collect($detalleDev)->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        $puntoVenta         = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
         $data['devolucion'] = $devolucion;
-        $data['pedido'] = $pedido;
+        $data['pedido']     = $pedido;
 
-        $cliente = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
-        $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
+        $cliente            = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
+        $email              = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
         $cliente['CLI_CORREO_ELECT_SRI'] = $email[0];
-        $data['cliente'] = $cliente;
+        $data['cliente']    = $cliente;
 
-        $sucursal = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
-        $data['sucursal'] = $sucursal;
+        $sucursal           = $this->devolucionRepository->getSucursalByInvoiceToArray($pedido['sucursal_facturacion_id']);
+        $data['sucursal']   = $sucursal;
 
-        $data['subtotal'] = 0.00;
-        $data['descuento'] = 0.00;
+        $data['subtotal']   = 0.00;
+        $data['descuento']  = 0.00;
         $data['subtotalmenosdescuento'] = 0.00;
-        $data['iva'] = 0.00;
+        $data['iva']        = 0.00;
 
-        $detalleGrouped = collect($detalleDev)->groupBy(function ($det) {
+        $detalleGrouped     = collect($detalleDev)->groupBy(function ($det) {
             return $det['detalle_id'] . '_' . $det['ART_CODIGO'];
         })->map(function ($group) {
-            $base = $group->first();
-            $base['seleccionado'] = $group->sum('seleccionado');
-            $base['devuelto'] = $group->sum('devuelto');
-            $base['recibido'] = $group->sum('recibido');
+            $base                   = $group->first();
+            $base['seleccionado']   = $group->sum('seleccionado');
+            $base['devuelto']       = $group->sum('devuelto');
+            $base['recibido']       = $group->sum('recibido');
             return $base;
         })->sortBy('detalle_id')->values();
 
 
 
         foreach ($detalleGrouped as $key => $art) {
-            $valorUnitario = (float) $art['ART_VALOR'];
-            $cantidad = (float) $art['devuelto'];
-            $descuentoUnitario = (float) $art['ART_DESCUENTO'];
+            $valorUnitario      = (float) $art['ART_VALOR'];
+            $cantidad           = (float) $art['devuelto'];
+            $descuentoUnitario  = (float) $art['ART_DESCUENTO'];
             $impuestoPorcentaje = (float) $articulosImpuesto[$art['ART_CODIGO']] ?? 0;
-            $tipoImpuesto = $art['ART_IMP_VTA'];
+            $tipoImpuesto       = $art['ART_IMP_VTA'];
 
             if ($cantidad == 0) {
                 unset($detalleGrouped[$key]);
@@ -638,10 +637,10 @@ class DevolucionService implements DevolucionServiceInterface
             }
 
 
-            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+            $lineNet        = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount  = $descuentoUnitario * $cantidad;
+            $lineaSubtotal  = $lineNet + $lineaDiscount;
+            $lineaIva       = $lineNet * ($impuestoPorcentaje / 100);
 
             if (!isset($data['tipoimpuesto'][$tipoImpuesto])) {
                 $data['tipoimpuesto'][$tipoImpuesto] = 0;
@@ -652,24 +651,24 @@ class DevolucionService implements DevolucionServiceInterface
             $data['tipoimpuesto'][$art['ART_IMP_VTA']] += $lineaSubtotal;
             $data['sumaimpuesto'][$art['ART_IMP_VTA']] += $lineaIva;
 
-            $data['subtotal'] += $lineaSubtotal;
-            $data['descuento'] += $lineaDiscount;
+            $data['subtotal']   += $lineaSubtotal;
+            $data['descuento']  += $lineaDiscount;
             $data['subtotalmenosdescuento'] += $lineNet;
-            $data['iva'] += $lineaIva;
+            $data['iva']        += $lineaIva;
         }
 
         $data['subtotalmenosdescuento'] = (float) round($data['subtotalmenosdescuento'], 2);
-        $data['descuento'] = (float) round($data['descuento'], 2);
-        $data['iva'] = (float) round($data['iva'], 2);
-        $totalMatematico = $data['subtotalmenosdescuento'] + $data['iva'];
-        $data['total'] = number_format($totalMatematico, 2, '.', '');
+        $data['descuento']              = (float) round($data['descuento'], 2);
+        $data['iva']                    = (float) round($data['iva'], 2);
+        $totalMatematico                = $data['subtotalmenosdescuento'] + $data['iva'];
+        $data['total']                  = number_format($totalMatematico, 2, '.', '');
 
 
-        $data['detalle'] = $detalleGrouped;
-        $data['PTO_VTA_DESCRIPCION'] = $puntoVenta->PTO_VTA_DESCRIPCION;
-        $data['direccion'] = $puntoVenta->PTO_VTA_DIRECCION_1 . ' ' . $puntoVenta->PTO_VTA_DIRECCION_2;
-        $data['telefono'] = $puntoVenta->PTO_VTA_FONO_1;
-        $data['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
+        $data['detalle']                = $detalleGrouped;
+        $data['PTO_VTA_DESCRIPCION']    = $puntoVenta->PTO_VTA_DESCRIPCION;
+        $data['direccion']              = $puntoVenta->PTO_VTA_DIRECCION_1 . ' ' . $puntoVenta->PTO_VTA_DIRECCION_2;
+        $data['telefono']               = $puntoVenta->PTO_VTA_FONO_1;
+        $data['vendedor']               = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
 
         return $data;
     }
@@ -677,14 +676,14 @@ class DevolucionService implements DevolucionServiceInterface
     /** para facturas antes del 2026 */
     public function printReturnOld($devolucion_id)
     {
-        $data = [];
-        $devolucion = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
-        $pedido = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
-        $detalleDev = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
-        $puntoVenta = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
+        $data               = [];
+        $devolucion         = $this->devolucionRepository->getReturnByIdToArray($devolucion_id);
+        $pedido             = $this->devolucionRepository->getOrderByIdWithUsers($devolucion['pedido_id']);
+        $detalleDev         = $this->devolucionRepository->getDetailDevolucionById($devolucion_id);
+        $puntoVenta         = $this->devolucionRepository->getByPtoVtaIdReturns($pedido['PTO_VTA_ID']);
         $data['devolucion'] = $devolucion;
-        $data['pedido'] = $pedido;
-        $typeDev = $devolucion['tipo_devolucion'] == 'total' ? 'total' : 'parcial';
+        $data['pedido']     = $pedido;
+        $typeDev            = $devolucion['tipo_devolucion'] == 'total' ? 'total' : 'parcial';
 
         $cliente = $this->devolucionRepository->getClientsByClientIdToArray($pedido['cliente_id']);
         $email = explode(';', str_replace(',', ';', $cliente['CLI_CORREO_ELECT_SRI']));
@@ -786,7 +785,7 @@ class DevolucionService implements DevolucionServiceInterface
             ])
             ->join('gp_pedidos as gp', 'gd.pedido_id', '=', 'gp.id')
             ->join('gp_punto_ventas as gpv', 'gp.PTO_VTA_ID', '=', 'gpv.PTO_VTA_ID')
-            ->whereIn('gd.estado', ['aprobado', 'solicitado'])
+            ->whereIn('gd.estado', [DevolutionStatus::APROBADO, DevolutionStatus::SOLICITADO])
             ->where('gd.despachado', '=', 1)
             ->where('gp.BOD_BODEGA', '=', $bodega)
             ->where(function ($p) {
@@ -820,28 +819,28 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function getReturnDetailToReceiveById(int $id)
     {
-        $devolucion = GpDevoluciones::find($id);
-        $pedido = $this->devolucionRepository->getOrderbyId($devolucion->pedido_id);
-        $segmento = $this->getSegmentoCliente($pedido->CLI_RUC);
-        $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion->id, 1);
-        $devolucion->orderDespacho = $this->devolucionRepository->getDispatchOrder($devolucion->pedido_id);
-        $detalleEnriquecido = collect($detalle)->map(function ($item) use ($pedido) {
+        $devolucion                 = GpDevoluciones::find($id);
+        $pedido                     = $this->devolucionRepository->getOrderbyId($devolucion->pedido_id);
+        $segmento                   = $this->getSegmentoCliente($pedido->CLI_RUC);
+        $detalle                    = $this->devolucionRepository->getDetailDevolucion($devolucion->id, 1);
+        $devolucion->orderDespacho  = $this->devolucionRepository->getDispatchOrder($devolucion->pedido_id);
+        $detalleEnriquecido         = collect($detalle)->map(function ($item) use ($pedido) {
             $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
-                'item' => $item['ART_CODIGO'],
+                'item'   => $item['ART_CODIGO'],
                 'bodega' => $pedido->BOD_BODEGA
             ]);
-            $bin = data_get($resp, 'detalle.compartimento', null);
-            $lista = data_get($resp, 'lista', []);
-            $item['compartimientos'] = $lista;
-            $item['compartimiento'] = $bin;
+            $bin                        = data_get($resp, 'detalle.compartimento', null);
+            $lista                      = data_get($resp, 'lista', []);
+            $item['compartimientos']    = $lista;
+            $item['compartimiento']     = $bin;
             return $item;
         });
 
         return [
-            'devolucion' => $devolucion,
-            'detalle' => $detalleEnriquecido,
-            'segmento' => $segmento,
-            'pedido' => $pedido
+            'devolucion'    => $devolucion,
+            'detalle'       => $detalleEnriquecido,
+            'segmento'      => $segmento,
+            'pedido'        => $pedido
         ];
     }
 
@@ -849,40 +848,37 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function generatePdfOrderStorageDevolution(array $data)
     {
-        $header = data_get($data, 'header');
-        $detalle = data_get($data, 'details');
+        $header     = data_get($data, 'header');
+        $detalle    = data_get($data, 'details');
 
         $viewData = [
-            'header' => $header,
-            'details' => $detalle,
+            'header'    => $header,
+            'details'   => $detalle,
         ];
 
-        $html = view('pdf.orden-almacenamiento-devolucion', $viewData)->render();
-        $pdf = app('dompdf.wrapper');
+        $html       = view('pdf.orden-almacenamiento-devolucion', $viewData)->render();
+        $pdf        = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
-        $binary = $pdf->output();
-        $filename = 'orden-almacenamiento-' . $header['devolucion'] . '.pdf';
+        $binary     = $pdf->output();
+        $filename   = 'orden-almacenamiento-' . $header['devolucion'] . '.pdf';
 
         return [
-            'binary' => $binary,
-            'filename' => $filename,
-            'content_type' => 'application/pdf',
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
         ];
     }
 
 
-    public function receivedDevolutions(array $header, array $detail)
+    public function receivedDevolutions(array $header, array $detail, GpUsuario $gpuser)
     {
-        $auth = Auth::user();
-        $gpuser = GpUsuario::find($auth->id);
-
         return DB::transaction(function () use ($gpuser, $header, $detail) {
             $dev = GpDevoluciones::lockForUpdate()->find($header['id']);
             if (!$dev) {
                 abort(409, 'devolución no encontrada');
             }
-            if (in_array($dev->estado, [DevolutionStatus::RECIBIDO,DevolutionStatus::PROCESADO])) {
+            if (in_array($dev->estado, [DevolutionStatus::RECIBIDO, DevolutionStatus::PROCESADO])) {
                 abort(409, 'Esta devolución ya fue recibida en otra instancia');
             }
             foreach ($detail as $dt) {
@@ -916,16 +912,14 @@ class DevolucionService implements DevolucionServiceInterface
     }
 
 
-    public function dennyDevolucion(int $id)
+    public function dennyDevolucion(int $id, GpUsuario $user)
     {
-        $auth = Auth::user();
-        $gpuser = GpUsuario::find($auth->id);
-        return DB::transaction(function () use ($id, $gpuser) {
+        return DB::transaction(function () use ($id, $user) {
             $devolucion = GpDevoluciones::lockForUpdate()->findOrFail($id);
             $devolucion->update([
-                'estado' => DevolutionStatus::RECHAZADO,
-                'aprobado' => 'no',
-                'aprobador_id' => $gpuser->id
+                'estado'        => DevolutionStatus::RECHAZADO,
+                'aprobado'      => 'no',
+                'aprobador_id'  => $user->id
             ]);
 
             return $devolucion->refresh();
@@ -1081,7 +1075,6 @@ class DevolucionService implements DevolucionServiceInterface
     public function getApiResponseNoteCredit($params)
     {
         return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($params);
-
     }
 
     public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $order)

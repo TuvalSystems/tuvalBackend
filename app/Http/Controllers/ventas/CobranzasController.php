@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\Controller;
@@ -16,7 +17,6 @@ use App\Models\GpCronLog;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaCaja;
 use App\Models\GpUsuario;
-use App\Models\Notificaciones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\cobranzas\GpCobro;
@@ -103,8 +103,7 @@ class CobranzasController extends Controller
                 $facturas_retenciones[] = $factura;
             }
 
-            $depositos_pendientes = GpCobrosDeposito::
-                join('gp_cobros_depositos_facturas', 'gp_cobros_depositos_facturas.deposito_id', 'gp_cobros_depositos.id')
+            $depositos_pendientes = GpCobrosDeposito::join('gp_cobros_depositos_facturas', 'gp_cobros_depositos_facturas.deposito_id', 'gp_cobros_depositos.id')
                 ->where('gp_cobros_depositos_facturas.id_factura', $factura['ECD_DET_NUM_DOC'])
                 ->where('gp_cobros_depositos.estado', 'iniciado')
                 ->select('gp_cobros_depositos_facturas.monto')
@@ -135,7 +134,7 @@ class CobranzasController extends Controller
 
         $pedidos = GpPedido::leftJoin('gp_cobros', 'gp_cobros.pedido', 'gp_pedidos.pedido')
             ->where('gp_pedidos.cliente_id', $data['id'])
-            ->where('gp_pedidos.estado', 'espera')
+            ->where('gp_pedidos.estado', OrderStatus::ESPERA)
             ->whereNull('gp_cobros.pedido')
             ->select('gp_pedidos.*')
             ->get();
@@ -163,8 +162,8 @@ class CobranzasController extends Controller
     public function estadodecuentaclientetuval($ruc)
     {
         //        $data = $request->validate([
-//            'CLI_RUC' => 'required',
-//        ]);
+        //            'CLI_RUC' => 'required',
+        //        ]);
 
         $webservices = new WebserviceController();
         $funciones = new FuncionesController();
@@ -192,8 +191,8 @@ class CobranzasController extends Controller
             'resumen' => $resumen['ConsultaResumenEstadoCuentaTuvalResult']['RESUMEN_ESTADO_CUENTA_TUVAL'][0],
         ];
         //        echo '<pre>';
-//        print_r($data);
-//        die();
+        //        print_r($data);
+        //        die();
         //return view('estadodecuentaclientePDF', $data);
         $pdf = PDF::loadView('estadodecuentaclientePDF', $data);
         return $pdf->stream('estadodecuentacliente-' . $cliente['CLI_RUC'] . '-' . date('Y-m-d') . '.pdf');
@@ -248,8 +247,8 @@ class CobranzasController extends Controller
         }
 
         //        echo '<pre>';
-//        print_r($detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL']);
-//        die();
+        //        print_r($detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL']);
+        //        die();
 
         $export = new EstadodecuentaExport($resumen);
 
@@ -358,7 +357,6 @@ class CobranzasController extends Controller
                     $save_factura->save();
                 }
             }
-
         }
 
         if (isset($data['ingreso_cheques']['monto_original']) && $data['ingreso_cheques']['monto_original'] > 0) {
@@ -578,7 +576,7 @@ class CobranzasController extends Controller
 
     public function enviarcobros()
     {
-        $cobros = GpCobro::whereNotIn('estado',['enviado','no_enviado'])->get();
+        $cobros = GpCobro::whereNotIn('estado', ['enviado', 'no_enviado'])->get();
 
         foreach ($cobros as $cobro) {
             $this->enviarcobro($cobro->id);
@@ -635,8 +633,8 @@ class CobranzasController extends Controller
                     'Monto_Cobro' => $efectivo->monto,
                     'Saldo_Pendiente' => number_format($efectivo->monto - $monto_deposito, 2, '.', ''),
                     'Banco_Tuval' => $cobro->caja,
-                    'Fecha_Deposito_Trf' => $cobro->fecha,//$efectivo->fecha.'T00:00:00',
-                    'Numero_Papeleta' => '',//$efectivo->comprobante
+                    'Fecha_Deposito_Trf' => $cobro->fecha, //$efectivo->fecha.'T00:00:00',
+                    'Numero_Papeleta' => '', //$efectivo->comprobante
                 )
             );
 
@@ -979,8 +977,8 @@ class CobranzasController extends Controller
                 'Facturas' => $envio_che_facturas
             );
             //            echo '<pre>';
-//            print_r($parameters);
-//            die();
+            //            print_r($parameters);
+            //            die();
             $estadoDeCuenta = $webservice->cobranzas('CreaCobroCheques', $parameters);
 
             if (isset($estadoDeCuenta['CreaCobroChequesResult']['Retorno'][0]['Mensaje'])) {
@@ -1031,8 +1029,8 @@ class CobranzasController extends Controller
                     'Monto_Cobro' => $tarjeta->monto,
                     'Saldo_Pendiente' => number_format($tarjeta->monto - $monto_tarjeta, 2, '.', ''),
                     'Banco_Tuval' => $tarjeta->banco,
-                    'Fecha_Deposito_Trf' => $cobro->fecha,//$efectivo->fecha.'T00:00:00',
-                    'Numero_Papeleta' => $tarjeta->comprobante,//$efectivo->comprobante
+                    'Fecha_Deposito_Trf' => $cobro->fecha, //$efectivo->fecha.'T00:00:00',
+                    'Numero_Papeleta' => $tarjeta->comprobante, //$efectivo->comprobante
                 )
             );
 
@@ -1087,8 +1085,8 @@ class CobranzasController extends Controller
                 'Facturas' => $envio_facturas_apl
             );
             //            echo '<pre>';
-//            print_r($parameters);
-//            die();
+            //            print_r($parameters);
+            //            die();
             $estadoDeCuenta = $webservice->cobranzas('AplicaCobroAnticipo', $parameters);
 
             if (isset($estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Mensaje'])) {
@@ -1132,8 +1130,8 @@ class CobranzasController extends Controller
         $webservice = new WebserviceController;
         $estadoDeCuenta = $webservice->cobranzas('ConsultaCobrosAnulados', $parameters);
         //        echo '<pre>';
-//        print_r($estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS']);
-//        die();
+        //        print_r($estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS']);
+        //        die();
         if (isset($estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS'])) {
             $cobrosAnulados = $estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS'];
             foreach ($cobrosAnulados as $anulado) {
@@ -1372,8 +1370,8 @@ class CobranzasController extends Controller
 
         $cobro = $this->detallecobro($cobro);
         //        echo '<pre>';
-//        print_r($cobro);
-//        die();
+        //        print_r($cobro);
+        //        die();
         //return view('cobranzaPDF', $cobro);
         $pdf = PDF::loadView('cobranzaPDF', $cobro);
         return $pdf->stream('cobro-' . $cobro['numero_recibo'] . '.pdf');
@@ -1473,9 +1471,9 @@ class CobranzasController extends Controller
         foreach ($cobros as $cobro) {
             $efectivos = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)
                 //                ->where(function($q) {
-//                    $q->where('mensaje_ws', '=', 'Registro de cobro guardado correctamente.')
-//                        ->orWhere('mensaje_ws', '=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-//                })
+                //                    $q->where('mensaje_ws', '=', 'Registro de cobro guardado correctamente.')
+                //                        ->orWhere('mensaje_ws', '=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
+                //                })
                 ->get();
             foreach ($efectivos as $efe) {
                 $efectivo += $efe->monto;
@@ -1529,9 +1527,9 @@ class CobranzasController extends Controller
             $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)
                 ->where('estado', '!=', 'iniciado')
                 //                ->where(function($q) {
-//                    $q->where('mensaje_ws', '=', 'Registro de cobro guardado correctamente.')
-//                        ->orWhere('mensaje_ws', '=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-//                })
+                //                    $q->where('mensaje_ws', '=', 'Registro de cobro guardado correctamente.')
+                //                        ->orWhere('mensaje_ws', '=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
+                //                })
                 ->get();
             foreach ($depositos as $deposito) {
                 $valor_depositos += $deposito->monto;
@@ -1545,9 +1543,9 @@ class CobranzasController extends Controller
         foreach ($cobros as $cobro) {
             $tarjetas = GpCobrosTarjetaMonto::where('cobro_id', $cobro->id)
                 //                ->where(function($q) {
-//                    $q->where('mensaje_ws', '=', 'Registro de cobro guardado correctamente.')
-//                        ->orWhere('mensaje_ws', '=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-//                })
+                //                    $q->where('mensaje_ws', '=', 'Registro de cobro guardado correctamente.')
+                //                        ->orWhere('mensaje_ws', '=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
+                //                })
                 ->get();
             foreach ($tarjetas as $tarjeta) {
                 $valor_tarjetas += $tarjeta->monto;
@@ -1612,7 +1610,6 @@ class CobranzasController extends Controller
             'success' => true,
             'caja' => $data,
         ]);
-
     }
 
     public function consultaretencion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1719,8 +1716,6 @@ class CobranzasController extends Controller
                 ->where('gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_PUNTO_VENTA', $puntodenta)
                 ->select('gp_cajas.*')
                 ->first();
-
-
         } else {
             $caja = GpRelacionUsuarioCaja::join('gp_cajas', 'gp_cajas.CAJA_CODIGO', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
                 ->where('CAJ_USER_USUARIO', $user->USERID)
@@ -1798,9 +1793,6 @@ class CobranzasController extends Controller
             $apertura->fecha_apertura = date('Y-m-d H:i:s');
             $apertura->save();
         }
-
-
-
     }
 
     public function cerrarcaja($puntodeventa, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -2074,7 +2066,6 @@ class CobranzasController extends Controller
             'mensaje' => 'Cierre de caja procesado',
             'cobros' => $cobros,
         ]);
-
     }
 
     public function cobroscliente($data): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection

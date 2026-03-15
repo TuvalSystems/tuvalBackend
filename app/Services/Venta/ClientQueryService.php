@@ -10,7 +10,6 @@ use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 
 class ClientQueryService implements ClientQueryServiceInterface
 {
@@ -27,7 +26,7 @@ class ClientQueryService implements ClientQueryServiceInterface
     {
         $searchTerm = '%' . str_replace(' ', '%', $term) . '%';
 
-        return GpCliente::query()
+        $clientes = GpCliente::query()
             ->from('gp_clientes as gpc')
             ->select([
                 'gpc.id',
@@ -47,19 +46,34 @@ class ClientQueryService implements ClientQueryServiceInterface
                     ->orWhere('gpc.CLI_NOMBRE_CORTO', 'LIKE', $searchTerm)
                     ->orWhere('gpc.CLI_CORREO_ELECT_SRI', 'LIKE', $searchTerm);
             })
-
-            // ->when($type !== 'cobranza', function (Builder $query) {
-            //     $query->where('CLI_SUSPENDIDO', '!=', 'si');
-            // })
-            // ->with([
-            //     'gpvendedor:id,VEND_ID,VEND_NOMBRES,VEND_APELLIDOS',
-            //     'sucursales' => function ($query) {
-            //         $query->with('vendedor:VEND_ID,VEND_NOMBRES,VEND_APELLIDOS')
-            //             ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC');
-            //     }
-            // ])
-            ->limit(120)
+            ->limit(200)
             ->get();
+
+        /** verificacion de emails  */
+        return $clientes->transform(function ($client) {
+            $rawEmail = $client->CLI_CORREO_ELECT_SRI;
+            if (empty($rawEmail) || trim($rawEmail) == '') {
+                $client->emails_validated = true;
+                return $client;
+            }
+
+            $emails = preg_split('/[;]/', $rawEmail, -1, PREG_SPLIT_NO_EMPTY);
+            $allValid = true;
+
+
+            foreach ($emails as $email) {
+                $emailClear = trim($email);
+
+                if ($emailClear == '') continue;
+
+                if (!filter_var($emailClear, FILTER_VALIDATE_EMAIL)) {
+                    $allValid = false;
+                    break; // Si uno falla, ya no es válido para el Request, cortamos aquí.
+                }
+            }
+            $client->emails_validated = $allValid;
+            return $client;
+        });
     }
 
 
@@ -89,7 +103,7 @@ class ClientQueryService implements ClientQueryServiceInterface
 
     public function getCustomerBranches(string $ruc): mixed
     {
-        return GpClienteSucursal::where('CLI_SUC_RUC', $ruc)
+        $sucursales =  GpClienteSucursal::where('CLI_SUC_RUC', $ruc)
             ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC')
             ->select([
                 'id',
@@ -99,23 +113,45 @@ class ClientQueryService implements ClientQueryServiceInterface
                 'coordenadas'
             ])
             ->get();
+        return $sucursales->transform(function ($client) {
+            $rawEmail = $client->CLI_SUC_CORREO_ELECTRONICO_SRI;
+            if (empty($rawEmail) || trim($rawEmail) == '') {
+                $client->emails_validated = true;
+                return $client;
+            }
+
+            $emails = preg_split('/[;]/', $rawEmail, -1, PREG_SPLIT_NO_EMPTY);
+            $allValid = true;
+
+
+            foreach ($emails as $email) {
+                $emailClear = trim($email);
+
+                if ($emailClear == '') continue;
+
+                if (!filter_var($emailClear, FILTER_VALIDATE_EMAIL)) {
+                    $allValid = false;
+                    break; // Si uno falla, ya no es válido para el Request, cortamos aquí.
+                }
+            }
+            $client->emails_validated = $allValid;
+            return $client;
+        });
     }
 
 
 
     /** proceso para crear la nueva direccion del cliente - sucursal */
 
-    public function storeNewAddressClient(array $data)
+    public function storeNewAddressClient(array $data, GpUsuario $userGp)
     {
-        $userGp = GpUsuario::where('id', Auth::user()->id)->first();
-        $cliente = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
-        $email = strtolower(data_get($data, 'email', ''));
-        $textoEnvuelto = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
-        $dir = explode("\n", $textoEnvuelto);
-
-        $payloadGp = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
-        $respInfo = $this->sendToGpNewAddress($payloadGp);
-        $identificador = strtoupper(data_get($respInfo, 'identificador', ''));
+        $cliente        = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
+        $email          = strtolower(data_get($data, 'email', ''));
+        $textoEnvuelto  = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
+        $dir            = explode("\n", $textoEnvuelto);
+        $payloadGp      = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
+        $respInfo       = $this->sendToGpNewAddress($payloadGp);
+        $identificador  = strtoupper(data_get($respInfo, 'identificador', ''));
         return $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
     }
 
@@ -128,6 +164,5 @@ class ClientQueryService implements ClientQueryServiceInterface
             abort(404, 'No se pudo crear la direccion del cliente');
         }
         return data_get($resp, 'data', []);
-
     }
 }

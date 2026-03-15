@@ -196,11 +196,11 @@
                     </td>
                     <td align="left" style="padding: 10px 0; width:50%">
                         @if(isset($guia['GUI_REM_CODIGO']) && $guia['GUI_REM_CODIGO'] != '')
-                            @php
-                                $generatorPNG = new Picqer\Barcode\BarcodeGeneratorPNG();
-                            @endphp
-                            <img style="width: 100%;height: 50px;"
-                                src="data:image/png;base64,{{ base64_encode($generatorPNG->getBarcode($guia['GUI_REM_CODIGO'], $generatorPNG::TYPE_CODE_128)) }}">
+                        @php
+                        $generatorPNG = new Picqer\Barcode\BarcodeGeneratorPNG();
+                        @endphp
+                        <img style="width: 100%;height: 50px;"
+                            src="data:image/png;base64,{{ base64_encode($generatorPNG->getBarcode($guia['GUI_REM_CODIGO'], $generatorPNG::TYPE_CODE_128)) }}">
                         @endif
                     </td>
                 </tr>
@@ -246,22 +246,26 @@
         </table>
         <p style="padding-bottom: 10px;"><b>Pedido:</b>
             @if(count($transferencias))
-                @foreach($transferencias as $trans)
-                    {{$trans}},
-                @endforeach
+            @foreach($transferencias as $trans)
+            {{$trans}},
+            @endforeach
             @else
-                {{ $guia['pedido'] }}
+            {{ $guia['pedido'] }}
+            @endif
+            @if($guia['orden_de_compra'] && $guia['tipo'] == 'despacho')
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Orden de Compra:</b> {{ $guia['orden_de_compra'] }}
             @endif
         </p>
+
         <div class="bordered">
             <table class="table2">
                 <tr>
                     <td><b>Motivo Traslado:</b></td>
                     <td>
                         @if($guia['tipo'] == 'despacho')
-                            VENTA
+                        VENTA
                         @else
-                            TRASLADO
+                        TRASLADO
                         @endif
                     </td>
                     <td><b>Destino (Punto de llegada):</b></td>
@@ -274,7 +278,7 @@
                     <td><b>Razon Social:</b></td>
                     <td>{{ $guia['GUI_REM_RAZON_SOCIAL_DESTINATARIO'] }}
                         @if($guia['bodega_destino'] != '')
-                            - {{$guia['bodega_destino']}}
+                        - {{$guia['bodega_destino']}}
                         @endif
                     </td>
                 </tr>
@@ -296,6 +300,7 @@
             <table class="table table-striped tablacarrito">
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Código</th>
                         <th>Cód.Let.Itm.</th>
                         <th class="text-right">Cant.</th>
@@ -305,25 +310,56 @@
                 </thead>
                 <tbody>
                     @foreach ($detalle as $key => $value)
-                        <tr>
-                            <td class="nowrap">
-                                {{$value->GUI_REM_CODI_INTERNO}}
-                            </td>
-                            <td>{{$value->GUI_REM_CODI_ADICIONAL}}</td>
-                            <td class="text-right">{{$value->GUI_REM_CANTIDAD}}</td>
-                            <td>{{$value->GUI_REM_UNIDAD_MEDIDA}}</td>
-                            <td>{{$value->GUI_REM_DESCRIPCION}}
-                                @if($value->CHECK_ALTERNATIVO === 1)
-                                    <span class="text-danger" style="color: red;">(Alternativa)</span>
-                                @endif
-                            </td>
-                        </tr>
+                    <tr>
+                        <td> {{ $key + 1 }}</td>
+                        <td class="nowrap">
+                            {{$value->GUI_REM_CODI_INTERNO}}
+                        </td>
+                        <td>{{$value->GUI_REM_CODI_ADICIONAL}}</td>
+                        <td class="text-right">{{$value->GUI_REM_CANTIDAD}}</td>
+                        <td>{{$value->GUI_REM_UNIDAD_MEDIDA}}</td>
+                        <td>{{$value->GUI_REM_DESCRIPCION}}
+                            @if($value->CHECK_ALTERNATIVO === 1)
+                            <span class="text-danger" style="color: red;">(Alternativa)</span>
+                            @endif
+                        </td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
 
+        @if($guia['tipo'] == 'despacho')
+        <table width="100%" style="margin-top: 30px; margin-bottom: 30px;">
+            <tr>
+                <td width="40%" align="left">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="text-align: left; padding-bottom: 40px; font-size: 11px;">
+                                Recibí Conforme:
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border-top: 1px solid #000000; padding-top: 5px; text-align: left; font-size: 11px;">
+                                C.I.:
+                            </td>
+                        </tr>
+                    </table>
+                </td>
 
+                <td width="60%"></td>
+            </tr>
+        </table>
+        @endif
+
+        @if($guia['tipo'] != 'despacho')
+        @if($guia['GUI_REM_OBSERVACION'] != '')
+        <strong style="font-size:10px;">Observación:</strong>
+        <div class="bordered" style="font-size:10px; width: 100%; word-wrap: break-word;">
+            {{ wordwrap($guia['GUI_REM_OBSERVACION'], 100, "\n", true) }}
+        </div>
+        @endif
+        @endif
         <div>
             <p class="text-center"><b>Documento sin validez tributaria, consultar documento electrónico en
                     www.ecdatos.com</b></p>
@@ -332,6 +368,8 @@
             <p>Según resolución NAC-DGERCGC14-00790 en un tiempo no mayor a 24 horas, el XML firmado electrónicamente
                 deberá ser enviado al SRI para su validación</p>
         </div>
+
+
     </div>
 </body>
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
@@ -9,7 +10,7 @@ use Illuminate\Http\Request;
 use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
+
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\traslados\GpTrasladosVentas;
@@ -20,10 +21,11 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 
 class TransferenciasController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
 
     protected $transferService;
     public function __construct(TransferServiceInterface $transferServiceInterface)
@@ -57,7 +59,7 @@ class TransferenciasController extends Controller
 
     public function checktransferencias()
     {
-        $pedidos = GpPedido::where('estado', 'traslado')->get();
+        $pedidos = GpPedido::where('estado', OrderStatus::TRASLADO)->get();
 
         foreach ($pedidos as $pedido) {
             $detalles = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
@@ -72,15 +74,13 @@ class TransferenciasController extends Controller
 
     public function transferenciasVentas($id, $pedido = null, $compartimiento = null)
     {
-        try {
+        return $this->executeTransaction(function () use ($id, $pedido, $compartimiento) {
             $data = $this->transferService->fetchSalesTransfers($id, $pedido, $compartimiento);
             return $this->successResponse('Transferencias obtenidas', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'laravel', 'transferenciasVentas');
     }
 
- 
+
 
     public function recibosventa($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -132,7 +132,7 @@ class TransferenciasController extends Controller
     public function cancelarpicking(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $picking = $request->all();
-        $user = Auth::user();
+        $user = $request->user();
 
         if (GpTrasladosVentas::where('id', $picking['id'])->update(['picking' => null])) {
 

@@ -31,7 +31,11 @@ class GpGuiaRemisionTransferencia extends Model
 
     protected $fillable = [
         'guia_remision_id',
+        'id_movimiento',
+        'tipo_movimiento',
+        'tipo',
         'codigo',
         'pedido',
+        'hash_interno'
     ];
 }

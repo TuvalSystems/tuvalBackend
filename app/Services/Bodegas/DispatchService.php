@@ -8,7 +8,7 @@ use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;

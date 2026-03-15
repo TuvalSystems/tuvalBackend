@@ -21,7 +21,7 @@ interface OrderRepositoryInterface
     public function getReturnsByOrder(int $orderId);
 
     /** facturacion de siguiente mes */
-     public function queryOrdersToInvoiceNextMonth($year, $mes);
+    public function queryOrdersToInvoiceNextMonth($year, $mes);
 
     /** functiones  para el proceso de facturar existentes */
 
@@ -31,7 +31,7 @@ interface OrderRepositoryInterface
 
 
     /** funcion para obtener todos los pedidos en estado de espera para facturar */
-     public function queryInvoiceReservedOrdersForDate($date);
+    public function queryInvoiceReservedOrdersForDate($date);
 
-         public function queryHasGuideDispatched($ids): bool;
+    public function queryHasGuideDispatched($ids): bool;
 }

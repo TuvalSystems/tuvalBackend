@@ -41,7 +41,7 @@ class ApiDeliverNoteService extends ApiGpService
     }
 
 
-     public function createReservationGuideAjustment(array $params)
+    public function createReservationGuideAjustment(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_MOVIMIENTO_GENERAR, 'POST', $params, 'json');
     }
@@ -49,7 +49,7 @@ class ApiDeliverNoteService extends ApiGpService
 
     public function checkDispatchGuideAdjustment(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_DESPACHO_CHECK_AJUSTE, 'GET', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_DESPACHO_CHECK_AJUSTE, 'POST', $params, 'json');
     }
 
     public function checkTransferGuideAdjustment(array $params)
@@ -65,7 +65,7 @@ class ApiDeliverNoteService extends ApiGpService
 
     public function checkReservationGuideAdjustment(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_CHECK_AJUSTE, 'GET', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_CHECK_AJUSTE, 'POST', $params, 'json');
     }
 
 
@@ -74,15 +74,31 @@ class ApiDeliverNoteService extends ApiGpService
 
     /** proceso de recibir guia de reserva */
 
-    public function checkReceiveGuideReservationAjustment(array $params)
-    {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_RECIBIDO_CHECK_AJUSTE, 'GET', $params, 'json');
-    }
-
+   
 
     public function createReceiveGuideReservationAjustment(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_RESERVA_RECIBIR_ITEMS, 'POST', $params, 'json');
     }
 
+    /**
+     * proceso de recbir guia de transferencia de venta
+     *
+     */
+    public function createReceiveGuideSalesTransfered(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_TRFV_RECIBIR_ITEMS, 'POST', $params, 'json');
+    }
+
+    public function checkReceivedGuideSalesTransfered(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_TRFV_RECIBIDO_CHECK_AJUSTE, 'POST', $params, 'json');
+    }
+
+
+
+    public function createReceiveGuideReplenishmentTransfered(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GUIA_REPOSICION_RECIBIR_ITEMS, 'POST', $params, 'json');
+    }
 }

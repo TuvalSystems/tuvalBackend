@@ -20,7 +20,7 @@ use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpRelacionPuntoVentaCaja;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpRelacionUsuarioPuntoVenta;
-use App\Models\GpVendedor;
+use App\Models\Ventas\Vendedores\GpVendedor;
 
 use App\Models\GpProveedor;
 use App\Models\GpClaseCliente;

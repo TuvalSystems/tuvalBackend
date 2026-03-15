@@ -2,6 +2,7 @@
 
 namespace App\Services\Funciones;
 
+use App\Enums\Ventas\OrderOrigenEnum;
 use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
@@ -16,9 +17,9 @@ use App\Models\GpDescuentoFormaPago;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Models\reservas\GpCotizacionReservaLog;
-use App\Models\reservas\GpCotizacionReservaDetalleLog;
-use App\Models\reservas\GpReserva;
+use App\Models\Reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpCotizacionReservaDetalleLog;
+use App\Models\Reservas\GpReserva;
 use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -110,9 +111,9 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTraslado(GpPedido $pedido)
     {
-        $hayTraslado = $this->getDataCheckTraslado($pedido);
-        $detalles = $this->getDetailForTraslate($pedido);
-        $nuevoEstado = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
+        $hayTraslado    = $this->getDataCheckTraslado($pedido);
+        $detalles       = $this->getDetailForTraslate($pedido);
+        $nuevoEstado    = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
         $pedido->estado = $nuevoEstado;
 
         if ($nuevoEstado == OrderStatus::TRASLADO) {
@@ -127,7 +128,7 @@ class InvoiceService implements InvoiceServiceInterface
         return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
             ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
             ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-            ->whereNull('traslado')
+            ->where('traslado', 0)
             ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)
             ->select([
                 'gp_pedido_detalles.*',
@@ -297,11 +298,11 @@ class InvoiceService implements InvoiceServiceInterface
         }
 
         // verifica si el pedido esta en estado 'orden_de_compra'
-        if ($pedido->estado == OrderStatus::ORDEN_DE_COMPRA) {
+        if ($pedido->estado === OrderStatus::ORDEN_DE_COMPRA) {
             return;
         }
         // cuando el pedido esta en estado espera realiza otras validaciones adicionales
-        if ($pedido->estado == OrderStatus::ESPERA) {
+        if ($pedido->estado === OrderStatus::ESPERA) {
             Log::info("Pedido {$pedido->pedido} en estado 'espera', verificando si puede cambiar a 'enviando'...");
             if (!$this->orderReadyToShip($pedido)) {
                 Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
@@ -318,7 +319,7 @@ class InvoiceService implements InvoiceServiceInterface
                         'origen'        => $pedido->origen,
                         'fe_fact_res'   => $pedido->fe_facturacion_reserva,
                         'today'         => now()->toDateString(),
-                        'estado_prev'   => $pedido->estado,
+                        'estado_prev'   => $pedido->estado->value,
                     ]
                 );
 
@@ -337,7 +338,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         // 🚫 Validación final antes de facturar
         if (!$this->checkFinalInvoiceValidation($pedido)) {
-            Log::info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual:" . ($pedido->estado instanceof OrderStatus ? $pedido->estado->value : $pedido->estado));
+            Log::info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual: {$pedido->estado->value}");
             return;
         }
 
@@ -360,9 +361,9 @@ class InvoiceService implements InvoiceServiceInterface
         // verificar si el pedido ya fue facturado
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === true) {
-            $info               = $existInvoice['data'];
+            $info               = data_get($existInvoice, 'data', []);
             $pedido             = GpPedido::where('pedido', $pedido->pedido)->first();
-            $pedido->factura    = $info['numeroDocGenerado'];
+            $pedido->factura    = data_get($info, 'numeroDocGenerado', null);
             $pedido->estado     = OrderStatus::FACTURADO;
             $pedido->save();
             return $pedido;
@@ -410,7 +411,7 @@ class InvoiceService implements InvoiceServiceInterface
         $order->refresh();
         Log::info('Estado del pedido actualizado', [
             'pedido_id' => $order->pedido,
-            'nuevo_estado' => $order->estado,
+            'nuevo_estado' => $order->estado->value,
             'motivo_traslado' => $tieneTraslado ? 'requiere_traslado' : 'no_requiere_traslado'
         ]);
         return $tieneTraslado;
@@ -435,7 +436,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
     {
-        if ($pedido->origen !== 'reserva') {
+        if ($pedido->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value) {
             return true;
         }
 
@@ -475,7 +476,7 @@ class InvoiceService implements InvoiceServiceInterface
             'FAC_VTA_NOTA_CLIENTE'          => $this->normalizeTextNoteClient($pedido->nota_cliente),
 
             //campos aidicionales para el envio a sp de creacion de facturas
-            'userIdCreator'                => auth()->user()->USERID ?? 'adminWeb',
+            'userIdCreator'                => $pedido->USERID,
             'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
         ];
     }
@@ -533,7 +534,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         if ($isInvalidStatus || $hasInvoice || $missingCommercial || $missingCredit) {
             Log::warning("Validación fallida facturación pedido {$pedido->pedido}", [
-                'status'            => ($pedido->estado instanceof OrderStatus) ? $pedido->estado->value  : $pedido->estado,
+                'status'            => $pedido->estado->value,
                 'invoice'           => $hasInvoice,
                 'comm_approval'     => $missingCommercial,
                 'credit_approval'   => $missingCredit
@@ -560,8 +561,7 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->estado             = OrderStatus::FACTURADO;
         $pedido->fecha_factura      = now()->toDateString();
         $pedido->fecha_hora_factura = now();
-
-
+        Log::info("Pedido {$pedido->pedido} fcturado. numero de factura: {$pedido->factura}");
         $pedido->save();
         try {
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);

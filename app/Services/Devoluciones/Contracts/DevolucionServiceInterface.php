@@ -2,6 +2,7 @@
 
 namespace App\Services\Devoluciones\Contracts;
 
+use App\Models\GpUsuario;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface DevolucionServiceInterface
@@ -9,12 +10,12 @@ interface DevolucionServiceInterface
     public function validateInvoiceNotDispatchOrInProcess($pedido);
     public function countsReturnsByOrders($pedido, $devolucion);
 
-    public function handleDevolutionTransaction($data);
+    public function handleDevolutionTransaction($data, GpUsuario $user);
     // public function anularDevolucion($pedido, $devolucion);
 
     public function canBeAnulledByLimitDate($pedido);
 
-    public function executeReturn($data);
+    // public function executeReturn($data, GpUsuario $user);
 
     public function validateItemLDetailInvoice($devolucion);
 
@@ -32,8 +33,8 @@ interface DevolucionServiceInterface
 
     public function getReturnDetailToReceiveById(int $id);
     public function generatePdfOrderStorageDevolution(array $data);
-    public function receivedDevolutions(array $header, array $detail);
-    public function dennyDevolucion(int $id);
+    public function receivedDevolutions(array $header, array $detail, GpUsuario $user);
+    public function dennyDevolucion(int $id, GpUsuario $user);
 
     /** funciones a ejecutar en caso de que no se genere la nota de credito o el ajuste  */
     public function generarNotaCreditoDevolucionesFallidas($id);

@@ -2,6 +2,8 @@
 
 namespace App\Repositories\Pedidos;
 
+use App\Enums\Ventas\OrderOrigenEnum;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\devoluciones\GpDevoluciones;
@@ -127,7 +129,7 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function queryOrdersToInvoiceNextMonth($year, $mes)
     {
-        return GpPedido::query()->where('estado', 'espera')
+        return GpPedido::query()->where('estado', OrderStatus::ESPERA)
             ->where('factura_posterior_despacho', 1)
             ->where(function ($q) {
                 $q->whereNull('factura_a_demanda')
@@ -136,7 +138,10 @@ class OrderRepository implements OrderRepositoryInterface
             // ->where('origen', '!=', 'reserva')
             ->where(function ($q) {
                 $q->whereNull('origen')
-                    ->orWhere('origen', '!=', 'reserva');
+                    ->orWhereNotIn('origen', [
+                        // OrderOrigenEnum::RESERVA->value,
+                        OrderOrigenEnum::FACTURA_DEMANDA->value
+                    ]);
             })
             ->where('factura_siguiente_mes', 1)
             ->whereMonth('created_at', $mes)
@@ -160,21 +165,21 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function queryInvoiceReservedOrdersForDate($date)
     {
-        return GpPedido::where('origen', 'reserva')
-            ->where('estado', 'espera')
+        return GpPedido::where('origen', OrderOrigenEnum::FACTURA_DEMANDA->value)
+            ->where('estado', OrderStatus::ESPERA)
             ->whereNotNull('fe_facturacion_reserva')
             ->whereDate('fe_facturacion_reserva', $date);
     }
 
 
 
-    public function queryHasGuideDispatched($ids): bool{
-
-    return DB::table('gp_guia_remision_detalles as grd')
-        ->join('gp_guia_remisions as gr', 'gr.id', '=', 'grd.guia_remision_id')
-        ->whereIn('grd.detalle_id', $ids)
-        ->where('gr.estado', '!=','eliminada')
-        ->where('gr.tipo', 'despacho')
-        ->exists();
+    public function queryHasGuideDispatched($ids): bool
+    {
+        return DB::table('gp_guia_remision_detalles as grd')
+            ->join('gp_guia_remisions as gr', 'gr.id', '=', 'grd.guia_remision_id')
+            ->whereIn('grd.detalle_id', $ids)
+            ->where('gr.estado', '!=', 'eliminada')
+            ->where('gr.tipo', 'despacho')
+            ->exists();
     }
 }

@@ -2,11 +2,13 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Ventas\OrderOrigenEnum;
+use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpPedidoImagen;
 use App\Models\GpPuntoVenta;
-use App\Models\reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -36,7 +38,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
                 $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
-                    ->where('estado', '!=', 'anulada') // Importante: ignorar anulados
+                    ->where('estado', '!=', OrderStatus::ANULADA) // Importante: ignorar anulados
                     ->first();
                 if ($pedidoExistente) {
                     return $pedidoExistente;
@@ -77,23 +79,21 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
     protected function prepareOrderHeader(array $data, $user): GpPedido
     {
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
-        $approvalCommercial = $this->approval->approveOrder($data);
-        $motivoLimpio = $this->sanitizeString($approvalCommercial['motivo'] ?? '');
-        log::info($motivoLimpio);
-        log::info($approvalCommercial);
-        $approvalCredit = $this->prepareApprovalCreditOrder($data);
-        $requieresApproval = $approvalCredit != 'no';
-        $motivoCrediticio = $requieresApproval ? $approvalCredit : null;
-        $requiereAprobacionCrediticia = $requieresApproval ? 'yes' : 'no';
-        $despacho = data_get($data, 'tipo_entrega', 'retiro');
-        $tipoDespacho = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
+        $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $approvalCommercial             = $this->approval->approveOrder($data);
+        $motivoLimpio                   = $this->sanitizeString($approvalCommercial['motivo'] ?? '');
+        $approvalCredit                 = $this->prepareApprovalCreditOrder($data);
+        $requieresApproval              = $approvalCredit != 'no';
+        $motivoCrediticio               = $requieresApproval ? $approvalCredit : null;
+        $requiereAprobacionCrediticia   = $requieresApproval ? 'yes' : 'no';
+        $despacho                       = data_get($data, 'tipo_entrega', 'retiro');
+        $tipoDespacho                   = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
         $arStrings = [
             'motivo_comercial'                  => $motivoLimpio,
             'requiere_aprobacion_crediticia'    => $requiereAprobacionCrediticia,
             'motivo_crediticio'                 => $motivoCrediticio,
             'tipo_despacho'                     => $tipoDespacho,
-            'origen'                            => 'cotizacion',
+            'origen'                            => data_get($data, 'origen'),
             'facturacion_reserva'               => null
         ];
         $newOrder = $this->builder->formPayloadOrderV2($data, $user, $puntoVenta,  $approvalCommercial, $arStrings);
@@ -132,18 +132,23 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         $usedItemLExcluded = [];
 
         foreach ($items  as $key => $item) {
-            $artCodigo = data_get($item, 'ART_CODIGO');
-            $isTypeL = data_get($item, 'ART_TIPO_COMPRA') === 'L';
-            $hasStock = $this->stockService->checkValidateDisponibleItemL($artCodigo);
-
-            if ($isTypeL && !$hasStock) {
-                $replacementCodeL = $this->stockService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
-                if (!$replacementCodeL) {
-                    throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$artCodigo}");
+            $artCodigo          = trim((string) data_get($item, 'ART_CODIGO'));
+            $isTypeL           = trim((string) data_get($item, 'ART_TIPO_COMPRA')) === 'L';
+            $selectedArtCodigo  = $artCodigo;
+            if ($isTypeL) {
+                $hasStock           = $this->stockService->checkValidateDisponibleItemL($artCodigo);
+                $alreadyUsed        = in_array($artCodigo, $usedItemLExcluded, true);
+                if (!$hasStock || $alreadyUsed) {
+                    $replacementCodeL   = $this->stockService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
+                    if (!$replacementCodeL) {
+                        throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$artCodigo}");
+                    }
+                    $item['ART_CODIGO'] = trim((string) $replacementCodeL);
+                    $selectedArtCodigo  = $replacementCodeL;
                 }
 
-                $item['ART_CODIGO'] = $replacementCodeL;
-                $usedItemLExcluded[] = $replacementCodeL;
+                $usedItemLExcluded[] = $selectedArtCodigo;
+                $usedItemLExcluded = array_values(array_unique($usedItemLExcluded));
             }
             $detail = $this->builder->formPayloadOrderDetail($order->id, $item, $key);
             $detail->save();
@@ -157,7 +162,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
             if ($isTypeL) {
                 // si te daba deadlock aquí, muévelo más abajo (ver comentario)
-                $this->stockService->markArticleUnavailable($artCodigo);
+                $this->stockService->markArticleUnavailable($selectedArtCodigo);
             }
         }
     }
@@ -209,7 +214,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             return null;
         }
         $esReserva = GpCotizacion::where('id', $quoteId)
-            ->where('origen', 'reserva')
+            ->where('origen', OrderOrigenEnum::RESERVA->value)
             ->exists();
         if (!$esReserva) {
             return null; // Si no es reserva, salimos inmediatamente

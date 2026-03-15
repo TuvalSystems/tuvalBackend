@@ -108,6 +108,10 @@ class GpPedidoDetalle extends Model
         'approval_valor'            => 'boolean',
         'approval_descuento'        => 'boolean',
         'approval_modificador'      => 'boolean',
+        'reservado'                 => 'float',
+        'trasladado'                => 'float',
+        'devuelto'                  => 'float',
+        'cancelado'                 => 'float',
     ];
 
 
@@ -141,6 +145,7 @@ class GpPedidoDetalle extends Model
         'cancelado',
         'CHECK_ALTERNATIVO',
         'traslado',
+        'valor_original_l'
 
     ];
 
