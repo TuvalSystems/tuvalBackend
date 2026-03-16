@@ -22,6 +22,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use DomainException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +32,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class PedidosController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
 
     public function __construct(
         protected readonly ApiGpService $apiGp,
@@ -712,5 +713,14 @@ class PedidosController extends Controller
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
+    }
+
+
+    public function crearTrasladoPedidos ($pedido){
+        return $this->executeTransaction(function () use ($pedido) {
+    
+        $pedido = $this->orderService->createTransferVtaOrders($pedido);
+        return $this->successResponse('Traslado creado correctamente', $pedido, 200);
+        },'laravel', 'crearTrasladoPedidos');
     }
 }
