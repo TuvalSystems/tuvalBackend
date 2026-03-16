@@ -124,6 +124,8 @@ Route::prefix('pedidos')->group(function () {
     Route::get('/validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
 
     Route::get('imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
+
+    Route::get('crear-traslado/{pedido}', [PedidosController::class, 'crearTrasladoPedidos']);
 });
 
 

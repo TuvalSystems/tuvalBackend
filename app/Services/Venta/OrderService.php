@@ -1437,4 +1437,11 @@ class OrderService implements OrderServiceInterface
         $resp = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
         return data_get($resp, 'data', []);
     }
+
+    public function createTransferVtaOrders(string $orderNumber)
+    {
+        $pedido = GpPedido::where('pedido', $orderNumber)->first();
+        $this->invoiceService->checkTraslado($pedido);
+        return $pedido;
+    }
 }
