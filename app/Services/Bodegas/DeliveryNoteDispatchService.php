@@ -160,14 +160,15 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     protected function sendDeliveryNoteDispatchToGp($guide)
     {
-        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
-        $validate = $this->validateExistenceDeliveryNoteDispatch($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
-        $status = data_get($validate, 'success', false);
+        $ordenCompra    = GpPedido::where('pedido', $guide->pedido)->value('orden_de_compra');
+        $detalle        = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
+        $validate       = $this->validateExistenceDeliveryNoteDispatch($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
+        $status         = data_get($validate, 'success', false);
         if ($status) {
             $this->common->assigmentAccessCodeToGuidePending($guide);
             return $guide->refresh();
         }
-        $this->sendToDataDeliveryNote($guide, $detalle);
+        $this->sendToDataDeliveryNote($guide, $detalle, $ordenCompra);
         $this->common->assigmentAccessCodeToGuidePending($guide);
         return $guide->refresh();
     }
@@ -179,11 +180,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         ]);
     }
 
-    protected function sendToDataDeliveryNote($guide, $detalle)
+    protected function sendToDataDeliveryNote($guide, $detalle, ?string $ordenCompra)
     {
         $response  = $this->api->createDeliveryNote([
-            'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide),
-            'destinatario'  => $this->builder->buildDeliveryNoteDestinationToGp($guide),
+            'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide, $ordenCompra),
+            'destinatario'  => $this->builder->buildDeliveryNoteDestinationToGp($guide, $ordenCompra),
             'detalle'       => $this->prepareDetailReservation($guide, $detalle)
         ]);
         $success = data_get($response, 'success', false);

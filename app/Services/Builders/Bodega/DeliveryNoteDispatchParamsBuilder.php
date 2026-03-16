@@ -72,7 +72,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
         return $new;
     }
 
-    public function buildDeliveryNoteHeaderToGp($guia): array
+    public function buildDeliveryNoteHeaderToGp($guia, ?string $ordenCompra = null): array
     {
         return [
             'guiaRemision'                      => $guia->GUI_REM_GUIA_REMISION,
@@ -90,11 +90,12 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'correoElectronico'                 => DeliveryNoteConstants::CORREO_NOTIFICACION,
             'observacion'                       => $guia->GUI_REM_OBSERVACION,
             'fechaEmisionSustento'              => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATETIME)->format('Y-m-d H:i:s'),
+            'ordenCompra'                       => $ordenCompra ?? '',
         ];
     }
 
 
-    public function buildDeliveryNoteDestinationToGp($guia): array
+    public function buildDeliveryNoteDestinationToGp($guia, ?string $ordenCompra = null): array
     {
         return [
             'guiaRemision'                  => $guia->GUI_REM_GUIA_REMISION,
@@ -111,6 +112,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'numDocSustento'                => $guia->GUI_REM_NUME_DOCU_SUSTENTO,
             'numAutoDocSustento'            => $guia->GUI_REM_NUME_AUTO_DOCU_SUSTENTO,
             'fechaEmisionDocSustento'       => Carbon::parse($guia->GUI_REM_FECHA_EMISION_DOCU_SUSTENTO)->format('Y-m-d H:i:s'),
+            'ordenCompra'                   => $ordenCompra ?? '',
         ];
     }
 
