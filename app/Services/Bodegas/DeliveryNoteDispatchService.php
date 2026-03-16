@@ -52,7 +52,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
         $dirOrigin      = $this->common->getDirection($ptoVta);
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin(data_get($payload, 'orden.BOD_BODEGA'));
-        $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo);
+        $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo, $ptoVta);
         $numGuide       = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
 
 
@@ -110,14 +110,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function makeIdemKeyDispatch(array $payload, array $pedido, string $tipo): string
+    protected function makeIdemKeyDispatch(array $payload, array $pedido, string $tipo, string $ptoVta): string
     {
         $base = [
             'bodega'        => data_get($pedido, 'BOD_BODEGA'),
             'pedido'        => data_get($pedido, 'pedido'),
             'tipo'          => $tipo,
             'sucursal_id'   => data_get($pedido, 'sucursal_id'),
-            'pto_vta_id'    => data_get($pedido, 'PTO_VTA_ID'),
+            'pto_vta_id'    => $ptoVta,
             'vehiculo'      => data_get($payload, 'vehiculo.id') ?? data_get($payload, 'vehiculo.placa'),
             'transportista' => data_get($payload, 'transportista.id') ?? data_get($payload, 'transportista.identificacion'),
             'fecha_inicio'  => data_get($payload, 'fecha_inicio'),
