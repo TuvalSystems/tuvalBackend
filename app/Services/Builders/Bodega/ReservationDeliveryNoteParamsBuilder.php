@@ -108,7 +108,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'docAduanero'                   => '',
             'codEstablecimientoDestino'     => '',
             'descEstablecimientoDestino'    => '',
-            'ruta'                          => $guia->ruta,
+            'ruta'                          => $guia->ruta ?? '',
             'docSustento'                   => $guia->cod_sustento,
             'numDocSustento'                => $guia->doc_sustento,
             'numAutoDocSustento'            => $guia->num_auto_doc_sustento,
