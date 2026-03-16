@@ -69,6 +69,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'direccionEnvio'    => $direccionEnvio,
             'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
             'motivoTraslado'    => ReasonForTransfer::VENTA->value,
+            'ptoVta'           => $ptoVta
         ];
 
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
