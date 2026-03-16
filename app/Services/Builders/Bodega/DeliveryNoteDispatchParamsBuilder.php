@@ -107,7 +107,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'docAduanero'                   => '',
             'codEstablecimientoDestino'     => '',
             'descEstablecimientoDestino'    => '',
-            'ruta'                          => $guia->GUI_REM_RUTA,
+            'ruta'                          => $guia->GUI_REM_RUTA ?? '',
             'docSustento'                   => $guia->GUI_REM_CODI_DOCU_SUSTENTO,
             'numDocSustento'                => $guia->GUI_REM_NUME_DOCU_SUSTENTO,
             'numAutoDocSustento'            => $guia->GUI_REM_NUME_AUTO_DOCU_SUSTENTO,
