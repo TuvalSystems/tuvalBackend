@@ -16,6 +16,7 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Spatie\MediaLibrary\HasMedia;
 
 
 class OrderAndQuotationService implements OrderAndQuotationServiceInterface
@@ -248,6 +249,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
+
     public function getImageArticle($codArt): array
     {
         $images = [];
@@ -268,5 +270,25 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
         $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
         return  collect($response)->groupBy('item');
+    }
+
+
+
+    //funcion para obtener los archivos pdf de los modelos
+
+    public function getFormattedPdfMedia(HasMedia $model, string $collection = 'documentos_pdf'): array
+    {
+        return $model->getMedia($collection)->map(
+            fn($media) =>
+            [
+                'id'            => $media->id,
+                'url'           => $media->getFullUrl(),
+                'nombre'        => $media->getCustomProperty('original_name') ?: $media->file_name,
+                'mime_type'     => $media->mime_type,
+                'size'          => $media->size,
+                'file_name'     => $media->file_name
+            ]
+        )->values()
+            ->toArray();
     }
 }

@@ -110,18 +110,18 @@ class QuotationService implements QuotationServiceInterface
 
     public function restoreQuotationV2($quoteId): array
     {
-        $quote = GpCotizacion::findOrFail($quoteId);
-        $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
-        $detalles = $this->getQuotationDetailWithSuppliers($quote->id);
+        $quote      = GpCotizacion::findOrFail($quoteId);
+        $cliente    = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
+        $detalles   = $this->getQuotationDetailWithSuppliers($quote->id);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
-            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
-            $item->tipo = 'cotizacion';
-            $item->detalle_id = $item->id;
+            $item->imagenes     = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo         = 'cotizacion';
+            $item->detalle_id   = $item->id;
             return $item;
         });
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
-        $documentosPdf = $this->getAllQuotationPdfs($quote);
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($quote);
         return [
             'cotizacion'            => $quote,
             'cliente'               => data_get($cliente, 'cliente'),
@@ -157,20 +157,6 @@ class QuotationService implements QuotationServiceInterface
             ->groupBy('detalle_id')->toArray();
     }
 
-    protected  function getAllQuotationPdfs(GpCotizacion $quote)
-    {
-        return $quote->getMedia('documentos_pdf')
-            ->map(function ($media) {
-                return [
-                    'id'            => $media->id,
-                    'url'           => $media->getFullUrl(),
-                    'nombre'        => $media->getCustomProperty('original_name') ?: $media->file_name,
-                    'mime_type'     => $media->mime_type,
-                    'size'          => $media->size,
-                    'file_name'     => $media->file_name
-                ];
-            })->values()->toArray();
-    }
 
 
     /**
@@ -232,18 +218,21 @@ class QuotationService implements QuotationServiceInterface
         $detalles   = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
-            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
-            $item->tipo = 'cotizacion';
-            $item->detalle_id = $item->id;
+            $item->imagenes     = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo         = 'cotizacion';
+            $item->detalle_id   = $item->id;
             return $item;
         });
-        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $registroCopiaId        = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($quote);
+
         return [
             'cotizacion'            => $quote,
             'cliente'               => $clienteNew,
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf,
             'segmento'              => data_get($cliente, 'segmentos'),
             'registro_copia'        => $registroCopiaId,
             'mode'                  => QuotationMode::REORDER->value,

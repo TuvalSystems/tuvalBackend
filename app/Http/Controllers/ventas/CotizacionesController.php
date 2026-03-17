@@ -54,15 +54,15 @@ class CotizacionesController extends Controller
             $user = $request->user();
             $imagenesExistentes     = $request->input('imagenes_existentes', []);
             $imagenesNuevas         = $request->file('imagenes_nuevas', []);
-            $pdfs_nuevos            = $request->file('pdfs_nuevos', []);
-            $pdfs_existentes        = $request->input('pdfs_existentes', []);
+            $pdfsNuevos            = $request->file('pdfs_nuevos', []);
+            $pdfsExistentes        = $request->input('pdfs_existentes', []);
             $cotizacion = $this->quotationCreator->createOrUpdate(
                 $request->validated(),
                 $user,
                 $imagenesExistentes,
                 $imagenesNuevas,
-                $pdfs_existentes,
-                $pdfs_nuevos
+                $pdfsExistentes,
+                $pdfsNuevos
             );
             $msg = "Cotización {$cotizacion->cotizacion} guardada correctamente";
             return $this->buildSuccessResponse($msg, 200);

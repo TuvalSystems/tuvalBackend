@@ -15,9 +15,12 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class OrderCreatorService implements OrderCreatorServiceInterface
 {
@@ -31,9 +34,9 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     ) {
         // Inyecta dependencias si es necesario
     }
-    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = []): array
+    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
     {
-        $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
+        $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quotationId = data_get($data, 'cotizacion_id');
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
@@ -51,6 +54,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 $this->saveOrderDetails($pedido, $data['items'] ?? []);
             }
             $this->syncImages($pedido, $existingImages, $newImages);
+            $this->syncPdfs($pedido, $pfdsExistings, $pfdsNew);
             if ($pedido->exists && $pedido->cotizacion_id) {
                 // Actualizamos directamente a través de la relación del pedido
                 $pedido->gpcotizacion()->update([
@@ -312,6 +316,99 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 'tipo_mime'         => $file->getMimeType(),
                 'tamano'            => $file->getSize()
             ]);
+        }
+    }
+
+    protected function syncPdfs(GpPedido $order, array $keepUrls, array $newFiles)
+    {
+        $mediaItems = $order->getMedia('documentos_pdf');
+
+        // 1.- identificar que PDFS actuales deben conservarse
+        $mediaToKeeps = $mediaItems->filter(function (Media $media) use ($keepUrls) {
+            return in_array($media->getUrl(), $keepUrls) || in_array($media->getFullUrl(), $keepUrls, true);
+        });
+
+        //2.- eliminar del modelo lo que no este en keepUrls
+        $order->clearMediaCollectionExcept('documentos_pdf', $mediaToKeeps);
+
+        //3 .- detectatr cuales url son externas a esta cotizacion y deben copiarse
+        $registerUrls = $mediaItems
+            ->flatMap(fn(Media $media) => [$media->getUrl(), $media->getFullUrl()])
+            ->unique()
+            ->values()
+            ->all();
+
+        $urlsToCopy = array_values(array_diff($keepUrls, $registerUrls));
+        if (!empty($urlsToCopy)) {
+            $this->copyPdfsFromUrls($order, $urlsToCopy);
+        }
+
+        //4.- almacenar nuevos archivos
+        if (!empty($newFiles)) {
+            $this->storePdfsQuotation($order, $newFiles);
+        }
+    }
+
+
+    protected function copyPdfsFromUrls(GpPedido $order, array $urls)
+    {
+        foreach ($urls as $url) {
+            $sourceMedia = $this->findMediaByUrl($url, 'documentos_pdf');
+            if (!$sourceMedia) {
+                continue;
+            }
+
+            $alreadyExists = $order
+                ->getMedia('documentos_pdf')
+                ->contains(function (Media $existing) use ($sourceMedia) {
+                    return $existing->file_name === $sourceMedia->file_name && (int) $existing->size === (int) $sourceMedia->size;
+                });
+
+            if ($alreadyExists) {
+                continue;
+            }
+
+            $sourceMedia->copy($order, 'documentos_pdf', 'public');
+        }
+    }
+
+    protected function findMediaByUrl($url, string $collectionName = 'documentos_pdf'): ?Media
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        $fileName = basename($path ?? '');
+
+        if (!$fileName) {
+            return null;
+        }
+
+        return Media::query()
+            ->where('collection_name', $collectionName)
+            ->where('file_name', $fileName)
+            ->get()
+            ->first(function (Media $media) use ($url) {
+                return $media->getUrl() === $url || $media->getFullUrl() === $url;
+            });
+    }
+
+    protected function storePdfsQuotation(GpPedido $order, array $files)
+    {
+
+        foreach ($files as  $file) {
+            if (!$file instanceof UploadedFile) {
+                continue;
+            }
+            $originalName   = $file->getClientOriginalName();
+            $cleanName      = (string) Str::of($originalName)->replace(' ', '_')->ascii();
+            $uniqueName     = time() . '_' . $cleanName;
+
+            $order
+                ->addMedia($file)
+                ->usingName(pathinfo($originalName, PATHINFO_FILENAME))
+                ->usingFileName($uniqueName)
+                ->withCustomProperties([
+                    'original_name' => $originalName
+                ])
+                ->toMediaCollection('documentos_pdf', 'public');
         }
     }
 }
