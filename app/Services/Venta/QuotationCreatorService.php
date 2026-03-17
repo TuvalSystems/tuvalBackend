@@ -12,7 +12,7 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
-use GuzzleHttp\Psr7\UploadedFile;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -252,7 +252,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         Log::info("STORE IMAGES: Iniciando proceso. Cantidad de archivos: " . count($files));
         foreach ($files as $file) {
             // Validamos que sea un archivo real antes de procesar
-            if (!$file instanceof \Illuminate\Http\UploadedFile) {
+            if (!$file instanceof UploadedFile) {
                 continue;
             }
 
@@ -321,7 +321,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
     protected function copyPdfsFromUrls(GpCotizacion $quote, array $urls)
     {
-
         foreach ($urls as $url) {
             $sourceMedia = $this->findMediaByUrl($url, 'documentos_pdf');
             if (!$sourceMedia) {
@@ -333,11 +332,11 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 ->contains(function (Media $existing) use ($sourceMedia) {
                     return $existing->file_name === $sourceMedia->file_name && (int) $existing->size === (int) $sourceMedia->size;
                 });
+
             if ($alreadyExists) {
                 continue;
             }
-
-
+            
             $sourceMedia->copy($quote, 'documentos_pdf', 'public');
         }
     }
@@ -368,7 +367,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 continue;
             }
             $originalName   = $file->getClientOriginalName();
-            $cleanName      = Str::of($originalName)->replace(' ', '_')->toString();
+            $cleanName      = Str::of($originalName)->replace(' ', '_')->ascii()->toString();
             $uniqueName     = time() . '_' . $cleanName;
 
             $quote
