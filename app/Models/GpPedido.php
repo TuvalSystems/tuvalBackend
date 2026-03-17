@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * App\Models\GpPedido
@@ -179,17 +181,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido whereNotaOperaciones($value)
  * @mixin \Eloquent
  */
-class GpPedido extends Model
+class GpPedido extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
 
+    protected $table = 'gp_pedidos';
     protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
     protected $casts = [
         'estado'            => OrderStatus::class,
         'pendiente_salida'  => 'boolean'
     ];
-
-    protected $table = 'gp_pedidos';
     protected $fillable = [
         'pedido',
         'factura',
@@ -261,12 +262,13 @@ class GpPedido extends Model
         'fecha_hora_aprobacion_crediticia',
     ];
 
-    /**
-     * Prepare a date for array / JSON serialization.
-     *
-     * @param  \DateTimeInterface  $date
-     * @return string
-     */
+
+    public function registerMediaCollections(): void
+    {
+        // $this->addMediaCollection('imagenes_operaciones');
+        $this->addMediaCollection('documentos_pdf');
+    }
+
     protected function serializeDate(DateTimeInterface $date)
     {
         return $date->format('Y-m-d H:i:s');

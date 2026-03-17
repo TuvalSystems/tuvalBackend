@@ -7,6 +7,8 @@ use App\Models\Ventas\Vendedores\GpVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * App\Models\GpCotizacion
@@ -162,17 +164,19 @@ use \DateTimeInterface;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUserRechazoId($value)
  * @mixin \Eloquent
  */
-class GpCotizacion extends Model
+class GpCotizacion extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
 
     protected $appends = ['reserva_disabled', 'has_l_items', 'has_service_items', 'has_reserva', 'msg_registro_copia', 'has_duplicate_items'];
+
+    protected $table = 'gp_cotizacions';
     protected $casts = [
-        'reserva_disabled' => 'boolean',
-        'has_l_items' => 'boolean',
-        'has_service_items' => 'boolean',
-        'has_reserva' => 'boolean',
-        'validate_duplicate_items' => 'boolean',
+        'reserva_disabled'          => 'boolean',
+        'has_l_items'               => 'boolean',
+        'has_service_items'         => 'boolean',
+        'has_reserva'               => 'boolean',
+        'validate_duplicate_items'  => 'boolean',
     ];
     protected $fillable = [
         'cotizacion',
@@ -243,6 +247,12 @@ class GpCotizacion extends Model
         return $date->format('Y-m-d H:i');
     }
 
+
+    public function registerMediaCollections(): void
+    {
+        // $this->addMediaCollection('imagenes_operaciones'); //esto aun no
+        $this->addMediaCollection('documentos_pdf');
+    }
 
     public function detallecotizacion()
     {

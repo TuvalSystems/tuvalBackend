@@ -464,7 +464,7 @@ class DespachosController extends Controller
             $orden->ciudad = $envio['CLI_SUC_CIUDAD'];
             $orden->fecha_entrega = $pedido->fecha_entrega;
             $orden->pedido_imagenes = $this->getAllImagensOperations($pedido->id, 'pedido');
-
+            $orden->documentosPdf = $this->getAllDocumentsPdf($pedido);
             $peso_total = 0;
             $orden->peso = $peso_total;
             $pedido->peso = $peso_total;
@@ -518,6 +518,20 @@ class DespachosController extends Controller
                 'nombre' => $img->nombre_original
             ];
         });
+    }
+    public  function getAllDocumentsPdf(GpPedido $order)
+    {
+        return $order->getMedia('documentos_pdf')
+            ->map(function ($media) {
+                return [
+                    'id'            => $media->id,
+                    'url'           => $media->getFullUrl(),
+                    'nombre'        => $media->getCustomProperty('original_name') ?: $media->file_name,
+                    'mime_type'     => $media->mime_type,
+                    'size'          => $media->size,
+                    'file_name'     => $media->file_name
+                ];
+            })->values()->toArray();
     }
 
     public function getultimaguia($puntodeventa_id): Response|Application|ResponseFactory
@@ -1025,8 +1039,9 @@ class DespachosController extends Controller
             ->where('gp_pedidos.id', $orden_despacho->pedido_id)->first()->toarray();
 
         $pedido = $this->orderService->getOrderInfo($pedido['id']);
-        $pedido['orden_despacho'] = $orden_despacho;
-
+        $pedido['orden_despacho']   = $orden_despacho;
+        $orderModel                 = GpPedido::where('id', $pedido['id'])->first();
+        $pedido['documentosPdf']    = $this->getAllDocumentsPdf($orderModel);
         return $pedido;
     }
 

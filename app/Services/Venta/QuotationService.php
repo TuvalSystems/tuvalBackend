@@ -110,28 +110,30 @@ class QuotationService implements QuotationServiceInterface
 
     public function restoreQuotationV2($quoteId): array
     {
-        $quote = GpCotizacion::findOrFail($quoteId);
-        $cliente = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
-        $detalles = $this->getQuotationDetailWithSuppliers($quote->id);
+        $quote      = GpCotizacion::findOrFail($quoteId);
+        $cliente    = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
+        $detalles   = $this->getQuotationDetailWithSuppliers($quote->id);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
-            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
-            $item->tipo = 'cotizacion';
-            $item->detalle_id = $item->id;
+            $item->imagenes     = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo         = 'cotizacion';
+            $item->detalle_id   = $item->id;
             return $item;
         });
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($quote);
         return [
             'cotizacion'            => $quote,
             'cliente'               => data_get($cliente, 'cliente'),
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf,
             'segmento'              => data_get($cliente, 'segmentos'),
             'mode'                  => QuotationMode::RESTORE_QUOTE->value,
         ];
     }
 
-    public function getQuotationDetailWithSuppliers($quotationId)
+    protected function getQuotationDetailWithSuppliers($quotationId)
     {
         $details        = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
         $proveedores    = $this->getQuotatioDetailProviders($quotationId, $details);
@@ -144,38 +146,17 @@ class QuotationService implements QuotationServiceInterface
         return $details;
     }
 
-    public function getQuotatioDetailProviders($quotationId, $details)
+    protected function getQuotatioDetailProviders($quotationId, $details)
     {
         return GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
     }
-    public function getQuotationDetailStock($quotationId, $details)
+    protected function getQuotationDetailStock($quotationId, $details)
     {
         return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
     }
 
-
-    public function getSelectedStockByArticle($quotationId, $quotationDetails)
-    {
-        $detailsIds = collect($quotationDetails)->pluck('id');
-        $allStocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
-            ->whereIn('detalle_id', $detailsIds)
-            ->get()
-            ->groupBy('detalle_id');
-
-        $selectedStock = [];
-
-        foreach ($quotationDetails as $item) {
-            $stockForItem = collect($allStocks)->get($item->id, collect());
-            foreach ($stockForItem as $st) {
-                $stArray = $st->toArray();
-                $stArray['ART_CODIGO'] = $item->ART_CODIGO;
-                $selectedStock[] = $stArray;
-            }
-        }
-        return $selectedStock;
-    }
 
 
     /**
@@ -237,18 +218,21 @@ class QuotationService implements QuotationServiceInterface
         $detalles   = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
-            $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
-            $item->tipo = 'cotizacion';
-            $item->detalle_id = $item->id;
+            $item->imagenes     = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
+            $item->tipo         = 'cotizacion';
+            $item->detalle_id   = $item->id;
             return $item;
         });
-        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $registroCopiaId        = $this->orderAndQuotationService->createRegisterCopy($quote->id, $user, 'cotizacion', 'volver_a_pedir');
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($quote);
+
         return [
             'cotizacion'            => $quote,
             'cliente'               => $clienteNew,
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf,
             'segmento'              => data_get($cliente, 'segmentos'),
             'registro_copia'        => $registroCopiaId,
             'mode'                  => QuotationMode::REORDER->value,

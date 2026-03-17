@@ -12,9 +12,12 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class QuotationCreatorService implements QuotationCreatorServiceInterface
 {
@@ -26,11 +29,9 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     ) {}
 
 
-    public function createOrUpdate(array $data,  $user, array $existingImages = [], array $newImages = []): GpCotizacion
+    public function createOrUpdate(array $data,  $user, array $existingImages = [], array $newImages = [], array $pfdsExistings  = [], array $pfdsNew  = []): GpCotizacion
     {
-        Log::info("STORE IMAGES: Iniciando proceso. Cantidad de archivos: " . count($newImages));
-
-        return DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
+        return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quoteId = data_get($data, 'cotizacion_id', null);
 
             if (!empty($quoteId)) {
@@ -49,7 +50,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 $cotizacion->refresh();
             }
             $this->syncImages($cotizacion, $existingImages, $newImages);
-
+            $this->syncPdfs($cotizacion, $pfdsExistings, $pfdsNew);
             $mode = data_get($data, 'mode', 'create');
             if ($mode == QuotationMode::UPDATE->value) {
                 $cotizacion->update(['estado' => 'procesado', 'facturado' => 1]);
@@ -61,14 +62,13 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
     public function prepareQuotationHeader(array $data, $user): GpCotizacion
     {
-        $id = data_get($data, 'cotizacion_id', null);
-        $quotation = $id ? GpCotizacion::findOrNew($id) : new GpCotizacion();
-
+        $id                         = data_get($data, 'cotizacion_id', null);
+        $quotation                  = $id ? GpCotizacion::findOrNew($id) : new GpCotizacion();
         $requiredApprovalCommercial = $this->determineApprovalStatus($quotation, $data);
-        $motivoLimpio = $this->sanitizeString($requiredApprovalCommercial['motivo'] ?? '');
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
-        $despacho = data_get($data, 'tipo_entrega', 'retiro');
-        $tipoDespacho = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
+        $motivoLimpio               = $this->sanitizeString($requiredApprovalCommercial['motivo'] ?? '');
+        $puntoVenta                 = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $despacho                   = data_get($data, 'tipo_entrega', 'retiro');
+        $tipoDespacho               = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
         $this->builder->formPayloadHeaderQuotation($quotation, $data, $user, $puntoVenta, $requiredApprovalCommercial, $motivoLimpio, $tipoDespacho);
         $quotation->save();
         return $quotation;
@@ -132,7 +132,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         }
     }
 
-
     public function sanitizeString(string $text): string
     {
         if (empty($text))
@@ -146,7 +145,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         }
         return $limpio;
     }
-
 
     /** proceso de creacion de detalle de cotizacion */
     protected function saveQuotationDetails(int $quoteId, array $items)
@@ -180,6 +178,17 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             $stockModel->save();
         }
     }
+
+    protected function updateRegisterCopyQuotation(int $registerCopyId, int $cotizacionId)
+    {
+
+        $registerCopy = GpRegistroCopia::find($registerCopyId);
+        if ($registerCopy) {
+            $registerCopy->cotizacion_destino = $cotizacionId;
+            $registerCopy->save();
+        }
+    }
+
 
 
     protected function syncImages(GpCotizacion $cotizacion, array $keepUrls, array $newFiles)
@@ -248,7 +257,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         Log::info("STORE IMAGES: Iniciando proceso. Cantidad de archivos: " . count($files));
         foreach ($files as $file) {
             // Validamos que sea un archivo real antes de procesar
-            if (!$file instanceof \Illuminate\Http\UploadedFile) {
+            if (!$file instanceof UploadedFile) {
                 continue;
             }
 
@@ -262,23 +271,109 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             );
 
             GpCotizacionImagen::create([
-                'cotizacion_id' => $cotizacion->id,
-                'ruta' => $path, // Guardamos ruta relativa
-                'nombre_original' => $file->getClientOriginalName(),
-                'tipo_mime' => $file->getMimeType(),
-                'tamano' => $file->getSize()
+                'cotizacion_id'     => $cotizacion->id,
+                'ruta'              => $path, // Guardamos ruta relativa
+                'nombre_original'   => $file->getClientOriginalName(),
+                'tipo_mime'         => $file->getMimeType(),
+                'tamano'            => $file->getSize()
             ]);
         }
     }
 
 
-    protected function updateRegisterCopyQuotation(int $registerCopyId, int $cotizacionId)
+
+
+
+    protected function syncPdfs(GpCotizacion $quote, array $keepUrls, array $newFiles)
+    {
+        $mediaItems = $quote->getMedia('documentos_pdf');
+
+        // 1.- identificar que PDFS actuales deben conservarse
+        $mediaToKeeps = $mediaItems->filter(function (Media $media) use ($keepUrls) {
+            return in_array($media->getUrl(), $keepUrls) || in_array($media->getFullUrl(), $keepUrls, true);
+        });
+
+        //2.- eliminar del modelo lo que no este en keepUrls
+        $quote->clearMediaCollectionExcept('documentos_pdf', $mediaToKeeps);
+
+        //3 .- detectatr cuales url son externas a esta cotizacion y deben copiarse
+        $registerUrls = $mediaItems
+            ->flatMap(fn(Media $media) => [$media->getUrl(), $media->getFullUrl()])
+            ->unique()
+            ->values()
+            ->all();
+
+        $urlsToCopy = array_values(array_diff($keepUrls, $registerUrls));
+        if (!empty($urlsToCopy)) {
+            $this->copyPdfsFromUrls($quote, $urlsToCopy);
+        }
+
+        //4.- almacenar nuevos archivos
+        if (!empty($newFiles)) {
+            $this->storePdfsQuotation($quote, $newFiles);
+        }
+    }
+
+
+    protected function copyPdfsFromUrls(GpCotizacion $quote, array $urls)
+    {
+        foreach ($urls as $url) {
+            $sourceMedia = $this->findMediaByUrl($url, 'documentos_pdf');
+            if (!$sourceMedia) {
+                continue;
+            }
+
+            $alreadyExists = $quote
+                ->getMedia('documentos_pdf')
+                ->contains(function (Media $existing) use ($sourceMedia) {
+                    return $existing->file_name === $sourceMedia->file_name && (int) $existing->size === (int) $sourceMedia->size;
+                });
+
+            if ($alreadyExists) {
+                continue;
+            }
+
+            $sourceMedia->copy($quote, 'documentos_pdf', 'public');
+        }
+    }
+
+    protected function findMediaByUrl($url, string $collectionName = 'documentos_pdf'): ?Media
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        $fileName = basename($path ?? '');
+
+        if (!$fileName) {
+            return null;
+        }
+
+        return Media::query()
+            ->where('collection_name', $collectionName)
+            ->where('file_name', $fileName)
+            ->get()
+            ->first(function (Media $media) use ($url) {
+                return $media->getUrl() === $url || $media->getFullUrl() === $url;
+            });
+    }
+
+    protected function storePdfsQuotation(GpCotizacion $quote, array $files)
     {
 
-        $registerCopy = GpRegistroCopia::find($registerCopyId);
-        if ($registerCopy) {
-            $registerCopy->cotizacion_destino = $cotizacionId;
-            $registerCopy->save();
+        foreach ($files as  $file) {
+            if (!$file instanceof UploadedFile) {
+                continue;
+            }
+            $originalName   = $file->getClientOriginalName();
+            $cleanName      = (string) Str::of($originalName)->replace(' ', '_')->ascii();
+            $uniqueName     = time() . '_' . $cleanName;
+
+            $quote
+                ->addMedia($file)
+                ->usingName(pathinfo($originalName, PATHINFO_FILENAME))
+                ->usingFileName($uniqueName)
+                ->withCustomProperties([
+                    'original_name' => $originalName
+                ])
+                ->toMediaCollection('documentos_pdf', 'public');
         }
     }
 }

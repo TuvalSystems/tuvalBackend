@@ -3,6 +3,7 @@
 namespace App\Services\Venta\Utils\Contracts;
 
 use Illuminate\Support\Collection;
+use Spatie\MediaLibrary\HasMedia;
 
 interface OrderAndQuotationServiceInterface
 {
@@ -27,5 +28,6 @@ interface OrderAndQuotationServiceInterface
 
 
      public function getApiSegmentsAbcItem($articles): Collection;
+      public function getFormattedPdfMedia(HasMedia $model, string $collection = 'documentos_pdf'): array;
 
 }
