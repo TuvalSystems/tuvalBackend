@@ -51,7 +51,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'GUI_REM_CODI_DOCU_SUSTENTO'                => data_get($infoGuia, 'docuSustento', '01'),
             'GUI_REM_NUME_DOCU_SUSTENTO'                => data_get($infoGuia, 'pedido.factura', ''),
             'GUI_REM_NUME_AUTO_DOCU_SUSTENTO'           => '',
-            'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'       => Carbon::parse(data_get($infoGuia, 'pedido.factura_fecha', '1900-01-01 00:00:00'))->format('Y-m-d H:i:s'),
+            'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'       => Carbon::parse(data_get($infoGuia, 'pedido.fecha_factura', '1900-01-01 00:00:00'))->format('Y-m-d H:i:s'),
         ]);
         return $gr;
     }
