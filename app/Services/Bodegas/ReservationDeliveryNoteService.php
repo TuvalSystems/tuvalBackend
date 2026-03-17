@@ -207,10 +207,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function sendToDataDeliveryNote($detalle, $guide)
     {
-        $response = $this->apiDelivery->createDeliveryNote([
-            'cabecera' => $this->builder->buildReservationHeaderToGp($guide),
-            'destinatario' => $this->builder->buildReservationDestinationToGp($guide),
-            'detalle' => $this->prepateDetailReservation($detalle, $guide)
+        $response       = $this->apiDelivery->createDeliveryNote([
+            'cabecera'      => $this->builder->buildReservationHeaderToGp($guide),
+            'destinatario'  => $this->builder->buildReservationDestinationToGp($guide),
+            'detalle'       => $this->prepateDetailReservation($detalle, $guide)
         ]);
         $success = data_get($response, 'success', false);
         if (!$success) {

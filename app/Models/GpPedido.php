@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;

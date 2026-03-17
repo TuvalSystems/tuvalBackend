@@ -91,6 +91,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'correoElectronico'                 => DeliveryNoteConstants::CORREO_NOTIFICACION,
             'observacion'                       => $guia->observacion,
             'fechaEmisionSustento'              => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATETIME)->format('Y-m-d H:i:s'),
+            'ordenCompra'                       => '',
         ];
     }
 
@@ -107,11 +108,13 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'docAduanero'                   => '',
             'codEstablecimientoDestino'     => '',
             'descEstablecimientoDestino'    => '',
-            'ruta'                          => $guia->ruta,
+            'ruta'                          => $guia->ruta ?? '',
             'docSustento'                   => $guia->cod_sustento,
             'numDocSustento'                => $guia->doc_sustento,
             'numAutoDocSustento'            => $guia->num_auto_doc_sustento,
             'fechaEmisionDocSustento'       => Carbon::parse($guia->fecha_emision_doc_sustento)->format('Y-m-d H:i:s'),
+            'ordenCompra'                   => '',
+
         ];
     }
 
@@ -172,7 +175,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
     }
 
 
-     public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso
+    public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso
     {
         $ing = new GpIngreso();
         $ing->fill([
