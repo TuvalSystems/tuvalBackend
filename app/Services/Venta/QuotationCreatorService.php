@@ -31,9 +31,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
     public function createOrUpdate(array $data,  $user, array $existingImages = [], array $newImages = [], array $pfdsExistings  = [], array $pfdsNew  = []): GpCotizacion
     {
-        Log::info("STORE IMAGES: Iniciando proceso. Cantidad de archivos: " . count($newImages));
-        Log::info("STORE IMAGES: Iniciando proceso. Cantidad de pdfs: " . count($pfdsNew));
-
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quoteId = data_get($data, 'cotizacion_id', null);
 
@@ -65,14 +62,13 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
     public function prepareQuotationHeader(array $data, $user): GpCotizacion
     {
-        $id = data_get($data, 'cotizacion_id', null);
-        $quotation = $id ? GpCotizacion::findOrNew($id) : new GpCotizacion();
-
+        $id                         = data_get($data, 'cotizacion_id', null);
+        $quotation                  = $id ? GpCotizacion::findOrNew($id) : new GpCotizacion();
         $requiredApprovalCommercial = $this->determineApprovalStatus($quotation, $data);
-        $motivoLimpio = $this->sanitizeString($requiredApprovalCommercial['motivo'] ?? '');
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
-        $despacho = data_get($data, 'tipo_entrega', 'retiro');
-        $tipoDespacho = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
+        $motivoLimpio               = $this->sanitizeString($requiredApprovalCommercial['motivo'] ?? '');
+        $puntoVenta                 = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $despacho                   = data_get($data, 'tipo_entrega', 'retiro');
+        $tipoDespacho               = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
         $this->builder->formPayloadHeaderQuotation($quotation, $data, $user, $puntoVenta, $requiredApprovalCommercial, $motivoLimpio, $tipoDespacho);
         $quotation->save();
         return $quotation;
@@ -136,7 +132,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         }
     }
 
-
     public function sanitizeString(string $text): string
     {
         if (empty($text))
@@ -150,7 +145,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         }
         return $limpio;
     }
-
 
     /** proceso de creacion de detalle de cotizacion */
     protected function saveQuotationDetails(int $quoteId, array $items)
@@ -184,6 +178,17 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             $stockModel->save();
         }
     }
+
+    protected function updateRegisterCopyQuotation(int $registerCopyId, int $cotizacionId)
+    {
+
+        $registerCopy = GpRegistroCopia::find($registerCopyId);
+        if ($registerCopy) {
+            $registerCopy->cotizacion_destino = $cotizacionId;
+            $registerCopy->save();
+        }
+    }
+
 
 
     protected function syncImages(GpCotizacion $cotizacion, array $keepUrls, array $newFiles)
@@ -276,15 +281,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
 
 
-    protected function updateRegisterCopyQuotation(int $registerCopyId, int $cotizacionId)
-    {
-
-        $registerCopy = GpRegistroCopia::find($registerCopyId);
-        if ($registerCopy) {
-            $registerCopy->cotizacion_destino = $cotizacionId;
-            $registerCopy->save();
-        }
-    }
 
 
 
@@ -336,7 +332,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             if ($alreadyExists) {
                 continue;
             }
-            
+
             $sourceMedia->copy($quote, 'documentos_pdf', 'public');
         }
     }
@@ -367,7 +363,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 continue;
             }
             $originalName   = $file->getClientOriginalName();
-            $cleanName      = Str::of($originalName)->replace(' ', '_')->ascii()->toString();
+            $cleanName      = (string) Str::of($originalName)->replace(' ', '_')->ascii();
             $uniqueName     = time() . '_' . $cleanName;
 
             $quote

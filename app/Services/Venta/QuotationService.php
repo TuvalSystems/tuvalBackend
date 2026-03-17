@@ -121,17 +121,19 @@ class QuotationService implements QuotationServiceInterface
             return $item;
         });
         $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($quote->id, 'cotizacion');
+        $documentosPdf = $this->getAllQuotationPdfs($quote);
         return [
             'cotizacion'            => $quote,
             'cliente'               => data_get($cliente, 'cliente'),
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf,
             'segmento'              => data_get($cliente, 'segmentos'),
             'mode'                  => QuotationMode::RESTORE_QUOTE->value,
         ];
     }
 
-    public function getQuotationDetailWithSuppliers($quotationId)
+    protected function getQuotationDetailWithSuppliers($quotationId)
     {
         $details        = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
         $proveedores    = $this->getQuotatioDetailProviders($quotationId, $details);
@@ -144,37 +146,30 @@ class QuotationService implements QuotationServiceInterface
         return $details;
     }
 
-    public function getQuotatioDetailProviders($quotationId, $details)
+    protected function getQuotatioDetailProviders($quotationId, $details)
     {
         return GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
     }
-    public function getQuotationDetailStock($quotationId, $details)
+    protected function getQuotationDetailStock($quotationId, $details)
     {
         return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
     }
 
-
-    public function getSelectedStockByArticle($quotationId, $quotationDetails)
+    protected  function getAllQuotationPdfs(GpCotizacion $quote)
     {
-        $detailsIds = collect($quotationDetails)->pluck('id');
-        $allStocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
-            ->whereIn('detalle_id', $detailsIds)
-            ->get()
-            ->groupBy('detalle_id');
-
-        $selectedStock = [];
-
-        foreach ($quotationDetails as $item) {
-            $stockForItem = collect($allStocks)->get($item->id, collect());
-            foreach ($stockForItem as $st) {
-                $stArray = $st->toArray();
-                $stArray['ART_CODIGO'] = $item->ART_CODIGO;
-                $selectedStock[] = $stArray;
-            }
-        }
-        return $selectedStock;
+        return $quote->getMedia('documentos_pdf')
+            ->map(function ($media) {
+                return [
+                    'id'            => $media->id,
+                    'url'           => $media->getFullUrl(),
+                    'nombre'        => $media->getCustomProperty('original_name') ?: $media->file_name,
+                    'mime_type'     => $media->mime_type,
+                    'size'          => $media->size,
+                    'file_name'     => $media->file_name
+                ];
+            })->values()->toArray();
     }
 
 
