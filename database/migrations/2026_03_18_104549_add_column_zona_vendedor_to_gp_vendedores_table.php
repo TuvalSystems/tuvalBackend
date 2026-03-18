@@ -14,7 +14,7 @@ class AddColumnZonaVendedorToGpVendedoresTable extends Migration
     public function up()
     {
         Schema::table('gp_vendedors', function (Blueprint $table) {
-            $table->string('zona_vendedor')->nullable();
+            $table->string('zona_vendedor')->nullable()->after('VEND_CORREO_ELECTRONICO');
         });
     }
 
