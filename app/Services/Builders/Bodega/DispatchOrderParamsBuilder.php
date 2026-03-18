@@ -8,7 +8,7 @@ use App\Services\Builders\Bodega\Contracts\DispatchOrderParamsBuilderInterface;
 
 class DispatchOrderParamsBuilder implements DispatchOrderParamsBuilderInterface
 {
-    public function build(GpPedido $pedido, string $estado, string $fechaLiberacion): GpOrdenDespacho
+    public function build(GpPedido $pedido, string $estado, ?string $fechaLiberacion = null): GpOrdenDespacho
     {
         $despacho = new GpOrdenDespacho();
         $despacho->fill([

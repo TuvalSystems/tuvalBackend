@@ -7,5 +7,5 @@ use App\Models\GpPedido;
 
 interface DispatchOrderParamsBuilderInterface
 {
-   public function build(GpPedido $pedido, string $estado, string $fechaLiberacion): GpOrdenDespacho;
+   public function build(GpPedido $pedido, string $estado, ?string $fechaLiberacion = null): GpOrdenDespacho;
 }
