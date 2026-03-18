@@ -69,10 +69,13 @@ class Kernel extends ConsoleKernel
             ->dailyAt('02:00');
 
 
-        //limpieza de documentos 
+        //limpieza de documentos
         $schedule->command('media:clean-old-pdfs --months=3')
             ->dailyAt('02:00')
             ->WithoutOverlapping(30);
+
+
+        $schedule->command('telescope:prune')->daily();
     }
 
 
