@@ -294,8 +294,15 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         }
 
-        $sucursalEnvio          = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
-        $sucursalFacturacion    = GpClienteSucursal::where('id', $pedido->sucursal_facturacion_id)->first();
+
+        $sucursales = GpClienteSucursal::whereIn('id', [
+            $pedido->sucursal_id,
+            $pedido->sucursal_facturacion_id
+        ])->get()->keyBy('id');
+
+        $sucursalEnvio          = $sucursales->get($pedido->sucursal_id);
+        $sucursalFacturacion    = $sucursales->get($pedido->sucursal_facturacion_id);
+
         if (!$sucursalEnvio || !$sucursalFacturacion) {
             Log::error("Pedido {$pedido->pedido}: Falta información de sucursal de envío o facturación.");
             throw new \Exception("Datos de sucursal incompletos.");
@@ -403,7 +410,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO)
+    public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio)
     {
         return [
             'FAC_VTA_DOCU_ORIGEN'           => $pedido->pedido,
@@ -414,7 +421,7 @@ class InvoiceService implements InvoiceServiceInterface
             'FAC_VTA_ID_CLIENTE'            => $pedido->CLI_RUC,
             'FAC_VTA_ID_VENDEDOR'           => $pedido->VEND_ID,
             'FAC_VTA_ID_DIRECCION'          => $sucursalFacturacion->CLI_SUC_ID_DIRECCION,
-            'FAC_VTA_ID_DIRECCION_ENVIO'    => $FAC_VTA_ID_DIRECCION_ENVIO,
+            'FAC_VTA_ID_DIRECCION_ENVIO'    => $direccionEnvio,
             'FAC_VTA_COND_PAGO'             => $pedido->COND_ID,
             'FAC_VTA_NOTA_DOCU'             => $pedido->factura_origen,
             'FAC_VTA_DATE_DOCU'             => now()->toDateTimeString(),
@@ -435,8 +442,9 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function normalizeTextNoteClient(?string $nota): string
     {
-        if ($nota === null)
+        if ($nota === null) {
             return '';
+        }
         $clean = preg_replace('/\R+/u', ' ', $nota);
         return trim(preg_replace('/[^\S\r\n]+/u', ' ', $clean));
     }
@@ -497,7 +505,7 @@ class InvoiceService implements InvoiceServiceInterface
         return true;
     }
 
-    public function respuestaFacturaVenta($order)
+    public function respuestaFacturaVenta(GpPedido $order)
     {
         $pedido = GpPedido::find($order->id);
 
@@ -526,31 +534,25 @@ class InvoiceService implements InvoiceServiceInterface
     /** proceso de limpieza de stock de cotizacion de reserva  */
     public function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
     {
-        $order = GpPedido::with('detallepedido.pedidodetallestocks')->find($orderId);
+        $order = GpPedido::find($orderId);
+        if (!$order || $order->estado == OrderStatus::ESPERA) {
+            return;
+        }
         $cotResLog = GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)->first();
-        if (!$order) {
+        if (!$cotResLog || empty($cotResLog->cotizacion_origen_id)) {
             return;
         }
 
-        if ($order->estado == OrderStatus::ESPERA) {
-            return;
-        }
-
-        if (!$cotResLog) {
-            return;
-        }
-
-        $reservedId = data_get($cotResLog, 'reserva_id', null);
-        $quoteOriginId = data_get($cotResLog, 'cotizacion_origen_id', null);
+        $reservedId     = data_get($cotResLog, 'reserva_id', null);
+        $quoteOriginId  = data_get($cotResLog, 'cotizacion_origen_id', null);
         if (!$quoteOriginId) {
             return;
         }
-
+        $order->load('detallepedido.pedidodetallestocks');
         // 1) Consumo del PEDIDO por (ART_CODIGO|BODEGA)
         $pedidoPorClave = []; // clave = ART_CODIGO|BODEGA
         foreach ($order->detallepedido as $det) {
             foreach ($det->pedidodetallestocks as $stk) {
-
                 $clave = $det->ART_CODIGO . '|' . $stk->STO_ART_BODEGA;
                 $pedidoPorClave[$clave] = ($pedidoPorClave[$clave] ?? 0) + (int) $stk->seleccionado;
             }
@@ -583,53 +585,37 @@ class InvoiceService implements InvoiceServiceInterface
                 's.cantidad_reservada'
             )
             ->whereIn('s.id', $stockIds->all())
-            // ->when($warehouse, fn($q) => $q->where('s.STO_ART_BODEGA', $warehouse))
             ->get();
 
         if ($quoteStockRows->isEmpty()) {
             return;
         }
 
-        $cotizacionPorClave = $quoteStockRows->keyBy(fn($row) => $row->ART_CODIGO . '|' . $row->STO_ART_BODEGA);
-        $clavesAfectadas = array_values(array_intersect(array_keys($pedidoPorClave), $cotizacionPorClave->keys()->all()));
+        $cotizacionPorClave     = $quoteStockRows->keyBy(fn($row) => $row->ART_CODIGO . '|' . $row->STO_ART_BODEGA);
+        $clavesAfectadas        = array_values(array_intersect(array_keys($pedidoPorClave), $cotizacionPorClave->keys()->all()));
         if (empty($clavesAfectadas)) {
             return;
         }
 
         $idsParaLock = array_map(fn($k) => $cotizacionPorClave[$k]->id, $clavesAfectadas);
-        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->lockForUpdate()->get(); // lo comento por ahora
-        // Lock real de filas para evitar race conditions
+        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->get();
         foreach ($clavesAfectadas as $k) {
-            $row = $cotizacionPorClave[$k];
-            $pedidoQty = (int) $pedidoPorClave[$k];
-
-            // a) Reducir seleccionado en la cotización origen: max(origen - pedido, 0)
-            $selActual = (int) $row->seleccionado;
-
-            // b) Aumentar facturado pero sin lo facturado - lo cancelado - seleccionado
-            $facturado = (int) ($row->cantidad_facturada ?? 0);
-            $cancelado = (int) ($row->cantidad_cancelada ?? 0);
-            $authorizado = (int) ($row->cantidad_reservada ?? 0);
-
-            // 1) Tope total permitido por política (NO incluye seleccionado)
-            $limite = max(0, $authorizado - $cancelado);
-
-
-            // 2) ¿Cuánto puedo incrementar el facturado SIN pasarme del tope?
-            $remanenteFact = max(0, $limite - $facturado);
-            $incFacturable = min($pedidoQty, $remanenteFact); //incremento real de factura
-
-            // 3) Limpio seleccionado hasta donde el pedido consuma (prioriza consumir reserva)
+            $row            = $cotizacionPorClave[$k];
+            $pedidoQty      = (int) $pedidoPorClave[$k];
+            $selActual      = (int) $row->seleccionado;
+            $facturado      = (int) ($row->cantidad_facturada ?? 0);
+            $cancelado      = (int) ($row->cantidad_cancelada ?? 0);
+            $authorizado    = (int) ($row->cantidad_reservada ?? 0);
+            $limite         = max(0, $authorizado - $cancelado);
+            $remanenteFact  = max(0, $limite - $facturado);
+            $incFacturable  = min($pedidoQty, $remanenteFact);
             $consumoReserva = min($incFacturable, $selActual);
-            $nuevoSelect = $selActual - $consumoReserva;
-
-            // 4) Nuevo total facturado (sin exceder tope)
+            $nuevoSelect    = $selActual - $consumoReserva;
             $nuevoFacturado = $facturado + $incFacturable;
 
             if ($nuevoSelect !== $selActual) {
-                // Si solo quieres marcar en memoria y guardar luego, puedes batch; aquí guardamos inmediato
-                $row->seleccionado = $nuevoSelect; // nunca debe ser negativo
-                $row->cantidad_facturada = $nuevoFacturado;
+                $row->seleccionado          = $nuevoSelect;
+                $row->cantidad_facturada    = $nuevoFacturado;
                 $row->save();
             }
         }
@@ -639,18 +625,18 @@ class InvoiceService implements InvoiceServiceInterface
     public function updateCheckStatusReservation(int $reserveId)
     {
         $reserva = GpReserva::find($reserveId);
-        $stocks = GpCotizacionDetalleStock::query()
-            ->where('cotizacion_id', $reserva->cotizacion_id)
-            ->get();
-        $tienePendientes = $stocks->contains(function (GpCotizacionDetalleStock $stock) {
-            return $stock->pendiente > 0;   // usa tu accessor
-        });
+        if (!$reserva) {
+            return;
+        }
+        $tienePendientes = GpCotizacionDetalleStock::where('cotizacion_id', $reserva->cotizacion_id)
+            ->whereRaw('(COALESCE(cantidad_reservada, 0) - COALESCE(cantidad_facturada, 0) - COALESCE(cantidad_cancelada, 0)) > 0')
+            ->exists();
 
         if (!$tienePendientes) {
             // Ajusta el nombre de la columna/valor según tu modelo (estado, estado_reserva, etc.)
             $reserva->estado = 'procesado';
-
             $reserva->save();
+
             GpCotizacion::where('id', $reserva->cotizacion_id) // O la columna ID real
                 ->update(['estado' => 'procesado']);
         }
