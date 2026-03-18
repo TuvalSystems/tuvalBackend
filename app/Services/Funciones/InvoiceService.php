@@ -488,7 +488,7 @@ class InvoiceService implements InvoiceServiceInterface
     public function checkFinalInvoiceValidation(GpPedido $pedido): bool
     {
         $isInvalidStatus    = $pedido->estado !== OrderStatus::ENVIANDO;
-        $hasInvoice      = !empty($pedido->factura);
+        $hasInvoice         = !empty($pedido->factura);
         $missingCommercial  = $pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial === 'no';
         $missingCredit      = $pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio === 'no';
 
@@ -508,7 +508,6 @@ class InvoiceService implements InvoiceServiceInterface
     public function respuestaFacturaVenta(GpPedido $order)
     {
         $pedido = GpPedido::find($order->id);
-
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === false) {
             $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? 'Error no definido por GP';
