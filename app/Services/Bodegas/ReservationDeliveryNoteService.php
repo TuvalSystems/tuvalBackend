@@ -7,12 +7,12 @@ use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Jobs\Venta\Reservas\NotifyReceivedReservationsJob;
 use App\Models\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
-use App\Models\reservas\GpTrasladosReservas;
+use App\Models\Reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
-use App\Models\reservas\GpGuiaRemisionReserva;
-use App\Models\reservas\GpGuiaRemisionReservaDetalle;
-use App\Models\reservas\GpGuiaRemisionReservaMovimiento;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
+use App\Models\Reservas\GpGuiaRemisionReservaMovimiento;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
@@ -207,10 +207,10 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
     public function sendToDataDeliveryNote($detalle, $guide)
     {
-        $response = $this->apiDelivery->createDeliveryNote([
-            'cabecera' => $this->builder->buildReservationHeaderToGp($guide),
-            'destinatario' => $this->builder->buildReservationDestinationToGp($guide),
-            'detalle' => $this->prepateDetailReservation($detalle, $guide)
+        $response       = $this->apiDelivery->createDeliveryNote([
+            'cabecera'      => $this->builder->buildReservationHeaderToGp($guide),
+            'destinatario'  => $this->builder->buildReservationDestinationToGp($guide),
+            'detalle'       => $this->prepateDetailReservation($detalle, $guide)
         ]);
         $success = data_get($response, 'success', false);
         if (!$success) {

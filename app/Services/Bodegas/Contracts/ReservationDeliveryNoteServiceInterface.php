@@ -3,7 +3,7 @@
 namespace App\Services\Bodegas\Contracts;
 
 use App\Models\GpUsuario;
-use App\Models\reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReserva;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 

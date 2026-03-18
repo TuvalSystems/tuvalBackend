@@ -15,7 +15,7 @@ use App\Models\GpTempGuiasDespachoBlock;
 use App\Models\GpTransportista;
 use App\Models\GpUsuario;
 use App\Models\GpVehiculo;
-use App\Models\reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use Illuminate\Support\Arr;

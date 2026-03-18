@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpUsuario;
-use App\Models\reservas\GpCotizacionReservaLog;
+use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -1024,6 +1024,17 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function getAllPendingApprovals(int $ptoVta, GpUsuario $user)
     {
+        $rules = collect();
+        if ($user->perfil_id != 2) {
+            $rules = $this->getApprovalRulesForUser($user->id);
+
+            if ($rules->isEmpty()) {
+                return [
+                    'pedidos'      => collect(),
+                    'cotizaciones' => collect(),
+                ];
+            }
+        }
         // 1. Fetch Orders (Pedidos)
         $query1 = $this->fetchPendingOrders($ptoVta);
 
@@ -1038,22 +1049,19 @@ class ApprovalService implements ApprovalServiceInterface
             ->toArray();
 
         $segmentDataByRuc = $this->getClientSegments($allRucs);
-        // $orders = $query1->get();
-        // $quotes = $query2->get();
+
         $orders = $this->mapClientSegmentData($orders, $segmentDataByRuc);
         $quotes = $this->mapClientSegmentData($quotes, $segmentDataByRuc);
 
-        // //aplicacion de reglas de aprobaciones
-        // $tipovendedor = 'v_externo';
-        $rules = $this->getApprovalrRulesForUser($user->id);
-        if ($rules->isNotEmpty()) {
-            $orders = $this->filterOrderByRules($orders, $rules);
-            $quotes = $this->filterQuoteByRules($quotes, $rules);
+        if ($user->perfil_id == 2) {
+            return [
+                'pedidos' => $orders->values(),
+                'cotizaciones' => $quotes->values(),
+            ];
         }
-
         return [
-            'pedidos' => $orders->values(),
-            'cotizaciones' => $quotes->values(),
+            'pedidos'       => $this->filterOrderByRules($orders, $rules),
+            'cotizaciones'  => $this->filterQuoteByRules($quotes, $rules),
         ];
     }
 
@@ -1061,7 +1069,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user, int $perPage = 10): LengthAwarePaginator
     {
         $query = $this->fetchPendingQuotes($ptoVta);
-        $rules = $this->getApprovalrRulesForUser($user->id);
+        $rules = $this->getApprovalRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
             $quotes = $query->get();
             $quotes = $this->filterQuoteByRules($quotes, $rules);
@@ -1081,7 +1089,7 @@ class ApprovalService implements ApprovalServiceInterface
     public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user, int $perPage = 10): LengthAwarePaginator
     {
         $query = $this->fetchPendingOrders($ptoVta);
-        $rules = $this->getApprovalrRulesForUser($user->id);
+        $rules = $this->getApprovalRulesForUser($user->id);
         if ($rules->isNotEmpty()) {
             $orders = $query->get();
             $orders = $this->filterOrderByRules($orders, $rules);
@@ -1200,7 +1208,7 @@ class ApprovalService implements ApprovalServiceInterface
         });
     }
 
-    public function getApprovalrRulesForUser($userId)
+    public function getApprovalRulesForUser($userId)
     {
         return GpReglaAprobacion::where('user_autorizador_id', $userId)->get();
     }

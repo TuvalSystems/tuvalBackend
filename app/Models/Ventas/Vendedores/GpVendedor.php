@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Ventas\Vendedores;
 
+use App\Models\GpCliente;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * App\Models\GpVendedor
+ * App\Models\Ventas\Vendedores\GpVendedor
  *
  * @property int $id
  * @property string $VEND_ID
@@ -60,5 +61,10 @@ class GpVendedor extends Model
     public function clientes()
     {
         return $this->hasMany(GpCliente::class, 'CLI_VENDEDOR');
+    }
+
+    public function atributoValores()
+    {
+        return $this->hasMany(VendedorAtributoValor::class, 'vendedor_id');
     }
 }

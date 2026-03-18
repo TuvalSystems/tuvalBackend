@@ -150,6 +150,12 @@ class ValidateStoreOrderRequest extends FormRequest
                 'string',
                 'in:cotizacion,reserva,facturar_existente,devolucion,factura_demanda'
             ],
+
+            //almacenamiento de pdfs
+            'pdfs_nuevos'                => ['nullable', 'array'],
+            'pdfs_nuevos.*'              => ['file', 'mimes:pdf', 'max:10120'],
+            'pdfs_existentes'            => ['nullable', 'array'],
+            'pdfs_existentes.*'          => ['string'],
         ];
     }
 

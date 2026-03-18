@@ -30,8 +30,8 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'bodega_destino'                            => null,
             'user_id'                                   => data_get($infoGuia, 'user.id'),
             'GUI_REM_BODEGA'                            => data_get($infoGuia, 'bodGuide'),
-            'GUI_REM_PTO_EMISION'                       => data_get($infoGuia, key: 'ptoEmision'),
-            'GUI_REM_ESTABLECIMIENTO'                   => data_get($payload, 'orden.PTO_VTA_ID'),
+            'GUI_REM_PTO_EMISION'                       => data_get($infoGuia,  'ptoEmision'),
+            'GUI_REM_ESTABLECIMIENTO'                   => data_get($infoGuia, 'ptoVta'),
             'GUI_REM_SECUENCIAL'                        => data_get($infoGuia, 'secuencial'),
             'GUI_REM_GUIA_REMISION'                     => data_get($infoGuia, 'numeroGuia'),
             'GUI_REM_DIRECCION_PARTIDA'                 => data_get($infoGuia, 'dirOrigin'),
@@ -51,7 +51,8 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'GUI_REM_CODI_DOCU_SUSTENTO'                => data_get($infoGuia, 'docuSustento', '01'),
             'GUI_REM_NUME_DOCU_SUSTENTO'                => data_get($infoGuia, 'pedido.factura', ''),
             'GUI_REM_NUME_AUTO_DOCU_SUSTENTO'           => '',
-            'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'       => Carbon::parse(data_get($infoGuia, 'pedido.factura_fecha', '1900-01-01 00:00:00'))->format('Y-m-d H:i:s'),
+            'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'       => Carbon::parse(data_get($infoGuia, 'pedido.fecha_factura', '1900-01-01 00:00:00'))->format('Y-m-d H:i:s'),
+            'orden_compra'                              => data_get($infoGuia, 'pedido.orden_de_compra', ''),
         ]);
         return $gr;
     }
@@ -72,7 +73,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
         return $new;
     }
 
-    public function buildDeliveryNoteHeaderToGp($guia): array
+    public function buildDeliveryNoteHeaderToGp($guia, ?string $ordenCompra = null): array
     {
         return [
             'guiaRemision'                      => $guia->GUI_REM_GUIA_REMISION,
@@ -90,11 +91,12 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'correoElectronico'                 => DeliveryNoteConstants::CORREO_NOTIFICACION,
             'observacion'                       => $guia->GUI_REM_OBSERVACION,
             'fechaEmisionSustento'              => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATETIME)->format('Y-m-d H:i:s'),
+            'ordenCompra'                       => $ordenCompra ?? '',
         ];
     }
 
 
-    public function buildDeliveryNoteDestinationToGp($guia): array
+    public function buildDeliveryNoteDestinationToGp($guia, ?string $ordenCompra = null): array
     {
         return [
             'guiaRemision'                  => $guia->GUI_REM_GUIA_REMISION,
@@ -106,11 +108,12 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'docAduanero'                   => '',
             'codEstablecimientoDestino'     => '',
             'descEstablecimientoDestino'    => '',
-            'ruta'                          => $guia->GUI_REM_RUTA,
+            'ruta'                          => $guia->GUI_REM_RUTA ?? '',
             'docSustento'                   => $guia->GUI_REM_CODI_DOCU_SUSTENTO,
             'numDocSustento'                => $guia->GUI_REM_NUME_DOCU_SUSTENTO,
             'numAutoDocSustento'            => $guia->GUI_REM_NUME_AUTO_DOCU_SUSTENTO,
             'fechaEmisionDocSustento'       => Carbon::parse($guia->GUI_REM_FECHA_EMISION_DOCU_SUSTENTO)->format('Y-m-d H:i:s'),
+            'ordenCompra'                   => $ordenCompra ?? '',
         ];
     }
 

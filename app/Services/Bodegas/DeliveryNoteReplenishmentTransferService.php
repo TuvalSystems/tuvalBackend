@@ -217,7 +217,7 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
             ->all();
 
         $detalleGuias = GpGuiaRemisionDetalle::whereIn('detalle_id', $ids)
-            ->where(function ($q) {
+             ->whereHas('guia', function ($q) {
                 $q->where('tipo', DeliveryNoteType::REPOSICION->value);
             })
             ->select('detalle_id', DB::raw('SUM(GUI_REM_CANTIDAD) as total_generado'))

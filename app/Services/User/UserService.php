@@ -227,14 +227,11 @@ class UserService implements UserServiceInterface
      *
      */
 
-    public function changeStatusGpUser($userId)
+    public function changeStatusGpUser(string $userId)
     {
-
-
-            $user = GpUsuario::where('USERID', $userId[0])->first();
+            $user = GpUsuario::where('USERID', $userId)->firstOrFail();
             $user->status = $user->status === 1 ? 0 : 1;
             $user->save();
-
     }
 
 

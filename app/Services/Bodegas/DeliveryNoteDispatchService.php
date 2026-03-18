@@ -18,6 +18,7 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
@@ -46,12 +47,13 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $tipo           = DeliveryNoteType::DESPACHO->value;
         $ptoEmision     = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $pedido         = data_get($payload, 'orden.pedido', []);
+        $ptoVta         = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_BODEGA', data_get($payload, 'orden.BOD_BODEGA'))->value('PTO_VTA_BOD_PUNTO_VENTA');
         $direccionEnvio = GpClienteSucursal::where('id', data_get($pedido, 'sucursal_id'))->value('CLI_SUC_DIRECCION');
-        $secuencial     = $this->common->getNextGuideSequential(data_get($payload, 'orden.PTO_VTA_ID'), $ptoEmision);
-        $dirOrigin      = $this->common->getDirection(data_get($payload, 'orden.PTO_VTA_ID'));
+        $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
+        $dirOrigin      = $this->common->getDirection($ptoVta);
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin(data_get($payload, 'orden.BOD_BODEGA'));
-        $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo);
-        $numGuide       = $this->common->formatGuideNumber(data_get($payload, 'orden.PTO_VTA_ID'), $ptoEmision, $secuencial);
+        $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo, $ptoVta);
+        $numGuide       = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
 
 
         $infoGuia = [
@@ -67,6 +69,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'direccionEnvio'    => $direccionEnvio,
             'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
             'motivoTraslado'    => ReasonForTransfer::VENTA->value,
+            'ptoVta'           => $ptoVta
         ];
 
         $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
@@ -107,14 +110,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function makeIdemKeyDispatch(array $payload, array $pedido, string $tipo): string
+    protected function makeIdemKeyDispatch(array $payload, array $pedido, string $tipo, string $ptoVta): string
     {
         $base = [
             'bodega'        => data_get($pedido, 'BOD_BODEGA'),
             'pedido'        => data_get($pedido, 'pedido'),
             'tipo'          => $tipo,
             'sucursal_id'   => data_get($pedido, 'sucursal_id'),
-            'pto_vta_id'    => data_get($pedido, 'PTO_VTA_ID'),
+            'pto_vta_id'    => $ptoVta,
             'vehiculo'      => data_get($payload, 'vehiculo.id') ?? data_get($payload, 'vehiculo.placa'),
             'transportista' => data_get($payload, 'transportista.id') ?? data_get($payload, 'transportista.identificacion'),
             'fecha_inicio'  => data_get($payload, 'fecha_inicio'),
@@ -157,14 +160,15 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     protected function sendDeliveryNoteDispatchToGp($guide)
     {
-        $detalle = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
-        $validate = $this->validateExistenceDeliveryNoteDispatch($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
-        $status = data_get($validate, 'success', false);
+        $ordenCompra    = GpPedido::where('pedido', $guide->pedido)->value('orden_de_compra');
+        $detalle        = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
+        $validate       = $this->validateExistenceDeliveryNoteDispatch($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
+        $status         = data_get($validate, 'success', false);
         if ($status) {
             $this->common->assigmentAccessCodeToGuidePending($guide);
             return $guide->refresh();
         }
-        $this->sendToDataDeliveryNote($guide, $detalle);
+        $this->sendToDataDeliveryNote($guide, $detalle, $ordenCompra);
         $this->common->assigmentAccessCodeToGuidePending($guide);
         return $guide->refresh();
     }
@@ -176,11 +180,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         ]);
     }
 
-    protected function sendToDataDeliveryNote($guide, $detalle)
+    protected function sendToDataDeliveryNote($guide, $detalle, ?string $ordenCompra)
     {
         $response  = $this->api->createDeliveryNote([
-            'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide),
-            'destinatario'  => $this->builder->buildDeliveryNoteDestinationToGp($guide),
+            'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide, $ordenCompra),
+            'destinatario'  => $this->builder->buildDeliveryNoteDestinationToGp($guide, $ordenCompra),
             'detalle'       => $this->prepareDetailReservation($guide, $detalle)
         ]);
         $success = data_get($response, 'success', false);

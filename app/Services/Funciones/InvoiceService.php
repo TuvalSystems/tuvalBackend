@@ -28,9 +28,9 @@ use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 
 class InvoiceService implements InvoiceServiceInterface
 {
+    use JsonResponseTrait;
     const STATUS_PENDING = 'pendiente';
     const STATUS_RELEASED = 'liberada';
-    use JsonResponseTrait;
 
     // Implementa todos los metodos de facturacion de pedidos, devoluciones, aprobaciones, etc
 

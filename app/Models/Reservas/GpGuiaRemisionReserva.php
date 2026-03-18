@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\reservas;
+namespace App\Models\Reservas;
 
 use App\Models\GpCotizacion;
 use DateTimeInterface;
@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * App\Models\reservas\GpGuiaRemisionReserva
+ * App\Models\Reservas\GpGuiaRemisionReserva
  *
  * @property int $id
  * @property string|null $clave_acceso
@@ -43,7 +43,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $idempotency_key
  * @property-read \Illuminate\Database\Eloquent\Collection<int, GpCotizacion> $cotizaciones
  * @property-read int|null $cotizaciones_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\reservas\GpGuiaRemisionReservaDetalle> $detalleGuiaReservas
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Reservas\GpGuiaRemisionReservaDetalle> $detalleGuiaReservas
  * @property-read int|null $detalle_guia_reservas_count
  * @property-read array $quotes
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionReserva newModelQuery()
@@ -131,7 +131,6 @@ class GpGuiaRemisionReserva extends Model
     public function getQuotesAttribute(): array
     {
         if ($this->relationLoaded('cotizaciones')) {
-            // $this->load('cotizaciones:id,cotizacion');
             return $this->cotizaciones->pluck('cotizacion')->unique()->values()->all();
         }
         return [];

@@ -5,20 +5,18 @@ namespace App\Services\Venta;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\QuotationMode;
-use App\Enums\Ventas\TaxRateEnum;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
-use App\Models\reservas\GpCotizacionReservaLog;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Carbon\Carbon;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
-use App\Models\GpVendedor;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpPuntoVenta;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpClienteSucursal;
@@ -274,6 +272,8 @@ class OrderService implements OrderServiceInterface
         $status                 = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
         $nivelPrecio            = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
         $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data['id'], 'pedido');
+        $pedido                 = GpPedido::find($data['id']);
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($pedido);
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -289,7 +289,8 @@ class OrderService implements OrderServiceInterface
             'segmento'              => $segmento,
             'has_guide_dispatched'  => $hasGuideDispatched,
             'nivelPrecio'           => $nivelPrecio,
-            'imagenesOperaciones'  => $imagenesOperaciones
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf
         ];
     }
 
@@ -521,13 +522,15 @@ class OrderService implements OrderServiceInterface
             $item->detalle_id = $item->id;
             return $item;
         });
-        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($order->id, 'pedido');
+        $registroCopiaId        = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($order->id, 'pedido');
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($order);
         return [
             'pedido'                => $order,
             'cliente'               => $clienteNew,
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf,
             'segmento'              => data_get($cliente, 'segmentos'),
             'registro_copia'        => $registroCopiaId,
             'mode'                  => QuotationMode::REORDER->value,
@@ -539,21 +542,20 @@ class OrderService implements OrderServiceInterface
 
     public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type, GpUsuario $user): array
     {
-        $initialCLient = GpCliente::find($clienteId);
-        $cliente =  $this->clientService->getAvailabeCreditCustomer($initialCLient->CLI_RUC);
-        $data = ($type === 'cotizacion')
-            ? GpCotizacion::findOrFail($rowId)
-            : GpPedido::findOrFail($rowId);
-        $clienteNew =  data_get($cliente, 'cliente');
-        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, $clienteNew, $type, true, true);
+        $initialCLient      = GpCliente::find($clienteId);
+        $cliente            =  $this->clientService->getAvailabeCreditCustomer($initialCLient->CLI_RUC);
+        $data               = ($type === 'cotizacion') ? GpCotizacion::findOrFail($rowId) : GpPedido::findOrFail($rowId);
+        $clienteNew         =  data_get($cliente, 'cliente');
+        $detalles           = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, $clienteNew, $type, true, true);
         $this->functionsService->recalculateIva($detalles);
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data->id, $user, $type, 'copia');
         $detalles->transform(function ($item) use ($type) {
             $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
-            $item->tipo = $type;
+            $item->tipo     = $type;
             return $item;
         });
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($data);
         $modeEnum = QuotationMode::fromType($type);
         return [
             'cliente'               => $clienteNew,
@@ -562,7 +564,8 @@ class OrderService implements OrderServiceInterface
             'registro_copia'        => $registroCopiaId,
             'sucursal_id'           => $sucursalId,
             'items'                 => $detalles,
-            'imagenesOperaciones'   => $imagenesOperaciones
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf
         ];
     }
 
@@ -1438,5 +1441,12 @@ class OrderService implements OrderServiceInterface
     {
         $resp = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
         return data_get($resp, 'data', []);
+    }
+
+    public function createTransferVtaOrders(string $orderNumber)
+    {
+        $pedido = GpPedido::where('pedido', $orderNumber)->first();
+        $this->invoiceService->checkTraslado($pedido);
+        return $pedido;
     }
 }

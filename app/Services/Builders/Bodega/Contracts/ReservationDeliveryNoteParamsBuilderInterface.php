@@ -3,8 +3,8 @@
 namespace App\Services\Builders\Bodega\Contracts;
 
 use App\Models\GpUsuario;
-use App\Models\reservas\GpGuiaRemisionReserva;
-use App\Models\reservas\GpGuiaRemisionReservaDetalle;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
 
 interface ReservationDeliveryNoteParamsBuilderInterface
 {

@@ -4,8 +4,8 @@ namespace App\Repositories\Venta;
 
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
-use App\Models\reservas\GpGuiaRemisionReserva;
-use App\Models\reservas\GpTrasladosReservas;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpTrasladosReservas;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 

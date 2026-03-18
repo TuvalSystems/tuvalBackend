@@ -118,8 +118,9 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     public function getReservedStockByWarehouses(string $articulo, array $bodegas, ?int $pedidoId = null, bool $forUpdate = false, ?int $excludeQuotationId = null): array
     {
 
-        if (empty($bodegas))
+        if (empty($bodegas)){
             return [];
+        }
         $q = GpPedidoDetalleStock::query()
             ->join('gp_pedido_detalles', 'gp_pedido_detalle_stocks.detalle_id', '=', 'gp_pedido_detalles.id')
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
@@ -489,12 +490,20 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function getListArticlesOfTypeLWithLimit($articulo, $excludeItemsL)
     {
-        $base = GpArticulo::where('ART_CODIGO', $articulo['ART_CODIGO'])
+        $artCodigo      = trim((string) data_get($articulo, 'ART_CODIGO'));
+        $excludeItemsL = collect($excludeItemsL ?? [])
+            ->map(fn($v) => trim((string) $v))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $base = GpArticulo::where('ART_CODIGO', $artCodigo)
             ->where('ART_ESTADO', 'ACTIVO')
             ->where('ART_TIPO_COMPRA', 'L')
             ->first(['ART_CLASE_ARTICULO', 'ART_IMP_COMPRA']);
-        if (!$base)
+        if (!$base) {
             return null;
+        }
 
         $q = GpArticulo::query()
             ->where('ART_ESTADO', 'ACTIVO')
@@ -512,13 +521,17 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function checkValidateDisponibleItemL($articulo)
     {
+        $articulo = trim((string) $articulo);
         return GpArticulo::where('ART_ESTADO', 'ACTIVO')
-            ->where('ART_TIPO_COMPRA', 'L')->where('ART_CODIGO', $articulo)
-            ->where('disponible', 1)->exists();
+            ->where('ART_TIPO_COMPRA', 'L')
+            ->where('ART_CODIGO', $articulo)
+            ->where('disponible', 1)
+            ->exists();
     }
 
     public function markArticleUnavailable($articulo)
     {
+        $articulo = trim((string) $articulo);
         GpArticulo::where('ART_CODIGO', $articulo)
             ->where('ART_TIPO_COMPRA', 'L')
             ->update(['disponible' => 0]);

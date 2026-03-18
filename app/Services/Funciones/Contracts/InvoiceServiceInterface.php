@@ -17,4 +17,5 @@ interface InvoiceServiceInterface
      public function checkTrasladado(GpPedido $pedido);
 
      public function respuestaFacturaVenta($order);
+      public function checkTraslado(GpPedido $pedido);
 }

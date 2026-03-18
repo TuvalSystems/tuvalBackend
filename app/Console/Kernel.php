@@ -6,6 +6,7 @@ use App\Jobs\Devoluciones\EnqueueDevoluciones;
 use App\Models\borradores\CotizacionBorrador;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 class Kernel extends ConsoleKernel
 {
@@ -66,6 +67,12 @@ class Kernel extends ConsoleKernel
         ])
             ->timezone('America/Guayaquil')
             ->dailyAt('02:00');
+
+
+        //limpieza de documentos 
+        $schedule->command('media:clean-old-pdfs --months=3')
+            ->dailyAt('02:00')
+            ->WithoutOverlapping(30);
     }
 
 

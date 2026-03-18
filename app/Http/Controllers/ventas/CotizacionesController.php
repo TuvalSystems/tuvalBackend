@@ -13,7 +13,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPuntoVenta;
 use App\Models\GpClienteSucursal;
-use App\Models\GpVendedor;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpCliente;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
@@ -52,13 +52,17 @@ class CotizacionesController extends Controller
 
         try {
             $user = $request->user();
-            $imagenesExistentes = $request->input('imagenes_existentes', []);
-            $imagenesNuevas = $request->file('imagenes_nuevas', []);
+            $imagenesExistentes     = $request->input('imagenes_existentes', []);
+            $imagenesNuevas         = $request->file('imagenes_nuevas', []);
+            $pdfsNuevos            = $request->file('pdfs_nuevos', []);
+            $pdfsExistentes        = $request->input('pdfs_existentes', []);
             $cotizacion = $this->quotationCreator->createOrUpdate(
                 $request->validated(),
                 $user,
                 $imagenesExistentes,
-                $imagenesNuevas
+                $imagenesNuevas,
+                $pdfsExistentes,
+                $pdfsNuevos
             );
             $msg = "Cotización {$cotizacion->cotizacion} guardada correctamente";
             return $this->buildSuccessResponse($msg, 200);
@@ -493,14 +497,12 @@ class CotizacionesController extends Controller
 
     public function guardarcliente(Request $request)
     {
-        try {
+        return $this->executeTransaction(function () use ($request) {
             $data = $request->all();
             $user = $request->user();
             $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
-            return $this->successResponse('Información Obtenida Correctamente', $cliente, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+            return $this->successResponse('Cliente Guardado Correctamente', $cliente, 200);
+        }, 'laravel', 'guardarcliente');
     }
 
 
