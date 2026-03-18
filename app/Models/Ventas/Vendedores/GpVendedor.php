@@ -64,7 +64,6 @@ class GpVendedor extends Model
         'VEND_TERRITORIO',
         'VEND_ESTADO',
         'VEND_CORREO_ELECTRONICO',
-        'zona_vendedor'
     ];
 
     protected $table = 'gp_vendedors';
