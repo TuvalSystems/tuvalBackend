@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\GpUsuario;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Telescope\IncomingEntry;
@@ -58,7 +59,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function gate(): void
     {
-        Gate::define('viewTelescope', function (User $user) {
+        Gate::define('viewTelescope', function (GpUsuario $user) {
             // Ahora permitimos tanto al perfil 1 como al perfil 2
             return in_array($user->perfil_id, [1, 2]);
         });
