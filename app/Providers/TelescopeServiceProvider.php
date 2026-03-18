@@ -58,17 +58,9 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function gate(): void
     {
-        Gate::define('viewTelescope', function ($user = null) {
-        // Gate::define('viewTelescope', function (User $user) {
-        //     \Illuminate\Support\Facades\Log::info('Intento de acceso a Telescope', [
-        //     'user_exists' => !is_null($user),
-        //     'user_id' => $user?->id,
-        //     'perfil_id' => $user?->perfil_id
-        // ]);
-            return true;
-            // return in_array($user->perfil_id, [
-            //     1
-            // ]);
+        Gate::define('viewTelescope', function (User $user) {
+            // Ahora permitimos tanto al perfil 1 como al perfil 2
+            return in_array($user->perfil_id, [1, 2]);
         });
     }
 }
