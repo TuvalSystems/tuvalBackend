@@ -38,6 +38,16 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpVendedor whereVENDNOMBRES($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpVendedor whereVENDPROVINCIA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpVendedor whereVENDTERRITORIO($value)
+ * @property int|null $user_id
+ * @property int|null $tipo_vendedor_id
+ * @property string|null $zona_vendedor
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Ventas\Vendedores\VendedorAtributoValor> $atributoValores
+ * @property-read int|null $atributo_valores_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, GpCliente> $clientes
+ * @property-read int|null $clientes_count
+ * @method static \Illuminate\Database\Eloquent\Builder|GpVendedor whereTipoVendedorId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpVendedor whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpVendedor whereZonaVendedor($value)
  * @mixin \Eloquent
  */
 class GpVendedor extends Model
@@ -54,6 +64,7 @@ class GpVendedor extends Model
         'VEND_TERRITORIO',
         'VEND_ESTADO',
         'VEND_CORREO_ELECTRONICO',
+        'zona_vendedor'
     ];
 
     protected $table = 'gp_vendedors';
