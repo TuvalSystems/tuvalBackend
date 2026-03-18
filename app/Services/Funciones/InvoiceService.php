@@ -16,12 +16,13 @@ use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
-use App\Models\traslados\GpTrasladosVentas;
 use App\Models\reservas\GpCotizacionReservaLog;
 use App\Models\reservas\GpCotizacionReservaDetalleLog;
 use App\Models\reservas\GpReserva;
 use App\Repositories\Pedidos\OrderRepository;
 use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
+use App\Services\Builders\Bodega\Contracts\DispatchOrderParamsBuilderInterface;
+use App\Services\Builders\Bodega\Contracts\SalesTransferParamsBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
@@ -38,7 +39,9 @@ class InvoiceService implements InvoiceServiceInterface
         protected readonly PurchaseOrderServiceInterface $purchaseOrderService,
         protected readonly FunctionsServiceInterface $functionService,
         protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice,
-        protected readonly OrderRepository $orderRepository
+        protected readonly OrderRepository $orderRepository,
+        protected readonly SalesTransferParamsBuilderInterface $salesTransfer,
+        protected readonly DispatchOrderParamsBuilderInterface $dispatchBuilder
     ) {}
 
     /** Funcion de checkenviarfactura pasada aqui para reutilizar en otros servicios
@@ -47,20 +50,14 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        if ($this->shouldSkipProcessing($pedido)) {
+        if (
+            $this->shouldSkipProcessing($pedido) ||
+            $this->shouldSkipDueToTransferStatus($pedido, $trasladado) ||
+            $this->processPurchaseOrders($pedido) || ($checkDemanda && $this->checkInvoiceOnDemand($pedido))
+        ) {
             return;
         }
 
-        $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
-
-
-        if ($this->processPurchaseOrders($pedido)) {
-            return;
-        }
-
-        if ($checkDemanda && $this->checkInvoiceOnDemand($pedido)) {
-            return;
-        }
 
         $this->generateDisptachOrder($pedido);
         $this->functionService->recalculateOrder($pedido->id);
@@ -82,18 +79,7 @@ class InvoiceService implements InvoiceServiceInterface
             : $this->checkTraslado($pedido);
     }
 
-    protected function processPurchaseOrders(GpPedido $pedido)
-    {
-        $this->purchaseOrderService->checkPurchaseOrder($pedido);
-        $this->purchaseOrderService->sendPurchaseOrders();
-        $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
-        $pedido->refresh();
-        return \in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true);
-    }
-
-
-
-    public function checkTrasladado(GpPedido $pedido)
+    public function checkTrasladado(GpPedido $pedido): bool
     {
         $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
         $pedido->estado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
@@ -102,7 +88,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function checkTraslado(GpPedido $pedido)
+    public function checkTraslado(GpPedido $pedido): bool
     {
         $hayTraslado    = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
         $detalles       = $this->orderRepository->getDetailForTraslate($pedido->id, $pedido->BOD_BODEGA);
@@ -116,6 +102,17 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
+
+    protected function processPurchaseOrders(GpPedido $pedido)
+    {
+        $this->purchaseOrderService->checkPurchaseOrder($pedido);
+        $this->purchaseOrderService->sendPurchaseOrders();
+        $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
+        $pedido->refresh();
+        return \in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true);
+    }
+
+
     /**
      *  remplaza a la funcion savetransferenciasventas que esta en TrasnferenciasController
      */
@@ -123,29 +120,12 @@ class InvoiceService implements InvoiceServiceInterface
     protected function saveTransferenciasVentas(GpPedido $pedido, $detalles)
     {
         foreach ($detalles as $detalle) {
-            GpTrasladosVentas::create($this->mapTransferenciaData($pedido, $detalle));
+            $trfvta = $this->salesTransfer->build($pedido, $detalle);
+            $trfvta->save();
             $detalle->traslado = 1;
             $detalle->save();
         }
     }
-
-    protected function mapTransferenciaData(GpPedido $pedido, $detalle)
-    {
-        return [
-            'pedido_id'                 => $pedido->id,
-            'detalle_id'                => $detalle->id,
-            'detalle_stocks_id'         => $detalle->detalle_stocks_id,
-            'ART_CODIGO'                => $detalle->ART_CODIGO,
-            'ART_DESCRIPCION'           => $detalle->ART_DESCRIPCION_ORIGINAL,
-            'ART_CODIGO_TRES_LETRAS'    => $detalle->ART_CODIGO_TRES_LETRAS,
-            'ART_PLAN_UMEDIDA'          => $detalle->ART_PLAN_UMEDIDA,
-            'ART_PESO'                  => $detalle->ART_PESO,
-            'cantidad'                  => $detalle->seleccionado,
-            'bodega_origen'             => $detalle->STO_ART_BODEGA,
-            'bodega_destino'            => $pedido->BOD_BODEGA,
-        ];
-    }
-
 
 
     protected function checkInvoiceOnDemand(GpPedido $pedido)
@@ -174,14 +154,13 @@ class InvoiceService implements InvoiceServiceInterface
         }
     }
 
-    protected function processInvoiceDecision($pedido)
+    protected function processInvoiceDecision(GpPedido $pedido)
     {
         if (!$pedido->factura_posterior_despacho) {
             return false;
         }
-
-        $esSoloDemanda = $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
-        $esSoloSiguiente = !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes;
+        $esSoloDemanda      = $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
+        $esSoloSiguiente    = !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes;
 
         //caso factura a demanda
         if ($esSoloDemanda || $esSoloSiguiente) {
@@ -192,32 +171,20 @@ class InvoiceService implements InvoiceServiceInterface
         return false;
     }
 
-    public function generateDisptachOrder($pedido)
+    public function generateDisptachOrder(GpPedido $pedido)
     {
-        if ($this->checkTrasladado($pedido)) {
-            return;
-        }
-        if ($this->shouldSkipOrderGeneration($pedido)) {
-            return;
-        }
-        if ($this->checkForExistingDispatchOrder($pedido)) {
+        if (
+            $this->checkTrasladado($pedido) ||
+            $this->shouldSkipOrderGeneration($pedido) ||
+            $this->checkForExistingDispatchOrder($pedido)
+        ) {
             return;
         }
         [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
-        $this->storeNewDispatchOrder($pedido, $estado, $fechaLiberacion);
+        $ordenDespacho =  $this->dispatchBuilder->build($pedido, $estado, $fechaLiberacion);
+        $ordenDespacho->save();
     }
 
-    public function storeNewDispatchOrder($pedido, $estado, $fechaLiberacion)
-    {
-        $newDispatchOrder                           = new GpOrdenDespacho();
-        $newDispatchOrder->pedido_id                = $pedido->id;
-        $newDispatchOrder->estado                   = $estado;
-        $newDispatchOrder->fecha_hora_liberacion    = $fechaLiberacion;
-        $newDispatchOrder->PTO_VTA_ID               = $pedido->PTO_VTA_ID;
-        $newDispatchOrder->BOD_BODEGA               = $pedido->BOD_BODEGA;
-        $newDispatchOrder->save();
-        return $newDispatchOrder;
-    }
 
     protected function shouldSkipOrderGeneration($pedido)
     {
@@ -229,27 +196,34 @@ class InvoiceService implements InvoiceServiceInterface
         return GpOrdenDespacho::where('pedido_id', $pedido->id)->exists();
     }
 
-    protected function determineDispatchStatusAndDate($pedido)
+    protected function determineDispatchStatusAndDate(GpPedido $pedido)
     {
-        $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $pedido->COND_ID)->first();
-        $cliente = GpCliente::find($pedido->cliente_id);
+        $estado             = self::STATUS_PENDING;
+        $fechaLiberacion    = null;
+        $esContado          = $pedido->COND_ID == 'CONTADO';
+        $bloqueoFactura     = $pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
 
-        $estado = self::STATUS_PENDING;
-        $fechaLiberacion = null;
-
-        if ($pedido->COND_ID != 'CONTADO') {
-            $fechaLiberacion = date('Y-m-d H:i:s');
+        // 3. Solo si NO es contado y NO hay bloqueo de factura, evaluamos liberarlo
+        if (!$esContado && !$bloqueoFactura) {
+            // Asumimos que se libera
             $estado = self::STATUS_RELEASED;
-        }
+            $fechaLiberacion = now()->format('Y-m-d H:i:s');
 
-        if ($formaPago?->DESC_FORMA_PAGO_TIPO_COBRO === 'CHEQUE') {
-            if ($cliente && $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0) {
-                $estado = self::STATUS_PENDING;
+            // Única excepción: consultamos la BD para ver si es Cheque sin días de gracia
+            $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $pedido->COND_ID)->first();
+
+            if ($formaPago?->DESC_FORMA_PAGO_TIPO_COBRO === 'CHEQUE') {
+                $cliente = GpCliente::find($pedido->cliente_id);
+
+                if ($cliente && $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0) {
+                    // Revertimos a pendiente
+                    $estado = self::STATUS_PENDING;
+                    $fechaLiberacion = null;
+                }
             }
         }
-        if ($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
-            $estado = self::STATUS_PENDING;
-        }
+
+        // 4. Un solo punto de salida. ¡SonarQube feliz!
         return [$estado, $fechaLiberacion];
     }
 
