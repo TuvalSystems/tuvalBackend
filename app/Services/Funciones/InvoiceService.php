@@ -16,27 +16,32 @@ use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
-use App\Models\traslados\GpTrasladosVentas;
-use App\Models\Reservas\GpCotizacionReservaLog;
-use App\Models\Reservas\GpCotizacionReservaDetalleLog;
-use App\Models\Reservas\GpReserva;
+use App\Models\reservas\GpCotizacionReservaLog;
+use App\Models\reservas\GpCotizacionReservaDetalleLog;
+use App\Models\reservas\GpReserva;
+use App\Repositories\Pedidos\OrderRepository;
 use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
+use App\Services\Builders\Bodega\Contracts\DispatchOrderParamsBuilderInterface;
+use App\Services\Builders\Bodega\Contracts\SalesTransferParamsBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 
 class InvoiceService implements InvoiceServiceInterface
 {
+    use JsonResponseTrait;
     const STATUS_PENDING = 'pendiente';
     const STATUS_RELEASED = 'liberada';
-    use JsonResponseTrait;
 
     // Implementa todos los metodos de facturacion de pedidos, devoluciones, aprobaciones, etc
 
     public function __construct(
         protected readonly PurchaseOrderServiceInterface $purchaseOrderService,
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice
+        protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice,
+        protected readonly OrderRepository $orderRepository,
+        protected readonly SalesTransferParamsBuilderInterface $salesTransfer,
+        protected readonly DispatchOrderParamsBuilderInterface $dispatchBuilder
     ) {}
 
     /** Funcion de checkenviarfactura pasada aqui para reutilizar en otros servicios
@@ -45,20 +50,14 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        if ($this->shouldSkipProcessing($pedido)) {
+        if (
+            $this->shouldSkipProcessing($pedido) ||
+            $this->shouldSkipDueToTransferStatus($pedido, $trasladado) ||
+            $this->processPurchaseOrders($pedido) || ($checkDemanda && $this->checkInvoiceOnDemand($pedido))
+        ) {
             return;
         }
 
-        $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
-
-
-        if ($this->processPurchaseOrders($pedido)) {
-            return;
-        }
-
-        if ($checkDemanda && $this->checkInvoiceOnDemand($pedido)) {
-            return;
-        }
 
         $this->generateDisptachOrder($pedido);
         $this->functionService->recalculateOrder($pedido->id);
@@ -80,6 +79,30 @@ class InvoiceService implements InvoiceServiceInterface
             : $this->checkTraslado($pedido);
     }
 
+    public function checkTrasladado(GpPedido $pedido): bool
+    {
+        $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
+        $pedido->estado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
+        $pedido->save();
+        return $tieneTraslado;
+    }
+
+
+    public function checkTraslado(GpPedido $pedido): bool
+    {
+        $hayTraslado    = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
+        $detalles       = $this->orderRepository->getDetailForTraslate($pedido->id, $pedido->BOD_BODEGA);
+        $nuevoEstado    = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
+        $pedido->estado = $nuevoEstado;
+        if ($nuevoEstado == OrderStatus::TRASLADO) {
+            $this->saveTransferenciasVentas($pedido, $detalles);
+        }
+        $pedido->save();
+        return $hayTraslado;
+    }
+
+
+
     protected function processPurchaseOrders(GpPedido $pedido)
     {
         $this->purchaseOrderService->checkPurchaseOrder($pedido);
@@ -90,54 +113,6 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-
-    public function checkTrasladado(GpPedido $pedido)
-    {
-        $tieneTraslado = $this->getDataCheckTraslado($pedido);
-
-        $pedido->estado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-        $pedido->save();
-        return $tieneTraslado;
-    }
-
-
-    protected function getDataCheckTraslado(GpPedido $pedido): bool
-    {
-        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
-            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)->exists();
-    }
-
-    public function checkTraslado(GpPedido $pedido)
-    {
-        $hayTraslado    = $this->getDataCheckTraslado($pedido);
-        $detalles       = $this->getDetailForTraslate($pedido);
-        $nuevoEstado    = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-        $pedido->estado = $nuevoEstado;
-
-        if ($nuevoEstado == OrderStatus::TRASLADO) {
-            $this->saveTransferenciasVentas($pedido, $detalles);
-        }
-        $pedido->save();
-        return $hayTraslado;
-    }
-
-    protected function getDetailForTraslate(GpPedido $pedido)
-    {
-        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
-            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-            ->where('traslado', 0)
-            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $pedido->BOD_BODEGA)
-            ->select([
-                'gp_pedido_detalles.*',
-                'gp_pedido_detalle_stocks.STO_ART_BODEGA',
-                'gp_pedido_detalle_stocks.seleccionado',
-                'gp_pedido_detalle_stocks.id AS detalle_stocks_id'
-            ])->get();
-    }
-
     /**
      *  remplaza a la funcion savetransferenciasventas que esta en TrasnferenciasController
      */
@@ -145,29 +120,12 @@ class InvoiceService implements InvoiceServiceInterface
     protected function saveTransferenciasVentas(GpPedido $pedido, $detalles)
     {
         foreach ($detalles as $detalle) {
-            GpTrasladosVentas::create($this->mapTransferenciaData($pedido, $detalle));
+            $trfvta = $this->salesTransfer->build($pedido, $detalle);
+            $trfvta->save();
             $detalle->traslado = 1;
             $detalle->save();
         }
     }
-
-    protected function mapTransferenciaData(GpPedido $pedido, $detalle)
-    {
-        return [
-            'pedido_id'                 => $pedido->id,
-            'detalle_id'                => $detalle->id,
-            'detalle_stocks_id'         => $detalle->detalle_stocks_id,
-            'ART_CODIGO'                => $detalle->ART_CODIGO,
-            'ART_DESCRIPCION'           => $detalle->ART_DESCRIPCION_ORIGINAL,
-            'ART_CODIGO_TRES_LETRAS'    => $detalle->ART_CODIGO_TRES_LETRAS,
-            'ART_PLAN_UMEDIDA'          => $detalle->ART_PLAN_UMEDIDA,
-            'ART_PESO'                  => $detalle->ART_PESO,
-            'cantidad'                  => $detalle->seleccionado,
-            'bodega_origen'             => $detalle->STO_ART_BODEGA,
-            'bodega_destino'            => $pedido->BOD_BODEGA,
-        ];
-    }
-
 
 
     protected function checkInvoiceOnDemand(GpPedido $pedido)
@@ -196,14 +154,13 @@ class InvoiceService implements InvoiceServiceInterface
         }
     }
 
-    protected function processInvoiceDecision($pedido)
+    protected function processInvoiceDecision(GpPedido $pedido)
     {
         if (!$pedido->factura_posterior_despacho) {
             return false;
         }
-
-        $esSoloDemanda = $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
-        $esSoloSiguiente = !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes;
+        $esSoloDemanda      = $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
+        $esSoloSiguiente    = !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes;
 
         //caso factura a demanda
         if ($esSoloDemanda || $esSoloSiguiente) {
@@ -214,32 +171,20 @@ class InvoiceService implements InvoiceServiceInterface
         return false;
     }
 
-    public function generateDisptachOrder($pedido)
+    public function generateDisptachOrder(GpPedido $pedido)
     {
-        if ($this->checkTrasladado($pedido)) {
-            return;
-        }
-        if ($this->shouldSkipOrderGeneration($pedido)) {
-            return;
-        }
-        if ($this->checkForExistingDispatchOrder($pedido)) {
+        if (
+            $this->checkTrasladado($pedido) ||
+            $this->shouldSkipOrderGeneration($pedido) ||
+            $this->checkForExistingDispatchOrder($pedido)
+        ) {
             return;
         }
         [$estado, $fechaLiberacion] = $this->determineDispatchStatusAndDate($pedido);
-        $this->storeNewDispatchOrder($pedido, $estado, $fechaLiberacion);
+        $ordenDespacho =  $this->dispatchBuilder->build($pedido, $estado, $fechaLiberacion);
+        $ordenDespacho->save();
     }
 
-    public function storeNewDispatchOrder($pedido, $estado, $fechaLiberacion)
-    {
-        $newDispatchOrder                           = new GpOrdenDespacho();
-        $newDispatchOrder->pedido_id                = $pedido->id;
-        $newDispatchOrder->estado                   = $estado;
-        $newDispatchOrder->fecha_hora_liberacion    = $fechaLiberacion;
-        $newDispatchOrder->PTO_VTA_ID               = $pedido->PTO_VTA_ID;
-        $newDispatchOrder->BOD_BODEGA               = $pedido->BOD_BODEGA;
-        $newDispatchOrder->save();
-        return $newDispatchOrder;
-    }
 
     protected function shouldSkipOrderGeneration($pedido)
     {
@@ -251,27 +196,34 @@ class InvoiceService implements InvoiceServiceInterface
         return GpOrdenDespacho::where('pedido_id', $pedido->id)->exists();
     }
 
-    protected function determineDispatchStatusAndDate($pedido)
+    protected function determineDispatchStatusAndDate(GpPedido $pedido)
     {
-        $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $pedido->COND_ID)->first();
-        $cliente = GpCliente::find($pedido->cliente_id);
+        $estado             = self::STATUS_PENDING;
+        $fechaLiberacion    = null;
+        $esContado          = $pedido->COND_ID == 'CONTADO';
+        $bloqueoFactura     = $pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
 
-        $estado = self::STATUS_PENDING;
-        $fechaLiberacion = null;
-
-        if ($pedido->COND_ID != 'CONTADO') {
-            $fechaLiberacion = date('Y-m-d H:i:s');
+        // 3. Solo si NO es contado y NO hay bloqueo de factura, evaluamos liberarlo
+        if (!$esContado && !$bloqueoFactura) {
+            // Asumimos que se libera
             $estado = self::STATUS_RELEASED;
-        }
+            $fechaLiberacion = now()->format('Y-m-d H:i:s');
 
-        if ($formaPago?->DESC_FORMA_PAGO_TIPO_COBRO === 'CHEQUE') {
-            if ($cliente && $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0) {
-                $estado = self::STATUS_PENDING;
+            // Única excepción: consultamos la BD para ver si es Cheque sin días de gracia
+            $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $pedido->COND_ID)->first();
+
+            if ($formaPago?->DESC_FORMA_PAGO_TIPO_COBRO === 'CHEQUE') {
+                $cliente = GpCliente::find($pedido->cliente_id);
+
+                if ($cliente && $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0) {
+                    // Revertimos a pendiente
+                    $estado = self::STATUS_PENDING;
+                    $fechaLiberacion = null;
+                }
             }
         }
-        if ($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes) {
-            $estado = self::STATUS_PENDING;
-        }
+
+        // 4. Un solo punto de salida. ¡SonarQube feliz!
         return [$estado, $fechaLiberacion];
     }
 
@@ -342,8 +294,15 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         }
 
-        $sucursalEnvio          = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
-        $sucursalFacturacion    = GpClienteSucursal::where('id', $pedido->sucursal_facturacion_id)->first();
+
+        $sucursales = GpClienteSucursal::whereIn('id', [
+            $pedido->sucursal_id,
+            $pedido->sucursal_facturacion_id
+        ])->get()->keyBy('id');
+
+        $sucursalEnvio          = $sucursales->get($pedido->sucursal_id);
+        $sucursalFacturacion    = $sucursales->get($pedido->sucursal_facturacion_id);
+
         if (!$sucursalEnvio || !$sucursalFacturacion) {
             Log::error("Pedido {$pedido->pedido}: Falta información de sucursal de envío o facturación.");
             throw new \Exception("Datos de sucursal incompletos.");
@@ -400,7 +359,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function checkOrderHaveItemTransferPending(GpPedido $order): bool
     {
-        $tieneTraslado = $this->getDataCheckTraslado($order);
+        $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($order->id, $order->BOD_BODEGA);
         $nuevoEstado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
 
         if ($order->estado !== $nuevoEstado) {
@@ -451,7 +410,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $FAC_VTA_ID_DIRECCION_ENVIO)
+    public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio)
     {
         return [
             'FAC_VTA_DOCU_ORIGEN'           => $pedido->pedido,
@@ -462,7 +421,7 @@ class InvoiceService implements InvoiceServiceInterface
             'FAC_VTA_ID_CLIENTE'            => $pedido->CLI_RUC,
             'FAC_VTA_ID_VENDEDOR'           => $pedido->VEND_ID,
             'FAC_VTA_ID_DIRECCION'          => $sucursalFacturacion->CLI_SUC_ID_DIRECCION,
-            'FAC_VTA_ID_DIRECCION_ENVIO'    => $FAC_VTA_ID_DIRECCION_ENVIO,
+            'FAC_VTA_ID_DIRECCION_ENVIO'    => $direccionEnvio,
             'FAC_VTA_COND_PAGO'             => $pedido->COND_ID,
             'FAC_VTA_NOTA_DOCU'             => $pedido->factura_origen,
             'FAC_VTA_DATE_DOCU'             => now()->toDateTimeString(),
@@ -483,8 +442,9 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function normalizeTextNoteClient(?string $nota): string
     {
-        if ($nota === null)
+        if ($nota === null) {
             return '';
+        }
         $clean = preg_replace('/\R+/u', ' ', $nota);
         return trim(preg_replace('/[^\S\r\n]+/u', ' ', $clean));
     }
@@ -528,7 +488,7 @@ class InvoiceService implements InvoiceServiceInterface
     public function checkFinalInvoiceValidation(GpPedido $pedido): bool
     {
         $isInvalidStatus    = $pedido->estado !== OrderStatus::ENVIANDO;
-        $hasInvoice      = !empty($pedido->factura);
+        $hasInvoice         = !empty($pedido->factura);
         $missingCommercial  = $pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial === 'no';
         $missingCredit      = $pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio === 'no';
 
@@ -545,10 +505,9 @@ class InvoiceService implements InvoiceServiceInterface
         return true;
     }
 
-    public function respuestaFacturaVenta($order)
+    public function respuestaFacturaVenta(GpPedido $order)
     {
         $pedido = GpPedido::find($order->id);
-
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === false) {
             $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? 'Error no definido por GP';
@@ -574,31 +533,25 @@ class InvoiceService implements InvoiceServiceInterface
     /** proceso de limpieza de stock de cotizacion de reserva  */
     public function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
     {
-        $order = GpPedido::with('detallepedido.pedidodetallestocks')->find($orderId);
+        $order = GpPedido::find($orderId);
+        if (!$order || $order->estado == OrderStatus::ESPERA) {
+            return;
+        }
         $cotResLog = GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)->first();
-        if (!$order) {
+        if (!$cotResLog || empty($cotResLog->cotizacion_origen_id)) {
             return;
         }
 
-        if ($order->estado == OrderStatus::ESPERA) {
-            return;
-        }
-
-        if (!$cotResLog) {
-            return;
-        }
-
-        $reservedId = data_get($cotResLog, 'reserva_id', null);
-        $quoteOriginId = data_get($cotResLog, 'cotizacion_origen_id', null);
+        $reservedId     = data_get($cotResLog, 'reserva_id', null);
+        $quoteOriginId  = data_get($cotResLog, 'cotizacion_origen_id', null);
         if (!$quoteOriginId) {
             return;
         }
-
+        $order->load('detallepedido.pedidodetallestocks');
         // 1) Consumo del PEDIDO por (ART_CODIGO|BODEGA)
         $pedidoPorClave = []; // clave = ART_CODIGO|BODEGA
         foreach ($order->detallepedido as $det) {
             foreach ($det->pedidodetallestocks as $stk) {
-
                 $clave = $det->ART_CODIGO . '|' . $stk->STO_ART_BODEGA;
                 $pedidoPorClave[$clave] = ($pedidoPorClave[$clave] ?? 0) + (int) $stk->seleccionado;
             }
@@ -631,53 +584,37 @@ class InvoiceService implements InvoiceServiceInterface
                 's.cantidad_reservada'
             )
             ->whereIn('s.id', $stockIds->all())
-            // ->when($warehouse, fn($q) => $q->where('s.STO_ART_BODEGA', $warehouse))
             ->get();
 
         if ($quoteStockRows->isEmpty()) {
             return;
         }
 
-        $cotizacionPorClave = $quoteStockRows->keyBy(fn($row) => $row->ART_CODIGO . '|' . $row->STO_ART_BODEGA);
-        $clavesAfectadas = array_values(array_intersect(array_keys($pedidoPorClave), $cotizacionPorClave->keys()->all()));
+        $cotizacionPorClave     = $quoteStockRows->keyBy(fn($row) => $row->ART_CODIGO . '|' . $row->STO_ART_BODEGA);
+        $clavesAfectadas        = array_values(array_intersect(array_keys($pedidoPorClave), $cotizacionPorClave->keys()->all()));
         if (empty($clavesAfectadas)) {
             return;
         }
 
         $idsParaLock = array_map(fn($k) => $cotizacionPorClave[$k]->id, $clavesAfectadas);
-        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->lockForUpdate()->get(); // lo comento por ahora
-        // Lock real de filas para evitar race conditions
+        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->get();
         foreach ($clavesAfectadas as $k) {
-            $row = $cotizacionPorClave[$k];
-            $pedidoQty = (int) $pedidoPorClave[$k];
-
-            // a) Reducir seleccionado en la cotización origen: max(origen - pedido, 0)
-            $selActual = (int) $row->seleccionado;
-
-            // b) Aumentar facturado pero sin lo facturado - lo cancelado - seleccionado
-            $facturado = (int) ($row->cantidad_facturada ?? 0);
-            $cancelado = (int) ($row->cantidad_cancelada ?? 0);
-            $authorizado = (int) ($row->cantidad_reservada ?? 0);
-
-            // 1) Tope total permitido por política (NO incluye seleccionado)
-            $limite = max(0, $authorizado - $cancelado);
-
-
-            // 2) ¿Cuánto puedo incrementar el facturado SIN pasarme del tope?
-            $remanenteFact = max(0, $limite - $facturado);
-            $incFacturable = min($pedidoQty, $remanenteFact); //incremento real de factura
-
-            // 3) Limpio seleccionado hasta donde el pedido consuma (prioriza consumir reserva)
+            $row            = $cotizacionPorClave[$k];
+            $pedidoQty      = (int) $pedidoPorClave[$k];
+            $selActual      = (int) $row->seleccionado;
+            $facturado      = (int) ($row->cantidad_facturada ?? 0);
+            $cancelado      = (int) ($row->cantidad_cancelada ?? 0);
+            $authorizado    = (int) ($row->cantidad_reservada ?? 0);
+            $limite         = max(0, $authorizado - $cancelado);
+            $remanenteFact  = max(0, $limite - $facturado);
+            $incFacturable  = min($pedidoQty, $remanenteFact);
             $consumoReserva = min($incFacturable, $selActual);
-            $nuevoSelect = $selActual - $consumoReserva;
-
-            // 4) Nuevo total facturado (sin exceder tope)
+            $nuevoSelect    = $selActual - $consumoReserva;
             $nuevoFacturado = $facturado + $incFacturable;
 
             if ($nuevoSelect !== $selActual) {
-                // Si solo quieres marcar en memoria y guardar luego, puedes batch; aquí guardamos inmediato
-                $row->seleccionado = $nuevoSelect; // nunca debe ser negativo
-                $row->cantidad_facturada = $nuevoFacturado;
+                $row->seleccionado          = $nuevoSelect;
+                $row->cantidad_facturada    = $nuevoFacturado;
                 $row->save();
             }
         }
@@ -687,18 +624,18 @@ class InvoiceService implements InvoiceServiceInterface
     public function updateCheckStatusReservation(int $reserveId)
     {
         $reserva = GpReserva::find($reserveId);
-        $stocks = GpCotizacionDetalleStock::query()
-            ->where('cotizacion_id', $reserva->cotizacion_id)
-            ->get();
-        $tienePendientes = $stocks->contains(function (GpCotizacionDetalleStock $stock) {
-            return $stock->pendiente > 0;   // usa tu accessor
-        });
+        if (!$reserva) {
+            return;
+        }
+        $tienePendientes = GpCotizacionDetalleStock::where('cotizacion_id', $reserva->cotizacion_id)
+            ->whereRaw('(COALESCE(cantidad_reservada, 0) - COALESCE(cantidad_facturada, 0) - COALESCE(cantidad_cancelada, 0)) > 0')
+            ->exists();
 
         if (!$tienePendientes) {
             // Ajusta el nombre de la columna/valor según tu modelo (estado, estado_reserva, etc.)
             $reserva->estado = 'procesado';
-
             $reserva->save();
+
             GpCotizacion::where('id', $reserva->cotizacion_id) // O la columna ID real
                 ->update(['estado' => 'procesado']);
         }

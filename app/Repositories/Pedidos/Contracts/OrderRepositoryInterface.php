@@ -34,4 +34,10 @@ interface OrderRepositoryInterface
     public function queryInvoiceReservedOrdersForDate($date);
 
     public function queryHasGuideDispatched($ids): bool;
+
+
+
+    /** para facturacion   */
+    public function getDataCheckoutTraslate(int $orderId, String $warehouse): bool;
+    public function getDetailForTraslate(int $orderId, String $warehouse);
 }

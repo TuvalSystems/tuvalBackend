@@ -194,4 +194,8 @@ class GpPedidoDetalle extends Model
     public function detalleGuia (){
         return $this->hasMany(GpGuiaRemisionDetalle::class, 'detalle_id', 'id');
     }
+
+    public function detalleProveedores(){
+        return $this->hasMany(GpPedidoDetalleProveedores::class, 'detalle_id', 'id');
+    }
 }

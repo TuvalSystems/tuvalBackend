@@ -19,19 +19,6 @@ use App\Repositories\Venta\InventoryReservationRepository;
 
 class RepositoryServiceProvider extends ServiceProvider implements DeferrableProvider
 {
-   
-    // public function register()
-    // {
-    //     $this->app->singleton(DevolucionRepositoryInterface::class, DevolucionRepository::class);
-    //     $this->app->singleton(OrderRepositoryInterface::class, OrderRepository::class);
-    //     $this->app->singleton(PurchaseReceipRepositoryInterface::class, PurchaseReceipRepository::class);
-    //     $this->app->singleton(QuotationRepositoryInterface::class, QuotationRepository::class);
-    //     $this->app->singleton(TransferRepositoryInterface::class, TransferRepository::class);
-    //     $this->app->singleton(InventoryReservationRepositoryInterface::class, InventoryReservationRepository::class);
-
-    // }
-
-
 
 public array $singletons = [
         DevolucionRepositoryInterface::class           => DevolucionRepository::class,

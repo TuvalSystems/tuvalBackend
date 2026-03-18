@@ -182,4 +182,32 @@ class OrderRepository implements OrderRepositoryInterface
             ->where('gr.tipo', 'despacho')
             ->exists();
     }
+
+
+    /** para purchaseOrdersService itemsL  */
+
+    public function getDataCheckoutTraslate(int $orderId, String $warehouse): bool
+    {
+        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $orderId)
+            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
+            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
+            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $warehouse)->exists();
+    }
+
+
+
+    public function getDetailForTraslate(int $orderId, String $warehouse)
+    {
+        return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $orderId)
+            ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
+            ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
+            ->whereNull('traslado')
+            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $warehouse)
+            ->select([
+                'gp_pedido_detalles.*',
+                'gp_pedido_detalle_stocks.STO_ART_BODEGA',
+                'gp_pedido_detalle_stocks.seleccionado',
+                'gp_pedido_detalle_stocks.id AS detalle_stocks_id'
+            ])->get();
+    }
 }

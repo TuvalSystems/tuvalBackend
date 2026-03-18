@@ -102,11 +102,8 @@ class GpCotizacionDetalleStock extends Model
         $res = $this->getReservada();
         $fact = $this->cantidad_facturada ?? 0;
         $can = $this->cantidad_cancelada ?? 0;
-        // $cot = $this->cantidad_cotizada     ?? 0;
-        // $tras = $this->cantidad_traslado ?? 0;
         $pendiente = $res - $fact - $can;
         return max(0, round($pendiente, 4));
-        // return max(0, $res - $fact - $can);
     }
 
     public function getDisableMovimientoAttribute(): bool

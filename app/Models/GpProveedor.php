@@ -66,4 +66,9 @@ use Illuminate\Database\Eloquent\Model;
 class GpProveedor extends Model
 {
     use HasFactory;
+
+    public function detalleProveedores()
+    {
+        return $this->hasMany(GpPedidoDetalleProveedores::class , 'ID_PROVEEDOR'  , 'id');
+    }
 }
