@@ -77,4 +77,9 @@ class GpVendedor extends Model
     {
         return $this->hasMany(VendedorAtributoValor::class, 'vendedor_id');
     }
+
+    public function zonaVendedor()
+    {
+        return $this->belongsTo(ZonaVendedor::class, 'zona_vendedor_id');
+    }
 }
