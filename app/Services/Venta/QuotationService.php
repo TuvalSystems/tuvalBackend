@@ -676,15 +676,17 @@ class QuotationService implements QuotationServiceInterface
         $warehouses             = $this->functionService->getBodegas($warehouse, 1);
         foreach ($articles as $article) {
             $articleCode            = data_get($article, 'ART_CODIGO');
+            $key                    = data_get($article, 'id_temp');
             $arrArticulos           = ['articulo' => $articleCode];
             $selectedArticleByItem  = $this->resolveAndFormatArticleStock($article);
             $stockGeneral           = $this->getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses);
             $this->mergeSelectedStock($stockGeneral, $selectedArticleByItem);
             $artFormat = $this->stockWarehouseService->computeAvailableStockForArticle($stockGeneral, $article, $quoteReservedOriginId);
-            $data[$articleCode]     = [
+            $data[$key]     = [
                 'stock'             => data_get($artFormat, 'stock', []),
                 'ART_STOCK'         => data_get($artFormat, 'ART_STOCK', 0),
                 'stockListo'        => true,
+                'id_temp'           => $key
             ];
         }
         return $data;
