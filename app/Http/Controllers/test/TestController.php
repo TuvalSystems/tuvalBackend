@@ -9,7 +9,6 @@ use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class TestController extends Controller
 {
@@ -19,9 +18,6 @@ class TestController extends Controller
 
     public function crearOrdenCompraItemsL(int $id): JsonResponse
     {
-
-        // $parada_de_seguridad = "ESET me deja pasar?";
-        // return response()->json(['status' => 'vivo']);
         return $this->executeTransaction(function () use ($id) {
             $pedido = GpPedido::find($id);
 
