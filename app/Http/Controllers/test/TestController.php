@@ -19,8 +19,12 @@ class TestController extends Controller
 
     public function crearOrdenCompraItemsL(int $id): JsonResponse
     {
+
+        // $parada_de_seguridad = "ESET me deja pasar?";
+        // return response()->json(['status' => 'vivo']);
         return $this->executeTransaction(function () use ($id) {
-            $pedido = GpPedido::findOrFail($id);
+            $pedido = GpPedido::find($id);
+
             DB::transaction(fn() => $this->purchase->checkPurchaseOrdersV2($pedido));
             return $this->successResponse('Información obtenida', $pedido, 200);
         }, "invoice", "crearOrdenCompraItemsL Error creando OC para pedido_id {$id}");

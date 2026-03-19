@@ -16,7 +16,6 @@
         "guzzlehttp/psr7": "^2.6",
         "laravel/framework": "^8.75",
         "laravel/sanctum": "^2.11",
-        "laravel/telescope": "^5.18",
         "laravel/tinker": "^2.5",
         "maatwebsite/excel": "^3.1",
         "milon/barcode": "^12.0",

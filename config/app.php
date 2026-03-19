@@ -174,7 +174,6 @@ return [
         App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        App\Providers\TelescopeServiceProvider::class,
         Barryvdh\DomPDF\ServiceProvider::class,
         // Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
         Maatwebsite\Excel\ExcelServiceProvider::class,
@@ -190,7 +189,7 @@ return [
         App\Providers\Service\VentaServiceProvider::class,
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\Service\UserServiceProvider::class,
-        
+
 
 
         //Provider Builders

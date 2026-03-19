@@ -157,6 +157,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
             $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
             $pedido->save();
         }
+        
         return $pedido->refresh();
     }
 
