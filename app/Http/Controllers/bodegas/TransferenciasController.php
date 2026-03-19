@@ -84,40 +84,7 @@ class TransferenciasController extends Controller
         ]);
     }
 
-    public function cancelarpicking(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $picking = $request->all();
-        $user = $request->user();
-
-        if (GpTrasladosVentas::where('id', $picking['id'])->update(['picking' => null])) {
-
-            $traslados = GpTrasladosVentas::where('pedido_id', $picking['pedido_id'])->get();
-            $tiene_picking = false;
-            foreach ($traslados as $traslado) {
-                if ($traslado->picking) {
-                    $tiene_picking = true;
-                }
-            }
-
-            $pedido = GpPedido::where('id', $picking['pedido_id'])->first();
-            if (!$tiene_picking) {
-                $pedido->transferencia_en_proceso = null;
-                $pedido->save();
-            }
-            $title = 'Picking Cancelado';
-            $msg = 'El usuario ' . $user->USERID . ' canceló el picking del artículo ' . $picking['ART_CODIGO'] . ' del pedido ' . $pedido->pedido;
-            $gpUser = GpUsuario::where('id', $user->id)->first();
-            if ($gpUser) {
-                $gpUser->notify(new UserNotification($title, $msg));
-            }
-            return response([
-                'success' => true,
-            ]);
-        }
-        return response([
-            'error' => 'Hubo un error al guardar'
-        ], 409);
-    }
+   
 
     public function cancelarPickingV2(Request $request)
     {
