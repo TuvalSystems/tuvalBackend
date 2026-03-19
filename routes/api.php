@@ -329,7 +329,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::get('transferencias/transferenciasventa/{id}/{pedido?}/{compartimiento?}', [TransferenciasController::class, 'transferenciasVentas']);
         Route::post('transferencias/picking', [TransferenciasController::class, 'picking']);
         Route::post('transferencias/imprimirpicking', [TransferenciasController::class, 'imprimirpicking']);
-        Route::post('transferencias/cancelarpicking', [TransferenciasController::class, 'cancelarpicking']);
+        // Route::post('transferencias/cancelarpicking', [TransferenciasController::class, 'cancelarpicking']);
 
         Route::get('reposicion/transferenciasreposicion/{id}/{pedido?}', [ReposicionController::class, 'transferenciasreposicion']);
         Route::get('reposicion/recibosreposicion/{id}', [ReposicionController::class, 'recibosreposicion']);
@@ -359,6 +359,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
         //creacion de guia de remision de transferencia de venta
+        Route::post('transferencias/cancelar-picking', [TransferenciasController::class, 'cancelarPickingV2']);
         Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
         Route::post('transferencia-venta/guia-remision/despachar-guia-transferencia-venta', [GuiasderemisionController::class, 'despacharGuiaRemisionVenta']);

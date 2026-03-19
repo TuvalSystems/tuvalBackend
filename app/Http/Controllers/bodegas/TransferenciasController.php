@@ -119,6 +119,18 @@ class TransferenciasController extends Controller
         ], 409);
     }
 
+    public function cancelarPickingV2(Request $request)
+    {
+        return $this->executeTransaction(function () use ($request) {
+            $validate = $request->validate([
+                'payload' => 'required'
+            ]);
+            $payload = data_get($validate, 'payload');
+            $data       = $this->transferService->cancelPicking($payload, $request->user());
+            return $this->successResponse('Transferencias obtenidas', $data, 200);
+        }, 'laravel', 'cancelarPickingV2');
+    }
+
 
     public function imprimirpicking(Request $request): \Illuminate\Http\Response
     {
