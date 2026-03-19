@@ -747,7 +747,7 @@ class QuotationService implements QuotationServiceInterface
     {
 
         $this->prepareForValidationDirection($data);
-        $nivelPrecio            = $this->getNivelPriceSeller($data, $user);
+        $nivelPrecio            = $this->getNivelPriceSeller( $user);
         $params                 = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
         $this->apiGpService->storeClientGp($params);
         $this->createClientWeb($data, $nivelPrecio, $user);
@@ -787,18 +787,36 @@ class QuotationService implements QuotationServiceInterface
         return GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data, $user));
     }
 
-    public function getNivelPriceSeller(array $data, GpUsuario $user)
-    {
+    // public function getNivelPriceSeller(array $data, GpUsuario $user)
+    // {
 
-        $nivelPrecioApi = $this->apiGpService->getTypeBySeller([
-            'usuario' => $user->USERID,
-            // 'usuario' => 'oficina',
-        ]);
-        if ($nivelPrecioApi['success'] === false) {
+    //     $nivelPrecioApi = $this->apiGpService->getTypeBySeller([
+    //         'usuario' => $user->USERID,
+    //         // 'usuario' => 'oficina',
+    //     ]);
+    //     if ($nivelPrecioApi['success'] === false) {
+    //         return 'GENERAL';
+    //     }
+    //     $payload = $nivelPrecioApi['data'];
+    //     return ((int) $payload['coTipVen'] === 1) ? 'TIENDA' : 'GENERAL';
+    // }
+
+    protected function getNivelPriceSeller( GpUsuario $user)
+    {
+        $vendedor = GpVendedor::with(['atributoValores' => function ($q) {
+            // Aseguramos que la opción exista y esté activa
+            $q->whereHas('opcion', function ($qOpcion) {
+                $qOpcion->where('estado', 1)->where('atributo_id', 1);
+            })->with('opcion:id,codigo');
+        }])
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$vendedor || $vendedor->atributoValores->isEmpty()) {
             return 'GENERAL';
         }
-        $payload = $nivelPrecioApi['data'];
-        return ((int) $payload['coTipVen'] === 1) ? 'TIENDA' : 'GENERAL';
+
+        return $vendedor->atributoValores->first()?->opcion?->codigo ?? 'GENERAL';
     }
     public function sendToSegmentAndRucToGp($ruc, $subsegmentoId)
     {
