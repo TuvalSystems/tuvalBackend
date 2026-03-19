@@ -265,7 +265,7 @@ class OrderBuilder implements OrderBuilderInterface
             'nota_cliente'                      => data_get($data, 'nota_cliente'),
             'nota_operaciones'                  => data_get($data, 'nota_operaciones'),
             'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
-            'origen'                            => OrderOrigenEnum::FACTURA_EXISTENTE->value,
+            'origen'                            => OrderOrigenEnum::FACTURAR_EXISTENTE->value,
             'modificador_global'                => data_get($data, 'modificador_global', 0),
             'fe_facturacion_reserva'            => data_get($data, 'facturacion_reserva'),
             'pedido_origen'                     => data_get($data, 'pedido'),
