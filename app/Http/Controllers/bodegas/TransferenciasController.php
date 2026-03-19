@@ -15,8 +15,6 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpUsuario;
-use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 
@@ -84,7 +82,7 @@ class TransferenciasController extends Controller
         ]);
     }
 
-   
+
 
     public function cancelarPickingV2(Request $request)
     {
