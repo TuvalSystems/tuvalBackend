@@ -24,6 +24,7 @@ use App\Models\GpCotizacion;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpPedidoImagen;
 use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
@@ -1091,6 +1092,7 @@ class OrderService implements OrderServiceInterface
         $this->storeFillDetailOrderExistence($detalle, $newOrder);
         $this->deleteArticlesForNewOrder($deteleArticle);
         $this->recalculateOldAndNewOrder($data['id'], $newOrder->id);
+        $this->cloneMediaFromParent($parentOder, $newOrder);
         DB::afterCommit(function () use ($newOrder) {
             $this->invoiceService->checkSendInvoice($newOrder, true);
         });
@@ -1101,17 +1103,16 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function prepareToStoreOrderHeaderExistence($data, $user)
+    protected function prepareToStoreOrderHeaderExistence($data, $user)
     {
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
         $newOrder = $this->orderBuilder->formPayloadInvoiceExistence($data, $user, $puntoVenta);
         $newOrder->save();
-        Log::info('Pedido creado con exito desde Facturar existente: ' . $newOrder->pedido);
         return $newOrder;
     }
 
-    public function storeFillDetailOrderExistence($detailOrder, $newOrder)
+    protected function storeFillDetailOrderExistence($detailOrder, $newOrder)
     {
 
         foreach ($detailOrder as $i => $item) {
@@ -1127,7 +1128,7 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function storeFillProviderDetailExistence($providers, $newOrderDetail, $newOrder, $oldDetailOrder)
+    protected function storeFillProviderDetailExistence($providers, $newOrderDetail, $newOrder, $oldDetailOrder)
     {
         foreach ($providers as $provider) {
             $newProv = $this->orderBuilder->formPayloadOrderDetailProvider($provider, $newOrder->id, $newOrderDetail->id, "yes");
@@ -1139,7 +1140,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function storeOrUpdateOrderSalesProvider($orderSales, $oldDetailOrder, $oldProvider)
+    protected function storeOrUpdateOrderSalesProvider($orderSales, $oldDetailOrder, $oldProvider)
     {
         foreach ($orderSales as $ordC) {
             $ordenCompra = GpOrdenDeCompra::where('DOC_GENERADO', $ordC['ORDEN_COMPRA_DOCUMENTO'])
@@ -1187,7 +1188,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function storeDetailStockExistence($stock, $newOrderId, $newDetailId)
+    protected function storeDetailStockExistence($stock, $newOrderId, $newDetailId)
     {
 
         $nwStock = new GpPedidoDetalleStock();
@@ -1202,7 +1203,7 @@ class OrderService implements OrderServiceInterface
         $nwStock->save();
     }
 
-    public function deleteArticlesForNewOrder($deleteItems)
+    protected function deleteArticlesForNewOrder($deleteItems)
     {
         $deleteItems['articulos'] = $deleteItems['articulos'] ?? [];
         if (!empty($deleteItems['articulos'])) {
@@ -1210,30 +1211,42 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function deleteProvidersOldOrder($providers)
-    {
-        $providers = $providers instanceof Collection ? $providers : collect($providers);
-        $providers->filter()->each->delete();
-    }
-
-    public function deleteArticlesOldOrder($articles)
+    protected function deleteArticlesOldOrder($articles)
     {
         $articles = $articles instanceof Collection ? $articles : collect($articles);
         $articles->filter()->each->delete();
     }
 
-    public function recalculateOldAndNewOrder($oldOrderId, $newOrderId)
+    protected function recalculateOldAndNewOrder($oldOrderId, $newOrderId)
     {
         $this->functionsService->recalculateOrder($oldOrderId);
         $this->functionsService->recalculateOrder($newOrderId);
     }
 
-    public function clearStockArticleOrderExistence($orderId, $detailId)
+    protected function clearStockArticleOrderExistence($orderId, $detailId)
     {
         GpPedidoDetalleStock::where('detalle_id', $detailId)
             ->where('pedido_id', $orderId)->delete();
     }
 
+    protected function cloneMediaFromParent(GpPedido $order, GpPedido $newOrder)
+    {
+
+        $parentImages = GpPedidoImagen::where('pedido_id', $order->id)->get();
+        if ($parentImages->isNotEmpty()) {
+            $imageUrls = $parentImages->map(fn($img) => asset('storage/' . $img->ruta))->toArray();
+            $this->orderAndQuotationService->copyImagesFromUrls($newOrder, $imageUrls);
+        }
+
+        $parentPdfs = $order->getMedia('documentos_pdf');
+        if ($parentPdfs->isNotEmpty()) {
+            $pdfUrls = $parentPdfs->map(fn($media) => $media->getFullUrl())->toArray();
+            $this->orderAndQuotationService->copyPdfsFromUrls($newOrder, $pdfUrls);
+        }
+    }
+
+
+    /** actualizacion de orden de compra y nota de cliente */
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote)
     {

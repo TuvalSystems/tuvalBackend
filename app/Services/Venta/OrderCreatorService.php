@@ -249,45 +249,11 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         // logica para clonar para volver a pedir
         $urlsParaCopiar = array_diff($keepUrls, $urlsRegistradas);
         if (!empty($urlsParaCopiar)) {
-            $this->copyImagesFromUrls($pedido, $urlsParaCopiar);
+            $this->orderAndQuotationService->copyImagesFromUrls($pedido, $urlsParaCopiar);
         }
 
         if (!empty($newFiles)) {
             $this->storeImagesQuotation($pedido, $newFiles);
-        }
-    }
-
-    protected function copyImagesFromUrls(GpPedido $pedido, array $urls)
-    {
-        $baseUrl = asset('storage') . '/';
-        $disk = Storage::disk('public');
-        foreach ($urls as $url) {
-            $relativePath = str_replace($baseUrl, '', $url);
-            if (Storage::disk('public')->exists($relativePath)) {
-                $fileName = basename($relativePath);
-                $newPath = "pedidos/operaciones_img/{$pedido->id}/{$fileName}";
-                if (!$disk->exists($newPath)) {
-                    $disk->copy($relativePath, $newPath);
-
-                    GpPedidoImagen::create([
-                        'pedido_id'       => $pedido->id,
-                        'ruta'            => $newPath,
-                        'nombre_original' => $fileName,
-                        'tipo_mime'       => $this->getMimeTypeSafe($disk, $newPath),
-                        'tamano'          => $disk->size($newPath)
-                    ]);
-                }
-            }
-        }
-    }
-
-    protected function getMimeTypeSafe($disk, $path)
-    {
-        try {
-            return $disk->mimeType($path);
-        } catch (\Exception $e) {
-            // Fallback simple por extensión si el driver falla
-            return mime_content_type(storage_path('app/public/' . $path)) ?: 'application/octet-stream';
         }
     }
 
@@ -340,54 +306,13 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
         $urlsToCopy = array_values(array_diff($keepUrls, $registerUrls));
         if (!empty($urlsToCopy)) {
-            $this->copyPdfsFromUrls($order, $urlsToCopy);
+            $this->orderAndQuotationService->copyPdfsFromUrls($order, $urlsToCopy);
         }
 
         //4.- almacenar nuevos archivos
         if (!empty($newFiles)) {
             $this->storePdfsQuotation($order, $newFiles);
         }
-    }
-
-
-    protected function copyPdfsFromUrls(GpPedido $order, array $urls)
-    {
-        foreach ($urls as $url) {
-            $sourceMedia = $this->findMediaByUrl($url, 'documentos_pdf');
-            if (!$sourceMedia) {
-                continue;
-            }
-
-            $alreadyExists = $order
-                ->getMedia('documentos_pdf')
-                ->contains(function (Media $existing) use ($sourceMedia) {
-                    return $existing->file_name === $sourceMedia->file_name && (int) $existing->size === (int) $sourceMedia->size;
-                });
-
-            if ($alreadyExists) {
-                continue;
-            }
-
-            $sourceMedia->copy($order, 'documentos_pdf', 'public');
-        }
-    }
-
-    protected function findMediaByUrl($url, string $collectionName = 'documentos_pdf'): ?Media
-    {
-        $path = parse_url($url, PHP_URL_PATH);
-        $fileName = basename($path ?? '');
-
-        if (!$fileName) {
-            return null;
-        }
-
-        return Media::query()
-            ->where('collection_name', $collectionName)
-            ->where('file_name', $fileName)
-            ->get()
-            ->first(function (Media $media) use ($url) {
-                return $media->getUrl() === $url || $media->getFullUrl() === $url;
-            });
     }
 
     protected function storePdfsQuotation(GpPedido $order, array $files)

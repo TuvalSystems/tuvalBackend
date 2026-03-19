@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Utils\Contracts;
 
+use App\Models\GpPedido;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia;
 
@@ -27,7 +28,11 @@ interface OrderAndQuotationServiceInterface
     public function getImageArticle($codArt): array;
 
 
-     public function getApiSegmentsAbcItem($articles): Collection;
-      public function getFormattedPdfMedia(HasMedia $model, string $collection = 'documentos_pdf'): array;
+    public function getApiSegmentsAbcItem($articles): Collection;
+    public function getFormattedPdfMedia(HasMedia $model, string $collection = 'documentos_pdf'): array;
 
+
+    /** copia de imagenees en pedidos */
+    public function copyImagesFromUrls(GpPedido $pedido, array $urls);
+    public function copyPdfsFromUrls(GpPedido $order, array $urls);
 }
