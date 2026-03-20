@@ -48,6 +48,9 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $ptoEmision     = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
         $pedido         = data_get($payload, 'orden.pedido', []);
         $ptoVta         = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_BODEGA', data_get($payload, 'orden.BOD_BODEGA'))->value('PTO_VTA_BOD_PUNTO_VENTA');
+        if (!$ptoVta) {
+            throw new \RuntimeException("No se encontró un Punto de Venta configurado para la bodega: " . data_get($payload, 'orden.BOD_BODEGA'));
+        }
         $direccionEnvio = GpClienteSucursal::where('id', data_get($pedido, 'sucursal_id'))->value('CLI_SUC_DIRECCION');
         $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
         $dirOrigin      = $this->common->getDirection($ptoVta);
