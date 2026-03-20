@@ -20,10 +20,7 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
     /** funcion para asignar el numero de  GUI_REM_GUIA_REMISION a cada guia de remision */
     public function assignAccessCodesForPendingGuides()
     {
-        $guias = GpGuiaRemision::where(function ($query) {
-            $query->whereNull('GUI_REM_CODIGO')
-                ->orWhere('GUI_REM_CODIGO', '');
-        })->get();
+        $guias = GpGuiaRemision::whereNull('GUI_REM_CODIGO')->get();
 
         foreach ($guias as $guia) {
             $result = $this->apiDeliveryNote->getAccessCodeByNumberDocDelivery([
