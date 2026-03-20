@@ -25,6 +25,7 @@ use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterface
 {
@@ -52,64 +53,76 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             throw new \RuntimeException("No se encontró un Punto de Venta configurado para la bodega: " . data_get($payload, 'orden.BOD_BODEGA'));
         }
         $direccionEnvio = GpClienteSucursal::where('id', data_get($pedido, 'sucursal_id'))->value('CLI_SUC_DIRECCION');
-        $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
         $dirOrigin      = $this->common->getDirection($ptoVta);
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin(data_get($payload, 'orden.BOD_BODEGA'));
         $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo, $ptoVta);
-        $numGuide       = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
 
 
-        $infoGuia = [
-            'tipo'              => $tipo,
-            'ptoEmision'        => $ptoEmision,
-            'numeroGuia'        => $numGuide,
-            'user'              => $user,
-            'idemKey'           => $idemKey,
-            'secuencial'        => $secuencial,
-            'bodGuide'          => $bodGuide,
-            'dirOrigin'         => $dirOrigin,
-            'pedido'            => $pedido,
-            'direccionEnvio'    => $direccionEnvio,
-            'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
-            'motivoTraslado'    => ReasonForTransfer::VENTA->value,
-            'ptoVta'           => $ptoVta
-        ];
-
-        $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
-            $error = $this->validateQtyDetails($items);
-            if ($error) {
-                throw new \RuntimeException($error);
-            }
-
-            $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
-                ->where('tipo', DeliveryNoteType::DESPACHO->value)->where('estado', DeliveryNoteStatus::PENDIENTE->value)
-                ->lockForUpdate()
-                ->first();
-            if ($existing) {
-                $existing->touch();
-                return $existing;
-            }
-            try {
-                //proceso de creacion de guia de remision web
-                $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
-                $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
-                return $guia;
-            } catch (\Throwable $e) {
-                if ($e->errorInfo[1] == 1062) {
-                    throw new \RuntimeException('El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
-                }
-                throw $e;
-            }
-        });
-        //despues de que se completara la guia procede a enviarse a gp para que este proceso no entre en el
-        //flujo de la transaccion de mysql
-        $this->sendDeliveryNoteDispatchToGp($guia);
-        if ($this->common->isGUideBlockedForOrder($guia)) {
-            $this->common->createTemporaryDeliveryNoteBlocksOrder($guia, $user);
+        $lock = Cache::lock('create_dispatch_guide_' . $idemKey, 15);
+        if (!$lock->get()) {
+            throw new \RuntimeException("Esta guía ya está en proceso de creación. Por favor, espere un momento o actualice la página.");
         }
-        $this->updateDetailOrder($items);
-        event(new DispatchPendings('refresh')); //evento para la actualizadon de dashboard de items serv pendientes y ordenes de despachos
-        return $guia->refresh();
+
+        try {
+            $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
+            $numGuide       = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
+
+            $infoGuia = [
+                'tipo'              => $tipo,
+                'ptoEmision'        => $ptoEmision,
+                'numeroGuia'        => $numGuide,
+                'user'              => $user,
+                'idemKey'           => $idemKey,
+                'secuencial'        => $secuencial,
+                'bodGuide'          => $bodGuide,
+                'dirOrigin'         => $dirOrigin,
+                'pedido'            => $pedido,
+                'direccionEnvio'    => $direccionEnvio,
+                'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
+                'motivoTraslado'    => ReasonForTransfer::VENTA->value,
+                'ptoVta'           => $ptoVta
+            ];
+
+            $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
+                $error = $this->validateQtyDetails($items);
+                if ($error) {
+                    throw new \RuntimeException($error);
+                }
+
+                $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
+                    ->where('tipo', DeliveryNoteType::DESPACHO->value)->where('estado', DeliveryNoteStatus::PENDIENTE->value)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existing) {
+                    $existing->touch();
+                    return $existing;
+                }
+                try {
+                    //proceso de creacion de guia de remision web
+                    $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
+                    $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
+                    return $guia;
+                } catch (\Throwable $e) {
+                    if ($e->errorInfo[1] == 1062) {
+                        throw new \RuntimeException('El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
+                    }
+                    throw $e;
+                }
+            });
+            //despues de que se completara la guia procede a enviarse a gp para que este proceso no entre en el
+            //flujo de la transaccion de mysql
+            $this->sendDeliveryNoteDispatchToGp($guia);
+            if ($this->common->isGUideBlockedForOrder($guia)) {
+                $this->common->createTemporaryDeliveryNoteBlocksOrder($guia, $user);
+            }
+            $this->updateDetailOrder($items);
+            event(new DispatchPendings('refresh')); //evento para la actualizadon de dashboard de items serv pendientes y ordenes de despachos
+            return $guia->refresh();
+        } finally {
+            // --- FIN DEL BLOQUEO ---
+            // Aseguramos SIEMPRE liberar el bloqueo, falle o no la transacción
+            $lock->release();
+        }
     }
 
 
