@@ -26,6 +26,7 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInte
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServiceInterface
@@ -54,57 +55,74 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         $ptoDestino         = $this->common->getPtoVtaByWarehouse($bodegaDestino);
         $dirOrigen          = $this->common->getDirection($ptoOrigen);
         $dirDestino         = $this->common->getDirection($ptoDestino);
-        $secuencial         = $this->common->getNextGuideSequential($ptoOrigen, $ptoEmision);
-        $numGuide           = $this->common->formatGuideNumber($ptoOrigen, $ptoEmision, $secuencial);
-        $idemKey            = $this->makeIdempotencyKeySalesTransfer($payload,  $tipo, $primerItem,  $ptoOrigen, $ptoDestino, $secuencial, $numGuide);
+        $idemKey            = $this->makeIdempotencyKeySalesTransfer($payload,  $tipo, $primerItem,  $ptoOrigen, $ptoDestino);
 
-        $infoGuia = [
-            'tipo'              => $tipo,
-            'ptoEmision'        => $ptoEmision,
-            'numeroGuia'        => $numGuide,
-            'user'              => $user,
-            'idemKey'           => $idemKey,
-            'secuencial'        => $secuencial,
-            'bodGuide'          => $bodGuide,
-            'bodegaOrigen'      => $bodegaOrigen,
-            'bodegaDestino'     => $bodegaDestino,
-            'dirOrigin'         => $dirOrigen,
-            'dirDestino'        => $dirDestino,
-            'ptoOrigen'         => $ptoOrigen,
-            'documento'         => $documento,
-            'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
-            'motivoTraslado'    => ReasonForTransfer::TRANSFERENCIA->value,
+        $lock = Cache::lock('create_transfer_guide_' . $idemKey, 15);
+        if (!$lock->get()) {
+            throw new \RuntimeException("Esta transferencia ya está en proceso. Por favor, espere un momento o actualice la página.");
+        }
 
-        ];
+        try {
+            $infoGuia = [
+                'tipo'              => $tipo,
+                'ptoEmision'        => $ptoEmision,
+                'user'              => $user,
+                'idemKey'           => $idemKey,
+                'bodGuide'          => $bodGuide,
+                'bodegaOrigen'      => $bodegaOrigen,
+                'bodegaDestino'     => $bodegaDestino,
+                'dirOrigin'         => $dirOrigen,
+                'dirDestino'        => $dirDestino,
+                'ptoOrigen'         => $ptoOrigen,
+                'documento'         => $documento,
+                'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
+                'motivoTraslado'    => ReasonForTransfer::TRANSFERENCIA->value,
 
-        $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
-            $limitQty           = $this->validateQtyTransferedItems($items);
-            if ($limitQty) {
-                throw new \RuntimeException($limitQty);
+            ];
+
+            $guia = DB::transaction(function () use ($payload, &$infoGuia, $items, $ptoOrigen, $ptoEmision) {
+                $limitQty           = $this->validateQtyTransferedItems($items);
+                if ($limitQty) {
+                    throw new \RuntimeException($limitQty);
+                }
+                $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
+                    ->where('tipo', DeliveryNoteType::TRANSFERENCIA->value)
+                    ->where('estado', DeliveryNoteStatus::PENDIENTE->value)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existing) {
+                    $existing->touch();
+                    return $existing;
+                }
+                try {
+                    $secuencial = $this->common->getNextGuideSequential($ptoOrigen, $ptoEmision);
+                    $numGuide   = $this->common->formatGuideNumber($ptoOrigen, $ptoEmision, $secuencial);
+                    $infoGuia['secuencial'] = $secuencial;
+                    $infoGuia['numeroGuia'] = $numGuide;
+                    $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia);
+                    $this->saveDetailDeliveryNoteSalesTransferWeb($guia->id, $items);
+                    $this->updateOrderAndDetail($items);
+
+                    return $guia;
+                } catch (\Throwable $e) {
+                    // Control de error de duplicidad de llave única en BD (Error 1062)
+                    if (isset($e->errorInfo) && $e->errorInfo[1] == 1062) {
+                        throw new \RuntimeException('El número de guía (' . $infoGuia['numeroGuia'] . ') de transferencia acaba de ser tomado por otro proceso. Intente nuevamente.');
+                    }
+                    throw $e;
+                }
+            });
+            if ($guia->wasRecentlyCreated) {
+                $this->sendDeliveryNoteSalesTransferToGp($guia);
             }
-            $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
-                ->where('tipo', DeliveryNoteType::TRANSFERENCIA->value)
-                ->where('estado', DeliveryNoteStatus::PENDIENTE->value)
-                ->lockForUpdate()
-                ->first();
-            if ($existing) {
-                $existing->update(['estado' => DeliveryNoteStatus::PENDIENTE->value]);
-                return $existing->refresh();
-            }
-
-            $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia);
-            $this->saveDetailDeliveryNoteSalesTransferWeb($guia->id, $items);
-
-
-            $this->updateOrderAndDetail($items);
-            return $guia;
-        });
-        $this->sendDeliveryNoteSalesTransferToGp($guia);
-        return $guia->refresh();
+            return $guia->refresh();
+        } finally {
+            $lock->release();
+        }
     }
 
 
-    protected function makeIdempotencyKeySalesTransfer(array $payload, string $tipo, array  $primerItem,  string $ptoOrigen, string $ptoDestino, string $secuencial, string $numGuide): string
+    protected function makeIdempotencyKeySalesTransfer(array $payload, string $tipo, array  $primerItem,  string $ptoOrigen, string $ptoDestino): string
     {
         $base = [
             'pto_origen'        => $ptoOrigen,
@@ -112,8 +130,8 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             'tipo'              => $tipo,
             'bodega_origen'     => data_get($primerItem, 'pedido.bodega_origen'),
             'bodega_destino'    => data_get($primerItem, 'pedido.bodega_destino'),
-            'secuencial'        => $secuencial,
-            'num_guide'         => $numGuide,
+            // 'secuencial'        => $secuencial,
+            // 'num_guide'         => $numGuide,
             'fecha_inicio'      => data_get($payload, 'fecha_inicio'),
             'fecha_fin'         => data_get($payload, 'fecha_fin'),
             'detalle'           => collect(data_get($payload, 'items', []))->map(fn($item) => [
