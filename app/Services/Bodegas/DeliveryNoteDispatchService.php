@@ -64,16 +64,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         }
 
         try {
-            $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
-            $numGuide       = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
-
             $infoGuia = [
                 'tipo'              => $tipo,
                 'ptoEmision'        => $ptoEmision,
-                'numeroGuia'        => $numGuide,
                 'user'              => $user,
                 'idemKey'           => $idemKey,
-                'secuencial'        => $secuencial,
                 'bodGuide'          => $bodGuide,
                 'dirOrigin'         => $dirOrigin,
                 'pedido'            => $pedido,
@@ -83,7 +78,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 'ptoVta'           => $ptoVta
             ];
 
-            $guia = DB::transaction(function () use ($payload, $infoGuia, $items) {
+            $guia = DB::transaction(function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {
                 $error = $this->validateQtyDetails($items);
                 if ($error) {
                     throw new \RuntimeException($error);
@@ -98,7 +93,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                     return $existing;
                 }
                 try {
-                    //proceso de creacion de guia de remision web
+
+                    $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
+                    $numGuide       = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
+                    $infoGuia['secuencial'] = $secuencial;
+                    $infoGuia['numeroGuia'] = $numGuide;
                     $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
                     $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
                     return $guia;
@@ -109,18 +108,17 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                     throw $e;
                 }
             });
-            //despues de que se completara la guia procede a enviarse a gp para que este proceso no entre en el
-            //flujo de la transaccion de mysql
-            $this->sendDeliveryNoteDispatchToGp($guia);
-            if ($this->common->isGUideBlockedForOrder($guia)) {
-                $this->common->createTemporaryDeliveryNoteBlocksOrder($guia, $user);
+         
+            if ($guia->wasRecentlyCreated) {
+                $this->sendDeliveryNoteDispatchToGp($guia);
+                if ($this->common->isGUideBlockedForOrder($guia)) {
+                    $this->common->createTemporaryDeliveryNoteBlocksOrder($guia, $user);
+                }
             }
             $this->updateDetailOrder($items);
-            event(new DispatchPendings('refresh')); //evento para la actualizadon de dashboard de items serv pendientes y ordenes de despachos
+            event(new DispatchPendings('refresh'));
             return $guia->refresh();
         } finally {
-            // --- FIN DEL BLOQUEO ---
-            // Aseguramos SIEMPRE liberar el bloqueo, falle o no la transacción
             $lock->release();
         }
     }
