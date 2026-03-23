@@ -243,14 +243,15 @@ class DevolucionJobService
     }
 
 
-    public function bajarDevolucionAPedido($devolucion, $detalles, $pedido)
+    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $pedido)
     {
         if ($devolucion->rebajado) {
             return;
         }
-        $bodega = $pedido->BOD_BODEGA;
-        $actualizarStock = !$devolucion->despachado;
-        $articulos = GpPedidoDetalle::where('pedido_id', $pedido->id)->get()->keyBy('id');
+        $bodega             = $pedido->BOD_BODEGA;
+        $actualizarStock    = !$devolucion->despachado;
+        $detalleIds         = collect($detalles)->pluck('detalle_id')->all();
+        $articulos          = GpPedidoDetalle::whereIn('id', $detalleIds)->where('pedido_id', $pedido->id)->get()->keyBy('id');
         foreach ($detalles as $value) {
             $art = $articulos->get($value->detalle_id);
             if (!$art) {
