@@ -5,12 +5,11 @@ namespace App\Models\Ventas\Vendedores;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ZonaVendedor extends Model
+class Zona extends Model
 {
     use HasFactory;
 
-    protected $table = 'zona_vendedor';
-
+    protected $table = 'zonas';
     protected $fillable =  [
         'descripcion',
         'estado',
@@ -21,6 +20,6 @@ class ZonaVendedor extends Model
 
     public function vendedores()
     {
-        return $this->hasMany(GpVendedor::class, 'zona_vendedor_id');
+        return $this->belongsToMany(GpVendedor::class, 'vendedor_zona', 'zona_id', 'vendedor_id');
     }
 }
