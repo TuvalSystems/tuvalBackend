@@ -5,39 +5,32 @@ namespace App\Http\Controllers\devoluciones;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpCliente;
-use App\Models\GpUsuario;
 use Illuminate\Http\Request;
 use App\Models\GpOrdenDespacho;
 use App\Traits\JsonResponseTrait;
 use App\Models\GpClienteSucursal;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Notifications\User\UserNotification;
-use App\Models\devoluciones\GpDevolucionesDetalle;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
+use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 
 class DevolucionesController extends Controller
 {
-    use JsonResponseTrait;
-    protected $entryService;
-    protected $devolucionService;
-    protected $notificationService;
+    use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
-        EntryServiceInterface $entryService,
-        DevolucionServiceInterface $devolucionServiceInterface,
+      protected readonly  EntryServiceInterface $entryService,
+         protected readonly  DevolucionServiceInterface $devolucionService,
     ) {
-        $this->entryService = $entryService;
-        $this->devolucionService = $devolucionServiceInterface;
+
     }
 
 
@@ -303,7 +296,10 @@ class DevolucionesController extends Controller
 
     public function generarNotaCreditoDevolucionesFallidas($id)
     {
-        return $this->devolucionService->generarNotaCreditoDevolucionesFallidas($id);
+        return $this->executeTransaction(function () use ($id) {
+        $devolucion = $this->devolucionService->generarNotaCreditoDevolucionesFallidas($id);
+        return $this->successResponse('Nota de credito generada correctamente', $devolucion, 200);
+        }, 'devoluciones', 'generarNotaCreditoDevolucionesFallidas');
     }
 
     public function generarAjusteDevolucionesFallidas($id)
