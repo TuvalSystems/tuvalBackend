@@ -242,33 +242,62 @@ class DevolucionJobService
         return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($params);
     }
 
-
-    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $pedido)
+    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $order)
     {
         if ($devolucion->rebajado) {
             return;
         }
-        $bodega             = $pedido->BOD_BODEGA;
+        $pedidoId           = $order->id;
+        $bodega             = $order->BOD_BODEGA;
         $actualizarStock    = !$devolucion->despachado;
-        $detalleIds         = collect($detalles)->pluck('detalle_id')->all();
-        $articulos          = GpPedidoDetalle::whereIn('id', $detalleIds)->where('pedido_id', $pedido->id)->get()->keyBy('id');
         foreach ($detalles as $value) {
-            $art = $articulos->get($value->detalle_id);
-            if (!$art) {
+            $articulo = GpPedidoDetalle::find($value->detalle_id);
+
+            if (!$articulo || $articulo->pedido_id !== $pedidoId) {
                 continue;
             }
-            $art->devuelto += $value->devuelto;
-            $art->save();
-
+            $articulo->devuelto += $value->devuelto;
+            $articulo->save();
             if ($actualizarStock) {
-                GpPedidoDetalleStock::where('detalle_id', $art->id)
+                $stock = GpPedidoDetalleStock::where('detalle_id', $articulo->id)
                     ->where('STO_ART_BODEGA', $bodega)
-                    ->decrement('reservado', $value->devuelto);
+                    ->first();
+
+                if ($stock) {
+                    $stock->reservado -= $value->devuelto;
+                    $stock->save();
+                }
             }
         }
         $devolucion->rebajado = true;
         $devolucion->save();
     }
+    // public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $pedido)
+    // {
+    //     if ($devolucion->rebajado) {
+    //         return;
+    //     }
+    //     $bodega             = $pedido->BOD_BODEGA;
+    //     $actualizarStock    = !$devolucion->despachado;
+    //     $detalleIds         = collect($detalles)->pluck('detalle_id')->all();
+    //     $articulos          = GpPedidoDetalle::whereIn('id', $detalleIds)->where('pedido_id', $pedido->id)->get()->keyBy('id');
+    //     foreach ($detalles as $value) {
+    //         $art = $articulos->get($value->detalle_id);
+    //         if (!$art) {
+    //             continue;
+    //         }
+    //         $art->devuelto += $value->devuelto;
+    //         $art->save();
+
+    //         if ($actualizarStock) {
+    //             GpPedidoDetalleStock::where('detalle_id', $art->id)
+    //                 ->where('STO_ART_BODEGA', $bodega)
+    //                 ->decrement('reservado', $value->devuelto);
+    //         }
+    //     }
+    //     $devolucion->rebajado = true;
+    //     $devolucion->save();
+    // }
 
     public function totalDevoluciones($devolucion, $detalles)
     {
