@@ -106,12 +106,11 @@ class DevolucionesController extends Controller
         $data = $request->all();
         $gpUser = $request->user();
         try {
-            $newDev = $this->devolucionService->handleDevolutionTransaction($data, $gpUser);
-            $statusDev = $newDev->estado === 'solicitado';
-            $tipoDev = $newDev->tipo_devolucion === 'total';
-            $devCode = is_object($newDev) ? $newDev->devolucion : '';
+            $newDev     = $this->devolucionService->handleDevolutionTransaction($data, $gpUser);
+            $statusDev  = $newDev->estado === 'solicitado';
+            $tipoDev    = $newDev->tipo_devolucion === 'total';
+            $devCode    = is_object($newDev) ? $newDev->devolucion : '';
             if (isset($newDev->motivo_no_anulada) && $newDev->estado = 'no_procesado') {
-                // NotifyErrorAnulationJob::dispatch($userId, $newDev->warning_message);
                 $gpUser->notify(new UserNotification('Devolucion No Procesada', $newDev->warning_message));
                 return $this->buildSuccessResponse(
                     "ATENCIÓN: " . $newDev->motivo_no_anulada,

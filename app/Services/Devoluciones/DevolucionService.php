@@ -108,18 +108,20 @@ class DevolucionService implements DevolucionServiceInterface
         ];
 
         foreach ($detallePedido as $det) {
-            $isRefacturacion    = $devolucion['volver_a_facturar'];
-            $isSelected         = ($det['seleccionado'] ?? 0) > 0;
+            $isRefacturacion    =  data_get($devolucion, 'volver_a_facturar', false);
+            $isSelected         =  data_get($det, 'seleccionado', 0);
             if ($isRefacturacion || $isSelected) {
                 $detailInfo['detalle'][] = $det;
             }
         }
 
         $itemsDespachados = array_filter($detallePedido, function ($detalle) {
-            return ($detalle['despacho'] ?? false) === true && ($detalle['despachado'] ?? 0) > 0;
+            $isDispatch = data_get($detalle, 'despacho', false);
+            $qty        = data_get($detalle, 'despachado', 0);
+            return $isDispatch && $qty > 0;
         });
 
-        $detailInfo['pedido']['despachado'] = count($itemsDespachados) > 0 ? 1 : 0;
+        $detailInfo['pedido']['despachado'] = count($itemsDespachados) > 0;
 
 
         $newDev = DB::transaction(function () use ($detailInfo, $user) {
@@ -152,9 +154,9 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function executeReturn($data, $user): GpDevoluciones
     {
-        $gpUser = GpUsuario::where('id', $user->id)->first();
-        $requiredApproval = $this->approvalService->checkoutApprovalDevoluciones($data);
-        $status = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
+        $gpUser             = GpUsuario::where('id', $user->id)->first();
+        $requiredApproval   = $this->approvalService->checkoutApprovalDevoluciones($data);
+        $status             = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
         $calculatedData = [
             'status'                => $requiredApproval === 'yes' ? DevolutionStatus::ESPERA : DevolutionStatus::SOLICITADO,
             'requiredApproval'      => $requiredApproval,
