@@ -258,14 +258,13 @@ class DevolucionJobService
             }
             $art->devuelto += $value->devuelto;
             $art->save();
-            $stock = GpPedidoDetalleStock::where('detalle_id', $art->id)
-                ->where('STO_ART_BODEGA', $bodega)
-                ->first();
+            if (!$value->despachado_parcial) {
+                $stock = GpPedidoDetalleStock::where('detalle_id', $art->id)
+                    ->where('STO_ART_BODEGA', $bodega)
+                    ->first();
 
-            if ($stock && $stock->reservado > 0) {
-                $pendiente = max(0, $art->ART_CANTIDAD - $art->trasladado - $art->devuelto);
-                if ($stock->reservado > $pendiente) {
-                    $stock->reservado = $pendiente;
+                if ($stock && $stock->reservado > 0) {
+                    $stock->reservado = max(0, $stock->reservado - $value->devuelto);
                     $stock->save();
                 }
             }
