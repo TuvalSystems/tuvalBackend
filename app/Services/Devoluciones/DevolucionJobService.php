@@ -250,6 +250,7 @@ class DevolucionJobService
         }
         $bodega             = $pedido->BOD_BODEGA;
         $actualizarStock    = !$devolucion->despachado;
+        $isTotal            = $devolucion->tipo_devolucion == 'total';
         $detalleIds         = collect($detalles)->pluck('detalle_id')->all();
         $articulos          = GpPedidoDetalle::whereIn('id', $detalleIds)->where('pedido_id', $pedido->id)->get()->keyBy('id');
         foreach ($detalles as $value) {
@@ -259,10 +260,15 @@ class DevolucionJobService
             }
             $art->devuelto += $value->devuelto;
             $art->save();
-
             if ($actualizarStock) {
                 GpPedidoDetalleStock::where('detalle_id', $art->id)
                     ->where('STO_ART_BODEGA', $bodega)
+                    ->decrement('reservado', $value->devuelto);
+            }
+            if ($isTotal) {
+                GpPedidoDetalleStock::where('detalle_id', $art->id)
+                    ->where('STO_ART_BODEGA', $bodega)
+                    ->where('reservado', '>', 0)
                     ->decrement('reservado', $value->devuelto);
             }
         }
