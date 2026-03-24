@@ -476,30 +476,30 @@ class DevolucionService implements DevolucionServiceInterface
     {
         $result = [];
         $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
-            ->where('volver_a_facturar', true)->where('estado', '!=', 'rechazado')->exists();
+            ->where('volver_a_facturar', true)->where('estado', '!=', [DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])->exists();
         if ($yaFueRefacturado) {
             return [];
         }
 
 
         $esRefacturacion = !empty($pedido->factura_origen);
-        $pedidoOrigen = $esRefacturacion ? GpPedido::find($pedido->factura_origen)->orderBy('id', 'desc')->first() : null;
+        $pedidoOrigen = $esRefacturacion ? GpPedido::where('factura', $pedido->factura_origen)->orderBy('id', 'desc')->first() : null;
         $condicionalDespachoOrigen = $pedidoOrigen ? ($pedidoOrigen->despachado != null) : false;
 
         foreach ($detalles as $key => $dt) {
-            $common = clone $dt;
-            $common->reservado = $dt->reservado ?? 0;
-            $common->devuelto = $dt->devuelto ?? 0;
-            $common->seleccionado = 0;
+            $common                 = clone $dt;
+            $common->reservado      = $dt->reservado ?? 0;
+            $common->devuelto       = $dt->devuelto ?? 0;
+            $common->seleccionado   = 0;
 
             if ($esRefacturacion) {
                 // para pedidoes de refacturacion despachados totalmente
-                if ($condicionalDespachoOrigen === true && ($pedidoOrigen->despachado === true || $pedidoOrigen->despachado === 1)) {
-                    $devueltoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
-                    $itemDespachado = clone $common;
+                if ($condicionalDespachoOrigen && ($pedidoOrigen->despachado == 1)) {
+                    $devueltoDespachado         = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
+                    $itemDespachado             = clone $common;
                     $itemDespachado->despachado = $common->ART_CANTIDAD;
-                    $itemDespachado->despacho = true;
-                    $itemDespachado->devuelto = (float) $devueltoDespachado === (float) $common->devuelto ? $common->devuelto : $devueltoDespachado;
+                    $itemDespachado->despacho   = true;
+                    $itemDespachado->devuelto   = (float) $devueltoDespachado === (float) $common->devuelto ? $common->devuelto : $devueltoDespachado;
                     $itemDespachado->disponible = max($common->ART_CANTIDAD - $itemDespachado->devuelto, 0);
 
                     if ($itemDespachado->disponible > 0) {
@@ -508,19 +508,19 @@ class DevolucionService implements DevolucionServiceInterface
                 }
 
                 //para pedidos de refacturacion no despachados totalmente
-                if ($condicionalDespachoOrigen === false && ($pedidoOrigen->despachado === false || $pedidoOrigen->despachado === null)) {
-                    $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
-                    $devueltoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
-                    $devueltoNoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 0);
+                if (!$condicionalDespachoOrigen || $pedidoOrigen->despachado == 0) {
+                    $common->despachado     = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
+                    $devueltoDespachado     = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
+                    $devueltoNoDespachado   = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 0);
 
-                    $totalCantidad = (float) $common->ART_CANTIDAD;
-                    $totalDespachado = (float) $common->despachado;
-                    $totalNoDespachados = max($totalCantidad - $totalDespachado, 0);
+                    $totalCantidad          = (float) $common->ART_CANTIDAD;
+                    $totalDespachado        = (float) $common->despachado;
+                    $totalNoDespachados     = max($totalCantidad - $totalDespachado, 0);
                     if ($devueltoDespachado >= 0) {
-                        $itemDespachado = clone $common;
-                        $itemDespachado->despacho = true;
-                        $itemDespachado->devuelto = $devueltoDespachado;
-                        $itemDespachado->disponible = max($totalDespachado - $devueltoDespachado, 0);
+                        $itemDespachado                 = clone $common;
+                        $itemDespachado->despacho       = true;
+                        $itemDespachado->devuelto       = $devueltoDespachado;
+                        $itemDespachado->disponible     = max($totalDespachado - $devueltoDespachado, 0);
                         if ($itemDespachado->disponible > 0) {
                             $result[] = $itemDespachado;
                         }
@@ -528,38 +528,38 @@ class DevolucionService implements DevolucionServiceInterface
 
                     // Bloque para los items no despachados
                     if ($devueltoNoDespachado >= 0) {
-                        $itemNoDespachado = clone $common;
-                        $itemNoDespachado->despacho = false;
-                        $itemNoDespachado->devuelto = $devueltoNoDespachado;
-                        $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado, 0);
+                        $itemNoDespachado               = clone $common;
+                        $itemNoDespachado->despacho     = false;
+                        $itemNoDespachado->devuelto     = $devueltoNoDespachado;
+                        $itemNoDespachado->disponible   = max($totalNoDespachados - $devueltoNoDespachado, 0);
                         if ($itemNoDespachado->disponible > 0) {
                             $result[] = $itemNoDespachado;
                         }
                     }
                 }
             } else {
-                $common->despachado = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
-                $devueltoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
-                $devueltoNoDespachado = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 0);
+                $common->despachado     = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id) ?? 0;
+                $devueltoDespachado     = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 1);
+                $devueltoNoDespachado   = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, 0);
 
-                $totalCantidad = (float) $common->ART_CANTIDAD;
-                $totalDespachado = (float) $common->despachado;
-                $totalNoDespachados = max($totalCantidad - $totalDespachado, 0);
+                $totalCantidad          = (float) $common->ART_CANTIDAD;
+                $totalDespachado        = (float) $common->despachado;
+                $totalNoDespachados     = max($totalCantidad - $totalDespachado, 0);
                 if ($devueltoDespachado >= 0) {
-                    $itemDespachado = clone $common;
-                    $itemDespachado->despacho = true;
-                    $itemDespachado->devuelto = $devueltoDespachado;
-                    $itemDespachado->disponible = max($totalDespachado - $devueltoDespachado, 0);
+                    $itemDespachado                 = clone $common;
+                    $itemDespachado->despacho       = true;
+                    $itemDespachado->devuelto       = $devueltoDespachado;
+                    $itemDespachado->disponible     = max($totalDespachado - $devueltoDespachado, 0);
                     if ($itemDespachado->disponible > 0) {
                         $result[] = $itemDespachado;
                     }
                 }
 
                 if ($devueltoNoDespachado >= 0) {
-                    $itemNoDespachado = clone $common;
-                    $itemNoDespachado->despacho = false;
-                    $itemNoDespachado->devuelto = $devueltoNoDespachado;
-                    $itemNoDespachado->disponible = max($totalNoDespachados - $devueltoNoDespachado, 0);
+                    $itemNoDespachado               = clone $common;
+                    $itemNoDespachado->despacho     = false;
+                    $itemNoDespachado->devuelto     = $devueltoNoDespachado;
+                    $itemNoDespachado->disponible   = max($totalNoDespachados - $devueltoNoDespachado, 0);
                     if ($itemNoDespachado->disponible > 0) {
                         $result[] = $itemNoDespachado;
                     }
