@@ -464,29 +464,29 @@ class DevolucionService implements DevolucionServiceInterface
         $devolucionAnterior = $this->devolucionRepository->getReturnsHistoryByOrderId($orderId);
 
         return [
-            'detalle' => $detailFormat,
-            'motivos' => $motivos,
-            'clientes' => $clientesArr,
-            'devolucion_anterior' => $devolucionAnterior,
-            'items_devueltos' => $this->validarItemNoTengaDespachoParcial($detalles)
+            'detalle'               => $detailFormat,
+            'motivos'               => $motivos,
+            'clientes'              => $clientesArr,
+            'devolucion_anterior'   => $devolucionAnterior,
+            'items_devueltos'       => $this->validarItemNoTengaDespachoParcial($detalles)
         ];
     }
 
-    public function getDetailFormatPedido($detalles, $pedido)
+    protected function getDetailFormatPedido($detalles, GpPedido $pedido)
     {
         $result = [];
         $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
-            ->where('volver_a_facturar', true)->where('estado', '!=', [DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])->exists();
+            ->where('volver_a_facturar', true)->whereNotIn('estado', [DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])->exists();
         if ($yaFueRefacturado) {
             return [];
         }
 
 
-        $esRefacturacion = !empty($pedido->factura_origen);
-        $pedidoOrigen = $esRefacturacion ? GpPedido::where('factura', $pedido->factura_origen)->orderBy('id', 'desc')->first() : null;
-        $condicionalDespachoOrigen = $pedidoOrigen ? ($pedidoOrigen->despachado != null) : false;
+        $esRefacturacion            = !empty($pedido->factura_origen);
+        $pedidoOrigen               = $esRefacturacion ? GpPedido::where('factura', $pedido->factura_origen)->orderBy('id', 'desc')->first() : null;
+        $condicionalDespachoOrigen  = $pedidoOrigen && $pedidoOrigen->despachado == 1;
 
-        foreach ($detalles as $key => $dt) {
+        foreach ($detalles as $dt) {
             $common                 = clone $dt;
             $common->reservado      = $dt->reservado ?? 0;
             $common->devuelto       = $dt->devuelto ?? 0;
@@ -567,6 +567,16 @@ class DevolucionService implements DevolucionServiceInterface
             }
         }
         return collect($result)->sortBy('ART_CODIGO')->values()->all();
+    }
+
+    protected function createItemTemp($base, $qtyBase, $isDispatch)
+    {
+        $item               = clone $base;
+        $item->despacho     = $isDispatch;
+        $item->despachado   = $qtyBase;
+        $item->devuelto     = $this->devolucionRepository->sumReturnedQtyByDetailId($base->id, $isDispatch ? 1 : 0);
+        $item->disponible   = max($qtyBase - $item->devuelto, 0);
+        return $item;
     }
 
 
