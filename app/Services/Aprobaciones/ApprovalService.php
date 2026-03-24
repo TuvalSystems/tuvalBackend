@@ -522,8 +522,8 @@ class ApprovalService implements ApprovalServiceInterface
         $detallePedido      = Arr::get($data, 'detalle', []);
         $fechaFactura       = Arr::get($data, 'pedido.fecha_factura', null);
         $daysDifference     = $this->daysDifference($fechaFactura);
-        $hasTypeLItems      = collect($detallePedido)->contains(
-            fn($detalle) => strtolower(Arr::get($detalle, 'ART_TIPO_COMPRA', '')) === 'L'
+        $hasTypeLItems = collect($detallePedido)->contains(
+            fn($detalle) => strtoupper(data_get($detalle, 'ART_TIPO_COMPRA', '')) === 'L'
         );
 
         // Verifica si el pedido tiene detalles de orden despachados
