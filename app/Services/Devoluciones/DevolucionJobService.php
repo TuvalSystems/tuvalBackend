@@ -262,7 +262,7 @@ class DevolucionJobService
                 ->where('STO_ART_BODEGA', $bodega)
                 ->first();
 
-            if ($stock && $stock->reservado > 0) {
+            if ($stock) {
                $pendiente = max(0, $art->ART_CANTIDAD - $art->devuelto);
                 if ($stock->reservado > $pendiente) {
                     $stock->reservado = $pendiente;
