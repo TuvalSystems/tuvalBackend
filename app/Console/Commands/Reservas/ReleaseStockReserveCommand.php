@@ -92,7 +92,7 @@ class ReleaseStockReserveCommand extends Command
                 'stock_id'      => $st->id,
                 'user_id'       => 6,
                 'tipo'          => 'liberado_sistema',
-                'cantidad'      => (int) $st->seleccionado,
+                'cantidad'      => (float) $st->seleccionado,
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
