@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Ventas\Vendedores\GpVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -63,5 +64,10 @@ class GpUsuario extends Authenticatable
     public function relacionptovta()
     {
         return $this->hasMany(GpRelacionUsuarioPuntoVenta::class, 'USER_PTO_VTA_USUARIO', 'USERID');
+    }
+
+    public function vendedor()
+    {
+        return $this->hasOne(GpVendedor::class, 'user_id');
     }
 }

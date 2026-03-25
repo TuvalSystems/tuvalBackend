@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Pedidos\Contracts;
 
+use Illuminate\Database\Eloquent\Builder;
 
 interface OrderRepositoryInterface
 {
@@ -40,4 +41,8 @@ interface OrderRepositoryInterface
     /** para facturacion   */
     public function getDataCheckoutTraslate(int $orderId, String $warehouse): bool;
     public function getDetailForTraslate(int $orderId, String $warehouse);
+
+
+    /** query para lista de pedidos pendientes de aprobacion comercial */
+    public function fetchPendingOrders(int $ptoVta): Builder;
 }

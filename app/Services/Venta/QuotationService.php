@@ -567,7 +567,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function calculatePorcentilDiscountAndPrice(&$detalle)
     {
-        $detalle->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($detalle->ART_VALOR_ORIGINAL, $detalle->ART_VALOR), 3);
+        $detalle->priceChange = round($this->orderAndQuotationService->calculatePriceVariationPercentage($detalle->ART_VALOR_ORIGINAL, $detalle->ART_VALOR), 3);
         $detalle->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($detalle->descuento_original, $detalle->descuento), 3);
     }
 

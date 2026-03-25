@@ -19,7 +19,7 @@ interface OrderAndQuotationServiceInterface
 
 
 
-    public function calculateDiscountFraction(float $originalPrice, float $currentPrice);
+    public function calculatePriceVariationPercentage(float $originalPrice, float $currentPrice);
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount);
 
 

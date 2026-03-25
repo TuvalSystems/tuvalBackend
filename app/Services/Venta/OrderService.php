@@ -317,8 +317,8 @@ class OrderService implements OrderServiceInterface
             if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
                 $hasExisting = true;
             }
-            $item->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
-            $item->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
+            $item->priceChange      = round($this->orderAndQuotationService->calculatePriceVariationPercentage($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
+            $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
 
 
             /** procesod de segmentacion abc  */

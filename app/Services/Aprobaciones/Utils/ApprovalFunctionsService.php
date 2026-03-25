@@ -2,17 +2,20 @@
 
 namespace App\Services\Aprobaciones\Utils;
 
+use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpDatosItemsL;
 use App\Models\GpDescuentoFormaPago;
+use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
 {
 
-
+    public function __construct(protected readonly ApiGpService $apiGpService) {}
     public function finalizeApprovalReasons(array $reasons)
     {
         // 1. Aplanar y filtrar vacíos usando Helpers de Laravel
@@ -148,5 +151,60 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
                 ->where('ID_PROVEEDOR', $provedorId)
                 ->value('MARGEN') ?? 0;
         }
+    }
+
+
+
+    public function getApprovalRulesForUserByZone(int $userId, array $zonas, int $typeSellerId): Collection
+    {
+        return GpReglaAprobacion::where('user_autorizador_id', $userId)->whereIn('zona_id', $zonas)
+            ->where('tipo_vendedor_id', $typeSellerId)->orderBy('zona_id')->get();
+    }
+
+    public function getApprovalRulesByUser(int $userId): Collection
+    {
+        return GpReglaAprobacion::where('user_autorizador_id', $userId)->get();
+    }
+
+    public function calculatePriceVariationPercentage(float $originalPrice, float $currentPrice): float
+    {
+        if ($originalPrice == 0.0) {
+            return 0.0;
+        }
+        return (($currentPrice - $originalPrice) / $originalPrice) * 100;
+    }
+
+    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
+    {
+        return (float) $currentDiscount - (float) $originalDiscount;
+    }
+
+    public function getClientSegments(array $rucs): array
+    {
+        if (empty($rucs)) {
+            return [];
+        }
+
+        $segments = [];
+
+        // Realiza N llamadas individuales a la API, pero de forma centralizada.
+        foreach ($rucs as $ruc) {
+            $response = $this->apiGpService->fetchClientSegment([
+                'ruc' => $ruc,
+            ]);
+
+            // Mapea y limpia la respuesta de la API
+            $data = data_get($response, 'data', []);
+            $cleanData = is_array($data) ? $data : (array) $data;
+
+            // Almacena el resultado con el RUC como clave
+            $segments[$ruc] = [
+                // Usamos 'segment' y 'subsegment' como claves internas estandarizadas
+                'segmento' => data_get($cleanData, 'segmento', null),
+                'subsegmento' => data_get($cleanData, 'subsegmento', null),
+            ];
+        }
+
+        return $segments;
     }
 }

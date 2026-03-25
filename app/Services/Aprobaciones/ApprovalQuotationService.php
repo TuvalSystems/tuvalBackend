@@ -2,19 +2,26 @@
 
 namespace App\Services\Aprobaciones;
 
+use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
+use App\Models\GpUsuario;
+use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 {
 
-    public function __construct(protected readonly ApprovalFunctionsServiceInterface $approvalFuntions) {}
+    public function __construct(
+        protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
+        protected readonly QuotationRepositoryInterface $repository
+    ) {}
 
     public function approveQuotation(array $data): array
     {
@@ -210,5 +217,149 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
         }
 
         return $detailMotivos;
+    }
+
+
+    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user): Collection
+    {
+        $filteredQuotes = collect([]);
+        $user->load(['vendedor.jerarquia.relaciones', 'vendedor.zonas']);
+        $query          = $this->repository->fetchPendingQuotes($ptoVta)->with(['detallecotizacion', 'usuario.vendedor.zonas']);
+        $quotes         = $query->get();
+        // para los adminis del sistema
+        if (in_array($user->perfil_id, [1, 2])) {
+            $filteredQuotes = $quotes;
+        } elseif (in_array($user->perfil_id, [28])) {
+            $filteredQuotes = $this->filterQuotesForVicePresidency($quotes, $user);
+        } elseif ($user->vendedor) {
+            $filteredQuotes = $this->filterQuotesByTySeller($quotes, $user);
+        }
+        $allRucs = $quotes->pluck('CLI_RUC')
+            ->merge($quotes->pluck('CLI_RUC'))
+            ->unique()
+            ->toArray();
+        $segmentDataByRuc = $this->approvalFuntions->getClientSegments($allRucs);
+        return $filteredQuotes->map(function ($quote) use ($segmentDataByRuc) {
+            $ruc                        = $quote->CLI_RUC;
+            $quote->users_autorizadores = $this->getPossibleAuthorizersForQuote($quote);
+            $segmentData                = $segmentDataByRuc[$ruc] ?? ['segmento' => null, 'subsegmento' => null];
+            $quote->segmento            = data_get($segmentData, 'segmento');
+            $quote->subsegmento         = data_get($segmentData, 'subsegmento');
+            return $quote->makeHidden(['detallecotizacion', 'usuario']);
+        });
+    }
+
+
+    protected function filterQuotesForVicePresidency($quotes, GpUsuario $user): Collection
+    {
+        $rules = $this->approvalFuntions->getApprovalRulesByUser($user->id);
+        return  $quotes->filter(function ($quote) use ($rules) {
+            return $quote->detallecotizacion->every(function ($detail) use ($rules) {
+                $priceChange        = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+                $discount           = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+
+                return $rules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discount) {
+                    $matchesPrice = $priceChange >= $rule->descuento_min
+                        && $priceChange <= $rule->descuento_max;
+                    $matchesDiscount = $discount >= $rule->descuento_min
+                        && $discount <= $rule->descuento_max;
+                    return $matchesPrice && $matchesDiscount;
+                });
+            });
+        })->values();
+    }
+
+    protected function filterQuotesByTySeller(Collection $quotes, GpUsuario $user): Collection
+    {
+        $zonasUser      = $user->vendedor->zonas->pluck('id')->toArray();
+        $typeSellerId   = $user->vendedor->tipo_vendedor_id;
+        $rules          = $this->approvalFuntions->getApprovalRulesForUserByZone($user->id,  $zonasUser, $typeSellerId);
+        $childs         = $user->vendedor->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
+
+        return  $quotes->filter(function ($quote) use ($rules, $childs, $zonasUser) {
+            $sellerQuote        = $quote->usuario->vendedor ?? null;
+            if (!$sellerQuote) {
+                return false;
+            }
+            $zonasQuote         = $sellerQuote->zonas->pluck('id')->toArray();
+            $typeSellerQuote    = $sellerQuote->tipo_vendedor_id ?? null;
+            $sharedZones        = array_intersect($zonasQuote, $zonasUser);
+
+            if (!$typeSellerQuote || !in_array($typeSellerQuote, $childs)) {
+                return false;
+            }
+
+            if (!empty($sharedZones)) {
+                return $quote->detallecotizacion->every(function ($detail) use ($rules, $sharedZones) {
+                    $priceChange        = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+                    $discount           = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+                    $applicableRules    = $rules->whereIn('zona_id', $sharedZones);
+
+                    return $applicableRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discount) {
+                        $matchesPrice = $priceChange >= $rule->descuento_min
+                            && $priceChange <= $rule->descuento_max;
+                        $matchesDiscount = $discount >= $rule->descuento_min
+                            && $discount <= $rule->descuento_max;
+                        return $matchesPrice && $matchesDiscount;
+                    });
+                });
+            }
+            return false;
+        })->values();
+    }
+
+    protected function getPossibleAuthorizersForQuote(GpCotizacion $quote)
+    {
+        $usersAuthorizers   = [];
+        $sellerQuote        = $quote->usuario->vendedor ?? null;
+        if (!$sellerQuote) {
+            return '';
+        }
+        $zonasQuote             = $sellerQuote->zonas->pluck('id')->toArray() ?? [];
+        $typeSellerQuote        = $sellerQuote->tipo_vendedor_id ?? null;
+
+        if (!empty($zonasQuote) && $typeSellerQuote) {
+            $rules = GpReglaAprobacion::with([
+                'usuarioAutorizador.vendedor.jerarquia.relaciones'
+            ])
+                ->whereIn('zona_id', $zonasQuote)
+                ->get();
+
+            $rulesByUser = $rules->groupBy('user_autorizador_id');
+            foreach ($rulesByUser as $userId => $ruleUser) {
+                $autorizador = $ruleUser->first()->usuarioAutorizador;
+                $vendedorAutorizador = $autorizador->vendedor ?? null;
+                if (!$vendedorAutorizador || !$vendedorAutorizador->jerarquia) {
+                    continue;
+                }
+
+                $hijosDelJefe = $vendedorAutorizador->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
+                if (!in_array($typeSellerQuote, $hijosDelJefe)) {
+                    continue; // No es su jefe, pasamos al siguiente usuario
+                }
+                // Bandera para saber si este usuario pasa todas las pruebas
+                $puedeAprobar = $quote->detallecotizacion->every(function ($detail) use ($ruleUser) {
+                    $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+                    $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+
+                    // Revisamos si alguna de sus reglas cubre estos porcentajes
+                    return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
+                        return ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max) &&
+                            ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
+                    });
+                });
+
+                if ($puedeAprobar) {
+                    // Si pasó la matemática, obtenemos su nombre desde la primera regla
+                    $nombre = $ruleUser->first()->usuarioAutorizador->USERID ?? 'Usuario Desconocido';
+
+                    // Evitar duplicados
+                    if (!in_array($nombre, $usersAuthorizers)) {
+                        $usersAuthorizers[] = $nombre;
+                    }
+                }
+            }
+        }
+        return implode(', ', $usersAuthorizers);
     }
 }

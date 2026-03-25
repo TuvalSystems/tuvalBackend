@@ -15,6 +15,8 @@ use App\Http\Controllers\Controller;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
 use App\Services\Api\ApiGpService;
+use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +31,8 @@ class AprobacionesController extends Controller
     public function __construct(
         protected readonly ApiGpService $apiGpService,
         protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly ApprovalOrderServiceInterface $approvalOrder,
+        protected readonly ApprovalQuotationServiceInterface $approvalQuote
 
     ) {}
 
@@ -57,30 +61,27 @@ class AprobacionesController extends Controller
 
     public function listaCotizacionesPendientesPorAprobar(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'puntodeventa_id' => 'required',
-        ]);
-        $ptoVta = data_get($data, 'puntodeventa_id');
-        try {
-            $data = $this->approvalService->getAllQuotesPendingApprovals($ptoVta, $request->user());
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'puntodeventa_id' => 'required',
+            ]);
+            $ptovta   = data_get($validate, 'puntodeventa_id');
+            $data     = $this->approvalQuote->getAllQuotesPendingApprovals($ptovta, $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
-        }
+        }, 'laravel', 'AprobacionesController.listaCotizacionesPendientesPorAprobar');
+
     }
 
     public function listaPedidosPendientesPorAprobar(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'puntodeventa_id' => 'required',
-        ]);
-        $ptoVta = data_get($data, 'puntodeventa_id');
-        try {
-            $data = $this->approvalService->getAllOrdersPendingApprovals($ptoVta, $request->user());
+          return $this->executeTransaction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'puntodeventa_id' => 'required',
+            ]);
+            $ptovta   = data_get($validate, 'puntodeventa_id');
+            $data = $this->approvalOrder->getAllOrdersPendingApprovals($ptovta, $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse('Error al obtener la información: ' . $e->getMessage(), null, 500);
-        }
+        }, 'laravel', 'AprobacionesController.listaPedidosPendientesPorAprobar');
     }
 
 

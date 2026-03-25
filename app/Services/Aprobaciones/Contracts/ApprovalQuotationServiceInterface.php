@@ -2,9 +2,10 @@
 
 namespace App\Services\Aprobaciones\Contracts;
 
+use App\Models\GpUsuario;
+
 interface ApprovalQuotationServiceInterface
 {
-    // Define los métodos que debe implementar el servicio
-
-     public function approveQuotation(array $data): array;
+    public function approveQuotation(array $data): array;
+    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user);
 }

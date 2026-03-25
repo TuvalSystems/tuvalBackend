@@ -3,6 +3,7 @@
 namespace App\Models\Ventas\Vendedores;
 
 use App\Models\GpCliente;
+use App\Models\GpUsuario;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -78,8 +79,19 @@ class GpVendedor extends Model
         return $this->hasMany(VendedorAtributoValor::class, 'vendedor_id');
     }
 
-    public function zona()
+    public function zonas()
     {
         return $this->belongsToMany(Zona::class, 'vendedor_zona', 'vendedor_id', 'zona_id');
+    }
+
+
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
+
+    public function jerarquia()
+    {
+        return $this->hasOne(VendedorJerarquia::class, 'vendedor_id');
     }
 }

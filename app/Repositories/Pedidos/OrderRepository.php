@@ -16,6 +16,7 @@ use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class OrderRepository implements OrderRepositoryInterface
@@ -209,5 +210,37 @@ class OrderRepository implements OrderRepositoryInterface
                 'gp_pedido_detalle_stocks.seleccionado',
                 'gp_pedido_detalle_stocks.id AS detalle_stocks_id'
             ])->get();
+    }
+
+
+    /** funcion para obtener todos los pedidos en estado de espera por aprobacion comercial */
+
+    public function fetchPendingOrders(int $ptoVta): Builder
+    {
+        $excludedStates = [
+            OrderStatus::ELIMINADO,
+            OrderStatus::ANULADA,
+            OrderStatus::RECHAZADO,
+            OrderStatus::FACTURADO,
+            OrderStatus::ENVIANDO,
+        ];
+        $query = GpPedido::query();
+        $query
+            // ->with([
+            //     'detallepedido',
+            //     'gpcotizacion'
+            // ])
+            ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', '=', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
+            ->join('gp_punto_ventas as pv', 'pv.PTO_VTA_ID', '=', 'gp_pedidos.PTO_VTA_ID')
+            ->select(
+                'gp_pedidos.*',
+                'dfp.DESC_FORMA_PAGO_TIPO_CREDITO',
+                'pv.PTO_VTA_DESCRIPCION'
+            )
+            ->where('gp_pedidos.requiere_aprobacion_comercial', 'yes')
+            ->where('gp_pedidos.aprobado_comercial', 'no')
+            ->whereNotIn('gp_pedidos.estado', $excludedStates)
+            ->orderBy('gp_pedidos.created_at', 'ASC');
+        return $query;
     }
 }

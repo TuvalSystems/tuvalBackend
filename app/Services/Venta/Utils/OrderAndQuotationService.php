@@ -215,19 +215,17 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
      *  para visualizar el porcentaje de cambio de precio y descuento de un articulo
      */
 
-    public function calculateDiscountFraction(float $originalPrice, float $currentPrice)
+    public function calculatePriceVariationPercentage(float $originalPrice, float $currentPrice): float
     {
         if ($originalPrice == 0.0) {
             return 0.0;
         }
-        return ($currentPrice - $originalPrice) / $originalPrice;
+        return (($currentPrice - $originalPrice) / $originalPrice) * 100;
     }
 
-    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount)
+    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
     {
-        $original = $originalDiscount / 100;
-        $current = $currentDiscount / 100;
-        return $current - $original;
+        return (float) $currentDiscount - (float) $originalDiscount;
     }
 
 

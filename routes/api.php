@@ -413,6 +413,10 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('cotizacion/rechazar-estado-espera', [AprobacionesController::class, 'recharCotizacionEstadoEspera']);
         Route::post('pedido/rechazar-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
+
+
+        Route::post('cotizaciones/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
+        Route::post('pedidos/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
     });
 
 

@@ -314,7 +314,15 @@ class GpPedido extends Model implements HasMedia
     }
 
 
+    public function gptrasladoventa()
+    {
+        return $this->hasMany(GpTrasladosVentas::class, 'pedido_id');
+    }
 
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
 
     public function getMsgRegistroCopiaAttribute()
     {
@@ -374,10 +382,7 @@ class GpPedido extends Model implements HasMedia
     }
 
 
-    public function gptrasladoventa()
-    {
-        return $this->hasMany(GpTrasladosVentas::class, 'pedido_id');
-    }
+
 
 
     public function getCheckTrasladoVentaAttribute(): bool
@@ -389,10 +394,5 @@ class GpPedido extends Model implements HasMedia
                     ->orwhere('trasladado', '>', 0);
             })
             ->exists();
-    }
-
-    public function usuario()
-    {
-        return $this->belongsTo(GpUsuario::class, 'user_id');
     }
 }

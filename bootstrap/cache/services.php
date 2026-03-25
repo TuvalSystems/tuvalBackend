@@ -230,6 +230,7 @@
     'App\\Services\\Aprobaciones\\Contracts\\ApprovalQuotationServiceInterface' => 'App\\Providers\\Service\\AprobacionServiceProvider',
     'App\\Services\\Aprobaciones\\Utils\\Contracts\\ApprovalFunctionsServiceInterface' => 'App\\Providers\\Service\\AprobacionServiceProvider',
     'App\\Services\\Aprobaciones\\Contracts\\ApprovalOrderServiceInterface' => 'App\\Providers\\Service\\AprobacionServiceProvider',
+    'App\\Services\\Aprobaciones\\Contracts\\ApprovalDevolutionServiceInterface' => 'App\\Providers\\Service\\AprobacionServiceProvider',
     'App\\Services\\Bodegas\\Contracts\\DispatchServiceInterface' => 'App\\Providers\\Service\\BodegasServiceProvider',
     'App\\Services\\Bodegas\\Contracts\\PurchaseReceiptServiceInterface' => 'App\\Providers\\Service\\BodegasServiceProvider',
     'App\\Services\\Bodegas\\Contracts\\PurchaseReceiptLItemServiceInterface' => 'App\\Providers\\Service\\BodegasServiceProvider',
