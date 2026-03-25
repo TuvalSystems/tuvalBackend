@@ -89,12 +89,12 @@ class ReleaseStockReserveCommand extends Command
     {
         foreach ($stocks as $st) {
             DB::table('gp_cotizacion_detalle_stocks_logs')->insert([
-                'stock_id' => $st->id,
-                'user_id' => 6,
-                'tipo' => 'liberado_sistema',
-                'cantidad' => (int) $st->seleccionado,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'stock_id'      => $st->id,
+                'user_id'       => 6,
+                'tipo'          => 'liberado_sistema',
+                'cantidad'      => (int) $st->seleccionado,
+                'created_at'    => now(),
+                'updated_at'    => now(),
             ]);
         }
     }
