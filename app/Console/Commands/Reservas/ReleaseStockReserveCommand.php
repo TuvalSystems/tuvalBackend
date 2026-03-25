@@ -37,10 +37,10 @@ class ReleaseStockReserveCommand extends Command
                     $query->where('picking', 1);
                 });
             }
-        ])->where('tipo_reserva_id', 1)->whereIn('estado', ['aprobado', 'traslado'])->whereDate('fe_autorizacion_reserva', '=', $ayer);
+        ])->where('tipo_reserva_id', 1)->whereIn('estado', ['aprobado', 'traslado'])->whereDate('fe_autorizacion_reserva', '<=', $ayer);
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
-            foreach ($lote as $key => $res) {
+            foreach ($lote as  $res) {
 
                 $quote = $res->cotizacion;
                 $userSolicita = $res->usuarioingreso;
@@ -48,8 +48,8 @@ class ReleaseStockReserveCommand extends Command
                 $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
                 $this->releaseStock($quote);
                 $res->update(['estado' => 'cancelado']);
-                $title = "Reserva liberada";
-                $msg = "Se liberó el stock reservado para la cotización {$quote->cotizacion}.";
+                $title      = "Reserva liberada";
+                $msg        = "Se liberó el stock reservado para la cotización {$quote->cotizacion}.";
                 $userSolicita->notify((new UserNotification($title, $msg)));
                 $total++;
                 Log::channel('reservas_log')->info("reservas:release-stock => $quote->cotizacion");
@@ -68,21 +68,19 @@ class ReleaseStockReserveCommand extends Command
             ->whereDoesntHave('trasladoreserva', function ($q) {
                 $q->where('picking', 1);
             })
-            ->lockForUpdate()
             ->get()
             ->each(function ($stock) {
 
-                if ($stock->trasladoreserva()->exists()) {
-                    $stock->trasladoreserva()->where('picking', '!=', 1)
-                        ->update(['cantidad' => 0]);
-                }
+                $stock->trasladoreserva()
+                    ->where('picking', '!=', 1)
+                    ->update(['cantidad' => 0]);
 
                 $stock->update([
-                    'cantidad_cancelada' => $stock->cantidad_cancelada + $stock->seleccionado,
-                    'seleccionado' => 0,
-                    'cantidad_cotizada' => 0,
-                    'cantidad_reservada' => 0,
-                    'cantidad_traslado' => 0,
+                    'cantidad_cancelada'    => $stock->cantidad_cancelada + $stock->seleccionado,
+                    'seleccionado'          => 0,
+                    'cantidad_cotizada'     => 0,
+                    'cantidad_reservada'    => 0,
+                    'cantidad_traslado'     => 0,
                 ]);
             });
     }
