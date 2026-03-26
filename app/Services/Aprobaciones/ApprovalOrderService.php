@@ -317,8 +317,6 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         $hasModifications = $order->detallepedido->contains(function ($detail) {
             $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
             $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
-
-            // Retorna true si hay alguna variación distinta de cero
             return $priceChange != 0 || $discount != 0;
         });
 
@@ -341,41 +339,32 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                     continue;
                 }
             }
-
             if ($autorizador->perfil_id !== 28) {
                 if (!$vendedorAutorizador || !$vendedorAutorizador->jerarquia) {
                     continue;
                 }
-
                 $hijosDelJefe = $vendedorAutorizador->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
                 if (!in_array($sellerOrder->tipo_vendedor_id, $hijosDelJefe)) {
                     continue;
                 }
             }
-            // Bandera para saber si este usuario pasa todas las pruebas
             $puedeAprobar = $order->detallepedido->every(function ($detail) use ($ruleUser) {
                 $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
                 $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
 
-                // Revisamos si alguna de sus reglas cubre estos porcentajes
                 return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
                     return ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max) &&
                         ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
                 });
             });
-
             if ($puedeAprobar) {
-                // Si pasó la matemática, obtenemos su nombre desde la primera regla
                 $nombre = $ruleUser->first()->usuarioAutorizador->USERID ?? 'Usuario Desconocido';
-
-                // Evitar duplicados
                 if (!in_array($nombre, $usersAuthorizers)) {
                     $usersAuthorizers[] = $nombre;
                     $authorizerIds[]    = $autorizador->id;
                 }
             }
         }
-
         $order->authorizer_ids_list = $authorizerIds;
         return implode(', ', $usersAuthorizers);
     }
