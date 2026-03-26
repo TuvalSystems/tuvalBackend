@@ -327,7 +327,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                 ];
             }
         }
-        $sortedAuthorizers = collect($tempAuthorizers)->sortByDesc('max_desc');
+        $sortedAuthorizers = collect($tempAuthorizers)->sortBy('max_desc');
         $quote->authorizer_ids_list = $sortedAuthorizers->pluck('id')->toArray();
         return $sortedAuthorizers->pluck('nombre')->implode(', ');
     }

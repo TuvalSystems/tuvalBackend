@@ -366,7 +366,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 ];
             }
         }
-        $sortedAuthorizers = collect($tempAuthorizers)->sortByDesc('max_desc');
+        $sortedAuthorizers = collect($tempAuthorizers)->sortBy('max_desc');
         $order->authorizer_ids_list = $sortedAuthorizers->pluck('id')->toArray();
         return $sortedAuthorizers->pluck('nombre')->implode(', ');
     }
