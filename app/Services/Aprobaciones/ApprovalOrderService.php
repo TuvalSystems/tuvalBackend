@@ -264,6 +264,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         $user->load(['vendedor.jerarquia.relaciones', 'vendedor.zonas']);
         $query  = $this->repository->fetchPendingOrders($ptoVta)->with(['detallepedido', 'gpcotizacion', 'usuario.vendedor.zonas']);
         $orders = $query->get();
+        $orders->each(function ($order) {
+            $order->users_autorizadores = $this->getPossibleAuthorizersForOrders($order);
+        });
 
         // para los adminis del sistema
         if (in_array($user->perfil_id, [1, 2])) {
@@ -281,7 +284,6 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         $segmentDataByRuc = $this->approvalFuntions->getClientSegments($allRucs);
         return $filteredOrders->map(function ($order) use ($segmentDataByRuc) {
             $ruc                        = $order->CLI_RUC;
-            $order->users_autorizadores = $this->getPossibleAuthorizersForOrders($order);
             $order->cotizacion          = $order->gpcotizacion->cotizacion;
             $segmentData                = $segmentDataByRuc[$ruc] ?? ['segmento' => null, 'subsegmento' => null];
             $order->segmento            = data_get($segmentData, 'segmento');
@@ -292,114 +294,89 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
     protected function filterOrdersForVicePresidency($orders, GpUsuario $user): Collection
     {
-        $rules = $this->approvalFuntions->getApprovalRulesByUser($user->id);
-        return  $orders->filter(function ($order) use ($rules) {
-            return $order->detallepedido->every(function ($detail) use ($rules) {
-                $priceChange        = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
-                $discount           = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
-
-                return $rules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discount) {
-                    $matchesPrice = $priceChange >= $rule->descuento_min
-                        && $priceChange <= $rule->descuento_max;
-                    $matchesDiscount = $discount >= $rule->descuento_min
-                        && $discount <= $rule->descuento_max;
-                    return $matchesPrice && $matchesDiscount;
-                });
-            });
+        return $orders->filter(function ($order) use ($user) {
+            return in_array($user->id, $order->authorizer_ids_list ?? []);
         })->values();
     }
 
     protected function filterOrdersByTySeller(Collection $orders, GpUsuario $user): Collection
     {
-        $zonasUser      = $user->vendedor->zonas->pluck('id')->toArray();
-        $typeSellerId   = $user->vendedor->tipo_vendedor_id;
-        $rules          = $this->approvalFuntions->getApprovalRulesForUserByZone($user->id,  $zonasUser, $typeSellerId);
-        $childs         = $user->vendedor->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
-
-        return $orders->filter(function ($order) use ($rules, $childs, $zonasUser) {
-            $sellerOrder        = $order->usuario->vendedor ?? null;
-            if (!$sellerOrder) {
-                return false;
-            }
-            $zonasQuote         = $sellerOrder->zonas->pluck('zona_id')->toArray();
-            $typeSellerQuote    = $sellerOrder->tipo_vendedor_id ?? null;
-            $sharedZones        = array_intersect($zonasQuote, $zonasUser);
-
-            if (!$typeSellerQuote || !in_array($typeSellerQuote, $childs)) {
-                return false;
-            }
-
-            if (!empty($sharedZones)) {
-                return $order->detallepedido->every(function ($detail) use ($rules, $sharedZones) {
-                    $priceChange        = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
-                    $discount           = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
-                    $applicableRules    = $rules->whereIn('zona_id', $sharedZones);
-
-                    return $applicableRules->contains(function (GpReglaAprobacion $rule) use ($priceChange, $discount) {
-                        $matchesPrice = $priceChange >= $rule->descuento_min
-                            && $priceChange <= $rule->descuento_max;
-                        $matchesDiscount = $discount >= $rule->descuento_min
-                            && $discount <= $rule->descuento_max;
-                        return $matchesPrice && $matchesDiscount;
-                    });
-                });
-            }
-            return false;
+        return $orders->filter(function ($order) use ($user) {
+            return in_array($user->id, $order->authorizer_ids_list ?? []);
         })->values();
     }
 
-    protected function getPossibleAuthorizersForOrders(GpPedido $quote)
+    protected function getPossibleAuthorizersForOrders(GpPedido $order): string
     {
         $usersAuthorizers   = [];
-        $sellerOrder        = $quote->usuario->vendedor ?? null;
+        $authorizerIds      = [];
+        $sellerOrder        = $order->usuario->vendedor ?? null;
         if (!$sellerOrder) {
             return '';
         }
+        $hasModifications = $order->detallepedido->contains(function ($detail) {
+            $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+            $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+
+            // Retorna true si hay alguna variación distinta de cero
+            return $priceChange != 0 || $discount != 0;
+        });
+
         $zonasQuote             = $sellerOrder->zonas->pluck('id')->toArray() ?? [];
-        $typeSellerOrder        = $sellerOrder->tipo_vendedor_id ?? null;
+        $rules = GpReglaAprobacion::with(['usuarioAutorizador.vendedor.jerarquia.relaciones'])
+            ->where(function ($q) use ($zonasQuote) {
+                $q->whereIn('zona_id', $zonasQuote)
+                    ->orWhereHas('usuarioAutorizador', function ($u) {
+                        $u->where('perfil_id', 28);
+                    });
+            })
+            ->get();
+        $rulesByUser = $rules->groupBy('user_autorizador_id');
+        foreach ($rulesByUser as $userId => $ruleUser) {
+            $autorizador = $ruleUser->first()->usuarioAutorizador;
+            $vendedorAutorizador = $autorizador->vendedor ?? null;
+            if (!$hasModifications) {
+                $nivelJerarquia = data_get($vendedorAutorizador, 'jerarquia.nivel');
+                if ($nivelJerarquia == 2) {
+                    continue;
+                }
+            }
 
-        if (!empty($zonasQuote) && $typeSellerOrder) {
-            $rules = GpReglaAprobacion::with([
-                'usuarioAutorizador.vendedor.jerarquia.relaciones'
-            ])
-                ->whereIn('zona_id', $zonasQuote)
-                ->get();
-
-            $rulesByUser = $rules->groupBy('user_autorizador_id');
-            foreach ($rulesByUser as $userId => $ruleUser) {
-                $autorizador = $ruleUser->first()->usuarioAutorizador;
-                $vendedorAutorizador = $autorizador->vendedor ?? null;
+            if ($autorizador->perfil_id !== 28) {
                 if (!$vendedorAutorizador || !$vendedorAutorizador->jerarquia) {
                     continue;
                 }
 
                 $hijosDelJefe = $vendedorAutorizador->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
-                if (!in_array($typeSellerOrder, $hijosDelJefe)) {
-                    continue; // No es su jefe, pasamos al siguiente usuario
+                if (!in_array($sellerOrder->tipo_vendedor_id, $hijosDelJefe)) {
+                    continue;
                 }
-                // Bandera para saber si este usuario pasa todas las pruebas
-                $puedeAprobar = $quote->detallepedido->every(function ($detail) use ($ruleUser) {
-                    $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
-                    $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+            }
+            // Bandera para saber si este usuario pasa todas las pruebas
+            $puedeAprobar = $order->detallepedido->every(function ($detail) use ($ruleUser) {
+                $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+                $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
 
-                    // Revisamos si alguna de sus reglas cubre estos porcentajes
-                    return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
-                        return ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max) &&
-                            ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
-                    });
+                // Revisamos si alguna de sus reglas cubre estos porcentajes
+                return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
+                    return ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max) &&
+                        ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
                 });
+            });
 
-                if ($puedeAprobar) {
-                    // Si pasó la matemática, obtenemos su nombre desde la primera regla
-                    $nombre = $ruleUser->first()->usuarioAutorizador->USERID ?? 'Usuario Desconocido';
+            if ($puedeAprobar) {
+                // Si pasó la matemática, obtenemos su nombre desde la primera regla
+                $nombre = $ruleUser->first()->usuarioAutorizador->USERID ?? 'Usuario Desconocido';
 
-                    // Evitar duplicados
-                    if (!in_array($nombre, $usersAuthorizers)) {
-                        $usersAuthorizers[] = $nombre;
-                    }
+                // Evitar duplicados
+                if (!in_array($nombre, $usersAuthorizers)) {
+                    $usersAuthorizers[] = $nombre;
+                    $authorizerIds[]    = $autorizador->id;
                 }
             }
         }
+
+        $order->authorizer_ids_list = $authorizerIds;
         return implode(', ', $usersAuthorizers);
     }
 }
