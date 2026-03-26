@@ -80,7 +80,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 'ptoVta'           => $ptoVta
             ];
 
-            $guia = $lockSequential->block(5, function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {
+            $guia = $lockSequential->block(15, function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {
                 return DB::transaction(function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {
                     $error = $this->validateQtyDetails($items);
                     if ($error) {
