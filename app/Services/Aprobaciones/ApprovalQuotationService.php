@@ -268,8 +268,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
     protected function getPossibleAuthorizersForQuote(GpCotizacion $quote): string
     {
-        $usersAuthorizers   = [];
-        $authorizerIds      = [];
+        $tempAuthorizers = [];
         $sellerQuote        = $quote->usuario->vendedor ?? null;
         if (!$sellerQuote) {
             return '';
@@ -319,14 +318,17 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                 });
             });
             if ($puedeAprobar) {
-                $nombre = $ruleUser->first()->usuarioAutorizador->USERID ?? 'Usuario Desconocido';
-                if (!in_array($nombre, $usersAuthorizers)) {
-                    $usersAuthorizers[] = $nombre;
-                    $authorizerIds[]    = $autorizador->id;
-                }
+                $nombre                 = $autorizador->USERID ?? 'Usuario Desconocido';
+                $maxDescuentoUsuario    = $ruleUser->max('descuento_max');
+                $tempAuthorizers[] = [
+                    'id'        => $autorizador->id,
+                    'nombre'    => $nombre,
+                    'max_desc'  => $maxDescuentoUsuario
+                ];
             }
         }
-        $quote->authorizer_ids_list = $authorizerIds;
-        return implode(', ', $usersAuthorizers);
+        $sortedAuthorizers = collect($tempAuthorizers)->sortByDesc('max_desc');
+        $quote->authorizer_ids_list = $sortedAuthorizers->pluck('id')->toArray();
+        return $sortedAuthorizers->pluck('nombre')->implode(', ');
     }
 }

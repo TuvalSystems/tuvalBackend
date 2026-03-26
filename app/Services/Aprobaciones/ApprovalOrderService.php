@@ -308,8 +308,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
     protected function getPossibleAuthorizersForOrders(GpPedido $order): string
     {
-        $usersAuthorizers   = [];
-        $authorizerIds      = [];
+        $tempAuthorizers    = [];
         $sellerOrder        = $order->usuario->vendedor ?? null;
         if (!$sellerOrder) {
             return '';
@@ -358,14 +357,17 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 });
             });
             if ($puedeAprobar) {
-                $nombre = $ruleUser->first()->usuarioAutorizador->USERID ?? 'Usuario Desconocido';
-                if (!in_array($nombre, $usersAuthorizers)) {
-                    $usersAuthorizers[] = $nombre;
-                    $authorizerIds[]    = $autorizador->id;
-                }
+                $nombre                 = $autorizador->USERID ?? 'Usuario Desconocido';
+                $maxDescuentoUsuario    = $ruleUser->max('descuento_max');
+                $tempAuthorizers[] = [
+                    'id'        => $autorizador->id,
+                    'nombre'    => $nombre,
+                    'max_desc'  => $maxDescuentoUsuario
+                ];
             }
         }
-        $order->authorizer_ids_list = $authorizerIds;
-        return implode(', ', $usersAuthorizers);
+        $sortedAuthorizers = collect($tempAuthorizers)->sortByDesc('max_desc');
+        $order->authorizer_ids_list = $sortedAuthorizers->pluck('id')->toArray();
+        return $sortedAuthorizers->pluck('nombre')->implode(', ');
     }
 }
