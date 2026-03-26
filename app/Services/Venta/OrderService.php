@@ -321,7 +321,7 @@ class OrderService implements OrderServiceInterface
                 $hasExisting = true;
             }
             $item->priceChange      = round($this->orderAndQuotationService->calculatePriceVariationPercentage($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
-            $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
+            $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento),3);
             $item->reglasAprobacion = $reglasAprobacion;
 
             /** procesod de segmentacion abc  */

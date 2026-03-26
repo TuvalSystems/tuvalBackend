@@ -169,15 +169,15 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
     public function calculatePriceVariationPercentage(float $originalPrice, float $currentPrice): float
     {
         if ($originalPrice == 0.0) {
-            return 0.0;
+            return $currentPrice > 0 ? 100.0 : 0.0;
         }
         return (($currentPrice - $originalPrice) / $originalPrice) * 100;
     }
 
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
     {
-         if ($originalDiscount == 0.0) {
-            return 0.0;
+        if ($originalDiscount == 0.0) {
+            return $currentDiscount > 0 ? 100.0 : 0.0;
         }
         return (($currentDiscount - $originalDiscount) / $originalDiscount) * 100;
     }
