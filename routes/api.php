@@ -111,10 +111,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/aprobaciones/verdevolucionesporaprobar', [AprobacionesController::class, 'verdevolucionesporaprobar']);
 
     Route::post('/pedidos/consultarexistente', [PedidosController::class, 'consultarexistente']);
-    // Route::post('/pedidos/consultardespachado', [PedidosController::class, 'consultardespachado']);
     Route::post('/pedidos/facturarexistente', [PedidosController::class, 'facturarexistente']);
-    // Route::post('/pedidos/facturardespachado', [PedidosController::class, 'facturardespachado']);
-    // Route::post('/cotizaciones/detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
 
     Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);
     Route::post('/cotizaciones/recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);

@@ -242,7 +242,7 @@ class PedidosController extends Controller
     {
         try {
             $data = $request->all();
-            $result = $this->orderService->detailOrderById($data);
+            $result = $this->orderService->detailOrderById($data, $request->user());
             return response()->json([
                 'success' => true,
                 ...$result

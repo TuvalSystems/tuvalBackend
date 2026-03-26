@@ -523,13 +523,11 @@ class CotizacionesController extends Controller
 
     public function detallecotizacion(Request $request)
     {
-        $data = $request->all();
-        try {
-            $quote = $this->quotationService->detailQuotation($data);
+        return $this->executeTransaction(function () use ($request) {
+            $data = $request->all();
+            $quote = $this->quotationService->detailQuotation($data, $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $quote, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'laravel', 'detallecotizacion');
     }
 
 
@@ -953,11 +951,15 @@ class CotizacionesController extends Controller
 
     public function obteneMargenItemlL(Request $request)
     {
-        $request->validate([
-            'articulo' => 'required',
-        ]);
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $request->validate([
+                'articulo' => 'required',
+            ]);
             $datosL = $this->quotationService->getMarginItem($request->articulo);
+             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
+        }, 'laravel', 'obteneMargenItemlL');
+
+        try {
             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
         } catch (HttpException $e) {
             return $this->buildErrorResponse(

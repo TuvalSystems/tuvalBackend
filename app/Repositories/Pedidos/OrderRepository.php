@@ -174,11 +174,12 @@ class OrderRepository implements OrderRepositoryInterface
 
 
 
-    public function queryHasGuideDispatched($ids): bool
+    public function queryHasGuideDispatched(int $orderId): bool
     {
         return DB::table('gp_guia_remision_detalles as grd')
             ->join('gp_guia_remisions as gr', 'gr.id', '=', 'grd.guia_remision_id')
-            ->whereIn('grd.detalle_id', $ids)
+            ->join('gp_pedido_detalles as pd', 'pd.id', '=', 'grd.detalle_id')
+            ->where('pd.pedido_id', $orderId)
             ->where('gr.estado', '!=', 'eliminada')
             ->where('gr.tipo', 'despacho')
             ->exists();

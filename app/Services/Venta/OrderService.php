@@ -5,6 +5,7 @@ namespace App\Services\Venta;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\QuotationMode;
+use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
@@ -252,21 +253,23 @@ class OrderService implements OrderServiceInterface
         $order = GpPedido::find($orderId);
         $existeItemLRecibido = GpPedidoDetalleProveedores::where('pedido_id', $orderId)->where('recibido', 'yes')->exists();
         return [
-            'despacho_en_proceso' => $order->despacho_en_proceso,
-            'transferencia_en_proceso' => $order->transferencia_en_proceso,
-            'item_l_recibido' => $existeItemLRecibido
+            'despacho_en_proceso'       => $order->despacho_en_proceso,
+            'transferencia_en_proceso'  => $order->transferencia_en_proceso,
+            'item_l_recibido'           => $existeItemLRecibido
         ];
     }
 
-    public function detailOrderById($data)
+    public function detailOrderById(array $data, GpUsuario $user)
     {
+        $orderHeader            = GpPedido::where('id', $data['id'])->first();
+        $reglasAprobacion       = $this->getPorcentilChangeDiscount($user, $orderHeader);
         $detalle                = $this->orderRepository->getAllDetailsOrderById($data['id']);
         $clientQuota            = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
         $segmento               = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        $enrichedDetails        = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
+        $enrichedDetails        = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA'],  $reglasAprobacion);
         $ordenes                = $this->getPurchaseOrdersWithReceipts($data['pedido']);
         $trasladosVentas        = $this->getTransferWithGuides($data['id']);
-        $hasGuideDispatched     = $this->hasGuideDispatched($data['id']);
+        $hasGuideDispatched     = $this->orderRepository->queryHasGuideDispatched($data['id']);
         $orderDespacho          = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision           = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones           = $this->orderRepository->getReturnsByOrder($data['id']);
@@ -296,7 +299,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function enrichOrderDetails(Collection $details, int $orderId, string $warehouse)
+    protected function enrichOrderDetails(Collection $details, int $orderId, string $warehouse, array $reglasAprobacion)
     {
         $hasPending = false;
         $hasExisting = false;
@@ -307,19 +310,19 @@ class OrderService implements OrderServiceInterface
         $groupsByAbc = $this->orderAndQuotationService->getApiSegmentsAbcItem($codesList);
         $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
             ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
-        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc) {
-            $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
-            $item->proveedores = $proveedores['proveedores'];
-            $hasPending = $proveedores['pendientes'] ?: $hasPending;
-            $hasExisting = $proveedores['existentes'] ?: $hasExisting;
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc, $reglasAprobacion) {
+            $proveedores        = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
+            $item->proveedores  = $proveedores['proveedores'];
+            $hasPending         = $proveedores['pendientes'] ?: $hasPending;
+            $hasExisting        = $proveedores['existentes'] ?: $hasExisting;
             // Obtener stock (desde el map precargado)
-            $stock = $stockByItem->get($item->id);
+            $stock              = $stockByItem->get($item->id);
             if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
                 $hasExisting = true;
             }
             $item->priceChange      = round($this->orderAndQuotationService->calculatePriceVariationPercentage($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
             $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
-
+            $item->reglasAprobacion = $reglasAprobacion;
 
             /** procesod de segmentacion abc  */
             $myAbc = $groupsByAbc->get($item->ART_CODIGO, collect());
@@ -329,19 +332,14 @@ class OrderService implements OrderServiceInterface
         });
 
         return [
-            'details' => $details,
-            'hasPending' => $hasPending,
-            'hasExisting' => $hasExisting
+            'details'       => $details,
+            'hasPending'    => $hasPending,
+            'hasExisting'   => $hasExisting
         ];
     }
-    // public function getApiSegmentsAbcItem($articles)
-    // {
-    //     $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
-    //     $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
-    //     return  collect($response)->groupBy('item');
-    // }
 
-    public function getPurchaseOrdersWithReceipts($orderNumber)
+
+    protected function getPurchaseOrdersWithReceipts($orderNumber)
     {
         return $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
             ->map(function ($orden) {
@@ -351,13 +349,6 @@ class OrderService implements OrderServiceInterface
             ->filter()
             ->values();
     }
-
-    public function checkOutValidateDispatchReInvoice($devolucion)
-    {
-        return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
-            ->where('despachado_parcial', 1)->exists();
-    }
-
 
     public function getTransferWithGuides(int $orderId): Collection
     {
@@ -372,7 +363,7 @@ class OrderService implements OrderServiceInterface
         });
     }
 
-    public function calculateOrderStatus($details, $transfers)
+    protected function calculateOrderStatus($details, $transfers)
     {
 
         $hasPending = $details['hasPending'];
@@ -403,21 +394,68 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function hasGuideDispatched($orderId): bool
+    protected function getPorcentilChangeDiscount(GpUsuario $user, GpPedido $order)
     {
 
-        $detallesIds = GpPedidoDetalle::where('pedido_id', $orderId)->pluck('id')->toArray();
+        if (in_array($user->perfil_id, [1, 2])) {
+            return [
+                'regla_precio'    => ['min' => -100, 'max' => 100],
+                'regla_descuento' => ['min' => -100, 'max' => 100],
+            ];
+        }
+        $data = [
+            'regla_precio'    => ['min' => 0, 'max' => 0],
+            'regla_descuento' => ['min' => 0, 'max' => 0],
+        ];
+        $vendedorOrder = $order->usuario->vendedor ?? null;
+        if (!$vendedorOrder) {
+            return $data;
+        }
+        $zonasOrder      = $vendedorOrder->zonas->pluck('id')->toArray();
+        $typeSellerOrder = $vendedorOrder->tipo_vendedor_id;
 
-        // Si el pedido no tiene detalles, retornamos false directo para ahorrar la consulta al repo
-        if (empty($detallesIds)) {
-            return false;
+        if (empty($zonasOrder) || !$typeSellerOrder) {
+            return $data;
         }
 
-        return $this->orderRepository->queryHasGuideDispatched($detallesIds);
+        if (in_array($user->perfil_id, [28])) {
+            $reglas = GpReglaAprobacion::where('user_autorizador_id', $user->id)
+                ->whereIn('zona_id', $zonasOrder)
+                // Omitimos el tipo_vendedor_id porque el VP no evalúa por tipo de hijo
+                ->whereIn('regla_negocio_id', [2, 3])
+                ->select('regla_negocio_id', 'descuento_min', 'descuento_max')
+                ->get();
+        } else {
+            $user->loadMissing(['vendedor.jerarquia.relaciones']);
+            $headerAuth = $user->vendedor ?? null;
+
+            if (!$headerAuth || !$headerAuth->jerarquia) {
+                return $data;
+            }
+
+            $hijosDelJefe = $headerAuth->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
+
+            // Si el creador de la cotización no es su subordinado, lo bloqueamos
+            if (!in_array($typeSellerOrder, $hijosDelJefe)) {
+                return $data;
+            }
+
+            $typeSellerJefe = $headerAuth->tipo_vendedor_id;
+            $reglas = GpReglaAprobacion::where('user_autorizador_id', $user->id)
+                ->whereIn('zona_id', $zonasOrder)
+                ->where('tipo_vendedor_id', $typeSellerJefe) // Filtro estricto de jerarquía
+                ->whereIn('regla_negocio_id', [2, 3])
+                ->select('regla_negocio_id', 'descuento_min', 'descuento_max')
+                ->get();
+        }
+
+        foreach ($reglas as $regla) {
+            $key = $regla->regla_negocio_id == 3 ? 'regla_precio' : 'regla_descuento';
+            $data[$key]['min'] = $regla->descuento_min;
+            $data[$key]['max'] = $regla->descuento_max;
+        }
+        return $data;
     }
-
-
-
 
     /**
      * API PARA LISTAR LOS PEDIDOS SIN COORDENADAS

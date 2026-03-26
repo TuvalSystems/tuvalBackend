@@ -12,10 +12,8 @@ interface OrderServiceInterface
 
 
     public function verifyOrderDispatchOrItemLRecived($orderId);
-    public function detailOrderById($data);
+    public function detailOrderById(array $data, GpUsuario $user);
 
-    //volver a facturar
-    public function checkOutValidateDispatchReInvoice($devolucion);
 
     public function getLisOrdersWithoutCoordinated();
 

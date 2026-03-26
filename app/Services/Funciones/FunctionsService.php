@@ -7,7 +7,6 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Models\GpTempCartStock;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
@@ -31,25 +30,22 @@ class FunctionsService implements FunctionsServiceInterface
     {
         $providers = $this->orderRepository->getSuppliersByOrderAndItem($pedidoId, $item->id);
         if ($item->ART_DECIMAL_CANTIDAD == 0) {
-            $item->ART_STOCK = (int) $item->ART_STOCK;
-            $item->ART_CANTIDAD = (int) $item->ART_CANTIDAD;
+            $item->ART_STOCK = (float) $item->ART_STOCK;
+            $item->ART_CANTIDAD = (float) $item->ART_CANTIDAD;
         }
 
         // Procesar cada proveedor
         $providers->each(function ($provider) use (&$pendientes, &$existentes, $item) {
             $provider->ingresado ? $existentes = true : $pendientes = true;
 
-            // Obtener las órdenes de compra relacionadas
             $orderDetails = $this->orderRepository->getPurchaseOrdersBySupplier($provider->id);
 
-            // Calcular el margen
             $margin = ($provider->COSTO_UNITARIO / (1 - ($provider->MARGEN / 100))) / (1 - $item->descuento / 100);
             $provider->margen = number_format($margin, 4, '.', '');
 
-            // Conversión a enteros si no tiene decimales
             if ($item->ART_DECIMAL_CANTIDAD == 0) {
-                $provider->CANTIDAD = (int) $provider->CANTIDAD;
-                $provider->ingresado = (int) $provider->ingresado;
+                $provider->CANTIDAD = (float) $provider->CANTIDAD;
+                $provider->ingresado = (float) $provider->ingresado;
             }
 
             // Asignar el detalle de órdenes de compra
@@ -217,27 +213,7 @@ class FunctionsService implements FunctionsServiceInterface
     }
 
 
-    /**
-     *  utilizo este store temporal porque necesito almacecenar el stock
-     *  cuando recupero el pedido de la cotizacion o pedido ya que
-     * el stock se encuentra en el detalle del pedido
-     */
-    public function storeCartStockTemp($cartId, $stock)
-    {
-        if (empty($stock)) {
-            return;
-        }
-        foreach ($stock as $stockData) {
-            $selected = $stockData['seleccionado'] ?? 0;
-            GpTempCartStock::updateOrCreate(
-                ['id_tempcart' => $cartId, 'STO_ART_BODEGA' => $stockData['STO_ART_BODEGA']],
-                [
-                    'STO_ART_STOCK_DISPONIBLE' => $stockData['STO_ART_STOCK_DISPONIBLE'],
-                    'seleccionado' => $selected
-                ]
-            );
-        }
-    }
+
 
 
     public function like_match($pattern, $subject)
