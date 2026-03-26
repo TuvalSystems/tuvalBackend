@@ -180,7 +180,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             $this->sendToDataDeliveryNote($guide, $detalle, $ordenCompra);
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'Cabecera ya existente')) {
-                Log::warning("Guía duplicada detectada en ERP al enviar: " . $guide->GUI_REM_GUIA_REMISION);
+                Log::channel('despachos')->warning("Guía duplicada detectada en ERP al enviar: " . $guide->GUI_REM_GUIA_REMISION);
                 $this->common->assigmentAccessCodeToGuidePending($guide);
                 return $guide->refresh();
             }
