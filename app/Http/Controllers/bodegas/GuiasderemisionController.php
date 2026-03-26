@@ -198,7 +198,7 @@ class GuiasderemisionController extends Controller
     {
         try {
             $data = $this->deliveryNoteService->getDeliveryNoteAdjustmentInfoByDeliveryNoteId($id);
-            return $this->successResponse('Información obtenida', $data, 200);
+            return $this->successResponse('Información obtenida bien', $data, 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
@@ -209,7 +209,7 @@ class GuiasderemisionController extends Controller
     {
         try {
             $pedido = $this->deliveryNoteService->processAjusteWevOrderGUideRemision($id);
-            return $this->successResponse('Información obtenida', $pedido, 200);
+            return $this->successResponse('Información obtenida correcto', $pedido, 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }

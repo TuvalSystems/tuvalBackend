@@ -176,7 +176,10 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
 
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
     {
-        return (float) $currentDiscount - (float) $originalDiscount;
+         if ($originalDiscount == 0.0) {
+            return 0.0;
+        }
+        return (($currentDiscount - $originalDiscount) / $originalDiscount) * 100;
     }
 
     public function getClientSegments(array $rucs): array
