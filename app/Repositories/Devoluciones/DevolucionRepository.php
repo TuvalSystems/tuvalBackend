@@ -82,7 +82,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
     public function getReturnsAnulated($pedido_id): bool
     {
-        return GpDevoluciones::where('pedido_id', $pedido_id)->where('estado', 'anulada')->exists();
+        return GpDevoluciones::where('pedido_id', $pedido_id)->where('estado', DevolutionStatus::ANULADA)->exists();
     }
 
 
@@ -90,7 +90,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function getReturnsInProcess($pedido_id): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido_id)
-            ->whereNotIn('estado', ['procesado','rechazado', 'no_procesado'])
+            ->whereNotIn('estado', [DevolutionStatus::PROCESADO, DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])
             ->exists();
     }
 
