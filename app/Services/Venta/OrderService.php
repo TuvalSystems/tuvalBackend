@@ -7,7 +7,6 @@ use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\QuotationMode;
 use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\despachos\GpGuiaRemisionDespacho;
-use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
@@ -321,7 +320,7 @@ class OrderService implements OrderServiceInterface
                 $hasExisting = true;
             }
             $item->priceChange      = round($this->orderAndQuotationService->calculatePriceVariationPercentage($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
-            $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento),3);
+            $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 3);
             $item->reglasAprobacion = $reglasAprobacion;
 
             /** procesod de segmentacion abc  */
@@ -451,8 +450,8 @@ class OrderService implements OrderServiceInterface
 
         foreach ($reglas as $regla) {
             $key = $regla->regla_negocio_id == 3 ? 'regla_precio' : 'regla_descuento';
-            $data[$key]['min'] = $regla->descuento_min;
-            $data[$key]['max'] = $regla->descuento_max;
+            $data[$key]['min'] = round((float)$regla->descuento_min, 2);
+            $data[$key]['max'] = round((float)$regla->descuento_max, 2);
         }
         return $data;
     }
@@ -777,14 +776,14 @@ class OrderService implements OrderServiceInterface
     {
 
         $order->fill([
-            'cotizacion_id' => $dataQuotation['id'],
-            'porcentage_descuentooriginal' => $dataQuotation['porcentage_descuentooriginal'],
-            'porcentage_descuento' => $dataQuotation['porcentage_descuento'],
-            'subtotal' => number_format((float) $dataQuotation['subtotal'] + (float) $dataQuotation['descuento'], 2, '.', ''),
-            'descuento' => number_format((float) $dataQuotation['descuento'], 2, '.', ''),
-            'subtotalmenosdescuento' => number_format((float) $dataQuotation['subtotal'], 2, '.', ''),
-            'iva' => number_format((float) $dataQuotation['iva'], 2, '.', ''),
-            'total' => number_format((float) $dataQuotation['total'], 2, '.', ''),
+            'cotizacion_id'                 => $dataQuotation['id'],
+            'porcentage_descuentooriginal'  => $dataQuotation['porcentage_descuentooriginal'],
+            'porcentage_descuento'          => $dataQuotation['porcentage_descuento'],
+            'subtotal'                      => number_format((float) $dataQuotation['subtotal'] + (float) $dataQuotation['descuento'], 2, '.', ''),
+            'descuento'                     => number_format((float) $dataQuotation['descuento'], 2, '.', ''),
+            'subtotalmenosdescuento'        => number_format((float) $dataQuotation['subtotal'], 2, '.', ''),
+            'iva'                           => number_format((float) $dataQuotation['iva'], 2, '.', ''),
+            'total'                         => number_format((float) $dataQuotation['total'], 2, '.', ''),
         ]);
 
         $order->save();
@@ -819,7 +818,6 @@ class OrderService implements OrderServiceInterface
         $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
         $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
         if ($isTypeL && !$hasStock) {
-            $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             if (!$replacementCodeL) {
                 Log::warning('No se encontró un item L disponible para el pedido ', [

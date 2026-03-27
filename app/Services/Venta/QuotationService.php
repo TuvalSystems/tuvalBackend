@@ -566,8 +566,8 @@ class QuotationService implements QuotationServiceInterface
 
         foreach ($reglas as $regla) {
             $key = $regla->regla_negocio_id == 3 ? 'regla_precio' : 'regla_descuento';
-            $data[$key]['min'] = $regla->descuento_min;
-            $data[$key]['max'] = $regla->descuento_max;
+            $data[$key]['min'] = round((float)$regla->descuento_min, 2);
+            $data[$key]['max'] = round((float)$regla->descuento_max, 2);
         }
         return $data;
     }
