@@ -205,7 +205,6 @@ Route::group(['prefix' => 'reservas-web'], function () {
 });
 
 Route::prefix('aprobaciones-web')->group(function () {
-    Route::get('lista-items-aprobaciones', [AprobacionesController::class, 'verpedidosycotizacionesporaprobar']);
     Route::get('lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
     Route::get('lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
     Route::get('verificar-stock-reserva', [ReservasController::class, 'consultarReservaAprobarRechazar']);

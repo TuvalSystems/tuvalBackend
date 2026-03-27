@@ -46,19 +46,6 @@ class AprobacionesController extends Controller
             return $this->buildErrorResponse('Error al obtener la información: ' . $e->getMessage(), 500);
         }
     }
-
-
-    public function verpedidosycotizacionesporaprobar(Request $request): JsonResponse
-    {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
-            $data = $request->validate([
-                'puntodeventa_id' => 'required',
-            ]);
-            $data = $this->approvalService->getAllPendingApprovals($data['puntodeventa_id'], $request->user());
-            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
-        }, 'laravel', 'AprobacionesController.verpedidosycotizacionesporaprobar');
-    }
-
     public function listaCotizacionesPendientesPorAprobar(Request $request): JsonResponse
     {
         return $this->executeTransaction(function () use ($request): JsonResponse {
@@ -83,8 +70,6 @@ class AprobacionesController extends Controller
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
         }, 'laravel', 'AprobacionesController.listaPedidosPendientesPorAprobar');
     }
-
-
 
     public function getSegmentoCliente($ruc)
     {
