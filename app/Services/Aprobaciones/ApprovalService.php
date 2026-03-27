@@ -573,7 +573,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
         if ($volverAFacturar === true) {
             $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
-                ->whereNotIn('estado', [OrderStatus::ANULADA, OrderStatus::ELIMINADO])
+                ->whereNotIn('estado', [OrderStatus::ANULADA, OrderStatus::ELIMINADO, OrderStatus::RECHAZADO])
                 ->orderByDesc('id')
                 ->first();
             if (!$lastOrder) {
