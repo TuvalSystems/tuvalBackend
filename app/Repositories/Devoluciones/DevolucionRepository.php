@@ -38,7 +38,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function hasOtherActiveReturns($pedido, $devolucion): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido['id'])->where('id', '!=', $devolucion['id'])
-            ->whereNotIn('estado', [ DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])->exists();
+            ->whereNotIn('estado', [DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])->exists();
     }
 
     public function validateItemLDetailInvoice($devolucion): bool
