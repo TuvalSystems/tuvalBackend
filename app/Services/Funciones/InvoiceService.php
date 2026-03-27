@@ -67,7 +67,7 @@ class InvoiceService implements InvoiceServiceInterface
     /** funciones anidadas a  checkSendInvoice*/
     protected function shouldSkipProcessing($order)
     {
-        return \in_array($order->estado, [OrderStatus::RECHAZADO, OrderStatus::ANULADA], true) ||
+        return \in_array($order->estado, [OrderStatus::RECHAZADO, OrderStatus::ANULADA, OrderStatus::ELIMINADO], true) ||
             ($order->requiere_aprobacion_comercial == 'yes' && $order->aprobado_comercial == 'no') ||
             ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
     }
