@@ -352,8 +352,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
 
                 return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
-                    return ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max) &&
-                        ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
+                    $priceOk = ($priceChange === 0) || ($priceChange >= $rule->precio_min && $priceChange <= $rule->precio_max);
+                    $discountOk = ($discount === 0) || ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
+                    return $priceOk && $discountOk;
                 });
             });
             if ($puedeAprobar) {
