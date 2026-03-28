@@ -906,9 +906,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function storeReservedHeaderOrder(array $payload, GpUsuario $user, $dateAuthoReserved)
     {
-
         $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $payload['PTO_VTA_ID'])->first();
         $approvalComercial              = $this->approvalService->checkOutApprovalCommercialReservedOrder($payload);
+        $motivoLimpio                   = $this->sanitizeString($approvalComercial['motivo'] ?? '');
         $approvalCredit                 = $this->prepareApprovalCreditOrder($payload);
         $requieresApproval              = $approvalCredit != 'no';
         $motivoCrediticio               = $requieresApproval ? $approvalCredit : null;
@@ -922,11 +922,26 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'bodega'            => data_get($payload, 'BOD_BODEGA'),
             'fecha_entrega'     => $fechaEntrega,
             'fecha_reserva'     => $dateAuthoReserved,
-            'motivoCrediticio'  => $motivoCrediticio
+            'motivoCrediticio'  => $motivoCrediticio,
+            'motivoComercial'   => $motivoLimpio,
         ];
         $newOrder       = $this->orderBuilder->formPayloadOrderDemand($infoCreator, $payload, $approvalComercial,  $puntoVenta, $requiereAprobacionCrediticia);
         $newOrder->save();
         return $newOrder;
+    }
+
+
+    protected function sanitizeString(string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+        $limpio = iconv('UTF-8', 'UTF-8//IGNORE', $text);
+        if (!$limpio) {
+            $encoding = mb_detect_encoding($text, mb_detect_order(), true);
+            $limpio = mb_convert_encoding($text, 'UTF-8', $encoding ?: 'ISO-8859-1');
+        }
+        return $limpio;
     }
 
     protected function prepareApprovalCreditOrder(array $data)

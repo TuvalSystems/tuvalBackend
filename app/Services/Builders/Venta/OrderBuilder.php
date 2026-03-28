@@ -21,14 +21,6 @@ class OrderBuilder implements OrderBuilderInterface
         $subtotalBruto      = (float)  data_get($data, 'subtotal', 0) + (float) data_get($data, 'descuento', 0);
         $descuento          = (float) data_get($data, 'descuento', 0);
         $subMenosDescuento  = (float) data_get($data, 'subtotal', 0);
-        $motivoLimpio       = iconv('UTF-8', 'UTF-8//IGNORE', $approvalComercial['motivo']);
-
-        // 2. Si iconv falla (a veces pasa en ciertos servidores), usa este fallback robusto:
-        if (!$motivoLimpio) {
-            // Detecta si viene en Latin1 (común en bases de datos viejas) y lo pasa a UTF-8
-            $encoding = mb_detect_encoding($approvalComercial['motivo'], mb_detect_order(), true);
-            $motivoLimpio = mb_convert_encoding($approvalComercial['motivo'], 'UTF-8', $encoding ?: 'ISO-8859-1');
-        }
 
         $newOrder->fill([
             'cotizacion_id'                 => data_get($infoCreator, 'cotizacion_id'),
@@ -62,7 +54,7 @@ class OrderBuilder implements OrderBuilderInterface
             'iva'                           => (float) data_get($data, 'iva', 0),
             'total'                         => (float) data_get($data, 'total', 0),
             'requiere_aprobacion_comercial' => data_get($approvalComercial, 'requiere'),
-            'motivo_aprobacion_comercial'   => $motivoLimpio,
+            'motivo_aprobacion_comercial'   => data_get($infoCreator, 'motivoComercial'),
             'aprobado_comercial'            => 'no',
             'aprobador_comercial_id'        => null,
             'requiere_aprobacion_crediticia' => $requiereAprobacionCrediticia,
