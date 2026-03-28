@@ -124,9 +124,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
             // 1. DEFINIR LA "VERDAD" ORIGINAL (Normalización)
             // La lógica es: Si existe en BD, esa es la verdad. Si no (es nuevo), confiamos en el 'original' que envía el front.
-            $valorOriginalReal = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
-            $descOriginalReal = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
-            $descuentoOriginalReal = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
+            $valorOriginalReal      = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
+            $descOriginalReal       = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
+            $descuentoOriginalReal  = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
 
             // --- VALIDACIONES COMUNES ---
 
@@ -159,11 +159,10 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 // C.2 Exceso de Precio
                 // Usamos la variable normalizada $valorOriginalReal como base
                 if ($valorOriginalReal > 0) {
-                    $porcMaxSubida = $ptoVta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
-                    $factor = 1 + ($porcMaxSubida / 100);
-                    $precioLimite = $valorOriginalReal * $factor;
-                    $precioActual = $detalle['ART_VALOR'];
-
+                    $porcMaxSubida  = $ptoVta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
+                    $factor         = 1 + ($porcMaxSubida / 100);
+                    $precioLimite   = $valorOriginalReal * $factor;
+                    $precioActual   = $detalle['ART_VALOR'];
                     if ($precioActual > $precioLimite) {
                         $exceso = $precioActual - $precioLimite;
                         $excesoPct = round(($exceso / $valorOriginalReal) * 100, 2);

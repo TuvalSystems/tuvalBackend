@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Utils;
 
+use App\Models\GpCotizacion;
 use App\Models\GpRegistroCopia;
 use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
@@ -369,5 +370,53 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             ->first(function (Media $media) use ($url) {
                 return $media->getUrl() === $url || $media->getFullUrl() === $url;
             });
+    }
+
+
+
+    public function copyPdfsFromUrlsQuote(GpCotizacion $quote, array $urls)
+    {
+        foreach ($urls as $url) {
+            $sourceMedia = $this->findMediaByUrl($url, 'documentos_pdf');
+            if (!$sourceMedia) {
+                continue;
+            }
+
+            $alreadyExists = $quote
+                ->getMedia('documentos_pdf')
+                ->contains(function (Media $existing) use ($sourceMedia) {
+                    return $existing->file_name === $sourceMedia->file_name && (int) $existing->size === (int) $sourceMedia->size;
+                });
+
+            if ($alreadyExists) {
+                continue;
+            }
+
+            $sourceMedia->copy($quote, 'documentos_pdf', 'public');
+        }
+    }
+
+    public function copyImagesFromUrlsQuote(GpCotizacion $quote, array $urls)
+    {
+        $baseUrl = asset('storage') . '/';
+        $disk = Storage::disk('public');
+        foreach ($urls as $url) {
+            $relativePath = str_replace($baseUrl, '', $url);
+            if (Storage::disk('public')->exists($relativePath)) {
+                $fileName = basename($relativePath);
+                $newPath = "cotizaciones/operaciones_img/{$quote->id}/{$fileName}";
+                if (!$disk->exists($newPath)) {
+                    $disk->copy($relativePath, $newPath);
+
+                    GpCotizacionImagen::create([
+                        'cotizacion_id'   => $quote->id,
+                        'ruta'            => $newPath,
+                        'nombre_original' => $fileName,
+                        'tipo_mime'       => $this->getMimeTypeSafe($disk, $newPath),
+                        'tamano'          => $disk->size($newPath)
+                    ]);
+                }
+            }
+        }
     }
 }

@@ -112,8 +112,6 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
 
         $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
-
-
         $motivosDetalle = $this->validateQuotationDetailToApprove($data['items'], $ptoVenta, $dsctGlobalCliente);
         if (!empty($motivosDetalle)) {
             $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
@@ -125,21 +123,19 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
     public function validateQuotationDetailToApprove($detalles, $ptoVenta, $dsctGlobalCliente): array
     {
-        $detailMotivos = [];
-        $ids = collect($detalles)->pluck('detalle_id')->filter();
-        $dbDetailQuote = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
-        $dbDetailOrder = GpPedidoDetalle::whereIn('id', $ids)->get()->keyBy('id');
+        $detailMotivos  = [];
+        $ids            = collect($detalles)->pluck('detalle_id')->filter();
+        $dbDetailQuote  = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+        $dbDetailOrder  = GpPedidoDetalle::whereIn('id', $ids)->get()->keyBy('id');
         foreach ($detalles as $detalle) {
 
-            $detailId = data_get($detalle, 'detalle_id');
-            $type = data_get($detalle, 'tipo', 'cotizacion');
-            $detailOrigin = $type == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
-
+            $detailId       = data_get($detalle, 'detalle_id');
+            $type           = data_get($detalle, 'tipo', 'cotizacion');
+            $detailOrigin   = $type == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
 
             // ---------------------------------------------------------
             // NORMALIZACIÓN DE VALORES (El secreto para no duplicar código)
             // ---------------------------------------------------------
-
 
             // 2. Descripción de Referencia
             $refDescripcion =  $detailOrigin ? $detailOrigin->ART_DESCRIPCION : data_get($detalle, 'ART_DESCRIPCION_ORIGINAL');
@@ -164,12 +160,12 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                 }
 
                 /** proceso para calculo de porcetaje maximo de precio de venta */
-                $exceso = 0;
-                $excesoPct = 0;
-                $valorOriginal = (float) $refValor;
-                $porcMaxSubida = (float) $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
-                $precioLimite = $valorOriginal * (1 + ($porcMaxSubida / 100));
-                $precioActual = (float) $detalle['ART_VALOR'];
+                $exceso         = 0;
+                $excesoPct      = 0;
+                $valorOriginal  = (float) $refValor;
+                $porcMaxSubida  = (float) $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
+                $precioLimite   = $valorOriginal * (1 + ($porcMaxSubida / 100));
+                $precioActual   = (float) $detalle['ART_VALOR'];
 
                 if ($precioActual > $precioLimite) {
                     $exceso = $precioActual - $precioLimite;
@@ -204,8 +200,6 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
             /** validacion del precio total del proveedor <= precio de $300 */
             $providersDetail = data_get($detalle, 'proveedores', []);
-            // $ids = collect($providersDetail)->pluck('id')->filter();
-            // $proveedoresOrigen = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
             foreach ($providersDetail as $provider) {
                 $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
                 if ($valorProvider < 300) {

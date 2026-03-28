@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Utils\Contracts;
 
+use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia;
@@ -35,4 +36,7 @@ interface OrderAndQuotationServiceInterface
     /** copia de imagenees en pedidos */
     public function copyImagesFromUrls(GpPedido $pedido, array $urls);
     public function copyPdfsFromUrls(GpPedido $order, array $urls);
+
+    public function copyPdfsFromUrlsQuote(GpCotizacion $quote, array $urls);
+    public function copyImagesFromUrlsQuote(GpCotizacion $quote, array $urls);
 }

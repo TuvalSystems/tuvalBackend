@@ -33,6 +33,8 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Jobs\Venta\Reservas\NotifyReservationRequesterOrderCreatedJob;
+use App\Models\GpCotizacionImagen;
+use App\Models\GpPedido;
 use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
@@ -43,6 +45,7 @@ use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use RuntimeException;
 
 class InventoryReservationService implements InventoryReservationServiceInterface
 {
@@ -78,7 +81,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $data['cotizacion_id'],
             $user->id
         )->onQueue('notifications');
-
         return $reserved;
     }
 
@@ -320,11 +322,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('estado_autorizacion_reserva', '=', 0)
             ->update([
                 'estado' => 'aprobado',
-                'estado_autorizacion_reserva' => 1,
-                'fe_autorizacion_reserva' => Arr::get($data, 'fe_autorizacion_reserva'),
-                'obs_autorizacion_reserva' => Arr::get($data, 'obs_autorizacion_reserva'),
-                'user_autorizacion_reserva_id' => $gpUser->id,
-                'fe_ingreso_autorizacion_reserva' => now()->format('Y-m-d H:i:s'),
+                'estado_autorizacion_reserva'       => 1,
+                'fe_autorizacion_reserva'           => Arr::get($data, 'fe_autorizacion_reserva'),
+                'obs_autorizacion_reserva'          => Arr::get($data, 'obs_autorizacion_reserva'),
+                'user_autorizacion_reserva_id'      => $gpUser->id,
+                'fe_ingreso_autorizacion_reserva'   => now()->format('Y-m-d H:i:s'),
             ]);
 
         if ($affected > 0) {
@@ -340,10 +342,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         });
 
         return [
-            'reserva_id' => $reserva->id,
-            'cotizacion_id' => $reserva->cotizacion_id,
-            'updated' => (bool) $affected,
-            'tipo_traslado_reserva_id' => $reserva->tipo_traslado_reserva_id,
+            'reserva_id'                => $reserva->id,
+            'cotizacion_id'             => $reserva->cotizacion_id,
+            'updated'                   => (bool) $affected,
+            'tipo_traslado_reserva_id'  => $reserva->tipo_traslado_reserva_id,
         ];
     }
 
@@ -355,9 +357,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('cotizacion_id', $quotationId)
             ->where('seleccionado', '>', 0)
             ->update([
-                'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'cantidad_reservada' => DB::raw('seleccionado'),
-                'updated_at' => now(),
+                'cantidad_autorizada_reserva'   => DB::raw('seleccionado'),
+                'cantidad_reservada'            => DB::raw('seleccionado'),
+                'updated_at'                    => now(),
             ]);
         Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' para cotización ID {$quotationId}");
     }
@@ -373,9 +375,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('seleccionado', '>', 0)
             ->where('STO_ART_BODEGA', $warehouse)
             ->update([
-                'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'cantidad_reservada' => DB::raw('seleccionado'),
-                'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
+                'cantidad_autorizada_reserva'   => DB::raw('seleccionado'),
+                'cantidad_reservada'            => DB::raw('seleccionado'),
+                'updated_at'                    => Carbon::now()->format('Y-m-d H:i:s')
             ]);
 
         $otherWhaAffected = GpCotizacionDetalleStock::query()
@@ -383,10 +385,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->where('seleccionado', '>', 0)
             ->where('STO_ART_BODEGA', '!=', $warehouse)
             ->update([
-                'cantidad_autorizada_reserva' => DB::raw('seleccionado'),
-                'cantidad_reservada' => DB::raw('seleccionado'),
-                'cantidad_traslado' => DB::raw('seleccionado'),
-                'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
+                'cantidad_autorizada_reserva'   => DB::raw('seleccionado'),
+                'cantidad_reservada'            => DB::raw('seleccionado'),
+                'cantidad_traslado'             => DB::raw('seleccionado'),
+                'updated_at'                    => Carbon::now()->format('Y-m-d H:i:s')
             ]);
 
         Log::channel('reservas_log')->info("Se actualizaron {$sameWhaAffected} registros en 'cantidad_autorizada_reserva' y {$otherWhaAffected} en 'cantidad_traslado' para cotización ID {$quotationId}");
@@ -549,7 +551,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             })->filter(fn($i) => $i['to_cancel'] > 0 || $i['to_quote'] > 0)->values();
 
             if ($items->isEmpty()) {
-                throw new \Exception('No se encontraron items para liberar o cotizar');
+                throw new \RuntimeException('No se encontraron items para liberar o cotizar');
             }
 
             $stocksIds = $items->pluck('stock_id')->toArray();
@@ -685,6 +687,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
         $cotizacion         = $this->createHeaderQuotationReserve($payload, $user);
+        $parentQuote        = GpCotizacion::find($payload['cotizacion']['id']);
+        $this->cloneMediaFromReservedQuote($parentQuote, $cotizacion);
         $this->createDetailAndStockQuotationReserve($cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails);
         //al final por si acaso xd
         $this->storeQuotationReservedLogs($payload['id'], $payload['cotizacion']['id'], $cotizacion->id, $payload['cotizacion']['BOD_BODEGA'], $linesToQuote, $user);
@@ -692,13 +696,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function createHeaderQuotationReserve(array $payload, GpUsuario $user)
+    protected function createHeaderQuotationReserve(array $payload, GpUsuario $user)
     {
         $cotOld                                     = [];
         $cotOld                                     = Arr::get($payload, 'cotizacion') ?? [];
         $cotOld['registro_copia']                   = null;
         $cotOld['cotizacion']                       = Arr::get($payload, 'cotizacion.detallecotizacion');
-        $requiereAprobacionComercial                = $this->approvalService->checkoutApprovalCommercialQuotations($cotOld);
+        $requiereAprobacionComercial                = $this->approvalService->approveQuoteReservation($cotOld);
         $requiereAprobacionComercial['estado']      = $requiereAprobacionComercial['requiere'] === 'yes' ? 'espera' : 'aprobado';
         $requiereAprobacionComercial['aprobado']    = 'no';
         $origen                                     = OrderOrigenEnum::RESERVA->value;
@@ -708,7 +712,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function createDetailAndStockQuotationReserve(GpCotizacion $cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails)
+    protected function createDetailAndStockQuotationReserve(GpCotizacion $cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails)
     {
         foreach ($oldDetails as $oldDetail) {
             $line       = $linesGroupedDetail->get($oldDetail->id);
@@ -731,7 +735,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function storeQuotationReservedLogs($reservedId, $quotationIdOld, $quotationIdNew, $bodega, $linesToQuote, $user)
+    protected function storeQuotationReservedLogs($reservedId, $quotationIdOld, $quotationIdNew, $bodega, $linesToQuote, $user)
     {
         $ctRsLog = $this->reservaBuilder->fromPayloadQuoteReservedLog($reservedId, $quotationIdOld, $quotationIdNew, $user->id, $bodega);
         $ctRsLog->save();
@@ -787,7 +791,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function closeReservationIfEmpty($reserveId)
+    protected function closeReservationIfEmpty($reserveId)
     {
         $reserve = GpReserva::find($reserveId);
         if (empty($reserve)) {
@@ -819,6 +823,22 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return $affected > 0;
     }
 
+    protected function cloneMediaFromReservedQuote(GpCotizacion $parentQuote, GpCotizacion $newQuote)
+    {
+        $parentImages = GpCotizacionImagen::where('cotizacion_id', $parentQuote->id)->get();
+        if ($parentImages->isNotEmpty()) {
+            $imageUrls = $parentImages->map(fn($img) => asset('storage/' . $img->ruta))->toArray();
+            $this->orderAndQuotationService->copyImagesFromUrlsQuote($newQuote, $imageUrls);
+        }
+
+        $parentPdfs = $parentQuote->getMedia('documentos_pdf');
+        if ($parentPdfs->isNotEmpty()) {
+            $pdfUrls = $parentPdfs->map(fn($media) => $media->getFullUrl())->toArray();
+            $this->orderAndQuotationService->copyPdfsFromUrlsQuote($newQuote, $pdfUrls);
+        }
+    }
+
+
 
     /**
      * Summary of processReservedQuotationInvoiceDemand  proceso factura demanada
@@ -829,11 +849,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     {
         $quoteBlock = GpCotizacion::where('id', $payload['cotizacion']['id'])->lockForUpdate()->first();
         if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
-            abort(409, 'La cotizacion ya se encuentra procesada o facturada');
+            throw new RuntimeException('La cotizacion ya se encuentra procesada o facturada');
         }
         $reservedBlock = GpReserva::where('id', $payload['id'])->lockForUpdate()->first();
         if ($reservedBlock && ($reservedBlock->estado === 'procesado')) {
-            abort(409, 'Esta reserva ya fue procesada anteriormente.');
+            throw new RuntimeException('Esta reserva ya fue procesada anteriormente.');
         }
         $userReserva = GpUsuario::where('id', $payload['user_ingreso_reserva_id'])->first();
         $this->updateQuotationStocksAuthorizedDontConsolidate($quoteBlock->id);
@@ -846,11 +866,27 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->cleanStockQuotationForDeny($quoteBlock->id);
         $this->functionService->recalculateOrder($order->id);
         $order->refresh();
+        $this->cloneMediaFromParentQuote($quoteBlock, $order);
         DB::afterCommit(function () use ($order, $payload) {
             NotifyReservationRequesterOrderCreatedJob::dispatch($order->pedido, $payload['user_ingreso_reserva_id']);
             $this->invoiceService->checkSendInvoice($order);
         });
         return $order;
+    }
+
+    public function cloneMediaFromParentQuote(GpCotizacion $parentQuote, GpPedido $newOrder)
+    {
+        $parentImages = GpCotizacionImagen::where('cotizacion_id', $parentQuote->id)->get();
+        if ($parentImages->isNotEmpty()) {
+            $imageUrls = $parentImages->map(fn($img) => asset('storage/' . $img->ruta))->toArray();
+            $this->orderAndQuotationService->copyImagesFromUrls($newOrder, $imageUrls);
+        }
+
+        $parentPdfs = $parentQuote->getMedia('documentos_pdf');
+        if ($parentPdfs->isNotEmpty()) {
+            $pdfUrls = $parentPdfs->map(fn($media) => $media->getFullUrl())->toArray();
+            $this->orderAndQuotationService->copyPdfsFromUrls($newOrder, $pdfUrls);
+        }
     }
 
 
@@ -868,13 +904,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function storeReservedHeaderOrder(array $payload,GpUsuario $user, $dateAuthoReserved)
+    public function storeReservedHeaderOrder(array $payload, GpUsuario $user, $dateAuthoReserved)
     {
 
         $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $payload['PTO_VTA_ID'])->first();
         $approvalComercial              = $this->approvalService->checkOutApprovalCommercialReservedOrder($payload);
-        $approvalCredit                 = $this->approvalService->checkoutApprovalCredit($payload);
-
+        $approvalCredit                 = $this->prepareApprovalCreditOrder($payload);
         $requieresApproval              = $approvalCredit != 'no';
         $motivoCrediticio               = $requieresApproval ? $approvalCredit : null;
         $requiereAprobacionCrediticia   = $requieresApproval ? 'yes' : 'no';
@@ -889,9 +924,17 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'fecha_reserva'     => $dateAuthoReserved,
             'motivoCrediticio'  => $motivoCrediticio
         ];
-        $newOrder       = $this->orderBuilder->formPayloadOrderDemand($infoCreator,$payload, $approvalComercial,  $puntoVenta, $requiereAprobacionCrediticia);
+        $newOrder       = $this->orderBuilder->formPayloadOrderDemand($infoCreator, $payload, $approvalComercial,  $puntoVenta, $requiereAprobacionCrediticia);
         $newOrder->save();
         return $newOrder;
+    }
+
+    protected function prepareApprovalCreditOrder(array $data)
+    {
+        $total          = data_get($data, 'total', 0);
+        $condicionPago  = data_get($data, 'COND_ID', 'CONTADO');
+        $rucCliente     = data_get($data, 'CLI_RUC', '');
+        return $this->approvalService->checkoutApprovalCredit($condicionPago, $total, $rucCliente);
     }
 
     public function storeReservedDetailOrder($detailOrder, $order)
