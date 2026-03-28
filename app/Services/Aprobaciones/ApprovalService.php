@@ -269,10 +269,10 @@ class ApprovalService implements ApprovalServiceInterface
         $prcCLienteDescuento    = $this->approvalFuntions->getPorcentilDiscountCommercialCliente($cotizacion->CLI_RUC);
         $dsctGlobalCliente      = (float) $prcCLienteDescuento - (float) $rebajaCotizacion;
         if (!$nivelCliente) {
-            $motivosAprovacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
         }
         if (!$nivelCotizacion) {
-            $motivosAprovacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Forma de pago de cotizacion no encontrada en la base de datos.");
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Forma de pago de cotizacion no encontrada en la base de datos.");
         }
 
 
@@ -301,11 +301,11 @@ class ApprovalService implements ApprovalServiceInterface
         }
 
         if ($nivelCotizacion > $nivelCliente && $data['COND_ID'] != $cotizacion->COND_ID) {
-            $motivosAprovacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Forma de pago de cotizacion mayor que la del cliente: $nivelCotizacion > $nivelCliente");
         }
 
         if ($data['porcentage_descuento'] > $data['porcentage_descuentooriginal'] && $data['porcentage_descuento'] != $cotizacion->porcentage_descuento) {
-            $motivosAprovacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
         }
 
         $ptoVenta       = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
@@ -447,7 +447,7 @@ class ApprovalService implements ApprovalServiceInterface
     /**
      * DEVOLUCIONES
      *
-     * 
+     *
      */
     public function checkoutApprovalDevoluciones($data)
     {
