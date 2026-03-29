@@ -2,12 +2,14 @@
 
 namespace App\Services\Venta\Utils;
 
+use App\Models\GpCotizacion;
 use App\Models\GpRegistroCopia;
 use App\Services\Api\ApiGpService;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpCotizacionImagen;
+use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpPedidoImagen;
@@ -16,7 +18,9 @@ use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
-
+use Illuminate\Support\Facades\Storage;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 {
@@ -212,19 +216,17 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
      *  para visualizar el porcentaje de cambio de precio y descuento de un articulo
      */
 
-    public function calculateDiscountFraction(float $originalPrice, float $currentPrice)
+    public function calculatePriceVariationPercentage(float $originalPrice, float $currentPrice): float
     {
         if ($originalPrice == 0.0) {
             return 0.0;
         }
-        return ($currentPrice - $originalPrice) / $originalPrice;
+        return (($currentPrice - $originalPrice) / $originalPrice) * 100;
     }
 
-    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount)
+    public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
     {
-        $original = $originalDiscount / 100;
-        $current = $currentDiscount / 100;
-        return $current - $original;
+         return (($currentDiscount - $originalDiscount) / $originalDiscount) * 100;
     }
 
 
@@ -248,6 +250,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     }
 
 
+
     public function getImageArticle($codArt): array
     {
         $images = [];
@@ -268,5 +271,152 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
         $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
         return  collect($response)->groupBy('item');
+    }
+
+
+
+    //funcion para obtener los archivos pdf de los modelos
+
+    public function getFormattedPdfMedia(HasMedia $model, string $collection = 'documentos_pdf'): array
+    {
+        return $model->getMedia($collection)->map(
+            fn($media) =>
+            [
+                'id'            => $media->id,
+                'url'           => $media->getFullUrl(),
+                'nombre'        => $media->getCustomProperty('original_name') ?: $media->file_name,
+                'mime_type'     => $media->mime_type,
+                'size'          => $media->size,
+                'file_name'     => $media->file_name
+            ]
+        )->values()
+            ->toArray();
+    }
+
+
+    /** funcion para copiar imagenes en pedidos  */
+
+    public function copyImagesFromUrls(GpPedido $pedido, array $urls)
+    {
+        $baseUrl = asset('storage') . '/';
+        $disk = Storage::disk('public');
+        foreach ($urls as $url) {
+            $relativePath = str_replace($baseUrl, '', $url);
+            if (Storage::disk('public')->exists($relativePath)) {
+                $fileName = basename($relativePath);
+                $newPath = "pedidos/operaciones_img/{$pedido->id}/{$fileName}";
+                if (!$disk->exists($newPath)) {
+                    $disk->copy($relativePath, $newPath);
+
+                    GpPedidoImagen::create([
+                        'pedido_id'       => $pedido->id,
+                        'ruta'            => $newPath,
+                        'nombre_original' => $fileName,
+                        'tipo_mime'       => $this->getMimeTypeSafe($disk, $newPath),
+                        'tamano'          => $disk->size($newPath)
+                    ]);
+                }
+            }
+        }
+    }
+
+    protected function getMimeTypeSafe($disk, $path)
+    {
+        try {
+            return $disk->mimeType($path);
+        } catch (\Exception $e) {
+            // Fallback simple por extensión si el driver falla
+            return mime_content_type(storage_path('app/public/' . $path)) ?: 'application/octet-stream';
+        }
+    }
+
+    /** copia de dcocumentos pdf en pedidos */
+
+    public function copyPdfsFromUrls(GpPedido $order, array $urls)
+    {
+        foreach ($urls as $url) {
+            $sourceMedia = $this->findMediaByUrl($url, 'documentos_pdf');
+            if (!$sourceMedia) {
+                continue;
+            }
+
+            $alreadyExists = $order
+                ->getMedia('documentos_pdf')
+                ->contains(function (Media $existing) use ($sourceMedia) {
+                    return $existing->file_name === $sourceMedia->file_name && (int) $existing->size === (int) $sourceMedia->size;
+                });
+
+            if ($alreadyExists) {
+                continue;
+            }
+
+            $sourceMedia->copy($order, 'documentos_pdf', 'public');
+        }
+    }
+
+    protected function findMediaByUrl($url, string $collectionName = 'documentos_pdf'): ?Media
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        $fileName = basename($path ?? '');
+
+        if (!$fileName) {
+            return null;
+        }
+
+        return Media::query()
+            ->where('collection_name', $collectionName)
+            ->where('file_name', $fileName)
+            ->get()
+            ->first(function (Media $media) use ($url) {
+                return $media->getUrl() === $url || $media->getFullUrl() === $url;
+            });
+    }
+
+
+
+    public function copyPdfsFromUrlsQuote(GpCotizacion $quote, array $urls)
+    {
+        foreach ($urls as $url) {
+            $sourceMedia = $this->findMediaByUrl($url, 'documentos_pdf');
+            if (!$sourceMedia) {
+                continue;
+            }
+
+            $alreadyExists = $quote
+                ->getMedia('documentos_pdf')
+                ->contains(function (Media $existing) use ($sourceMedia) {
+                    return $existing->file_name === $sourceMedia->file_name && (int) $existing->size === (int) $sourceMedia->size;
+                });
+
+            if ($alreadyExists) {
+                continue;
+            }
+
+            $sourceMedia->copy($quote, 'documentos_pdf', 'public');
+        }
+    }
+
+    public function copyImagesFromUrlsQuote(GpCotizacion $quote, array $urls)
+    {
+        $baseUrl = asset('storage') . '/';
+        $disk = Storage::disk('public');
+        foreach ($urls as $url) {
+            $relativePath = str_replace($baseUrl, '', $url);
+            if (Storage::disk('public')->exists($relativePath)) {
+                $fileName = basename($relativePath);
+                $newPath = "cotizaciones/operaciones_img/{$quote->id}/{$fileName}";
+                if (!$disk->exists($newPath)) {
+                    $disk->copy($relativePath, $newPath);
+
+                    GpCotizacionImagen::create([
+                        'cotizacion_id'   => $quote->id,
+                        'ruta'            => $newPath,
+                        'nombre_original' => $fileName,
+                        'tipo_mime'       => $this->getMimeTypeSafe($disk, $newPath),
+                        'tamano'          => $disk->size($newPath)
+                    ]);
+                }
+            }
+        }
     }
 }

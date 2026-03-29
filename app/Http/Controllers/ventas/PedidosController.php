@@ -52,12 +52,21 @@ class PedidosController extends Controller
     {
         $imagenesExistentes = $request->input('imagenes_existentes', []);
         $imagenesNuevas     = $request->file('imagenes_nuevas', []);
+        $pdfsNuevos         = $request->file('pdfs_nuevos', []);
+        $pdfsExistentes     = $request->input('pdfs_existentes', []);
         $maxRetries         = 3;
         $attempt            = 0;
         $user               = $request->user();
         while (true) {
             try {
-                $pedido         =  $this->orderCreator->createOrder($request->validated(), $user, $imagenesExistentes, $imagenesNuevas);
+                $pedido         =  $this->orderCreator->createOrder(
+                    $request->validated(),
+                    $user,
+                    $imagenesExistentes,
+                    $imagenesNuevas,
+                    $pdfsExistentes,
+                    $pdfsNuevos
+                );
                 $order          = data_get($pedido, 'pedido');
                 $invoiceError   = data_get($pedido, 'invoice_error');
                 if ($invoiceError) {
@@ -233,7 +242,7 @@ class PedidosController extends Controller
     {
         try {
             $data = $request->all();
-            $result = $this->orderService->detailOrderById($data);
+            $result = $this->orderService->detailOrderById($data, $request->user());
             return response()->json([
                 'success' => true,
                 ...$result
@@ -716,11 +725,12 @@ class PedidosController extends Controller
     }
 
 
-    public function crearTrasladoPedidos ($pedido){
+    public function crearTrasladoPedidos($pedido)
+    {
         return $this->executeTransaction(function () use ($pedido) {
-    
-        $pedido = $this->orderService->createTransferVtaOrders($pedido);
-        return $this->successResponse('Traslado creado correctamente', $pedido, 200);
-        },'laravel', 'crearTrasladoPedidos');
+
+            $pedido = $this->orderService->createTransferVtaOrders($pedido);
+            return $this->successResponse('Traslado creado correctamente', $pedido, 200);
+        }, 'laravel', 'crearTrasladoPedidos');
     }
 }

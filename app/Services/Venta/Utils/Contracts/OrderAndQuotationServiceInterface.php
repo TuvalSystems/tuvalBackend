@@ -2,7 +2,10 @@
 
 namespace App\Services\Venta\Utils\Contracts;
 
+use App\Models\GpCotizacion;
+use App\Models\GpPedido;
 use Illuminate\Support\Collection;
+use Spatie\MediaLibrary\HasMedia;
 
 interface OrderAndQuotationServiceInterface
 {
@@ -17,7 +20,7 @@ interface OrderAndQuotationServiceInterface
 
 
 
-    public function calculateDiscountFraction(float $originalPrice, float $currentPrice);
+    public function calculatePriceVariationPercentage(float $originalPrice, float $currentPrice);
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount);
 
 
@@ -26,6 +29,14 @@ interface OrderAndQuotationServiceInterface
     public function getImageArticle($codArt): array;
 
 
-     public function getApiSegmentsAbcItem($articles): Collection;
+    public function getApiSegmentsAbcItem($articles): Collection;
+    public function getFormattedPdfMedia(HasMedia $model, string $collection = 'documentos_pdf'): array;
 
+
+    /** copia de imagenees en pedidos */
+    public function copyImagesFromUrls(GpPedido $pedido, array $urls);
+    public function copyPdfsFromUrls(GpPedido $order, array $urls);
+
+    public function copyPdfsFromUrlsQuote(GpCotizacion $quote, array $urls);
+    public function copyImagesFromUrlsQuote(GpCotizacion $quote, array $urls);
 }

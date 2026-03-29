@@ -2,21 +2,26 @@
 
 namespace App\Services\Aprobaciones;
 
+use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
+use App\Models\GpUsuario;
+use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class ApprovalOrderService implements ApprovalOrderServiceInterface
 {
 
     public function __construct(
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly ApprovalFunctionsServiceInterface $approvalFuntions
+        protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
+        protected readonly OrderRepositoryInterface $repository
 
     ) {
         // Inyecta dependencias si es necesario
@@ -119,9 +124,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
             // 1. DEFINIR LA "VERDAD" ORIGINAL (Normalización)
             // La lógica es: Si existe en BD, esa es la verdad. Si no (es nuevo), confiamos en el 'original' que envía el front.
-            $valorOriginalReal = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
-            $descOriginalReal = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
-            $descuentoOriginalReal = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
+            $valorOriginalReal      = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
+            $descOriginalReal       = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
+            $descuentoOriginalReal  = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
 
             // --- VALIDACIONES COMUNES ---
 
@@ -154,11 +159,10 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 // C.2 Exceso de Precio
                 // Usamos la variable normalizada $valorOriginalReal como base
                 if ($valorOriginalReal > 0) {
-                    $porcMaxSubida = $ptoVta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
-                    $factor = 1 + ($porcMaxSubida / 100);
-                    $precioLimite = $valorOriginalReal * $factor;
-                    $precioActual = $detalle['ART_VALOR'];
-
+                    $porcMaxSubida  = $ptoVta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
+                    $factor         = 1 + ($porcMaxSubida / 100);
+                    $precioLimite   = $valorOriginalReal * $factor;
+                    $precioActual   = $detalle['ART_VALOR'];
                     if ($precioActual > $precioLimite) {
                         $exceso = $precioActual - $precioLimite;
                         $excesoPct = round(($exceso / $valorOriginalReal) * 100, 2);
@@ -195,8 +199,6 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
                 /** validacion del precio total del proveedor <= precio de $300 */
                 $providersDetail = data_get($detalle, 'proveedores', []);
-                // $ids = collect($providersDetail)->pluck('id')->filter();
-                // $proveedoresOrigen = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
                 foreach ($providersDetail as $provider) {
                     $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
                     if ($valorProvider < 300) {
@@ -249,5 +251,121 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         }
 
         return 'no';
+    }
+
+
+
+    public function getAllOrdersPendingApprovals(string $ptoVta, GpUsuario $user): Collection
+    {
+        $filteredOrders = collect([]);
+        $user->load(['vendedor.jerarquia.relaciones', 'vendedor.zonas']);
+        $query  = $this->repository->fetchPendingOrders($ptoVta)->with(['detallepedido', 'gpcotizacion', 'usuario.vendedor.zonas']);
+        $orders = $query->get();
+        $orders->each(function ($order) {
+            $order->users_autorizadores = $this->getPossibleAuthorizersForOrders($order);
+        });
+
+        // para los adminis del sistema
+        if (in_array($user->perfil_id, [1, 2])) {
+            $filteredOrders =  $orders;
+        } elseif (in_array($user->perfil_id, [28])) {
+            $filteredOrders =  $this->filterOrdersForVicePresidency($orders, $user);
+        } elseif ($user->vendedor) {
+            $filteredOrders = $this->filterOrdersByTySeller($orders, $user);
+        }
+
+        $allRucs = $orders->pluck('CLI_RUC')
+            ->merge($orders->pluck('CLI_RUC'))
+            ->unique()
+            ->toArray();
+        $segmentDataByRuc = $this->approvalFuntions->getClientSegments($allRucs);
+        return $filteredOrders->map(function ($order) use ($segmentDataByRuc) {
+            $ruc                        = $order->CLI_RUC;
+            $order->cotizacion          = $order->gpcotizacion->cotizacion;
+            $segmentData                = $segmentDataByRuc[$ruc] ?? ['segmento' => null, 'subsegmento' => null];
+            $order->segmento            = data_get($segmentData, 'segmento');
+            $order->subsegmento         = data_get($segmentData, 'subsegmento');
+            return $order->makeHidden(['detallepedido', 'gpcotizacion', 'usuario.vendedor.zonas', 'usuario']);
+        });
+    }
+
+    protected function filterOrdersForVicePresidency($orders, GpUsuario $user): Collection
+    {
+        return $orders->filter(function ($order) use ($user) {
+            return in_array($user->id, $order->authorizer_ids_list ?? []);
+        })->values();
+    }
+
+    protected function filterOrdersByTySeller(Collection $orders, GpUsuario $user): Collection
+    {
+        return $orders->filter(function ($order) use ($user) {
+            return in_array($user->id, $order->authorizer_ids_list ?? []);
+        })->values();
+    }
+
+    protected function getPossibleAuthorizersForOrders(GpPedido $order): string
+    {
+        $tempAuthorizers    = [];
+        $sellerOrder        = $order->usuario->vendedor ?? null;
+        if (!$sellerOrder) {
+            return '';
+        }
+        $hasModifications = $order->detallepedido->contains(function ($detail) {
+            $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+            $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+            return $priceChange != 0 || $discount != 0;
+        });
+
+        $zonasQuote             = $sellerOrder->zonas->pluck('id')->toArray() ?? [];
+        $rules = GpReglaAprobacion::with(['usuarioAutorizador.vendedor.jerarquia.relaciones'])
+            ->where(function ($q) use ($zonasQuote) {
+                $q->whereIn('zona_id', $zonasQuote)
+                    ->orWhereHas('usuarioAutorizador', function ($u) {
+                        $u->where('perfil_id', 28);
+                    });
+            })
+            ->get();
+        $rulesByUser = $rules->groupBy('user_autorizador_id');
+        foreach ($rulesByUser as $userId => $ruleUser) {
+            $autorizador = $ruleUser->first()->usuarioAutorizador;
+            $vendedorAutorizador = $autorizador->vendedor ?? null;
+            if (!$hasModifications) {
+                $nivelJerarquia = data_get($vendedorAutorizador, 'jerarquia.nivel');
+                if ($nivelJerarquia == 2) {
+                    continue;
+                }
+            }
+            if ($autorizador->perfil_id !== 28) {
+                if (!$vendedorAutorizador || !$vendedorAutorizador->jerarquia) {
+                    continue;
+                }
+                $hijosDelJefe = $vendedorAutorizador->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
+                if (!in_array($sellerOrder->tipo_vendedor_id, $hijosDelJefe)) {
+                    continue;
+                }
+            }
+            $puedeAprobar = $order->detallepedido->every(function ($detail) use ($ruleUser) {
+                $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+                $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
+
+                return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
+                    $priceOk = ($priceChange === 0) || ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max);
+                    $discountOk = ($discount === 0) || ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
+                    return $priceOk && $discountOk;
+                });
+            });
+            if ($puedeAprobar) {
+                $nombre                 = $autorizador->USERID ?? 'Usuario Desconocido';
+                $maxDescuentoUsuario    = $ruleUser->max('descuento_max');
+                $tempAuthorizers[] = [
+                    'id'        => $autorizador->id,
+                    'nombre'    => $nombre,
+                    'max_desc'  => $maxDescuentoUsuario
+                ];
+            }
+        }
+        $sortedAuthorizers = collect($tempAuthorizers)->sortBy('max_desc');
+        $order->authorizer_ids_list = $sortedAuthorizers->pluck('id')->toArray();
+        return $sortedAuthorizers->pluck('nombre')->implode(', ');
     }
 }

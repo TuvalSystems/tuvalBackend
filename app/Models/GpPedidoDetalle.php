@@ -186,12 +186,16 @@ class GpPedidoDetalle extends Model
 
     protected function getApprovalModificadorAttribute(): bool
     {
-        return (float)$this->modificador !== 0;
+       return round((float)$this->modificador, 2) !== 0.0;
     }
 
 
 
     public function detalleGuia (){
         return $this->hasMany(GpGuiaRemisionDetalle::class, 'detalle_id', 'id');
+    }
+
+    public function detalleProveedores(){
+        return $this->hasMany(GpPedidoDetalleProveedores::class, 'detalle_id', 'id');
     }
 }

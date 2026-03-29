@@ -5,7 +5,7 @@ enum OrderOrigenEnum : string
 {
     case COTIZACION             = 'cotizacion';
     case RESERVA                = 'reserva';
-    case FACTURA_EXISTENTE      = 'factura_existente';
+    case FACTURAR_EXISTENTE      = 'facturar_existente';
     case DEVOLUCION             = 'devolucion';
     case FACTURA_DEMANDA        = 'factura_demanda';
 }

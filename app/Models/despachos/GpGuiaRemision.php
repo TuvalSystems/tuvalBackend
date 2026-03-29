@@ -117,7 +117,8 @@ class GpGuiaRemision extends Model
         'rebajado',
         'procesado',
         'GUI_REM_CODIGO',
-        'idempotency_key'
+        'idempotency_key',
+        'orden_compra'
     ];
 
     public function guiadetalle()

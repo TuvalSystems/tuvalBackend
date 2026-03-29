@@ -10,12 +10,12 @@ interface InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true);
 
-    public function generateDisptachOrder($pedido);
+    public function generateDisptachOrder(GpPedido $pedido);
 
     public function sendInvoiceGp($pedido);
 
      public function checkTrasladado(GpPedido $pedido);
 
-     public function respuestaFacturaVenta($order);
+     public function respuestaFacturaVenta(GpPedido $order);
       public function checkTraslado(GpPedido $pedido);
 }

@@ -102,20 +102,16 @@ class ReservasController extends Controller
 
     public function obtenerCotizacionConDetalle($id): JsonResponse
     {
-        try {
-            return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetails($id), 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        return $this->executeTransaction(function () use ($id): JsonResponse {
+            return $this->successResponse('Detalle obtenido correctamente', $this->reserveService->getQuotationWithDetails($id), 200);
+        }, 'reservas_log',  'obtenerCotizacionConDetalle');
     }
 
     public function obtenerCotizacionDetalleConStock($id): JsonResponse
     {
-        try {
+        return $this->executeTransaction(function () use ($id): JsonResponse {
             return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetailsAndStock($id), 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log',  'obtenerCotizacionDetalleConStock');
     }
 
     public function obtenerCotizacionConDetalleYStockActivo($id): JsonResponse
@@ -159,7 +155,7 @@ class ReservasController extends Controller
 
     public function aprobarSolicitudReservaCotizacion(Request $request)
     {
-        try {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
             $data       = $request->all();
             $reserva    = DB::transaction(function () use ($data, $gpUser) {
@@ -167,37 +163,23 @@ class ReservasController extends Controller
             });
             $msg = "Reserva autorizada correctamente";
             return $this->successResponse($msg, $reserva, 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->buildErrorResponse('Cotización no encontrada', 404);
-        } catch (\DomainException $e) {
-            return $this->buildErrorResponse($e->getMessage(), 409);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error al aprobar la reserva de la cotizacion: ', [
-                'message'   => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
-                'line'      => $e->getLine(),
-                'data'      => $request->all(),
-                'user_id'   => $gpUser->id
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'aprobarSolicitudReservaCotizacion');
     }
 
 
     public function obtenerListaCotizacionesAprobadas(Request $request)
     {
         try {
-            $perPage = $request->input('perPage', 10);
-            $search = $request->input('search', null);
-            $sortBy = $request->input('sortBy', null);
-            $sortOrder = $request->input('sortOrder', 'desc');
-            $fecha_desde = $request->input('fecha_desde', null);
-            $fecha_hasta = $request->input('fecha_hasta', null);
-            $estado = $request->input('status', null);
-            $ptoVtaId = $request->input('ptovta', null);
-            $clienteRuc = $request->input('cliente', null);
-            $user = $request->user();
-            //filto para ver las cotizaciones del usuario logueado
+            $perPage        = $request->input('perPage', 10);
+            $search         = $request->input('search', null);
+            $sortBy         = $request->input('sortBy', null);
+            $sortOrder      = $request->input('sortOrder', 'desc');
+            $fecha_desde    = $request->input('fecha_desde', null);
+            $fecha_hasta    = $request->input('fecha_hasta', null);
+            $estado         = $request->input('status', null);
+            $ptoVtaId       = $request->input('ptovta', null);
+            $clienteRuc     = $request->input('cliente', null);
+            $user           = $request->user();
             return $this->successResponse('Cotizaciones obtenidas correctamente', $this->reserveService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, $user), 200);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
@@ -208,24 +190,15 @@ class ReservasController extends Controller
 
     public function procesarReservaCotizacion(Request $request)
     {
-        $data = $request->all();
-        $gpUser = $request->user();
-        try {
-            $response = $this->reserveService->processReservedQuotation($data['data'], $gpUser);
-            $cot = data_get($response, 'cotizacion', null);
-            $msg = $cot === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$response['cotizacion']}";
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $data       = $request->all();
+            $gpUser     = $request->user();
+            $response   = $this->reserveService->processReservedQuotation($data['data'], $gpUser);
+            $cot        = data_get($response, 'cotizacion', null);
+            $msg        = $cot === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$cot}";
 
             return $this->successResponse($msg, $cot, 200);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error al procesar la reserva de la cotizacion: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'data' => $data
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'procesarReservaCotizacion');
     }
 
 

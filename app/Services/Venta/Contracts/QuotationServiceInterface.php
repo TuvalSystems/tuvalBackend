@@ -48,7 +48,7 @@ interface QuotationServiceInterface
 
     /** funcion para obtener el detalle de la cotizacion  */
 
-    public function detailQuotation($data);
+    public function detailQuotation($data, GpUsuario $user);
 
     /** funcion para llenar la cotizacion  */
 

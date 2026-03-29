@@ -148,6 +148,12 @@ class ValidateStoreQuotationRequest extends FormRequest
             'imagenes_existentes'       => ['nullable', 'array'],
             'imagenes_existentes.*'     => ['string'],
             'origen'                    => ['required', 'string'],
+
+            //almacenamiento de pdfs
+            'pdfs_nuevos'                => ['nullable', 'array'],
+            'pdfs_nuevos.*'              => ['file', 'mimes:pdf', 'max:10120'],
+            'pdfs_existentes'            => ['nullable', 'array'],
+            'pdfs_existentes.*'          => ['string'],
         ];
     }
 

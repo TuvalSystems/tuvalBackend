@@ -6,8 +6,8 @@ use App\Models\GpUsuario;
 interface ApprovalServiceInterface
 {
 
-    public function checkoutApprovalCommercialQuotations($data);
-    public function checkoutApprovalCredit($data);
+    public function approveQuoteReservation($data);
+    public function checkoutApprovalCredit($condId, $total, $ruc);
 
     public function checkoutApprovalDevoluciones($data);
 
@@ -42,10 +42,6 @@ interface ApprovalServiceInterface
 
     public function denyQuotationBeenWaiting(int $id, GpUsuario $user);
     public function denyOrderBeenWaiting(int $id,  GpUsuario $user);
-
-    public function getAllPendingApprovals(int $ptoVta, GpUsuario $user);
-    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user);
-    public function getAllOrdersPendingApprovals($ptoVta, GpUsuario $user);
 
     /**  aprobacicon comercial de cotizacion */
     public function approveComercialQuote($id, $user);

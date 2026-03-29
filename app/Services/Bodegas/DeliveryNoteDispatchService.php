@@ -26,6 +26,7 @@ use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterface
 {
@@ -58,12 +59,13 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo, $ptoVta);
 
 
-        $lock = Cache::lock('create_dispatch_guide_' . $idemKey, 15);
+        $lock = Cache::lock('create_dispatch_guide_' . $idemKey, 30);
         if (!$lock->get()) {
             throw new \RuntimeException("Esta guía ya está en proceso de creación. Por favor, espere un momento o actualice la página.");
         }
 
         try {
+            $lockSequential = Cache::lock("lock_sequential_{$ptoVta}_{$ptoEmision}", 15);
             $infoGuia = [
                 'tipo'              => $tipo,
                 'ptoEmision'        => $ptoEmision,
@@ -78,37 +80,29 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 'ptoVta'           => $ptoVta
             ];
 
-            $guia = DB::transaction(function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {
-                $error = $this->validateQtyDetails($items);
-                if ($error) {
-                    throw new \RuntimeException($error);
-                }
-
-                $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
-                    ->where('tipo', DeliveryNoteType::DESPACHO->value)->where('estado', DeliveryNoteStatus::PENDIENTE->value)
-                    ->lockForUpdate()
-                    ->first();
-                if ($existing) {
-                    $existing->touch();
-                    return $existing;
-                }
-                try {
-
-                    $secuencial     = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
-                    $numGuide       = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
+            $guia = $lockSequential->block(15, function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {
+                return DB::transaction(function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {
+                    $error = $this->validateQtyDetails($items);
+                    if ($error) {
+                        throw new \RuntimeException($error);
+                    }
+                    $existing = GpGuiaRemision::where('idempotency_key', data_get($infoGuia, 'idemKey'))
+                        ->where('tipo', DeliveryNoteType::DESPACHO->value)->where('estado', DeliveryNoteStatus::PENDIENTE->value)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($existing) {
+                        return $existing;
+                    }
+                    $secuencial             = $this->common->getNextGuideSequential($ptoVta, $ptoEmision);
+                    $numGuide               = $this->common->formatGuideNumber($ptoVta, $ptoEmision, $secuencial);
                     $infoGuia['secuencial'] = $secuencial;
                     $infoGuia['numeroGuia'] = $numGuide;
                     $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
                     $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
                     return $guia;
-                } catch (\Throwable $e) {
-                    if ($e->errorInfo[1] == 1062) {
-                        throw new \RuntimeException('El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
-                    }
-                    throw $e;
-                }
+                });
             });
-         
+
             if ($guia->wasRecentlyCreated) {
                 $this->sendDeliveryNoteDispatchToGp($guia);
                 if ($this->common->isGUideBlockedForOrder($guia)) {
@@ -177,12 +171,21 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $ordenCompra    = GpPedido::where('pedido', $guide->pedido)->value('orden_de_compra');
         $detalle        = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
         $validate       = $this->validateExistenceDeliveryNoteDispatch($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
-        $status         = data_get($validate, 'success', false);
-        if ($status) {
+        if (data_get($validate, 'success', false)) {
             $this->common->assigmentAccessCodeToGuidePending($guide);
             return $guide->refresh();
         }
-        $this->sendToDataDeliveryNote($guide, $detalle, $ordenCompra);
+
+        try {
+            $this->sendToDataDeliveryNote($guide, $detalle, $ordenCompra);
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'Cabecera ya existente')) {
+                Log::channel('despachos')->warning("Guía duplicada detectada en ERP al enviar: " . $guide->GUI_REM_GUIA_REMISION);
+                $this->common->assigmentAccessCodeToGuidePending($guide);
+                return $guide->refresh();
+            }
+            throw $e;
+        }
         $this->common->assigmentAccessCodeToGuidePending($guide);
         return $guide->refresh();
     }

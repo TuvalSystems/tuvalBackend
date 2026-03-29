@@ -15,9 +15,12 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class OrderCreatorService implements OrderCreatorServiceInterface
 {
@@ -31,9 +34,9 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     ) {
         // Inyecta dependencias si es necesario
     }
-    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = []): array
+    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
     {
-        $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages) {
+        $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quotationId = data_get($data, 'cotizacion_id');
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
@@ -51,6 +54,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 $this->saveOrderDetails($pedido, $data['items'] ?? []);
             }
             $this->syncImages($pedido, $existingImages, $newImages);
+            $this->syncPdfs($pedido, $pfdsExistings, $pfdsNew);
             if ($pedido->exists && $pedido->cotizacion_id) {
                 // Actualizamos directamente a través de la relación del pedido
                 $pedido->gpcotizacion()->update([
@@ -245,45 +249,11 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         // logica para clonar para volver a pedir
         $urlsParaCopiar = array_diff($keepUrls, $urlsRegistradas);
         if (!empty($urlsParaCopiar)) {
-            $this->copyImagesFromUrls($pedido, $urlsParaCopiar);
+            $this->orderAndQuotationService->copyImagesFromUrls($pedido, $urlsParaCopiar);
         }
 
         if (!empty($newFiles)) {
             $this->storeImagesQuotation($pedido, $newFiles);
-        }
-    }
-
-    protected function copyImagesFromUrls(GpPedido $pedido, array $urls)
-    {
-        $baseUrl = asset('storage') . '/';
-        $disk = Storage::disk('public');
-        foreach ($urls as $url) {
-            $relativePath = str_replace($baseUrl, '', $url);
-            if (Storage::disk('public')->exists($relativePath)) {
-                $fileName = basename($relativePath);
-                $newPath = "pedidos/operaciones_img/{$pedido->id}/{$fileName}";
-                if (!$disk->exists($newPath)) {
-                    $disk->copy($relativePath, $newPath);
-
-                    GpPedidoImagen::create([
-                        'pedido_id'       => $pedido->id,
-                        'ruta'            => $newPath,
-                        'nombre_original' => $fileName,
-                        'tipo_mime'       => $this->getMimeTypeSafe($disk, $newPath),
-                        'tamano'          => $disk->size($newPath)
-                    ]);
-                }
-            }
-        }
-    }
-
-    protected function getMimeTypeSafe($disk, $path)
-    {
-        try {
-            return $disk->mimeType($path);
-        } catch (\Exception $e) {
-            // Fallback simple por extensión si el driver falla
-            return mime_content_type(storage_path('app/public/' . $path)) ?: 'application/octet-stream';
         }
     }
 
@@ -312,6 +282,58 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 'tipo_mime'         => $file->getMimeType(),
                 'tamano'            => $file->getSize()
             ]);
+        }
+    }
+
+    protected function syncPdfs(GpPedido $order, array $keepUrls, array $newFiles)
+    {
+        $mediaItems = $order->getMedia('documentos_pdf');
+
+        // 1.- identificar que PDFS actuales deben conservarse
+        $mediaToKeeps = $mediaItems->filter(function (Media $media) use ($keepUrls) {
+            return in_array($media->getUrl(), $keepUrls) || in_array($media->getFullUrl(), $keepUrls, true);
+        });
+
+        //2.- eliminar del modelo lo que no este en keepUrls
+        $order->clearMediaCollectionExcept('documentos_pdf', $mediaToKeeps);
+
+        //3 .- detectatr cuales url son externas a esta cotizacion y deben copiarse
+        $registerUrls = $mediaItems
+            ->flatMap(fn(Media $media) => [$media->getUrl(), $media->getFullUrl()])
+            ->unique()
+            ->values()
+            ->all();
+
+        $urlsToCopy = array_values(array_diff($keepUrls, $registerUrls));
+        if (!empty($urlsToCopy)) {
+            $this->orderAndQuotationService->copyPdfsFromUrls($order, $urlsToCopy);
+        }
+
+        //4.- almacenar nuevos archivos
+        if (!empty($newFiles)) {
+            $this->storePdfsQuotation($order, $newFiles);
+        }
+    }
+
+    protected function storePdfsQuotation(GpPedido $order, array $files)
+    {
+
+        foreach ($files as  $file) {
+            if (!$file instanceof UploadedFile) {
+                continue;
+            }
+            $originalName   = $file->getClientOriginalName();
+            $cleanName      = (string) Str::of($originalName)->replace(' ', '_')->ascii();
+            $uniqueName     = time() . '_' . $cleanName;
+
+            $order
+                ->addMedia($file)
+                ->usingName(pathinfo($originalName, PATHINFO_FILENAME))
+                ->usingFileName($uniqueName)
+                ->withCustomProperties([
+                    'original_name' => $originalName
+                ])
+                ->toMediaCollection('documentos_pdf', 'public');
         }
     }
 }

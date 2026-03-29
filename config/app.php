@@ -189,7 +189,7 @@ return [
         App\Providers\Service\VentaServiceProvider::class,
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\Service\UserServiceProvider::class,
-        
+
 
 
         //Provider Builders

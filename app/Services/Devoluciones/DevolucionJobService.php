@@ -34,9 +34,7 @@ class DevolucionJobService
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
         protected readonly DevolucionParamsBuilderInterface $devolucionBuilder,
         protected readonly ReInvoiceServiceInterface $reInvoice
-    ) {
-
-    }
+    ) {}
 
     public function listarTodasLasDevolucionesAplicables()
     {
@@ -55,7 +53,6 @@ class DevolucionJobService
     {
         // Trabaja con un Scope para aplicar los criterios de búsqueda
         return GpDevoluciones::conCriterios($criterio)->get();
-
     }
 
 
@@ -120,7 +117,6 @@ class DevolucionJobService
         // Generar Nota de Crédito si corresponde
         if ($criterio['generarnotadecredito'] === true) {
             $this->generarNotaDeCredito($devolucion);
-
         }
 
         // Volver a Facturar si corresponde
@@ -140,21 +136,21 @@ class DevolucionJobService
 
     public function generarNotaDeCredito(GpDevoluciones $devolucion)
     {
-        $pedido = GpPedido::find($devolucion->pedido_id);
-        $detalles = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
-        $docId = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)
-            ->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'NC%')->first();
-        $cliente = GpCliente::find($devolucion->cliente_id);
-        $sucursal = GpClienteSucursal::find($devolucion->sucursal_facturacion_id);
-        $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $detalles->pluck('ART_CODIGO'))
+        $pedido             = GpPedido::find($devolucion->pedido_id);
+        $detalles           = GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)->get();
+        $docId              = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'NC%')->first();
+        $cliente            = GpCliente::find($devolucion->cliente_id);
+        $sucursal           = GpClienteSucursal::find($devolucion->sucursal_facturacion_id);
+        $articulosImpuesto  = GpArticulo::whereIn('ART_CODIGO', $detalles->pluck('ART_CODIGO'))
             ->pluck('ART_IMP_VTA', 'ART_CODIGO');
         $subtotal = 0.0;
         $iva = 0.0;
         $detalleDevolucion = [];
 
         foreach ($detalles as $key => $detalle) {
-            if ($detalle->devuelto == 0)
+            if ($detalle->devuelto == 0) {
                 continue;
+            }
 
             $valorUnitario = $detalle->ART_VALOR;
             $cantidad = $detalle->devuelto;
@@ -187,7 +183,6 @@ class DevolucionJobService
         $totalIvaFinal = round($iva, 2);
         $total = round($subtotal + $totalIvaFinal, 2);
 
-        // return $detalles;
         $cabecera = [
             [
                 'NC_VTA_DOCU_ORIGEN' => $devolucion->devolucion,
@@ -221,21 +216,21 @@ class DevolucionJobService
             'document' => $devolucion->devolucion,
             'tipo' => 4,
         ];
-        $respNc = $this->getApiResponseNoteCredit($consultaParams);
-        $successNc = data_get($respNc, 'success', false);
-        $docGenerado = data_get($respNc, 'data.docGenerado', null);
+        $respNc             = $this->getApiResponseNoteCredit($consultaParams);
+        $successNc          = data_get($respNc, 'success', false);
+        $docGenerado        = data_get($respNc, 'data.docGenerado', null);
         $responseCreditNote = data_get($respNc, 'data', []);
-        $fechaNc = data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
+        $fechaNc            = data_get($responseCreditNote, 'fecha', now()->format('Y-m-d'));
         if (!$successNc || empty($docGenerado)) {
-            $msgError = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
+            $msgError       = data_get($respNc, 'message', 'Error desconocido al consultar la nota de crédito.');
             $devolucion->NC_VTA_MENSAJE = $msgError;
             $devolucion->save();
             throw new Exception($msgError);
         }
         $devolucion->NC_VTA_MENSAJE = 'Nota de crédito generada correctamente.';
-        $devolucion->fecha_NC = Carbon::parse($fechaNc)->format('Y-m-d');
-        $devolucion->estado = DevolutionStatus::PROCESADO;
-        $devolucion->DOC_GENERADO = $docGenerado;
+        $devolucion->fecha_NC       = Carbon::parse($fechaNc)->format('Y-m-d');
+        $devolucion->estado         = DevolutionStatus::PROCESADO;
+        $devolucion->DOC_GENERADO   = $docGenerado;
         $devolucion->save();
         $this->bajarDevolucionAPedido($devolucion, $detalles, $pedido);
         $this->totalDevoluciones($devolucion, $detalles);
@@ -245,22 +240,17 @@ class DevolucionJobService
     public function getApiResponseNoteCredit($params)
     {
         return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($params);
-
     }
 
 
-    public function bajarDevolucionAPedido($devolucion, $detalles, $pedido)
+    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $pedido)
     {
         if ($devolucion->rebajado) {
             return;
         }
-        $bodega = $pedido->BOD_BODEGA;
-        $actualizarStock = !$devolucion->despachado;
-        $articulos = GpPedidoDetalle::where('pedido_id', $pedido->id)->get()->keyBy('id');
-        $stocks = GpPedidoDetalleStock::whereIn('detalle_id', $articulos->keys())
-            ->where('STO_ART_BODEGA', $bodega)
-            ->get()
-            ->keyBy('detalle_id');
+        $bodega             = $pedido->BOD_BODEGA;
+        $detalleIds         = collect($detalles)->pluck('detalle_id')->all();
+        $articulos          = GpPedidoDetalle::whereIn('id', $detalleIds)->where('pedido_id', $pedido->id)->get()->keyBy('id');
         foreach ($detalles as $value) {
             $art = $articulos->get($value->detalle_id);
             if (!$art) {
@@ -268,10 +258,12 @@ class DevolucionJobService
             }
             $art->devuelto += $value->devuelto;
             $art->save();
+            if (!$value->despachado_parcial) {
+                $stock = GpPedidoDetalleStock::where('detalle_id', $art->id)
+                    ->where('STO_ART_BODEGA', $bodega)
+                    ->first();
 
-            if ($actualizarStock) {
-                $stock = $stocks->get($art->id);
-                if ($stock) {
+                if ($stock && $stock->reservado > 0) {
                     $stock->reservado = max(0, $stock->reservado - $value->devuelto);
                     $stock->save();
                 }
@@ -433,7 +425,4 @@ class DevolucionJobService
         Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado recibido");
         return $afectados;
     }
-
-
-
 }

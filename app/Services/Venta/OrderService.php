@@ -5,8 +5,8 @@ namespace App\Services\Venta;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\QuotationMode;
+use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\despachos\GpGuiaRemisionDespacho;
-use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
@@ -24,6 +24,7 @@ use App\Models\GpCotizacion;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpPedidoImagen;
 use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
@@ -251,27 +252,31 @@ class OrderService implements OrderServiceInterface
         $order = GpPedido::find($orderId);
         $existeItemLRecibido = GpPedidoDetalleProveedores::where('pedido_id', $orderId)->where('recibido', 'yes')->exists();
         return [
-            'despacho_en_proceso' => $order->despacho_en_proceso,
-            'transferencia_en_proceso' => $order->transferencia_en_proceso,
-            'item_l_recibido' => $existeItemLRecibido
+            'despacho_en_proceso'       => $order->despacho_en_proceso,
+            'transferencia_en_proceso'  => $order->transferencia_en_proceso,
+            'item_l_recibido'           => $existeItemLRecibido
         ];
     }
 
-    public function detailOrderById($data)
+    public function detailOrderById(array $data, GpUsuario $user)
     {
+        $orderHeader            = GpPedido::where('id', $data['id'])->first();
+        $reglasAprobacion       = $this->getPorcentilChangeDiscount($user, $orderHeader);
         $detalle                = $this->orderRepository->getAllDetailsOrderById($data['id']);
         $clientQuota            = $this->functionsService->getClientCheckAvailableQuota($data['CLI_RUC']);
         $segmento               = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
-        $enrichedDetails        = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA']);
+        $enrichedDetails        = $this->enrichOrderDetails($detalle, $data['id'], $data['BOD_BODEGA'],  $reglasAprobacion);
         $ordenes                = $this->getPurchaseOrdersWithReceipts($data['pedido']);
         $trasladosVentas        = $this->getTransferWithGuides($data['id']);
-        $hasGuideDispatched     = $this->hasGuideDispatched($data['id']);
+        $hasGuideDispatched     = $this->orderRepository->queryHasGuideDispatched($data['id']);
         $orderDespacho          = $this->orderRepository->getDispatchOrder($data['id']);
         $guiaRemision           = $this->orderRepository->getShipmentGuides($data['pedido']);
         $devoluciones           = $this->orderRepository->getReturnsByOrder($data['id']);
         $status                 = $this->calculateOrderStatus($enrichedDetails, $trasladosVentas);
         $nivelPrecio            = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->value('CLI_NIVEL_PRECIO');
         $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data['id'], 'pedido');
+        $pedido                 = GpPedido::find($data['id']);
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($pedido);
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -287,12 +292,13 @@ class OrderService implements OrderServiceInterface
             'segmento'              => $segmento,
             'has_guide_dispatched'  => $hasGuideDispatched,
             'nivelPrecio'           => $nivelPrecio,
-            'imagenesOperaciones'  => $imagenesOperaciones
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf
         ];
     }
 
 
-    public function enrichOrderDetails(Collection $details, int $orderId, string $warehouse)
+    protected function enrichOrderDetails(Collection $details, int $orderId, string $warehouse, array $reglasAprobacion)
     {
         $hasPending = false;
         $hasExisting = false;
@@ -303,19 +309,19 @@ class OrderService implements OrderServiceInterface
         $groupsByAbc = $this->orderAndQuotationService->getApiSegmentsAbcItem($codesList);
         $stockByItem = $this->orderRepository->getStockByItemAndWarehouse($itemIds, $warehouse)
             ->keyBy('detalle_id'); // mapeo por detalle_id para acceso rapido
-        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc) {
-            $proveedores = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
-            $item->proveedores = $proveedores['proveedores'];
-            $hasPending = $proveedores['pendientes'] ?: $hasPending;
-            $hasExisting = $proveedores['existentes'] ?: $hasExisting;
+        $details->transform(function ($item) use ($orderId, &$hasPending, &$hasExisting, $stockByItem, $groupsByAbc, $reglasAprobacion) {
+            $proveedores        = $this->functionsService->getItemProviders($orderId, $item, $hasPending, $hasExisting);
+            $item->proveedores  = $proveedores['proveedores'];
+            $hasPending         = $proveedores['pendientes'] ?: $hasPending;
+            $hasExisting        = $proveedores['existentes'] ?: $hasExisting;
             // Obtener stock (desde el map precargado)
-            $stock = $stockByItem->get($item->id);
+            $stock              = $stockByItem->get($item->id);
             if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
                 $hasExisting = true;
             }
-            $item->priceChange = round($this->orderAndQuotationService->calculateDiscountFraction($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
-            $item->discountChange = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 2);
-
+            $item->priceChange      = round($this->orderAndQuotationService->calculatePriceVariationPercentage($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
+            $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 3);
+            $item->reglasAprobacion = $reglasAprobacion;
 
             /** procesod de segmentacion abc  */
             $myAbc = $groupsByAbc->get($item->ART_CODIGO, collect());
@@ -325,19 +331,14 @@ class OrderService implements OrderServiceInterface
         });
 
         return [
-            'details' => $details,
-            'hasPending' => $hasPending,
-            'hasExisting' => $hasExisting
+            'details'       => $details,
+            'hasPending'    => $hasPending,
+            'hasExisting'   => $hasExisting
         ];
     }
-    // public function getApiSegmentsAbcItem($articles)
-    // {
-    //     $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
-    //     $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
-    //     return  collect($response)->groupBy('item');
-    // }
 
-    public function getPurchaseOrdersWithReceipts($orderNumber)
+
+    protected function getPurchaseOrdersWithReceipts($orderNumber)
     {
         return $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
             ->map(function ($orden) {
@@ -347,13 +348,6 @@ class OrderService implements OrderServiceInterface
             ->filter()
             ->values();
     }
-
-    public function checkOutValidateDispatchReInvoice($devolucion)
-    {
-        return GpDevolucionesDetalle::where('devolucion_id', $devolucion->id)
-            ->where('despachado_parcial', 1)->exists();
-    }
-
 
     public function getTransferWithGuides(int $orderId): Collection
     {
@@ -368,7 +362,7 @@ class OrderService implements OrderServiceInterface
         });
     }
 
-    public function calculateOrderStatus($details, $transfers)
+    protected function calculateOrderStatus($details, $transfers)
     {
 
         $hasPending = $details['hasPending'];
@@ -399,21 +393,68 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function hasGuideDispatched($orderId): bool
+    protected function getPorcentilChangeDiscount(GpUsuario $user, GpPedido $order)
     {
 
-        $detallesIds = GpPedidoDetalle::where('pedido_id', $orderId)->pluck('id')->toArray();
+        if (in_array($user->perfil_id, [1, 2])) {
+            return [
+                'regla_precio'    => ['min' => -100, 'max' => 100],
+                'regla_descuento' => ['min' => -100, 'max' => 100],
+            ];
+        }
+        $data = [
+            'regla_precio'    => ['min' => 0, 'max' => 0],
+            'regla_descuento' => ['min' => 0, 'max' => 0],
+        ];
+        $vendedorOrder = $order->usuario->vendedor ?? null;
+        if (!$vendedorOrder) {
+            return $data;
+        }
+        $zonasOrder      = $vendedorOrder->zonas->pluck('id')->toArray();
+        $typeSellerOrder = $vendedorOrder->tipo_vendedor_id;
 
-        // Si el pedido no tiene detalles, retornamos false directo para ahorrar la consulta al repo
-        if (empty($detallesIds)) {
-            return false;
+        if (empty($zonasOrder) || !$typeSellerOrder) {
+            return $data;
         }
 
-        return $this->orderRepository->queryHasGuideDispatched($detallesIds);
+        if (in_array($user->perfil_id, [28])) {
+            $reglas = GpReglaAprobacion::where('user_autorizador_id', $user->id)
+                ->whereIn('zona_id', $zonasOrder)
+                // Omitimos el tipo_vendedor_id porque el VP no evalúa por tipo de hijo
+                ->whereIn('regla_negocio_id', [2, 3])
+                ->select('regla_negocio_id', 'descuento_min', 'descuento_max')
+                ->get();
+        } else {
+            $user->loadMissing(['vendedor.jerarquia.relaciones']);
+            $headerAuth = $user->vendedor ?? null;
+
+            if (!$headerAuth || !$headerAuth->jerarquia) {
+                return $data;
+            }
+
+            $hijosDelJefe = $headerAuth->jerarquia->relaciones->pluck('tipo_vendedor_hijo_id')->toArray();
+
+            // Si el creador de la cotización no es su subordinado, lo bloqueamos
+            if (!in_array($typeSellerOrder, $hijosDelJefe)) {
+                return $data;
+            }
+
+            $typeSellerJefe = $headerAuth->tipo_vendedor_id;
+            $reglas = GpReglaAprobacion::where('user_autorizador_id', $user->id)
+                ->whereIn('zona_id', $zonasOrder)
+                ->where('tipo_vendedor_id', $typeSellerJefe) // Filtro estricto de jerarquía
+                ->whereIn('regla_negocio_id', [2, 3])
+                ->select('regla_negocio_id', 'descuento_min', 'descuento_max')
+                ->get();
+        }
+
+        foreach ($reglas as $regla) {
+            $key = $regla->regla_negocio_id == 3 ? 'regla_precio' : 'regla_descuento';
+            $data[$key]['min'] = round((float)$regla->descuento_min, 2);
+            $data[$key]['max'] = round((float)$regla->descuento_max, 2);
+        }
+        return $data;
     }
-
-
-
 
     /**
      * API PARA LISTAR LOS PEDIDOS SIN COORDENADAS
@@ -519,13 +560,15 @@ class OrderService implements OrderServiceInterface
             $item->detalle_id = $item->id;
             return $item;
         });
-        $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($order->id, 'pedido');
+        $registroCopiaId        = $this->orderAndQuotationService->createRegisterCopy($order->id, $user, 'pedido', 'volver_a_pedir');
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($order->id, 'pedido');
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($order);
         return [
             'pedido'                => $order,
             'cliente'               => $clienteNew,
             'items'                 => $detalles,
             'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf,
             'segmento'              => data_get($cliente, 'segmentos'),
             'registro_copia'        => $registroCopiaId,
             'mode'                  => QuotationMode::REORDER->value,
@@ -537,21 +580,20 @@ class OrderService implements OrderServiceInterface
 
     public function copyQuoteOrOrder(int $rowId, int  $sucursalId, int $clienteId, string $type, GpUsuario $user): array
     {
-        $initialCLient = GpCliente::find($clienteId);
-        $cliente =  $this->clientService->getAvailabeCreditCustomer($initialCLient->CLI_RUC);
-        $data = ($type === 'cotizacion')
-            ? GpCotizacion::findOrFail($rowId)
-            : GpPedido::findOrFail($rowId);
-        $clienteNew =  data_get($cliente, 'cliente');
-        $detalles = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, $clienteNew, $type, true, true);
+        $initialCLient      = GpCliente::find($clienteId);
+        $cliente            =  $this->clientService->getAvailabeCreditCustomer($initialCLient->CLI_RUC);
+        $data               = ($type === 'cotizacion') ? GpCotizacion::findOrFail($rowId) : GpPedido::findOrFail($rowId);
+        $clienteNew         =  data_get($cliente, 'cliente');
+        $detalles           = $this->orderAndQuotationService->getDetailQuotationOrOrder($data, $clienteNew, $type, true, true);
         $this->functionsService->recalculateIva($detalles);
         $registroCopiaId = $this->orderAndQuotationService->createRegisterCopy($data->id, $user, $type, 'copia');
         $detalles->transform(function ($item) use ($type) {
             $item->imagenes = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
-            $item->tipo = $type;
+            $item->tipo     = $type;
             return $item;
         });
-        $imagenesOperaciones = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
+        $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data->id, $type);
+        $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($data);
         $modeEnum = QuotationMode::fromType($type);
         return [
             'cliente'               => $clienteNew,
@@ -560,7 +602,8 @@ class OrderService implements OrderServiceInterface
             'registro_copia'        => $registroCopiaId,
             'sucursal_id'           => $sucursalId,
             'items'                 => $detalles,
-            'imagenesOperaciones'   => $imagenesOperaciones
+            'imagenesOperaciones'   => $imagenesOperaciones,
+            'documentosPdf'         => $documentosPdf
         ];
     }
 
@@ -733,14 +776,14 @@ class OrderService implements OrderServiceInterface
     {
 
         $order->fill([
-            'cotizacion_id' => $dataQuotation['id'],
-            'porcentage_descuentooriginal' => $dataQuotation['porcentage_descuentooriginal'],
-            'porcentage_descuento' => $dataQuotation['porcentage_descuento'],
-            'subtotal' => number_format((float) $dataQuotation['subtotal'] + (float) $dataQuotation['descuento'], 2, '.', ''),
-            'descuento' => number_format((float) $dataQuotation['descuento'], 2, '.', ''),
-            'subtotalmenosdescuento' => number_format((float) $dataQuotation['subtotal'], 2, '.', ''),
-            'iva' => number_format((float) $dataQuotation['iva'], 2, '.', ''),
-            'total' => number_format((float) $dataQuotation['total'], 2, '.', ''),
+            'cotizacion_id'                 => $dataQuotation['id'],
+            'porcentage_descuentooriginal'  => $dataQuotation['porcentage_descuentooriginal'],
+            'porcentage_descuento'          => $dataQuotation['porcentage_descuento'],
+            'subtotal'                      => number_format((float) $dataQuotation['subtotal'] + (float) $dataQuotation['descuento'], 2, '.', ''),
+            'descuento'                     => number_format((float) $dataQuotation['descuento'], 2, '.', ''),
+            'subtotalmenosdescuento'        => number_format((float) $dataQuotation['subtotal'], 2, '.', ''),
+            'iva'                           => number_format((float) $dataQuotation['iva'], 2, '.', ''),
+            'total'                         => number_format((float) $dataQuotation['total'], 2, '.', ''),
         ]);
 
         $order->save();
@@ -775,7 +818,6 @@ class OrderService implements OrderServiceInterface
         $isTypeL = $item['ART_TIPO_COMPRA'] === 'L';
         $hasStock = $this->stockWarehouseService->checkArticuloDisponible($item);
         if ($isTypeL && !$hasStock) {
-            $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
             if (!$replacementCodeL) {
                 Log::warning('No se encontró un item L disponible para el pedido ', [
@@ -1086,6 +1128,7 @@ class OrderService implements OrderServiceInterface
         $this->storeFillDetailOrderExistence($detalle, $newOrder);
         $this->deleteArticlesForNewOrder($deteleArticle);
         $this->recalculateOldAndNewOrder($data['id'], $newOrder->id);
+        $this->cloneMediaFromParent($parentOder, $newOrder);
         DB::afterCommit(function () use ($newOrder) {
             $this->invoiceService->checkSendInvoice($newOrder, true);
         });
@@ -1096,17 +1139,16 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function prepareToStoreOrderHeaderExistence($data, $user)
+    protected function prepareToStoreOrderHeaderExistence($data, $user)
     {
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
         $newOrder = $this->orderBuilder->formPayloadInvoiceExistence($data, $user, $puntoVenta);
         $newOrder->save();
-        Log::info('Pedido creado con exito desde Facturar existente: ' . $newOrder->pedido);
         return $newOrder;
     }
 
-    public function storeFillDetailOrderExistence($detailOrder, $newOrder)
+    protected function storeFillDetailOrderExistence($detailOrder, $newOrder)
     {
 
         foreach ($detailOrder as $i => $item) {
@@ -1122,7 +1164,7 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function storeFillProviderDetailExistence($providers, $newOrderDetail, $newOrder, $oldDetailOrder)
+    protected function storeFillProviderDetailExistence($providers, $newOrderDetail, $newOrder, $oldDetailOrder)
     {
         foreach ($providers as $provider) {
             $newProv = $this->orderBuilder->formPayloadOrderDetailProvider($provider, $newOrder->id, $newOrderDetail->id, "yes");
@@ -1134,7 +1176,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function storeOrUpdateOrderSalesProvider($orderSales, $oldDetailOrder, $oldProvider)
+    protected function storeOrUpdateOrderSalesProvider($orderSales, $oldDetailOrder, $oldProvider)
     {
         foreach ($orderSales as $ordC) {
             $ordenCompra = GpOrdenDeCompra::where('DOC_GENERADO', $ordC['ORDEN_COMPRA_DOCUMENTO'])
@@ -1182,7 +1224,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function storeDetailStockExistence($stock, $newOrderId, $newDetailId)
+    protected function storeDetailStockExistence($stock, $newOrderId, $newDetailId)
     {
 
         $nwStock = new GpPedidoDetalleStock();
@@ -1197,7 +1239,7 @@ class OrderService implements OrderServiceInterface
         $nwStock->save();
     }
 
-    public function deleteArticlesForNewOrder($deleteItems)
+    protected function deleteArticlesForNewOrder($deleteItems)
     {
         $deleteItems['articulos'] = $deleteItems['articulos'] ?? [];
         if (!empty($deleteItems['articulos'])) {
@@ -1205,30 +1247,42 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function deleteProvidersOldOrder($providers)
-    {
-        $providers = $providers instanceof Collection ? $providers : collect($providers);
-        $providers->filter()->each->delete();
-    }
-
-    public function deleteArticlesOldOrder($articles)
+    protected function deleteArticlesOldOrder($articles)
     {
         $articles = $articles instanceof Collection ? $articles : collect($articles);
         $articles->filter()->each->delete();
     }
 
-    public function recalculateOldAndNewOrder($oldOrderId, $newOrderId)
+    protected function recalculateOldAndNewOrder($oldOrderId, $newOrderId)
     {
         $this->functionsService->recalculateOrder($oldOrderId);
         $this->functionsService->recalculateOrder($newOrderId);
     }
 
-    public function clearStockArticleOrderExistence($orderId, $detailId)
+    protected function clearStockArticleOrderExistence($orderId, $detailId)
     {
         GpPedidoDetalleStock::where('detalle_id', $detailId)
             ->where('pedido_id', $orderId)->delete();
     }
 
+    protected function cloneMediaFromParent(GpPedido $order, GpPedido $newOrder)
+    {
+
+        $parentImages = GpPedidoImagen::where('pedido_id', $order->id)->get();
+        if ($parentImages->isNotEmpty()) {
+            $imageUrls = $parentImages->map(fn($img) => asset('storage/' . $img->ruta))->toArray();
+            $this->orderAndQuotationService->copyImagesFromUrls($newOrder, $imageUrls);
+        }
+
+        $parentPdfs = $order->getMedia('documentos_pdf');
+        if ($parentPdfs->isNotEmpty()) {
+            $pdfUrls = $parentPdfs->map(fn($media) => $media->getFullUrl())->toArray();
+            $this->orderAndQuotationService->copyPdfsFromUrls($newOrder, $pdfUrls);
+        }
+    }
+
+
+    /** actualizacion de orden de compra y nota de cliente */
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote)
     {

@@ -3,12 +3,12 @@
 namespace App\Repositories\Venta;
 
 use App\Models\GpCotizacion;
-use App\Models\GpTempCart;
-use App\Models\GpTempCartProveedores;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
+use Illuminate\Database\Eloquent\Builder;
 
 class QuotationRepository implements QuotationRepositoryInterface
 {
+    const FINAL_STATES = ['caducado', 'procesado', 'rechazado', 'aprobado', 'eliminado'];
     public function getScheduledReminders()
     {
         $hoy = now()->startOfDay();
@@ -19,47 +19,21 @@ class QuotationRepository implements QuotationRepositoryInterface
     }
 
 
-    /**
-     *
-     * funciones para llenar cotizacion
-     *
-     *
-     *   */
 
 
-    public function getGpTempCartFillQuotation($sucursalId, $puntoVentaId, $clienteId, $userId)
+    /** query para lista de cotizacions pendientes de aprobacion comercial */
+    public function fetchPendingQuotes(int $ptoVta): Builder
     {
-        return GpTempCart::where('sucursal_id', $sucursalId)
-            ->where('puntodeventa_id', $puntoVentaId)
-            ->where('cliente_id', $clienteId)
-            ->where('user_id', $userId)
-            ->orderBy('orden', 'asc')
-            ->get();
-    }
-
-    public function getQuotationHeaderById(int $id)
-    {
-        return GpCotizacion::where('id', $id)->first();
-    }
-
-
-    /**
-     * funciones para cart temp
-     */
-
-    public function computedMaxOrder(int $clientId, string $ptoVta, int $sucursalId){
-        return GpTempCart::where('sucursal_id',$sucursalId)
-        ->where('cliente_id', $clientId)
-        ->where('puntodeventa_id', $ptoVta)
-        ->max('orden') ;
-    }
-
-    public function deleteProviderRegisterTemp($tempId){
-        GpTempCartProveedores::where('id_tempcart', $tempId)->delete();
-    }
-
-    public function updateTempCartArtValor($idTempCart, $artValor){
-        GpTempCart::where('id', $idTempCart)
-        ->update(['ART_VALOR' => $artValor]);
+        $query = GpCotizacion::query();
+        $query->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
+            ->select(
+                'gp_cotizacions.*',
+                'dfp.DESC_FORMA_PAGO_TIPO_CREDITO'
+            )
+            ->where('requiere_aprobacion_comercial', 'yes')
+            ->where('aprobado_comercial', 'no')
+            ->whereNotIn('estado', self::FINAL_STATES)
+            ->orderBy('created_at', 'ASC');
+        return $query;
     }
 }

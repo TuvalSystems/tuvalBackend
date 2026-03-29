@@ -2,15 +2,12 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
-use App\Models\GpPedidoDetalle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
-
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\traslados\GpTrasladosVentas;
@@ -18,8 +15,6 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpUsuario;
-use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 
@@ -27,49 +22,7 @@ class TransferenciasController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
-    protected $transferService;
-    public function __construct(TransferServiceInterface $transferServiceInterface)
-    {
-        $this->transferService = $transferServiceInterface;
-    }
-    public function savetransferenciasventas(GpPedido $pedido, $detalles)
-    {
-
-        foreach ($detalles as $detalle) {
-            if ($pedido->BOD_BODEGA != $detalle->STO_ART_BODEGA) {
-                $traslado = new GpTrasladosVentas();
-                $traslado->pedido_id = $pedido->id;
-                $traslado->detalle_id = $detalle->id;
-                $traslado->detalle_stocks_id = $detalle->detalle_stocks_id;
-                $traslado->ART_CODIGO = $detalle->ART_CODIGO;
-                $traslado->ART_DESCRIPCION = $detalle->ART_DESCRIPCION_ORIGINAL;
-                $traslado->ART_CODIGO_TRES_LETRAS = $detalle->ART_CODIGO_TRES_LETRAS;
-                $traslado->ART_PLAN_UMEDIDA = $detalle->ART_PLAN_UMEDIDA;
-                $traslado->ART_PESO = $detalle->ART_PESO;
-                $traslado->cantidad = $detalle->seleccionado;
-                $traslado->bodega_origen = $detalle->STO_ART_BODEGA;
-                $traslado->bodega_destino = $pedido->BOD_BODEGA;
-                $traslado->save();
-
-                $detalle->traslado = 1;
-                $detalle->save();
-            }
-        }
-    }
-
-    public function checktransferencias()
-    {
-        $pedidos = GpPedido::where('estado', OrderStatus::TRASLADO)->get();
-
-        foreach ($pedidos as $pedido) {
-            $detalles = GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $pedido->id)
-                ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
-                ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-                ->select(['gp_pedido_detalles.*', 'gp_pedido_detalle_stocks.STO_ART_BODEGA', 'gp_pedido_detalle_stocks.seleccionado', 'gp_pedido_detalle_stocks.id AS detalle_stocks_id'])
-                ->get();
-            $this->savetransferenciasventas($pedido, $detalles);
-        }
-    }
+    public function __construct(protected readonly TransferServiceInterface $transferService) {}
 
 
     public function transferenciasVentas($id, $pedido = null, $compartimiento = null)
@@ -129,39 +82,18 @@ class TransferenciasController extends Controller
         ]);
     }
 
-    public function cancelarpicking(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+
+
+    public function cancelarPickingV2(Request $request)
     {
-        $picking = $request->all();
-        $user = $request->user();
-
-        if (GpTrasladosVentas::where('id', $picking['id'])->update(['picking' => null])) {
-
-            $traslados = GpTrasladosVentas::where('pedido_id', $picking['pedido_id'])->get();
-            $tiene_picking = false;
-            foreach ($traslados as $traslado) {
-                if ($traslado->picking) {
-                    $tiene_picking = true;
-                }
-            }
-
-            $pedido = GpPedido::where('id', $picking['pedido_id'])->first();
-            if (!$tiene_picking) {
-                $pedido->transferencia_en_proceso = null;
-                $pedido->save();
-            }
-            $title = 'Picking Cancelado';
-            $msg = 'El usuario ' . $user->USERID . ' canceló el picking del artículo ' . $picking['ART_CODIGO'] . ' del pedido ' . $pedido->pedido;
-            $gpUser = GpUsuario::where('id', $user->id)->first();
-            if ($gpUser) {
-                $gpUser->notify(new UserNotification($title, $msg));
-            }
-            return response([
-                'success' => true,
+        return $this->executeTransaction(function () use ($request) {
+            $validate = $request->validate([
+                'payload' => 'required'
             ]);
-        }
-        return response([
-            'error' => 'Hubo un error al guardar'
-        ], 409);
+            $payload = data_get($validate, 'payload');
+            $data       = $this->transferService->cancelPicking($payload, $request->user());
+            return $this->successResponse('Transferencias obtenidas', $data, 200);
+        }, 'laravel', 'cancelarPickingV2');
     }
 
 

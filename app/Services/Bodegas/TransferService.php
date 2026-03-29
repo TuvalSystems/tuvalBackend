@@ -5,6 +5,9 @@ namespace App\Services\Bodegas;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\GpUsuario;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Notifications\User\UserNotification;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
@@ -25,9 +28,7 @@ class TransferService implements TransferServiceInterface
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly TransferRepositoryInterface $transferRepository,
         protected readonly FunctionsServiceInterface $functionService
-    ) {
-
-    }
+    ) {}
 
 
 
@@ -125,5 +126,30 @@ class TransferService implements TransferServiceInterface
         foreach ($pedidos as $pedido) {
             $this->invoiceService->checkSendInvoice($pedido, true);
         }
+    }
+
+
+    public function cancelPicking(array $payload, GpUsuario $user)
+    {
+        $transferId = data_get($payload, 'id');
+        $orderId    = data_get($payload, 'pedido_id');
+        $codeOrder  = data_get($payload, 'pedido');
+        $artCode    = data_get($payload, 'ART_CODIGO');
+        GpTrasladosVentas::where('id', $transferId)->update([
+            'picking' => 0
+        ]);
+
+        $hasPicking = GpTrasladosVentas::where('pedido_id', $orderId)
+            ->where('picking', '=', 1) // O where('picking', '>', 0) según tu DB
+            ->exists();
+
+        if (!$hasPicking) {
+            GpPedido::where('id', $orderId)->update([
+                'transferencia_en_proceso' => 0
+            ]);
+        }
+        $title = 'Picking Cancelado';
+        $msg = "El usuario {$user->USERID} canceló el picking del artículo {$artCode} del pedido {$codeOrder}";
+        $user->notify(new UserNotification($title, $msg));
     }
 }
