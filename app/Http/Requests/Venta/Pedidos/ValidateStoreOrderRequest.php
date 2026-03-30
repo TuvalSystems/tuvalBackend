@@ -153,7 +153,7 @@ class ValidateStoreOrderRequest extends FormRequest
 
             //almacenamiento de pdfs
             'pdfs_nuevos'                => ['nullable', 'array'],
-            'pdfs_nuevos.*'              => ['file', 'mimes:pdf', 'max:10120'],
+            'pdfs_nuevos.*'              => ['file', 'mimetypes:application/pdf,application/x-pdf', 'max:10120'],
             'pdfs_existentes'            => ['nullable', 'array'],
             'pdfs_existentes.*'          => ['string'],
         ];
