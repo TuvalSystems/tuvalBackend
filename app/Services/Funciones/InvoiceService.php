@@ -234,12 +234,12 @@ class InvoiceService implements InvoiceServiceInterface
         if ($pedido->rechazado) {
             $pedido->estado = OrderStatus::RECHAZADO;
             $pedido->save();
-            Log::info("Pedido {$pedido->pedido} rechazado");
+            // Log::info("Pedido {$pedido->pedido} rechazado");
             return;
         }
         // verifica si tiene ya ha recibido todos los item L del pedido
         if ($this->purchaseOrderService->checkPurchaseOrderRecib($pedido)) {
-            Log::warning("Pedido {$pedido->pedido} aun no recibe todos los items L del pedido.");
+            // Log::warning("Pedido {$pedido->pedido} aun no recibe todos los items L del pedido.");
             return;
         }
 
@@ -255,9 +255,9 @@ class InvoiceService implements InvoiceServiceInterface
         }
         // cuando el pedido esta en estado espera realiza otras validaciones adicionales
         if ($pedido->estado === OrderStatus::ESPERA) {
-            Log::info("Pedido {$pedido->pedido} en estado 'espera', verificando si puede cambiar a 'enviando'...");
+            // Log::info("Pedido {$pedido->pedido} en estado 'espera', verificando si puede cambiar a 'enviando'...");
             if (!$this->orderReadyToShip($pedido)) {
-                Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
+                // Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
                 return;
             }
 

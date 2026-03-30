@@ -21,27 +21,23 @@ class EnqueueDevoluciones implements ShouldQueue
     {
         $this->chunkSize = $chunkSize;
         $this->onQueue('devoluciones');
-         $this->afterCommit = true;
+        $this->afterCommit = true;
     }
 
     public function handle(DevolucionJobService $service)
     {
-        Log::channel('devolucion')->info("🏁 INICIO JOB MAESTRO: Buscando devoluciones...");
-          // 1) Trae las devoluciones aplicables (tu método actual)
         $devoluciones = $service->listarTodasLasDevolucionesAplicables();
-        Log::channel('devolucion')->info("🧐 El servicio devolvió: " . $devoluciones->count() . " registros.");
-        $devoluciones->chunk($this->chunkSize)->each(function ($chunk){
-           Log::channel('devolucion')->info("Se encontraron {$chunk->count()} devoluciones para procesar");
+        $devoluciones->chunk($this->chunkSize)->each(function ($chunk) {
             $batch = [];
             foreach ($chunk as $dev) {
                 $batch[] = (new ProcessDevolucion($dev->id))->onQueue('devoluciones');
             }
             if ($batch) {
                 Bus::batch($batch)
-                ->name('devoluciones:procesar')
-                ->onQueue('devoluciones')
-                ->allowFailures()
-                ->dispatch();
+                    ->name('devoluciones:procesar')
+                    ->onQueue('devoluciones')
+                    ->allowFailures()
+                    ->dispatch();
             }
         });
     }
