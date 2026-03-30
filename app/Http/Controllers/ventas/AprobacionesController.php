@@ -35,7 +35,6 @@ class AprobacionesController extends Controller
         protected readonly ApprovalQuotationServiceInterface $approvalQuote
 
     ) {}
-
     public function estadodecuenta(Request $request): JsonResponse
     {
         try {
