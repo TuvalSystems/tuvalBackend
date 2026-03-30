@@ -179,7 +179,7 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
         if ($originalDiscount == 0.0) {
             return $currentDiscount > 0 ? 100.0 : 0.0;
         }
-        return (($currentDiscount - $originalDiscount) / $originalDiscount) * 100;
+        return  $originalDiscount - $currentDiscount;
     }
 
     public function getClientSegments(array $rucs): array

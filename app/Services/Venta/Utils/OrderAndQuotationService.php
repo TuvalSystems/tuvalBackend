@@ -226,7 +226,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
     {
-         return (($currentDiscount - $originalDiscount) / $originalDiscount) * 100;
+       return  $originalDiscount - $currentDiscount;
     }
 
 
