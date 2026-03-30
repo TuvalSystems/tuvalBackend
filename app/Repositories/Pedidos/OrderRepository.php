@@ -203,7 +203,7 @@ class OrderRepository implements OrderRepositoryInterface
         return GpPedidoDetalle::where('gp_pedido_detalles.pedido_id', $orderId)
             ->join('gp_pedido_detalle_stocks', 'gp_pedido_detalles.id', '=', 'gp_pedido_detalle_stocks.detalle_id')
             ->where('gp_pedido_detalle_stocks.seleccionado', '>', 0)
-            ->whereNull('traslado')
+            ->where('traslado', 0)
             ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', '!=', $warehouse)
             ->select([
                 'gp_pedido_detalles.*',
