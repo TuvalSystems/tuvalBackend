@@ -346,7 +346,7 @@ class DevolucionJobService
         if (empty($itemsDevolucion)) {
             $devolucion->devolucion_bodega = true;
             $devolucion->save();
-            Log::channel('devolucion')->info("Devolución {$devolucion->id}: Sin items físicos para ajuste de stock.");
+            // Log::channel('devolucion')->info("Devolución {$devolucion->id}: Sin items físicos para ajuste de stock.");
             return;
         }
 
@@ -396,7 +396,7 @@ class DevolucionJobService
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
+        // Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
         return $afectados;
     }
 
@@ -409,7 +409,7 @@ class DevolucionJobService
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
+        // Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
         return $afectados;
     }
 
@@ -422,7 +422,7 @@ class DevolucionJobService
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado recibido");
+        // Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado recibido");
         return $afectados;
     }
 }

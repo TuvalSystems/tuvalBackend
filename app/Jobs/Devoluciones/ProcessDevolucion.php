@@ -54,10 +54,9 @@ class ProcessDevolucion implements ShouldQueue, ShouldBeUnique
     {
         return [
             (new WithoutOverlapping('devolucion:' . $this->devolucionId))
-              //  ->releaseAfter(60) // Si está bloqueado, reintenta en 30s
                 ->expireAfter(310)
-                ->dontRelease(),// lock en Redis (requiere CACHE_DRIVER=redis)
-            new RateLimited('devoluciones'),                              // opcional: define bucket 'devoluciones' en rate limiter
+                ->dontRelease(),
+            new RateLimited('devoluciones')
         ];
     }
 
@@ -65,18 +64,14 @@ class ProcessDevolucion implements ShouldQueue, ShouldBeUnique
     public function handle(DevolucionJobService $service)
     {
         if (GpDevolucionErroresJob::where('devolucion_id', $this->devolucionId)->exists()) {
-            Log::channel('devolucion')->warning("⏭️ Devolución {$this->devolucionId} ya con error registrado. Saltando.");
             return;
         }
-
         try {
             $devolucion = GpDevoluciones::find($this->devolucionId);
             if (!$devolucion) {
-                Log::channel('devolucion')->warning("❓ Devolución {$this->devolucionId} no encontrada.");
                 return;
             }
             $service->procesarDevolucionJob($devolucion);
-            Log::channel('devolucion')->info("✅ Devolución {$this->devolucionId} procesada.");
         } catch (\Throwable $e) {
             Log::channel('devolucion')->error("❌ Devolución {$this->devolucionId} error: " . $e->getMessage(), [
                 'id' => $this->devolucionId,
