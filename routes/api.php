@@ -413,6 +413,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('cotizaciones/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
         Route::post('pedidos/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
+
+        Route::post('cotizaciones/consulta/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesConsulta']);
+        Route::post('pedidos/consulta/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesConsulta']);
     });
 
 

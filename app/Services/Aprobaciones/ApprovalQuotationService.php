@@ -326,4 +326,27 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
         $quote->authorizer_ids_list = $sortedAuthorizers->pluck('id')->toArray();
         return $sortedAuthorizers->pluck('nombre')->implode(', ');
     }
+
+
+
+
+    /** funcion para visualizar todas las cotizaciones pendientes de aprobar (consulta) */
+    public function getAllQuotesForGlobalConsultation(string $ptoVta): Collection
+    {
+        $query = $this->repository->fetchPendingQuotes($ptoVta)
+            ->with(['detallecotizacion', 'usuario.vendedor.zonas']);
+        $quotes = $query->get();
+        $quotes->each(function ($quote) {
+            $quote->users_autorizadores = $this->getPossibleAuthorizersForQuote($quote);
+        });
+        $allRucs = $quotes->pluck('CLI_RUC')->unique()->toArray();
+        $segmentDataByRuc = $this->approvalFuntions->getClientSegments($allRucs);
+        return $quotes->map(function ($quote) use ($segmentDataByRuc) {
+            $ruc = $quote->CLI_RUC;
+            $segmentData = $segmentDataByRuc[$ruc] ?? ['segmento' => null, 'subsegmento' => null];
+            $quote->segmento    = data_get($segmentData, 'segmento');
+            $quote->subsegmento = data_get($segmentData, 'subsegmento');
+            return $quote->makeHidden(['detallecotizacion', 'usuario']);
+        });
+    }
 }

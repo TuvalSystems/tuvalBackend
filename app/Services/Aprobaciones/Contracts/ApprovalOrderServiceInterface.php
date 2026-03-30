@@ -11,4 +11,5 @@ interface ApprovalOrderServiceInterface
     public function approveOrder($data);
     public function checkoutApprovalCreditOrder($condId, $total, $ruc): string;
     public function getAllOrdersPendingApprovals(string $ptoVta, GpUsuario $user): Collection;
+    public function getAllOrdersForGlobalConsultation(string $ptoVta): Collection;
 }
