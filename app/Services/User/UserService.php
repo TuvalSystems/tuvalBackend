@@ -43,11 +43,16 @@ class UserService implements UserServiceInterface
 
     public function getActiveUser($username): ?Model
     {
-        return GpUsuario::join('perfiles', 'perfiles.id', 'gp_usuarios.perfil_id')
+        return GpUsuario::activo()
             ->where('USERID', trim($username))
-            ->where('perfiles.state', 'active')
-            ->where('gp_usuarios.status', true)
-            ->select('gp_usuarios.id', 'gp_usuarios.perfil_id', 'gp_usuarios.USERID', 'gp_usuarios.USERNAME', 'gp_usuarios.must_change_password', 'gp_usuarios.status')
+            ->select([
+                'id',
+                'perfil_id',
+                'USERID',
+                'USERNAME',
+                'must_change_password',
+                'status'
+            ])
             ->first();
     }
 
@@ -122,13 +127,13 @@ class UserService implements UserServiceInterface
     public function getUserSalesPoints($userID)
     {
         return GpPuntoVenta::join('gp_relacion_usuario_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', '=', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA')
-        ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userID)
-        ->select('gp_punto_ventas.*')
-        ->with('bodegas')
-        ->orderBy('gp_punto_ventas.PTO_VTA_ID')
-        ->get()
-        ->unique('PTO_VTA_ID')
-        ->values();
+            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userID)
+            ->select('gp_punto_ventas.*')
+            ->with('bodegas')
+            ->orderBy('gp_punto_ventas.PTO_VTA_ID')
+            ->get()
+            ->unique('PTO_VTA_ID')
+            ->values();
     }
 
 
@@ -232,24 +237,24 @@ class UserService implements UserServiceInterface
         $paginator = $query->paginate($perPage);
         $paginator->getCollection()->transform(function ($n) {
             return [
-                'id' => $n->id,
-                'title' => data_get($n->data, 'title', 'Notificación'),
-                'message' => data_get($n->data, 'message', ''),
-                'read_at' => $n->read_at,
-                'time' => $n->created_at->diffForHumans(),
-                'created_at' => $n->created_at->toDateTimeString()
+                'id'            => $n->id,
+                'title'         => data_get($n->data, 'title', 'Notificación'),
+                'message'       => data_get($n->data, 'message', ''),
+                'read_at'       => $n->read_at,
+                'time'          => $n->created_at->diffForHumans(),
+                'created_at'    => $n->created_at->toDateTimeString()
             ];
         });
 
         return [
-            'current_page' => $paginator->currentPage(),
-            'data' => $paginator->items(), // lo que va a tu BaseTable
-            'from' => $paginator->firstItem(),
-            'last_page' => $paginator->lastPage(),
-            'per_page' => $paginator->perPage(),
-            'to' => $paginator->lastItem(),
-            'total' => $paginator->total(),
-            'unread_count' => $gpUser->unreadNotifications()->count(),
+            'current_page'  => $paginator->currentPage(),
+            'data'          => $paginator->items(), // lo que va a tu BaseTable
+            'from'          => $paginator->firstItem(),
+            'last_page'     => $paginator->lastPage(),
+            'per_page'      => $paginator->perPage(),
+            'to'            => $paginator->lastItem(),
+            'total'         => $paginator->total(),
+            'unread_count'  => $gpUser->unreadNotifications()->count(),
         ];
     }
 

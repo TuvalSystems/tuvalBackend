@@ -70,4 +70,18 @@ class GpUsuario extends Authenticatable
     {
         return $this->hasOne(GpVendedor::class, 'user_id');
     }
+
+    public function perfil()
+    {
+        return $this->belongsTo(Perfiles::class, 'perfil_id');
+    }
+
+
+    public function scopeActivo($query)
+    {
+        return $query->where('status', 1)
+            ->whereHas('perfil', function ($q) {
+                $q->where('state', 'active');
+            });
+    }
 }
