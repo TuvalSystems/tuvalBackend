@@ -171,7 +171,7 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
         if ($originalPrice == 0.0) {
             return $currentPrice > 0 ? 100.0 : 0.0;
         }
-        return (($currentPrice - $originalPrice) / $originalPrice) * 100;
+        return round((($currentPrice - $originalPrice) / $originalPrice) * 100, 2);
     }
 
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
@@ -179,7 +179,7 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
         if ($originalDiscount == 0.0) {
             return $currentDiscount > 0 ? 100.0 : 0.0;
         }
-        return  $originalDiscount - $currentDiscount;
+        return  round($originalDiscount - $currentDiscount, 2);
     }
 
     public function getClientSegments(array $rucs): array

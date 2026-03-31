@@ -307,8 +307,8 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                 $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
                 $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
                 return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
-                    $priceOk = ($priceChange === 0) || ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max);
-                    $discountOk = ($discount === 0) || ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
+                    $priceOk =  ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max);
+                    $discountOk =  ($discount >= $rule->descuento_min && $discount <= $rule->descuento_max);
                     return $priceOk && $discountOk;
                 });
             });
