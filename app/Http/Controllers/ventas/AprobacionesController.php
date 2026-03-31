@@ -55,12 +55,22 @@ class AprobacionesController extends Controller
             $data     = $this->approvalQuote->getAllQuotesPendingApprovals($ptovta, $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
         }, 'laravel', 'AprobacionesController.listaCotizacionesPendientesPorAprobar');
-
+    }
+      public function listaCotizacionesPendientesConsulta(Request $request): JsonResponse
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'puntodeventa_id' => 'required',
+            ]);
+            $ptovta   = data_get($validate, 'puntodeventa_id');
+            $data     = $this->approvalQuote->getAllQuotesForGlobalConsultation($ptovta);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        }, 'laravel', 'AprobacionesController.listaCotizacionesPendientesConsulta');
     }
 
     public function listaPedidosPendientesPorAprobar(Request $request): JsonResponse
     {
-          return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
             $validate  = $request->validate([
                 'puntodeventa_id' => 'required',
             ]);
@@ -69,6 +79,20 @@ class AprobacionesController extends Controller
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
         }, 'laravel', 'AprobacionesController.listaPedidosPendientesPorAprobar');
     }
+
+    public function listaPedidosPendientesConsulta(Request $request): JsonResponse
+    {
+        return $this->executeTransaction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'puntodeventa_id' => 'required',
+            ]);
+            $ptovta   = data_get($validate, 'puntodeventa_id');
+            $data     = $this->approvalOrder->getAllOrdersForGlobalConsultation($ptovta);
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        }, 'laravel', 'AprobacionesController.listaPedidosPendientesConsulta');
+    }
+
+
 
     public function getSegmentoCliente($ruc)
     {

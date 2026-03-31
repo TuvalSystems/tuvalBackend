@@ -368,4 +368,26 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         $order->authorizer_ids_list = $sortedAuthorizers->pluck('id')->toArray();
         return $sortedAuthorizers->pluck('nombre')->implode(', ');
     }
+
+
+    /** funcion para visualizar todas las cotizaciones pendientes de aprobar (consulta) */
+    public function getAllOrdersForGlobalConsultation(string $ptoVta): Collection
+    {
+        $query = $this->repository->fetchPendingOrders($ptoVta)
+            ->with(['detallepedido', 'gpcotizacion', 'usuario.vendedor.zonas']);
+        $orders = $query->get();
+        $orders->each(function ($order) {
+            $order->users_autorizadores = $this->getPossibleAuthorizersForOrders($order);
+        });
+        $allRucs = $orders->pluck('CLI_RUC')->unique()->toArray();
+        $segmentDataByRuc = $this->approvalFuntions->getClientSegments($allRucs);
+        return $orders->map(function ($order) use ($segmentDataByRuc) {
+            $ruc = $order->CLI_RUC;
+            $order->cotizacion  = $order->gpcotizacion->cotizacion ?? null;
+            $segmentData        = $segmentDataByRuc[$ruc] ?? ['segmento' => null, 'subsegmento' => null];
+            $order->segmento    = data_get($segmentData, 'segmento');
+            $order->subsegmento = data_get($segmentData, 'subsegmento');
+            return $order->makeHidden(['detallepedido', 'gpcotizacion', 'usuario.vendedor.zonas', 'usuario']);
+        });
+    }
 }
