@@ -90,14 +90,20 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTraslado(GpPedido $pedido): bool
     {
+        if ($pedido->estado === OrderStatus::FACTURADO) {
+            return false;
+        }
         $hayTraslado    = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
         $detalles       = $this->orderRepository->getDetailForTraslate($pedido->id, $pedido->BOD_BODEGA);
         $nuevoEstado    = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-        $pedido->estado = $nuevoEstado;
-        if ($nuevoEstado == OrderStatus::TRASLADO) {
-            $this->saveTransferenciasVentas($pedido, $detalles);
+        if ($pedido->estado !== $nuevoEstado) {
+            $pedido->estado = $nuevoEstado;
+            if ($nuevoEstado == OrderStatus::TRASLADO) {
+                $this->saveTransferenciasVentas($pedido, $detalles);
+            }
+            $pedido->save();
         }
-        $pedido->save();
+
         return $hayTraslado;
     }
 
@@ -234,12 +240,10 @@ class InvoiceService implements InvoiceServiceInterface
         if ($pedido->rechazado) {
             $pedido->estado = OrderStatus::RECHAZADO;
             $pedido->save();
-            // Log::info("Pedido {$pedido->pedido} rechazado");
             return;
         }
         // verifica si tiene ya ha recibido todos los item L del pedido
         if ($this->purchaseOrderService->checkPurchaseOrderRecib($pedido)) {
-            // Log::warning("Pedido {$pedido->pedido} aun no recibe todos los items L del pedido.");
             return;
         }
 
@@ -255,9 +259,8 @@ class InvoiceService implements InvoiceServiceInterface
         }
         // cuando el pedido esta en estado espera realiza otras validaciones adicionales
         if ($pedido->estado === OrderStatus::ESPERA) {
-            // Log::info("Pedido {$pedido->pedido} en estado 'espera', verificando si puede cambiar a 'enviando'...");
             if (!$this->orderReadyToShip($pedido)) {
-                // Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
+                Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
                 return;
             }
 
@@ -360,20 +363,17 @@ class InvoiceService implements InvoiceServiceInterface
     protected function checkOrderHaveItemTransferPending(GpPedido $order): bool
     {
         $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($order->id, $order->BOD_BODEGA);
-        $nuevoEstado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-
-        if ($order->estado !== $nuevoEstado) {
-            $order->estado = $nuevoEstado;
+        if ($tieneTraslado) {
+            $order->estado = OrderStatus::TRASLADO;
+            $order->save();
+            return true;
+        }
+        if (!in_array($order->estado, [OrderStatus::ENVIANDO, OrderStatus::FACTURADO])) {
+            $order->estado = OrderStatus::ESPERA;
             $order->save();
         }
 
-        $order->refresh();
-        Log::info('Estado del pedido actualizado', [
-            'pedido_id' => $order->pedido,
-            'nuevo_estado' => $order->estado->value,
-            'motivo_traslado' => $tieneTraslado ? 'requiere_traslado' : 'no_requiere_traslado'
-        ]);
-        return $tieneTraslado;
+        return false;
     }
 
 
@@ -516,11 +516,11 @@ class InvoiceService implements InvoiceServiceInterface
         }
         $info                       = data_get($existInvoice, 'data', []);
         $pedido->factura            = data_get($info, 'numeroDocGenerado', null);
-        $pedido->FAC_VTA_MENSAJE    =  data_get($existInvoice, 'message', null);
+        $pedido->FAC_VTA_MENSAJE    = data_get($existInvoice, 'message', null);
         $pedido->estado             = OrderStatus::FACTURADO;
         $pedido->fecha_factura      = now()->toDateString();
         $pedido->fecha_hora_factura = now();
-        Log::info("Pedido {$pedido->pedido} fcturado. numero de factura: {$pedido->factura}");
+        Log::info("Pedido {$pedido->pedido} facturado. numero de factura: {$pedido->factura}. Estado del pedido {$pedido->estado->value}");
         $pedido->save();
         try {
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
