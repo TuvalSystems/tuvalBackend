@@ -81,9 +81,15 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkTrasladado(GpPedido $pedido): bool
     {
+        if ($pedido->estado === OrderStatus::FACTURADO) {
+            return false;
+        }
         $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
-        $pedido->estado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-        $pedido->save();
+        $nuevoEstado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
+        if ($pedido->estado !== $nuevoEstado) {
+            $pedido->estado = $nuevoEstado;
+            $pedido->save();
+        }
         return $tieneTraslado;
     }
 
@@ -96,11 +102,12 @@ class InvoiceService implements InvoiceServiceInterface
         $hayTraslado    = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
         $detalles       = $this->orderRepository->getDetailForTraslate($pedido->id, $pedido->BOD_BODEGA);
         $nuevoEstado    = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
+        if ($nuevoEstado === OrderStatus::TRASLADO && $detalles->isNotEmpty()) {
+            $this->saveTransferenciasVentas($pedido, $detalles);
+        }
+        
         if ($pedido->estado !== $nuevoEstado) {
             $pedido->estado = $nuevoEstado;
-            if ($nuevoEstado == OrderStatus::TRASLADO) {
-                $this->saveTransferenciasVentas($pedido, $detalles);
-            }
             $pedido->save();
         }
 
