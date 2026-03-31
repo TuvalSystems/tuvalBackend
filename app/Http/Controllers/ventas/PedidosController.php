@@ -215,7 +215,7 @@ class PedidosController extends Controller
             $pedidos = $pedidos->where('gp_pedidos.CLI_RUC', $data['cliente']['CLI_RUC']);
         }
 
-        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(1500)->get();
+        $pedidos = $pedidos->orderBy('gp_pedidos.created_at', 'desc')->limit(1000)->get();
 
         foreach ($pedidos as $pedido) {
 
