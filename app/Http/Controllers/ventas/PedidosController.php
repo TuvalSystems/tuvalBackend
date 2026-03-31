@@ -219,7 +219,7 @@ class PedidosController extends Controller
 
         foreach ($pedidos as $pedido) {
 
-            // $pedido->direccion_entrega = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
+            $pedido->direccion_entrega = GpClienteSucursal::where('id', $pedido->sucursal_id)->first();
 
             if ($pedido->requiere_aprobacion_comercial == 'yes' && $pedido->aprobado_comercial == 'no') {
                 $pedido->imprimir = 'no';
