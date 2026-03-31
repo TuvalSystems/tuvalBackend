@@ -2,7 +2,6 @@
 
 namespace App\Services\User;
 
-use App\Models\User;
 use App\Models\GpUsuario;
 use App\Models\GpProveedor;
 use App\Models\GpPuntoVenta;
@@ -10,7 +9,6 @@ use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpCondicionPago;
 use App\Services\Api\ApiGpService;
-use Illuminate\Support\Facades\DB;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Model;
@@ -65,8 +63,8 @@ class UserService implements UserServiceInterface
     {
         $params = array(
             'idCompany' => config('services.api_gp.company'),
-            'username' => $credentials['username'],
-            'password' => $credentials['password']
+            'username'  => $credentials['username'],
+            'password'  => $credentials['password']
         );
 
         $resp = $this->apiGp->validateUser($params);
@@ -74,8 +72,7 @@ class UserService implements UserServiceInterface
         if (!$rSuccess) {
             throw ValidationException::withMessages(['username' => 'El usuario no existe o la contraseña es incorrecta.']);
         }
-        $data = data_get($resp, 'data', []);
-        return $data;
+        return data_get($resp, 'data', []);
     }
 
     public function isValidUser(array $validationResponse): bool
@@ -88,27 +85,27 @@ class UserService implements UserServiceInterface
     public function buildSuccessResponseUser($user): array
     {
         return [
-            'user' => $this->formatuserData($user),
-            'token' => $this->generateAuthToken($user),
-            'menu' => $this->getUserMenu($user->perfil_id)['arbol'],
-            'home' => $this->getUserMenu($user->perfil_id)['home'],
-            'puntosdeventa' => $this->getUserSalesPoints($user->USERID),
-            'puntodeventaselect' => $this->getDefaultSalesPoint($user->USERID),
-            'formadepago' => $this->getPaymentMethods(),
-            'condiciondepago' => $this->getPaymentConditions(),
-            'proveedores' => $this->getSuppliers(),
-            'must_change_password' => $user->must_change_password
+            'user'                  => $this->formatuserData($user),
+            'token'                 => $this->generateAuthToken($user),
+            'menu'                  => $this->getUserMenu($user->perfil_id)['arbol'],
+            'home'                  => $this->getUserMenu($user->perfil_id)['home'],
+            'puntosdeventa'         => $this->getUserSalesPoints($user->USERID),
+            'puntodeventaselect'    => $this->getDefaultSalesPoint($user->USERID),
+            'formadepago'           => $this->getPaymentMethods(),
+            'condiciondepago'       => $this->getPaymentConditions(),
+            'proveedores'           => $this->getSuppliers(),
+            'must_change_password'  => $user->must_change_password
         ];
     }
 
     public function formatUserData($user): array
     {
         return [
-            'id' => $user->id,
-            'USERID' => $user->USERID,
-            'USERNAME' => $user->USERNAME,
+            'id'        => $user->id,
+            'USERID'    => $user->USERID,
+            'USERNAME'  => $user->USERNAME,
             'perfil_id' => $user->perfil_id,
-            'status' => $user->status,
+            'status'    => $user->status,
         ];
     }
 
@@ -124,38 +121,25 @@ class UserService implements UserServiceInterface
 
     public function getUserSalesPoints($userID)
     {
-        $puntosdeventa = DB::table('gp_punto_ventas')
-            ->join('gp_relacion_usuario_punto_ventas', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA', '=', 'gp_punto_ventas.PTO_VTA_ID')
-            ->select('gp_punto_ventas.*')
-            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', '=', $userID)
-            ->orderBy('gp_punto_ventas.PTO_VTA_ID')
-            ->get();
-
-        $nuevo_arr = [];
-        foreach ($puntosdeventa as $puntodeventa) {
-            $this->getBodegas($puntodeventa);
-            $ptoVta = data_get($puntodeventa, 'PTO_VTA_ID');
-            $nuevo_arr[$ptoVta] = $puntodeventa;
-        }
-
-        return array_values($nuevo_arr);
+        return GpPuntoVenta::join('gp_relacion_usuario_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', '=', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA')
+        ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userID)
+        ->select('gp_punto_ventas.*')
+        ->with('bodegas')
+        ->orderBy('gp_punto_ventas.PTO_VTA_ID')
+        ->get()
+        ->unique('PTO_VTA_ID')
+        ->values();
     }
 
 
-    public function getDefaultSalesPoint($userID): mixed
+    public function getDefaultSalesPoint($userId): mixed
     {
-        $puntodeventaselect = DB::table('gp_punto_ventas')
-            ->join('gp_relacion_usuario_punto_ventas', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA', '=', 'gp_punto_ventas.PTO_VTA_ID')
+        return GpPuntoVenta::join('gp_relacion_usuario_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', '=', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA')
+            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userId)
             ->select('gp_punto_ventas.*')
-            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', '=', $userID)
+            ->with('bodegas')
+            ->orderBy('gp_relacion_usuario_punto_ventas.id', 'asc')
             ->first();
-
-        $this->getBodegas($puntodeventaselect);
-
-        if (!$puntodeventaselect) {
-            $puntodeventaselect = GpPuntoVenta::get()->first();
-        }
-        return $puntodeventaselect;
     }
 
     public function getPaymentMethods(): Collection
@@ -175,22 +159,7 @@ class UserService implements UserServiceInterface
             ->orderBy('PROV_RAZON_SOCIAL')->get();
     }
 
-    public function getBodegas(mixed $puntodeventa): void
-    {
-        $arr_bodegas = array();
 
-
-        $masbodegas = GpRelacionPuntoVentaBodegaRelacionada::join('gp_bodegas', 'gp_bodegas.BOD_BODEGA', 'gp_relacion_punto_venta_bodega_relacionadas.PTO_VTA_BOD_REL_BODEGA')
-            ->where('PTO_VTA_BOD_REL_PUNTO_VENTA', $puntodeventa->PTO_VTA_ID)
-            ->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA')
-            ->select('gp_relacion_punto_venta_bodega_relacionadas.*', 'gp_bodegas.PERMITE_DESPACHO')
-            ->get()->toArray();
-
-        foreach ($masbodegas as $bodega) {
-            $arr_bodegas[$bodega['PTO_VTA_BOD_REL_BODEGA']] = $bodega;
-        }
-        $puntodeventa->bodegas = array_values($arr_bodegas);
-    }
 
 
     /**
@@ -200,11 +169,10 @@ class UserService implements UserServiceInterface
 
     public function changePassword($data, GpUsuario $user)
     {
-            $user->must_change_password = false;
-            $user->password = Hash::make($data['password']);
-            $user->save();
-            return $user->refresh();
-
+        $user->must_change_password = false;
+        $user->password = Hash::make($data['password']);
+        $user->save();
+        return $user->refresh();
     }
 
     /**
@@ -212,12 +180,12 @@ class UserService implements UserServiceInterface
      */
     public function resetPassword($userID)
     {
-            $user = GpUsuario::where('USERID', $userID)->first();
-            $user->must_change_password = true;
-            $user->password = Hash::make($user->USERID);
-            $user->process_job = 1;
-            $user->save();
-            return $user->refresh();
+        $user = GpUsuario::where('USERID', $userID)->first();
+        $user->must_change_password = true;
+        $user->password = Hash::make($user->USERID);
+        $user->process_job = 1;
+        $user->save();
+        return $user->refresh();
     }
 
 
@@ -229,9 +197,9 @@ class UserService implements UserServiceInterface
 
     public function changeStatusGpUser(string $userId)
     {
-            $user = GpUsuario::where('USERID', $userId)->firstOrFail();
-            $user->status = $user->status === 1 ? 0 : 1;
-            $user->save();
+        $user = GpUsuario::where('USERID', $userId)->firstOrFail();
+        $user->status = $user->status === 1 ? 0 : 1;
+        $user->save();
     }
 
 

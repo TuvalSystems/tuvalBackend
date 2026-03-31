@@ -79,7 +79,19 @@ class GpPuntoVenta extends Model
         return $this->hasMany(GpRelacionUsuarioPuntoVenta::class, 'USER_PTO_VTA_PUNTO_VENTA', 'PTO_VTA_ID');
     }
 
-    public function relacionpuntoventabodegarelacionada(){
+    public function relacionpuntoventabodegarelacionada()
+    {
         return $this->hasMany(GpRelacionPuntoVentaBodegaRelacionada::class, 'PTO_VTA_BOD_REL_PUNTO_VENTA', 'PTO_VTA_ID');
+    }
+
+    public function bodegas()
+    {
+        return $this->hasMany(GpRelacionPuntoVentaBodegaRelacionada::class, 'PTO_VTA_BOD_REL_PUNTO_VENTA', 'PTO_VTA_ID')
+            ->join('gp_bodegas', 'gp_bodegas.BOD_BODEGA', '=', 'gp_relacion_punto_venta_bodega_relacionadas.PTO_VTA_BOD_REL_BODEGA')
+            ->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA')
+            ->select(
+                'gp_relacion_punto_venta_bodega_relacionadas.*',
+                'gp_bodegas.PERMITE_DESPACHO'
+            );
     }
 }
