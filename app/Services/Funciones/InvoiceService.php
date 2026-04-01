@@ -65,19 +65,31 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
     /** funciones anidadas a  checkSendInvoice*/
-    protected function shouldSkipProcessing($order)
+    protected function shouldSkipProcessing(GpPedido $order)
     {
-        return \in_array($order->estado, [OrderStatus::RECHAZADO, OrderStatus::ANULADA, OrderStatus::ELIMINADO], true) ||
+        return $this->shouldSkipOrderForStatus($order) ||
             ($order->requiere_aprobacion_comercial == 'yes' && $order->aprobado_comercial == 'no') ||
             ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
     }
 
+    protected function shouldSkipOrderForStatus(GpPedido $pedido): bool
+    {
+        return \in_array($pedido->estado, [
+            OrderStatus::ORDEN_DE_COMPRA,
+            OrderStatus::TRASLADO,
+            OrderStatus::RECHAZADO,
+            OrderStatus::ANULADA,
+            OrderStatus::ELIMINADO
+        ], true);
+    }
     protected function shouldSkipDueToTransferStatus(GpPedido $pedido, $trasladado): bool
     {
         return $trasladado
             ? $this->checkTrasladado($pedido)
             : $this->checkTraslado($pedido);
     }
+
+
 
     public function checkTrasladado(GpPedido $pedido): bool
     {
@@ -122,7 +134,7 @@ class InvoiceService implements InvoiceServiceInterface
         $this->purchaseOrderService->sendPurchaseOrders();
         $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
         $pedido->refresh();
-        return \in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true);
+        return $this->shouldSkipOrderForStatus($pedido);
     }
 
 
@@ -141,42 +153,44 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    protected function checkInvoiceOnDemand(GpPedido $pedido) : bool
+    protected function checkInvoiceOnDemand(GpPedido $pedido): bool
     {
-        $this->setInvoiceFlags($pedido);
+        $pedido->loadMissing('gpcliente');
+        $cliente = $pedido->gpcliente;
+        if (!$cliente) {
+            throw new \Exception("El pedido #{$pedido->pedido} no tiene un cliente asociado válido.");
+        }
+        $this->setInvoiceFlags($pedido, $cliente);
         $pedido->save();
         return $this->processInvoiceDecision($pedido);
     }
 
-    protected function setInvoiceFlags(GpPedido $pedido)
+    protected function setInvoiceFlags(GpPedido $pedido, GpCliente $cliente)
     {
-        $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
-        if (!$cliente) {
-            throw new \Exception('El cliente no existe');
-        }
+        $pedido->factura_posterior_despacho = 0;
+        $pedido->factura_a_demanda          = 0;
+        $pedido->factura_siguiente_mes      = 0;
 
-        $pedido->factura_posterior_despacho = ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') ? 1 : 0;
-        if ($pedido->factura_posterior_despacho == 1) {
-            $hoy = (int) date('d');
-            $diaMax = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
+        if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') {
+            $pedido->factura_posterior_despacho = 1;
+
+            $hoy     = (int) date('d');
+            $diaMax  = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
+
             if ($diaMax == 1) {
                 $pedido->factura_a_demanda = 1;
-            } elseif ($hoy > $diaMax) {
+            } elseif ($diaMax > 1 && $hoy > $diaMax) {
                 $pedido->factura_siguiente_mes = 1;
             }
         }
     }
 
-    protected function processInvoiceDecision(GpPedido $pedido) :bool
+    protected function processInvoiceDecision(GpPedido $pedido): bool
     {
         if (!$pedido->factura_posterior_despacho) {
             return false;
         }
-        $esSoloDemanda      = $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
-        $esSoloSiguiente    = !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes;
-
-        //caso factura a demanda
-        if ($esSoloDemanda || $esSoloSiguiente) {
+        if ($pedido->factura_a_demanda || $pedido->factura_siguiente_mes) {
             $this->generateDisptachOrder($pedido);
             return true;
         }
@@ -199,9 +213,9 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    protected function shouldSkipOrderGeneration($pedido)
+    protected function shouldSkipOrderGeneration(GpPedido $pedido)
     {
-        return \in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO]) || $pedido->despachado;
+        return $this->shouldSkipOrderForStatus($pedido) || $pedido->despachado;
     }
 
     protected function checkForExistingDispatchOrder(GpPedido $pedido)
@@ -241,29 +255,25 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function sendInvoiceGp($pedido)
+    public function sendInvoiceGp(GpPedido $pedido)
     {
-
-        if ($pedido->rechazado) {
-            $pedido->estado = OrderStatus::RECHAZADO;
-            $pedido->save();
+        if ($pedido->rechazado || $this->shouldSkipOrderForStatus($pedido)) {
+            if ($pedido->rechazado && $pedido->estado !== OrderStatus::RECHAZADO) {
+                $pedido->estado = OrderStatus::RECHAZADO;
+                $pedido->save();
+            }
             return;
         }
         // verifica si tiene ya ha recibido todos los item L del pedido
-        if ($this->purchaseOrderService->checkPurchaseOrderRecib($pedido)) {
+        if (
+            $this->purchaseOrderService->checkPurchaseOrderRecib($pedido) ||
+            $this->checkOrderHaveItemTransferPending($pedido) ||
+            $this->shouldSkipOrderForStatus($pedido)
+        ) {
+            Log::warning("Pedido {$pedido->pedido} pausado por dependencias logísticas (OC/Traslado/Estado).");
             return;
         }
 
-        // verifica si el pedido tiene un item de traslado pendiente, si tiene no se facturara
-        if ($this->checkOrderHaveItemTransferPending($pedido)) {
-            Log::warning("Pedido {$pedido->pedido} tiene traslado pendiente. No se facturará.");
-            return;
-        }
-
-        // verifica si el pedido esta en estado 'orden_de_compra'
-        if ($pedido->estado === OrderStatus::ORDEN_DE_COMPRA) {
-            return;
-        }
         // cuando el pedido esta en estado espera realiza otras validaciones adicionales
         if ($pedido->estado === OrderStatus::ESPERA) {
             if (!$this->orderReadyToShip($pedido)) {
@@ -285,7 +295,7 @@ class InvoiceService implements InvoiceServiceInterface
                     ]
                 );
 
-                if ($pedido->estado !== OrderStatus::ESPERA) { // evita writes innecesarios
+                if ($pedido->estado !== OrderStatus::ESPERA) {
                     $pedido->estado = OrderStatus::ESPERA;
                     $pedido->save();
                 }
@@ -386,7 +396,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function orderReadyToShip(GpPedido $order): bool
     {
-        $hasInvalidStatus   = \in_array($order->estado, [OrderStatus::TRASLADO, OrderStatus::ORDEN_DE_COMPRA]);
+        $hasInvalidStatus   = $this->shouldSkipOrderForStatus($order);
         $missingCommercial  = $order->requiere_aprobacion_comercial === 'yes' && $order->aprobado_comercial !== 'yes';
         $missingCredit      = $order->requiere_aprobacion_crediticia === 'yes' && $order->aprobado_crediticio !== 'yes';
         $isRejected         = (bool) $order->rechazado;
@@ -400,7 +410,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
+    protected function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
     {
         if ($pedido->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value) {
             return true;
@@ -417,7 +427,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio)
+    protected function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio)
     {
         return [
             'FAC_VTA_DOCU_ORIGEN'           => $pedido->pedido,
@@ -447,7 +457,7 @@ class InvoiceService implements InvoiceServiceInterface
         ];
     }
 
-    public function normalizeTextNoteClient(?string $nota): string
+    protected function normalizeTextNoteClient(?string $nota): string
     {
         if ($nota === null) {
             return '';
@@ -456,7 +466,7 @@ class InvoiceService implements InvoiceServiceInterface
         return trim(preg_replace('/[^\S\r\n]+/u', ' ', $clean));
     }
 
-    public function mapFormatDetailInvoice($detalles, $pedido)
+    protected function mapFormatDetailInvoice($detalles, $pedido)
     {
         return $detalles->values()->map(function ($detalle, $index) use ($pedido) {
             return [
@@ -482,7 +492,7 @@ class InvoiceService implements InvoiceServiceInterface
         })->toArray();
     }
 
-    public function formatParamsInvoiceValidate($pedido)
+    protected function formatParamsInvoiceValidate($pedido)
     {
         return [
             'documentoOrigen' => $pedido->pedido,
@@ -492,10 +502,10 @@ class InvoiceService implements InvoiceServiceInterface
 
 
 
-    public function checkFinalInvoiceValidation(GpPedido $pedido): bool
+    protected function checkFinalInvoiceValidation(GpPedido $pedido): bool
     {
         $isInvalidStatus    = $pedido->estado !== OrderStatus::ENVIANDO;
-        $hasInvoice         = !empty($pedido->factura);
+        $hasInvoice         = $pedido->factura !== null && trim((string)$pedido->factura) !== '';
         $missingCommercial  = $pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial === 'no';
         $missingCredit      = $pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio === 'no';
 
@@ -503,6 +513,7 @@ class InvoiceService implements InvoiceServiceInterface
             Log::warning("Validación fallida facturación pedido {$pedido->pedido}", [
                 'status'            => $pedido->estado->value,
                 'invoice'           => $hasInvoice,
+                'invoice_value'     => $pedido->factura,
                 'comm_approval'     => $missingCommercial,
                 'credit_approval'   => $missingCredit
             ]);
@@ -538,7 +549,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
     /** proceso de limpieza de stock de cotizacion de reserva  */
-    public function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
+    protected function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
     {
         $order = GpPedido::find($orderId);
         if (!$order || $order->estado == OrderStatus::ESPERA) {
@@ -628,7 +639,7 @@ class InvoiceService implements InvoiceServiceInterface
         $this->updateCheckStatusReservation($reservedId);
     }
 
-    public function updateCheckStatusReservation(int $reserveId)
+    protected function updateCheckStatusReservation(int $reserveId)
     {
         $reserva = GpReserva::find($reserveId);
         if (!$reserva) {
