@@ -99,6 +99,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                     $infoGuia['numeroGuia'] = $numGuide;
                     $guia = $this->saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia);
                     $this->saveDetaildeliveryNoteDispatchWeb($guia->id, $items);
+                    $this->updateDetailOrder($items);
                     return $guia;
                 });
             });
@@ -109,7 +110,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                     $this->common->createTemporaryDeliveryNoteBlocksOrder($guia, $user);
                 }
             }
-            $this->updateDetailOrder($items);
+
             event(new DispatchPendings('refresh'));
             return $guia->refresh();
         } finally {
