@@ -509,6 +509,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                         }
                         $pedido->save();
                     }
+                    $pedido->refresh();
                     $this->invoiceService->checkSendInvoice($pedido, true);
                     $userOrder = $pedido->usuario;
                     $userOrder->notify(new UserNotification('Articulo/s recibidos', 'Articulo/s del pedido ' . $pedido->pedido . ' han sido recibidos COMPLETAMENTE en la bodega ' . $pedido->BOD_BODEGA));
@@ -521,6 +522,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                     ->where('estado', OrderStatus::TRASLADO)->first();
                 if ($pedido) {
                     $this->invoiceService->checkTrasladado($pedido);
+                    $pedido->refresh();
                     if ($pedido->estado === OrderStatus::ESPERA) {
                         $this->invoiceService->checkSendInvoice($pedido, true);
                         $creatorUser = $pedido->usuario;
