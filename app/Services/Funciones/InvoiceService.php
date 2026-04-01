@@ -72,14 +72,20 @@ class InvoiceService implements InvoiceServiceInterface
             ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
     }
 
-    protected function shouldSkipOrderForStatus(GpPedido $pedido): bool
+    protected function shouldSkipOrderForStatus(GpPedido $order): bool
     {
-        return \in_array($pedido->estado, [
-            OrderStatus::ORDEN_DE_COMPRA,
-            OrderStatus::TRASLADO,
+        return \in_array($order->estado, [
             OrderStatus::RECHAZADO,
             OrderStatus::ANULADA,
             OrderStatus::ELIMINADO
+        ], true);
+    }
+
+    protected function isStatusWaitingForStock(GpPedido $order): bool
+    {
+        return \in_array($order->estado, [
+            OrderStatus::ORDEN_DE_COMPRA,
+            OrderStatus::TRASLADO,
         ], true);
     }
     protected function shouldSkipDueToTransferStatus(GpPedido $pedido, $trasladado): bool
@@ -134,7 +140,7 @@ class InvoiceService implements InvoiceServiceInterface
         $this->purchaseOrderService->sendPurchaseOrders();
         $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
         $pedido->refresh();
-        return $this->shouldSkipOrderForStatus($pedido);
+        return $this->isStatusWaitingForStock($pedido);
     }
 
 
@@ -215,7 +221,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function shouldSkipOrderGeneration(GpPedido $pedido)
     {
-        return $this->shouldSkipOrderForStatus($pedido) || $pedido->despachado;
+        return $this->isStatusWaitingForStock($pedido) || $pedido->despachado;
     }
 
     protected function checkForExistingDispatchOrder(GpPedido $pedido)
@@ -268,7 +274,7 @@ class InvoiceService implements InvoiceServiceInterface
         if (
             $this->purchaseOrderService->checkPurchaseOrderRecib($pedido) ||
             $this->checkOrderHaveItemTransferPending($pedido) ||
-            $this->shouldSkipOrderForStatus($pedido)
+            $this->isStatusWaitingForStock($pedido)
         ) {
             Log::warning("Pedido {$pedido->pedido} pausado por dependencias logísticas (OC/Traslado/Estado).");
             return;
@@ -396,7 +402,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function orderReadyToShip(GpPedido $order): bool
     {
-        $hasInvalidStatus   = $this->shouldSkipOrderForStatus($order);
+        $hasInvalidStatus   = $this->isStatusWaitingForStock($order);
         $missingCommercial  = $order->requiere_aprobacion_comercial === 'yes' && $order->aprobado_comercial !== 'yes';
         $missingCredit      = $order->requiere_aprobacion_crediticia === 'yes' && $order->aprobado_crediticio !== 'yes';
         $isRejected         = (bool) $order->rechazado;

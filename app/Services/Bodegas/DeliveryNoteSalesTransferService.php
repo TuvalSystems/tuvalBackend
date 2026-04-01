@@ -509,6 +509,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                         }
                         $pedido->save();
                     }
+                    $this->invoiceService->checkTrasladado($pedido);
                     $pedido->refresh();
                     $this->invoiceService->checkSendInvoice($pedido, true);
                     $userOrder = $pedido->usuario;
