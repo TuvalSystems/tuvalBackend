@@ -105,7 +105,7 @@ class InvoiceService implements InvoiceServiceInterface
         if ($nuevoEstado === OrderStatus::TRASLADO && $detalles->isNotEmpty()) {
             $this->saveTransferenciasVentas($pedido, $detalles);
         }
-        
+
         if ($pedido->estado !== $nuevoEstado) {
             $pedido->estado = $nuevoEstado;
             $pedido->save();
@@ -141,7 +141,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    protected function checkInvoiceOnDemand(GpPedido $pedido)
+    protected function checkInvoiceOnDemand(GpPedido $pedido) : bool
     {
         $this->setInvoiceFlags($pedido);
         $pedido->save();
@@ -167,7 +167,7 @@ class InvoiceService implements InvoiceServiceInterface
         }
     }
 
-    protected function processInvoiceDecision(GpPedido $pedido)
+    protected function processInvoiceDecision(GpPedido $pedido) :bool
     {
         if (!$pedido->factura_posterior_despacho) {
             return false;
