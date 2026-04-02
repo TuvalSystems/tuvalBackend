@@ -357,6 +357,7 @@ class InvoiceService implements InvoiceServiceInterface
             } else {
                 $pedido->estado             = OrderStatus::ESPERA;
                 $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje','Ha ocurrido un error al facturar el pedido.');
+                Log::warning("Pedido {$pedido->pedido} validación de factura sin número generado. Respuesta: " . json_encode($existInvoice));
             }
             $pedido->save();
             return $pedido;
