@@ -157,12 +157,12 @@ class ReservasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
-            $data       =$request->input('data', null);
+            $data       = $request->input('data', null);
             $reserva    = DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->approvalApplicationReservedQuotation($data, $gpUser);
             });
             $alerta = data_get($reserva, 'alerta', null);
-             if ($alerta) {
+            if ($alerta) {
                 return $this->buildExistResponse(false, $alerta, 200);
             }
             $msg = "Reserva autorizada correctamente";
@@ -195,9 +195,9 @@ class ReservasController extends Controller
     public function procesarReservaCotizacion(Request $request)
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $data       = $request->all();
+            $data       = $request->input('data', null);
             $gpUser     = $request->user();
-            $response   = $this->reserveService->processReservedQuotation($data['data'], $gpUser);
+            $response   = $this->reserveService->processReservedQuotation($data, $gpUser);
             $cot        = data_get($response, 'cotizacion', null);
             $msg        = $cot === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$cot}";
 
@@ -208,31 +208,20 @@ class ReservasController extends Controller
 
     public function procesarReservaFacturaDemandaCotizacion(Request $request)
     {
-        $data = $request->all();
-        $gpUser = $request->user();
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data = $request->input('reserva', null);
+            $gpUser = $request->user();
             $response = DB::transaction(function () use ($data, $gpUser) {
-                return $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
+                return $this->reserveService->processReservedQuotationInvoiceDemand($data, $gpUser);
             });
-            $msg = "Pedido {$response['pedido']} generado.";
+            $alerta = data_get($response, 'alertMessage', null);
+            if ($alerta) {
+                return $this->buildExistResponse(false, $alerta, 200);
+            }
+            $pedidoNombre = data_get($response, 'order.pedido', 'N/A');
+            $msg = "Pedido {$pedidoNombre} generado correctamente.";
             return $this->successResponse($msg, $response, 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\DomainException $e) {
-            return $this->buildErrorResponse($e->getMessage(), 422);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion procesarReservaFacturaDemandaCotizacion -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'data' => $data
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'procesarReservaFacturaDemandaCotizacion');
     }
 
 
