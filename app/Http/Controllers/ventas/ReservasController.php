@@ -68,8 +68,8 @@ class ReservasController extends Controller
         return $this->executeTransaction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
             $reserva    = $request->get('reserva', null);
-            $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
-            return $this->buildSuccessResponse('Solicitud de reserva guardada correctamente', 200);
+            $quote = $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
+            return $this->buildSuccessResponse("Solicitud de reserva guardada correctamente {$quote->cotizacion}", 200);
         }, 'reservas_log',  'guardarReservaCotización');
     }
 

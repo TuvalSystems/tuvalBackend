@@ -73,9 +73,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function saveQuotationHeaderReserved(array $data, GpUsuario $user)
     {
         $reserved =  DB::transaction(function () use ($data, $user) {
+            $quoteId = data_get($data, 'cotizacion_id');
+            $quote = GpCotizacion::find($quoteId);
             $reserved = $this->reservaBuilder->fromPayloadReserved($data, $user);
             $reserved->save();
-            return $reserved;
+            return $quote->refresh();
         });
         FanoutReservationRequest::dispatch(
             $data['cotizacion_id'],
