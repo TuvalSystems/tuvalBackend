@@ -336,7 +336,7 @@ class InvoiceService implements InvoiceServiceInterface
         $docId      = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'FAC%')->first();
         if (!$docId) {
             Log::warning("Pedido {$pedido->pedido} no tiene docId.");
-            return;
+            throw new \Exception("No se encontró configuración de documento para el punto de venta {$pedido->PTO_VTA_ID}.");
         }
         $factVtaDireccionEnvio = ($pedido->despacho == 'Retiro en bodega') ?
             $sucursalFacturacion->CLI_SUC_ID_DIRECCION : $sucursalEnvio->CLI_SUC_ID_DIRECCION;
@@ -346,10 +346,18 @@ class InvoiceService implements InvoiceServiceInterface
         // verificar si el pedido ya fue facturado
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === true) {
-            $info               = data_get($existInvoice, 'data', []);
-            $pedido             = GpPedido::where('pedido', $pedido->pedido)->first();
-            $pedido->factura    = data_get($info, 'numeroDocGenerado', null);
-            $pedido->estado     = OrderStatus::FACTURADO;
+            $info                           = data_get($existInvoice, 'data', []);
+            $numFactura = data_get($info, 'numeroDocGenerado');
+            $numFactura = trim((string) $numFactura);
+            if (filled($numFactura)) {
+                $pedido->factura            = data_get($info, 'numeroDocGenerado', null);
+                $pedido->estado             = OrderStatus::FACTURADO;
+                $pedido->fecha_factura      = now()->toDateString();
+                $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje', 'Validación de factura correcta.');
+            } else {
+                $pedido->estado             = OrderStatus::ESPERA;
+                $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje','Ha ocurrido un error al facturar el pedido.');
+            }
             $pedido->save();
             return $pedido;
         }
@@ -531,11 +539,13 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function respuestaFacturaVenta(GpPedido $order)
     {
-        $pedido = GpPedido::find($order->id);
-        $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
-        $sucess = data_get($existInvoice, 'success', false);
+        $pedido         = GpPedido::find($order->id);
+        $existInvoice   = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        $sucess         = data_get($existInvoice, 'success', false);
+        $info           = data_get($existInvoice, 'data', []);
+
         if ($sucess === false) {
-            $msg                        = data_get($existInvoice, 'message', 'Error no definido por GP');
+            $msg                        = data_get($info, 'mensaje', 'Error no definido por GP');
             $pedido->FAC_VTA_MENSAJE    = $msg;
             $pedido->estado             = OrderStatus::ESPERA;
             $pedido->save();
@@ -543,7 +553,6 @@ class InvoiceService implements InvoiceServiceInterface
                 "Ocurrió un error al obtener la factura del pedido {$pedido->pedido}: {$pedido->FAC_VTA_MENSAJE}"
             );
         }
-        $info                       = data_get($existInvoice, 'data', []);
         $pedido->factura            = data_get($info, 'numeroDocGenerado', null);
         $pedido->FAC_VTA_MENSAJE    = data_get($existInvoice, 'message', null);
         $pedido->estado             = OrderStatus::FACTURADO;
