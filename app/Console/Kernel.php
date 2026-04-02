@@ -80,7 +80,7 @@ class Kernel extends ConsoleKernel
         //facturar pedidos en estado enviando
         $schedule->command('pedidos:facturar-enviando')
             ->timezone('America/Guayaquil')
-            ->everyTenMinutes()
+            ->everyTwoHours()
             ->withoutOverlapping(20)
             ->runInBackground();
     }
