@@ -47,7 +47,7 @@ class SendDennyReservationForStockNotification implements ShouldQueue
 
         event(new ReservedListAuthorizedChanged('refresh', $cotizacion->id, $userSolicitud->USERID));
         $title  = 'Reserva Rechazada';
-        $msg    = "Solicitud de reserva denegada por {$authUser->USERNAME} para la cotización {$cotizacion->cotizacion} por falta de stock disponible";
+        $msg    = "Solicitud de reserva rechazada por {$authUser->USERNAME} para la cotización {$cotizacion->cotizacion} por falta de stock disponible";
         $userSolicitud->notify(new UserNotification($title, $msg));
     }
 }
