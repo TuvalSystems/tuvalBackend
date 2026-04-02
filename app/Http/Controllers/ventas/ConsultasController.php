@@ -468,7 +468,7 @@ class ConsultasController extends Controller
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $items      = $request->input('items', "");
             $response   = $this->inventoryService->listReservedStockForItems($items);
-            return $this->successResponse('Stock obtenido correctamente', $response, 200);
+            return $this->successResponse('Reservas obtenidas', $response, 200);
         }, 'laravel', 'consultarItemsReservados');
     }
     public function transferenciaspendientes(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
