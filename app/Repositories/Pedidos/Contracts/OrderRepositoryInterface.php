@@ -45,4 +45,6 @@ interface OrderRepositoryInterface
 
     /** query para lista de pedidos pendientes de aprobacion comercial */
     public function fetchPendingOrders(int $ptoVta): Builder;
+
+    public function queryOrdersInSendingStatus() ;
 }

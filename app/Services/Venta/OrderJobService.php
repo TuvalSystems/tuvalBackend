@@ -10,7 +10,6 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -226,5 +225,49 @@ class OrderJobService
         });
 
         return $metrics;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
+     *
+     * facturar pedidos en estado enviando
+     *
+     */
+
+    public function processPendingInvoices()
+    {
+        $orders = $this->orderRepository->queryOrdersInSendingStatus();
+        if ($orders->isEmpty()) {
+            return;
+        }
+        Log::channel('cron_process')->info("Pedidos en estado 'enviando' encontrados: " . $orders->count());
+        foreach ($orders as $order) {
+            try {
+                if($order->factura !== null && $order->factura !== ''){
+                    $order->estado = OrderStatus::FACTURADO;
+                    $order->save();
+                    Log::channel('cron_process')->info("Pedido {$order->pedido} ya tiene factura {$order->factura}, omitiendo.");
+                    continue;
+
+                }
+                Log::channel('cron_process')->info("Procesando pedido {$order->pedido} en estado 'enviando'...");
+                $this->invoiceService->checkSendInvoice($order, true);
+
+            } catch (\Throwable $e) {
+               Log::channel('cron_process')->error("Error procesando pedido {$order->pedido}: " . $e->getMessage());
+               continue;
+            }
+        }
+        Log::channel('cron_process')->info("Proceso de facturas pendientes finalizado.");
     }
 }
