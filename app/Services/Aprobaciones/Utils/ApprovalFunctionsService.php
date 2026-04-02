@@ -181,7 +181,6 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
         }
         return  round($originalDiscount - $currentDiscount, 2);
     }
-
     public function getClientSegments(array $rucs): array
     {
         if (empty($rucs)) {
