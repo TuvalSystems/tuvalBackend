@@ -102,7 +102,7 @@ class AuthController extends Controller
 
     public function changeStatusGpUser(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'USERID' => 'required|string',
             ]);

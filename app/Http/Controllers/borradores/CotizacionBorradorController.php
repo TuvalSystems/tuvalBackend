@@ -16,7 +16,7 @@ class CotizacionBorradorController extends Controller
     public function __construct(protected readonly QuoteDraftServiceInterface $draft) {}
     public function sincronizarBorrador(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'draft_id'  => 'required|string',
                 'data'      => 'required|array'
@@ -30,7 +30,7 @@ class CotizacionBorradorController extends Controller
 
     public function obtenerBorrador(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'draft_id'  => 'required|string',
             ]);
@@ -43,7 +43,7 @@ class CotizacionBorradorController extends Controller
 
     public function listarBorradores(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'pto_vta_id'  => 'required|string',
             ]);
@@ -55,7 +55,7 @@ class CotizacionBorradorController extends Controller
 
     public function eliminarBorrador(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'draft_id'  => 'required|string',
             ]);

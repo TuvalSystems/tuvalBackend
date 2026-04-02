@@ -295,7 +295,7 @@ class DevolucionesController extends Controller
 
     public function generarNotaCreditoDevolucionesFallidas($id)
     {
-        return $this->executeTransaction(function () use ($id) {
+        return $this->handleApiAction(function () use ($id) {
         $devolucion = $this->devolucionService->generarNotaCreditoDevolucionesFallidas($id);
         return $this->successResponse('Nota de credito generada correctamente', $devolucion, 200);
         }, 'devoluciones', 'generarNotaCreditoDevolucionesFallidas');

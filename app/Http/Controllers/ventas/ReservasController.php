@@ -26,7 +26,7 @@ class ReservasController extends Controller
 
     public function validarGeneracionReservaCotizacion($id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             $existeReserva = $this->reserveService->hasAnyReserveState($id);
             if ($existeReserva) {
                 return $this->buildExistResponse($existeReserva, 'No es posible recuperar, copiar o volver a pedir la cotización porque cuenta con una reserva', 200);
@@ -39,7 +39,7 @@ class ReservasController extends Controller
     public function cancelarReservaCotizacion(ValidateCancelReservationRequest $request): JsonResponse
     {
 
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $data      = $request->validated();
             $reservasId = data_get($data, 'id', null);
             $reserva = $this->reserveService->cancelReservedQuotation($reservasId);
@@ -49,7 +49,7 @@ class ReservasController extends Controller
 
     public function verificarStockCotizacionActual(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validated = $request->validate([
                 'id' => 'required|integer',
             ]);
@@ -65,7 +65,7 @@ class ReservasController extends Controller
 
     public function guardarReservaCotización(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
             $reserva    = $request->get('reserva', null);
             $quote = $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
@@ -75,7 +75,7 @@ class ReservasController extends Controller
 
     public function obtenerListaTipoReservas(): JsonResponse
     {
-        return $this->executeTransaction(function (): JsonResponse {
+        return $this->handleApiAction(function (): JsonResponse {
             $data = $this->reserveService->fetchListTipeReserved();
             return $this->successResponse('Tipos de reservas obtenidos correctamente', $data, 200);
         }, 'reservas_log',  'obtenerListaTipoReservas');
@@ -102,14 +102,14 @@ class ReservasController extends Controller
 
     public function obtenerCotizacionConDetalle($id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             return $this->successResponse('Detalle obtenido correctamente', $this->reserveService->getQuotationWithDetails($id), 200);
         }, 'reservas_log',  'obtenerCotizacionConDetalle');
     }
 
     public function obtenerCotizacionDetalleConStock($id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetailsAndStock($id), 200);
         }, 'reservas_log',  'obtenerCotizacionDetalleConStock');
     }
@@ -143,7 +143,7 @@ class ReservasController extends Controller
 
     public function rechazarSolicitudReservaCotizacion(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
             $data       = $request->all();
             DB::transaction(function () use ($data, $gpUser) {
@@ -155,7 +155,7 @@ class ReservasController extends Controller
 
     public function aprobarSolicitudReservaCotizacion(Request $request)
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
             $data       = $request->all();
             $reserva    = DB::transaction(function () use ($data, $gpUser) {
@@ -190,7 +190,7 @@ class ReservasController extends Controller
 
     public function procesarReservaCotizacion(Request $request)
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $data       = $request->all();
             $gpUser     = $request->user();
             $response   = $this->reserveService->processReservedQuotation($data['data'], $gpUser);

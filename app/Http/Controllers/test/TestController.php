@@ -18,7 +18,7 @@ class TestController extends Controller
 
     public function crearOrdenCompraItemsL(int $id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id) {
+        return $this->handleApiAction(function () use ($id) {
             $pedido = GpPedido::find($id);
 
             DB::transaction(fn() => $this->purchase->checkPurchaseOrdersV2($pedido));

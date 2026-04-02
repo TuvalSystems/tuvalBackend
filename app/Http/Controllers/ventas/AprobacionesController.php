@@ -47,7 +47,7 @@ class AprobacionesController extends Controller
     }
     public function listaCotizacionesPendientesPorAprobar(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate  = $request->validate([
                 'puntodeventa_id' => 'required',
             ]);
@@ -58,7 +58,7 @@ class AprobacionesController extends Controller
     }
       public function listaCotizacionesPendientesConsulta(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate  = $request->validate([
                 'puntodeventa_id' => 'required',
             ]);
@@ -70,7 +70,7 @@ class AprobacionesController extends Controller
 
     public function listaPedidosPendientesPorAprobar(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate  = $request->validate([
                 'puntodeventa_id' => 'required',
             ]);
@@ -82,7 +82,7 @@ class AprobacionesController extends Controller
 
     public function listaPedidosPendientesConsulta(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate  = $request->validate([
                 'puntodeventa_id' => 'required',
             ]);
