@@ -27,6 +27,7 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -34,7 +35,7 @@ use Illuminate\Support\Facades\Log;
 
 class ConsultasController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
 
     public function __construct(
         protected readonly InventoryQueryServiceInterface $inventoryService,
@@ -462,6 +463,14 @@ class ConsultasController extends Controller
         }
     }
 
+    public function consultarItemsReservados(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $items      = $request->input('items', "");
+            $response   = $this->inventoryService->listReservedStockForItems($items);
+            return $this->successResponse('Stock obtenido correctamente', $response, 200);
+        }, 'laravel', 'consultarItemsReservados');
+    }
     public function transferenciaspendientes(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {
 

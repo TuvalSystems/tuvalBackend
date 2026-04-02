@@ -448,3 +448,11 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 });
 Route::post('/login', [AuthController::class, 'login']);
+
+
+
+// rutas para usar en SQLServer como api
+
+Route::group(['prefix' =>'consultas-externas'], function(){
+    Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
+});

@@ -38,4 +38,7 @@ interface InventoryQueryServiceInterface
     public function fetchAllTerritories();
     public function fetchAllProvinces();
     public function fetchCitiesByProvince(string $provId);
+
+
+     public function listReservedStockForItems(string $items);
 }

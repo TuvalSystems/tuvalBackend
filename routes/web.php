@@ -33,8 +33,7 @@ use App\Http\Controllers\ventas\ReservasController;
 Route::get('/', function () {
     abort(404);
 });
-Route::get('/pedidos/sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
-Route::get('/pedidos/corregirenviando', [PedidosController::class, 'corregirenviando']);
+
 Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarcobros']);
 Route::get('/enviarordenesdecompraurl', [OrdendecompraController::class, 'enviarordenesdecompraurl']);
 Route::get('/cotizaciones/checkvalidezcotizaciones', [CotizacionesController::class, 'checkvalidezcotizaciones']);
@@ -43,32 +42,9 @@ Route::get('/sincronizacion/llenadatoscoordenadasgp', [SincronizacionController:
 Route::get('/cobranzas/consultacobrosanulados', [CobranzasController::class, 'consultacobrosanulados']);
 Route::get('/facturarsiguientemescron', [PedidosController::class, 'facturarsiguientemescron']);
 Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
-
-
-//Route::get('/sincronizacion/llenarelacionesgp', [SincronizacionController::class, 'llenarelacionesgp']);
 Route::get('/sincronizacion/updateperfilesusuarios', [SincronizacionController::class, 'updateperfilesusuarios']);
 Route::get('/sincronizacion/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);
-
-Route::get('/consultas/reservados', [ConsultasController::class, 'reservados']);
-Route::get('/consultas/reservasweb/{item?}', [ConsultasController::class, 'reservasweb']);
-Route::get('/consultas/items_transferencia_venta', [ConsultasController::class, 'items_transferencia_venta']);
-Route::get('/consultas/items_transferencia_reposicion', [ConsultasController::class, 'items_transferencia_reposicion']);
-Route::get('/consultas/transferencias_pendientes_ingreso', [ConsultasController::class, 'transferencias_pendientes_ingreso']);
-Route::get('/consultas/reposiciones_pendientes', [ConsultasController::class, 'reposiciones_pendientes']);
-Route::get('/consultas/pendientes_despachar', [ConsultasController::class, 'pendientes_despachar']);
 Route::get('/despachos/checkdespachosweb/{id}', [DespachosController::class, 'checkdespachosweb']);
-Route::get('/pedidos/recalcularpedido/{id}', [PedidosController::class, 'recalcularpedido']);
-//Route::get('/devoluciones/testtotaldevolucion', [DevolucionesController::class, 'testtotaldevolucion']);
-//Route::get('/pedidos/corregirpedidos', [PedidosController::class, 'corregirpedidos']);
-Route::get('/consultas/transferenciaspendientes', [ConsultasController::class, 'transferenciaspendientes']);
-//Route::get('/despachos/ordenesliberadas/{puntodeventa_id}/{estado?}', [DespachosController::class, 'ordenesliberadas']);
-
-//Route::get('/procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
-//Route::get('/bajaratodos', [DevolucionesController::class, 'bajaratodos']);
-//Route::get('/transferircompartimiento', [DevolucionesController::class, 'transferircompartimiento']);
-Route::get('/generadevolucionventaurl', [DevolucionesController::class, 'generadevolucionventaurl']);
-Route::get('/generadevolucionventaurlalt', [DevolucionesController::class, 'generadevolucionventaurlalt']);
-
 Route::get('pedidos/volver-facturar-test/{id}', [PedidosController::class, 'volveraFacuturarTest']);
 Route::get('pedidos/volver-facturar-prueba/{id}', [PedidosController::class, 'volverAFacturarPrueba']);
 Route::get('/procesardevolucionestest', [DevolucionesController::class, 'procesardevolucionestest']);
@@ -80,102 +56,73 @@ Route::get('/consultastockarticulopuntodeventa/{articulo}/{puntodeventa}', [Cons
 Route::get('/pedidos/facturarfaltante', [PedidosController::class, 'facturarfaltante']);
 Route::get('/despachos/checkdespachadoscompletos', [DespachosController::class, 'checkdespachadoscompletos']);
 Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
-
-
-
 Route::get('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
-
-
 Route::get('/lista-ordenes-compra-recepcion', [OrdendecompraController::class, 'getViewPurchaseOrder']);
 Route::get('/lista-ordenes-despachadas-pendientes', [OrdendecompraController::class, 'getOrdesDispatchPending']);
-
 Route::get('/pedidos/lista-pedidos-sin-coordenadas', [PedidosController::class, 'getListPedidosSinCoordenadas']);
-
-
-Route::get('/devolucion/generar-nota-credito-errores/{id}', [DevolucionesController::class, 'generarNotaCreditoDevolucionesFallidas']);
-Route::get('/devolucion/generar-ajuste-devolucion/{id}', [DevolucionesController::class, 'generarAjusteDevolucionesFallidas']);
-
 Route::get('/enviar-cotizaciones-recordatorio-sql', [CotizacionesController::class, 'sendAllQuotesRecorderSQLServer']);
-Route::get('/cotizaciones/lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
-
-
-Route::get('/cotizaciones/listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
-
-Route::get('/consultas/buscarcode/{artCode}', [PedidosController::class, 'buscarIteml']);
 
 /** asignar la nota de credito devolucion  */
 Route::get('/devolucion/obtener-nota-credito-devolucion/{id}', [DevolucionesController::class, 'restaurarNotaCreditoDevolucion']);
 
 
-Route::get('/cotizaciones/obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
-Route::get('/cotizaciones/obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
 
 
 Route::prefix('pedidos')->group(function () {
-    Route::get('/facturar-pedido-test/{codPedido}', [PedidosController::class, 'facturarpedidoTest']);
-    Route::get('/generar-orden-despacho/{id}', [PedidosController::class, 'generarOrdenDeDespacho']);
-    Route::get('/recalcular-pedido/{id}', [PedidosController::class, 'recalcularPedidoTest']);
-    Route::get('/actualizar-pedido-y-recalcular/{id}', [PedidosController::class, 'actualizarPedidoYRecalcular']);
-
+    Route::get('facturar-pedido-test/{codPedido}', [PedidosController::class, 'facturarpedidoTest']);
+    Route::get('generar-orden-despacho/{id}', [PedidosController::class, 'generarOrdenDeDespacho']);
+    Route::get('recalcular-pedido/{id}', [PedidosController::class, 'recalcularPedidoTest']);
+    Route::get('actualizar-pedido-y-recalcular/{id}', [PedidosController::class, 'actualizarPedidoYRecalcular']);
     Route::get('actualizar-datos-pedidos', [PedidosController::class, 'actualizarOrdenCompraYNotaCliente']);
-
-    Route::get('/listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
+    Route::get('listar-pedidos-reservas', [PedidosController::class, 'listarPedidosReservas']);
     Route::get('cancelar-orden-despacho/{id}', [DespachosController::class, 'cancelarOrdenDespacho']);
-    Route::get('/validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
-
+    Route::get('validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
     Route::get('imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
-
     Route::get('crear-traslado/{pedido}', [PedidosController::class, 'crearTrasladoPedidos']);
+    Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
+    Route::get('corregirenviando', [PedidosController::class, 'corregirenviando']);
+    Route::get('recalcularpedido/{id}', [PedidosController::class, 'recalcularpedido']);
 });
 
 
 Route::prefix('cotizaciones')->group(function () {
     Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
     Route::get('llenar-cotizacion', [CotizacionesController::class, 'llenarcotizacion']);
-
     Route::get('verificar-stock-actual-reserva', [ReservasController::class, 'verificarStockCotizacionActual']);
+
+    Route::get('obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
+    Route::get('obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
+    Route::get('listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
+    Route::get('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
 });
 
 Route::prefix('bodegas')->group(function () {
-    Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
-
-    // Route::get('/guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
-    Route::get('/guiasderemision/checkguiasremisiones', [GuiasderemisionController::class, 'checkguiaremision']);
-    Route::get('/guiasderemision/verificar-ajuste-guia-despacho/{id}', [GuiasderemisionController::class, 'verificarYAsignarAjusteGuiaDespacho']);
-
+    Route::get('transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
+    Route::get('guiasderemision/checkguiasremisiones', [GuiasderemisionController::class, 'checkguiaremision']);
+    Route::get('guiasderemision/verificar-ajuste-guia-despacho/{id}', [GuiasderemisionController::class, 'verificarYAsignarAjusteGuiaDespacho']);
     Route::get('guiasderemision/crear-ajuste-guia-remision/{id}', [GuiasderemisionController::class, 'creacionAjusteGpGuiaRemision']);
-
     Route::get('guiasderemision/reserva-stock-pedidos', [GuiasderemisionController::class, 'reservarStock']);
     Route::get('guiasderemision/obtener-detalle-guia-despacho/{id}', [GuiasderemisionController::class, 'obtenerInfoGUiaRemisionAjustePedido']);
     Route::get('guiasderemision/despahco-pedido-por-guia/{id}', [GuiasderemisionController::class, 'procesarPedidoDespachoPorGuia']);
-
     Route::get('guiasderemision/lista-guia-despachos', [GuiasderemisionController::class, 'listaGuiaDespachoConAjuste']);
-
     Route::get('guiasderemision/lista-guia-reposicion-transferencia', [GuiasderemisionController::class, 'listaGuiaTransferenciaReposicionConAjuste']);
-
 });
 
 
 
-/** para pruebas  */
-
-// Route::get('/ping', function () {
-//     broadcast(new PingArrived('pong ' . now()->toDateTimeString()));
-//     return 'Ping enviado';
-// });
-
-// Route::get('/debug/demo-broadcast', function () {
-//     event(new DemoMessage(request('msg', 'hola')));
-//     return 'ok';
-// });
-
 
 Route::prefix('consultas')->group(function () {
-    Route::get('/stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+    Route::get('stock-transito', [ConsultasController::class, 'consultStockInTransit']);
     Route::get('buscararticulo-web', [ConsultasController::class, 'buscarArticuloWeb']);
-});
-
-Route::prefix('consultas')->group(function () {
+    Route::get('reservados', [ConsultasController::class, 'reservados']);
+    Route::get('reservasweb/{item?}', [ConsultasController::class, 'reservasweb']);
+    Route::get('items_transferencia_venta', [ConsultasController::class, 'items_transferencia_venta']);
+    Route::get('items_transferencia_reposicion', [ConsultasController::class, 'items_transferencia_reposicion']);
+    Route::get('transferencias_pendientes_ingreso', [ConsultasController::class, 'transferencias_pendientes_ingreso']);
+    Route::get('reposiciones_pendientes', [ConsultasController::class, 'reposiciones_pendientes']);
+    Route::get('pendientes_despachar', [ConsultasController::class, 'pendientes_despachar']);
+    Route::get('transferenciaspendientes', [ConsultasController::class, 'transferenciaspendientes']);
+    Route::get('buscarcode/{artCode}', [PedidosController::class, 'buscarIteml']);
     Route::get('stock-transito', [ConsultasController::class, 'consultStockInTransit']);
     Route::get('territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
     Route::get('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
@@ -210,10 +157,11 @@ Route::prefix('aprobaciones-web')->group(function () {
     Route::get('verificar-stock-reserva', [ReservasController::class, 'consultarReservaAprobarRechazar']);
 });
 
-Route::prefix('devoluciones-web')->group(function () {
+Route::prefix('devoluciones')->group(function () {
     Route::get('lista-devoluciones-por-recibir', [DevolucionesController::class, 'listaDevolucionesPorRecibir']);
     Route::get('detalle-devolucion-por-recibir', [DevolucionesController::class, 'detalleDevolucionPorRecibir']);
-    // Route::get('recibir-items-devolucion', [DevolucionesController::class, 'recibirItemsDevolucion']);
+    Route::get('generar-nota-credito-errores/{id}', [DevolucionesController::class, 'generarNotaCreditoDevolucionesFallidas']);
+    Route::get('generar-ajuste-devolucion/{id}', [DevolucionesController::class, 'generarAjusteDevolucionesFallidas']);
 });
 
 
