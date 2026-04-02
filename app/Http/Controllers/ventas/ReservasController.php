@@ -157,9 +157,9 @@ class ReservasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
-            $data       = $request->all();
+            $data       =$request->input('data', null);
             $reserva    = DB::transaction(function () use ($data, $gpUser) {
-                return $this->reserveService->approvalApplicationReservedQuotation($data['data'], $gpUser);
+                return $this->reserveService->approvalApplicationReservedQuotation($data, $gpUser);
             });
             $msg = "Reserva autorizada correctamente";
             return $this->successResponse($msg, $reserva, 200);

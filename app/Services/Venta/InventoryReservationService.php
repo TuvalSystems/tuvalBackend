@@ -314,7 +314,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function approvalApplicationReservedQuotation(array $data, $gpUser)
+    public function approvalApplicationReservedQuotation(array $data, GpUsuario $gpUser)
     {
         $reserva = GpReserva::find($data['id']);
 
