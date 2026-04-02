@@ -19,11 +19,11 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
 
     public function checkValidateApprovalReservation(int $id): string|null
     {
-        $reserva = GpReserva::find($id);
-        $detalleQuote = $this->getDetailReserveWithStock($reserva->cotizacion_id);
-        $flatDetails = $this->stockFormatterForUpdateApproval($detalleQuote);
-        $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
-        $stocksResult = $this->getStockWarehouseAsyncAndFormantter($parmas);
+        $reserva        = GpReserva::find($id);
+        $detalleQuote   = $this->getDetailReserveWithStock($reserva->cotizacion_id);
+        $flatDetails    = $this->stockFormatterForUpdateApproval($detalleQuote);
+        $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
+        $stocksResult   = $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
         return $this->getAlertWithoutStockArticles($detalleQuote, $newFormatStock, null, null);
     }
