@@ -33,6 +33,7 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Jobs\Venta\Reservas\NotifyReservationRequesterOrderCreatedJob;
+use App\Jobs\Venta\Reservas\SendDennyReservationForStockNotification;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpPedido;
 use App\Models\Reservas\GpGuiaRemisionReserva;
@@ -56,7 +57,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         protected readonly QuotationBuilderInterface $quotationBuilder,
         protected readonly OrderBuilderInterface $orderBuilder,
         protected readonly InvoiceServiceInterface $invoiceService,
-        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly StockWarehouseServiceInterface $stockService,
         protected readonly ReservedBuilderInterface $reservaBuilder,
         protected readonly InventoryReservationRepositoryInterface $reservaRepository,
         protected readonly ApiDeliverNoteService $apiDelivery,
@@ -66,7 +67,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function hasAnyReserveState(int $quotationId)
     {
-        return GpReserva::where('cotizacion_id', $quotationId)->where('estado', '!=', '')->exists();
+        return GpReserva::where('cotizacion_id', $quotationId)->exists();
     }
 
 
@@ -160,7 +161,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function getWarehouseUsageSubqueryPending(): string
+    protected function getWarehouseUsageSubqueryPending(): string
     {
         return "(
               SELECT GROUP_CONCAT(DISTINCT s.STO_ART_BODEGA ORDER BY s.STO_ART_BODEGA SEPARATOR ',')
@@ -284,7 +285,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
-    public function getQuotationsCreatedByReservedQuotationOrigin(int $id)
+    protected function getQuotationsCreatedByReservedQuotationOrigin(int $id)
     {
         return GpCotizacionReservaLog::query()->from('gp_cotizacion_reserva_logs as gprs')
             ->select('gpd.cotizacion')
@@ -316,31 +317,55 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     public function approvalApplicationReservedQuotation(array $data, GpUsuario $gpUser)
     {
-        $reserva = GpReserva::find($data['id']);
+        $reservaId      = data_get($data, 'id');
+        $reserva        = GpReserva::find($reservaId);
+        $quoteId        = $reserva->cotizacion_id;
+        $detalles       = $this->getDetailReserveWithStock($quoteId);
+        $flatDetails    = $this->stockFormatterForUpdateApproval($detalles);
+        $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
+        $stocksResult   = $this->getStockWarehouseAsyncAndFormantter($parmas);
+        $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+        $alertMessage   = $this->getAlertWithoutStockArticles($detalles, $newFormatStock);
+        $hasStocks      = is_null($alertMessage);
+        $newStatus      = $hasStocks ? 'aprobado' : 'rechazada';
+        $statusAuth     = $hasStocks ? 1 : 0;
 
-        // UPDATE idempotente (solo si aún no fue autorizada)
+        $observacionFinal = Arr::get($data, 'obs_autorizacion_reserva');
+        if (!$hasStocks) {
+            $observacionFinal = "RECHAZO AUTOMÁTICO (Stock Insuficiente): " . strip_tags($alertMessage);
+        }
+
         $affected = GpReserva::query()
             ->whereKey($reserva->id)
             ->where('estado_autorizacion_reserva', '=', 0)
             ->update([
-                'estado' => 'aprobado',
-                'estado_autorizacion_reserva'       => 1,
+                'estado'                            => $newStatus,
+                'estado_autorizacion_reserva'       => $statusAuth,
                 'fe_autorizacion_reserva'           => Arr::get($data, 'fe_autorizacion_reserva'),
-                'obs_autorizacion_reserva'          => Arr::get($data, 'obs_autorizacion_reserva'),
+                'obs_autorizacion_reserva'          => $observacionFinal,
                 'user_autorizacion_reserva_id'      => $gpUser->id,
                 'fe_ingreso_autorizacion_reserva'   => now()->format('Y-m-d H:i:s'),
             ]);
 
         if ($affected > 0) {
-            if ($reserva->tipo_traslado_reserva_id == 1) {
-                $this->syncSelectedToAuthorizedForQuotation($reserva->cotizacion_id);
-            } else {
-                $this->syncSelectedToAuthorizedAndTransferredForQuotation($reserva->cotizacion_id);
+            $reserva->refresh();
+            if ($reserva->estado === 'aprobado') {
+                if ($reserva->tipo_traslado_reserva_id == 1) {
+                    $this->syncSelectedToAuthorizedForQuotation($reserva->cotizacion_id);
+                } else {
+                    $this->syncSelectedToAuthorizedAndTransferredForQuotation($reserva->cotizacion_id);
+                }
+                $this->createReservationTransferIfValid($reserva);
+            } elseif ($reserva->estado === 'rechazada') {
+                $this->cleanStockQuotationForDeny($reserva->cotizacion_id);
             }
         }
-        $this->createReservationTransferIfValid($reserva);
         DB::afterCommit(callback: function () use ($reserva, $gpUser) {
-            SendApprovalReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
+            if ($reserva->estado === 'aprobado') {
+                SendApprovalReservationNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
+            } elseif ($reserva->estado === 'rechazada') {
+                SendDennyReservationForStockNotification::dispatch($reserva->cotizacion_id, $gpUser->id);
+            }
         });
 
         return [
@@ -348,12 +373,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'cotizacion_id'             => $reserva->cotizacion_id,
             'updated'                   => (bool) $affected,
             'tipo_traslado_reserva_id'  => $reserva->tipo_traslado_reserva_id,
+            'estado_final'              => $reserva->estado,
+            'alerta'                    => $alertMessage
         ];
     }
 
     //sin traslado
 
-    public function syncSelectedToAuthorizedForQuotation(int $quotationId)
+    protected function syncSelectedToAuthorizedForQuotation(int $quotationId)
     {
         $sameWhaAffected = GpCotizacionDetalleStock::query()
             ->where('cotizacion_id', $quotationId)
@@ -367,7 +394,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
     //con traslado
-    public function syncSelectedToAuthorizedAndTransferredForQuotation(int $quotationId)
+    protected function syncSelectedToAuthorizedAndTransferredForQuotation(int $quotationId)
     {
         $warehouse = GpCotizacion::whereKey($quotationId)
             ->lockForUpdate()
@@ -397,7 +424,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function createReservationTransferIfValid(GpReserva $reserved): void
+    protected function createReservationTransferIfValid(GpReserva $reserved): void
     {
         if ((int) $reserved->tipo_traslado_reserva_id !== 2) {
             return;
@@ -426,7 +453,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function createTransferReservation($details)
+    protected function createTransferReservation($details)
     {
         foreach ($details as $det) {
             $tr = $this->reservaBuilder->formPayloadTransferReserved($det);
@@ -434,20 +461,138 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         }
     }
 
-
-
-
-
-    public function cleanStockQuotationForDeny($quotationId)
+    protected function getDetailReserveWithStock($quoteId)
     {
-        return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
-            ->where('seleccionado', '>', 0)
-            ->update(['seleccionado' => 0]);
+        return GpCotizacionDetalle::with([
+            'stock' => function ($q) {
+                $q->where('seleccionado', '>', 0);
+            }
+        ])
+            ->where('cotizacion_id', $quoteId)
+            ->whereNotIn('ART_TIPO_COMPRA', ['L', 'SERV'])->get();
+    }
+
+
+    protected function stockFormatterForUpdateApproval($detalles)
+    {
+        return $detalles->pluck('stock')
+            ->flatten()
+            ->map(function ($stock) use ($detalles) {
+                $detalle = $detalles->firstWhere('id', $stock->detalle_id);
+                return [
+                    'stock_id'                  => $stock->id,
+                    'cotizacion_id'             => $stock->cotizacion_id,
+                    'detalle_id'                => $stock->detalle_id,
+                    'STO_ART_ARTICULO'          => $detalle->ART_CODIGO,
+                    'STO_ART_BODEGA'            => $stock->STO_ART_BODEGA,
+                    'STO_ART_STOCK_DISPONIBLE'  => $stock->STO_ART_STOCK_DISPONIBLE,
+                    'seleccionado'              => $stock->seleccionado
+                ];
+            })->toArray();
+    }
+
+
+    protected function stockFormatterParametersUpdateApproval($newDetails)
+    {
+        return collect($newDetails)
+            ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+
+    protected function getStockWarehouseAsyncAndFormantter($parmas)
+    {
+        $stocksResult = $this->stockService->fetchStockBatchWarehouses($parmas);
+        Log::info("Resultado de stock para aprobacion - reservas: ", [
+            'stocksResult' => $stocksResult
+        ]);
+        return $this->stockService->transformStockResponse($stocksResult);
+    }
+
+
+    protected function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
+    {
+        $stockMap = collect($stocksResult)->keyBy(function ($stock) {
+            $art    = data_get($stock, 'STO_ART_ARTICULO', '');
+            $bodega = data_get($stock, 'STO_ART_BODEGA', '');
+            return $art . '|' . $bodega;
+        });
+        return collect($flatDetails)->map(function ($detail) use ($stockMap) {
+            $key = $detail['STO_ART_ARTICULO'] . '|' . $detail['STO_ART_BODEGA'];
+            $stockDisponible = $stockMap->get($key)['STO_ART_STOCK_DISPONIBLE'] ?? 0;
+            return [
+                'stock_id'                  => data_get($detail, 'stock_id', null),
+                'cotizacion_id'             => data_get($detail, 'cotizacion_id', null),
+                'detalle_id'                => data_get($detail, 'detalle_id', null),
+                'STO_ART_ARTICULO'          => data_get($detail, 'STO_ART_ARTICULO', null),
+                'STO_ART_BODEGA'            => data_get($detail, 'STO_ART_BODEGA', null),
+                'STO_ART_STOCK_DISPONIBLE'  => $stockDisponible,
+                'seleccionado'              => data_get($detail, 'seleccionado', 0)
+            ];
+        });
+    }
+
+
+    protected function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
+    {
+        $allFormattedStock = collect();
+        foreach ($detalles as $detail) {
+            $stockList = $this->stockService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, true, $orderId, $quoteReservedOriginId);
+            if (!empty($stockList)) {
+                $allFormattedStock = $allFormattedStock->merge($stockList);
+            }
+        }
+
+        if ($allFormattedStock->isEmpty()) {
+            return null;
+        }
+
+        $alert = "";
+        $groupStock = $allFormattedStock->unique('stock_id')->groupBy(fn($item) => $item['STO_ART_ARTICULO'] . '|' . $item['STO_ART_BODEGA']);
+        foreach ($groupStock as $group) {
+            $firstItemStock     = $group->first();
+            $art                = data_get($firstItemStock, 'STO_ART_ARTICULO', '');
+            $bodega             = data_get($firstItemStock, 'STO_ART_BODEGA', '');
+            $disponibleReal     = (float) data_get($firstItemStock, 'STO_ART_STOCK_DISPONIBLE', 0);
+
+
+            $totalRequerido = $group->sum('seleccionado');
+
+            if ($disponibleReal < $totalRequerido) {
+                $alert .= "El artículo <b>{$art}</b> en bodega <b>{$bodega}</b> tiene stock insuficiente.<br>" .
+                    "Stock Disponible: <b>{$disponibleReal}</b> <br>" .
+                    "Cantidad Requerida (Suma filas): <b>{$totalRequerido}</b><br><hr>";
+            }
+        }
+        return empty($alert) ? null : $alert;
     }
 
 
 
 
+
+
+    /** funcion para la limpieza de stock */
+
+    protected function cleanStockQuotationForDeny($quotationId)
+    {
+        return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
+            ->where('seleccionado', '>', 0)
+            ->update([
+                'seleccionado'          => 0,
+                'updated_at'            => now()
+            ]);
+    }
+
+
+
+
+    /**
+     *  lista de reservas aprobadas con detalles y filtros para el módulo de aprobaciones
+     *
+     */
     public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null, $clienteRuc, GpUsuario $gpUser)
     {
         $query = GpReserva::select([
@@ -518,7 +663,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function getWarehouseUsageSubquery()
+    protected function getWarehouseUsageSubquery()
     {
         return "(
               SELECT GROUP_CONCAT(DISTINCT s.STO_ART_BODEGA ORDER BY s.STO_ART_BODEGA SEPARATOR ',')
@@ -898,9 +1043,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->get();
         foreach ($stocks as $stock) {
             $stock->update([
-                'cantidad_autorizada_reserva' => $stock->seleccionado,
-                'cantidad_reservada' => $stock->seleccionado,
-                'cantidad_facturada' => $stock->seleccionado
+                'cantidad_autorizada_reserva'   => $stock->seleccionado,
+                'cantidad_reservada'            => $stock->seleccionado,
+                'cantidad_facturada'            => $stock->seleccionado
             ]);
         }
     }
@@ -959,16 +1104,16 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $usedItemLExcluded = [];
         foreach ($detailOrder as $i => $item) {
             $isTypeL    = $item['ART_TIPO_COMPRA'] === 'L';
-            $hasStock   = $this->stockWarehouseService->checkValidateDisponibleItemL($item['ART_CODIGO']);
+            $hasStock   = $this->stockService->checkValidateDisponibleItemL($item['ART_CODIGO']);
             if ($isTypeL && !$hasStock) {
-                $replacementCodeL = $this->stockWarehouseService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
+                $replacementCodeL = $this->stockService->getFirstAvailablePurchaseArticle($item, $usedItemLExcluded);
                 if (!$replacementCodeL) {
                     throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$item['ART_CODIGO']}");
                 }
                 $item['ART_CODIGO']     = $replacementCodeL;
                 $usedItemLExcluded[]    = $replacementCodeL;
             }
-            $this->stockWarehouseService->markArticleUnavailable($item['ART_CODIGO']);
+            $this->stockService->markArticleUnavailable($item['ART_CODIGO']);
             $newOrderDetail = $this->orderBuilder->formPayloadOrderDetail($order->id, $item, $i);
             $newOrderDetail->save();
 
@@ -1216,7 +1361,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function fetchItemCompartmentByWarehouse($artCode, $warehouse)
     {
         $params = ['articulo' => $artCode, 'bodega' => $warehouse, 'compartimento' => ''];
-        return $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+        return $this->stockService->fetchStockWarehouseCompartiment($params);
     }
 
 
@@ -1491,8 +1636,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ])->values()->all();
 
 
-        $stockResults           = $this->stockWarehouseService->fetchStock($stockRequests);
-        $currentStocksLookup    = $this->stockWarehouseService->transformStockReservationResponse($stockResults);
+        $stockResults           = $this->stockService->fetchStock($stockRequests);
+        $currentStocksLookup    = $this->stockService->transformStockReservationResponse($stockResults);
 
 
         $articulosOverStock = [];
@@ -1505,7 +1650,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $decimals       = data_get($demanda, 'ART_DECIMAL_CANTIDAD', 0);
 
             $currentStockData = data_get($currentStocksLookup, $key);
-            $this->stockWarehouseService->applyReservedQtyToAvailableStock($currentStockData, [
+            $this->stockService->applyReservedQtyToAvailableStock($currentStockData, [
                 'ART_CODIGO'            => $articulo,
                 'ART_DECIMAL_CANTIDAD'  => $decimals,
             ], null, null);

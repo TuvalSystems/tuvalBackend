@@ -161,6 +161,10 @@ class ReservasController extends Controller
             $reserva    = DB::transaction(function () use ($data, $gpUser) {
                 return $this->reserveService->approvalApplicationReservedQuotation($data, $gpUser);
             });
+            $alerta = data_get($reserva, 'alerta', null);
+             if ($alerta) {
+                return $this->buildExistResponse(false, $alerta, 200);
+            }
             $msg = "Reserva autorizada correctamente";
             return $this->successResponse($msg, $reserva, 200);
         }, 'reservas_log', 'aprobarSolicitudReservaCotizacion');

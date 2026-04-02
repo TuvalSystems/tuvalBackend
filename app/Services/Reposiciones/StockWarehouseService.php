@@ -542,7 +542,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
      *  actualizar el stock en pedido detalle stock
      */
 
-    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $orderId = null, $quoteReservedOriginId = null)
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo,$forUpdate = false, $orderId = null, $quoteReservedOriginId = null)
     {
         $bodegas = $stockFormatted
             ->pluck('STO_ART_BODEGA')
@@ -550,7 +550,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->values()
             ->map(fn($i) => (string) $i)
             ->toArray();
-        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId, false, $quoteReservedOriginId);
+        $reservas = $this->getReservedStockByWarehouses($articulo['ART_CODIGO'], $bodegas, $orderId, $forUpdate, $quoteReservedOriginId);
         $numDecimales = (int) data_get($articulo, 'ART_DECIMAL_CANTIDAD', 0);
 
         return collect($stockFormatted)

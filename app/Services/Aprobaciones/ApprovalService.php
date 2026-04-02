@@ -604,7 +604,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId, $quoteReservedOriginId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail,false, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
@@ -876,19 +876,21 @@ class ApprovalService implements ApprovalServiceInterface
     public function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
     {
         $stockMap = collect($stocksResult)->keyBy(function ($stock) {
-            return $stock['STO_ART_ARTICULO'] . '|' . $stock['STO_ART_BODEGA'];
+            $art    = data_get($stock, 'STO_ART_ARTICULO', '');
+            $bodega = data_get($stock, 'STO_ART_BODEGA', '');
+            return $art . '|' . $bodega;
         });
         return collect($flatDetails)->map(function ($detail) use ($stockMap) {
             $key = $detail['STO_ART_ARTICULO'] . '|' . $detail['STO_ART_BODEGA'];
             $stockDisponible = $stockMap->get($key)['STO_ART_STOCK_DISPONIBLE'] ?? 0;
             return [
-                'stock_id' => $detail['stock_id'],
-                'pedido_id' => $detail['pedido_id'],
-                'detalle_id' => $detail['detalle_id'],
-                'STO_ART_ARTICULO' => $detail['STO_ART_ARTICULO'],
-                'STO_ART_BODEGA' => $detail['STO_ART_BODEGA'],
-                'STO_ART_STOCK_DISPONIBLE' => $stockDisponible,
-                'seleccionado' => $detail['seleccionado']
+                'stock_id'                  => data_get($detail, 'stock_id', null),
+                'cotizacion_id'             => data_get($detail, 'cotizacion_id', null),
+                'detalle_id'                => data_get($detail, 'detalle_id', null),
+                'STO_ART_ARTICULO'          => data_get($detail, 'STO_ART_ARTICULO', null),
+                'STO_ART_BODEGA'            => data_get($detail, 'STO_ART_BODEGA', null),
+                'STO_ART_STOCK_DISPONIBLE'  => $stockDisponible,
+                'seleccionado'              => data_get($detail, 'seleccionado', 0)
             ];
         });
     }
@@ -900,7 +902,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId, $quoteReservedOriginId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail,true, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }

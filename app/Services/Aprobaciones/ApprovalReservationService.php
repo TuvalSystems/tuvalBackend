@@ -28,7 +28,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
         return $this->getAlertWithoutStockArticles($detalleQuote, $newFormatStock, null, null);
     }
 
-    public function getDetailReserveWithStock($quoteId)
+    protected function getDetailReserveWithStock($quoteId)
     {
         return GpCotizacionDetalle::with([
             'stock' => function ($q) {
@@ -36,11 +36,11 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
             }
         ])
             ->where('cotizacion_id', $quoteId)
-            ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
+            ->whereNotIn('ART_TIPO_COMPRA', ['L', 'SERV'])->get();
     }
 
 
-    public function stockFormatterForUpdateApproval($detalles)
+    protected function stockFormatterForUpdateApproval($detalles)
     {
         return $detalles->pluck('stock')
             ->flatten()
@@ -59,7 +59,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    public function stockFormatterParametersUpdateApproval($newDetails)
+    protected function stockFormatterParametersUpdateApproval($newDetails)
     {
         return collect($newDetails)
             ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
@@ -69,7 +69,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    public function getStockWarehouseAsyncAndFormantter($parmas)
+    protected function getStockWarehouseAsyncAndFormantter($parmas)
     {
         $stocksResult = $this->stockService->fetchStockBatchWarehouses($parmas);
         Log::info("Resultado de stock para aprobacion - reservas: ", [
@@ -79,32 +79,34 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    public function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
+    protected function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
     {
         $stockMap = collect($stocksResult)->keyBy(function ($stock) {
-            return $stock['STO_ART_ARTICULO'] . '|' . $stock['STO_ART_BODEGA'];
+            $art    = data_get($stock, 'STO_ART_ARTICULO', '');
+            $bodega = data_get($stock, 'STO_ART_BODEGA', '');
+            return $art . '|' . $bodega;
         });
         return collect($flatDetails)->map(function ($detail) use ($stockMap) {
             $key = $detail['STO_ART_ARTICULO'] . '|' . $detail['STO_ART_BODEGA'];
             $stockDisponible = $stockMap->get($key)['STO_ART_STOCK_DISPONIBLE'] ?? 0;
             return [
-                'stock_id' => $detail['stock_id'],
-                'cotizacion_id' => $detail['cotizacion_id'],
-                'detalle_id' => $detail['detalle_id'],
-                'STO_ART_ARTICULO' => $detail['STO_ART_ARTICULO'],
-                'STO_ART_BODEGA' => $detail['STO_ART_BODEGA'],
-                'STO_ART_STOCK_DISPONIBLE' => $stockDisponible,
-                'seleccionado' => $detail['seleccionado']
+                'stock_id'                  => data_get($detail, 'stock_id', null),
+                'cotizacion_id'             => data_get($detail, 'cotizacion_id', null),
+                'detalle_id'                => data_get($detail, 'detalle_id', null),
+                'STO_ART_ARTICULO'          => data_get($detail, 'STO_ART_ARTICULO', null),
+                'STO_ART_BODEGA'            => data_get($detail, 'STO_ART_BODEGA', null),
+                'STO_ART_STOCK_DISPONIBLE'  => $stockDisponible,
+                'seleccionado'              => data_get($detail, 'seleccionado', 0)
             ];
         });
     }
 
 
-    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
+    protected function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, $orderId, $quoteReservedOriginId);
+            $stockList = $this->stockService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, false, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
