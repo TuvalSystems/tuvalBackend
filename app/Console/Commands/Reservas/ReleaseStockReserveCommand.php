@@ -37,7 +37,15 @@ class ReleaseStockReserveCommand extends Command
                     $query->where('picking', 1);
                 });
             }
-        ])->where('tipo_reserva_id', 1)->whereIn('estado', ['aprobado', 'traslado'])->whereDate('fe_autorizacion_reserva', '<=', $ayer);
+        ])->where('tipo_reserva_id', 1)
+            ->whereIn('estado', ['aprobado', 'traslado', 'cancelado'])
+            ->whereDate('fe_autorizacion_reserva', '<=', $ayer)
+            ->whereHas('cotizacion.detallecotizacionstock', function ($q) {
+                $q->where('seleccionado', '>', 0);
+                $q->whereDoesntHave('trasladoreserva', function ($query) {
+                    $query->where('picking', 1);
+                });
+            });
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
             foreach ($lote as  $res) {
@@ -70,18 +78,18 @@ class ReleaseStockReserveCommand extends Command
             })
             ->get()
             ->each(function ($stock) {
-
                 $stock->trasladoreserva()
                     ->where('picking', '!=', 1)
                     ->update(['cantidad' => 0]);
-
-                $stock->update([
-                    'cantidad_cancelada'    => $stock->cantidad_cancelada + $stock->seleccionado,
-                    'seleccionado'          => 0,
-                    'cantidad_cotizada'     => 0,
-                    'cantidad_reservada'    => 0,
-                    'cantidad_traslado'     => 0,
-                ]);
+                if ($stock->seleccionado > 0) {
+                    $stock->update([
+                        'cantidad_cancelada'    =>  max($stock->cantidad_autorizada_reserva,$stock->cantidad_cancelada + $stock->seleccionado, 0),
+                        'seleccionado'          => 0,
+                        'cantidad_cotizada'     => 0,
+                        'cantidad_reservada'    => 0,
+                        'cantidad_traslado'     => 0,
+                    ]);
+                }
             });
     }
 
