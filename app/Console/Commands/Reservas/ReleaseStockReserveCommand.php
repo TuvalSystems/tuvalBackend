@@ -83,7 +83,7 @@ class ReleaseStockReserveCommand extends Command
                     ->update(['cantidad' => 0]);
                 if ($stock->seleccionado > 0) {
                     $stock->update([
-                        'cantidad_cancelada'    =>  max($stock->cantidad_autorizada_reserva,$stock->cantidad_cancelada + $stock->seleccionado, 0),
+                        'cantidad_cancelada'    =>  max($stock->cantidad_autorizada_reserva, $stock->cantidad_cancelada + $stock->seleccionado, 0),
                         'seleccionado'          => 0,
                         'cantidad_cotizada'     => 0,
                         'cantidad_reservada'    => 0,
@@ -95,15 +95,19 @@ class ReleaseStockReserveCommand extends Command
 
     public function storeQuotationReservedStockLogs($stocks)
     {
+        $data = [];
         foreach ($stocks as $st) {
-            DB::table('gp_cotizacion_detalle_stocks_logs')->insert([
-                'stock_id'      => $st->id,
-                'user_id'       => 6,
-                'tipo'          => 'liberado_sistema',
-                'cantidad'      => (float) $st->seleccionado,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
+            $data[] = [
+                'stock_id'   => $st->id,
+                'user_id'    => 6,
+                'tipo'       => 'liberado_sistema',
+                'cantidad'   => (float) $st->seleccionado,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        if (!empty($data)) {
+            DB::table('gp_cotizacion_detalle_stocks_logs')->insert($data);
         }
     }
 }
