@@ -58,10 +58,10 @@ class ReleaseStockReserveCommand extends Command
                 $res->update(['estado' => 'cancelado']);
                 $title      = "Reserva liberada";
                 $msg        = "Se liberó el stock reservado para la cotización {$quote->cotizacion}.";
-                $userSolicita->notify((new UserNotification($title, $msg)));
                 $total++;
-                Log::channel('reservas_log')->info("reservas:release-stock => $quote->cotizacion");
             }
+            $userSolicita->notify((new UserNotification($title, $msg)));
+            Log::channel('reservas_log')->info("reservas:release-stock => $quote->cotizacion");
         });
 
         $this->info("Reservas liberadas: {$total}");
