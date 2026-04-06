@@ -48,20 +48,25 @@ class ReleaseStockReserveCommand extends Command
             });
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
-            foreach ($lote as  $res) {
+            foreach ($lote as $res) {
 
-                $quote = $res->cotizacion;
-                $userSolicita = $res->usuarioingreso;
-
-                $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
-                $this->releaseStock($quote);
-                $res->update(['estado' => 'cancelado']);
-                $title      = "Reserva liberada";
-                $msg        = "Se liberó el stock reservado para la cotización {$quote->cotizacion}.";
-                $total++;
+                try {
+                    DB::transaction(function () use ($res, &$total) {
+                        $quote = $res->cotizacion;
+                        $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
+                        $this->releaseStock($quote);
+                        $res->update(['estado' => 'cancelado']);
+                        $total++;
+                    });
+                    $title = "Reserva liberada";
+                    $msg = "Se liberó el stock reservado para la cotización {$res->cotizacion->cotizacion}.";
+                    $res->usuarioingreso->notify(new UserNotification($title, $msg));
+                    Log::channel('reservas_log')->info("reservas:release-stock => {$res->cotizacion->cotizacion} EXITOSO");
+                } catch (\Exception $e) {
+                    Log::channel('reservas_log')->error("FALLO en reserva ID {$res->id}: " . $e->getMessage());
+                    $this->error("Error procesando reserva {$res->id}. Revisar logs.");
+                }
             }
-            $userSolicita->notify((new UserNotification($title, $msg)));
-            Log::channel('reservas_log')->info("reservas:release-stock => $quote->cotizacion");
         });
 
         $this->info("Reservas liberadas: {$total}");
