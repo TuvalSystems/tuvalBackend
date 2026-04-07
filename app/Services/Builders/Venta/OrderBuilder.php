@@ -68,6 +68,7 @@ class OrderBuilder implements OrderBuilderInterface
             'fecha_entrega'                 => data_get($infoCreator, 'fecha_entrega'),
             'origen'                        => data_get($infoCreator, 'origen'),
             'fe_facturacion_reserva'        => data_get($infoCreator, 'fecha_reserva'),
+            'modificador_global'            => data_get($data, 'modificador_global', 0),
         ]);
 
         return $newOrder;
@@ -96,7 +97,7 @@ class OrderBuilder implements OrderBuilderInterface
             'ART_VALOR_ORIGINAL'        => data_get($item, 'ART_VALOR_ORIGINAL', 0),
             'ART_DESCUENTO'             => data_get($item, 'ART_DESCUENTO', 0),
             'ART_IVA'                   => data_get($item, 'ART_IVA', 0),
-            'ART_CANTIDAD'              => data_get($item, 'ART_CANTIDAD',0),
+            'ART_CANTIDAD'              => data_get($item, 'ART_CANTIDAD', 0),
             'ART_STOCK'                 => data_get($item, 'ART_STOCK', 0),
             'ART_IMP_VTA'               => data_get($item, 'ART_IMP_VTA'),
             'ART_COSTO_PROMEDIO'        => data_get($item, 'ART_COSTO_PROMEDIO'),
