@@ -63,6 +63,7 @@ class OrderBuilder implements OrderBuilderInterface
             'motivo_crediticio'             => data_get($infoCreator, 'motivoCrediticio'),
             'nota_interna'                  => data_get($data, 'nota_interna'),
             'nota_cliente'                  => data_get($data, 'nota_cliente'),
+            'nota_operaciones'              => data_get($data, 'nota_operaciones'),
             'orden_de_compra'               => data_get($data, 'orden_de_compra'),
             'fecha_entrega'                 => data_get($infoCreator, 'fecha_entrega'),
             'origen'                        => data_get($infoCreator, 'origen'),

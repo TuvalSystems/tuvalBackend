@@ -175,7 +175,6 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         Barryvdh\DomPDF\ServiceProvider::class,
-        // Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
         Maatwebsite\Excel\ExcelServiceProvider::class,
         Milon\Barcode\BarcodeServiceProvider::class,
 
@@ -189,6 +188,7 @@ return [
         App\Providers\Service\VentaServiceProvider::class,
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\Service\UserServiceProvider::class,
+        App\Providers\Service\CollectionServiceProvider::class,
 
 
 

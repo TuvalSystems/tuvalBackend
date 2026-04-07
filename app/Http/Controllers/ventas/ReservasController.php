@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ReservasController extends Controller
 {
