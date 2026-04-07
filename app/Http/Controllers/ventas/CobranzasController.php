@@ -17,6 +17,7 @@ use App\Models\GpCronLog;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaCaja;
 use App\Models\GpUsuario;
+use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Cobranzas\GpCobro;
@@ -37,14 +38,20 @@ use App\Exports\EstadodecuentaExport;
 use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Maatwebsite\Excel\Facades\Excel;
 
 
 
 class CobranzasController extends Controller
 {
+    use JsonResponseTrait, ExecuteApiTransactions;
+
+    public function __construct(protected readonly CollectionServiceInterface $collectionService) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -2082,5 +2089,20 @@ class CobranzasController extends Controller
         }
 
         return $cobros;
+    }
+
+
+    public function listaPvCajasUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'puntoVenta' => 'required|string'
+            ]);
+            $pv = data_get($validate, 'puntoVenta');
+            // $user = $request->user();
+            $user = GpUsuario::find(179);
+            $response = $this->collectionService->listPointSalesByUSer($pv, $user);
+            return $this->successResponse('Lista Obtenida', $response, 200);
+        }, 'laravel', 'listaPvCajasUsuario');
     }
 }

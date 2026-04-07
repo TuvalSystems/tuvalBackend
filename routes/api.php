@@ -87,73 +87,17 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('/updateperfilsection', [SectionsController::class, 'updateperfilsection']);
     Route::post('/updateusuarioperfil', [SectionsController::class, 'updateusuarioperfil']);
 
-    Route::post('/cotizaciones/selectarticulo', [CotizacionesController::class, 'selectarticulo']);
-    Route::post('/cotizaciones/selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
-    // Route::post('/cotizaciones/llenarcotizacion', [CotizacionesController::class, 'llenarcotizacion']);
-    Route::post('/cotizaciones/llenarcotizacionprospecto', [CotizacionesController::class, 'llenarcotizacionprospecto']);
-    Route::post('/eliminararticulo', [CotizacionesController::class, 'eliminararticulo']);
-    Route::post('/cotizaciones/updatecantidad', [CotizacionesController::class, 'updatecantidad']);
-    Route::post('/cotizaciones/updatepeso', [CotizacionesController::class, 'updatepeso']);
-    Route::post('/cotizaciones/updatemodificador', [CotizacionesController::class, 'updatemodificador']);
-    Route::post('/cotizaciones/updatestock', [CotizacionesController::class, 'updatestock']);
-    Route::post('/updatedescripcion', [CotizacionesController::class, 'updatedescripcion']);
-    Route::post('/cotizaciones/updatevalor', [CotizacionesController::class, 'updatevalor']);
-    Route::post('/cotizaciones/updatedescuento', [CotizacionesController::class, 'updatedescuento']);
-    Route::post('/cotizaciones/actualizar-check-item-alternativo', [CotizacionesController::class, 'updateCheckAlternativo']);
-    Route::post('/cotizaciones/guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
-    Route::post('/cotizaciones/limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
-    Route::post('/cotizaciones/vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
-    Route::post('/pedidos/verpedidos', [PedidosController::class, 'verpedidos']);
-    Route::post('/pedidos/facturarpedido', [PedidosController::class, 'facturarpedido']);
-    Route::post('/aprobaciones/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
+
+
+
+
+
+
     Route::post('/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
-    Route::get('/aprobaciones/verdevolucionesporaprobar', [AprobacionesController::class, 'verdevolucionesporaprobar']);
 
-    Route::post('/pedidos/consultarexistente', [PedidosController::class, 'consultarexistente']);
-    Route::post('/pedidos/facturarexistente', [PedidosController::class, 'facturarexistente']);
 
-    Route::post('/cotizaciones/recuperarcotizacion', [CotizacionesController::class, 'recuperarcotizacion']);
-    Route::post('/cotizaciones/recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
-    // Route::post('/cotizaciones/volverapedircotizacion', [CotizacionesController::class, 'volverapedircotizacion']);
+
     Route::post('/guardarordenpedido', [CotizacionesController::class, 'guardarordenpedido']);
-    Route::post('/cotizaciones/guardardireccion', [CotizacionesController::class, 'guardardireccion']);
-
-    Route::post('/cobranzas/documentosvencidoscliente', [CobranzasController::class, 'documentosvencidoscliente']);
-    Route::post('/cobranzas/estadodecuentacliente', [CobranzasController::class, 'estadodecuentacliente']);
-    Route::post('/cobranzas/estadodecuentaclientetuval', [CobranzasController::class, 'estadodecuentaclientetuval']);
-    Route::post('/cobranzas/registrarcobro', [CobranzasController::class, 'registrarcobro']);
-    Route::post('/cobranzas/cobrosregistrados', [CobranzasController::class, 'cobrosregistrados']);
-    Route::post('/cobranzas/depositosporaprobar', [CobranzasController::class, 'depositosporaprobar']);
-    Route::post('/cobranzas/aprobardeposito', [CobranzasController::class, 'aprobardeposito']);
-    Route::post('/cobranzas/rechazardeposito', [CobranzasController::class, 'rechazardeposito']);
-    Route::get('/cobranzas/getcajausuario/{puntodeventa}/{USERID}', [CobranzasController::class, 'getcajausuario']);
-
-    Route::get('/cotizaciones/imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
-    Route::get('/cotizaciones/imprimircotizacionimagenes/{id}', [CotizacionesController::class, 'imprimircotizacionimagenes']);
-    Route::get('/cotizaciones/imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
-
-    Route::get('/cobranzas/imprimircobro/{id}', [CobranzasController::class, 'imprimircobro']);
-    Route::get('/cobranzas/imprimircierredecaja/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecaja']);
-    Route::get('/cobranzas/imprimircierredecajausuario/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecajausuario']);
-    Route::get('/cobranzas/resumencaja/{fecha}/{caja}/{USERID}', [CobranzasController::class, 'resumencaja']);
-    Route::post('/cobranzas/consultaretencion', [CobranzasController::class, 'consultaretencion']);
-    Route::post('/cobranzas/consultacheque', [CobranzasController::class, 'consultacheque']);
-    Route::post('/cobranzas/consultadeposito', [CobranzasController::class, 'consultadeposito']);
-    Route::post('/pedidos/facturarcotizacion', [PedidosController::class, 'facturarcotizacion']);
-    Route::post('/pedidos/guardarmensaje', [PedidosController::class, 'guardarmensaje']);
-    Route::post('/pedidos/guardarordendecompra', [PedidosController::class, 'guardarordendecompra']);
-    Route::post('/cotizaciones/guardarmensaje', [CotizacionesController::class, 'guardarmensaje']);
-    Route::post('/cotizaciones/guardarordendecompra', [CotizacionesController::class, 'guardarordendecompra']);
-    Route::post('/cotizaciones/checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
-    Route::get('/cobranzas/estadodecuentaclientetuval/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuval']);
-    Route::get('/cobranzas/estadodecuentaclientetuvalexcel/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuvalexcel']);
-    Route::get('/cobranzas/estadocaja/{fechaActual}/{USERID}', [CobranzasController::class, 'estadocaja']);
-    Route::get('/cobranzas/estadocaja/{USERID}', [CobranzasController::class, 'estadocaja']);
-    Route::get('/cobranzas/abrircaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'abrircaja']);
-    Route::get('/cobranzas/cerrarcaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'cerrarcaja']);
-
-    Route::post('/cobranzas/consultacierrecajausuario', [CobranzasController::class, 'consultacierrecajausuario']);
-    Route::post('/cobranzas/consultacobroscliente', [CobranzasController::class, 'consultacobroscliente']);
 
 
     Route::get('/despachos/ordenespendientes/{puntodeventa_id}', [DespachosController::class, 'ordenespendientes']);
@@ -183,15 +127,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
 
-
-    // Route::post('/devoluciones/enviardevolucion', [DevolucionesController::class, 'enviardevolucion']);
-
-    Route::get('/pedidos/sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
-    Route::post('/pedidos/cancelarpedido', [PedidosController::class, 'cancelarpedido']);
-
-
     Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
-    Route::get('/pedidos/imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
 
 
     //new routes
@@ -234,9 +170,25 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         /** proceso de actualizacion de registros de prospecto s */
         Route::post('prospecto/actualizar', [CotizacionesController::class, 'actualizarCotizacionPropectoV2']);
+        Route::post('selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
+        Route::post('llenarcotizacionprospecto', [CotizacionesController::class, 'llenarcotizacionprospecto']);
+        Route::post('guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
+        Route::post('limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
+        Route::post('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
+        Route::post('selectarticulo', [CotizacionesController::class, 'selectarticulo']);
+
+
+        Route::post('recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
+        Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
+
+
+        Route::get('imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
+        Route::get('imprimircotizacionimagenes/{id}', [CotizacionesController::class, 'imprimircotizacionimagenes']);
+        Route::get('imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
+        Route::post('guardarmensaje', [CotizacionesController::class, 'guardarmensaje']);
+        Route::post('guardarordendecompra', [CotizacionesController::class, 'guardarordendecompra']);
+        Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
     });
-
-
 
     Route::group(['prefix' => 'reservas'], function () {
         Route::get('validar-reserva-cotizacion/{id}', [ReservasController::class, 'validarGeneracionReservaCotizacion']);
@@ -289,6 +241,15 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('copiar-cotizacion-o-pedido-v2', [PedidosController::class, 'copiarCotizacionOPedido']);
         Route::post('voler-a-pedir-pedido-v2', [PedidosController::class, 'volverAPedirPedido']);
         Route::post('crear-pedido-v2', [PedidosController::class, 'storeOrderV2']);
+        Route::post('verpedidos', [PedidosController::class, 'verpedidos']);
+        Route::post('facturarpedido', [PedidosController::class, 'facturarpedido']);
+        Route::post('consultarexistente', [PedidosController::class, 'consultarexistente']);
+        Route::post('facturarexistente', [PedidosController::class, 'facturarexistente']);
+        Route::post('guardarmensaje', [PedidosController::class, 'guardarmensaje']);
+        Route::post('guardarordendecompra', [PedidosController::class, 'guardarordendecompra']);
+        Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
+        Route::post('cancelarpedido', [PedidosController::class, 'cancelarpedido']);
+        Route::get('imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
     });
 
     Route::group(['prefix' => 'bodegas'], function () {
@@ -409,13 +370,12 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('cotizacion/rechazar-estado-espera', [AprobacionesController::class, 'recharCotizacionEstadoEspera']);
         Route::post('pedido/rechazar-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
-
-
         Route::post('cotizaciones/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
         Route::post('pedidos/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
-
         Route::post('cotizaciones/consulta/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesConsulta']);
         Route::post('pedidos/consulta/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesConsulta']);
+        Route::get('verdevolucionesporaprobar', [AprobacionesController::class, 'verdevolucionesporaprobar']);
+        Route::post('verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
     });
 
 
@@ -446,6 +406,40 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('get', [CotizacionBorradorController::class, 'obtenerBorrador']);
         Route::post('delete', [CotizacionBorradorController::class, 'eliminarBorrador']);
     });
+
+    Route::group(['prefix' => 'cobranzas'], function () {
+        Route::post('documentosvencidoscliente', [CobranzasController::class, 'documentosvencidoscliente']);
+        Route::post('estadodecuentacliente', [CobranzasController::class, 'estadodecuentacliente']);
+        Route::post('estadodecuentaclientetuval', [CobranzasController::class, 'estadodecuentaclientetuval']);
+        Route::post('registrarcobro', [CobranzasController::class, 'registrarcobro']);
+        Route::post('cobrosregistrados', [CobranzasController::class, 'cobrosregistrados']);
+        Route::post('depositosporaprobar', [CobranzasController::class, 'depositosporaprobar']);
+        Route::post('aprobardeposito', [CobranzasController::class, 'aprobardeposito']);
+        Route::post('rechazardeposito', [CobranzasController::class, 'rechazardeposito']);
+        Route::get('getcajausuario/{puntodeventa}/{USERID}', [CobranzasController::class, 'getcajausuario']);
+
+        Route::get('imprimircobro/{id}', [CobranzasController::class, 'imprimircobro']);
+        Route::get('imprimircierredecaja/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecaja']);
+        Route::get('imprimircierredecajausuario/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecajausuario']);
+        Route::get('resumencaja/{fecha}/{caja}/{USERID}', [CobranzasController::class, 'resumencaja']);
+        Route::post('consultaretencion', [CobranzasController::class, 'consultaretencion']);
+        Route::post('consultacheque', [CobranzasController::class, 'consultacheque']);
+        Route::post('consultadeposito', [CobranzasController::class, 'consultadeposito']);
+
+        Route::get('stadodecuentaclientetuval/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuval']);
+        Route::get('stadodecuentaclientetuvalexcel/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuvalexcel']);
+        Route::get('stadocaja/{fechaActual}/{USERID}', [CobranzasController::class, 'estadocaja']);
+        Route::get('stadocaja/{USERID}', [CobranzasController::class, 'estadocaja']);
+        Route::get('brircaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'abrircaja']);
+        Route::get('errarcaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'cerrarcaja']);
+        Route::post('consultacierrecajausuario', [CobranzasController::class, 'consultacierrecajausuario']);
+        Route::post('consultacobroscliente', [CobranzasController::class, 'consultacobroscliente']);
+
+
+
+        //nuevos procesos
+        
+    });
 });
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -453,6 +447,6 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // rutas para usar en SQLServer como api
 
-Route::group(['prefix' =>'consultas-externas'], function(){
+Route::group(['prefix' => 'consultas-externas'], function () {
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
 });

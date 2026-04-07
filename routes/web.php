@@ -196,5 +196,9 @@ Route::prefix('actualizaciones-masivas')->group(function () {
 });
 
 
+Route::prefix('cobranzas')->group(function () {
+    Route::get('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
+});
+
 Route::get('guia-remision-web/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
 Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'facturarexistente']);
