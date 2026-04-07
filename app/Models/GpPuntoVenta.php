@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Cobranzas\PermisosUsuarioPvCajas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -104,5 +105,12 @@ class GpPuntoVenta extends Model
                 'gp_relacion_punto_venta_bodega_relacionadas.*',
                 'gp_bodegas.PERMITE_DESPACHO'
             );
+    }
+
+
+
+    public function permisosUsuarioPvCajas()
+    {
+        return $this->hasMany(PermisosUsuarioPvCajas::class, 'pv_id', 'id');
     }
 }
