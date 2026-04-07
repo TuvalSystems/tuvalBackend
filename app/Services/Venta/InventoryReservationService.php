@@ -330,7 +330,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $newStatus      = $hasStocks ? 'aprobado' : 'rechazada';
         $statusAuth     = $hasStocks ? 1 : 0;
 
-        $observacionUsuario = data_get($data, 'obs_autorizacion_reserva');
+        $observacionUsuario = data_get($data, 'obs_autorizacion_reserva', '');
         if (!$hasStocks) {
             $observacionFinal = "RECHAZO AUTOMÁTICO (Stock Insuficiente): " . strip_tags($alertMessage);
         } else {
