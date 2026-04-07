@@ -15,11 +15,31 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $STO_ART_BODEGA
  * @property string|null $STO_ART_STOCK_DISPONIBLE
  * @property string|null $seleccionado
+ * @property float|null $cantidad_autorizada_reserva
+ * @property float|null $cantidad_reservada
+ * @property float|null $cantidad_facturada
+ * @property float|null $cantidad_cotizada
+ * @property float|null $cantidad_traslado
+ * @property string $cantidad_transito Cantidad de transito que se almacena de forma temporal para la resta de disponible antes de que llegue a la bodega destino
+ * @property float|null $cantidad_cancelada
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read bool $disable_movimiento
+ * @property-read bool $disable_traslado
+ * @property-read float $pendiente
+ * @property-read bool $picking
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, GpTrasladosReservas> $trasladoreserva
+ * @property-read int|null $trasladoreserva_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadAutorizadaReserva($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadCancelada($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadCotizada($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadFacturada($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadReservada($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadTransito($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadTraslado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCotizacionId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereDetalleId($value)
@@ -28,26 +48,6 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereSTOARTSTOCKDISPONIBLE($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereSeleccionado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereUpdatedAt($value)
- * @property int|null $cantidad_autorizada_reserva
- * @property int|null $cantidad_facturada
- * @property int|null $cantidad_cancelada
- * @property int|null $cantidad_cotizada
- * @property int|null $cantidad_traslado
- * @property int|null $cantidad_transito
- * @property int|null $cantidad_reservada
- * @property mixed $pendiente
- * @property-read bool $disable_movimiento
- * @property-read bool $disable_traslado
- * @property-read bool $picking
- * @property-read \Illuminate\Database\Eloquent\Collection<int, GpTrasladosReservas> $trasladoreserva
- * @property-read int|null $trasladoreserva_count
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadAutorizadaReserva($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadCancelada($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadCotizada($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadFacturada($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadReservada($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadTransito($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleStock whereCantidadTraslado($value)
  * @mixin \Eloquent
  */
 class GpCotizacionDetalleStock extends Model

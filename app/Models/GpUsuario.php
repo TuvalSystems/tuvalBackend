@@ -12,32 +12,42 @@ use Illuminate\Notifications\Notifiable;
  * App\Models\GpUsuario
  *
  * @property int $id
- * @property string|null $USERID
+ * @property string $USERID
  * @property string|null $USERNAME
+ * @property int|null $NIVEL_AUTORIZA_CRED
  * @property int|null $perfil_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $co_usr
  * @property string|null $password
- *
- * @property int|null $status
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection|\Illuminate\Notifications\DatabaseNotification[] $notifications
+ * @property int $status
+ * @property int $must_change_password
+ * @property int $process_job
+ * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
- * @property-read \Illuminate\Database\Eloquent\Collection|\Laravel\Sanctum\PersonalAccessToken[] $tokens
+ * @property-read \App\Models\Perfiles|null $perfil
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionUsuarioPuntoVenta> $relacionptovta
+ * @property-read int|null $relacionptovta_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ * @property-read GpVendedor|null $vendedor
+ * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario activo()
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereCoUsr($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereMustChangePassword($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereNIVELAUTORIZACRED($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario wherePassword($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario wherePerfilId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereProcessJob($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUSERID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUSERNAME($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUpdatedAt($value)
  * @mixin \Eloquent
- * @property int|null $NIVEL_AUTORIZA_CRED
- * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereNIVELAUTORIZACRED($value)
- * @property int|null  $must_change_password
- * @property int|null $process_job
  */
 class GpUsuario extends Authenticatable
 {

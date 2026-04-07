@@ -6,6 +6,42 @@ use App\Enums\devoluciones\InvoiceAnulationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * App\Models\devoluciones\GpFacturaAnulada
+ *
+ * @property int $id
+ * @property int|null $devolucion_id
+ * @property int $pedido_id
+ * @property string|null $pedido
+ * @property string|null $factura
+ * @property int|null $documento_id
+ * @property string|null $claveacceso
+ * @property string|null $msj_anulacion_gp
+ * @property int|null $diario_response_gp
+ * @property string|null $resp_document
+ * @property string|null $resp_seedbilling
+ * @property InvoiceAnulationStatus $estado
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereClaveacceso($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereDevolucionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereDiarioResponseGp($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereDocumentoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereEstado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereFactura($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereMsjAnulacionGp($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada wherePedido($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada wherePedidoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereRespDocument($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereRespSeedbilling($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpFacturaAnulada whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class GpFacturaAnulada extends Model
 {
     use HasFactory;

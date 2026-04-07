@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $user_id
  * @property string|null $USERID
  * @property string $tipo
+ * @property int $destino_aprobado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia newModelQuery()
@@ -23,13 +24,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereCotizacionDestino($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereCotizacionOrigen($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereDestinoAprobado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia wherePedidoOrigen($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereUserId($value)
- * @property int $destino_aprobado
- * @method static \Illuminate\Database\Eloquent\Builder|GpRegistroCopia whereDestinoAprobado($value)
  * @mixin \Eloquent
  */
 class GpRegistroCopia extends Model

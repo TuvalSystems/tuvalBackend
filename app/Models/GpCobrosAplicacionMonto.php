@@ -29,9 +29,9 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereMensajeWs($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereMonto($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereUpdatedAt($value)
  * @mixin \Eloquent
- * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereTipo($value)
  */
 class GpCobrosAplicacionMonto extends Model
 {

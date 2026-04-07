@@ -15,16 +15,21 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $ID_PROVEEDOR
  * @property string $DESCRIPCION_ARTICULO
  * @property string $FECHA_ENTREGA
- * @property string $CANTIDAD
- * @property string $COSTO_UNITARIO
- * @property string $IMPUESTO
- * @property string $TOTAL
- * @property string $TOTALCONIMPUESTO
- * @property string $ingresado
- * @property string $ejecutado
+ * @property float $CANTIDAD
+ * @property float $COSTO_UNITARIO
+ * @property float $IMPUESTO
+ * @property float $TOTAL
+ * @property float $TOTALCONIMPUESTO
  * @property string|null $NOTA
+ * @property float $MARGEN
+ * @property string|null $ingresado
+ * @property string|null $ejecutado
+ * @property string $recibido
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read GpOrdenDeCompra|null $ordenCompra
+ * @property-read \App\Models\GpPedidoDetalle $pedidodetalle
+ * @property-read \App\Models\GpProveedor|null $proveedores
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores query()
@@ -33,20 +38,20 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereDESCRIPCIONARTICULO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereDetalleId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereEjecutado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereFECHAENTREGA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereIDPROVEEDOR($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereIMPUESTO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereIngresado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereMARGEN($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereNOTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores wherePedidoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereRecibido($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereTOTAL($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereTOTALCONIMPUESTO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereUpdatedAt($value)
  * @mixin \Eloquent
- * @property string|null $recibido
- * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereRecibido($value)
- * @property string|null $MARGEN
- * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores whereMARGEN($value)
  */
 class GpPedidoDetalleProveedores extends Model
 {

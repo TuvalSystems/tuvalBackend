@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property string $CAJA_CODIGO
  * @property string $CAJA_DESCRIPCION
+ * @property int $estado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja newModelQuery()
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereCAJACODIGO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereCAJADESCRIPCION($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereEstado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereUpdatedAt($value)
  * @mixin \Eloquent

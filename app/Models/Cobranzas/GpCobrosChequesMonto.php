@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * App\Models\cobranzas\GpCobrosChequesMonto
+ * App\Models\Cobranzas\GpCobrosChequesMonto
  *
  * @property int $id
  * @property int $cobro_id

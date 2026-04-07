@@ -16,12 +16,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $PTO_VTA_ID
  * @property string $BOD_BODEGA
  * @property string|null $autorizacion_fecha
- * @property string|null $fecha_hora_liberacion
  * @property int|null $autorizacion_user_id
  * @property string|null $autorizacion_USERID
  * @property string|null $autorizacion_comentario
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $fecha_hora_liberacion
+ * @property-read \App\Models\GpPedido $pedido
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho query()
@@ -31,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho whereBODBODEGA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho whereEstado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho whereFechaHoraLiberacion($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho whereOrden($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDespacho wherePTOVTAID($value)

@@ -10,8 +10,12 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property int $guia_remision_id
+ * @property int|null $id_movimiento
+ * @property string|null $tipo_movimiento
+ * @property string|null $tipo Ingreso o Egreso
  * @property string $codigo
- * @property string $pedido
+ * @property string|null $pedido
+ * @property string|null $hash_interno UUID para trazabilidad con la API de bodega
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia newModelQuery()
@@ -20,10 +24,14 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereCodigo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereGuiaRemisionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereHashInterno($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereIdMovimiento($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia wherePedido($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereTipo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereTipoMovimiento($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia whereUpdatedAt($value)
  * @mixin \Eloquent
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionTransferencia wherePedido($value)
  */
 class GpGuiaRemisionTransferencia extends Model
 {

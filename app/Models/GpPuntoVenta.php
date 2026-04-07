@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property string $PTO_VTA_ID
  * @property string|null $PTO_VTA_DESCRIPCION
+ * @property string|null $email
  * @property string|null $PTO_VTA_DIRECCION_1
  * @property string|null $PTO_VTA_DIRECCION_2
  * @property string|null $PTO_VTA_ESTADO
@@ -23,17 +24,27 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $PTO_VTA_DIAS_DEVOL_SIN_AUT
  * @property int|null $PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO
  * @property int|null $PTO_VTA_DIA_VALIDEZ_COTIZACION
- * @property int|null $PTO_VTA_DIAS_MAXIMO_PARA_ANULACION
+ * @property int $PTO_VTA_DIAS_MAXIMO_PARA_ANULACION Días máximos para anulación de ventas
+ * @property int $pto_vta_max_dias_reserva Días máximos para solicitud de reserva de ventas
+ * @property int $pto_vta_max_dias_autorizacion_reserva Días máximos para autorización de reserva de ventas
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionPuntoVentaBodegaRelacionada> $bodegas
+ * @property-read int|null $bodegas_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionUsuarioPuntoVenta> $relacionUsuarioPtoVta
+ * @property-read int|null $relacion_usuario_pto_vta_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionPuntoVentaBodegaRelacionada> $relacionpuntoventabodegarelacionada
+ * @property-read int|null $relacionpuntoventabodegarelacionada_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta query()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereEmail($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTACIUDAD($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADESCRIPCION($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIASDEVOLSINAUT($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIASMAXIMOPARAANULACION($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIAVALIDEZCOTIZACION($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIRECCION1($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTADIRECCION2($value)
@@ -45,10 +56,10 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAMAXIMOPORCSUBIDAPRECIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAPAIS($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePTOVTAPROVINCIA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePtoVtaMaxDiasAutorizacionReserva($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePtoVtaMaxDiasReserva($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereUpdatedAt($value)
  * @mixin \Eloquent
- *
- * @property mixed $cajas
  */
 class GpPuntoVenta extends Model
 {

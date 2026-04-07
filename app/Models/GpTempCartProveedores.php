@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $IMPUESTO
  * @property string $TOTAL
  * @property string $TOTALCONIMPUESTO
+ * @property string $MARGEN
  * @property string|null $NOTA
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -33,13 +34,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereIMPUESTO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereIdTempcart($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereMARGEN($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereNOTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereTOTAL($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereTOTALCONIMPUESTO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereUpdatedAt($value)
  * @mixin \Eloquent
- * @property string|null $MARGEN
- * @method static \Illuminate\Database\Eloquent\Builder|GpTempCartProveedores whereMARGEN($value)
  */
 class GpTempCartProveedores extends Model
 {

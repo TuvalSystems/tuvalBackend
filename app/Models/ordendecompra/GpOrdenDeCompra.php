@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Model;
  * App\Models\ordendecompra\GpOrdenDeCompra
  *
  * @property int $id
- * @property int $detalle_id
- * @property int $detalle_proveedores_id
+ * @property int|null $detalle_id
+ * @property int|null $detalle_proveedores_id
  * @property string $estado
  * @property string $ORDEN_COMPRA_DOCU_ORIGEN
  * @property string $ORDEN_COMPRA_LINEA
@@ -30,15 +30,16 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $ORDEN_COMPRA_TOTAL
  * @property string $ORDEN_COMPRA_IMPUESTO
  * @property string $ORDEN_COMPRA_ID_USUARIO
- * @property string $ORDEN_COMPRA_MENSAJE
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $ORDEN_COMPRA_MENSAJE
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra query()
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereDOCGENERADO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereDetalleId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereDetalleProveedoresId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereEstado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRAARTICULO($value)
@@ -55,12 +56,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRAIDUSUARIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRAIMPUESTO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRALINEA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRAMENSAJE($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRANOTADOCU($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRATOTAL($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereORDENCOMPRAUMEDIDA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereUpdatedAt($value)
  * @mixin \Eloquent
- * @method static \Illuminate\Database\Eloquent\Builder|GpOrdenDeCompra whereDetalleProveedoresId($value)
  */
 class GpOrdenDeCompra extends Model
 {

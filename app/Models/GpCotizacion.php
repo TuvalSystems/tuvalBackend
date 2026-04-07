@@ -21,6 +21,10 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property int|null $cliente_id
  * @property int|null $prospecto_id
  * @property string $estado
+ * @property int $facturado
+ * @property int|null $factura_posterior_despacho
+ * @property int|null $factura_a_demanda
+ * @property int|null $factura_siguiente_mes
  * @property string $BOD_BODEGA
  * @property string $PTO_VTA_ID
  * @property string $PTO_VTA_DESCRIPCION
@@ -37,94 +41,39 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property string|null $despacho
  * @property string $porcentage_descuentooriginal
  * @property string $porcentage_descuento
+ * @property string $modificador_global
  * @property string $subtotal
  * @property string|null $descuento
  * @property string $subtotalmenosdescuento
  * @property string $iva
  * @property string $total
  * @property string $requiere_aprobacion_comercial
- * @property string $motivo_aprobacion_comercial
  * @property string $aprobado_comercial
  * @property int|null $aprobador_comercial_id
+ * @property string|null $fecha_hora_aprobacion_comercial
+ * @property string|null $aprobado_comercial_mensaje
  * @property string $requiere_aprobacion_crediticia
  * @property string $aprobado_crediticio
  * @property int|null $aprobador_crediticio_id
- * @property string|null $impreso
  * @property string|null $nota_interna
  * @property string|null $nota_cliente
- * @property int|null $impuesto
+ * @property string|null $nota_operaciones
+ * @property string|null $orden_de_compra
+ * @property string|null $impreso
+ * @property string|null $fecha_impreso
+ * @property string|null $fecha_entrega
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion query()
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoComercial($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoCrediticio($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadorComercialId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadorCrediticioId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereBODBODEGA($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCLICORREOELECTSRI($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCLIRAZONSOCIAL($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCLIRUC($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCONDID($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCONDIDORIGINAL($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereClienteId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCotizacion($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereDESCFORMAPAGOCODIGO($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereDescuento($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereDespacho($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereEstado($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereIva($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereNotaCliente($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereNotaInterna($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePTOVTADESCRIPCION($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePTOVTAID($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePorcentageDescuento($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePorcentageDescuentooriginal($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereRequiereAprobacionComercial($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereRequiereAprobacionCrediticia($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSubtotal($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSubtotalmenosdescuento($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSucursalFacturacionId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSucursalId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereTotal($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUserId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDAPELLIDOS($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDID($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDNOMBRES($value)
- * @property int|null $factura_posterior_despacho
- * @property int|null $factura_a_demanda
- * @property int|null $factura_siguiente_mes
- * @property string|null $orden_de_compra
- * @property string|null $fecha_impreso
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturaADemanda($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturaPosteriorDespacho($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturaSiguienteMes($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaImpreso($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereImpreso($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereOrdenDeCompra($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereProspectoId($value)
- * @property string|null $aprobado_comercial_mensaje
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoComercialMensaje($value)
- * @property string|null $fecha_entrega
- * @property boolean $facturado
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaEntrega($value)
- * @property string|null  $user_ing_recordatorio
- * @property int|null $co_tipTrasResInv
- * @property int|null $co_usrIngSolResInv
- * @property string|null $origen
- * @property int|null $pedido_reserva_id
- * @property string|null $pedido_generado_at
- * @property string $modificador_global
- * @property string|null $fecha_hora_aprobacion_comercial
- * @property string|null $nota_operaciones
+ * @property int|null $impuesto
+ * @property string|null $motivo_aprobacion_comercial
  * @property int|null $cotizacion_venta_motivo_id
  * @property int $recordar
  * @property string|null $fecha_recordatorio
  * @property string|null $observacion
+ * @property string|null $user_ing_recordatorio
+ * @property string|null $origen
+ * @property int|null $pedido_reserva_id
+ * @property string|null $pedido_generado_at
  * @property int|null $user_rechazo_id Usuario que rechazo la cotizacion en estado de espera
  * @property string|null $fe_rechazo
  * @property-read \App\Models\GpBodega $bodega
@@ -139,29 +88,80 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property-read mixed $msg_registro_copia
  * @property-read bool $reserva_disabled
  * @property-read \App\Models\GpCliente|null $gpcliente
- * @property-read \App\Models\Ventas\Vendedores\GpVendedor|null $gpvendedor
+ * @property-read GpVendedor|null $gpvendedor
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionImagen> $imagenes
  * @property-read int|null $imagenes_count
+ * @property-read \Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @property-read int|null $media_count
  * @property-read \App\Models\GpCotizacionVentaMotivo|null $motivosNoVenta
  * @property-read GpReserva|null $reserva
  * @property-read \App\Models\GpUsuario|null $usuario
  * @property-read \App\Models\GpUsuario|null $usuariorecordatorio
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoComercialMensaje($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadoCrediticio($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadorComercialId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereAprobadorCrediticioId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereBODBODEGA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCLICORREOELECTSRI($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCLIRAZONSOCIAL($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCLIRUC($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCONDID($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCONDIDORIGINAL($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereClienteId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCotizacion($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCotizacionVentaMotivoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereDESCFORMAPAGOCODIGO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereDescuento($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereDespacho($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereEstado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturaADemanda($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturaPosteriorDespacho($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturaSiguienteMes($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFacturado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFeRechazo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaEntrega($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaHoraAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaImpreso($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereFechaRecordatorio($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereImpreso($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereImpuesto($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereIva($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereModificadorGlobal($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereMotivoAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereNotaCliente($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereNotaInterna($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereNotaOperaciones($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereObservacion($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereOrdenDeCompra($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereOrigen($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePTOVTADESCRIPCION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePTOVTAID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePedidoGeneradoAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePedidoReservaId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePorcentageDescuento($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion wherePorcentageDescuentooriginal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereProspectoId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereRecordar($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereRequiereAprobacionComercial($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereRequiereAprobacionCrediticia($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSubtotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSubtotalmenosdescuento($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSucursalFacturacionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereSucursalId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUserIngRecordatorio($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereUserRechazoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDAPELLIDOS($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDID($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacion whereVENDNOMBRES($value)
  * @mixin \Eloquent
  */
 class GpCotizacion extends Model implements HasMedia

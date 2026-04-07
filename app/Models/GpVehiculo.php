@@ -23,11 +23,11 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereMarca($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereModelo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereNombre($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo wherePlaca($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereTransportistaId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereUpdatedAt($value)
  * @mixin \Eloquent
- * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereNombre($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpVehiculo whereTransportistaId($value)
  */
 class GpVehiculo extends Model
 {

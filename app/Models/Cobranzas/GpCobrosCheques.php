@@ -5,8 +5,9 @@ namespace App\Models\Cobranzas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 /**
- * App\Models\cobranzas\GpCobrosCheques
+ * App\Models\Cobranzas\GpCobrosCheques
  *
  * @property int $id
  * @property int $cobro_id

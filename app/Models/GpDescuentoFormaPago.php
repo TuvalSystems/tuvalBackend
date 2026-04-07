@@ -15,8 +15,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $DESC_FORMA_PAGO_EMISOR
  * @property string|null $DESC_FORMA_PAGO_TIPO_CREDITO
  * @property string|null $DESC_FORMA_PAGO_PORCENTAJE_REBAJAR
+ * @property string|null $DESC_FORMA_PAGO_SRI
+ * @property string|null $DESC_FORMA_PAGO_TIPO_COBRO
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $nivel
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago query()
@@ -26,15 +29,13 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGODIASCREDITO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOEMISOR($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOPORCENTAJEREBAJAR($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOSRI($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOTIPOCOBRO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOTIPOCREDITO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereNivel($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereUpdatedAt($value)
  * @mixin \Eloquent
- * @property string|null $DESC_FORMA_PAGO_SRI
- * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOSRI($value)
- * @property string|null $DESC_FORMA_PAGO_TIPO_COBRO
- * @method static \Illuminate\Database\Eloquent\Builder|GpDescuentoFormaPago whereDESCFORMAPAGOTIPOCOBRO($value)
- * property integer $nivel
  */
 class GpDescuentoFormaPago extends Model
 {

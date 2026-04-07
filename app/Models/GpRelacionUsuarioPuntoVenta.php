@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $USER_PTO_VTA_USUARIO
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\GpUsuario $usuario
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioPuntoVenta newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioPuntoVenta newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioPuntoVenta query()

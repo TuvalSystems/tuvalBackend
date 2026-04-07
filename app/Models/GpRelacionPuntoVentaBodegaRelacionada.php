@@ -12,20 +12,22 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $PTO_VTA_BOD_REL_BODEGA
  * @property string $PTO_VTA_BOD_REL_PUNTO_VENTA
  * @property string|null $PTO_VTA_BOD_REL_NIVEL_ACCESO
+ * @property int|null $orden
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\GpPuntoVenta $puntoVenta
+ * @property-read \App\Models\GpBodega $relacionBodega
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada query()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada whereOrden($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada wherePTOVTABODRELBODEGA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada wherePTOVTABODRELNIVELACCESO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada wherePTOVTABODRELPUNTOVENTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada whereUpdatedAt($value)
  * @mixin \Eloquent
- * @property int|null $orden
- * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaBodegaRelacionada whereOrden($value)
  */
 class GpRelacionPuntoVentaBodegaRelacionada extends Model
 {

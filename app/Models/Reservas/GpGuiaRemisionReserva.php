@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property string|null $clave_acceso
- * @property string $numero_guia
+ * @property string|null $numero_guia
  * @property int|null $user_id
  * @property string $estado
  * @property string|null $bodega_origen
@@ -38,9 +38,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $num_auto_doc_sustento
  * @property string|null $fecha_emision_doc_sustento
  * @property int|null $rebajado
+ * @property string|null $idempotency_key
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property string|null $idempotency_key
  * @property-read \Illuminate\Database\Eloquent\Collection<int, GpCotizacion> $cotizaciones
  * @property-read int|null $cotizaciones_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Reservas\GpGuiaRemisionReservaDetalle> $detalleGuiaReservas

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * App\Models\cobranzas\GpCobrosDeposito
+ * App\Models\Cobranzas\GpCobrosDeposito
  *
  * @property int $id
  * @property int $cobro_id
@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $mensaje_ws
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $fecha_aprobacion
+ * @property int|null $user_aprobador_id
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito query()
@@ -30,11 +32,13 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereEstado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereFecha($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereFechaAprobacion($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereMensajeWs($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereMonto($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito whereUserAprobadorId($value)
  * @mixin \Eloquent
  */
 class GpCobrosDeposito extends Model

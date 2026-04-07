@@ -7,6 +7,28 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
 
+/**
+ * App\Models\borradores\CotizacionBorrador
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property string $draft_id
+ * @property string|null $punto_venta_id
+ * @property array $data
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static Builder|CotizacionBorrador newModelQuery()
+ * @method static Builder|CotizacionBorrador newQuery()
+ * @method static Builder|CotizacionBorrador query()
+ * @method static Builder|CotizacionBorrador whereCreatedAt($value)
+ * @method static Builder|CotizacionBorrador whereData($value)
+ * @method static Builder|CotizacionBorrador whereDraftId($value)
+ * @method static Builder|CotizacionBorrador whereId($value)
+ * @method static Builder|CotizacionBorrador wherePuntoVentaId($value)
+ * @method static Builder|CotizacionBorrador whereUpdatedAt($value)
+ * @method static Builder|CotizacionBorrador whereUserId($value)
+ * @mixin \Eloquent
+ */
 class CotizacionBorrador extends Model
 {
     use HasFactory, Prunable;
