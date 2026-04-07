@@ -14,6 +14,7 @@ class CreatePermisosUsuariosPvCajas extends Migration
     public function up()
     {
         Schema::create('permisos_usuarios_pv_cajas', function (Blueprint $table) {
+            $table->id();
             $table->foreignId('user_id')
                 ->constrained('gp_usuarios') // Tu tabla de usuarios
                 ->cascadeOnDelete();
