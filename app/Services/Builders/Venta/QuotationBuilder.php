@@ -100,8 +100,10 @@ class QuotationBuilder implements QuotationBuilderInterface
             'impreso'                           => 'no',
             'nota_interna'                      => $data['nota_interna'],
             'nota_cliente'                      => $data['nota_cliente'],
+            'nota_operaciones'                  => data_get($data, 'nota_operaciones', ''),
             'impuesto'                          => TaxRateEnum::IVA_15->value,
-            'origen'                            => $origen
+            'origen'                            => $origen,
+            'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
         ]);
         return $cot;
     }
