@@ -27,9 +27,22 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja wherePTOVTACAJAPUNTOVENTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja wherePvId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja whereUpdatedAt($value)
+ * @property-read \App\Models\GpCaja|null $caja
+ * @property-read \App\Models\GpPuntoVenta|null $puntoVenta
  * @mixin \Eloquent
  */
 class GpRelacionPuntoVentaCaja extends Model
 {
     use HasFactory;
+
+
+    public function puntoVenta()
+    {
+        return $this->belongsTo(GpPuntoVenta::class, 'pv_id');
+    }
+
+
+    public function caja(){
+        return $this->belongsTo(GpCaja::class, 'caja_id');
+    }
 }

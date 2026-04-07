@@ -47,6 +47,10 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUSERID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUSERNAME($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUpdatedAt($value)
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCaja> $cajasAsignadas
+ * @property-read int|null $cajas_asignadas_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPuntoVenta> $puntoVentaPermitidos
+ * @property-read int|null $punto_venta_permitidos_count
  * @mixin \Eloquent
  */
 class GpUsuario extends Authenticatable
@@ -94,4 +98,20 @@ class GpUsuario extends Authenticatable
                 $q->where('state', 'active');
             });
     }
+
+
+
+    public function puntoVentaPermitidos(){
+        return $this->belongsToMany(GpPuntoVenta::class, 'permisos_usuarios_pv_cajas', 'user_id', 'pv_id')->withPivot('estado')->wherePivot('estado', 1);
+    }
+
+    public function cajasAsignadas()
+    {
+        return $this->belongsToMany(GpCaja::class, 'gp_relacion_usuario_cajas', 'user_id', 'caja_id')
+        ->withPivot('estado')
+            ->wherePivot('estado', 1);
+    }
+
+
+
 }

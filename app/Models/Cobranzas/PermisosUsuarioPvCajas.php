@@ -3,6 +3,7 @@
 namespace App\Models\Cobranzas;
 
 use App\Models\GpPuntoVenta;
+use App\Models\GpUsuario;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas wherePvId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas whereUserId($value)
+ * @property-read GpPuntoVenta $puntoVenta
+ * @property-read GpUsuario $usuario
  * @mixin \Eloquent
  */
 class PermisosUsuarioPvCajas extends Model
@@ -40,5 +43,11 @@ class PermisosUsuarioPvCajas extends Model
     public function puntoVenta()
     {
         return $this->belongsTo(GpPuntoVenta::class, 'pv_id');
+    }
+
+
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
     }
 }

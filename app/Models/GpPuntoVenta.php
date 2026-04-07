@@ -60,6 +60,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePtoVtaMaxDiasAutorizacionReserva($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePtoVtaMaxDiasReserva($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereUpdatedAt($value)
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCaja> $cajasDisponibles
+ * @property-read int|null $cajas_disponibles_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionPuntoVentaCaja> $relacionPvCajas
+ * @property-read int|null $relacion_pv_cajas_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpUsuario> $usuariosConPermiso
+ * @property-read int|null $usuarios_con_permiso_count
  * @mixin \Eloquent
  */
 class GpPuntoVenta extends Model
@@ -109,8 +115,26 @@ class GpPuntoVenta extends Model
 
 
 
-    public function permisosUsuarioPvCajas()
+    // para accesos a cajas y puntos de venta en cobranzas
+
+
+
+    public function relacionPvCajas()
     {
-        return $this->hasMany(PermisosUsuarioPvCajas::class, 'pv_id', 'id');
+        return $this->hasMany(GpRelacionPuntoVentaCaja::class,  'pv_id');
+    }
+
+
+    public function usuariosConPermiso()
+    {
+        return $this->belongsToMany(GpUsuario::class, 'permisos_usuarios_pv_cajas', 'pv_id', 'user_id');
+    }
+
+
+    public function cajasDisponibles()
+    {
+        return $this->belongsToMany(GpCaja::class, 'gp_relacion_punto_venta_cajas', 'pv_id', 'caja_id')
+            ->withPivot('estado')
+            ->wherePivot('estado', 1);
     }
 }

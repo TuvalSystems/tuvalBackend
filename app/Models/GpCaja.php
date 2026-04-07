@@ -23,9 +23,27 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereEstado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereUpdatedAt($value)
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpUsuario> $operariosAsignados
+ * @property-read int|null $operarios_asignados_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPuntoVenta> $puntosVenta
+ * @property-read int|null $puntos_venta_count
  * @mixin \Eloquent
  */
 class GpCaja extends Model
 {
     use HasFactory;
+
+
+
+    public function operariosAsignados()
+    {
+        return $this->belongsToMany(GpUsuario::class, 'gp_relacion_usuario_cajas', 'caja_id', 'user_id')
+            ->wherePivot('estado', 1);
+    }
+
+
+    public function puntosVenta() {
+    return $this->belongsToMany(GpPuntoVenta::class, 'gp_relacion_punto_venta_cajas', 'caja_id', 'pv_id')
+                ->wherePivot('estado', 1);
+}
 }

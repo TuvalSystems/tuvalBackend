@@ -27,9 +27,32 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereUserId($value)
+ * @property-read \App\Models\GpCaja|null $caja
+ * @property-read \App\Models\User|null $usuario
  * @mixin \Eloquent
  */
 class GpRelacionUsuarioCaja extends Model
 {
     use HasFactory;
+
+    protected $table = 'gp_relacion_usuario_cajas';
+
+    protected $fillable = [
+        'user_id',
+        'caja_id',
+        'estado'
+    ];
+
+
+
+    public function caja()
+    {
+        return $this->belongsTo(GpCaja::class, 'caja_id');
+    }
+
+
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }
