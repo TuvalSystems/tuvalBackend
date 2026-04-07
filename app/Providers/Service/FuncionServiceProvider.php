@@ -12,21 +12,6 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 class FuncionServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
-    // public function register()
-    // {
-    //     //aqui va el servicio facturas de Pedidos
-    //     $this->app->singleton(
-    //         InvoiceServiceInterface::class,
-    //         InvoiceService::class
-    //     );
-
-
-    //     //aqui va el sercvicio de function service de Fucionescontroller
-    //     $this->app->singleton(
-    //         FunctionsServiceInterface::class,
-    //         FunctionsService::class
-    //     );
-    // }
     public array $singletons = [
         InvoiceServiceInterface::class => InvoiceService::class,
         FunctionsServiceInterface::class => FunctionsService::class,

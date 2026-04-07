@@ -13,6 +13,9 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Repositories\Bodegas\TransferRepository;
+use App\Repositories\Cobranzas\CashClosureRepository;
+use App\Repositories\Cobranzas\Contracts\CashBoxRepositoryInterface;
+use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Repositories\Venta\InventoryReservationRepository;
@@ -27,6 +30,11 @@ public array $singletons = [
         QuotationRepositoryInterface::class            => QuotationRepository::class,
         TransferRepositoryInterface::class             => TransferRepository::class,
         InventoryReservationRepositoryInterface::class => InventoryReservationRepository::class,
+
+
+        //cobranza
+        CashClosureRepositoryInterface::class          => CashClosureRepository::class,
+        CashBoxRepositoryInterface::class              => CashClosureRepository::class,
     ];
 
     /**

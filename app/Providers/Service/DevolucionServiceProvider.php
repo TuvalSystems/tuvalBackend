@@ -26,12 +26,7 @@ class DevolucionServiceProvider extends ServiceProvider implements DeferrablePro
 
         DevolucionJobService::class
     ];
-    // public function register()
-    // {
-    //     $this->app->singleton(EntryServiceInterface::class, EntryService::class);
-    //     $this->app->singleton(DevolucionServiceInterface::class, DevolucionService::class);
-    //     $this->app->singleton(ReturnCancellationServiceInterface::class, ReturnCancellationService::class);
-    // }
+   
 
     public function provides()
     {

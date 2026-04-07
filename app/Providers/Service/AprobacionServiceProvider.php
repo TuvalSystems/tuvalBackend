@@ -19,17 +19,6 @@ use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 
 class AprobacionServiceProvider extends ServiceProvider implements DeferrableProvider
 {
-
-    // public function register()
-    // {
-    //     // aqui agrego las aprobaciones para no crear otro provider
-    //     $this->app->singleton(
-    //         ApprovalServiceInterface::class,
-    //         ApprovalService::class
-    //     );
-    // }
-
-
     public array $singletons = [
         ApprovalServiceInterface::class             => ApprovalService::class,
         ApprovalReservationServiceInterface::class  => ApprovalReservationService::class,
@@ -39,10 +28,6 @@ class AprobacionServiceProvider extends ServiceProvider implements DeferrablePro
         ApprovalDevolutionServiceInterface::class   => ApprovalDevolutionService::class
     ];
 
-    /**
-     * Laravel solo despertará este Provider cuando alguien pida
-     * ApprovalServiceInterface.
-     */
     public function provides()
     {
         return array_keys($this->singletons);
