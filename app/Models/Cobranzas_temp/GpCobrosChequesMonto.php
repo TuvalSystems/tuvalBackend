@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\cobranzas;
+namespace App\Models\Cobranzas_temp;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
