@@ -1212,7 +1212,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    protected function updateQuotationReservedStatus(GpReserva $reserva, GpCotizacion $quoteBlock, array $payload, GpUsuario $user,  string $newStatus, int $statusAuth, string $observacionFinal)
+    protected function updateQuotationReservedStatus(GpReserva $reserva, GpCotizacion $quoteBlock, array $payload, GpUsuario $user,  string $newStatus, int $statusAuth, ?string $observacionFinal)
     {
         $statusQuote    = $newStatus === 'procesado' ? 'procesado' : 'rechazado';
         $invoiced       = $newStatus === 'procesado' ? 1 : 0;
