@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class AddColumnsRelacionesCajasPuntoVenta extends Migration
@@ -19,11 +20,24 @@ class AddColumnsRelacionesCajasPuntoVenta extends Migration
             $table->boolean('estado')->default(1)->after('PTO_VTA_CAJA_PUNTO_VENTA');
         });
 
+        DB::statement("
+        UPDATE gp_relacion_punto_venta_cajas AS rel
+        JOIN gp_cajas AS c ON rel.PTO_VTA_CAJA_CAJA = c.CAJA_CODIGO
+        JOIN gp_punto_ventas AS pv ON rel.PTO_VTA_CAJA_PUNTO_VENTA = pv.PTO_VTA_ID
+        SET rel.caja_id = c.id, rel.pv_id = pv.id
+    ");
         Schema::table('gp_relacion_usuario_cajas', function (Blueprint $table) {
             $table->foreignId('user_id')->after('id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
             $table->foreignId('caja_id')->after('user_id')->nullable()->constrained('gp_cajas')->nullOnDelete();
             $table->boolean('estado')->default(1)->after('CAJ_USER_CAJA');
         });
+
+        DB::statement("
+        UPDATE gp_relacion_usuario_cajas AS rel
+        JOIN gp_usuarios AS u ON rel.CAJ_USER_USUARIO = u.USERID
+        JOIN gp_cajas AS c ON rel.CAJ_USER_CAJA = c.CAJA_CODIGO
+        SET rel.user_id = u.id, rel.caja_id = c.id
+    ");
 
         Schema::table('gp_cajas', function (Blueprint $table) {
             $table->boolean('estado')->default(1)->after('CAJA_DESCRIPCION');

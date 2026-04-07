@@ -68,23 +68,17 @@ class MakeServiceCommand extends Command
         $implements = $withInterface ? "implements {$interfaceName}" : '';
         $interfaceUse = $withInterface ? "use {$serviceNamespace}\\Contracts\\{$interfaceName};" : '';
 
-        $serviceContent = <<<PHP
-        <?php
+$serviceContent = "<?php
+namespace {$serviceNamespace};
 
-        namespace {$serviceNamespace};
-
-        {$interfaceUse}
-
-        class {$className} {$implements}
-        {
-
-            public function __construct()
-            {
-                // Inyecta dependencias si es necesario
-            }
-        }
-
-        PHP;
+" . ($withInterface ? "use {$serviceNamespace}\\Contracts\\{$interfaceName};\n\n" : "") . "class {$className} " . ($withInterface ? "implements {$interfaceName}" : "") . "
+{
+    public function __construct()
+    {
+        // Inyecta dependencias
+    }
+}
+";
 
         FILE::put($servicePath, $serviceContent);
         $this->info("Servicio creado en: {$servicePath}");
@@ -94,16 +88,14 @@ class MakeServiceCommand extends Command
             if (!File::exists($interfaceDir)) {
                 File::makeDirectory($interfaceDir, 0755, true);
             }
-            $interfaceContent = <<<PHP
-            <?php
+$interfaceContent = "<?php
+namespace {$serviceNamespace}\\Contracts;
 
-            namespace {$serviceNamespace}\\Contracts;
-
-            interface {$interfaceName}
-            {
-                // Define los métodos que debe implementar el servicio
-            }
-            PHP;
+interface {$interfaceName}
+{
+    // Define los métodos
+}
+";
 
             File::put($interfacePath, $interfaceContent);
             $this->info("📄 Interfaz creada: {$interfacePath}");

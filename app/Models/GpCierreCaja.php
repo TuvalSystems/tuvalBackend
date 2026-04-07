@@ -38,4 +38,11 @@ use Illuminate\Database\Eloquent\Model;
 class GpCierreCaja extends Model
 {
     use HasFactory;
+
+
+
+    public function caja()
+    {
+        return $this->belongsTo(GpCaja::class, 'caja_id');
+    }
 }

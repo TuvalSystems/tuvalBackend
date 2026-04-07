@@ -42,8 +42,9 @@ class GpCaja extends Model
     }
 
 
-    public function puntosVenta() {
-    return $this->belongsToMany(GpPuntoVenta::class, 'gp_relacion_punto_venta_cajas', 'caja_id', 'pv_id')
-                ->wherePivot('estado', 1);
-}
+    public function puntosVenta()
+    {
+        return $this->belongsToMany(GpPuntoVenta::class, 'gp_relacion_punto_venta_cajas', 'caja_id', 'pv_id')
+            ->wherePivot('estado', 1);
+    }
 }

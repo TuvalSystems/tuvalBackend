@@ -2095,14 +2095,42 @@ class CobranzasController extends Controller
     public function listaPvCajasUsuario(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $validate = $request->validate([
-                'puntoVenta' => 'required|string'
-            ]);
-            $pv = data_get($validate, 'puntoVenta');
+
             // $user = $request->user();
             $user = GpUsuario::find(179);
-            $response = $this->collectionService->listPointSalesByUSer($pv, $user);
+            $response = $this->collectionService->listPointSalesByUSer($user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listaPvCajasUsuario');
+    }
+
+
+    public function listarCajasPorUsuarioPuntoVenta(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'punto_venta' => 'required',
+            ]);
+            $pv = data_get($validate, 'punto_venta');
+            $user = GpUsuario::find(179);
+            $response = $this->collectionService->listBoxesByPointSales($pv, $user);
+            return $this->successResponse('Lista Obtenida', $response, 200);
+        }, 'laravel', 'listarCajasDisponiblesPorUsuario');
+    }
+
+
+    public function consultarCierreCajaUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'fecha'     => 'required',
+                'caja_id'   => 'required',
+
+            ]);
+            $fecha = data_get($validate, 'fecha');
+            $cajaId = data_get($validate, 'caja_id');
+            $user  = GpUsuario::find(179);
+            $response = $this->collectionService->getBoxClosureByDate($cajaId, $fecha,  $user);
+            return $this->successResponse('Consulta realizada', $response, 200);
+        }, 'laravel', 'consultarCierreCajaUsuario');
     }
 }
