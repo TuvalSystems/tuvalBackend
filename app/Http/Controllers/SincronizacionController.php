@@ -761,11 +761,11 @@ class SincronizacionController extends Controller
         foreach ($relacionusuariocajas as $key => $data) {
             $userCode = trim($data['CAJ_USER_USUARIO']);
             $cajaCode = trim($data['CAJ_USER_CAJA']);
-            $relacionusuariocaja = new GpRelacionUsuarioCaja;
-            $relacionusuariocaja->user_id = $userCode;
-            $relacionusuariocaja->caja_id = $cajaCode;
-            $relacionusuariocaja->CAJ_USER_USUARIO = trim($data['CAJ_USER_USUARIO']);
-            $relacionusuariocaja->CAJ_USER_CAJA = trim($data['CAJ_USER_CAJA']);
+            $relacionusuariocaja                    = new GpRelacionUsuarioCaja;
+            $relacionusuariocaja->user_id           = $usuariosMap[$userCode] ?? null;
+            $relacionusuariocaja->caja_id           = $cajasMap[$cajaCode] ?? null;
+            $relacionusuariocaja->CAJ_USER_USUARIO  = $userCode;
+            $relacionusuariocaja->CAJ_USER_CAJA     = $cajaCode;
             $relacionusuariocaja->save();
         }
         return;
