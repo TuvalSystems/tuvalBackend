@@ -4,5 +4,5 @@ namespace App\Repositories\Cobranzas\Contracts;
 
 interface CashClosureRepositoryInterface
 {
-    // Define los métodos de consulta
+    public function findByBoxAndDate(int $boxId, string $date, int $userId): bool;
 }

@@ -5,12 +5,13 @@ namespace App\Services\Cobranzas;
 use App\Models\GpCierreCaja;
 use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
+use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 
 class CollectionService implements CollectionServiceInterface
 {
 
-    public function __construct()
+    public function __construct(protected readonly CashClosureRepositoryInterface $cashCloseRepository)
     {
         // Inyecta dependencias si es necesario
     }
@@ -40,14 +41,7 @@ class CollectionService implements CollectionServiceInterface
 
     public function getBoxClosureByDate(int $boxId, GpUsuario $user, string $date)
     {
-        return GpCierreCaja::where('caja_id', $boxId)
-            ->whereHas('caja', function ($query) use ($user) {
-                $query->whereHas('operariosAsignados', function ($q) use ($user) {
-                    $q->where('gp_usuarios.id', $user->id);
-                });
-            })
-            ->where('fecha', $date)
-            ->where('estado', 'cerrado')
-            ->get();
+        $existsCloseBox = $this->cashCloseRepository->findByBoxAndDate($boxId, $date, $user->id);
+
     }
 }

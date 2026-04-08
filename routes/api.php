@@ -387,8 +387,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('enviardevolucion', [DevolucionesController::class, 'enviarDevolucion']);
         Route::post('detalledevolucion', [DevolucionesController::class, 'detalledevolucion']);
         Route::get('verdevolucionesporrecibir/{puntodeventa}', [DevolucionesController::class, 'verdevolucionesporrecibir']);
-        // Route::post('recibirdevolucion', [DevolucionesController::class, 'recibirdevolucion']);
-
         Route::get('procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
         Route::get('imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
 
@@ -426,19 +424,19 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('consultacheque', [CobranzasController::class, 'consultacheque']);
         Route::post('consultadeposito', [CobranzasController::class, 'consultadeposito']);
 
-        Route::get('stadodecuentaclientetuval/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuval']);
-        Route::get('stadodecuentaclientetuvalexcel/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuvalexcel']);
-        Route::get('stadocaja/{fechaActual}/{USERID}', [CobranzasController::class, 'estadocaja']);
-        Route::get('stadocaja/{USERID}', [CobranzasController::class, 'estadocaja']);
-        Route::get('brircaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'abrircaja']);
-        Route::get('errarcaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'cerrarcaja']);
+        Route::get('estadodecuentaclientetuval/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuval']);
+        Route::get('estadodecuentaclientetuvalexcel/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuvalexcel']);
+        Route::get('estadocaja/{fechaActual}/{USERID}', [CobranzasController::class, 'estadocaja']);
+        Route::get('estadocaja/{USERID}', [CobranzasController::class, 'estadocaja']);
+        Route::get('abrircaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'abrircaja']);
+        Route::get('cerrarcaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'cerrarcaja']);
         Route::post('consultacierrecajausuario', [CobranzasController::class, 'consultacierrecajausuario']);
         Route::post('consultacobroscliente', [CobranzasController::class, 'consultacobroscliente']);
 
 
 
         //nuevos procesos
-        
+
     });
 });
 Route::post('/login', [AuthController::class, 'login']);
