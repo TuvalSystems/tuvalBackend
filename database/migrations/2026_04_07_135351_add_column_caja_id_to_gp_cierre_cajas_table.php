@@ -18,11 +18,11 @@ class AddColumnCajaIdToGpCierreCajasTable extends Migration
             $table->foreignId('caja_id')->after('id')->nullable()->constrained('gp_cajas')->onDelete('set null');
         });
 
-        DB::statement("
-            UPDATE gp_cierre_cajas AS gcc
-            JOIN gp_cajas AS gc ON gcc.CAJA_CODIGO = gc.CAJA_CODIGO
-            SET gcc.caja_id = gc.id
-        ");
+        // DB::statement("
+        //     UPDATE gp_cierre_cajas AS gcc
+        //     JOIN gp_cajas AS gc ON gcc.CAJA_CODIGO = gc.CAJA_CODIGO
+        //     SET gcc.caja_id = gc.id
+        // ");
     }
 
     /**
