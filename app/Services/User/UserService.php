@@ -143,7 +143,7 @@ class UserService implements UserServiceInterface
             ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userId)
             ->select('gp_punto_ventas.*')
             ->with('bodegas')
-            ->orderBy('gp_relacion_usuario_punto_ventas.id', 'asc')
+            ->orderBy('gp_relacion_usuario_punto_ventas.orden', 'asc')
             ->first();
     }
 
