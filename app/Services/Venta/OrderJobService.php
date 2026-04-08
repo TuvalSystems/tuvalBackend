@@ -208,9 +208,18 @@ class OrderJobService
 
                         // 4) Ejecuta la facturación (tu servicio)
                         $this->invoiceService->checkSendInvoice($fresh, true, false);
+                        $fresh->refresh();
 
-                        $metrics['invoiced']++;
-                        Log::channel('cron_process')->info("✅ Pedido {$fresh->id} facturado correctamente (reserva).");
+
+                         if ($fresh->estado === OrderStatus::FACTURADO && filled($fresh->factura)) {
+                            $metrics['invoiced']++;
+                            Log::channel('cron_process')->info("✅ Pedido {$fresh->id} facturado: {$fresh->factura}");
+                       } elseif ($fresh->estado === OrderStatus::ESPERA) {
+                            $metrics['skipped']++;
+                            Log::channel('cron_process')->info("✅ Pedido {$fresh->id} no cambió a 'facturado' después de intentar facturar.");
+                        }else{
+                            Log::channel('cron_process')->warning("❓ Pedido {$fresh->id} procesado pero quedó en estado: {$fresh->estado->value}");
+                        }
                     });
                 } catch (\DomainException $e) {
                     $metrics['skipped']++;
