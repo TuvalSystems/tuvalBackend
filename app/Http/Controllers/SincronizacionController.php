@@ -766,7 +766,9 @@ class SincronizacionController extends Controller
             $relacionusuariocaja->caja_id           = $cajasMap[$cajaCode] ?? null;
             $relacionusuariocaja->CAJ_USER_USUARIO  = $userCode;
             $relacionusuariocaja->CAJ_USER_CAJA     = $cajaCode;
-            $relacionusuariocaja->save();
+            if ($relacionusuariocaja->user_id && $relacionusuariocaja->caja_id) {
+                $relacionusuariocaja->save();
+            }
         }
         return;
     }
