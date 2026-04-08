@@ -32,10 +32,16 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionPuntoVentaBodegaRelacionada> $bodegas
  * @property-read int|null $bodegas_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCaja> $cajasDisponibles
+ * @property-read int|null $cajas_disponibles_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionPuntoVentaCaja> $relacionPvCajas
+ * @property-read int|null $relacion_pv_cajas_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionUsuarioPuntoVenta> $relacionUsuarioPtoVta
  * @property-read int|null $relacion_usuario_pto_vta_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionPuntoVentaBodegaRelacionada> $relacionpuntoventabodegarelacionada
  * @property-read int|null $relacionpuntoventabodegarelacionada_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpUsuario> $usuariosConPermiso
+ * @property-read int|null $usuarios_con_permiso_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta query()
@@ -60,12 +66,6 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePtoVtaMaxDiasAutorizacionReserva($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta wherePtoVtaMaxDiasReserva($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpPuntoVenta whereUpdatedAt($value)
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCaja> $cajasDisponibles
- * @property-read int|null $cajas_disponibles_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionPuntoVentaCaja> $relacionPvCajas
- * @property-read int|null $relacion_pv_cajas_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpUsuario> $usuariosConPermiso
- * @property-read int|null $usuarios_con_permiso_count
  * @mixin \Eloquent
  */
 class GpPuntoVenta extends Model

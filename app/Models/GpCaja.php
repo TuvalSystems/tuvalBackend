@@ -14,6 +14,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $estado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpUsuario> $operariosAsignados
+ * @property-read int|null $operarios_asignados_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPuntoVenta> $puntosVenta
+ * @property-read int|null $puntos_venta_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja query()
@@ -23,10 +27,6 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereEstado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCaja whereUpdatedAt($value)
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpUsuario> $operariosAsignados
- * @property-read int|null $operarios_asignados_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPuntoVenta> $puntosVenta
- * @property-read int|null $puntos_venta_count
  * @mixin \Eloquent
  */
 class GpCaja extends Model

@@ -36,4 +36,9 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobrosEfectivoMonto extends Model
 {
     use HasFactory;
+
+
+    public function efectivoFactura (){
+        return $this->hasMany(GpCobrosEfectivoFactura::class, 'cobro_id', 'cobro_id');
+    }
 }

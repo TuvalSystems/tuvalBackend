@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Cobranzas\GpCobrosEfectivoFactura;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -38,4 +39,8 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobrosTarjetaMonto extends Model
 {
     use HasFactory;
+
+    public function cobroEfectivoFactura(){
+        return $this->hasMany(GpCobrosEfectivoFactura::class, 'cobro_id', 'cobro_id');
+    }
 }

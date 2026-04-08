@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property string|null $fecha_aprobacion
  * @property int|null $user_aprobador_id
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Cobranzas\GpCobrosDepositosFacturas> $depositosFactura
+ * @property-read int|null $depositos_factura_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosDeposito query()
@@ -44,4 +46,10 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobrosDeposito extends Model
 {
     use HasFactory;
+
+
+    public function depositosFactura()
+    {
+        return $this->hasMany(GpCobrosDepositosFacturas::class, 'cobro_id', 'cobro_id');
+    }
 }

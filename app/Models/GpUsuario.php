@@ -23,9 +23,13 @@ use Illuminate\Notifications\Notifiable;
  * @property int $status
  * @property int $must_change_password
  * @property int $process_job
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCaja> $cajasAsignadas
+ * @property-read int|null $cajas_asignadas_count
  * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
  * @property-read \App\Models\Perfiles|null $perfil
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPuntoVenta> $puntoVentaPermitidos
+ * @property-read int|null $punto_venta_permitidos_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpRelacionUsuarioPuntoVenta> $relacionptovta
  * @property-read int|null $relacionptovta_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
@@ -47,10 +51,6 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUSERID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUSERNAME($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpUsuario whereUpdatedAt($value)
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCaja> $cajasAsignadas
- * @property-read int|null $cajas_asignadas_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPuntoVenta> $puntoVentaPermitidos
- * @property-read int|null $punto_venta_permitidos_count
  * @mixin \Eloquent
  */
 class GpUsuario extends Authenticatable

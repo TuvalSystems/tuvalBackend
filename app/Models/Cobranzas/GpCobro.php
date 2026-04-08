@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $numero_recibo
  * @property int $user_id
  * @property int $cliente_id
+ * @property int|null $caja_id
  * @property string|null $caja
  * @property string $fecha
  * @property string $estado
@@ -28,6 +29,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobro query()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobro whereAlerta($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobro whereCaja($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobro whereCajaId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobro whereClienteId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobro whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobro whereEstado($value)

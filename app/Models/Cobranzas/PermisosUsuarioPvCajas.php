@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $estado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read GpPuntoVenta $puntoVenta
+ * @property-read GpUsuario $usuario
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas query()
@@ -25,8 +27,6 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas wherePvId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|PermisosUsuarioPvCajas whereUserId($value)
- * @property-read GpPuntoVenta $puntoVenta
- * @property-read GpUsuario $usuario
  * @mixin \Eloquent
  */
 class PermisosUsuarioPvCajas extends Model

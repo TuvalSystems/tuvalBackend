@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $estado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\GpCaja|null $caja
+ * @property-read \App\Models\User|null $usuario
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja query()
@@ -27,8 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereUserId($value)
- * @property-read \App\Models\GpCaja|null $caja
- * @property-read \App\Models\User|null $usuario
  * @mixin \Eloquent
  */
 class GpRelacionUsuarioCaja extends Model

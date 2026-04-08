@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  * App\Models\GpCierreCaja
  *
  * @property int $id
+ * @property int|null $caja_id
  * @property string $CAJA_CODIGO
  * @property string $fecha
  * @property string $estado
@@ -19,10 +20,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property string|null $consulta
+ * @property-read \App\Models\GpCaja|null $caja
  * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja query()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja whereCAJACODIGO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja whereCajaId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja whereConsulta($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCierreCaja whereDatos($value)

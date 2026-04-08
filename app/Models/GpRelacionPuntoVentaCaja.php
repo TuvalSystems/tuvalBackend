@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $estado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\GpCaja|null $caja
+ * @property-read \App\Models\GpPuntoVenta|null $puntoVenta
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja query()
@@ -27,8 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja wherePTOVTACAJAPUNTOVENTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja wherePvId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionPuntoVentaCaja whereUpdatedAt($value)
- * @property-read \App\Models\GpCaja|null $caja
- * @property-read \App\Models\GpPuntoVenta|null $puntoVenta
  * @mixin \Eloquent
  */
 class GpRelacionPuntoVentaCaja extends Model
