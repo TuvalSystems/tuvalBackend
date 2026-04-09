@@ -216,24 +216,6 @@ class ConsultasController extends Controller
         }
     }
 
-    public function consultaStockOthers(Request $request): JsonResponse
-    {
-        $data = $request->all();
-        try {
-            $st = $this->inventoryService->getConsultStockOthers($data);
-            return $this->successResponse('Stock obtenido correctamente', $st, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStockOthers)', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-                'data' => $data,
-            ]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
-        }
-    }
-
 
     public function consultaStockExposicion(Request $request): JsonResponse
     {

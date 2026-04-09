@@ -51,26 +51,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
 
 
-    public function getConsultStockOthers($data)
-    {
-
-        $articulo = data_get($data, 'articulo', []);
-        $code = data_get($articulo, 'ART_CODIGO', '');
-        $warehouses = $this->stockWarehouseService->getWarehouse($data);
-        if (empty($warehouses)) {
-            return [];
-        }
-        $stockRequests = array_map(fn($whr) => ['articulo' => $code, 'bodega' => $whr,], $warehouses);
-        $stockResults = $this->stockWarehouseService->fetchStock($stockRequests);
-        $formatStock = $this->stockWarehouseService->transformStockResponse($stockResults);
-        $art = $this->stockWarehouseService->computeAvailableStockByWarehouseForArticle($formatStock, $articulo); //nose porque hace pero va
-        return [
-            'stock' => data_get($art, 'stock', []),
-            'ART_STOCK' => data_get($art, 'ART_STOCK', 0),
-        ];
-    }
-
-
     public function getArticleExposition(string $artCode, string $pvCode)
     {
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $pvCode)->first();

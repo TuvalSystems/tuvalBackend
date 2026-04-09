@@ -6,8 +6,6 @@ interface InventoryQueryServiceInterface
 {
     // Define los métodos que debe implementar el servicio
     public function getConsultStock($data);
-    public function getConsultStockOthers($data);
-
     public function getConsultItemTransito($data);
     public function fetchStockInTransit();
     /** funcion para consulta de cupo de cliente */
