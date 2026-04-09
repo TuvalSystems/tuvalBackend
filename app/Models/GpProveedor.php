@@ -33,6 +33,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $PROV_ESTADO
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoDetalleProveedores> $detalleProveedores
+ * @property-read int|null $detalle_proveedores_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpProveedor newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpProveedor newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpProveedor query()

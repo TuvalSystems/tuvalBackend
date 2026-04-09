@@ -46,7 +46,7 @@ class GuiasderemisionController extends Controller
 
     public function consultarGuiaGeneradaV1(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $data             = $request->all();
             $response          = $this->deliveryNoteService->consultExistenceGeneratedGuides($data);
             if ($response !== '') {
@@ -58,7 +58,7 @@ class GuiasderemisionController extends Controller
 
     public function checkguiaremision(): JsonResponse
     {
-        return $this->executeTransaction(function (): JsonResponse {
+        return $this->handleApiAction(function (): JsonResponse {
             $this->deliveryNoteService->mapAssigmentNumberGuideRemision();
             return $this->buildSuccessResponse('Guias de remision actualizadas', 200);
         }, 'guia_ventas', 'checkguiaremision -GuiasderemisionController');
@@ -177,7 +177,7 @@ class GuiasderemisionController extends Controller
 
     public function consultarDetalleGuiaPorId(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $data           = $request->all();
             $detalle        = $this->deliveryNoteService->getDeliveryNoteDetailByType($data['guia']);
             return $this->successResponse('Detalle de guia obtenido', $detalle, 200);
@@ -186,7 +186,7 @@ class GuiasderemisionController extends Controller
 
     public function consultarDetalleGuiaReservaPorId(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $id             = $request->get('id');
             $detalle        = $this->reservedDeliveryNoteService->getDetailReservationDeliveryNoteById($id);
             return $this->successResponse('Detalle de guia obtenido', $detalle, 200);
@@ -231,7 +231,7 @@ class GuiasderemisionController extends Controller
 
     public function listaGuiaTransferenciaReposicionConAjuste(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $fechaInicio    = $request->get('fechaInicio');
             $fechaFin       = $request->get('fechaFin');
             $estado         = $request->get('estado');
@@ -249,7 +249,7 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionReserva(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $response = $this->reservedDeliveryNoteService->createDeliveryNoteFromReservation($payload, $request->user());
             return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
@@ -259,7 +259,7 @@ class GuiasderemisionController extends Controller
 
     public function enviarGuiaRemisionReservaAGp($id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             $guia = GpGuiaRemisionReserva::where('id', $id)->first();
             $response = $this->reservedDeliveryNoteService->sendReservationDeliveryNoteToGp($guia);
             return $this->successResponse('Guia de reserva creada exitosamente', $response, 200);
@@ -291,7 +291,7 @@ class GuiasderemisionController extends Controller
 
     public function despacharGuiaRemisionReserva(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validated = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
             ]);
@@ -302,7 +302,7 @@ class GuiasderemisionController extends Controller
 
     public function recibirItemsGuiaReserva(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $guiaId     = $request->input('guiaId', null);
             $items      = $request->input('items', null);
             $user       = $request->user();
@@ -318,7 +318,7 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionDespacho(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $response   = $this->dispatch->createDeliveryNoteFromDispatch($payload, $request->user());
             return $this->successResponse('Guia de Despacho creada exitosamente', $response, 200);
@@ -327,7 +327,7 @@ class GuiasderemisionController extends Controller
 
     public function despacharGuiaRemisionDespacho(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $id         = $request->input('id');
             $response   = $this->dispatch->dispatchGuideTransferShipment($id, $request->user());
             $tocoServ   = data_get($response, 'tocoServ', false);
@@ -346,7 +346,7 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionVenta(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->salesTransfer->createDeliveryNoteSalesTransfer($payload, $user);
@@ -356,7 +356,7 @@ class GuiasderemisionController extends Controller
 
     public function despacharGuiaRemisionVenta(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $id         = $request->input('id');
             $response   = $this->salesTransfer->dispatchDeliveryNoteSalesTransfer($id, $request->user());
             return $this->successResponse('Guia de Venta Despachada', $response, 200);
@@ -365,7 +365,7 @@ class GuiasderemisionController extends Controller
 
     public function recibirGuiaRemisionVenta(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->salesTransfer->receiveDeliveryNoteSalesTransfer($payload, $user);
@@ -379,7 +379,7 @@ class GuiasderemisionController extends Controller
 
     public function crearGuiaRemisionReposicion(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->replenishment->createDeliveryNoteReplenishmentTransfer($payload, $user);
@@ -389,7 +389,7 @@ class GuiasderemisionController extends Controller
 
     public function despacharGuiaRemisionReposicion(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $id         = $request->input('id');
             $user       = $request->user();
             $response   = $this->replenishment->dispatchDeliveryNoteReplenishmentTransfer($id, $user);
@@ -399,7 +399,7 @@ class GuiasderemisionController extends Controller
 
     public function recibirGuiaRemisionReposicion(Request $request)
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->all();
             $user       = $request->user();
             $response   = $this->replenishment->receiveDeliveryNoteReplenishmentTransfer($payload, $user);

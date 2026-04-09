@@ -13,7 +13,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 trait ExecuteApiTransactions
 {
 
-    protected function executeTransaction(\Closure $accion, string $canalLog, string $contextoLog): JsonResponse
+    protected function handleApiAction(\Closure $accion, string $canalLog, string $contextoLog): JsonResponse
     {
         try {
             // Retorno #1: Éxito

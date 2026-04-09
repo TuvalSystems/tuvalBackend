@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GpCliente
+ * App\Models\GpCliente
  *
  * @property int $id
  * @property string $CLI_RUC
@@ -47,10 +47,15 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $CLI_SUBGRUPO
  * @property int|null $CLI_DIA_MAXIMO_MES_FACTURACION
  * @property string|null $CLI_FACTURA_POSTERIOR_AL_DESPACHO
+ * @property int|null $user_creator_id
+ * @property string|null $fecha_hora_creacion
  * @property int|null $CLI_SEGMENTO_ID
- * @property string|null $CLI_SUBSEGMENTO_ID
+ * @property int|null $CLI_SUBSEGMENTO_ID
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read GpVendedor|null $gpvendedor
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpClienteSucursal> $sucursales
+ * @property-read int|null $sucursales_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente query()
@@ -82,7 +87,9 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLIPROVINCIA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLIRAZONSOCIAL($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLIRUC($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISEGMENTOID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISUBGRUPO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISUBSEGMENTOID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISUSPENDIDO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLITELEFONO1($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLITELEFONO2($value)
@@ -92,16 +99,10 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLITIPOCREDITO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLIVENDEDOR($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereFechaHoraCreacion($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereUpdatedAt($value)
- * @property $suspendido
- * @property $cupo_disponible
- * @property $cupo_asignado
- * @property-read \App\Models\Ventas\Vendedores\GpVendedor|null $gpvendedor
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpClienteSucursal> $sucursales
- * @property-read int|null $sucursales_count
- * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISEGMENTOID($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereCLISUBSEGMENTOID($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCliente whereUserCreatorId($value)
  * @mixin \Eloquent
  */
 

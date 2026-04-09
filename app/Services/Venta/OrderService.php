@@ -479,7 +479,7 @@ class OrderService implements OrderServiceInterface
     {
 
         $order = $this->getOrderOrFail($orderId);
-        if (!empty($order->factura)) {
+        if (!empty($order->factura) || $order->factura != '' || $order->factura != null) {
             abort(409, 'El pedido ya se encuentra facturado');
         }
         if ($order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value) {

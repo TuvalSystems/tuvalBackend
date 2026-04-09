@@ -497,7 +497,7 @@ class CotizacionesController extends Controller
 
     public function guardarcliente(Request $request)
     {
-        return $this->executeTransaction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request) {
             $data = $request->all();
             $user = $request->user();
             $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
@@ -523,7 +523,7 @@ class CotizacionesController extends Controller
 
     public function detallecotizacion(Request $request)
     {
-        return $this->executeTransaction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request) {
             $data = $request->all();
             $quote = $this->quotationService->detailQuotation($data, $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $quote, 200);
@@ -931,7 +931,7 @@ class CotizacionesController extends Controller
 
     public function obtenerStockItemsLote(Request $request)
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validated = $request->validate([
                 'articulos'     => 'required|array',
                 'bodega'        => 'required|string',
@@ -951,7 +951,7 @@ class CotizacionesController extends Controller
 
     public function obteneMargenItemlL(Request $request)
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'articulo' => 'required',
             ]);

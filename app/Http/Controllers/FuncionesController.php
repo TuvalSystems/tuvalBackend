@@ -9,11 +9,7 @@ use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleProveedores;
-use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpTempCart;
 use App\Models\Ventas\Vendedores\GpVendedor;
 
@@ -101,63 +97,7 @@ class FuncionesController extends Controller
         return $cliente;
     }
 
-    public function stockreservado($articulo, $bodega, $pedido_id = null): int
-    {
 
-        $stockReservado = GpPedidoDetalleStock::join('gp_pedido_detalles', 'gp_pedido_detalle_stocks.detalle_id', '=', 'gp_pedido_detalles.id')
-            ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_pedido_detalle_stocks.pedido_id')
-            ->whereNotNull('gp_pedido_detalle_stocks.reservado')
-            ->where(function ($q) {
-                $q->where(function ($query) {
-                    $query->where('gp_pedidos.requiere_aprobacion_comercial', 'no');
-                })
-                    ->orWhere(function ($query) {
-                        $query->where('gp_pedidos.requiere_aprobacion_comercial', 'yes');
-                        $query->where('gp_pedidos.aprobado_comercial', 'yes');
-                    });
-            })
-            ->where(function ($q) {
-                $q->where(function ($query) {
-                    $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'no');
-                })
-                    ->orWhere(function ($query) {
-                        $query->where('gp_pedidos.requiere_aprobacion_crediticia', 'yes');
-                        $query->where('gp_pedidos.aprobado_crediticio', 'yes');
-                    });
-            })
-            ->where('gp_pedido_detalle_stocks.reservado', '>', 0)
-            ->where('gp_pedidos.estado', '!=', OrderStatus::ELIMINADO)
-            ->where('gp_pedidos.estado', '!=', OrderStatus::RECHAZADO);
-        if ($pedido_id) {
-            $stockReservado = $stockReservado->where('gp_pedidos.id', '!=', $pedido_id);
-        }
-        $stockReservado = $stockReservado->where('gp_pedido_detalles.ART_CODIGO', $articulo)
-            ->where('gp_pedido_detalle_stocks.STO_ART_BODEGA', $bodega)
-            ->where(function ($query) {
-                $query->whereNull('gp_pedidos.despachado');
-                $query->orWhere('gp_pedidos.despachado', 0);
-            })
-            ->select('gp_pedido_detalle_stocks.reservado')
-            ->get()->toarray();
-        $reservado = 0;
-        foreach ($stockReservado as $res) {
-            $reservado += $res['reservado'];
-        }
-
-        $trasladosreposicion = GpTrasladosReposicion::where('bodega_origen', $bodega)
-            ->where('ART_CODIGO', $articulo)
-            ->where(function ($q) {
-                $q->whereNull('gp_traslados_reposicions.completado')
-                    ->orWhere('gp_traslados_reposicions.completado', 0);
-            })
-            ->get()->toarray();
-
-        foreach ($trasladosreposicion as $res) {
-            $reservado += $res['cantidad'] - $res['trasladado'];
-        }
-
-        return $reservado;
-    }
 
     public function checkarticulodisponible($articulo): bool
     {
@@ -224,39 +164,6 @@ class FuncionesController extends Controller
     }
 
 
-    public function formatStock($articulo, $stock_general)
-    {
-        $stocktotal = 0;
-        $articulo->disponible = $this->checkarticulodisponible($articulo);
-
-        //        echo '<pre>';
-        //        print_r($stock_general);
-        //        die();
-
-        if (isset($stock_general[$articulo->ART_CODIGO])) {
-            foreach ($stock_general[$articulo->ART_CODIGO] as $key => $st) {
-
-                if ($articulo->ART_DECIMAL_CANTIDAD == 0) {
-                    $st['STO_ART_STOCK_DISPONIBLE'] = (int) $st['STO_ART_STOCK_DISPONIBLE'];
-                } else {
-                    $st['STO_ART_STOCK_DISPONIBLE'] = number_format((float) $st['STO_ART_STOCK_DISPONIBLE'], 2, '.', '');
-                }
-
-                $reservado = $this->stockreservado($articulo->ART_CODIGO, $st['STO_ART_BODEGA']);
-                $stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'] -= $reservado;
-
-                if ($stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'] < 0)
-                    $stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'] = 0;
-
-                $stocktotal += $stock_general[$articulo->ART_CODIGO][$key]['STO_ART_STOCK_DISPONIBLE'];
-            }
-            $articulo->stock = $stock_general[$articulo->ART_CODIGO];
-        } else {
-            $articulo->stock = array();
-        }
-
-        $articulo->ART_STOCK = $stocktotal;
-    }
 
 
 
@@ -270,82 +177,5 @@ class FuncionesController extends Controller
         return abs(round($diff / 86400));
     }
 
-    public function getitemproveedores($data, $item, $pendientes = false, $existentes = false): array
-    {
-        $porcentajeMargen = GpDatosItemsL::where('DATOS_ITEMS_L_CLASE', 'VTA-BNS-L')->get()->first();
-        $proveedores = GpPedidoDetalleProveedores::where('pedido_id', $data['id'])
-            ->join('gp_proveedors', 'gp_proveedors.id', 'gp_pedido_detalle_proveedores.ID_PROVEEDOR')
-            ->where('detalle_id', $item->id)
-            ->select('gp_pedido_detalle_proveedores.*', 'gp_proveedors.PROV_RAZON_SOCIAL')
-            ->get();
-        if ($item->ART_DECIMAL_CANTIDAD == 0) {
-            $item->ART_STOCK = (int) $item->ART_STOCK;
-            $item->ART_CANTIDAD = (int) $item->ART_CANTIDAD;
-        }
-        foreach ($proveedores as $proveedor) {
 
-            if (!$proveedor->ingresado)
-                $pendientes = true;
-            else
-                $existentes = true;
-
-            $orden_detalle = GpOrdenDeCompraGeneradoDetalle::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.id', 'gp_orden_de_compra_generado_detalles.orden_generada_id')
-                ->where('gp_orden_de_compra_generado_detalles.detalle_proveedores_id', $proveedor->id)
-                ->select('gp_orden_de_compra_generados.ORDEN_COMPRA_RECIBO', 'gp_orden_de_compra_generados.ORDEN_COMPRA_DOCUMENTO')
-                ->get();
-
-            $margen = (($proveedor['COSTO_UNITARIO'] / (1 - ($proveedor['MARGEN'] / 100))) / (1 - $item['descuento'] / 100));
-
-            $proveedor->margen = number_format($margen, 4, '.', '');
-            if ($item->ART_DECIMAL_CANTIDAD == 0) {
-                $proveedor->CANTIDAD = (int) $proveedor->CANTIDAD;
-                $proveedor->ingresado = (int) $proveedor->ingresado;
-            }
-            $proveedor->orden_detalle = $orden_detalle;
-        }
-        return array('proveedores' => $proveedores, 'pendientes' => $pendientes, 'existentes' => $existentes);
-    }
-
-    public function recalcularpedido($pedido): void
-    {
-
-        $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
-        $subtotal = 0;
-        $descuento = 0;
-        $subtotalmenosdescuento = 0;
-        $iva = 0;
-        foreach ($detalle as $articulo) {
-            $subtotal += (float) number_format($articulo->ART_VALOR * $articulo->ART_CANTIDAD, 2, '.', '');
-            $descuento += (float) number_format($articulo->ART_DESCUENTO * $articulo->ART_CANTIDAD, 2, '.', '');
-            $subtotalmenosdescuento += (float) number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 2, '.', '');
-
-            $articulo->ART_IMP_VTA = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first()->ART_IMP_VTA;
-            $articulo->ART_IVA = number_format(number_format((($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD), 2, '.', '') * ($articulo->ART_IMP_VTA / 100), 2, '.', '');
-            //(float)number_format((float)number_format(($articulo->ART_VALOR - $articulo->ART_DESCUENTO) * $articulo->ART_CANTIDAD, 4, '.','') * ($articulo->ART_IMP_VTA / 100), 2, '.','');
-            $articulo->save();
-            $iva += $articulo->ART_IVA;
-            //(float)number_format((($articulo->ART_VALOR - ($articulo->ART_DESCUENTO)) * $articulo->ART_CANTIDAD) * ($articulo->ART_IMP_VTA / 100), 2, '.','');
-        }
-
-        $subtotalmenosdescuento = number_format($subtotalmenosdescuento, 2, '.', '');
-        $iva = number_format($iva, 2, '.', '');
-        $total = (float) $subtotalmenosdescuento + (float) $iva;
-
-        $pedido->subtotal = $subtotal;
-        $pedido->descuento = $descuento;
-        $pedido->subtotalmenosdescuento = $subtotalmenosdescuento;
-        $pedido->iva = $iva;
-        $pedido->total = $total;
-        $pedido->save();
-    }
-
-
-
-    public function recalculariva($detalle)
-    {
-        foreach ($detalle as $key => $articulo) {
-            $nuevo = GpArticulo::where('ART_CODIGO', $articulo->ART_CODIGO)->first();
-            $articulo->ART_IMP_VTA = $nuevo->ART_IMP_VTA;
-        }
-    }
 }

@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Models\cobranzas;
+namespace App\Models\Cobranzas;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * App\Models\cobranzas\GpCobrosEfectivoMonto
+ * App\Models\Cobranzas\GpCobrosEfectivoMonto
  *
  * @property int $id
  * @property int $cobro_id
@@ -36,4 +36,9 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobrosEfectivoMonto extends Model
 {
     use HasFactory;
+
+
+    public function efectivoFactura (){
+        return $this->hasMany(GpCobrosEfectivoFactura::class, 'cobro_id', 'cobro_id');
+    }
 }

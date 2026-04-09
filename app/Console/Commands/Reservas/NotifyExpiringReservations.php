@@ -42,10 +42,7 @@ class NotifyExpiringReservations extends Command
     public function handle()
     {
         $tz = config('app.timezone', 'America/Guayaquil');
-        $tz = 'America/Guayaquil';
         $manana = Carbon::tomorrow($tz)->toDateString();
-
-
         $reservas = GpReserva::query()->with([
             'usuarioingreso',
             'cotizacion',

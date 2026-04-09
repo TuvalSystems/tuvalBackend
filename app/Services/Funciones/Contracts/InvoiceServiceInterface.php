@@ -12,7 +12,7 @@ interface InvoiceServiceInterface
 
     public function generateDisptachOrder(GpPedido $pedido);
 
-    public function sendInvoiceGp($pedido);
+    public function sendInvoiceGp(GpPedido $pedido);
 
      public function checkTrasladado(GpPedido $pedido);
 

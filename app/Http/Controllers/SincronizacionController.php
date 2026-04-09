@@ -756,14 +756,24 @@ class SincronizacionController extends Controller
         $obj = new WebserviceController;
         $relacionusuariocajas = $obj->relacionusuariocaja();
         GpRelacionUsuarioCaja::truncate();
+        $usuariosMap = GpUsuario::pluck('id', 'USERID')->toArray();
+        $cajasMap = GpCaja::pluck('id', 'CAJA_CODIGO')->toArray();
         foreach ($relacionusuariocajas as $key => $data) {
-            $relacionusuariocaja = new GpRelacionUsuarioCaja;
-            $relacionusuariocaja->CAJ_USER_USUARIO = trim($data['CAJ_USER_USUARIO']);
-            $relacionusuariocaja->CAJ_USER_CAJA = trim($data['CAJ_USER_CAJA']);
-            $relacionusuariocaja->save();
+            $userCode = trim($data['CAJ_USER_USUARIO']);
+            $cajaCode = trim($data['CAJ_USER_CAJA']);
+            $relacionusuariocaja                    = new GpRelacionUsuarioCaja;
+            $relacionusuariocaja->user_id           = $usuariosMap[$userCode] ?? null;
+            $relacionusuariocaja->caja_id           = $cajasMap[$cajaCode] ?? null;
+            $relacionusuariocaja->CAJ_USER_USUARIO  = $userCode;
+            $relacionusuariocaja->CAJ_USER_CAJA     = $cajaCode;
+            if ($relacionusuariocaja->user_id && $relacionusuariocaja->caja_id) {
+                $relacionusuariocaja->save();
+            }
         }
         return;
     }
+
+
 
     public function llenarelacionesgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {

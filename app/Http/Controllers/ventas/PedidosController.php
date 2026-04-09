@@ -727,7 +727,7 @@ class PedidosController extends Controller
 
     public function crearTrasladoPedidos($pedido)
     {
-        return $this->executeTransaction(function () use ($pedido) {
+        return $this->handleApiAction(function () use ($pedido) {
 
             $pedido = $this->orderService->createTransferVtaOrders($pedido);
             return $this->successResponse('Traslado creado correctamente', $pedido, 200);

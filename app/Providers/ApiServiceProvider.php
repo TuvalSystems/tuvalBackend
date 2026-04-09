@@ -15,11 +15,11 @@ class ApiServiceProvider extends ServiceProvider implements DeferrableProvider
 
 
     public array $singletons = [
-        ApiGpService::class => ApiGpService::class,
-        ApiSalesService::class => ApiSalesService::class,
-        ApiSeedBillingService::class => ApiSeedBillingService::class,
-        MswService::class => MswService::class,
-        ApiDeliverNoteService::class => ApiDeliverNoteService::class,
+        ApiGpService::class             => ApiGpService::class,
+        ApiSalesService::class          => ApiSalesService::class,
+        ApiSeedBillingService::class    => ApiSeedBillingService::class,
+        MswService::class               => MswService::class,
+        ApiDeliverNoteService::class    => ApiDeliverNoteService::class,
     ];
 
     /**

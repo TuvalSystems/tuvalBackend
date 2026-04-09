@@ -63,12 +63,12 @@ return [
         ],
 
         'redis' => [
-            'driver' => 'redis',
-            'connection' => 'default',
-            'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 320,
-            'block_for' => null,
-            'after_commit' => false,
+            'driver'        => 'redis',
+            'connection'    => 'default',
+            'queue'         => env('REDIS_QUEUE', 'default'),
+            'retry_after'   => 420,
+            'block_for'     => null,
+            'after_commit'  => false,
         ],
 
     ],

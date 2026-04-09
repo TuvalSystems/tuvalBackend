@@ -294,6 +294,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         }
 
         $ids        = $detalles->pluck('detalle_id')->filter()->unique()->values();
+
+        if ($this->hasItemsWithIncompleteMasterData($ids)) {
+            throw new \RuntimeException("Error de Integridad: Se detectaron artículos (I/S) con 'Tipo de Compra' vacío en GP. Corrija el maestro de artículos para permitir el rebaje de stock.");
+        }
+
         $articulos  = $this->getPhysicalOrderDetailsByIds($ids);
         $artServs   = $this->getServiceOrderDetailsByIds($ids);
         $tocoServ   = (bool) $artServs->isNotEmpty();
@@ -362,6 +367,22 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             ->where('ART_TIPO_COMPRA', 'SERV')
             ->get()
             ->keyBy('id');
+    }
+
+    protected function hasItemsWithIncompleteMasterData($ids)
+    {
+        return GpPedidoDetalle::query()
+            ->whereIn('id', $ids)
+            ->where('reservado', '>', 0)
+            ->where(function ($query) {
+                $query->whereNull('ART_TIPO_COMPRA')
+                    ->orWhere('ART_TIPO_COMPRA', '');
+            })
+            ->where(function ($query) {
+                $query->where('ART_CODIGO', 'LIKE', '%I')
+                    ->orWhere('ART_CODIGO', 'LIKE', '%S');
+            })
+            ->exists();
     }
 
     protected function groupDispatchItemsBySourceOrder(GpGuiaRemision $guia, Collection $detalle, Collection $articulos): array

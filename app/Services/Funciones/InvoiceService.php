@@ -65,13 +65,29 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
     /** funciones anidadas a  checkSendInvoice*/
-    protected function shouldSkipProcessing($order)
+    protected function shouldSkipProcessing(GpPedido $order)
     {
-        return \in_array($order->estado, [OrderStatus::RECHAZADO, OrderStatus::ANULADA, OrderStatus::ELIMINADO], true) ||
+        return $this->shouldSkipOrderForStatus($order) ||
             ($order->requiere_aprobacion_comercial == 'yes' && $order->aprobado_comercial == 'no') ||
             ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
     }
 
+    protected function shouldSkipOrderForStatus(GpPedido $order): bool
+    {
+        return \in_array($order->estado, [
+            OrderStatus::RECHAZADO,
+            OrderStatus::ANULADA,
+            OrderStatus::ELIMINADO
+        ], true);
+    }
+
+    protected function isStatusWaitingForStock(GpPedido $order): bool
+    {
+        return \in_array($order->estado, [
+            OrderStatus::ORDEN_DE_COMPRA,
+            OrderStatus::TRASLADO,
+        ], true);
+    }
     protected function shouldSkipDueToTransferStatus(GpPedido $pedido, $trasladado): bool
     {
         return $trasladado
@@ -79,25 +95,40 @@ class InvoiceService implements InvoiceServiceInterface
             : $this->checkTraslado($pedido);
     }
 
+
+
     public function checkTrasladado(GpPedido $pedido): bool
     {
+        if ($pedido->estado === OrderStatus::FACTURADO) {
+            return false;
+        }
         $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
-        $pedido->estado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-        $pedido->save();
+        $nuevoEstado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
+        if ($pedido->estado !== $nuevoEstado) {
+            $pedido->estado = $nuevoEstado;
+            $pedido->save();
+        }
         return $tieneTraslado;
     }
 
 
     public function checkTraslado(GpPedido $pedido): bool
     {
+        if ($pedido->estado === OrderStatus::FACTURADO) {
+            return false;
+        }
         $hayTraslado    = $this->orderRepository->getDataCheckoutTraslate($pedido->id, $pedido->BOD_BODEGA);
         $detalles       = $this->orderRepository->getDetailForTraslate($pedido->id, $pedido->BOD_BODEGA);
         $nuevoEstado    = $hayTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-        $pedido->estado = $nuevoEstado;
-        if ($nuevoEstado == OrderStatus::TRASLADO) {
+        if ($nuevoEstado === OrderStatus::TRASLADO && $detalles->isNotEmpty()) {
             $this->saveTransferenciasVentas($pedido, $detalles);
         }
-        $pedido->save();
+
+        if ($pedido->estado !== $nuevoEstado) {
+            $pedido->estado = $nuevoEstado;
+            $pedido->save();
+        }
+
         return $hayTraslado;
     }
 
@@ -109,7 +140,7 @@ class InvoiceService implements InvoiceServiceInterface
         $this->purchaseOrderService->sendPurchaseOrders();
         $this->purchaseOrderService->checkPurchaseOrderRecib($pedido);
         $pedido->refresh();
-        return \in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true);
+        return $this->isStatusWaitingForStock($pedido);
     }
 
 
@@ -128,42 +159,44 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    protected function checkInvoiceOnDemand(GpPedido $pedido)
+    protected function checkInvoiceOnDemand(GpPedido $pedido): bool
     {
-        $this->setInvoiceFlags($pedido);
+        $pedido->loadMissing('gpcliente');
+        $cliente = $pedido->gpcliente;
+        if (!$cliente) {
+            throw new \Exception("El pedido #{$pedido->pedido} no tiene un cliente asociado válido.");
+        }
+        $this->setInvoiceFlags($pedido, $cliente);
         $pedido->save();
         return $this->processInvoiceDecision($pedido);
     }
 
-    protected function setInvoiceFlags(GpPedido $pedido)
+    protected function setInvoiceFlags(GpPedido $pedido, GpCliente $cliente)
     {
-        $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
-        if (!$cliente) {
-            throw new \Exception('El cliente no existe');
-        }
+        $pedido->factura_posterior_despacho = 0;
+        $pedido->factura_a_demanda          = 0;
+        $pedido->factura_siguiente_mes      = 0;
 
-        $pedido->factura_posterior_despacho = ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') ? 1 : 0;
-        if ($pedido->factura_posterior_despacho == 1) {
-            $hoy = (int) date('d');
-            $diaMax = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
+        if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') {
+            $pedido->factura_posterior_despacho = 1;
+
+            $hoy     = (int) date('d');
+            $diaMax  = (int) $cliente->CLI_DIA_MAXIMO_MES_FACTURACION;
+
             if ($diaMax == 1) {
                 $pedido->factura_a_demanda = 1;
-            } elseif ($hoy > $diaMax) {
+            } elseif ($diaMax > 1 && $hoy > $diaMax) {
                 $pedido->factura_siguiente_mes = 1;
             }
         }
     }
 
-    protected function processInvoiceDecision(GpPedido $pedido)
+    protected function processInvoiceDecision(GpPedido $pedido): bool
     {
         if (!$pedido->factura_posterior_despacho) {
             return false;
         }
-        $esSoloDemanda      = $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
-        $esSoloSiguiente    = !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes;
-
-        //caso factura a demanda
-        if ($esSoloDemanda || $esSoloSiguiente) {
+        if ($pedido->factura_a_demanda || $pedido->factura_siguiente_mes) {
             $this->generateDisptachOrder($pedido);
             return true;
         }
@@ -186,9 +219,9 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    protected function shouldSkipOrderGeneration($pedido)
+    protected function shouldSkipOrderGeneration(GpPedido $pedido)
     {
-        return \in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO]) || $pedido->despachado;
+        return $this->isStatusWaitingForStock($pedido) || $pedido->despachado;
     }
 
     protected function checkForExistingDispatchOrder(GpPedido $pedido)
@@ -228,36 +261,29 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function sendInvoiceGp($pedido)
+    public function sendInvoiceGp(GpPedido $pedido)
     {
-
-        if ($pedido->rechazado) {
-            $pedido->estado = OrderStatus::RECHAZADO;
-            $pedido->save();
-            // Log::info("Pedido {$pedido->pedido} rechazado");
+        if ($pedido->rechazado || $this->shouldSkipOrderForStatus($pedido)) {
+            if ($pedido->rechazado && $pedido->estado !== OrderStatus::RECHAZADO) {
+                $pedido->estado = OrderStatus::RECHAZADO;
+                $pedido->save();
+            }
             return;
         }
         // verifica si tiene ya ha recibido todos los item L del pedido
-        if ($this->purchaseOrderService->checkPurchaseOrderRecib($pedido)) {
-            // Log::warning("Pedido {$pedido->pedido} aun no recibe todos los items L del pedido.");
+        if (
+            $this->purchaseOrderService->checkPurchaseOrderRecib($pedido) ||
+            $this->checkOrderHaveItemTransferPending($pedido) ||
+            $this->isStatusWaitingForStock($pedido)
+        ) {
+            Log::warning("Pedido {$pedido->pedido} pausado por dependencias logísticas (OC/Traslado/Estado).");
             return;
         }
 
-        // verifica si el pedido tiene un item de traslado pendiente, si tiene no se facturara
-        if ($this->checkOrderHaveItemTransferPending($pedido)) {
-            Log::warning("Pedido {$pedido->pedido} tiene traslado pendiente. No se facturará.");
-            return;
-        }
-
-        // verifica si el pedido esta en estado 'orden_de_compra'
-        if ($pedido->estado === OrderStatus::ORDEN_DE_COMPRA) {
-            return;
-        }
         // cuando el pedido esta en estado espera realiza otras validaciones adicionales
         if ($pedido->estado === OrderStatus::ESPERA) {
-            // Log::info("Pedido {$pedido->pedido} en estado 'espera', verificando si puede cambiar a 'enviando'...");
             if (!$this->orderReadyToShip($pedido)) {
-                // Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
+                Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
                 return;
             }
 
@@ -275,7 +301,7 @@ class InvoiceService implements InvoiceServiceInterface
                     ]
                 );
 
-                if ($pedido->estado !== OrderStatus::ESPERA) { // evita writes innecesarios
+                if ($pedido->estado !== OrderStatus::ESPERA) {
                     $pedido->estado = OrderStatus::ESPERA;
                     $pedido->save();
                 }
@@ -310,7 +336,7 @@ class InvoiceService implements InvoiceServiceInterface
         $docId      = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'FAC%')->first();
         if (!$docId) {
             Log::warning("Pedido {$pedido->pedido} no tiene docId.");
-            return;
+            throw new \Exception("No se encontró configuración de documento para el punto de venta {$pedido->PTO_VTA_ID}.");
         }
         $factVtaDireccionEnvio = ($pedido->despacho == 'Retiro en bodega') ?
             $sucursalFacturacion->CLI_SUC_ID_DIRECCION : $sucursalEnvio->CLI_SUC_ID_DIRECCION;
@@ -320,10 +346,19 @@ class InvoiceService implements InvoiceServiceInterface
         // verificar si el pedido ya fue facturado
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
         if ($existInvoice['success'] === true) {
-            $info               = data_get($existInvoice, 'data', []);
-            $pedido             = GpPedido::where('pedido', $pedido->pedido)->first();
-            $pedido->factura    = data_get($info, 'numeroDocGenerado', null);
-            $pedido->estado     = OrderStatus::FACTURADO;
+            $info                           = data_get($existInvoice, 'data', []);
+            $numFactura = data_get($info, 'numeroDocGenerado');
+            $numFactura = trim((string) $numFactura);
+            if (filled($numFactura)) {
+                $pedido->factura            = data_get($info, 'numeroDocGenerado', null);
+                $pedido->estado             = OrderStatus::FACTURADO;
+                $pedido->fecha_factura      = now()->toDateString();
+                $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje', 'Validación de factura correcta.');
+            } else {
+                $pedido->estado             = OrderStatus::ESPERA;
+                $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje','Ha ocurrido un error al facturar el pedido.');
+                Log::warning("Pedido {$pedido->pedido} validación de factura sin número generado. Respuesta: " . json_encode($existInvoice));
+            }
             $pedido->save();
             return $pedido;
         }
@@ -360,26 +395,23 @@ class InvoiceService implements InvoiceServiceInterface
     protected function checkOrderHaveItemTransferPending(GpPedido $order): bool
     {
         $tieneTraslado = $this->orderRepository->getDataCheckoutTraslate($order->id, $order->BOD_BODEGA);
-        $nuevoEstado = $tieneTraslado ? OrderStatus::TRASLADO : OrderStatus::ESPERA;
-
-        if ($order->estado !== $nuevoEstado) {
-            $order->estado = $nuevoEstado;
+        if ($tieneTraslado) {
+            $order->estado = OrderStatus::TRASLADO;
+            $order->save();
+            return true;
+        }
+        if (!in_array($order->estado, [OrderStatus::ENVIANDO, OrderStatus::FACTURADO])) {
+            $order->estado = OrderStatus::ESPERA;
             $order->save();
         }
 
-        $order->refresh();
-        Log::info('Estado del pedido actualizado', [
-            'pedido_id' => $order->pedido,
-            'nuevo_estado' => $order->estado->value,
-            'motivo_traslado' => $tieneTraslado ? 'requiere_traslado' : 'no_requiere_traslado'
-        ]);
-        return $tieneTraslado;
+        return false;
     }
 
 
     public function orderReadyToShip(GpPedido $order): bool
     {
-        $hasInvalidStatus   = \in_array($order->estado, [OrderStatus::TRASLADO, OrderStatus::ORDEN_DE_COMPRA]);
+        $hasInvalidStatus   = $this->isStatusWaitingForStock($order);
         $missingCommercial  = $order->requiere_aprobacion_comercial === 'yes' && $order->aprobado_comercial !== 'yes';
         $missingCredit      = $order->requiere_aprobacion_crediticia === 'yes' && $order->aprobado_crediticio !== 'yes';
         $isRejected         = (bool) $order->rechazado;
@@ -393,7 +425,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
+    protected function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
     {
         if ($pedido->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value) {
             return true;
@@ -410,7 +442,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    public function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio)
+    protected function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio)
     {
         return [
             'FAC_VTA_DOCU_ORIGEN'           => $pedido->pedido,
@@ -440,7 +472,7 @@ class InvoiceService implements InvoiceServiceInterface
         ];
     }
 
-    public function normalizeTextNoteClient(?string $nota): string
+    protected function normalizeTextNoteClient(?string $nota): string
     {
         if ($nota === null) {
             return '';
@@ -449,7 +481,7 @@ class InvoiceService implements InvoiceServiceInterface
         return trim(preg_replace('/[^\S\r\n]+/u', ' ', $clean));
     }
 
-    public function mapFormatDetailInvoice($detalles, $pedido)
+    protected function mapFormatDetailInvoice($detalles, $pedido)
     {
         return $detalles->values()->map(function ($detalle, $index) use ($pedido) {
             return [
@@ -475,7 +507,7 @@ class InvoiceService implements InvoiceServiceInterface
         })->toArray();
     }
 
-    public function formatParamsInvoiceValidate($pedido)
+    protected function formatParamsInvoiceValidate($pedido)
     {
         return [
             'documentoOrigen' => $pedido->pedido,
@@ -485,10 +517,10 @@ class InvoiceService implements InvoiceServiceInterface
 
 
 
-    public function checkFinalInvoiceValidation(GpPedido $pedido): bool
+    protected function checkFinalInvoiceValidation(GpPedido $pedido): bool
     {
         $isInvalidStatus    = $pedido->estado !== OrderStatus::ENVIANDO;
-        $hasInvoice         = !empty($pedido->factura);
+        $hasInvoice         = $pedido->factura !== null && trim((string)$pedido->factura) !== '';
         $missingCommercial  = $pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial === 'no';
         $missingCredit      = $pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio === 'no';
 
@@ -496,6 +528,7 @@ class InvoiceService implements InvoiceServiceInterface
             Log::warning("Validación fallida facturación pedido {$pedido->pedido}", [
                 'status'            => $pedido->estado->value,
                 'invoice'           => $hasInvoice,
+                'invoice_value'     => $pedido->factura,
                 'comm_approval'     => $missingCommercial,
                 'credit_approval'   => $missingCredit
             ]);
@@ -507,20 +540,26 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function respuestaFacturaVenta(GpPedido $order)
     {
-        $pedido = GpPedido::find($order->id);
-        $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
-        if ($existInvoice['success'] === false) {
-            $pedido->FAC_VTA_MENSAJE = $existInvoice['message'] ?? 'Error no definido por GP';
-            $pedido->estado = OrderStatus::ESPERA;
-            throw new \Exception("Ocurrio un error al obtener la factura: {$existInvoice['message']}");
+        $pedido         = GpPedido::find($order->id);
+        $existInvoice   = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
+        $sucess         = data_get($existInvoice, 'success', false);
+        $info           = data_get($existInvoice, 'data', []);
+
+        if ($sucess === false) {
+            $msg                        = data_get($info, 'mensaje', 'Error no definido por GP');
+            $pedido->FAC_VTA_MENSAJE    = $msg;
+            $pedido->estado             = OrderStatus::ESPERA;
+            $pedido->save();
+            throw new \RuntimeException(
+                "Ocurrió un error al obtener la factura del pedido {$pedido->pedido}: {$pedido->FAC_VTA_MENSAJE}"
+            );
         }
-        $info                       = data_get($existInvoice, 'data', []);
         $pedido->factura            = data_get($info, 'numeroDocGenerado', null);
-        $pedido->FAC_VTA_MENSAJE    =  data_get($existInvoice, 'message', null);
+        $pedido->FAC_VTA_MENSAJE    = data_get($existInvoice, 'message', null);
         $pedido->estado             = OrderStatus::FACTURADO;
         $pedido->fecha_factura      = now()->toDateString();
         $pedido->fecha_hora_factura = now();
-        Log::info("Pedido {$pedido->pedido} fcturado. numero de factura: {$pedido->factura}");
+        Log::info("Pedido {$pedido->pedido} facturado. numero de factura: {$pedido->factura}. Estado del pedido {$pedido->estado->value}");
         $pedido->save();
         try {
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
@@ -531,7 +570,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
     /** proceso de limpieza de stock de cotizacion de reserva  */
-    public function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
+    protected function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
     {
         $order = GpPedido::find($orderId);
         if (!$order || $order->estado == OrderStatus::ESPERA) {
@@ -621,7 +660,7 @@ class InvoiceService implements InvoiceServiceInterface
         $this->updateCheckStatusReservation($reservedId);
     }
 
-    public function updateCheckStatusReservation(int $reserveId)
+    protected function updateCheckStatusReservation(int $reserveId)
     {
         $reserva = GpReserva::find($reserveId);
         if (!$reserva) {

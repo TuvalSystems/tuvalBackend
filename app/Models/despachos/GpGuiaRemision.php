@@ -9,12 +9,12 @@ use Illuminate\Database\Eloquent\Model;
  * App\Models\despachos\GpGuiaRemision
  *
  * @property int $id
+ * @property string|null $GUI_REM_CODIGO
  * @property string $tipo
  * @property string $estado
  * @property string $bodega_origen
- * @property string $bodega_destino
- * @property string $pedido
- * @property int|null $user_id
+ * @property string|null $bodega_destino
+ * @property string|null $pedido
  * @property string $GUI_REM_BODEGA
  * @property string $GUI_REM_GUIA_REMISION
  * @property string $GUI_REM_ESTABLECIMIENTO
@@ -27,26 +27,38 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $GUI_REM_FECHA_INICIO
  * @property string $GUI_REM_FECHA_FIN
  * @property string $GUI_REM_PLACA
- * @property string $GUI_REM_OBSERVACION
- * @property string $GUI_REM_RAZON_SOCIAL_DESTINATARIO
+ * @property string|null $GUI_REM_OBSERVACION
  * @property string $GUI_REM_DIRECCION_DESTINATARIO
+ * @property string $GUI_REM_RAZON_SOCIAL_DESTINATARIO
  * @property string $GUI_REM_IDENTIFICACION_DESTINATARIO
  * @property string $GUI_REM_MOTIVO_TRASLADO
- * @property string $GUI_REM_RUTA
+ * @property string|null $GUI_REM_RUTA
  * @property string|null $GUI_REM_CODI_DOCU_SUSTENTO
  * @property string|null $GUI_REM_NUME_DOCU_SUSTENTO
  * @property string|null $GUI_REM_NUME_AUTO_DOCU_SUSTENTO
  * @property string|null $GUI_REM_FECHA_EMISION_DOCU_SUSTENTO
  * @property int|null $rebajado
- * @property int|null $procesando
+ * @property int|null $recibidos
+ * @property string|null $idempotency_key
+ * @property string|null $orden_compra
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $user_id
+ * @property int|null $procesando
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\despachos\GpGuiaRemisionDespacho> $guiadespacho
+ * @property-read int|null $guiadespacho_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\despachos\GpGuiaRemisionDetalle> $guiadetalle
+ * @property-read int|null $guiadetalle_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereBodegaDestino($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereBodegaOrigen($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereEstado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMBODEGA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMCODIDOCUSUSTENTO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMCODIGO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMDIRECCIONDESTINATARIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMDIRECCIONPARTIDA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMESTABLECIMIENTO($value)
@@ -54,6 +66,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMFECHAFIN($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMFECHAINICIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMGUIAREMISION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMIDENTIFICACIONDESTINATARIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMIDENTIFICACIONTRANSPORTISTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMMOTIVOTRASLADO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMNUMEAUTODOCUSUSTENTO($value)
@@ -61,27 +74,22 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMOBSERVACION($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMPLACA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMPTOEMISION($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMRAZONSOCIALDESTINATARIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMRAZONSOCIALTRANSPORTISTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMRUTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMSECUENCIAL($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMTIPOIDENTIFICACIONTRANSPORTISTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereIdempotencyKey($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereOrdenCompra($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision wherePedido($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereProcesando($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereRebajado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereRecibidos($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUserId($value)
  * @mixin \Eloquent
- * @property string|null $GUI_REM_CODIGO
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereBodegaDestino($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereEstado($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMBODEGA($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMCODIGO($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMIDENTIFICACIONDESTINATARIO($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereGUIREMRAZONSOCIALDESTINATARIO($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision wherePedido($value)
- *
- * propiedades de la guia que no se almacenan
- * @property string  $orden
- * @property string $factura
- * @property  string $Documentos
  */
 class GpGuiaRemision extends Model
 {

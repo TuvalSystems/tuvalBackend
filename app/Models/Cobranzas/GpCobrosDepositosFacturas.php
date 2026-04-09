@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Models\cobranzas;
+namespace App\Models\Cobranzas;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * App\Models\cobranzas\GpCobrosDepositosFacturas
+ * App\Models\Cobranzas\GpCobrosDepositosFacturas
  *
  * @property int $id
  * @property int $cobro_id

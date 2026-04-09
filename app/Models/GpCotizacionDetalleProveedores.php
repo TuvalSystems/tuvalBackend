@@ -19,8 +19,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $IMPUESTO
  * @property string $TOTAL
  * @property string $TOTALCONIMPUESTO
- * @property string|null $NOTA
  * @property string $MARGEN
+ * @property string|null $NOTA
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores newModelQuery()
@@ -36,12 +36,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereIDPROVEEDOR($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereIMPUESTO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereMARGEN($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereNOTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereTOTAL($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereTOTALCONIMPUESTO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereUpdatedAt($value)
  * @mixin \Eloquent
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalleProveedores whereMARGEN($value)
  */
 class GpCotizacionDetalleProveedores extends Model
 {

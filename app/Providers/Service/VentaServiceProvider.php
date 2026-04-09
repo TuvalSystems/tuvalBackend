@@ -31,9 +31,6 @@ use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
-
-
-
     public array $singletons = [
         QuotationServiceInterface::class                => QuotationService::class,
         PurchaseOrderServiceInterface::class            => PurchaseOrderService::class,
@@ -52,10 +49,7 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
         QuoteDraftServiceInterface::class               => QuoteDraftService::class
     ];
 
-    /**
-     * Indica a Laravel qué servicios provee este archivo para que sepa
-     * cuándo cargarlo.
-     */
+
     public function provides()
     {
         return array_keys($this->singletons);

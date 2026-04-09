@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ReservasController extends Controller
 {
@@ -26,7 +25,7 @@ class ReservasController extends Controller
 
     public function validarGeneracionReservaCotizacion($id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             $existeReserva = $this->reserveService->hasAnyReserveState($id);
             if ($existeReserva) {
                 return $this->buildExistResponse($existeReserva, 'No es posible recuperar, copiar o volver a pedir la cotización porque cuenta con una reserva', 200);
@@ -39,7 +38,7 @@ class ReservasController extends Controller
     public function cancelarReservaCotizacion(ValidateCancelReservationRequest $request): JsonResponse
     {
 
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $data      = $request->validated();
             $reservasId = data_get($data, 'id', null);
             $reserva = $this->reserveService->cancelReservedQuotation($reservasId);
@@ -49,7 +48,7 @@ class ReservasController extends Controller
 
     public function verificarStockCotizacionActual(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validated = $request->validate([
                 'id' => 'required|integer',
             ]);
@@ -65,17 +64,17 @@ class ReservasController extends Controller
 
     public function guardarReservaCotización(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
             $reserva    = $request->get('reserva', null);
-            $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
-            return $this->buildSuccessResponse('Solicitud de reserva guardada correctamente', 200);
+            $quote = $this->reserveService->saveQuotationHeaderReserved($reserva, $gpUser);
+            return $this->buildSuccessResponse("Solicitud de reserva guardada correctamente {$quote->cotizacion}", 200);
         }, 'reservas_log',  'guardarReservaCotización');
     }
 
     public function obtenerListaTipoReservas(): JsonResponse
     {
-        return $this->executeTransaction(function (): JsonResponse {
+        return $this->handleApiAction(function (): JsonResponse {
             $data = $this->reserveService->fetchListTipeReserved();
             return $this->successResponse('Tipos de reservas obtenidos correctamente', $data, 200);
         }, 'reservas_log',  'obtenerListaTipoReservas');
@@ -102,14 +101,14 @@ class ReservasController extends Controller
 
     public function obtenerCotizacionConDetalle($id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             return $this->successResponse('Detalle obtenido correctamente', $this->reserveService->getQuotationWithDetails($id), 200);
         }, 'reservas_log',  'obtenerCotizacionConDetalle');
     }
 
     public function obtenerCotizacionDetalleConStock($id): JsonResponse
     {
-        return $this->executeTransaction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetailsAndStock($id), 200);
         }, 'reservas_log',  'obtenerCotizacionDetalleConStock');
     }
@@ -143,7 +142,7 @@ class ReservasController extends Controller
 
     public function rechazarSolicitudReservaCotizacion(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
             $data       = $request->all();
             DB::transaction(function () use ($data, $gpUser) {
@@ -155,12 +154,16 @@ class ReservasController extends Controller
 
     public function aprobarSolicitudReservaCotizacion(Request $request)
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $gpUser     = $request->user();
-            $data       = $request->all();
+            $data       = $request->input('data', null);
             $reserva    = DB::transaction(function () use ($data, $gpUser) {
-                return $this->reserveService->approvalApplicationReservedQuotation($data['data'], $gpUser);
+                return $this->reserveService->approvalApplicationReservedQuotation($data, $gpUser);
             });
+            $alerta = data_get($reserva, 'alerta', null);
+            if ($alerta) {
+                return $this->buildExistResponse(false, $alerta, 200);
+            }
             $msg = "Reserva autorizada correctamente";
             return $this->successResponse($msg, $reserva, 200);
         }, 'reservas_log', 'aprobarSolicitudReservaCotizacion');
@@ -190,10 +193,10 @@ class ReservasController extends Controller
 
     public function procesarReservaCotizacion(Request $request)
     {
-        return $this->executeTransaction(function () use ($request): JsonResponse {
-            $data       = $request->all();
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data       = $request->input('data', null);
             $gpUser     = $request->user();
-            $response   = $this->reserveService->processReservedQuotation($data['data'], $gpUser);
+            $response   = $this->reserveService->processReservedQuotation($data, $gpUser);
             $cot        = data_get($response, 'cotizacion', null);
             $msg        = $cot === null ? "Reserva procesada correctamente" : "Reserva procesada correctamente, cotización generada:  {$cot}";
 
@@ -204,31 +207,20 @@ class ReservasController extends Controller
 
     public function procesarReservaFacturaDemandaCotizacion(Request $request)
     {
-        $data = $request->all();
-        $gpUser = $request->user();
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data = $request->input('reserva', null);
+            $gpUser = $request->user();
             $response = DB::transaction(function () use ($data, $gpUser) {
-                return $this->reserveService->processReservedQuotationInvoiceDemand($data['reserva'], $gpUser);
+                return $this->reserveService->processReservedQuotationInvoiceDemand($data, $gpUser);
             });
-            $msg = "Pedido {$response['pedido']} generado.";
+            $alerta = data_get($response, 'alertMessage', null);
+            if ($alerta) {
+                return $this->buildExistResponse(false, $alerta, 200);
+            }
+            $pedidoNombre = data_get($response, 'order.pedido', 'N/A');
+            $msg = "Pedido {$pedidoNombre} generado correctamente.";
             return $this->successResponse($msg, $response, 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\DomainException $e) {
-            return $this->buildErrorResponse($e->getMessage(), 422);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion procesarReservaFacturaDemandaCotizacion -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'data' => $data
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'procesarReservaFacturaDemandaCotizacion');
     }
 
 

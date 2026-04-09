@@ -12,8 +12,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $BOD_BODEGA
  * @property string|null $BOD_DESCRIPCION
  * @property string $BOD_ESTADO
+ * @property int|null $PERMITE_DESPACHO
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacion> $cotizacion
+ * @property-read int|null $cotizacion_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpBodega newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpBodega newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpBodega query()
@@ -22,10 +25,9 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpBodega whereBODESTADO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpBodega whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpBodega whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpBodega wherePERMITEDESPACHO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpBodega whereUpdatedAt($value)
  * @mixin \Eloquent
- * @property int|null $PERMITE_DESPACHO
- * @method static \Illuminate\Database\Eloquent\Builder|GpBodega wherePERMITEDESPACHO($value)
  */
 class GpBodega extends Model
 {

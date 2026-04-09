@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $mensaje_ws
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCobrosAplicacionFactura> $facturasAplicadas
+ * @property-read int|null $facturas_aplicadas_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto query()
@@ -29,11 +31,18 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereMensajeWs($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereMonto($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereUpdatedAt($value)
  * @mixin \Eloquent
- * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosAplicacionMonto whereTipo($value)
  */
 class GpCobrosAplicacionMonto extends Model
 {
     use HasFactory;
+
+
+
+    public function facturasAplicadas()
+    {
+        return $this->hasMany(GpCobrosAplicacionFactura::class, 'cobro_id', 'cobro_id');
+    }
 }

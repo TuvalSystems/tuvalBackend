@@ -6,6 +6,37 @@ use App\Models\Ventas\TipoVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * App\Models\Ventas\Vendedores\VendedorJerarquiaRelacion
+ *
+ * @property int $id
+ * @property int $vendedor_jerarquia_id
+ * @property int $tipo_vendedor_padre_id
+ * @property int $tipo_vendedor_hijo_id
+ * @property bool $estado
+ * @property int|null $created_by_user_id
+ * @property int|null $updated_by_user_id
+ * @property \Illuminate\Support\Carbon|null $modified_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Ventas\Vendedores\VendedorJerarquia $jerarquia
+ * @property-read TipoVendedor $tipoVendedorHijo
+ * @property-read TipoVendedor $tipoVendedorPadre
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion query()
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereCreatedByUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereEstado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereModifiedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereTipoVendedorHijoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereTipoVendedorPadreId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereUpdatedByUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|VendedorJerarquiaRelacion whereVendedorJerarquiaId($value)
+ * @mixin \Eloquent
+ */
 class VendedorJerarquiaRelacion extends Model
 {
     use HasFactory;

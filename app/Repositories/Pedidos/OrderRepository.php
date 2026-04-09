@@ -227,10 +227,6 @@ class OrderRepository implements OrderRepositoryInterface
         ];
         $query = GpPedido::query();
         $query
-            // ->with([
-            //     'detallepedido',
-            //     'gpcotizacion'
-            // ])
             ->join('gp_descuento_forma_pagos as dfp', 'dfp.DESC_FORMA_PAGO_CODIGO', '=', 'gp_pedidos.DESC_FORMA_PAGO_CODIGO')
             ->join('gp_punto_ventas as pv', 'pv.PTO_VTA_ID', '=', 'gp_pedidos.PTO_VTA_ID')
             ->select(
@@ -243,5 +239,14 @@ class OrderRepository implements OrderRepositoryInterface
             ->whereNotIn('gp_pedidos.estado', $excludedStates)
             ->orderBy('gp_pedidos.created_at', 'ASC');
         return $query;
+    }
+
+
+    /** function para obtener todos los pedidos en estado enviando  */
+
+    public function queryOrdersInSendingStatus()
+    {
+        return GpPedido::where('estado', OrderStatus::ENVIANDO)
+            ->orderBy('id')->get();
     }
 }

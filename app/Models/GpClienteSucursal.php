@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Ventas\Vendedores\GpVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $CLI_SUC_DIRECCION
  * @property string|null $CLI_SUC_CONTACTO
  * @property string|null $CLI_SUC_REFERENCIA
- * @property int|null $CLI_SUC_VENDEDOR
+ * @property string|null $CLI_SUC_VENDEDOR
  * @property string|null $CLI_SUC_TERRITORIO
  * @property string|null $CLI_SUC_CIUDAD
  * @property string|null $CLI_SUC_PROVINCIA
@@ -23,9 +24,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $CLI_SUC_TELEFONO
  * @property string|null $CLI_SUC_CORREO_ELECTRONICO_SRI
  * @property string|null $CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA
- * @property string|null $coordenadas
+ * @property int|null $user_creator_id
+ * @property string|null $fecha_hora_creacion
+ * @property int $estado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $coordenadas
+ * @property-read GpVendedor|null $vendedor
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal query()
@@ -43,9 +48,13 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCTELEFONO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCTERRITORIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCLISUCVENDEDOR($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCoordenadas($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereEstado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereFechaHoraCreacion($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpClienteSucursal whereUserCreatorId($value)
  * @mixin \Eloquent
  */
 class GpClienteSucursal extends Model

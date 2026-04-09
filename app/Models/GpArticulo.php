@@ -38,11 +38,15 @@ use Illuminate\Support\Collection;
  * @property string|null $ART_CODIGO_MARCA_MATERIAL
  * @property string|null $ART_DESCRIPCION_MARCA_MATERIAL
  * @property string|null $combinado
- * @property string|null $fecha_ultimo_uso
- * @property boolean|null $disponible
- * @property string|null $numero_dias_ultimo_uso
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int $disponible
+ * @property string|null $fecha_ultima_actividad
+ * @property string|null $dias_transcurridos
+ * @property string|null $dias_restantes
+ * @property string|null $dias_enfriamiento
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionDetalle> $detallecotizacionArticulo
+ * @property-read int|null $detallecotizacion_articulo_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo query()
@@ -73,7 +77,13 @@ use Illuminate\Support\Collection;
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereARTTAMANO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereARTTIPOCOMPRA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereARTTIPOPRODUCTO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereCombinado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereDiasEnfriamiento($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereDiasRestantes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereDiasTranscurridos($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereDisponible($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereFechaUltimaActividad($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpArticulo whereUpdatedAt($value)
  * @mixin \Eloquent

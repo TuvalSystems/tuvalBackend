@@ -17,72 +17,93 @@ use Illuminate\Support\Facades\DB;
  *
  * @property int $id
  * @property string|null $devolucion
- * @property string $estado
+ * @property string|null $DOC_GENERADO
+ * @property string|null $fecha_NC
+ * @property DevolutionStatus $estado
  * @property int $pedido_id
- * @property int $cliente_id
- * @property string|null $pedido
+ * @property int|null $cliente_id
+ * @property GpPedido $pedido
  * @property string|null $factura
  * @property int|null $volver_a_facturar
  * @property string $tipo_devolucion
  * @property int|null $despachado
  * @property int|null $cliente_volver_a_facturar_id
  * @property int|null $user_id
+ * @property string|null $USERID
  * @property int|null $sucursal_id
  * @property int|null $sucursal_facturacion_id
  * @property string|null $motivo
  * @property string|null $orden_de_compra
+ * @property string|null $nota_cliente
  * @property string $requiere_aprobacion
  * @property string $aprobado
  * @property int|null $aprobador_id
  * @property string|null $aprobado_mensaje
+ * @property string|null $NC_VTA_MENSAJE
  * @property int|null $devolucion_bodega
- * @property int|null $impuesto
- * @property int|null $procesando
- * @property string $subtotal
- * @property string|null $descuento
- * @property string $subtotalmenosdescuento
- * @property string $iva
- * @property string $total
- * @property string $observacion
+ * @property int|null $rebajado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones query()
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereAprobado($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereAprobadoMensaje($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereAprobadorId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereClienteVolverAFacturarId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereDespachado($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereFactura($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereMotivo($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereOrdenDeCompra($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones wherePedido($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones wherePedidoId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereRequiereAprobacion($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereSucursalFacturacionId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereSucursalId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereTipoDevolucion($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereUserId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereVolverAFacturar($value)
- * @mixin \Eloquent
- * @property string|null $DOC_GENERADO
- * @property string|null $fecha_NC
- * @property string|null $USERID
- * @property string|null $NC_VTA_MENSAJE
+ * @property int|null $procesando
+ * @property int|null $permite_anulacion
+ * @property int $anulacion_habilitada
+ * @property int|null $impuesto
  * @property string|null $AJ_VTA_MENSAJE
- * @property string|null $nota_cliente
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereClienteId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereDOCGENERADO($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereDevolucion($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereEstado($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereFechaNC($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpDevoluciones whereNCVTAMENSAJE($value)
- * @property boolean $permite_anulacion
- * @property boolean $anulacion_habilitada
+ * @property string|null $observacion
+ * @property string|null $subtotal
+ * @property string|null $descuento
+ * @property string|null $subtotalmenosdescuento
+ * @property string|null $iva
+ * @property string|null $total
+ * @property string|null $motivo_no_anulada
+ * @property-read GpCliente|null $cliente
+ * @property-read GpCliente|null $cliente_volver_a_facturar
+ * @property-read GpClienteSucursal|null $sucursal_volver_a_facturar
+ * @method static Builder|GpDevoluciones conCriterios($criterio)
+ * @method static Builder|GpDevoluciones newModelQuery()
+ * @method static Builder|GpDevoluciones newQuery()
+ * @method static Builder|GpDevoluciones query()
+ * @method static Builder|GpDevoluciones whereAJVTAMENSAJE($value)
+ * @method static Builder|GpDevoluciones whereAnulacionHabilitada($value)
+ * @method static Builder|GpDevoluciones whereAprobado($value)
+ * @method static Builder|GpDevoluciones whereAprobadoMensaje($value)
+ * @method static Builder|GpDevoluciones whereAprobadorId($value)
+ * @method static Builder|GpDevoluciones whereClienteId($value)
+ * @method static Builder|GpDevoluciones whereClienteVolverAFacturarId($value)
+ * @method static Builder|GpDevoluciones whereCreatedAt($value)
+ * @method static Builder|GpDevoluciones whereDOCGENERADO($value)
+ * @method static Builder|GpDevoluciones whereDescuento($value)
+ * @method static Builder|GpDevoluciones whereDespachado($value)
+ * @method static Builder|GpDevoluciones whereDevolucion($value)
+ * @method static Builder|GpDevoluciones whereDevolucionBodega($value)
+ * @method static Builder|GpDevoluciones whereEstado($value)
+ * @method static Builder|GpDevoluciones whereFactura($value)
+ * @method static Builder|GpDevoluciones whereFechaNC($value)
+ * @method static Builder|GpDevoluciones whereId($value)
+ * @method static Builder|GpDevoluciones whereImpuesto($value)
+ * @method static Builder|GpDevoluciones whereIva($value)
+ * @method static Builder|GpDevoluciones whereMotivo($value)
+ * @method static Builder|GpDevoluciones whereMotivoNoAnulada($value)
+ * @method static Builder|GpDevoluciones whereNCVTAMENSAJE($value)
+ * @method static Builder|GpDevoluciones whereNotaCliente($value)
+ * @method static Builder|GpDevoluciones whereObservacion($value)
+ * @method static Builder|GpDevoluciones whereOrdenDeCompra($value)
+ * @method static Builder|GpDevoluciones wherePedido($value)
+ * @method static Builder|GpDevoluciones wherePedidoId($value)
+ * @method static Builder|GpDevoluciones wherePermiteAnulacion($value)
+ * @method static Builder|GpDevoluciones whereProcesando($value)
+ * @method static Builder|GpDevoluciones whereRebajado($value)
+ * @method static Builder|GpDevoluciones whereRequiereAprobacion($value)
+ * @method static Builder|GpDevoluciones whereSubtotal($value)
+ * @method static Builder|GpDevoluciones whereSubtotalmenosdescuento($value)
+ * @method static Builder|GpDevoluciones whereSucursalFacturacionId($value)
+ * @method static Builder|GpDevoluciones whereSucursalId($value)
+ * @method static Builder|GpDevoluciones whereTipoDevolucion($value)
+ * @method static Builder|GpDevoluciones whereTotal($value)
+ * @method static Builder|GpDevoluciones whereUpdatedAt($value)
+ * @method static Builder|GpDevoluciones whereUserId($value)
+ * @method static Builder|GpDevoluciones whereVolverAFacturar($value)
+ * @mixin \Eloquent
  */
 class GpDevoluciones extends Model
 {

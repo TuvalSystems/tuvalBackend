@@ -27,7 +27,7 @@ class TransferenciasController extends Controller
 
     public function transferenciasVentas($id, $pedido = null, $compartimiento = null)
     {
-        return $this->executeTransaction(function () use ($id, $pedido, $compartimiento) {
+        return $this->handleApiAction(function () use ($id, $pedido, $compartimiento) {
             $data = $this->transferService->fetchSalesTransfers($id, $pedido, $compartimiento);
             return $this->successResponse('Transferencias obtenidas', $data, 200);
         }, 'laravel', 'transferenciasVentas');
@@ -86,7 +86,7 @@ class TransferenciasController extends Controller
 
     public function cancelarPickingV2(Request $request)
     {
-        return $this->executeTransaction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request) {
             $validate = $request->validate([
                 'payload' => 'required'
             ]);

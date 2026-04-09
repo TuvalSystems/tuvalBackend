@@ -44,9 +44,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property string|null $USERID
  * @property-read mixed $pending_received_devolution
+ * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle articulosFisicos()
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle validosParaNotaCredito()
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle whereARTCANTIDAD($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle whereARTCODIGO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpDevolucionesDetalle whereARTCODIGOTRESLETRAS($value)

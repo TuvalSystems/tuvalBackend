@@ -12,9 +12,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $CB_ID
  * @property string $CB_DESCRIPCION
  * @property string $CB_TIPO
- * @property string $estado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $estado
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos query()
@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos whereCBID($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos whereCBTIPO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos whereEstado($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCajaBancos whereUpdatedAt($value)
  * @mixin \Eloquent

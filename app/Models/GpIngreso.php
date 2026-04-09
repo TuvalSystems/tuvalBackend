@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property int|null $user_id
- * @property string $USERID
+ * @property string|null $USERID
+ * @property int|null $sucursal_id
  * @property string $tipo
  * @property string|null $documento
  * @property string|null $GUI_REM_GUIA_REMISION
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso query()
  * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso whereDocumento($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso whereGUIREMCODIGO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso whereGUIREMGUIAREMISION($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso whereSucursalId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpIngreso whereTipo($value)

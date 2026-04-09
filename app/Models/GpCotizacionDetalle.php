@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $ART_CODIGO
  * @property string|null $ART_DESCRIPCION
  * @property string|null $ART_DESCRIPCION_ORIGINAL
+ * @property int $CHECK_ALTERNATIVO
  * @property string|null $ART_CODIGO_TRES_LETRAS
  * @property int|null $ART_DECIMAL_CANTIDAD
  * @property string|null $ART_PLAN_UMEDIDA
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $ART_VALOR
  * @property string|null $ART_IVA
  * @property string|null $ART_VALOR_ORIGINAL
+ * @property string|null $valor_original_l
  * @property string|null $ART_DESCUENTO
  * @property string|null $ART_CANTIDAD
  * @property string|null $ART_STOCK
@@ -33,6 +35,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $modificador
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\GpArticulo|null $articulo
+ * @property-read \App\Models\GpCotizacion $cotizacion
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionDetalleProveedores> $proveedores
+ * @property-read int|null $proveedores_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionDetalleStock> $stock
+ * @property-read int|null $stock_count
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle query()
@@ -48,11 +56,13 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTIVA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTMARCA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTMATERIAL($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTPESO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTPLANUMEDIDA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTSTOCK($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTTIPOCOMPRA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTVALOR($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTVALORORIGINAL($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereCHECKALTERNATIVO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereCotizacionId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereDescuento($value)
@@ -60,9 +70,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereModificador($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereValorOriginalL($value)
  * @mixin \Eloquent
- * @method static \Illuminate\Database\Eloquent\Builder|GpCotizacionDetalle whereARTPESO($value)
- * @property boolean|null $CHECK_ALTERNATIVO
  */
 class GpCotizacionDetalle extends Model
 {

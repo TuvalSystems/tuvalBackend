@@ -71,12 +71,10 @@ class AuthController extends Controller
     public function changePassword(Request $request)
     {
         $request->validate(
-            [
-                'password' => 'required|min:8',
-            ],
+            ['password' => 'required|min:8'],
             [
                 'password.min' => 'La contraseña debe tener al menos 8 caracteres',
-                'password.required' => 'La contraseña es requerida',
+                'password.required' => 'La contraseña es requerida'
             ]
         );
         try {
@@ -102,9 +100,9 @@ class AuthController extends Controller
     }
 
 
-    public function changeStatusGpUser(Request $request) : JsonResponse
+    public function changeStatusGpUser(Request $request): JsonResponse
     {
-        return $this->executeTransaction(function () use ($request) : JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'USERID' => 'required|string',
             ]);

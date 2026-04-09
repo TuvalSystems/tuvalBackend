@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $Bodega_Origen
  * @property string $Bodega_Destino
  * @property string $Codigo_Motivo
+ * @property string|null $Motivo
  * @property string $Fecha_Documento
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -26,10 +27,9 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicionCabecera whereDocumento($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicionCabecera whereFechaDocumento($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicionCabecera whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicionCabecera whereMotivo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicionCabecera whereUpdatedAt($value)
  * @mixin \Eloquent
- * @property string $Motivo
- * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicionCabecera whereMotivo($value)
  */
 class GpTrasladosReposicionCabecera extends Model
 {

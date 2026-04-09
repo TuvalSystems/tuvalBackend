@@ -37,22 +37,35 @@ class ReleaseStockReserveCommand extends Command
                     $query->where('picking', 1);
                 });
             }
-        ])->where('tipo_reserva_id', 1)->whereIn('estado', ['aprobado', 'traslado'])->whereDate('fe_autorizacion_reserva', '<=', $ayer);
+        ])->where('tipo_reserva_id', 1)
+            ->whereIn('estado', ['aprobado', 'traslado', 'cancelado'])
+            ->whereDate('fe_autorizacion_reserva', '<=', $ayer)
+            ->whereHas('cotizacion.detallecotizacionstock', function ($q) {
+                $q->where('seleccionado', '>', 0);
+                $q->whereDoesntHave('trasladoreserva', function ($query) {
+                    $query->where('picking', 1);
+                });
+            });
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
-            foreach ($lote as  $res) {
+            foreach ($lote as $res) {
 
-                $quote = $res->cotizacion;
-                $userSolicita = $res->usuarioingreso;
-
-                $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
-                $this->releaseStock($quote);
-                $res->update(['estado' => 'cancelado']);
-                $title      = "Reserva liberada";
-                $msg        = "Se liberó el stock reservado para la cotización {$quote->cotizacion}.";
-                $userSolicita->notify((new UserNotification($title, $msg)));
-                $total++;
-                Log::channel('reservas_log')->info("reservas:release-stock => $quote->cotizacion");
+                try {
+                    DB::transaction(function () use ($res, &$total) {
+                        $quote = $res->cotizacion;
+                        $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
+                        $this->releaseStock($quote);
+                        $res->update(['estado' => 'cancelado']);
+                        $total++;
+                    });
+                    $title = "Reserva liberada";
+                    $msg = "Se liberó el stock reservado para la cotización {$res->cotizacion->cotizacion}.";
+                    $res->usuarioingreso->notify(new UserNotification($title, $msg));
+                    Log::channel('reservas_log')->info("reservas:release-stock => {$res->cotizacion->cotizacion} EXITOSO");
+                } catch (\Exception $e) {
+                    Log::channel('reservas_log')->error("FALLO en reserva ID {$res->id}: " . $e->getMessage());
+                    $this->error("Error procesando reserva {$res->id}. Revisar logs.");
+                }
             }
         });
 
@@ -70,32 +83,36 @@ class ReleaseStockReserveCommand extends Command
             })
             ->get()
             ->each(function ($stock) {
-
                 $stock->trasladoreserva()
                     ->where('picking', '!=', 1)
                     ->update(['cantidad' => 0]);
-
-                $stock->update([
-                    'cantidad_cancelada'    => $stock->cantidad_cancelada + $stock->seleccionado,
-                    'seleccionado'          => 0,
-                    'cantidad_cotizada'     => 0,
-                    'cantidad_reservada'    => 0,
-                    'cantidad_traslado'     => 0,
-                ]);
+                if ($stock->seleccionado > 0) {
+                    $stock->update([
+                        'cantidad_cancelada'    =>  max($stock->cantidad_autorizada_reserva, $stock->cantidad_cancelada + $stock->seleccionado, 0),
+                        'seleccionado'          => 0,
+                        'cantidad_cotizada'     => 0,
+                        'cantidad_reservada'    => 0,
+                        'cantidad_traslado'     => 0,
+                    ]);
+                }
             });
     }
 
     public function storeQuotationReservedStockLogs($stocks)
     {
+        $data = [];
         foreach ($stocks as $st) {
-            DB::table('gp_cotizacion_detalle_stocks_logs')->insert([
-                'stock_id'      => $st->id,
-                'user_id'       => 6,
-                'tipo'          => 'liberado_sistema',
-                'cantidad'      => (float) $st->seleccionado,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
+            $data[] = [
+                'stock_id'   => $st->id,
+                'user_id'    => 6,
+                'tipo'       => 'liberado_sistema',
+                'cantidad'   => (float) $st->seleccionado,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        if (!empty($data)) {
+            DB::table('gp_cotizacion_detalle_stocks_logs')->insert($data);
         }
     }
 }

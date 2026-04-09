@@ -13,20 +13,36 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Repositories\Bodegas\TransferRepository;
+use App\Repositories\Cobranzas\CashClosureRepository;
+use App\Repositories\Cobranzas\CollectionRepository;
+use App\Repositories\Cobranzas\Contracts\CashBoxRepositoryInterface;
+use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
+use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
+use App\Repositories\User\Contracts\UserRepositoryInterface;
+use App\Repositories\User\UserRepository;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Repositories\Venta\InventoryReservationRepository;
 
 class RepositoryServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
-public array $singletons = [
-        DevolucionRepositoryInterface::class           => DevolucionRepository::class,
-        OrderRepositoryInterface::class                => OrderRepository::class,
-        PurchaseReceipRepositoryInterface::class       => PurchaseReceipRepository::class,
-        QuotationRepositoryInterface::class            => QuotationRepository::class,
-        TransferRepositoryInterface::class             => TransferRepository::class,
-        InventoryReservationRepositoryInterface::class => InventoryReservationRepository::class,
+    public array $singletons = [
+        DevolucionRepositoryInterface::class            => DevolucionRepository::class,
+        OrderRepositoryInterface::class                 => OrderRepository::class,
+        PurchaseReceipRepositoryInterface::class        => PurchaseReceipRepository::class,
+        QuotationRepositoryInterface::class             => QuotationRepository::class,
+        TransferRepositoryInterface::class              => TransferRepository::class,
+        InventoryReservationRepositoryInterface::class  => InventoryReservationRepository::class,
+
+
+        //cobranza
+        CashClosureRepositoryInterface::class           => CashClosureRepository::class,
+        CashBoxRepositoryInterface::class               => CashClosureRepository::class,
+        CollectionRepositoryInterface::class            => CollectionRepository::class,
+
+        //usuario
+        UserRepositoryInterface::class                  => UserRepository::class,
     ];
 
     /**

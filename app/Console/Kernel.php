@@ -76,6 +76,13 @@ class Kernel extends ConsoleKernel
 
 
         $schedule->command('telescope:prune')->daily();
+
+        //facturar pedidos en estado enviando
+        $schedule->command('pedidos:facturar-enviando')
+            ->timezone('America/Guayaquil')
+            ->everyTwoHours()
+            ->withoutOverlapping(20)
+            ->runInBackground();
     }
 
 

@@ -24,8 +24,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $cantidad
  * @property string|null $bodega_origen
  * @property string|null $bodega_destino
- * @property string|null $reservado
- * @property string|null $trasladado
+ * @property string $reservado
+ * @property string $trasladado
  * @property int $completado
  * @property int $picking
  * @property \Illuminate\Support\Carbon|null $created_at
