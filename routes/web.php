@@ -127,6 +127,9 @@ Route::prefix('consultas')->group(function () {
     Route::get('territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
     Route::get('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
     Route::get('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
+    Route::get('stock-exposicion', [ConsultasController::class, 'consultaStockExposicion']);
+
+
 });
 
 Route::group(['prefix' => 'reservas-web'], function () {

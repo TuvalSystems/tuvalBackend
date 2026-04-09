@@ -6,9 +6,6 @@ namespace App\Services\Reposiciones\Contracts;
 interface StockWarehouseServiceInterface
 {
     public function getWarehouseNotConsult($data);
-
-    // public function newFormatStock($stockResults,  $articulo);
-    // public function stockReservado(string $articulo, string $bodega, ?int $pedidoId = null);
     /**
      *  funciones en prueba para remplazo de newFormatStock y stockReservado
      */
@@ -24,6 +21,7 @@ interface StockWarehouseServiceInterface
     public function fetchStockBatchWarehouses(array $params);
     public function fetchStockByOnlyWarehouse(array $params);
     public function fetchStock(array $infoRequest);
+    public function fetchStockExposicionByArticleAndPv(array $params);
     public function fetchStockWarehouseCompartmentDevolution(array $params);
     public function transformStockResponse($stockResults);
     public function transformStockQuotationResponse($stockResults);

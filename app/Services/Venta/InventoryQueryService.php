@@ -71,6 +71,21 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     }
 
 
+    public function getArticleExposition(string $artCode, string $pvCode)
+    {
+        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $pvCode)->first();
+        $params = [
+            'item' => $artCode,
+            'puntoVenta' => $pvCode,
+        ];
+        $response = $this->stockWarehouseService->fetchStockExposicionByArticleAndPv($params);
+        return [
+            'bodega'        => data_get($bodega, 'PTO_VTA_BOD_BODEGA', ''),
+            'disponible'    => data_get($response, 'cantidad', 0),
+        ];
+    }
+
+
 
 
     public function getAvailableSpace($ruc)

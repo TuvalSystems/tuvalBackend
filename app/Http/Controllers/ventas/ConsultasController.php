@@ -234,6 +234,20 @@ class ConsultasController extends Controller
         }
     }
 
+
+    public function consultaStockExposicion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'articulo' => 'required|string',
+                'puntoventa' => 'required|string'
+            ]);
+            $artCode = data_get($validate, 'articulo');
+            $pvCode = data_get($validate, 'puntoventa');
+            return $this->successResponse('Stock obtenido correctamente', $this->inventoryService->getArticleExposition($artCode, $pvCode), 200);
+        }, 'laravel', 'consultaStockExposicion');
+    }
+
     public function consultaItemTransito(Request $request): JsonResponse
     {
         try {
