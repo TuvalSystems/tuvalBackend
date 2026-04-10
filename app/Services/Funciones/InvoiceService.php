@@ -50,14 +50,19 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        if (
-            $this->shouldSkipProcessing($pedido) ||
-            $this->shouldSkipDueToTransferStatus($pedido, $trasladado) ||
-            $this->processPurchaseOrders($pedido) || ($checkDemanda && $this->checkInvoiceOnDemand($pedido))
-        ) {
+        if ($this->shouldSkipProcessing($pedido)) {
             return;
         }
 
+        $waitingForStock    = $this->processPurchaseOrders($pedido);
+        $hasTransferPending = $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
+        if ($waitingForStock || $hasTransferPending) {
+            Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
+            return;
+        }
+        if ($checkDemanda && $this->checkInvoiceOnDemand($pedido)) {
+            return;
+        }
 
         $this->generateDisptachOrder($pedido);
         $this->functionService->recalculateOrder($pedido->id);
@@ -356,7 +361,7 @@ class InvoiceService implements InvoiceServiceInterface
                 $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje', 'Validación de factura correcta.');
             } else {
                 $pedido->estado             = OrderStatus::ESPERA;
-                $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje','Ha ocurrido un error al facturar el pedido.');
+                $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje', 'Ha ocurrido un error al facturar el pedido.');
                 Log::warning("Pedido {$pedido->pedido} validación de factura sin número generado. Respuesta: " . json_encode($existInvoice));
             }
             $pedido->save();

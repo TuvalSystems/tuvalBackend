@@ -137,7 +137,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
         foreach ($items  as $key => $item) {
             $artCodigo          = trim((string) data_get($item, 'ART_CODIGO'));
-            $isTypeL           = trim((string) data_get($item, 'ART_TIPO_COMPRA')) === 'L';
+            $isTypeL            = trim((string) data_get($item, 'ART_TIPO_COMPRA')) === 'L';
             $selectedArtCodigo  = $artCodigo;
             if ($isTypeL) {
                 $hasStock           = $this->stockService->checkValidateDisponibleItemL($artCodigo);
