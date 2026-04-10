@@ -4,6 +4,7 @@ namespace App\Http\Controllers\test;
 
 use App\Http\Controllers\Controller;
 use App\Models\GpPedido;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
@@ -13,7 +14,10 @@ use Illuminate\Support\Facades\DB;
 class TestController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
-    public function __construct(protected readonly PurchaseOrderServiceInterface $purchase) {}
+    public function __construct(
+        protected readonly PurchaseOrderServiceInterface $purchase,
+        protected readonly InvoiceServiceInterface $invoice
+    ) {}
 
 
     public function crearOrdenCompraItemsL(int $id): JsonResponse
@@ -35,5 +39,16 @@ class TestController extends Controller
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
+    }
+
+
+
+    public function generarOrdenCompraPedido(string $pedido)
+    {
+        return $this->handleApiAction(function () use ($pedido) {
+            $pedido = GpPedido::where('pedido', $pedido)->first();
+            DB::transaction(fn() => $this->invoice->processPurchaseOrders($pedido));
+            return $this->successResponse('Información obtenida', $pedido, 200);
+        }, 'invoice', 'generarOrdenCompraPedido');
     }
 }
