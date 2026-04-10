@@ -46,7 +46,7 @@ class TestController extends Controller
     public function generarOrdenCompraPedido(string $pedido)
     {
         return $this->handleApiAction(function () use ($pedido) {
-            $pedido = GpPedido::find($pedido);
+            $pedido = GpPedido::where('pedido', $pedido)->first();
             DB::transaction(fn() => $this->invoice->processPurchaseOrders($pedido));
             return $this->successResponse('Información obtenida', $pedido, 200);
         }, 'invoice', 'generarOrdenCompraPedido');
