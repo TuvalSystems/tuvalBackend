@@ -33,31 +33,59 @@ class CollectionService implements CollectionServiceInterface
     }
 
 
-    public function listBoxesByPointSales(string $pv, GpUsuario $user)
+    public function listBoxesByPointSales(int $pvId, GpUsuario $user)
     {
-        $ptoVta = GpPuntoVenta::where('PTO_VTA_ID', $pv)->first();
+        $ptoVta = GpPuntoVenta::where('id', $pvId)->first();
         if (!$ptoVta) {
             throw new \RuntimeException("Punto de venta no encontrado");
         }
-        return $ptoVta->cajasDisponibles()
-            ->whereHas('operariosAsignados', function ($query) use ($user) {
-                $query->where('gp_usuarios.id', $user->id);
-            })
-            ->get(['gp_cajas.id', 'CAJA_CODIGO', 'CAJA_DESCRIPCION'])
-            ->makeHidden('pivot');
+
+        $isAdmin = in_array($user->perfil_id, [1, 2]) || $user->is_admin_cobros;
+        if (!$isAdmin) {
+            $tieneAccesoAlPV = $user->puntoVentaPermitidos()
+                ->where('gp_punto_ventas.id', $ptoVta->id)
+                ->exists();
+
+            if (!$tieneAccesoAlPV) {
+                throw new \RuntimeException("No tienes permisos para ver las cajas de este punto de venta.");
+            }
+        }
+        $query = $ptoVta->cajasDisponibles();
+
+        $query->with(['operariosAsignados' => function ($q) {
+            $q->select('gp_usuarios.id', 'gp_usuarios.USERID', 'gp_usuarios.USERNAME');
+        }]);
+
+        $cajas = $query->get(['gp_cajas.id', 'CAJA_CODIGO', 'CAJA_DESCRIPCION']);
+        return $cajas->map(function ($caja) {
+            $operario = $caja->operariosAsignados->first();
+            return [
+                'id'                => $caja->id,
+                'caja_codigo'       => $caja->CAJA_CODIGO,
+                'caja_descripcion'  => $caja->CAJA_DESCRIPCION,
+                'operario_id'       => $operario->id,
+                'userId'            => $operario->USERID,
+                'userName'          => $operario->USERNAME
+
+            ];
+        });
     }
 
 
     public function getBoxClosureByDate(int $boxId, GpUsuario $user, string $date)
     {
-        $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $user->id);
+        $boxOwner = $this->userRepository->findAssignmentByBox($boxId);
+        if(!$boxOwner) {
+            throw new \RuntimeException("Caja no encontrada");
+        }
+        $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $boxOwner->id);
 
         if ($resumen) {
-            $cierre = $this->cashCloseRepository->getBoxClosureSummary($boxId, $date, $user->id);
+            $cierre = $this->cashCloseRepository->getBoxClosureSummary($boxId, $date, $boxOwner->id);
             return json_decode($cierre->consulta, true);
         }
 
-        return $this->getCashClosureReport($boxId, $date, $user);
+        return $this->getCashClosureReport($boxId, $date, $boxOwner);
     }
 
 
@@ -76,7 +104,7 @@ class CollectionService implements CollectionServiceInterface
             'fecha'                     => $date,
             'caja_usuario'              => data_get($userBox, 'CAJ_USER_CAJA', 'N/A'),
             'aplicacion_saldos'         => $applyBalanced,
-            'aplicacion_saldos_total'   => $applyBalanced->sum('monto'),
+            'aplicacion_saldos_total'   => $applyBalanced->unique('id')->sum('monto'),
             'depositos'                 => $depositos,
             'depositos_total'           => $depositos->sum('monto'),
             'cheques_al_dia'            => $chequesAlDia,

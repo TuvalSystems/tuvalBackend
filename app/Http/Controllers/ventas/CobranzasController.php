@@ -2095,9 +2095,8 @@ class CobranzasController extends Controller
     public function listaPvCajasUsuario(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-
-            // $user = $request->user();
-            $user = GpUsuario::find(179);
+            $user = $request->user();
+            // $user = GpUsuario::find(86);
             $response = $this->collectionService->listPointSalesByUSer($user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listaPvCajasUsuario');
@@ -2108,11 +2107,11 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validate([
-                'punto_venta' => 'required',
+                'pv_id' => 'required',
             ]);
-            $pv = data_get($validate, 'punto_venta');
-            $user = GpUsuario::find(86);
-            $response = $this->collectionService->listBoxesByPointSales($pv, $user);
+            $pvId = data_get($validate, 'pv_id');
+            $user = $request->user();
+            $response = $this->collectionService->listBoxesByPointSales($pvId, $user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listarCajasDisponiblesPorUsuario');
     }
@@ -2122,13 +2121,15 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validate([
-                'fecha'     => 'required',
-                'caja_id'   => 'required',
+                'fecha'     => 'required|string',
+                'caja_id'   => 'required|integer',
+                'pv_id'     => 'required|integer',
 
             ]);
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
-            $user   = GpUsuario::find(86);
+            // $user = $request->user();
+            $user = GpUsuario::find(86);
             $response = $this->collectionService->getBoxClosureByDate($cajaId, $user, $fecha);
             return $this->successResponse('Consulta realizada', $response, 200);
         }, 'laravel', 'consultarCierreCajaUsuario');

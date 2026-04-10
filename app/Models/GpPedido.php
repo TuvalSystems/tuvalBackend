@@ -267,7 +267,6 @@ class GpPedido extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        // $this->addMediaCollection('imagenes_operaciones');
         $this->addMediaCollection('documentos_pdf');
     }
 

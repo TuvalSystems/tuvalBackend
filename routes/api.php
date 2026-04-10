@@ -438,6 +438,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         //nuevos procesos
 
+        Route::post('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
+        Route::post('lista-cajas', [CobranzasController::class, 'listarCajasPorUsuarioPuntoVenta']);
+        Route::post('consultas/cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

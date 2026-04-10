@@ -22,20 +22,24 @@ class CollectionRepository implements CollectionRepositoryInterface
     public function getAppliedBalancesByBox(int $boxId, string $date)
     {
         return GpCobrosAplicacionMonto::query()
-            ->from('gp_cobros_aplicacion_montos as gcam')
-            ->join('gp_cobros as gcc', 'gcc.id', 'gcam.cobro_id')
-            ->join('gp_clientes as gcl1', 'gcl1.id', 'gcc.cliente_id')
+            ->join('gp_cobros as gcc', 'gcc.id', '=', 'gp_cobros_aplicacion_montos.cobro_id')
+            ->join('gp_clientes as gcl1', 'gcl1.id', '=', 'gcc.cliente_id')
+            ->leftJoin('gp_cobros_aplicacion_facturas as gcaf', function ($join) {
+                $join->on('gcaf.aplicacion_id', '=', 'gp_cobros_aplicacion_montos.id')
+                    ->on('gcaf.cobro_id', '=', 'gp_cobros_aplicacion_montos.cobro_id');
+            })
             ->where('gcc.caja_id', $boxId)
             ->whereDate('gcc.fecha', $date)
-            ->withSum('facturasAplicadas as totalAplicado', 'monto')
             ->select(
-                'gcam.*',
+                'gp_cobros_aplicacion_montos.*',
                 'gcc.caja_id',
                 'gcc.numero_recibo',
                 'gcc.fecha',
                 'gcl1.CLI_RAZON_SOCIAL',
-                'gcl1.CLI_RUC'
+                'gcl1.CLI_RUC',
+                'gcaf.id_factura',
             )
+             ->withSum('facturasAplicadas as aplicado', 'monto')
             ->get();
     }
 

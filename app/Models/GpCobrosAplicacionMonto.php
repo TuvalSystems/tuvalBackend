@@ -43,6 +43,6 @@ class GpCobrosAplicacionMonto extends Model
 
     public function facturasAplicadas()
     {
-        return $this->hasMany(GpCobrosAplicacionFactura::class, 'cobro_id', 'cobro_id');
+        return $this->hasMany(GpCobrosAplicacionFactura::class, 'aplicacion_id', 'id');
     }
 }
