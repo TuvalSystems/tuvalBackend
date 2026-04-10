@@ -54,9 +54,9 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         }
 
-        $hasTransferPending = $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
+        $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
         $waitingForStock    = $this->processPurchaseOrders($pedido);
-        if ($waitingForStock || $hasTransferPending) {
+        if ($waitingForStock) {
             Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
             return;
         }
