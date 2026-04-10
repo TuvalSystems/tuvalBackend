@@ -14,8 +14,9 @@ interface InvoiceServiceInterface
 
     public function sendInvoiceGp(GpPedido $pedido);
 
-     public function checkTrasladado(GpPedido $pedido);
+    public function checkTrasladado(GpPedido $pedido);
 
-     public function respuestaFacturaVenta(GpPedido $order);
-      public function checkTraslado(GpPedido $pedido);
+    public function respuestaFacturaVenta(GpPedido $order);
+    public function checkTraslado(GpPedido $pedido);
+    public function processPurchaseOrders(GpPedido $pedido);
 }

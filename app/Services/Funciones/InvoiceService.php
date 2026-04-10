@@ -134,7 +134,7 @@ class InvoiceService implements InvoiceServiceInterface
 
 
 
-    protected function processPurchaseOrders(GpPedido $pedido)
+    public function processPurchaseOrders(GpPedido $pedido)
     {
         $this->purchaseOrderService->checkPurchaseOrder($pedido);
         $this->purchaseOrderService->sendPurchaseOrders();
