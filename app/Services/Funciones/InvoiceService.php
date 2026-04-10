@@ -50,14 +50,19 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        if (
-            $this->shouldSkipProcessing($pedido) ||
-            $this->shouldSkipDueToTransferStatus($pedido, $trasladado) ||
-            $this->processPurchaseOrders($pedido) || ($checkDemanda && $this->checkInvoiceOnDemand($pedido))
-        ) {
+        if ($this->shouldSkipProcessing($pedido)) {
             return;
         }
 
+        $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
+        $waitingForStock    = $this->processPurchaseOrders($pedido);
+        if ($waitingForStock) {
+            Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
+            return;
+        }
+        if ($checkDemanda && $this->checkInvoiceOnDemand($pedido)) {
+            return;
+        }
 
         $this->generateDisptachOrder($pedido);
         $this->functionService->recalculateOrder($pedido->id);
