@@ -35,6 +35,7 @@ use App\Models\GpCajaBancos;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
+use App\Models\GpCaja;
 use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
@@ -265,7 +266,8 @@ class CobranzasController extends Controller
     {
         $data = $request->all();
         $user = Auth::user();
-
+        $cajas = GpCaja::get()->keyBy('CAJA_CODIGO');
+        $bancos = GpCajaBancos::get()->keyBy('CB_ID');
         $caja = GpRelacionUsuarioCaja::join('gp_cajas', 'gp_cajas.CAJA_CODIGO', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
             ->join('gp_relacion_punto_venta_cajas', 'gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_CAJA', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
             ->where('CAJ_USER_USUARIO', $user->USERID)
@@ -285,6 +287,7 @@ class CobranzasController extends Controller
         $cobro->user_id = $user->id;
         $cobro->cliente_id = $data['cliente_id'];
         $cobro->caja = $caja->CAJ_USER_CAJA;
+        $cobro->caja_id = $cajas[$caja->CAJ_USER_CAJA]->id;
         $cobro->fecha = date('Y-m-d H:i:s');
         $cobro->estado = 'iniciado';
         $cobro->referencia = $data['referencia'];
@@ -345,6 +348,7 @@ class CobranzasController extends Controller
                 $save_deposito->cobro_id = $cobro->id;
                 $save_deposito->estado = 'iniciado';
                 $save_deposito->tipo = $deposito['tipo'];
+                $save_deposito->banco_id = $bancos[$deposito['banco']]->id;
                 $save_deposito->banco = $deposito['banco'];
                 $save_deposito->comprobante = $deposito['dep_comprobante'];
                 $save_deposito->fecha = $deposito['dep_fecha'];
@@ -375,6 +379,7 @@ class CobranzasController extends Controller
             foreach ($data['ingreso_cheques']['cheques'] as $key => $cheque) {
                 $save_cheque = new GpCobrosCheques();
                 $save_cheque->cobro_id = $cobro->id;
+                $save_cheque->banco_id = $bancos[$cheque['banco_id']]->id;
                 $save_cheque->banco = $cheque['banco_id'];
                 $save_cheque->cuenta = $cheque['cuenta'];
                 $save_cheque->cheque = $cheque['cheque'];
