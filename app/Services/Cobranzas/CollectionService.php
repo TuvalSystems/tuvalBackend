@@ -8,6 +8,7 @@ use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
 use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
 use App\Repositories\User\Contracts\UserRepositoryInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
+use Illuminate\Support\Str;
 
 class CollectionService implements CollectionServiceInterface
 {
@@ -72,10 +73,10 @@ class CollectionService implements CollectionServiceInterface
     }
 
 
-    public function getBoxClosureByDate(int $boxId, GpUsuario $user, string $date)
+    public function getBoxClosureByDate(int $boxId, string $date)
     {
         $boxOwner = $this->userRepository->findAssignmentByBox($boxId);
-        if(!$boxOwner) {
+        if (!$boxOwner) {
             throw new \RuntimeException("Caja no encontrada");
         }
         $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $boxOwner->id);
@@ -104,19 +105,19 @@ class CollectionService implements CollectionServiceInterface
             'fecha'                     => $date,
             'caja_usuario'              => data_get($userBox, 'CAJ_USER_CAJA', 'N/A'),
             'aplicacion_saldos'         => $applyBalanced,
-            'aplicacion_saldos_total'   => $applyBalanced->unique('id')->sum('monto'),
+            'aplicacion_saldos_total'   => round($applyBalanced->unique('id')->sum('monto'), 2),
             'depositos'                 => $depositos,
-            'depositos_total'           => $depositos->sum('monto'),
-            'cheques_aldia'            => $chequesAlDia,
-            'cheques_aldia_total'      => $chequesAlDia->sum('monto'),
+            'depositos_total'           => round($depositos->sum('monto'), 2),
+            'cheques_aldia'             => $chequesAlDia,
+            'cheques_aldia_total'       => round($chequesAlDia->sum('monto'), 2),
             'cheques_posfechados'       => $chequesPos,
-            'cheques_posfechados_total' => $chequesPos->sum('monto'),
+            'cheques_posfechados_total' => round($chequesPos->sum('monto'), 2),
             'efectivo'                  => $efectivo,
-            'efectivo_total'            => $efectivo->sum('monto'),
+            'efectivo_total'            => round($efectivo->sum('monto'), 2),
             'retenciones'               => $retenciones,
-            'retenciones_total'         => $retenciones->sum('total'),
+            'retenciones_total'         => round($retenciones->sum('total'), 2),
             'tarjeta'                   => $tarjeta,
-            'tarjeta_total'             => $tarjeta->sum('monto')
+            'tarjeta_total'             => round($tarjeta->sum('monto'), 2)
         ];
     }
 
@@ -135,5 +136,28 @@ class CollectionService implements CollectionServiceInterface
             'PTO_VTA_ID'            => $puntoVenta->PTO_VTA_ID,
             'PTO_VTA_DESCRIPCION'   => $puntoVenta->PTO_VTA_DESCRIPCION ?? 'N/A'
         ]);
+    }
+
+
+
+    public function generateCashClosurePdf(int $boxId, string $date)
+    {
+        $viewData = $this->getBoxClosureByDate($boxId, $date);
+        $caja = data_get($viewData, 'caja_usuario');
+        // $usuario = data_get($viewData, 'usuario.USERNAME');
+
+        $html   = view('cierredecajausuarioPDF', $viewData)->render();
+        $pdf    = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+
+        $filename = 'consulta-de-caja-usuario-' . Str::slug($caja, '-') . '-' . now()->format('Ymd-His') . '.pdf';
+
+        return [
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
+        ];
     }
 }

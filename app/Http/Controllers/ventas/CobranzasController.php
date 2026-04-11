@@ -44,8 +44,7 @@ use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Maatwebsite\Excel\Facades\Excel;
-
-
+use Symfony\Component\HttpFoundation\Response;
 
 class CobranzasController extends Controller
 {
@@ -2095,8 +2094,8 @@ class CobranzasController extends Controller
     public function listaPvCajasUsuario(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $user = $request->user();
-            // $user = GpUsuario::find(86);
+            // $user = $request->user();
+            $user = GpUsuario::find(86);
             $response = $this->collectionService->listPointSalesByUSer($user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listaPvCajasUsuario');
@@ -2110,7 +2109,8 @@ class CobranzasController extends Controller
                 'pv_id' => 'required',
             ]);
             $pvId = data_get($validate, 'pv_id');
-            $user = $request->user();
+            $user = GpUsuario::find(86);
+            // $user = $request->user();
             $response = $this->collectionService->listBoxesByPointSales($pvId, $user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listarCajasDisponiblesPorUsuario');
@@ -2129,9 +2129,17 @@ class CobranzasController extends Controller
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
             // $user = $request->user();
-            $user = GpUsuario::find(86);
-            $response = $this->collectionService->getBoxClosureByDate($cajaId, $user, $fecha);
+            $response = $this->collectionService->getBoxClosureByDate($cajaId, $fecha);
             return $this->successResponse('Consulta realizada', $response, 200);
         }, 'laravel', 'consultarCierreCajaUsuario');
+    }
+
+
+
+    public function imprimirPdfConsultaCierreCaja(Request $request){
+        return $this->handlePdfAction(function () use ($request): Response {
+
+        return $this->buildPdfResponse();
+        },'laravel', 'imprimirPdfConsultaCierreCaja');
     }
 }
