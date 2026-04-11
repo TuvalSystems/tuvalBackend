@@ -36,6 +36,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
 use App\Models\GpCaja;
+use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
@@ -1278,6 +1279,8 @@ class CobranzasController extends Controller
         }
     }
 
+
+
     public function detallecobro($cobro)
     {
         $total_cobro = 0;
@@ -2081,10 +2084,13 @@ class CobranzasController extends Controller
 
     public function cobroscliente($data): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
     {
-
+        $ptoVta         = data_get($data, 'puntoVenta');
+        $pventa         = GpPuntoVenta::where('PTO_VTA_ID', $ptoVta)->first();
+        $cajas          = $pventa->cajasDisponibles()->pluck('gp_cajas.id')->toArray();
         $cobros = GpCobro::where('cliente_id', $data['cliente']['id'])
             ->whereDate('fecha', '>=', $data['fecha_inicio'])
             ->whereDate('fecha', '<=', $data['fecha_fin'])
+            ->whereIn('caja_id', $cajas)
             ->orderBy('fecha', 'DESC')
             ->get()->toArray();
 
