@@ -140,11 +140,10 @@ class CollectionService implements CollectionServiceInterface
 
 
 
-    public function generateCashClosurePdf(int $boxId, string $date)
+    public function generateCashClosurePdfByUser(int $boxId, string $date)
     {
         $viewData = $this->getBoxClosureByDate($boxId, $date);
         $caja = data_get($viewData, 'caja_usuario');
-        // $usuario = data_get($viewData, 'usuario.USERNAME');
 
         $html   = view('cierredecajausuarioPDF', $viewData)->render();
         $pdf    = app('dompdf.wrapper');
@@ -152,12 +151,43 @@ class CollectionService implements CollectionServiceInterface
         $pdf->loadHTML($html);
         $binary = $pdf->output();
 
-        $filename = 'consulta-de-caja-usuario-' . Str::slug($caja, '-') . '-' . now()->format('Ymd-His') . '.pdf';
+        $filename = 'consulta-de-caja-usuario-' . Str::slug($caja, '-') . '.pdf';
 
         return [
             'binary'        => $binary,
             'filename'      => $filename,
             'content_type'  => 'application/pdf',
         ];
+    }
+
+    public function generateCashClosurePdf(int $boxId, string $date)
+    {
+
+        $boxOwner = $this->userRepository->findAssignmentByBox($boxId);
+        if (!$boxOwner) {
+            throw new \RuntimeException("Caja no encontrada o no tiene un usuario asignado.");
+        }
+        $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $boxOwner->id);
+        if (!$resumen) {
+            throw new \RuntimeException("La caja no se encuentra cerrada");
+        }
+        if ($resumen) {
+            $cierre = $this->cashCloseRepository->getBoxClosureSummary($boxId, $date, $boxOwner->id);
+            $viewData = json_decode($cierre->datos, true);
+            $userBox = data_get($viewData, 'usuario.USERID', 'N/A');
+            $html   = view('cierredecajaPDF', $viewData)->render();
+            $pdf    = app('dompdf.wrapper');
+            $pdf->setPaper('a4', 'portrait');
+            $pdf->loadHTML($html);
+            $binary = $pdf->output();
+
+            $filename = 'cierre-de-caja-' . Str::slug($userBox, '-')  . '.pdf';
+
+            return [
+                'binary'        => $binary,
+                'filename'      => $filename,
+                'content_type'  => 'application/pdf',
+            ];
+        }
     }
 }

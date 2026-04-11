@@ -2128,7 +2128,6 @@ class CobranzasController extends Controller
             ]);
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
-            // $user = $request->user();
             $response = $this->collectionService->getBoxClosureByDate($cajaId, $fecha);
             return $this->successResponse('Consulta realizada', $response, 200);
         }, 'laravel', 'consultarCierreCajaUsuario');
@@ -2136,10 +2135,33 @@ class CobranzasController extends Controller
 
 
 
-    public function imprimirPdfConsultaCierreCaja(Request $request){
+    public function imprimirPdfConsultaCierreCaja(Request $request)
+    {
         return $this->handlePdfAction(function () use ($request): Response {
+            $validate = $request->validate([
+                'fecha'     => 'required|string',
+                'caja_id'   => 'required|integer',
+                'pv_id'     => 'required|integer',
+            ]);
+            $fecha  = data_get($validate, 'fecha');
+            $cajaId = data_get($validate, 'caja_id');
+            $pdf = $this->collectionService->generateCashClosurePdfByUser($cajaId, $fecha);
+            return $this->buildPdfResponse($pdf, 200);
+        }, 'laravel', 'imprimirPdfConsultaCierreCaja');
+    }
 
-        return $this->buildPdfResponse();
-        },'laravel', 'imprimirPdfConsultaCierreCaja');
+    public function imprimirPdfCierreCaja(Request $request)
+    {
+        return $this->handlePdfAction(function () use ($request): Response {
+            $validate = $request->validate([
+                'fecha'     => 'required|string',
+                'caja_id'   => 'required|integer',
+                'pv_id'     => 'required|integer',
+            ]);
+            $fecha  = data_get($validate, 'fecha');
+            $cajaId = data_get($validate, 'caja_id');
+            $pdf = $this->collectionService->generateCashClosurePdf($cajaId, $fecha);
+            return $this->buildPdfResponse($pdf, 200);
+        }, 'laravel', 'imprimirPdfCierreCaja');
     }
 }

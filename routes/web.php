@@ -203,6 +203,9 @@ Route::prefix('cobranzas')->group(function () {
     Route::get('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
     Route::get('lista-cajas', [CobranzasController::class, 'listarCajasPorUsuarioPuntoVenta']);
     Route::get('consulta-cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
+    Route::get('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
+    Route::get('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
+
 
 
 });
