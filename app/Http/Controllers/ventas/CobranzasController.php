@@ -2099,8 +2099,7 @@ class CobranzasController extends Controller
     public function listaPvCajasUsuario(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            // $user = $request->user();
-            $user = GpUsuario::find(86);
+            $user = $request->user();
             $response = $this->collectionService->listPointSalesByUSer($user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listaPvCajasUsuario');
@@ -2114,8 +2113,7 @@ class CobranzasController extends Controller
                 'pv_id' => 'required',
             ]);
             $pvId = data_get($validate, 'pv_id');
-            $user = GpUsuario::find(86);
-            // $user = $request->user();
+            $user = $request->user();
             $response = $this->collectionService->listBoxesByPointSales($pvId, $user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listarCajasDisponiblesPorUsuario');
