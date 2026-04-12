@@ -127,6 +127,9 @@ Route::prefix('consultas')->group(function () {
     Route::get('territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
     Route::get('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
     Route::get('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
+    Route::get('stock-exposicion', [ConsultasController::class, 'consultaStockExposicion']);
+
+
 });
 
 Route::group(['prefix' => 'reservas-web'], function () {
@@ -200,6 +203,9 @@ Route::prefix('cobranzas')->group(function () {
     Route::get('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
     Route::get('lista-cajas', [CobranzasController::class, 'listarCajasPorUsuarioPuntoVenta']);
     Route::get('consulta-cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
+    Route::get('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
+    Route::get('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
+
 
 
 });

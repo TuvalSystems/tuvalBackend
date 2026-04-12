@@ -91,4 +91,6 @@ class GpTrasladosVentas extends Model
     {
         return $this->belongsTo(GpPedido::class, 'pedido_id');
     }
+
+
 }

@@ -14,4 +14,11 @@ class UserRepository implements UserRepositoryInterface
             $query->where('gp_cajas.id', $boxId)->with('puntosVenta');
         }])->find($userId);
     }
+
+    public function findAssignmentByBox(int $boxId) : ?GpUsuario
+    {
+        return GpUsuario::whereHas('cajasAsignadas', function ($query) use ($boxId) {
+            $query->where('gp_cajas.id', $boxId);
+        })->first();
+    }
 }

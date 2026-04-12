@@ -8,6 +8,7 @@ use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
 use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
 use App\Repositories\User\Contracts\UserRepositoryInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
+use Illuminate\Support\Str;
 
 class CollectionService implements CollectionServiceInterface
 {
@@ -33,31 +34,59 @@ class CollectionService implements CollectionServiceInterface
     }
 
 
-    public function listBoxesByPointSales(string $pv, GpUsuario $user)
+    public function listBoxesByPointSales(int $pvId, GpUsuario $user)
     {
-        $ptoVta = GpPuntoVenta::where('PTO_VTA_ID', $pv)->first();
+        $ptoVta = GpPuntoVenta::where('id', $pvId)->first();
         if (!$ptoVta) {
             throw new \RuntimeException("Punto de venta no encontrado");
         }
-        return $ptoVta->cajasDisponibles()
-            ->whereHas('operariosAsignados', function ($query) use ($user) {
-                $query->where('gp_usuarios.id', $user->id);
-            })
-            ->get(['gp_cajas.id', 'CAJA_CODIGO', 'CAJA_DESCRIPCION'])
-            ->makeHidden('pivot');
+
+        $isAdmin = in_array($user->perfil_id, [1, 2]) || $user->is_admin_cobros;
+        if (!$isAdmin) {
+            $tieneAccesoAlPV = $user->puntoVentaPermitidos()
+                ->where('gp_punto_ventas.id', $ptoVta->id)
+                ->exists();
+
+            if (!$tieneAccesoAlPV) {
+                throw new \RuntimeException("No tienes permisos para ver las cajas de este punto de venta.");
+            }
+        }
+        $query = $ptoVta->cajasDisponibles();
+
+        $query->with(['operariosAsignados' => function ($q) {
+            $q->select('gp_usuarios.id', 'gp_usuarios.USERID', 'gp_usuarios.USERNAME');
+        }]);
+
+        $cajas = $query->get(['gp_cajas.id', 'CAJA_CODIGO', 'CAJA_DESCRIPCION']);
+        return $cajas->map(function ($caja) {
+            $operario = $caja->operariosAsignados->first();
+            return [
+                'id'                => $caja->id,
+                'caja_codigo'       => $caja->CAJA_CODIGO,
+                'caja_descripcion'  => $caja->CAJA_DESCRIPCION,
+                'operario_id'       => $operario->id,
+                'userId'            => $operario->USERID,
+                'userName'          => $operario->USERNAME
+
+            ];
+        });
     }
 
 
-    public function getBoxClosureByDate(int $boxId, GpUsuario $user, string $date)
+    public function getBoxClosureByDate(int $boxId, string $date)
     {
-        $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $user->id);
+        $boxOwner = $this->userRepository->findAssignmentByBox($boxId);
+        if (!$boxOwner) {
+            throw new \RuntimeException("Caja no encontrada");
+        }
+        $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $boxOwner->id);
 
         if ($resumen) {
-            $cierre = $this->cashCloseRepository->getBoxClosureSummary($boxId, $date, $user->id);
+            $cierre = $this->cashCloseRepository->getBoxClosureSummary($boxId, $date, $boxOwner->id);
             return json_decode($cierre->consulta, true);
         }
 
-        return $this->getCashClosureReport($boxId, $date, $user);
+        return $this->getCashClosureReport($boxId, $date, $boxOwner);
     }
 
 
@@ -76,19 +105,19 @@ class CollectionService implements CollectionServiceInterface
             'fecha'                     => $date,
             'caja_usuario'              => data_get($userBox, 'CAJ_USER_CAJA', 'N/A'),
             'aplicacion_saldos'         => $applyBalanced,
-            'aplicacion_saldos_total'   => $applyBalanced->sum('monto'),
+            'aplicacion_saldos_total'   => round($applyBalanced->unique('id')->sum('monto'), 2),
             'depositos'                 => $depositos,
-            'depositos_total'           => $depositos->sum('monto'),
-            'cheques_al_dia'            => $chequesAlDia,
-            'cheques_al_dia_total'      => $chequesAlDia->sum('monto'),
+            'depositos_total'           => round($depositos->sum('monto'), 2),
+            'cheques_aldia'             => $chequesAlDia,
+            'cheques_aldia_total'       => round($chequesAlDia->sum('monto'), 2),
             'cheques_posfechados'       => $chequesPos,
-            'cheques_posfechados_total' => $chequesPos->sum('monto'),
+            'cheques_posfechados_total' => round($chequesPos->sum('monto'), 2),
             'efectivo'                  => $efectivo,
-            'efectivo_total'            => $efectivo->sum('monto'),
+            'efectivo_total'            => round($efectivo->sum('monto'), 2),
             'retenciones'               => $retenciones,
-            'retenciones_total'         => $retenciones->sum('total'),
+            'retenciones_total'         => round($retenciones->sum('total'), 2),
             'tarjeta'                   => $tarjeta,
-            'tarjeta_total'             => $tarjeta->sum('monto')
+            'tarjeta_total'             => round($tarjeta->sum('monto'), 2)
         ];
     }
 
@@ -107,5 +136,58 @@ class CollectionService implements CollectionServiceInterface
             'PTO_VTA_ID'            => $puntoVenta->PTO_VTA_ID,
             'PTO_VTA_DESCRIPCION'   => $puntoVenta->PTO_VTA_DESCRIPCION ?? 'N/A'
         ]);
+    }
+
+
+
+    public function generateCashClosurePdfByUser(int $boxId, string $date)
+    {
+        $viewData = $this->getBoxClosureByDate($boxId, $date);
+        $caja = data_get($viewData, 'caja_usuario');
+
+        $html   = view('cierredecajausuarioPDF', $viewData)->render();
+        $pdf    = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+
+        $filename = 'consulta-de-caja-usuario-' . Str::slug($caja, '-') . '.pdf';
+
+        return [
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
+        ];
+    }
+
+    public function generateCashClosurePdf(int $boxId, string $date)
+    {
+
+        $boxOwner = $this->userRepository->findAssignmentByBox($boxId);
+        if (!$boxOwner) {
+            throw new \RuntimeException("Caja no encontrada o no tiene un usuario asignado.");
+        }
+        $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $boxOwner->id);
+        if (!$resumen) {
+            throw new \RuntimeException("La caja no se encuentra cerrada");
+        }
+        if ($resumen) {
+            $cierre = $this->cashCloseRepository->getBoxClosureSummary($boxId, $date, $boxOwner->id);
+            $viewData = json_decode($cierre->datos, true);
+            $userBox = data_get($viewData, 'usuario.USERID', 'N/A');
+            $html   = view('cierredecajaPDF', $viewData)->render();
+            $pdf    = app('dompdf.wrapper');
+            $pdf->setPaper('a4', 'portrait');
+            $pdf->loadHTML($html);
+            $binary = $pdf->output();
+
+            $filename = 'cierre-de-caja-' . Str::slug($userBox, '-')  . '.pdf';
+
+            return [
+                'binary'        => $binary,
+                'filename'      => $filename,
+                'content_type'  => 'application/pdf',
+            ];
+        }
     }
 }

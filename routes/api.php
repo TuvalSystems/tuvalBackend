@@ -338,8 +338,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
         Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
         Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
-        Route::post('stock-import', [ConsultasController::class, 'consultaStockOthers']);
         Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
+        Route::post('stock-exposicion', [ConsultasController::class, 'consultaStockExposicion']);
+
 
         /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
         Route::post('buscar-clientes', [ConsultasController::class, 'buscarClientes']);
@@ -437,6 +438,11 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         //nuevos procesos
 
+        Route::post('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
+        Route::post('lista-cajas', [CobranzasController::class, 'listarCajasPorUsuarioPuntoVenta']);
+        Route::post('consultas/cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
+        Route::post('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
+        Route::post('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

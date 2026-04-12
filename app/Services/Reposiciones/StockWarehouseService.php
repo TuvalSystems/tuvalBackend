@@ -118,7 +118,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     public function getReservedStockByWarehouses(string $articulo, array $bodegas, ?int $pedidoId = null, bool $forUpdate = false, ?int $excludeQuotationId = null): array
     {
 
-        if (empty($bodegas)){
+        if (empty($bodegas)) {
             return [];
         }
         $q = GpPedidoDetalleStock::query()
@@ -376,7 +376,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     {
         $res = $this->apiGpService->getStockWarehouse($params);
         if (!data_get($res, 'success', false)) {
-            // throw new \RuntimeException((string) data_get($res, 'message', 'Error'), 500);
             throw new \RuntimeException("No se pudo obtener el stock del articulo", 500);
         }
         $data = data_get($res, 'data', []);
@@ -385,6 +384,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         }
 
         return (array) $data;
+    }
+
+    public function fetchStockExposicionByArticleAndPv(array $params)
+    {
+        $res = $this->apiGpService->getStockExposicionByArticleAndPv($params);
+        return data_get($res, 'data', []);
     }
     public function fetchStock(array $infoRequest)
     {
@@ -542,7 +547,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
      *  actualizar el stock en pedido detalle stock
      */
 
-    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo,$forUpdate = false, $orderId = null, $quoteReservedOriginId = null)
+    public function formatStockDisponibleApprovalCreditOrComercial($stockFormatted, $articulo, $forUpdate = false, $orderId = null, $quoteReservedOriginId = null)
     {
         $bodegas = $stockFormatted
             ->pluck('STO_ART_BODEGA')

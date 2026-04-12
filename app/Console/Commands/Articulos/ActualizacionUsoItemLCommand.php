@@ -60,6 +60,11 @@ class ActualizacionUsoItemLCommand extends Command
                         OrderStatus::TRASLADO->value,
                         OrderStatus::ORDEN_DE_COMPRA->value,
                         OrderStatus::FACTURADO->value,
+                        OrderStatus::ENVIANDO->value,
+                        OrderStatus::ELIMINADO->value,
+                        OrderStatus::RECHAZADO->value,
+                        OrderStatus::ANULADA->value,
+                        OrderStatus::PROCESADO->value
                     ])
                     ->selectRaw('d.ART_CODIGO, MAX(p.created_at) as last')
                     ->groupBy('d.ART_CODIGO')

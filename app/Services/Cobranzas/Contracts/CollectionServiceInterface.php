@@ -9,6 +9,8 @@ interface CollectionServiceInterface
     // Define los métodos que debe implementar el servicio
 
     public function listPointSalesByUSer(GpUsuario $user);
-    public function listBoxesByPointSales(string $pv, GpUsuario $user);
-    public function getBoxClosureByDate(int $boxId, GpUsuario $user, string $date);
+    public function listBoxesByPointSales(int $pvId, GpUsuario $user);
+    public function getBoxClosureByDate(int $boxId,  string $date);
+    public function generateCashClosurePdfByUser(int $boxId, string $date);
+    public function generateCashClosurePdf(int $boxId, string $date);
 }

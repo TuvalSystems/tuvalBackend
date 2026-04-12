@@ -94,6 +94,11 @@ class ApiGpService
     }
 
 
+    public function getStockExposicionByArticleAndPv(array $params = []){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_CONSULTA_ITEM_EXPOSICION, 'POST', $params, 'json');
+    }
+
+
 
     public function getTypeBySeller(array $params = [])
     {
@@ -156,6 +161,8 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_LISTA_SEGMENTACION_ARTICULO_ABC, 'POST', $params, 'json');
     }
+
+
 
 
 

@@ -35,6 +35,8 @@ use App\Models\GpCajaBancos;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
+use App\Models\GpCaja;
+use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
@@ -44,8 +46,7 @@ use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Maatwebsite\Excel\Facades\Excel;
-
-
+use Symfony\Component\HttpFoundation\Response;
 
 class CobranzasController extends Controller
 {
@@ -266,7 +267,8 @@ class CobranzasController extends Controller
     {
         $data = $request->all();
         $user = Auth::user();
-
+        $cajas = GpCaja::get()->keyBy('CAJA_CODIGO');
+        $bancos = GpCajaBancos::get()->keyBy('CB_ID');
         $caja = GpRelacionUsuarioCaja::join('gp_cajas', 'gp_cajas.CAJA_CODIGO', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
             ->join('gp_relacion_punto_venta_cajas', 'gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_CAJA', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
             ->where('CAJ_USER_USUARIO', $user->USERID)
@@ -286,6 +288,7 @@ class CobranzasController extends Controller
         $cobro->user_id = $user->id;
         $cobro->cliente_id = $data['cliente_id'];
         $cobro->caja = $caja->CAJ_USER_CAJA;
+        $cobro->caja_id = $cajas[$caja->CAJ_USER_CAJA]->id;
         $cobro->fecha = date('Y-m-d H:i:s');
         $cobro->estado = 'iniciado';
         $cobro->referencia = $data['referencia'];
@@ -346,6 +349,7 @@ class CobranzasController extends Controller
                 $save_deposito->cobro_id = $cobro->id;
                 $save_deposito->estado = 'iniciado';
                 $save_deposito->tipo = $deposito['tipo'];
+                $save_deposito->banco_id = $bancos[$deposito['banco']]->id;
                 $save_deposito->banco = $deposito['banco'];
                 $save_deposito->comprobante = $deposito['dep_comprobante'];
                 $save_deposito->fecha = $deposito['dep_fecha'];
@@ -376,6 +380,7 @@ class CobranzasController extends Controller
             foreach ($data['ingreso_cheques']['cheques'] as $key => $cheque) {
                 $save_cheque = new GpCobrosCheques();
                 $save_cheque->cobro_id = $cobro->id;
+                $save_cheque->banco_id = $bancos[$cheque['banco_id']]->id;
                 $save_cheque->banco = $cheque['banco_id'];
                 $save_cheque->cuenta = $cheque['cuenta'];
                 $save_cheque->cheque = $cheque['cheque'];
@@ -1274,6 +1279,8 @@ class CobranzasController extends Controller
         }
     }
 
+
+
     public function detallecobro($cobro)
     {
         $total_cobro = 0;
@@ -2077,10 +2084,13 @@ class CobranzasController extends Controller
 
     public function cobroscliente($data): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
     {
-
+        $ptoVta         = data_get($data, 'puntoVenta');
+        $pventa         = GpPuntoVenta::where('PTO_VTA_ID', $ptoVta)->first();
+        $cajas          = $pventa->cajasDisponibles()->pluck('gp_cajas.id')->toArray();
         $cobros = GpCobro::where('cliente_id', $data['cliente']['id'])
             ->whereDate('fecha', '>=', $data['fecha_inicio'])
             ->whereDate('fecha', '<=', $data['fecha_fin'])
+            ->whereIn('caja_id', $cajas)
             ->orderBy('fecha', 'DESC')
             ->get()->toArray();
 
@@ -2095,9 +2105,7 @@ class CobranzasController extends Controller
     public function listaPvCajasUsuario(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-
-            // $user = $request->user();
-            $user = GpUsuario::find(179);
+            $user = $request->user();
             $response = $this->collectionService->listPointSalesByUSer($user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listaPvCajasUsuario');
@@ -2108,11 +2116,11 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validate([
-                'punto_venta' => 'required',
+                'pv_id' => 'required',
             ]);
-            $pv = data_get($validate, 'punto_venta');
-            $user = GpUsuario::find(86);
-            $response = $this->collectionService->listBoxesByPointSales($pv, $user);
+            $pvId = data_get($validate, 'pv_id');
+            $user = $request->user();
+            $response = $this->collectionService->listBoxesByPointSales($pvId, $user);
             return $this->successResponse('Lista Obtenida', $response, 200);
         }, 'laravel', 'listarCajasDisponiblesPorUsuario');
     }
@@ -2122,15 +2130,47 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validate([
-                'fecha'     => 'required',
-                'caja_id'   => 'required',
+                'fecha'     => 'required|string',
+                'caja_id'   => 'required|integer',
+                'pv_id'     => 'required|integer',
 
             ]);
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
-            $user   = GpUsuario::find(86);
-            $response = $this->collectionService->getBoxClosureByDate($cajaId, $user, $fecha);
+            $response = $this->collectionService->getBoxClosureByDate($cajaId, $fecha);
             return $this->successResponse('Consulta realizada', $response, 200);
         }, 'laravel', 'consultarCierreCajaUsuario');
+    }
+
+
+
+    public function imprimirPdfConsultaCierreCaja(Request $request)
+    {
+        return $this->handlePdfAction(function () use ($request): Response {
+            $validate = $request->validate([
+                'fecha'     => 'required|string',
+                'caja_id'   => 'required|integer',
+                'pv_id'     => 'required|integer',
+            ]);
+            $fecha  = data_get($validate, 'fecha');
+            $cajaId = data_get($validate, 'caja_id');
+            $pdf = $this->collectionService->generateCashClosurePdfByUser($cajaId, $fecha);
+            return $this->buildPdfResponse($pdf, 200);
+        }, 'laravel', 'imprimirPdfConsultaCierreCaja');
+    }
+
+    public function imprimirPdfCierreCaja(Request $request)
+    {
+        return $this->handlePdfAction(function () use ($request): Response {
+            $validate = $request->validate([
+                'fecha'     => 'required|string',
+                'caja_id'   => 'required|integer',
+                'pv_id'     => 'required|integer',
+            ]);
+            $fecha  = data_get($validate, 'fecha');
+            $cajaId = data_get($validate, 'caja_id');
+            $pdf = $this->collectionService->generateCashClosurePdf($cajaId, $fecha);
+            return $this->buildPdfResponse($pdf, 200);
+        }, 'laravel', 'imprimirPdfCierreCaja');
     }
 }

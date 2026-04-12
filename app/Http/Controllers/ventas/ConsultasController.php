@@ -216,22 +216,18 @@ class ConsultasController extends Controller
         }
     }
 
-    public function consultaStockOthers(Request $request): JsonResponse
+
+    public function consultaStockExposicion(Request $request): JsonResponse
     {
-        $data = $request->all();
-        try {
-            $st = $this->inventoryService->getConsultStockOthers($data);
-            return $this->successResponse('Stock obtenido correctamente', $st, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStockOthers)', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-                'data' => $data,
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'articulo' => 'required|string',
+                'puntoventa' => 'required|string'
             ]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
-        }
+            $artCode = data_get($validate, 'articulo');
+            $pvCode = data_get($validate, 'puntoventa');
+            return $this->successResponse('Stock obtenido correctamente', $this->inventoryService->getArticleExposition($artCode, $pvCode), 200);
+        }, 'laravel', 'consultaStockExposicion');
     }
 
     public function consultaItemTransito(Request $request): JsonResponse

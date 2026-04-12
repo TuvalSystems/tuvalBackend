@@ -26,7 +26,7 @@ class ApiGpEndpoints
     public const INVENTARIO_TRANSFERENCIA_COMPARTIMENTO = 'api/transferencia-compartimento';
     public const INVENTARIO_CONSULTAR_ITEM_COMPARTIMENTO = 'api/devoluciones/consulta-item-compartimento-bin';
 
-    public const INVENTARIO_CONSULTA_ITEM_EXPOSICION = 'api/consultas/item-exposicion';
+    public const INVENTARIO_CONSULTA_ITEM_EXPOSICION = 'api/consultas/items-exposiciones';
 
     // ---
     // ⬅️ 3. Endpoints de Devoluciones y Notas de Crédito
