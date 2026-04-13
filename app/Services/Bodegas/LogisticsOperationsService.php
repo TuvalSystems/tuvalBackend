@@ -2,6 +2,7 @@
 
 namespace App\Services\Bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
@@ -72,7 +73,7 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
     //remplaza la funcion de checkdespacho - DespachoController
     public function updateOrderDispatchStatus(GpGuiaRemision $guia)
     {
-        $pedido = GpPedido::where('pedido', $guia->pedido)->first();
+        $pedido = GpPedido::where('pedido', $guia->pedido)->where('estado', OrderStatus::FACTURADO)->first();
         if (!$pedido) {
             Log::warning('Pedido no encontrado al verificar despacho', [
                 'guia_id'   => $guia->id,
