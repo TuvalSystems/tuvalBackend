@@ -55,7 +55,8 @@
     51 => 'App\\Providers\\RepositoryServiceProvider',
     52 => 'App\\Providers\\Service\\UserServiceProvider',
     53 => 'App\\Providers\\Service\\CollectionServiceProvider',
-    54 => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
+    54 => 'App\\Providers\\Service\\SyncServiceProvider',
+    55 => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
   ),
   'eager' => 
   array (
@@ -89,6 +90,7 @@
     27 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
     28 => 'Milon\\Barcode\\BarcodeServiceProvider',
     29 => 'App\\Providers\\Service\\CollectionServiceProvider',
+    30 => 'App\\Providers\\Service\\SyncServiceProvider',
   ),
   'deferred' => 
   array (
