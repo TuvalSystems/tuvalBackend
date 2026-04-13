@@ -2073,8 +2073,8 @@ class CobranzasController extends Controller
     public function consultacobroscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
-
-        $cobros = $this->cobroscliente($data);
+        $user = $request->user();
+        $cobros = $this->cobroscliente($data, $user);
 
         return response([
             'success' => true,
@@ -2083,16 +2083,22 @@ class CobranzasController extends Controller
         ]);
     }
 
-    public function cobroscliente($data): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
+    public function cobroscliente( $data, $user): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
     {
-        $ptoVta         = data_get($data, 'puntoVenta');
-        $pventa         = GpPuntoVenta::where('PTO_VTA_ID', $ptoVta)->first();
-        $cajas          = $pventa->cajasDisponibles()->pluck('gp_cajas.id')->toArray();
-        $cobros = GpCobro::where('cliente_id', $data['cliente']['id'])
+        $query = GpCobro::where('cliente_id', $data['cliente']['id'])
             ->whereDate('fecha', '>=', $data['fecha_inicio'])
-            ->whereDate('fecha', '<=', $data['fecha_fin'])
-            ->whereIn('caja_id', $cajas)
-            ->orderBy('fecha', 'DESC')
+            ->whereDate('fecha', '<=', $data['fecha_fin']);
+
+        $query->when(!$this->hasFullAccess($user), function ($q) use ($data) {
+            $ptoVta = data_get($data, 'puntoVenta');
+            $pventa = GpPuntoVenta::where('PTO_VTA_ID', $ptoVta)->first();
+
+            if ($pventa) {
+                $cajas = $pventa->cajasDisponibles()->pluck('gp_cajas.id')->toArray();
+                $q->whereIn('caja_id', $cajas);
+            }
+        });
+        $cobros = $query->orderBy('fecha', 'DESC')
             ->get()->toArray();
 
         foreach ($cobros as $key => $cobro) {
@@ -2100,6 +2106,11 @@ class CobranzasController extends Controller
         }
 
         return $cobros;
+    }
+
+    private function hasFullAccess($user): bool
+    {
+        return in_array($user->perfil_id, [1, 2, 18]) || $user->is_admin_cobros;
     }
 
 
