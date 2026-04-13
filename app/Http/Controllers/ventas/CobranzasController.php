@@ -1783,7 +1783,7 @@ class CobranzasController extends Controller
     public function abrircaja($puntodeventa, $userId)
     {
         $user = Auth::user();
-
+        $modelCaja = GpCaja::get()->keyBy('CAJA_CODIGO');
         $caja = GpRelacionUsuarioCaja::join('gp_cajas', 'gp_cajas.CAJA_CODIGO', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
             ->join('gp_relacion_punto_venta_cajas', 'gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_CAJA', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
             ->where('CAJ_USER_USUARIO', $user->USERID)
@@ -1801,6 +1801,7 @@ class CobranzasController extends Controller
             $reabrirCaja->save();
         } else {
             $apertura = new GpCierreCaja();
+            $apertura->caja_id = $modelCaja[$caja->CAJA_CODIGO]->id;
             $apertura->CAJA_CODIGO = $caja->CAJA_CODIGO;
             $apertura->fecha = date('Y-m-d');
             $apertura->estado = 'abierto';
