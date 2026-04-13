@@ -52,6 +52,7 @@ class CollectionService implements CollectionServiceInterface
             }
         }
         $query = $ptoVta->cajasDisponibles();
+        $query->has('operariosAsignados');
 
         $query->with(['operariosAsignados' => function ($q) {
             $q->select('gp_usuarios.id', 'gp_usuarios.USERID', 'gp_usuarios.USERNAME');
