@@ -18,11 +18,12 @@ class CreateSyncLogsTable extends Migration
             $table->string('module')->nullable()->index();
             $table->string('action')->nullable();
             $table->string('method')->nullable();
+            $table->longText('message');
             $table->string('external_id')->nullable()->index();
             $table->unsignedBigInteger('local_id')->nullable()->index();
             $table->json('payload')->nullable();
             $table->integer('attempts')->default(0);
-            $table->enum('status', ['failed', 'resolved', 'warning'])->default('failed');
+            $table->string('status')->default('failed')->index();
             $table->timestamps();
         });
     }

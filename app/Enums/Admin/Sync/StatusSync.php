@@ -31,3 +31,4 @@ enum StatusSync : string
         };
     }
 }
+
