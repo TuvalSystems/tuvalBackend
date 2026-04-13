@@ -77,7 +77,7 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->join('gp_clientes as gcl', 'gcl.id', 'gc.cliente_id')
             ->join('gp_caja_bancos as gcb', 'gcb.id', 'gcc.banco_id')
             ->where('gc.caja_id', $boxId)
-            ->where('gc.fecha', $date)
+            ->whereDate('gc.fecha', $date)
             ->withSum('chequesFacturas as totalAplicado', 'monto');
 
         if ($posfechados) {
