@@ -39,7 +39,7 @@ class CollectionRepository implements CollectionRepositoryInterface
                 'gcl1.CLI_RUC',
                 'gcaf.id_factura',
             )
-             ->withSum('facturasAplicadas as aplicado', 'monto')
+            ->withSum('facturasAplicadas as aplicado', 'monto')
             ->get();
     }
 
@@ -81,9 +81,9 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->withSum('chequesFacturas as totalAplicado', 'monto');
 
         if ($posfechados) {
-            $query->whereColumn('gc.fecha', '<', 'gcc.fecha_vencimiento');
+            $query->whereRaw('DATE(gcc.fecha_vencimiento) < DATE(gc.fecha)');
         } else {
-            $query->whereColumn('gc.fecha', '=', 'gcc.fecha_vencimiento');
+            $query->whereRaw('DATE(gcc.fecha_vencimiento) = DATE(gc.fecha)');
         }
         return $query->select(
             'gcc.*',
