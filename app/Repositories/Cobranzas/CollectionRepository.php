@@ -79,7 +79,6 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->where('gc.caja_id', $boxId)
             ->whereDate('gc.fecha', $date)
             ->withSum('chequesFacturas as totalAplicado', 'monto');
-
         if ($posfechados) {
             $query->whereRaw('DATE(gcc.fecha_vencimiento) > DATE(gc.fecha)');
         } else {
