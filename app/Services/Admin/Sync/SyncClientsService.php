@@ -60,7 +60,9 @@ class SyncClientsService implements SyncClientsServiceInterface
 
     public function handleClientBranchSync(array $data)
     {
+
         $ruc            = trim(data_get($data, 'cliente', ''));
+        Log::channel('cron_process')->info('Se sincronizó el cliente con cambios: ' . $ruc);
         $descripcion    = trim(data_get($data, 'descripcion', ''));
         $cliente        = GpCliente::where('CLI_RUC', $ruc)->first();
         if (!$cliente) {
