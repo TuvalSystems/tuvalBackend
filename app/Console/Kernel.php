@@ -75,7 +75,6 @@ class Kernel extends ConsoleKernel
             ->WithoutOverlapping(30);
 
 
-        $schedule->command('telescope:prune')->daily();
 
         //facturar pedidos en estado enviando
         $schedule->command('pedidos:facturar-enviando')
