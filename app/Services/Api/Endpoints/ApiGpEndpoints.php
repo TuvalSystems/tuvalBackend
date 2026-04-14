@@ -77,6 +77,7 @@ class ApiGpEndpoints
     public const CLIENTE_GUARDAR_MODIFICAR = 'api/cliente/crear-modificar-cliente';
     public const CLIENTE_GUARDAR_SUBSEGMENTO_RUC = 'api/cliente/crear-registro-subsegmento-ruc';
     public const CLIENTE_GUARDAR_NUEVA_DIRECCION = 'api/cliente/crear-nueva-direccion';
+
     // ---
     // 📜 7. Endpoints de Guías de Remisión ( General y Movimientos )
     // ---
@@ -114,7 +115,10 @@ class ApiGpEndpoints
 
 
 
-
+     // ---
+    // 🔄 9. Endpoints de Sincronizaciones
+    // ---
+    public const SYNC_CLIENTES = 'api/sync/clientes';
 
 
 

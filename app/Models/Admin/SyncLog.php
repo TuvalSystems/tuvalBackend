@@ -15,6 +15,18 @@ class SyncLog extends Model
         'status' => StatusSync::class,
     ];
 
+    protected $fillable = [
+        'module',
+        'action',
+        'method',
+        'message',
+        'external_id',
+        'local_id',
+        'payload',
+        'attempts',
+        'status',
+    ];
+
 
     public static function logErrorSync(
         $module,
@@ -38,5 +50,10 @@ class SyncLog extends Model
             'attempts'      => $attempts,
             'status'        => $status,
         ]);
+    }
+
+
+    public function prunable(){
+        return static::where('created_at', '<', now()->subDays(30));
     }
 }

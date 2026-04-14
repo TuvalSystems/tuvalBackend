@@ -16,7 +16,6 @@ class ApiGpService
     {
         $config = config("services.api_gp");
         $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
-        $this->endpoints = $config["endpoints"];
     }
 
     public function validateUser(array $params)

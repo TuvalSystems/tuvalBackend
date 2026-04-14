@@ -3,10 +3,10 @@
 namespace App\Console;
 
 use App\Jobs\Devoluciones\EnqueueDevoluciones;
+use App\Models\Admin\SyncLog;
 use App\Models\borradores\CotizacionBorrador;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 class Kernel extends ConsoleKernel
 {
@@ -83,6 +83,29 @@ class Kernel extends ConsoleKernel
             ->everyTwoHours()
             ->withoutOverlapping(20)
             ->runInBackground();
+
+
+
+        //sincronizaciones
+        $schedule->command('sync:clients')
+            ->timezone('America/Guayaquil')
+            ->everyMinute()
+            ->withoutOverlapping(20)
+            ->runInBackground();
+
+
+        //limpieza de logs de mas de 30 dias
+
+        $schedule->command('model:prune', [
+            '--model' => [SyncLog::class]
+        ])->timezone('America/Guayaquil')
+            ->dailyAt('02:00')
+            ->withoutOverlapping(30)
+            ->runInBackground();
+
+
+        //limpia la tabla de jobs fallidos nativa de laravel
+        $schedule->command('queue:prune-failed --hours=72')->daily();
     }
 
 
