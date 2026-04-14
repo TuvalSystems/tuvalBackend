@@ -52,6 +52,6 @@ class SyncClientBranchesJob implements ShouldQueue
             StatusSync::FAILED
         );
         $usersAlert = GpUsuario::whereIn('perfil_id', [1, 2])->get();
-        Notification::send($usersAlert, (new UserNotification('Error definitivo: Sincronización Clientes', $exception->getMessage())));
+        Notification::send($usersAlert, (new UserNotification('Sincronización de Sucursales', $exception->getMessage())));
     }
 }

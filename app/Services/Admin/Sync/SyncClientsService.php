@@ -39,9 +39,6 @@ class SyncClientsService implements SyncClientsServiceInterface
         $client->fill($payload);
         if ($client->isDirty()) {
             $client->save();
-            // Log::channel('cron_process')->info('Se sincronizó el cliente con cambios: ' . $ruc);
-        } else {
-            // Log::channel('cron_process')->info('Cliente sin cambios: ' . $ruc);
         }
     }
 
@@ -54,7 +51,7 @@ class SyncClientsService implements SyncClientsServiceInterface
             "fechaCreacion" => "",
             "fechaModif"    => $fecha
         ];
-        $syncData = $this->api->getClientBranches($params);
+        $syncData = $this->api->getSyncClientBranches($params);
         return data_get($syncData, 'data', []);
     }
 
@@ -89,6 +86,33 @@ class SyncClientsService implements SyncClientsServiceInterface
             if ($sucursal->isDirty()) {
                 $sucursal->save();
             }
+        }
+    }
+
+
+    public function getClientsCoordinates()
+    {
+        $syncData = $this->api->getSyncClientCoordinates();
+        return data_get($syncData, 'data', []);
+    }
+
+
+    public function handleClientBranchCoordinatesSync(array $data)
+    {
+        $ruc = trim(data_get($data, 'idCliente', ''));
+        $addressCode = trim(data_get($data, 'addressCode', ''));
+        if ($addressCode === 'undefined' || empty($addressCode)) {
+            return;
+        }
+        $sucursal = GpClienteSucursal::where('CLI_SUC_RUC', $ruc)->where('CLI_SUC_ID_DIRECCION', $addressCode)->first();
+        if (!$sucursal) {
+            Log::channel('cron_process')->warning("Coordenada ignorada: Sucursal [{$addressCode}] no existe para RUC [{$ruc}]. Posiblemente eliminada en GP.");
+            return;
+        }
+        $sucursal->coordenadas = data_get($data, 'datosCoordenadas', '');
+
+        if ($sucursal->isDirty('coordenadas')) {
+            $sucursal->save();
         }
     }
 }

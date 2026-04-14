@@ -11,4 +11,8 @@ interface SyncClientsServiceInterface
     public function getBranchesGp($fecha);
     public function handleClientBranchSync(array $data);
 
+     public function getClientsCoordinates();
+
+     public function handleClientBranchCoordinatesSync(array $data);
+
 }

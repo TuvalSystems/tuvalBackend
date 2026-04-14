@@ -27,7 +27,6 @@ class SyncClients extends Command
         }
 
         foreach ($rawClients as $client) {
-            //  SyncClientJob::dispatchSync($client);
             SyncClientJob::dispatch($client);
         }
         Log::channel('cron_process')->info('Se encontraron ' . count($rawClients) . ' clientes');
