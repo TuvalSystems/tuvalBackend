@@ -21,4 +21,14 @@ class ApiSync
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::SYNC_CLIENTES, 'POST', $params, 'json');
     }
+
+    public function getClientBranches(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::SYNC_CLIENTES_SUCURSALES, 'POST', $params, 'json');
+    }
+
+    public function getClientCoordinates(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::SYNC_CLIENTES_COORDENADAS, 'POST', $params, 'json');
+    }
 }

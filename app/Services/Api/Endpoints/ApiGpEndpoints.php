@@ -117,8 +117,8 @@ class ApiGpEndpoints
     // 🔄 9. Endpoints de Sincronizaciones
     // ---
     public const SYNC_CLIENTES = 'api/sync/clientes';
-    public const GENERAL_CONSULTAR_SUCURSALES_CLIENTE = 'api/consultar-sucursales-clientes';
-    public const GENERAL_CONSULTAR_COORDENADAS = 'api/consultar-listado-coordenadas';
+    public const SYNC_CLIENTES_SUCURSALES = 'api/sync/clientes-sucursales';
+    public const SYNC_CLIENTES_COORDENADAS = 'api/sync/clientes-coordenadas';
 
 
 

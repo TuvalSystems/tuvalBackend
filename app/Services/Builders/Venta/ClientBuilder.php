@@ -109,4 +109,27 @@ class ClientBuilder implements ClientBuilderInterface
             'CLI_FACTURA_POSTERIOR_AL_DESPACHO'             => (data_get($data, 'factPostAlDespacho') == 1) ? 'SI' : 'NO',
         ];
     }
+
+
+
+    public function formPayloadClientBranchesSync(int $clienteId, string $ruc, string $descripcion,  array $data)
+    {
+        return [
+            'cliente_id'                                        => $clienteId,
+            'CLI_SUC_RUC'                                       => $ruc,
+            'CLI_SUC_DESCRIPCION'                               => trim($descripcion  ?? ''),
+            'CLI_SUC_ID_DIRECCION'                              => trim(data_get($data, 'idDireccion', '')),
+            'CLI_SUC_DIRECCION'                                 => trim(data_get($data, 'direccion', '')),
+            'CLI_SUC_CONTACTO'                                  => trim(data_get($data, 'contacto', '')),
+            'CLI_SUC_REFERENCIA'                                => trim(data_get($data, 'referencia', '')),
+            'CLI_SUC_VENDEDOR'                                  => trim(data_get($data, 'vendedor', '')),
+            'CLI_SUC_TERRITORIO'                                => trim(data_get($data, 'territorio', '')),
+            'CLI_SUC_CIUDAD'                                    => trim(data_get($data, 'ciudad', '')),
+            'CLI_SUC_PROVINCIA'                                 => trim(data_get($data, 'provincia', '')),
+            'CLI_SUC_PAIS'                                      => trim(data_get($data, 'pais', '')),
+            'CLI_SUC_TELEFONO'                                  => trim(data_get($data, 'telefono', '')),
+            'CLI_SUC_CORREO_ELECTRONICO_SRI'                    => trim(data_get($data, 'correoSri', '')),
+            'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA'   => trim(data_get($data, 'correoInterno', '')),
+        ];
+    }
 }

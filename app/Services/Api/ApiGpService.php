@@ -33,17 +33,7 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE, 'POST', $params, 'json');
     }
 
-    public function getBranchesClientsList(array $params)
-    {
-
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_SUCURSALES_CLIENTE, 'GET', $params);
-    }
-
-    public function getCoordinatesList(array $params = [])
-    {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_COORDENADAS, 'GET', $params);
-    }
-
+   
 
     public function getStockWarehouse(array $params = [])
     {

@@ -92,6 +92,11 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(20)
             ->runInBackground();
 
+        $schedule->command('sync:client-branches')
+            ->timezone('America/Guayaquil')
+            ->everyMinute()
+            ->withoutOverlapping(20)
+            ->runInBackground();
 
         //limpieza de logs de mas de 30 dias
 
