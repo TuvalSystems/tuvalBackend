@@ -30,7 +30,6 @@ class SyncClientBranchesJob implements ShouldQueue
     public function __construct(array $branch)
     {
         $this->branch = $branch;
-        // $this->queue = 'sync-medium';
         $this->onQueue('sync-medium');
     }
 

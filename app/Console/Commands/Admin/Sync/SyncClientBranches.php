@@ -15,6 +15,7 @@ class SyncClientBranches extends Command
     public function handle(SyncClientsServiceInterface $service)
     {
         $this->info('Iniciando proceso de sincronización de sucursales de clientes');
+        Log::channel('cron_process')->info('Iniciando proceso de sincronización de sucursales de clientes');
         $fechaFiltro = now()->subMinutes(5)->format('Y-m-d H:i:s');
         $rawBranches = $service->getBranchesGp($fechaFiltro);
         if (empty($rawBranches)) {
