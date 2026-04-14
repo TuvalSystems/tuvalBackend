@@ -66,9 +66,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/llenacondicionpagogp', [SincronizacionController::class, 'llenacondicionpagogp']);
     Route::get('/llenaarticulosgp', [SincronizacionController::class, 'llenaarticulosgp']);
     Route::get('/llenalistadepreciosgp', [SincronizacionController::class, 'llenalistadepreciosgp']);
-    Route::get('/llenaclientesgp', [SincronizacionController::class, 'llenaclientesgp']);
     Route::get('/llenapuntodeventaycajasgp', [SincronizacionController::class, 'llenapuntodeventaycajasgp']);
-    Route::get('/llenaclientesucursalgp', [SincronizacionController::class, 'llenaclientesucursalgp']);
     Route::get('/llenadescuentoformapagogp', [SincronizacionController::class, 'llenadescuentoformapagogp']);
     Route::get('/llenarelacionesgp', [SincronizacionController::class, 'llenarelacionesgp']);
     Route::get('/llenavendedorgp', [SincronizacionController::class, 'llenavendedorgp']);
