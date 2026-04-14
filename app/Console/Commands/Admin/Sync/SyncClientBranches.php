@@ -18,7 +18,7 @@ class SyncClientBranches extends Command
         $fechaFiltro = now()->subMinutes(5)->format('Y-m-d H:i:s');
         $rawBranches = $service->getBranchesGp($fechaFiltro);
         if (empty($rawBranches)) {
-            $this->info('Nada que sincronizar.');
+            Log::channel('cron_process')->info('Se encontraron ' . count($rawBranches) . ' sucursales');
             return 0;
         }
         foreach ($rawBranches as $branch) {
