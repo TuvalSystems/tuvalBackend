@@ -20,7 +20,6 @@ class SyncClients extends Command
     {
         $this->info('Iniciando proceso de despacho de clientes');
         $fechaFiltro = now()->subMinutes(30)->format('Y-m-d H:i:s');
-        // $fechaFiltro = '2026-04-11 12:00:29';
         $rawClients = $service->getClientsGp($fechaFiltro);
         if (empty($rawClients)) {
             $this->info('Nada que sincronizar.');

@@ -237,123 +237,14 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    /*
-     * Sincroniza Condicion de Pago desde Dynamics GP
-     */
-    //    public function llenalistadepreciosgp() {
-    //        $obj = new WebserviceController;
-    //        $listaprecios = $obj->listaprecios();
-    //
-    //        foreach ( $listaprecios as $key => $data ) {
-    //
-    //            $listaprecio = GpListaPrecio::where( 'LST_PRC_ARTICULO', trim( $data[ 'LST_PRC_ARTICULO' ] ) )
-    //                    ->where( 'LST_PRC_ID', trim( $data[ 'LST_PRC_ID' ] ) )->first();
-    //            if ( !$listaprecio ) {
-    //                $listaprecio = new GpListaPrecio;
-    //            }
-    //            $listaprecio->LST_PRC_ARTICULO = trim( $data[ 'LST_PRC_ARTICULO' ] );
-    //            $listaprecio->LST_PRC_MONEDA = trim( $data[ 'LST_PRC_MONEDA' ] );
-    //            $listaprecio->LST_PRC_UMEDIDA = trim( $data[ 'LST_PRC_UMEDIDA' ] );
-    //            $listaprecio->LST_PRC_ID = trim( $data[ 'LST_PRC_ID' ] );
-    //            $listaprecio->LST_PRC_VALOR = ( float )trim( $data[ 'LST_PRC_VALOR' ] );
-    //            $listaprecio->save();
-    //        }
-    //        return response( [
-    //            'success' => true,
-    //            'message' => 'Lista de precios correctamente sincronizada'
-    // ] );
-    //    }
 
     public function llenaclientesgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-
-        ini_set('memory_limit', '-1');
-
-        $metodo = 'MST_Cliente';
-        $fecha = '';
-        $obj = new WebserviceController;
-
-        $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if ($cronLog) {
-            $fecha = $cronLog->fecha;
-        }
-
-        $parameters = [
-            'id_Cliente ' => '',
-            'FechaCreacion' => '',
-            'FechaModificacion' => $fecha
-        ];
-
-        $clientes = $obj->maestros($metodo, $parameters);
-
-        if (!isset($clientes['MST_ClienteResult']['CS_CLIENTE']) || !count($clientes['MST_ClienteResult']['CS_CLIENTE'])) {
-            return response([
-                'success' => true,
-                'message' => 'Ningun cliente por actualizar',
-            ]);
-        }
-
-        $clientes = $clientes['MST_ClienteResult']['CS_CLIENTE'];
-
-        //        echo '<pre>';
-        //        print_r( $clientes );
-        //        die();
-
-        foreach ($clientes as $data) {
-
-            $cliente = GpCliente::where('CLI_RUC', trim($data['CLI_RUC']))->first();
-            if (!$cliente) {
-                $cliente = new GpCliente;
-            }
-            $cliente->CLI_RUC = trim($data['CLI_RUC']);
-            $cliente->CLI_RAZON_SOCIAL = trim($data['CLI_RAZON_SOCIAL']);
-            $cliente->CLI_NOMBRE_CORTO = trim($data['CLI_NOMBRE_CORTO']);
-            $cliente->CLI_CLASE = trim($data['CLI_CLASE']);
-            $cliente->CLI_PRIORIDAD = (int) trim($data['CLI_PRIORIDAD']);
-            $cliente->CLI_ID_DIRECCION = trim($data['CLI_ID_DIRECCION']);
-            $cliente->CLI_CONTACTO = trim($data['CLI_CONTACTO']);
-            $cliente->CLI_DIRECCION = trim($data['CLI_DIRECCION']);
-            $cliente->CLI_CIUDAD = trim($data['CLI_CIUDAD']);
-            $cliente->CLI_PROVINCIA = trim($data['CLI_PROVINCIA']);
-            $cliente->CLI_TERRITORIO = trim($data['CLI_TERRITORIO']);
-            $cliente->CLI_ESTADO = trim($data['CLI_ESTADO']);
-            $cliente->CLI_SUSPENDIDO = trim($data['CLI_SUSPENDIDO']);
-            $cliente->CLI_TELEFONO_1 = trim($data['CLI_TELEFONO_1']);
-            $cliente->CLI_TELEFONO_2 = trim($data['CLI_TELEFONO_2']);
-            $cliente->CLI_TELEFONO_3 = trim($data['CLI_TELEFONO_3']);
-            $cliente->CLI_TELEFONO_4 = trim($data['CLI_TELEFONO_4']);
-            $cliente->CLI_FECHA_MODIFICACION = trim($data['CLI_FECHA_MODIFICACION']['date']);
-            $cliente->CLI_FECHA_CREACION = trim($data['CLI_FECHA_CREACION']['date']);
-            $cliente->CLI_CORREO_ELECT_SRI = trim($data['CLI_CORREO_ELECT_SRI']);
-            $cliente->CLI_CORREO_ELECT_NOTIFICACION_INTERNA = trim($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
-            $cliente->CLI_IMPUESTO = (float) trim($data['CLI_IMPUESTO']);
-            $cliente->CLI_DIRECCION_ENVIO = trim($data['CLI_DIRECCION_ENVIO']);
-            $cliente->CLI_DIRECCION_FACTURA = trim($data['CLI_DIRECCION_FACTURA']);
-            $cliente->CLI_VENDEDOR = trim($data['CLI_VENDEDOR']);
-            $cliente->CLI_DSTO_COMERCIAL = (float) trim($data['CLI_DSTO_COMERCIAL']);
-            $cliente->CLI_CONDICION_PAGO = trim($data['CLI_CONDICION_PAGO']);
-            $cliente->CLI_DIA_GRACIA_VTA_CREDITO = (int) trim($data['CLI_DIA_GRACIA_VTA_CREDITO']);
-            $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA = (int) trim($data['CLI_DIA_GRACIA_CHEQUE_A_FECHA']);
-            $cliente->CLI_NIVEL_PRECIO = trim($data['CLI_NIVEL_PRECIO']);
-            $cliente->CLI_TIPO_CREDITO = trim($data['CLI_TIPO_CREDITO']);
-            $cliente->CLI_MONTO_CREDITO = (float) trim($data['CLI_MONTO_CREDITO']);
-            $cliente->CLI_GRUPO_ECONOMICO = trim($data['CLI_GRUPO_ECONOMICO']);
-            $cliente->CLI_GRUPO = trim($data['CLI_GRUPO']);
-            $cliente->CLI_SUBGRUPO = trim($data['CLI_SUBGRUPO']);
-            $cliente->CLI_DIA_MAXIMO_MES_FACTURACION = (int) trim($data['CLI_DIA_MAXIMO_MES_FACTURACION']);
-            $cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO = trim($data['CLI_FACTURA_POSTERIOR_AL_DESPACHO']);
-            $cliente->save();
-        }
-
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = $metodo;
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
-
+        /** proceso pasado a un job */
         return response([
             'success' => true,
             'message' => 'Lista de clientes correctamente sincronizada',
-            'total' => count($clientes),
+            'total' => 1,
         ]);
     }
 
@@ -1081,9 +972,9 @@ class SincronizacionController extends Controller
         $this->llenacondicionpagogp();
         $this->llenaarticulosgp();
         //$this->llenalistadepreciosgp();
-        $this->llenaclientesgp();
+        // $this->llenaclientesgp();
         $this->llenapuntodeventaycajasgp();
-        $this->llenaclientesucursalgp();
+        // $this->llenaclientesucursalgp();
         $this->llenadescuentoformapagogp();
         $this->llenarelacionesgp();
         $this->llenavendedorgp();
