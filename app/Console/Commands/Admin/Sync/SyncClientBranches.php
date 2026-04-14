@@ -25,7 +25,8 @@ class SyncClientBranches extends Command
             //  SyncClientBranchesJob::dispatchSync($branch);
             SyncClientBranchesJob::dispatch($branch);
         }
-        $count = count($rawBranches);
-        Log::channel('cron_process')->info('Se encontraron ' . $count . ' sucursales');
+        Log::channel('cron_process')->info('Se encontraron ' . count($rawBranches) . ' sucursales');
+        $this->info('Sucursales enviadas a la cola de Redis.');
+        return 0;
     }
 }
