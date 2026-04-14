@@ -2,8 +2,6 @@
 
 namespace App\Services\Admin\Sync;
 
-use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
 use App\Models\GpCliente;
 use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
 use App\Services\Api\Admin\ApiSync;

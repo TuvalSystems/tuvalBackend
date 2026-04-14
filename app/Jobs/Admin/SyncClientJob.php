@@ -26,10 +26,14 @@ class SyncClientJob implements ShouldQueue
     public array|int $backoff = [10, 30, 60, 120]; // backoff exponencial simple
 
 
+    //sync-high
+    //sync-medium
+    //sync-low
+
     public function __construct(array $client)
     {
         $this->client = $client;
-        $this->onQueue('sync_client');
+        $this->onQueue('sync-high');
     }
 
 

@@ -10,35 +10,9 @@ use Symfony\Component\Console\Command\Command as Cmd;
 
 class InvoiceReservedOrders extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'pedidos:facturar-reservas';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Comando generado para facturar pedidos con origen reserva';
 
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
     public function handle(OrderJobService $orderJobService)
     {
         $this->info('🔄 Iniciando facturación de pedidos con origen "reserva"...');
