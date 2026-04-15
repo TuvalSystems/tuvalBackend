@@ -3,6 +3,7 @@
 namespace App\Models\Admin;
 
 use App\Enums\Admin\Sync\StatusSync;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -53,7 +54,13 @@ class SyncLog extends Model
     }
 
 
-    public function prunable(){
+    public function prunable()
+    {
         return static::where('created_at', '<', now()->subDays(30));
+    }
+
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
     }
 }

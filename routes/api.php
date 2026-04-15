@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -442,6 +443,12 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
         Route::post('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
     });
+
+
+    Route::group(['prefix' => 'admin'], function () {
+        Route::post('lista-logs', [AdminController::class, 'ListaLogs']);
+    });
+
 });
 Route::post('/login', [AuthController::class, 'login']);
 
