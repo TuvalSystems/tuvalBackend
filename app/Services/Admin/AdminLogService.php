@@ -57,7 +57,7 @@ class AdminLogService implements AdminLogServiceInterface
         if ($status = data_get($filters, 'status')) {
             $query->where('sl.status', $status);
         }
-        $query->orderBy(data_get($filters, 'sortBy', 'created_at'), data_get($filters, 'sortOrder', 'desc'));
+        $query->orderBy(data_get($filters, 'sortField', 'created_at'), data_get($filters, 'sortOrder', 'desc'));
         return $query->paginate(data_get($filters, 'perpage', 10));
     }
 }
