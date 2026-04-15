@@ -378,19 +378,28 @@ class CobranzasController extends Controller
             $save_cheques_monto->save();
 
             foreach ($data['ingreso_cheques']['cheques'] as $key => $cheque) {
-
                 $numeroOriginal =  data_get($cheque, 'cheque');
-                $cuenta = data_get($cheque, 'cuenta');
-                $existCheque = GpCobrosCheques::where('cheque', $numeroOriginal)->where('cuenta', $cuenta)->exists();
-                if ($existCheque) {
-                    $nuevoNumero = str_pad($numeroOriginal, 7, "0", STR_PAD_LEFT);
-                    while (GpCobrosCheques::where('cheque', $nuevoNumero)->where('cuenta', $cuenta)->exists()) {
-                        $nuevoNumero = "0" . $nuevoNumero;
+                $cliente_id     = data_get($data, 'cliente_id');
+                $cantidadExistente = GpCobro::where('cliente_id', $cliente_id)
+                    ->whereHas('cheques', function ($q) use ($numeroOriginal) {
+                        $q->where('cheque', $numeroOriginal)
+                            ->orWhere('cheque', 'like', '%' . $numeroOriginal);
+                    })->count();
+
+                if ($cantidadExistente > 0) {
+                    $largoDinamico = max(7, strlen($numeroOriginal) + $cantidadExistente);
+                    $chequeFinal = str_pad($numeroOriginal, $largoDinamico, "0", STR_PAD_LEFT);
+                    while (GpCobro::where('cliente_id', $cliente_id)
+                        ->whereHas('cheques', function ($q) use ($chequeFinal) {
+                            $q->where('cheque', $chequeFinal);
+                        })->exists()
+                    ) {
+                        $chequeFinal = "0" . $chequeFinal;
                     }
-                    $chequeFinal = $nuevoNumero;
-                }else{
+                } else {
                     $chequeFinal = $numeroOriginal;
                 }
+
                 $save_cheque = new GpCobrosCheques();
                 $save_cheque->cobro_id = $cobro->id;
                 $save_cheque->banco_id = $bancos[$cheque['banco_id']]->id;
