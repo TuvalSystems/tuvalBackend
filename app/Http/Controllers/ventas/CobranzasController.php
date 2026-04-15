@@ -387,7 +387,7 @@ class CobranzasController extends Controller
                     })->count();
 
                 if ($cantidadExistente > 0) {
-                    $largoDinamico = max(7, strlen($numeroOriginal) + $cantidadExistente);
+                    $largoDinamico = strlen($numeroOriginal) + $cantidadExistente;
                     $chequeFinal = str_pad($numeroOriginal, $largoDinamico, "0", STR_PAD_LEFT);
                     while (GpCobro::where('cliente_id', $cliente_id)
                         ->whereHas('cheques', function ($q) use ($chequeFinal) {
