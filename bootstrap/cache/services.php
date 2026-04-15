@@ -274,6 +274,7 @@
     'App\\Repositories\\Cobranzas\\Contracts\\CollectionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\User\\Contracts\\UserRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Services\\User\\Contracts\\UserServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
+    'App\\Services\\Admin\\Contracts\\MenuServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\DeliveryNoteParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\ReservationDeliveryNoteParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\DeliveryNoteDispatchParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',

@@ -6,53 +6,19 @@ use App\Models\Section;
 use App\Models\Perfiles;
 use App\Models\GpUsuario;
 use App\Models\PerfilSection;
+use App\Services\Admin\Contracts\MenuServiceInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class SectionsController extends Controller
 {
-    /*
-     * Envía la lista de secciones completa
-     */
-    public function listadeseccionesmenu($perfil_id): array
+
+
+    public function  __construct(protected readonly MenuServiceInterface $menu)
     {
 
-        $sections = DB::table('sections')
-            ->join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
-            ->select('sections.*')
-            ->where('perfil_sections.perfil_id', '=', $perfil_id)
-            ->orderBy('sections.order')
-            ->get()->toArray();
-
-        $sections = json_decode(json_encode($sections), true);
-
-        $sections_arr = array();
-        //sections list array
-        if ($sections) {
-            foreach ($sections as $sec) {
-                if($sec['parent_id'] == ''){
-                    $sec['subActivePaths'] = $sec['url'];
-                }
-                unset($sec['url']);
-                unset($sec['order']);
-                unset($sec['created_at']);
-                unset($sec['updated_at']);
-                $sections_arr[] = $sec;
-            }
-        }
-
-        $tree = $this->buildSectionTree($sections_arr);
-
-        $arbol = $this->setdatamenu($tree);
-
-        $home = DB::table('sections')
-            ->join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
-            ->select('sections.*')
-            ->where('perfil_sections.perfil_id', '=', $perfil_id)
-            ->where('perfil_sections.home', '=', 'yes')
-            ->first();
-        return array('arbol'=>$arbol, 'home' => $home);
     }
+
+
 
     public function listadesecciones(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -81,21 +47,6 @@ class SectionsController extends Controller
             }
         }
         return $branch;
-    }
-    public static function setdatamenu(array $elements): array
-    {
-        foreach ($elements as $key => $element) {
-            unset($elements[$key]['id']);
-            unset($elements[$key]['parent_id']);
-
-            if (isset($element['sub']) && count($element['sub']) > 0) {
-                unset($elements[$key]['to']);
-                $elements[$key]['sub'] = self::setdatamenu($element['sub']);
-            }else{
-                unset($elements[$key]['icon']);
-            }
-        }
-        return $elements;
     }
 
     public function updateseccion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -256,5 +207,10 @@ class SectionsController extends Controller
                 'error' => 'Hubo un error al guardar'
             ], 404);
         }
+    }
+
+
+    public function obtenerMenu(){
+        return $this->menu->getFullMenuLayout(1);
     }
 }

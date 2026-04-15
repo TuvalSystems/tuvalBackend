@@ -12,9 +12,9 @@ use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Model;
-use App\Http\Controllers\SectionsController;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Services\Admin\Contracts\MenuServiceInterface;
 use App\Services\User\Contracts\UserServiceInterface;
 use Illuminate\Validation\ValidationException;
 
@@ -22,7 +22,8 @@ class UserService implements UserServiceInterface
 {
     use JsonResponseTrait;
 
-    public function __construct(protected readonly ApiGpService $apiGp) {}
+    public function __construct(protected readonly ApiGpService $apiGp,
+    protected readonly MenuServiceInterface $menu) {}
 
     public function isValidUserWeb(array $credentials): bool
     {
@@ -92,8 +93,8 @@ class UserService implements UserServiceInterface
         return [
             'user'                  => $this->formatuserData($user),
             'token'                 => $this->generateAuthToken($user),
-            'menu'                  => $this->getUserMenu($user->perfil_id)['arbol'],
-            'home'                  => $this->getUserMenu($user->perfil_id)['home'],
+            'menu'                  => $this->menu->getFullMenuLayout($user->perfil_id)['arbol'],
+            'home'                  => $this->menu->getFullMenuLayout($user->perfil_id)['home'],
             'puntosdeventa'         => $this->getUserSalesPoints($user->USERID),
             'puntodeventaselect'    => $this->getDefaultSalesPoint($user->USERID),
             'formadepago'           => $this->getPaymentMethods(),
@@ -119,10 +120,7 @@ class UserService implements UserServiceInterface
         return $user->createToken($user->USERID)->plainTextToken;
     }
 
-    public function getUserMenu(int $profileId)
-    {
-        return (new SectionsController())->listadeseccionesmenu($profileId);
-    }
+
 
     public function getUserSalesPoints($userID)
     {
@@ -130,7 +128,7 @@ class UserService implements UserServiceInterface
             ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userID)
             ->select('gp_punto_ventas.*')
             ->with('bodegas')
-            ->orderBy('gp_punto_ventas.PTO_VTA_ID')
+            ->orderBy('gp_relacion_usuario_punto_ventas.orden', 'asc')
             ->get()
             ->unique('PTO_VTA_ID')
             ->values();
