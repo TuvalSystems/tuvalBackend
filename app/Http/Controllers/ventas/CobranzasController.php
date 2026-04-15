@@ -378,12 +378,25 @@ class CobranzasController extends Controller
             $save_cheques_monto->save();
 
             foreach ($data['ingreso_cheques']['cheques'] as $key => $cheque) {
+
+                $numeroOriginal =  data_get($cheque, 'cheque');
+                $cuenta = data_get($cheque, 'cuenta');
+                $existCheque = GpCobrosCheques::where('cheque', $numeroOriginal)->where('cuenta', $cuenta)->exists();
+                if ($existCheque) {
+                    $nuevoNumero = str_pad($numeroOriginal, 7, "0", STR_PAD_LEFT);
+                    while (GpCobrosCheques::where('cheque', $nuevoNumero)->where('cuenta', $cuenta)->exists()) {
+                        $nuevoNumero = "0" . $nuevoNumero;
+                    }
+                    $chequeFinal = $nuevoNumero;
+                }else{
+                    $chequeFinal = $numeroOriginal;
+                }
                 $save_cheque = new GpCobrosCheques();
                 $save_cheque->cobro_id = $cobro->id;
                 $save_cheque->banco_id = $bancos[$cheque['banco_id']]->id;
                 $save_cheque->banco = $cheque['banco_id'];
                 $save_cheque->cuenta = $cheque['cuenta'];
-                $save_cheque->cheque = $cheque['cheque'];
+                $save_cheque->cheque = $chequeFinal;
                 $save_cheque->monto = $cheque['monto'];
                 $save_cheque->fecha_emision = $cheque['fecha_emision'];
                 $save_cheque->fecha_vencimiento = $cheque['fecha_vencimiento'];
@@ -2083,7 +2096,7 @@ class CobranzasController extends Controller
         ]);
     }
 
-    public function cobroscliente( $data, $user): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
+    public function cobroscliente($data, $user): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
     {
         $query = GpCobro::where('cliente_id', $data['cliente']['id'])
             ->whereDate('fecha', '>=', $data['fecha_inicio'])
