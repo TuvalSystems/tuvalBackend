@@ -1285,11 +1285,16 @@ class OrderService implements OrderServiceInterface
 
     protected function updateHeaderOrderTransferVta($parentOrder)
     {
+        $currentDetailIds = GpPedidoDetalle::where('pedido_id', $parentOrder->id)->pluck('id');
+        if ($currentDetailIds->isEmpty()) {
+            $parentOrder->update(['transferencia_en_proceso' => false]);
+            return;
+        }
+        $hasActiveTransfer = GpTrasladosVentas::whereIn('detalle_id', $currentDetailIds)
+            ->where('picking', 1)
+            ->exists();
 
-        $detalle = GpPedidoDetalle::where('pedido_id', $parentOrder->id)->get();
-        $ids = $detalle->pluck('id')->toArray();
-        $traslados = GpTrasladosVentas::whereIn('detalle_id', $ids)->where('picking', 1)->exists();
-        $parentOrder->update(['transferencia_en_proceso' => $traslados]);
+        $parentOrder->update(['transferencia_en_proceso' => $hasActiveTransfer]);
     }
 
 
