@@ -68,6 +68,7 @@ class DashboardController extends Controller
             if ($section->to == 'bodegas-transferenciasventa') {
                 $trasladosventas = GpTrasladosVentas::where('bodega_origen', $bodega)
                     ->whereNull('completado')
+                    ->orWhere('completado', 0)
                     ->count();
                 $section->total = $trasladosventas;
             }
@@ -83,6 +84,7 @@ class DashboardController extends Controller
             if ($section->to == 'bodegas-transferenciasreposicion') {
                 $trasladosreposicion = GpTrasladosReposicion::where('bodega_origen', $bodega)
                     ->whereNull('completado')
+                    ->orWhere('completado', 0)
                     ->count();
                 $section->total = $trasladosreposicion;
             }
