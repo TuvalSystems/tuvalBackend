@@ -37,8 +37,6 @@ Route::get('/', function () {
 Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarcobros']);
 Route::get('/enviarordenesdecompraurl', [OrdendecompraController::class, 'enviarordenesdecompraurl']);
 Route::get('/cotizaciones/checkvalidezcotizaciones', [CotizacionesController::class, 'checkvalidezcotizaciones']);
-Route::get('/sincronizacion/llenaclientesgp', [SincronizacionController::class, 'llenaclientesgp']);
-Route::get('/sincronizacion/llenadatoscoordenadasgp', [SincronizacionController::class, 'llenadatoscoordenadasgp']);
 Route::get('/cobranzas/consultacobrosanulados', [CobranzasController::class, 'consultacobrosanulados']);
 Route::get('/facturarsiguientemescron', [PedidosController::class, 'facturarsiguientemescron']);
 Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);

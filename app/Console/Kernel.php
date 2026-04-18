@@ -3,86 +3,125 @@
 namespace App\Console;
 
 use App\Jobs\Devoluciones\EnqueueDevoluciones;
+use App\Models\Admin\SyncLog;
 use App\Models\borradores\CotizacionBorrador;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 class Kernel extends ConsoleKernel
 {
 
+    private const MAINTENANCE_TIME = '02:00';
+    private const TIMEZONE = 'America/Guayaquil';
+
     protected function schedule(Schedule $schedule)
     {
+
+        $this->scheduleOrdersAndQuotes($schedule);
+        $this->scheduleStockAndArticles($schedule);
+        $this->scheduleSynchronizations($schedule);
+        $this->scheduleCleanUpTasks($schedule);
+    }
+
+
+
+    /**
+     * Tareas relacionadas con Pedidos, Cotizaciones y Devoluciones
+     */
+
+    private function scheduleOrdersAndQuotes(Schedule $schedule)
+    {
         $schedule->job(new EnqueueDevoluciones(10))
-            ->timezone('America/Guayaquil')
+            ->timezone(self::TIMEZONE)
             ->everyMinute()
             ->withoutOverlapping(5)
             ->runInBackground();
 
-
-        //se ejecuta una vez al dia a las 08:00
         $schedule->command('cotizaciones:notificar-noventa')
             ->dailyAt('08:00')
-
             ->runInBackground();
 
-        //se ejecuta el 1 de cada mez
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
-            ->monthlyOn(1, '02:00')
-            ->when(function () {
-                return now()->day <= 7;
-            })
-            ->timezone('America/Guayaquil')->withoutOverlapping(10)
-            ->runInBackground(); // hace que no bloquee otros jobs
-
-        // ejecuta cada 2 horas la actualización de articulos
-        $schedule->command('articulol:update')
-            ->dailyAt('03:15')
-            ->timezone('America/Guayaquil')
-            ->withoutOverlapping(60)
+            ->monthlyOn(1, self::MAINTENANCE_TIME)
+            ->when(fn() => now()->day <= 7)
+            ->timezone(self::TIMEZONE)
+            ->withoutOverlapping(10)
             ->runInBackground();
 
         $schedule->command('pedidos:facturar-reservas')
-            ->timezone('America/Guayaquil')
+            ->timezone(self::TIMEZONE)
             ->between('06:00', '22:00')
-            ->everyTenMinutes()              // frecuencia
-            ->withoutOverlapping(20)            // evita procesos en paralelo
-            ->runInBackground()
-        ; // hace que no bloquee otros jobs
+            ->everyTenMinutes()
+            ->withoutOverlapping(20)
+            ->runInBackground();
+
+        $schedule->command('pedidos:facturar-enviando')
+            ->timezone(self::TIMEZONE)
+            ->everyTwoHours()
+            ->withoutOverlapping(20)
+            ->runInBackground();
+    }
+
+
+    private function scheduleStockAndArticles(Schedule $schedule)
+    {
+        $schedule->command('articulol:update')
+            ->dailyAt('03:15')
+            ->timezone(self::TIMEZONE)
+            ->withoutOverlapping(60)
+            ->runInBackground();
 
         $schedule->command('reservas:notificacion-expiracion')
-            ->timezone('America/Guayaquil')
+            ->timezone(self::TIMEZONE)
             ->dailyAt('07:30')
             ->withoutOverlapping(30)
             ->runInBackground();
 
         $schedule->command('reservas:release-stock')
-            ->timezone('America/Guayaquil')
+            ->timezone(self::TIMEZONE)
             ->dailyAt('07:30')
             ->withoutOverlapping(30)
             ->runInBackground();
-
-        $schedule->command('model:prune', [
-            '--model' => [CotizacionBorrador::class]
-        ])
-            ->timezone('America/Guayaquil')
-            ->dailyAt('02:00');
+    }
 
 
-        //limpieza de documentos
-        $schedule->command('media:clean-old-pdfs --months=3')
-            ->dailyAt('02:00')
-            ->WithoutOverlapping(30);
+    private function scheduleSynchronizations(Schedule $schedule)
+    {
+        $syncCommands = [
+            'sync:clients',
+            'sync:client-branches',
+            'sync:clients-coordinates'
+        ];
 
+        foreach ($syncCommands as $command) {
+            $schedule->command($command)
+                ->timezone(self::TIMEZONE)
+                ->everyMinute()
+                ->withoutOverlapping(20)
+                ->runInBackground();
+        }
+    }
 
-        $schedule->command('telescope:prune')->daily();
+    private function scheduleCleanUpTasks(Schedule $schedule)
+    {
+        // Limpieza de modelos específicos
+        $schedule->command('model:prune', ['--model' => [CotizacionBorrador::class]])
+            ->timezone(self::TIMEZONE)
+            ->dailyAt(self::MAINTENANCE_TIME);
 
-        //facturar pedidos en estado enviando
-        $schedule->command('pedidos:facturar-enviando')
-            ->timezone('America/Guayaquil')
-            ->everyTwoHours()
-            ->withoutOverlapping(20)
+        $schedule->command('model:prune', ['--model' => [SyncLog::class]])
+            ->timezone(self::TIMEZONE)
+            ->dailyAt(self::MAINTENANCE_TIME)
+            ->withoutOverlapping(30)
             ->runInBackground();
+
+        // Limpieza de archivos y colas
+        $schedule->command('media:clean-old-pdfs --months=3')
+            ->timezone(self::TIMEZONE)
+            ->dailyAt(self::MAINTENANCE_TIME)
+            ->withoutOverlapping(30);
+
+        $schedule->command('queue:prune-failed --hours=72')->daily();
     }
 
 

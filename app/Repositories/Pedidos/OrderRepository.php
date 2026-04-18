@@ -89,20 +89,16 @@ class OrderRepository implements OrderRepositoryInterface
     public function getShipmentGuidesByTransfer(object $transfer)
     {
 
-        return GpGuiaRemisionTransferencia::join('gp_guia_remisions', 'gp_guia_remisions.id', '=', 'gp_guia_remision_transferencias.guia_remision_id')
-            ->join('gp_guia_remision_detalles', 'gp_guia_remisions.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
-            ->join('gp_traslados_ventas', 'gp_traslados_ventas.id', '=', 'gp_guia_remision_detalles.detalle_id')
-            ->where('gp_guia_remision_transferencias.pedido', $transfer->pedido)
-            ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $transfer->ART_CODIGO)
-            ->where('gp_guia_remision_detalles.detalle_id', $transfer->id)
-            ->where('gp_guia_remisions.estado', '!=', 'eliminada')
-            ->where('gp_traslados_ventas.pedido_id', $transfer->pedido_id)
-            ->select(
-                'gp_guia_remisions.*',
-                'gp_guia_remision_detalles.GUI_REM_CANTIDAD',
-                'gp_guia_remision_detalles.recibido'
-            )
-            ->get();
+        return GpGuiaRemision::join('gp_guia_remision_detalles', 'gp_guia_remisions.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
+        ->where('gp_guia_remision_detalles.detalle_id', $transfer->id) // Relación directa: Detalle Guía -> Detalle Traslado
+        ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $transfer->ART_CODIGO)
+        ->where('gp_guia_remisions.estado', '!=', 'eliminada')
+        ->select(
+            'gp_guia_remisions.*',
+            'gp_guia_remision_detalles.GUI_REM_CANTIDAD',
+            'gp_guia_remision_detalles.recibido'
+        )
+        ->get();
     }
 
 

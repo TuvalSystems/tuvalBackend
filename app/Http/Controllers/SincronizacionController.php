@@ -10,10 +10,7 @@ use App\Models\GpBodega;
 use App\Models\GpCondicionPago;
 use App\Models\GpArticulo;
 use App\Models\GpArticuloSugerido;
-use App\Models\GpListaPrecio;
-use App\Models\GpCliente;
 use App\Models\GpPuntoVenta;
-use App\Models\GpClienteSucursal;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
@@ -34,7 +31,6 @@ use App\Models\GpUnidadMedida;
 use App\Models\GpRelacionUsuarioCaja;
 
 use App\Services\Api\ApiGpService;
-use Exception;
 use Illuminate\Support\Facades\Auth;
 
 
@@ -237,161 +233,6 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    /*
-     * Sincroniza Condicion de Pago desde Dynamics GP
-     */
-    //    public function llenalistadepreciosgp() {
-    //        $obj = new WebserviceController;
-    //        $listaprecios = $obj->listaprecios();
-    //
-    //        foreach ( $listaprecios as $key => $data ) {
-    //
-    //            $listaprecio = GpListaPrecio::where( 'LST_PRC_ARTICULO', trim( $data[ 'LST_PRC_ARTICULO' ] ) )
-    //                    ->where( 'LST_PRC_ID', trim( $data[ 'LST_PRC_ID' ] ) )->first();
-    //            if ( !$listaprecio ) {
-    //                $listaprecio = new GpListaPrecio;
-    //            }
-    //            $listaprecio->LST_PRC_ARTICULO = trim( $data[ 'LST_PRC_ARTICULO' ] );
-    //            $listaprecio->LST_PRC_MONEDA = trim( $data[ 'LST_PRC_MONEDA' ] );
-    //            $listaprecio->LST_PRC_UMEDIDA = trim( $data[ 'LST_PRC_UMEDIDA' ] );
-    //            $listaprecio->LST_PRC_ID = trim( $data[ 'LST_PRC_ID' ] );
-    //            $listaprecio->LST_PRC_VALOR = ( float )trim( $data[ 'LST_PRC_VALOR' ] );
-    //            $listaprecio->save();
-    //        }
-    //        return response( [
-    //            'success' => true,
-    //            'message' => 'Lista de precios correctamente sincronizada'
-    // ] );
-    //    }
-
-    public function llenaclientesgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        ini_set('memory_limit', '-1');
-
-        $metodo = 'MST_Cliente';
-        $fecha = '';
-        $obj = new WebserviceController;
-
-        $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if ($cronLog) {
-            $fecha = $cronLog->fecha;
-        }
-
-        $parameters = [
-            'id_Cliente ' => '',
-            'FechaCreacion' => '',
-            'FechaModificacion' => $fecha
-        ];
-
-        $clientes = $obj->maestros($metodo, $parameters);
-
-        if (!isset($clientes['MST_ClienteResult']['CS_CLIENTE']) || !count($clientes['MST_ClienteResult']['CS_CLIENTE'])) {
-            return response([
-                'success' => true,
-                'message' => 'Ningun cliente por actualizar',
-            ]);
-        }
-
-        $clientes = $clientes['MST_ClienteResult']['CS_CLIENTE'];
-
-        //        echo '<pre>';
-        //        print_r( $clientes );
-        //        die();
-
-        foreach ($clientes as $data) {
-
-            $cliente = GpCliente::where('CLI_RUC', trim($data['CLI_RUC']))->first();
-            if (!$cliente) {
-                $cliente = new GpCliente;
-            }
-            $cliente->CLI_RUC = trim($data['CLI_RUC']);
-            $cliente->CLI_RAZON_SOCIAL = trim($data['CLI_RAZON_SOCIAL']);
-            $cliente->CLI_NOMBRE_CORTO = trim($data['CLI_NOMBRE_CORTO']);
-            $cliente->CLI_CLASE = trim($data['CLI_CLASE']);
-            $cliente->CLI_PRIORIDAD = (int) trim($data['CLI_PRIORIDAD']);
-            $cliente->CLI_ID_DIRECCION = trim($data['CLI_ID_DIRECCION']);
-            $cliente->CLI_CONTACTO = trim($data['CLI_CONTACTO']);
-            $cliente->CLI_DIRECCION = trim($data['CLI_DIRECCION']);
-            $cliente->CLI_CIUDAD = trim($data['CLI_CIUDAD']);
-            $cliente->CLI_PROVINCIA = trim($data['CLI_PROVINCIA']);
-            $cliente->CLI_TERRITORIO = trim($data['CLI_TERRITORIO']);
-            $cliente->CLI_ESTADO = trim($data['CLI_ESTADO']);
-            $cliente->CLI_SUSPENDIDO = trim($data['CLI_SUSPENDIDO']);
-            $cliente->CLI_TELEFONO_1 = trim($data['CLI_TELEFONO_1']);
-            $cliente->CLI_TELEFONO_2 = trim($data['CLI_TELEFONO_2']);
-            $cliente->CLI_TELEFONO_3 = trim($data['CLI_TELEFONO_3']);
-            $cliente->CLI_TELEFONO_4 = trim($data['CLI_TELEFONO_4']);
-            $cliente->CLI_FECHA_MODIFICACION = trim($data['CLI_FECHA_MODIFICACION']['date']);
-            $cliente->CLI_FECHA_CREACION = trim($data['CLI_FECHA_CREACION']['date']);
-            $cliente->CLI_CORREO_ELECT_SRI = trim($data['CLI_CORREO_ELECT_SRI']);
-            $cliente->CLI_CORREO_ELECT_NOTIFICACION_INTERNA = trim($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
-            $cliente->CLI_IMPUESTO = (float) trim($data['CLI_IMPUESTO']);
-            $cliente->CLI_DIRECCION_ENVIO = trim($data['CLI_DIRECCION_ENVIO']);
-            $cliente->CLI_DIRECCION_FACTURA = trim($data['CLI_DIRECCION_FACTURA']);
-            $cliente->CLI_VENDEDOR = trim($data['CLI_VENDEDOR']);
-            $cliente->CLI_DSTO_COMERCIAL = (float) trim($data['CLI_DSTO_COMERCIAL']);
-            $cliente->CLI_CONDICION_PAGO = trim($data['CLI_CONDICION_PAGO']);
-            $cliente->CLI_DIA_GRACIA_VTA_CREDITO = (int) trim($data['CLI_DIA_GRACIA_VTA_CREDITO']);
-            $cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA = (int) trim($data['CLI_DIA_GRACIA_CHEQUE_A_FECHA']);
-            $cliente->CLI_NIVEL_PRECIO = trim($data['CLI_NIVEL_PRECIO']);
-            $cliente->CLI_TIPO_CREDITO = trim($data['CLI_TIPO_CREDITO']);
-            $cliente->CLI_MONTO_CREDITO = (float) trim($data['CLI_MONTO_CREDITO']);
-            $cliente->CLI_GRUPO_ECONOMICO = trim($data['CLI_GRUPO_ECONOMICO']);
-            $cliente->CLI_GRUPO = trim($data['CLI_GRUPO']);
-            $cliente->CLI_SUBGRUPO = trim($data['CLI_SUBGRUPO']);
-            $cliente->CLI_DIA_MAXIMO_MES_FACTURACION = (int) trim($data['CLI_DIA_MAXIMO_MES_FACTURACION']);
-            $cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO = trim($data['CLI_FACTURA_POSTERIOR_AL_DESPACHO']);
-            $cliente->save();
-        }
-
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = $metodo;
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
-
-        return response([
-            'success' => true,
-            'message' => 'Lista de clientes correctamente sincronizada',
-            'total' => count($clientes),
-        ]);
-    }
-
-
-    public function llenadatoscoordenadasgp()
-    {
-        set_time_limit(300);
-        ini_set('memory_limit', '-1');
-        $method = 'MST_Datos_Coordenadas';
-        $coordenadas = $this->apiGp->getCoordinatesList($parms = []);
-
-        if (empty($coordenadas) || count($coordenadas) == 0) {
-            return $this->createResponse(false, 'Ninguna coordenada por actualizar');
-        }
-
-        $this->processCoordinates($coordenadas);
-        $this->logSyncOperation($method);
-        return $this->createResponse(true, 'Coordenadas correctamente sincronizadas');
-    }
-
-    public function processCoordinates($coordenadas)
-    {
-        foreach ($coordenadas as  $coordenada) {
-            $this->updateOrCreateCoordinates($coordenada);
-        }
-    }
-
-    public function updateOrCreateCoordinates($coordenada)
-    {
-        $coordenadaModel = GpClienteSucursal::where('CLI_SUC_RUC', $coordenada['id_Cliente'])
-            ->where('CLI_SUC_ID_DIRECCION', $coordenada['AddressCode'])->first();
-        if ($coordenadaModel) {
-            $coordenadaModel->update([
-                'coordenadas' => $coordenada['DatosCoordenadas'],
-            ]);
-        }
-    }
-
 
     public function llenapuntosdeventagp()
     {
@@ -498,126 +339,6 @@ class SincronizacionController extends Controller
         }
         return;
     }
-
-    public function llenaclientesucursalgp()
-    {
-        set_time_limit(300);
-        ini_set('memory_limit', '-1');
-        $method = 'MST_Cliente_Sucursal';
-        $lastSyncDate = $this->getLastSyncDate($method);
-
-        $branches = $this->apiGp->getBranchesClientsList([
-            'cliente' => '',
-            'fechacreacion' => '',
-            'fechamodificacion' => $lastSyncDate,
-            // 'fechamodificacion' => '',
-        ]);
-
-        if (empty($branches)) {
-            return $this->createResponse(true, 'Ninguna dirección por actualizar');
-        }
-        $this->processBranches($branches);
-        $this->logSyncOperation($method);
-        $this->llenadatoscoordenadasgp();
-        return $this->createResponse(true, 'Sucursales de clientes correctamente sincronizadas');
-    }
-
-    public function getLastSyncDate($method)
-    {
-        $cronLog = GpCronLog::where('metodo', $method)
-            ->orderBy('fecha', 'DESC')->first();
-
-        return $cronLog ? $cronLog->fecha : '';
-    }
-
-    public function processBranches($branches)
-    {
-
-        foreach ($branches as  $branch) {
-            if (!$this->validateBranchData($branch)) {
-                continue;
-            }
-
-            foreach ($branch['DIRECCIONES'] as  $address) {
-                $this->updateOrCreateBranch($branch, $address);
-            }
-        }
-    }
-
-    public function validateBranchData($branch)
-    {
-        if (!isset($branch['DIRECCIONES'][0]['idDireccion'])) {
-            throw new Exception(
-                'El cliente :' . $branch['DESCRIPCION_CLINETE'] .
-                    'con RUC : ' . $branch['CLIENTE'] .
-                    'no cuenta con información adicional detallado en los campos direcciones'
-            );
-        }
-
-        return true;
-    }
-
-    public function updateOrCreateBranch($branch, $address)
-    {
-        $sucursal = GpClienteSucursal::firstOrNew([
-            'CLI_SUC_RUC' => trim($branch['CLIENTE']),
-            'CLI_SUC_ID_DIRECCION' => trim($address['idDireccion']),
-        ]);
-
-        if ($this->needsUpdate($sucursal, $address)) {
-            $this->fillBranchData($sucursal, $branch, $address);
-            $sucursal->save();
-        }
-    }
-
-    public function needsUpdate($sucursal, $address)
-    {
-        return !$sucursal->exists ||
-            $sucursal->CLI_SUC_DIRECCION != trim($address['direccion']) ||
-            $sucursal->CLI_SUC_CONTACTO != trim($address['contacto']) ||
-            $sucursal->CLI_SUC_REFERENCIA != trim($address['referencia']) ||
-            $sucursal->CLI_SUC_VENDEDOR != trim($address['vendedor']) ||
-            $sucursal->CLI_SUC_CORREO_ELECTRONICO_SRI != trim($address['correo_sri']) ||
-            $sucursal->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA != trim($address['correo_modificacion_interna']) ||
-            $sucursal->CLI_SUC_TELEFONO != trim($address['telefono']);
-    }
-
-    public function fillBranchData($sucursal,   $branch,   $address)
-    {
-        $sucursal->CLI_SUC_DESCRIPCION = trim($branch['DESCRIPCION_CLIENTE']);
-        $sucursal->CLI_SUC_DIRECCION = trim($address['direccion']);
-        $sucursal->CLI_SUC_CONTACTO = trim($address['contacto']);
-        $sucursal->CLI_SUC_REFERENCIA = trim($address['referencia']);
-        $sucursal->CLI_SUC_VENDEDOR = trim($address['vendedor']);
-        $sucursal->CLI_SUC_TERRITORIO = trim($address['territorio']);
-        $sucursal->CLI_SUC_CIUDAD = trim($address['ciudad']);
-        $sucursal->CLI_SUC_PROVINCIA = trim($address['provincia']);
-        $sucursal->CLI_SUC_PAIS = trim($address['pais']);
-        $sucursal->CLI_SUC_TELEFONO = (strlen(trim($address['telefono'])) > 20)
-            ? 'xxxxxxxxxx'
-            : trim($address['telefono']);
-        $sucursal->CLI_SUC_CORREO_ELECTRONICO_SRI = trim($address['correo_sri']);
-        $sucursal->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = trim($address['correo_modificacion_interna']);
-    }
-
-    public function logSyncOperation($method)
-    {
-        GpCronLog::create([
-            'metodo' => $method,
-            'fecha' => now()->format('Y-m-d H:i:s'),
-        ]);
-    }
-
-    public function createResponse($success, $message)
-    {
-        return response()->json([
-            'success' => $success,
-            'message' => $message
-        ]);
-    }
-
-
-
 
     public function llenadescuentoformapagogp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1080,10 +801,7 @@ class SincronizacionController extends Controller
         $this->llenabodegasgp();
         $this->llenacondicionpagogp();
         $this->llenaarticulosgp();
-        //$this->llenalistadepreciosgp();
-        $this->llenaclientesgp();
         $this->llenapuntodeventaycajasgp();
-        $this->llenaclientesucursalgp();
         $this->llenadescuentoformapagogp();
         $this->llenarelacionesgp();
         $this->llenavendedorgp();

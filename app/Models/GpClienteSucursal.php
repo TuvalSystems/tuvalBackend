@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * App\Models\GpClienteSucursal
  *
  * @property int $id
+ * @property int $cliente_id
  * @property string $CLI_SUC_RUC
  * @property string|null $CLI_SUC_DESCRIPCION
  * @property string|null $CLI_SUC_ID_DIRECCION
@@ -65,6 +66,7 @@ class GpClienteSucursal extends Model
 
 
     protected $fillable = [
+        'cliente_id',
         'CLI_SUC_RUC',
         'CLI_SUC_DESCRIPCION',
         'CLI_SUC_ID_DIRECCION',

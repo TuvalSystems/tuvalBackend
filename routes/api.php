@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -66,9 +67,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/llenacondicionpagogp', [SincronizacionController::class, 'llenacondicionpagogp']);
     Route::get('/llenaarticulosgp', [SincronizacionController::class, 'llenaarticulosgp']);
     Route::get('/llenalistadepreciosgp', [SincronizacionController::class, 'llenalistadepreciosgp']);
-    Route::get('/llenaclientesgp', [SincronizacionController::class, 'llenaclientesgp']);
     Route::get('/llenapuntodeventaycajasgp', [SincronizacionController::class, 'llenapuntodeventaycajasgp']);
-    Route::get('/llenaclientesucursalgp', [SincronizacionController::class, 'llenaclientesucursalgp']);
     Route::get('/llenadescuentoformapagogp', [SincronizacionController::class, 'llenadescuentoformapagogp']);
     Route::get('/llenarelacionesgp', [SincronizacionController::class, 'llenarelacionesgp']);
     Route::get('/llenavendedorgp', [SincronizacionController::class, 'llenavendedorgp']);
@@ -444,6 +443,12 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
         Route::post('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
     });
+
+
+    Route::group(['prefix' => 'admin'], function () {
+        Route::post('lista-logs', [AdminController::class, 'ListaLogs']);
+    });
+
 });
 Route::post('/login', [AuthController::class, 'login']);
 

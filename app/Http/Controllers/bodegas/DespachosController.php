@@ -1029,6 +1029,7 @@ class DespachosController extends Controller
         ]);
     }
 
+
     public function detalleordendespacho($id)
     {
         $orden_despacho = GpOrdenDespacho::where('id', $id)->first();

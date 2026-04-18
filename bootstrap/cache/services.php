@@ -55,7 +55,8 @@
     51 => 'App\\Providers\\RepositoryServiceProvider',
     52 => 'App\\Providers\\Service\\UserServiceProvider',
     53 => 'App\\Providers\\Service\\CollectionServiceProvider',
-    54 => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
+    54 => 'App\\Providers\\Service\\SyncServiceProvider',
+    55 => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
   ),
   'eager' => 
   array (
@@ -89,6 +90,7 @@
     27 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
     28 => 'Milon\\Barcode\\BarcodeServiceProvider',
     29 => 'App\\Providers\\Service\\CollectionServiceProvider',
+    30 => 'App\\Providers\\Service\\SyncServiceProvider',
   ),
   'deferred' => 
   array (
@@ -272,6 +274,8 @@
     'App\\Repositories\\Cobranzas\\Contracts\\CollectionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\User\\Contracts\\UserRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Services\\User\\Contracts\\UserServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
+    'App\\Services\\Admin\\Contracts\\MenuServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
+    'App\\Services\\Admin\\Contracts\\AdminLogServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\DeliveryNoteParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\ReservationDeliveryNoteParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\DeliveryNoteDispatchParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',

@@ -404,7 +404,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             'p.created_at as fecha',
             'p.CLI_RUC',
             'c.CLI_RAZON_SOCIAL',
-            'd.ART_CANTIDAD as cantidad_pedida'
+            'd.ART_CANTIDAD as cantidad_pedida',
+            'p.USERID as userId'
         )
             ->orderBy('d.ART_CODIGO')
             ->orderBy('st.STO_ART_BODEGA')
@@ -450,6 +451,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             $traslado->CLI_RUC = 'TUVAL';
             $traslado->CLI_RAZON_SOCIAL = 'TUVAL';
             $traslado->tipo = 'traslado';
+            $traslado->userId = 'TUVAL';
 
             unset($traslado->cantidad);
             unset($traslado->trasladado);
@@ -486,7 +488,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             'p.created_at as fecha',
             'p.CLI_RUC',
             'c.CLI_RAZON_SOCIAL',
-            'st.cantidad_reservada as cantidad_pedida'
+            'st.cantidad_reservada as cantidad_pedida',
+            'p.USERID as userId'
         )
             ->orderBy('d.ART_CODIGO')
             ->orderBy('st.STO_ART_BODEGA')
@@ -512,6 +515,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         $query = DB::table('gp_traslados_reservas as tr')
             ->join('gp_articulos as art', 'art.ART_CODIGO', '=', 'tr.art_code')
             ->join('gp_cotizacions as ct', 'ct.id', '=', 'tr.cotizacion_id')
+            ->join('gp_reservas as r', 'r.cotizacion_id', '=', 'ct.id')
+            ->join('gp_usuarios as u', 'u.id', '=', 'r.user_ingreso_reserva_id')
+
             ->where(function ($q) {
                 $q->whereNull('tr.completado')
                     ->orWhere('tr.completado', 0);
@@ -529,7 +535,8 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             'tr.cantidad',
             'tr.trasladado',
             'ct.cotizacion as pedido',
-            'tr.created_at as fecha'
+            'tr.created_at as fecha',
+            'u.USERID as userId'
         )->get();
 
         return $resultados->map(function ($tr) {

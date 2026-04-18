@@ -47,4 +47,11 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobro extends Model
 {
     use HasFactory;
+
+
+
+    public function cheques()
+    {
+        return $this->hasMany(GpCobrosCheques::class, 'cobro_id', 'id');
+    }
 }

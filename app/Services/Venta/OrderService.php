@@ -28,6 +28,7 @@ use App\Models\GpPedidoImagen;
 use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
+use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
@@ -1129,6 +1130,7 @@ class OrderService implements OrderServiceInterface
         $this->deleteArticlesForNewOrder($deteleArticle);
         $this->recalculateOldAndNewOrder($data['id'], $newOrder->id);
         $this->cloneMediaFromParent($parentOder, $newOrder);
+        $this->updateHeaderOrderTransferVta($parentOder);
         DB::afterCommit(function () use ($newOrder) {
             $this->invoiceService->checkSendInvoice($newOrder, true);
         });
@@ -1279,6 +1281,20 @@ class OrderService implements OrderServiceInterface
             $pdfUrls = $parentPdfs->map(fn($media) => $media->getFullUrl())->toArray();
             $this->orderAndQuotationService->copyPdfsFromUrls($newOrder, $pdfUrls);
         }
+    }
+
+    protected function updateHeaderOrderTransferVta($parentOrder)
+    {
+        $currentDetailIds = GpPedidoDetalle::where('pedido_id', $parentOrder->id)->pluck('id');
+        if ($currentDetailIds->isEmpty()) {
+            $parentOrder->update(['transferencia_en_proceso' => false]);
+            return;
+        }
+        $hasActiveTransfer = GpTrasladosVentas::whereIn('detalle_id', $currentDetailIds)
+            ->where('picking', 1)
+            ->exists();
+
+        $parentOrder->update(['transferencia_en_proceso' => $hasActiveTransfer]);
     }
 
 

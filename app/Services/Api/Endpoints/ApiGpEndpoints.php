@@ -11,8 +11,6 @@ class ApiGpEndpoints
     public const GENERAL_VALIDAR_USUARIO = 'api/validar-usuario';
     public const GENERAL_CONSULTA_TRANSFERENCIA_CABECERA = 'api/consultar-cabecera-transferencia';
     public const GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE = 'api/consultar-detalle-transferencia';
-    public const GENERAL_CONSULTAR_SUCURSALES_CLIENTE = 'api/consultar-sucursales-clientes';
-    public const GENERAL_CONSULTAR_COORDENADAS = 'api/consultar-listado-coordenadas';
     public const GENERAL_CONSULTAR_LISTA_PRECIO_ARTICULO = 'api/consultar-lista-precio-articulos';
     public const GENERAL_CONSULTA_LISTA_SEGMENTACION_ARTICULO_ABC = 'api/consultar-lista-segmentacion-articulo-abc';
 
@@ -77,6 +75,7 @@ class ApiGpEndpoints
     public const CLIENTE_GUARDAR_MODIFICAR = 'api/cliente/crear-modificar-cliente';
     public const CLIENTE_GUARDAR_SUBSEGMENTO_RUC = 'api/cliente/crear-registro-subsegmento-ruc';
     public const CLIENTE_GUARDAR_NUEVA_DIRECCION = 'api/cliente/crear-nueva-direccion';
+
     // ---
     // 📜 7. Endpoints de Guías de Remisión ( General y Movimientos )
     // ---
@@ -114,9 +113,12 @@ class ApiGpEndpoints
 
 
 
-
-
-
+    // ---
+    // 🔄 9. Endpoints de Sincronizaciones
+    // ---
+    public const SYNC_CLIENTES = 'api/sync/clientes';
+    public const SYNC_CLIENTES_SUCURSALES = 'api/sync/clientes-sucursales';
+    public const SYNC_CLIENTES_COORDENADAS = 'api/sync/clientes-coordenadas';
 
 
 

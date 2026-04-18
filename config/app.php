@@ -189,6 +189,7 @@ return [
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\Service\UserServiceProvider::class,
         App\Providers\Service\CollectionServiceProvider::class,
+        App\Providers\Service\SyncServiceProvider::class,
 
 
 
