@@ -4,12 +4,15 @@ namespace App\Http\Controllers\test;
 
 use App\Http\Controllers\Controller;
 use App\Models\GpPedido;
+use App\Models\GpUsuario;
+use App\Notifications\User\UserNotification;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class TestController extends Controller
 {
@@ -50,5 +53,11 @@ class TestController extends Controller
             DB::transaction(fn() => $this->invoice->processPurchaseOrders($pedido));
             return $this->successResponse('Información obtenida', $pedido, 200);
         }, 'invoice', 'generarOrdenCompraPedido');
+    }
+
+
+    public function enviarNotificacion(){
+        $users = GpUsuario::whereIn('perfil_id',[1,2])->where('status',1)->get();
+        Notification::send($users, new UserNotification('Sistema', 'Notificación de prueba de Sistemas!'));
     }
 }
