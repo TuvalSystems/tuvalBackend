@@ -73,6 +73,7 @@ class DashboardController extends Controller
                         $query->whereNull('completado')
                             ->orWhere('completado', 0);
                     })
+                    ->where('cantidad', '>', 0)
                     ->count();
                 $section->total = $trasladosventas;
             }
@@ -121,6 +122,7 @@ class DashboardController extends Controller
                         $query->whereNull('completado')
                             ->orWhere('completado', 0);
                     })
+                    ->where('cantidad', '>', 0)
                     ->count();
                 $section->total = $trasladosreservas;
             }
