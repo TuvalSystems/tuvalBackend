@@ -15,6 +15,7 @@ use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\ImportarPedidosController;
+use App\Http\Controllers\test\TestController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\ReservasController;
@@ -210,3 +211,6 @@ Route::prefix('cobranzas')->group(function () {
 
 Route::get('guia-remision-web/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
 Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'facturarexistente']);
+
+
+Route::get('notificacion-prueba', [TestController::class, 'enviarNotificacion']);
