@@ -778,7 +778,7 @@ class ApprovalService implements ApprovalServiceInterface
         $this->updateStockOnOrderApproval($pedido);
         $this->cleanDetailOrderStock($pedido);
         DB::afterCommit(function () use ($pedido, $data) {
-            NotifyApprovalOrdersJob::dispatch('Pedido rechazado', 'El pedido ha sido rechazado', $pedido->user_id);
+            NotifyApprovalOrdersJob::dispatch('Pedido rechazado', "El pedido {$pedido->pedido} ha sido rechazado", $pedido->user_id);
         });
         return $pedido;
     }
