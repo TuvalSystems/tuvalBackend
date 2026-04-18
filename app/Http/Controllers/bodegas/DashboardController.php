@@ -9,6 +9,8 @@ use App\Models\GpOrdenDespacho;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\reposicion\GpTrasladosReposicion;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Reservas\GpTrasladosReservas;
 use App\Models\Section;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Services\Bodegas\Contracts\DashboardServiceInterface;
@@ -67,8 +69,10 @@ class DashboardController extends Controller
 
             if ($section->to == 'bodegas-transferenciasventa') {
                 $trasladosventas = GpTrasladosVentas::where('bodega_origen', $bodega)
-                    ->whereNull('completado')
-                    ->orWhere('completado', 0)
+                    ->where(function ($query) {
+                        $query->whereNull('completado')
+                            ->orWhere('completado', 0);
+                    })
                     ->count();
                 $section->total = $trasladosventas;
             }
@@ -83,11 +87,14 @@ class DashboardController extends Controller
             }
             if ($section->to == 'bodegas-transferenciasreposicion') {
                 $trasladosreposicion = GpTrasladosReposicion::where('bodega_origen', $bodega)
-                    ->whereNull('completado')
-                    ->orWhere('completado', 0)
+                    ->where(function ($query) {
+                        $query->whereNull('completado')
+                            ->orWhere('completado', 0);
+                    })
                     ->count();
                 $section->total = $trasladosreposicion;
             }
+
             if ($section->to == 'bodegas-recibosreposicion') {
                 $guias = GpGuiaRemision::where('estado', 'enviada')
                     ->where('bodega_destino', $bodega)
@@ -108,6 +115,22 @@ class DashboardController extends Controller
                     ->count();
                 $section->total = $devoluciones;
             }
+            if ($section->to == 'bodegas-reservas-transferencias') {
+                $trasladosreservas = GpTrasladosReservas::where('bodega_origen', $bodega)
+                    ->where(function ($query) {
+                        $query->whereNull('completado')
+                            ->orWhere('completado', 0);
+                    })
+                    ->count();
+                $section->total = $trasladosreservas;
+            }
+
+            if ($section->to == 'bodegas-reservas-transferencias-recibir') {
+                $guiasReservas = GpGuiaRemisionReserva::where('estado', 'enviada')
+                    ->where('bodega_destino', $bodega)
+                    ->count();
+                $section->total = $guiasReservas;
+            }
         }
 
         return response([
@@ -127,7 +150,7 @@ class DashboardController extends Controller
         }
     }
 
-     public function contadorItemsServiciosDespachos(string $ptoVta): JsonResponse
+    public function contadorItemsServiciosDespachos(string $ptoVta): JsonResponse
     {
         try {
 
