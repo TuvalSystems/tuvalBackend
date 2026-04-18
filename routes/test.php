@@ -8,3 +8,4 @@ Route::get('crear-orden-compra-items/{id}', [TestController::class, 'crearOrdenC
 Route::get('enviar-ordenes-compra-l-iniciadas', [TestController::class, 'enviarOrdenesCompraLIniciadas']);
 Route::get('generar-orden-compra-pedido/{pedido}', [TestController::class, 'generarOrdenCompraPedido']);
 Route::get('obtener-menu', [SectionsController::class, 'obtenerMenu']);
+Route::get('notificacion-prueba', [TestController::class, 'enviarNotificacion']);
