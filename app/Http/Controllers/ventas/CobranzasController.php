@@ -45,6 +45,7 @@ use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -679,7 +680,7 @@ class CobranzasController extends Controller
             );
 
             $estadoDeCuenta = $webservice->cobranzas('CreaCobroRegular', $parameters);
-
+            Log::info('estadoDeCuenta: ' . json_encode($estadoDeCuenta));
             if (isset($estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'])) {
 
                 $efectivo->codigo_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Codigo'];
@@ -923,6 +924,7 @@ class CobranzasController extends Controller
             );
 
             $estadoDeCuenta = $webservice->cobranzas('CreaCobroRegular', $parameters);
+            Log::info('depositos_facturas:' . json_encode($estadoDeCuenta));
 
             if (isset($estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'])) {
 
@@ -1014,6 +1016,7 @@ class CobranzasController extends Controller
             //            print_r($parameters);
             //            die();
             $estadoDeCuenta = $webservice->cobranzas('CreaCobroCheques', $parameters);
+            Log::info('GpCobrosCheques: ' . json_encode($estadoDeCuenta));
 
             if (isset($estadoDeCuenta['CreaCobroChequesResult']['Retorno'][0]['Mensaje'])) {
 
@@ -1075,6 +1078,7 @@ class CobranzasController extends Controller
             );
 
             $estadoDeCuenta = $webservice->cobranzas('CreaCobroRegular', $parameters);
+            Log::info('GpCobrosTarjetaMonto: ' . json_encode($estadoDeCuenta));
 
             if (isset($estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'])) {
 
@@ -1122,6 +1126,7 @@ class CobranzasController extends Controller
             //            print_r($parameters);
             //            die();
             $estadoDeCuenta = $webservice->cobranzas('AplicaCobroAnticipo', $parameters);
+            Log::info('GpCobrosAplicacionMonto: ' . json_encode($estadoDeCuenta));
 
             if (isset($estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Mensaje'])) {
 
