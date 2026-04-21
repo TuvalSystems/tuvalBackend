@@ -459,14 +459,18 @@ class SincronizacionController extends Controller
         $usuario = GpUsuario::get()->keyBy('id');
         $puntoVenta = GpPuntoVenta::get()->keyBy('id');
         GpRelacionUsuarioPuntoVenta::truncate();
-        foreach ($relacionusuariopuntodeventas as $key => $data) {
-            if ($data['USER_PTO_VTA_PUNTO_VENTA'] != '') {
-                $relacionusuariopuntodeventa = new GpRelacionUsuarioPuntoVenta;
-                $relacionusuariopuntodeventa->user_id = $usuario[$data['USER_PTO_VTA_USUARIO']]->id;
-                $relacionusuariopuntodeventa->pv_id = $puntoVenta[$data['USER_PTO_VTA_PUNTO_VENTA']]->id;
-                $relacionusuariopuntodeventa->USER_PTO_VTA_USUARIO = trim($data['USER_PTO_VTA_USUARIO']);
-                $relacionusuariopuntodeventa->USER_PTO_VTA_PUNTO_VENTA = trim($data['USER_PTO_VTA_PUNTO_VENTA']);
-                $relacionusuariopuntodeventa->save();
+        foreach ($relacionusuariopuntodeventas as $data) {
+            $userExtId = $data['USER_PTO_VTA_USUARIO'];
+            $pvExtId = $data['USER_PTO_VTA_PUNTO_VENTA'];
+            if ($pvExtId != '') {
+                if (isset($usuario[$userExtId]) && isset($puntoVenta[$pvExtId])) {
+                    $relacionusuariopuntodeventa            = new GpRelacionUsuarioPuntoVenta;
+                   $relacionusuariopuntodeventa->user_id    = $usuario[$userExtId]->id;
+                $relacionusuariopuntodeventa->pv_id         = $puntoVenta[$pvExtId]->id;
+                    $relacionusuariopuntodeventa->USER_PTO_VTA_USUARIO = trim($data['USER_PTO_VTA_USUARIO']);
+                    $relacionusuariopuntodeventa->USER_PTO_VTA_PUNTO_VENTA = trim($data['USER_PTO_VTA_PUNTO_VENTA']);
+                    $relacionusuariopuntodeventa->save();
+                }
             }
         }
         return response([
