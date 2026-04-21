@@ -456,22 +456,27 @@ class SincronizacionController extends Controller
     {
         $obj = new WebserviceController;
         $relacionusuariopuntodeventas = $obj->relacionusuariopuntodeventa();
-        $usuario = GpUsuario::get()->keyBy('id');
-        $puntoVenta = GpPuntoVenta::get()->keyBy('id');
+        $usuario = GpUsuario::pluck('id', 'USERID')
+            ->mapWithKeys(fn($item, $key) => [strtolower(trim($key)) => $item])
+            ->toArray();
+
+        $puntoVenta = GpPuntoVenta::pluck('id', 'PTO_VTA_ID')
+            ->mapWithKeys(fn($item, $key) => [strtolower(trim($key)) => $item])
+            ->toArray();
         GpRelacionUsuarioPuntoVenta::truncate();
         foreach ($relacionusuariopuntodeventas as $data) {
-            $userExtId = $data['USER_PTO_VTA_USUARIO'];
-            $pvExtId = $data['USER_PTO_VTA_PUNTO_VENTA'];
-            if ($pvExtId != '') {
-                if (isset($usuario[$userExtId]) && isset($puntoVenta[$pvExtId])) {
-                    $relacionusuariopuntodeventa            = new GpRelacionUsuarioPuntoVenta;
-                   $relacionusuariopuntodeventa->user_id    = $usuario[$userExtId]->id;
-                $relacionusuariopuntodeventa->pv_id         = $puntoVenta[$pvExtId]->id;
-                    $relacionusuariopuntodeventa->USER_PTO_VTA_USUARIO = trim($data['USER_PTO_VTA_USUARIO']);
-                    $relacionusuariopuntodeventa->USER_PTO_VTA_PUNTO_VENTA = trim($data['USER_PTO_VTA_PUNTO_VENTA']);
-                    $relacionusuariopuntodeventa->save();
-                }
-            }
+            $userExtId = strtolower(trim($data['USER_PTO_VTA_USUARIO']));
+            $pvExtId   = strtolower(trim($data['USER_PTO_VTA_PUNTO_VENTA']));
+            // if ($pvExtId != '') {
+            // if (isset($usuario[$userExtId]) && isset($puntoVenta[$pvExtId])) {
+            $relacionusuariopuntodeventa                            = new GpRelacionUsuarioPuntoVenta;
+            $relacionusuariopuntodeventa->user_id                   = $usuario[$userExtId] ?? null;
+            $relacionusuariopuntodeventa->pv_id                     = $puntoVenta[$pvExtId] ?? null;
+            $relacionusuariopuntodeventa->USER_PTO_VTA_USUARIO      = $userExtId;
+            $relacionusuariopuntodeventa->USER_PTO_VTA_PUNTO_VENTA  = $pvExtId;
+            $relacionusuariopuntodeventa->save();
+            // }
+            // }
         }
         return response([
             'success' => true,
