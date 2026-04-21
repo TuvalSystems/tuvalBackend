@@ -45,6 +45,7 @@ class ClientBuilder implements ClientBuilderInterface
     {
         $nw = new GpClienteSucursal();
         $nw->fill([
+            'cliente_id'            => $cliente->id,
             'CLI_SUC_RUC'           => $cliente->CLI_RUC,
             'CLI_SUC_DESCRIPCION'   => $cliente->CLI_RAZON_SOCIAL,
             'CLI_SUC_ID_DIRECCION'  => $identificador,

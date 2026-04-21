@@ -59,33 +59,24 @@ class SyncClientsService implements SyncClientsServiceInterface
     {
         $ruc            = trim(data_get($data, 'cliente', ''));
         $descripcion    = trim(data_get($data, 'descripcion', ''));
-        $cliente        = GpCliente::where('CLI_RUC', $ruc)->first();
+        $cliente        = GpCliente::where('CLI_RUC', trim($ruc))->first();
         if (!$cliente) {
             throw new \Exception("Sincronización abortada: El cliente RUC {$ruc} no existe en la base de datos local.");
         }
 
         $direcciones = data_get($data, 'direcciones', []);
-
         foreach ($direcciones as $dir) {
             $idDireccion = trim(data_get($dir, 'idDireccion', ''));
-            $sucursal = GpClienteSucursal::where('cliente_id', $cliente->id)->where('CLI_SUC_ID_DIRECCION', $idDireccion)->first();
-
-            if (!$sucursal) {
-                $sucursal = new GpClienteSucursal();
-                $sucursal->cliente_id = $cliente->id;
-                $sucursal->CLI_SUC_ID_DIRECCION = $idDireccion;
-            }
-
             $payload = $this->builder->formPayloadClientBranchesSync(
                 $cliente->id,
                 $ruc,
                 $descripcion,
                 $dir
             );
-            $sucursal->fill($payload);
-            if ($sucursal->isDirty()) {
-                $sucursal->save();
-            }
+            GpClienteSucursal::updateOrCreate(
+                ['cliente_id' => $cliente->id, 'CLI_SUC_ID_DIRECCION' => $idDireccion],
+                $payload
+            );
         }
     }
 
