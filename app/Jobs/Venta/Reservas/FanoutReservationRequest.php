@@ -59,7 +59,7 @@ class FanoutReservationRequest implements ShouldQueue
     public function sendNotifyUsersApproval($cotizacion, $actor)
     {
         $title = 'Nueva solicitud de reserva de inventario';
-        $mensaje = "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion}";
+        $mensaje = "Nueva solicitud de reserva de inventario realizada por {$actor->USERNAME} para la cotización {$cotizacion->cotizacion} en la bodega {$cotizacion->BOD_BODEGA}";
 
         $usersApproval = GpUsuario::query()
             ->whereIn('perfil_id', [9, 2])
