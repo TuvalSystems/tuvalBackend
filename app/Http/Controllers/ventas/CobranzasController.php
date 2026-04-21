@@ -627,6 +627,8 @@ class CobranzasController extends Controller
 
     public function enviarcobro($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
+        set_time_limit(0);
+        ini_set('memory_limit', '1024M');
         $webservice = new WebserviceController;
         $cobro = GpCobro::where('id', $id)->first();
         $cliente = GpCliente::where('id', $cobro->cliente_id)->first();
