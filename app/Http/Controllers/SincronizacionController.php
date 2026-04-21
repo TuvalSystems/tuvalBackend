@@ -456,11 +456,14 @@ class SincronizacionController extends Controller
     {
         $obj = new WebserviceController;
         $relacionusuariopuntodeventas = $obj->relacionusuariopuntodeventa();
-
+        $usuario = GpUsuario::get()->keyBy('id');
+        $puntoVenta = GpPuntoVenta::get()->keyBy('id');
         GpRelacionUsuarioPuntoVenta::truncate();
         foreach ($relacionusuariopuntodeventas as $key => $data) {
             if ($data['USER_PTO_VTA_PUNTO_VENTA'] != '') {
                 $relacionusuariopuntodeventa = new GpRelacionUsuarioPuntoVenta;
+                $relacionusuariopuntodeventa->user_id = $usuario[$data['USER_PTO_VTA_USUARIO']]->id;
+                $relacionusuariopuntodeventa->pv_id = $puntoVenta[$data['USER_PTO_VTA_PUNTO_VENTA']]->id;
                 $relacionusuariopuntodeventa->USER_PTO_VTA_USUARIO = trim($data['USER_PTO_VTA_USUARIO']);
                 $relacionusuariopuntodeventa->USER_PTO_VTA_PUNTO_VENTA = trim($data['USER_PTO_VTA_PUNTO_VENTA']);
                 $relacionusuariopuntodeventa->save();
