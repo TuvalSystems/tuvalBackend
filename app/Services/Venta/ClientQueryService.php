@@ -114,8 +114,10 @@ class ClientQueryService implements ClientQueryServiceInterface
                 'CLI_SUC_PROVINCIA',
                 'CLI_SUC_ID_DIRECCION',
                 'CLI_SUC_DIRECCION',
+                'CLI_SUC_TELEFONO',
                 'CLI_SUC_CORREO_ELECTRONICO_SRI',
-                'coordenadas'
+                'coordenadas',
+                'estado'
             ])
             ->get();
         return $sucursales->transform(function ($client) {
