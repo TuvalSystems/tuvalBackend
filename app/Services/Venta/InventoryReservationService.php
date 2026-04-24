@@ -994,7 +994,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      * @param mixed $payload
      * @param mixed $user
      */
-    public function processReservedQuotationInvoiceDemand($payload, GpUsuario $user) : array
+    public function processReservedQuotationInvoiceDemand($payload, GpUsuario $user): array
     {
         $reserveId      = data_get($payload, 'id');
         $quoteId        = data_get($payload, 'cotizacion.id');
@@ -1364,6 +1364,16 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
+    protected function getfilterListQuotationsByTransfered($items)
+    {
+        return collect($items)
+            ->pluck('cotizacion')
+            ->filter()                // quita null/'' si los hubiera
+            ->unique()                // deja únicos
+            ->values()                // reindexa 0..n
+            ->map(fn($c) => $c);
+    }
+
     public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation = null): array
     {
         $map = GpRelacionPuntoVentaBodega::query()
@@ -1391,18 +1401,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             })->toArray();
     }
 
-    public function getfilterListQuotationsByTransfered($items)
-    {
-        return collect($items)
-            ->pluck('cotizacion')
-            ->filter()                // quita null/'' si los hubiera
-            ->unique()                // deja únicos
-            ->values()                // reindexa 0..n
-            ->map(fn($c) => $c);
-    }
 
 
-    public function fetchItemCompartmentByWarehouse($artCode, $warehouse)
+    protected function fetchItemCompartmentByWarehouse($artCode, $warehouse)
     {
         $params = ['articulo' => $artCode, 'bodega' => $warehouse, 'compartimento' => ''];
         return $this->stockService->fetchStockWarehouseCompartiment($params);

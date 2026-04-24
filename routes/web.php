@@ -105,6 +105,12 @@ Route::prefix('bodegas')->group(function () {
     Route::get('guiasderemision/despahco-pedido-por-guia/{id}', [GuiasderemisionController::class, 'procesarPedidoDespachoPorGuia']);
     Route::get('guiasderemision/lista-guia-despachos', [GuiasderemisionController::class, 'listaGuiaDespachoConAjuste']);
     Route::get('guiasderemision/lista-guia-reposicion-transferencia', [GuiasderemisionController::class, 'listaGuiaTransferenciaReposicionConAjuste']);
+
+    Route::get('transferencia-ventas/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
+    Route::get('transferencia-ventas/bodega/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
+    Route::get('transferencia-ventas/bodega/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
+
+
 });
 
 

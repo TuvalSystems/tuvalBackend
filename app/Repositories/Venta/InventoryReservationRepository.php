@@ -45,7 +45,6 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
     public function getAllTransferReservedByWarehouses($warehouse)
     {
         return GpTrasladosReservas::query()->from('gp_traslados_reservas as tr')
-            // ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
             ->leftJoin('gp_bodegas as b', 'b.BOD_BODEGA', '=', 'tr.bodega_destino')
             ->join('gp_relacion_punto_venta_bodegas as ptovta', 'ptovta.PTO_VTA_BOD_BODEGA', '=', 'tr.bodega_destino')
             ->where('tr.bodega_origen', $warehouse)
