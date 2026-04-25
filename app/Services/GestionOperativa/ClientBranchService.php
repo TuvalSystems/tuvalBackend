@@ -2,11 +2,13 @@
 
 namespace App\Services\GestionOperativa;
 
-
+use App\Models\Gestion\Auditoria;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
+use App\Models\GpUsuario;
 use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ClientBranchService implements ClientBranchServiceInterface
@@ -44,7 +46,7 @@ class ClientBranchService implements ClientBranchServiceInterface
     }
 
 
-    public function getDetailClientBranches(int $id) : array
+    public function getDetailClientBranches(int $id): array
     {
 
         $branch = GpClienteSucursal::find($id);
@@ -83,5 +85,39 @@ class ClientBranchService implements ClientBranchServiceInterface
                     });
             })
             ->exists();
+    }
+
+
+
+
+
+    public function updateStatusClientBranches(int $id, int $estado, GpUsuario $user): GpClienteSucursal
+    {
+        $branch = GpClienteSucursal::findOrFail($id);
+        $oldData = ['estado' => $branch->estado];
+        $branch->estado = $estado;
+        if ($branch->isDirty()) { // Solo guarda e historializa si realmente hubo un cambio
+            $branch->save();
+
+            // 3. Capturamos los nuevos datos y guardamos historial
+            $newData = ['estado' => $branch->estado];
+            $this->createHistoryRecord($user, $branch, 'UPDATE_STATUS', $oldData, $newData);
+        }
+        return $branch;
+    }
+
+    protected function createHistoryRecord(GpUsuario $user, Model $modelo, string $action, ?array $oldData, ?array $newData): void
+    {
+        Auditoria::create([
+            'user_id'        => $user->id,
+            'auditable_type' => get_class($modelo),
+            'auditable_id'   => $modelo->id,
+            'action'         => $action,
+            'old_values'     => $oldData,
+            'new_values'     => $newData,
+            'url'            => request()->fullUrl(),
+            'ip_address'     => request()->ip(),
+            'user_agent'     => request()->header('User-Agent'),
+        ]);
     }
 }

@@ -454,6 +454,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::prefix('gestion')->group(function () {
         Route::post('lista-sucursales', [GestionSucursalesController::class, 'listaSucursales']);
         Route::post('sucursal/detalle', [GestionSucursalesController::class, 'obtenerDetalleSucursal']);
+        Route::post('sucursal/actualizar-estado', [GestionSucursalesController::class, 'actualizarEstadoSucursal']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);
