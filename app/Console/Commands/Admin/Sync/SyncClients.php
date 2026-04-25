@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class SyncClients extends Command
 {
 
-    protected $signature = 'sync:clients';
+    protected $signature = 'sync:clients {--date= : Fecha opcional para sincronizar (ej. YYYY-MM-DD HH:ii:ss)}';
 
 
     protected $description = 'Proceso de sincronización de clientes';
@@ -19,8 +19,16 @@ class SyncClients extends Command
     public function handle(SyncClientsServiceInterface $service)
     {
         $this->info('Iniciando proceso de despacho de clientes');
+        $inputDate = $this->option('date');
+        if ($inputDate) {
+            $fechaFiltro = $inputDate;
+            $this->info("Modo manual activado. Filtrando desde: {$fechaFiltro}");
+        } else {
+            // Lógica por defecto (la que se ejecuta en tu Cron Job / Scheduler)
+            $fechaFiltro = now()->subMinutes(30)->format('Y-m-d H:i:s');
+            $this->info("Modo automático. Filtrando desde: {$fechaFiltro}");
+        }
         // $fechaFiltro = now()->subMinutes(30)->format('Y-m-d H:i:s');
-        $fechaFiltro = '2025-04-20 00:00:00';
         $rawClients = $service->getClientsGp($fechaFiltro);
         if (empty($rawClients)) {
             $this->info('Nada que sincronizar.');
