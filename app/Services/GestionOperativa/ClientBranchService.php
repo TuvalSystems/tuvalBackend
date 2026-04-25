@@ -42,7 +42,9 @@ class ClientBranchService implements ClientBranchServiceInterface
         }
 
         $query->orderBy(data_get($filters, 'sortField', 'cls.created_at'), data_get($filters, 'sortOrder', 'desc'));
-        return $query->paginate(data_get($filters, 'perpage', 10));
+        return $query->paginate(
+            data_get($filters, 'perpage', 10),
+        );
     }
 
 
