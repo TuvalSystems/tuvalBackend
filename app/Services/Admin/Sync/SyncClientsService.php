@@ -38,7 +38,6 @@ class SyncClientsService implements SyncClientsServiceInterface
         $payload = $this->builder->formPayloadNewClientSync($data);
         $client->fill($payload);
         if ($client->isDirty()) {
-            $client->timestamps = false;
             $client->save();
         }
     }
@@ -104,7 +103,6 @@ class SyncClientsService implements SyncClientsServiceInterface
         $sucursal->coordenadas = data_get($data, 'datosCoordenadas', '');
 
         if ($sucursal->isDirty('coordenadas')) {
-            $sucursal->timestamps = false;
             $sucursal->save();
         }
     }
