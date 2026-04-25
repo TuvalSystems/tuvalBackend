@@ -83,7 +83,8 @@ class GpClienteSucursal extends Model
         'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA',
         'coordenadas',
         'user_creator_id',
-        'fecha_hora_creacion'
+        'fecha_hora_creacion',
+        'estado'
     ];
 
 
