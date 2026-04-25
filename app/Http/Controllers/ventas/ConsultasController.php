@@ -307,16 +307,22 @@ class ConsultasController extends Controller
 
             foreach ($clientes as $key => $cliente) {
 
+                // if (isset($data['tipo']) && $data['tipo'] == 'cobranza') {
+                // } else {
+
+                //     if ($cliente->CLI_SUSPENDIDO == 'SI') {
+                //         unset($clientes[$key]);
+                //         continue;
+                //     }
+                // }
+
                 $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
                 $cliente->vendedor = $vendedor;
 
                 $sucursales = GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
-                    ->where('CLI_SUC_RUC', $cliente->CLI_RUC);
-                if ($data['tipo'] !== 'consulta') {
-                    $sucursales->where('gp_cliente_sucursals.estado', 1);
-                }
-                $sucursales = $sucursales->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
-                    ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC')
+                    ->where('CLI_SUC_RUC', $cliente->CLI_RUC)
+                    ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
+                    ->orderby('CLI_SUC_ID_DIRECCION', 'DESC')
                     ->get();
 
                 $cliente->sucursales = $sucursales;
@@ -360,18 +366,14 @@ class ConsultasController extends Controller
         }
     }
 
-    public function obtenerSucursalesCliente(Request $request): JsonResponse
+    public function obtenerSucursalesCliente($ruc): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
-            $validated = $request->validate([
-                'ruc' => 'required|string',
-                'tipo' => 'required|string'
-            ]);
-            $ruc = data_get($validated, 'ruc');
-            $tipo = data_get($validated, 'tipo');
-            $resp = $this->clientService->getCustomerBranches($ruc, $tipo);
-            return $this->successResponse('Sucursales obtenidas correctamente', $resp, 200);
-        }, 'laravel', 'obtenerSucursalesCliente');
+        try {
+            $resp = $this->clientService->getCustomerBranches($ruc);
+            return $this->successResponse('Información obtenido correctamente', $resp, 200);
+        } catch (\Throwable $e) {
+            return $this->buildErrorResponse($e->getMessage(), 500);
+        }
     }
 
     public function cupodisponible($ruc)

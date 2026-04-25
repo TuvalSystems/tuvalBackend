@@ -344,7 +344,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
         Route::post('buscar-clientes', [ConsultasController::class, 'buscarClientes']);
         Route::get('cliente/cupo-disponible/{ruc}', [ConsultasController::class, 'obtenerCupoDisponibleCliente']);
-        Route::post('cliente/sucursales', [ConsultasController::class, 'obtenerSucursalesCliente']);
+        Route::get('cliente/sucursales/{ruc}', [ConsultasController::class, 'obtenerSucursalesCliente']);
 
 
         Route::post('new-territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
