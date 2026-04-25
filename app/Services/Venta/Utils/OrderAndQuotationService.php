@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Utils;
 
+use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpRegistroCopia;
 use App\Services\Api\ApiGpService;
@@ -226,7 +227,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float
     {
-       return  $originalDiscount - $currentDiscount;
+        return  $originalDiscount - $currentDiscount;
     }
 
 
@@ -418,5 +419,14 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
                 }
             }
         }
+    }
+
+    public function validateActiveSucursal(int $sucursalId, string $contexto = 'sucursal')
+    {
+        $sucursal = GpClienteSucursal::where('sucursal_id', $sucursalId)->where('estado', 1)->exists();
+        if (!$sucursal) {
+            throw new \RuntimeException("La sucursal con ID {$sucursalId} no existe o no está activa.");
+        }
+        return $sucursal;
     }
 }

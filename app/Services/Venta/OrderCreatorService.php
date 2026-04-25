@@ -38,6 +38,15 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     {
         $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quotationId = data_get($data, 'cotizacion_id');
+            $direccionFacturacion = data_get($data, 'direccion_facturacion_id');
+            $direccionDespacho = data_get($data, 'direccion_entrega_id');
+            if ($direccionFacturacion) {
+                $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
+            }
+
+            if ($direccionDespacho) {
+                $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
+            }
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
             if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
                 $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
