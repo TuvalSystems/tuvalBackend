@@ -28,7 +28,6 @@ class SyncClients extends Command
             $fechaFiltro = now()->subMinutes(30)->format('Y-m-d H:i:s');
             $this->info("Modo automático. Filtrando desde: {$fechaFiltro}");
         }
-        // $fechaFiltro = now()->subMinutes(30)->format('Y-m-d H:i:s');
         $rawClients = $service->getClientsGp($fechaFiltro);
         if (empty($rawClients)) {
             $this->info('Nada que sincronizar.');
