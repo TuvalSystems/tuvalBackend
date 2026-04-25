@@ -190,7 +190,7 @@ return [
         App\Providers\Service\UserServiceProvider::class,
         App\Providers\Service\CollectionServiceProvider::class,
         App\Providers\Service\SyncServiceProvider::class,
-
+        App\Providers\Service\GestionServiceProvider::class,
 
 
         //Provider Builders

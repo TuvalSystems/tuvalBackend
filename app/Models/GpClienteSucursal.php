@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Ventas\Vendedores\GpVendedor;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -87,9 +88,16 @@ class GpClienteSucursal extends Model
         'estado'
     ];
 
-
+   protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
     public function vendedor()
     {
         return $this->belongsTo(GpVendedor::class, 'CLI_SUC_VENDEDOR', 'VEND_ID');
+    }
+
+    public function cliente(){
+        return $this->belongsTo(GpCliente::class, 'cliente_id', 'id');
     }
 }
