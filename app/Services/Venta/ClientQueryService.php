@@ -101,16 +101,23 @@ class ClientQueryService implements ClientQueryServiceInterface
     }
 
 
-    public function getCustomerBranches(string $ruc): mixed
+    public function getCustomerBranches(string $ruc, ?string $type = null): mixed
     {
         $sucursales =  GpClienteSucursal::where('CLI_SUC_RUC', $ruc)
+            ->when($type !== 'consulta', function ($query) {
+                $query->where('estado', 1);
+            })
             ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC')
             ->select([
                 'id',
+                'CLI_SUC_CIUDAD',
+                'CLI_SUC_PROVINCIA',
                 'CLI_SUC_ID_DIRECCION',
                 'CLI_SUC_DIRECCION',
+                'CLI_SUC_TELEFONO',
                 'CLI_SUC_CORREO_ELECTRONICO_SRI',
-                'coordenadas'
+                'coordenadas',
+                'estado'
             ])
             ->get();
         return $sucursales->transform(function ($client) {
