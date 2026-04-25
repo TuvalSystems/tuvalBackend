@@ -41,7 +41,7 @@ class GestionSucursalesController extends Controller
             $estado = $request->input('estado', null);
             $user = $request->user();
             $data = $this->clientBranchService->updateStatusClientBranches($id, $estado, $user);
-            return $this->successResponse('Información Actualizada Correctamente', $data, 200);
+            return $this->successResponse('Datos Actualizados Correctamente', $data, 200);
         }, 'laravel', 'actualizarEstadoSucursal');
     }
 }
