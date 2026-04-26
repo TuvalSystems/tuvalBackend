@@ -425,13 +425,21 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     {
         $sucursal = GpClienteSucursal::where('id', $sucursalId)->first();
         if (!$sucursal) {
-            throw new \RuntimeException("La {$contexto} con ID {$sucursalId} no existe.");
+            throw new \RuntimeException(
+                "La {$contexto} con ID {$sucursalId} no existe."
+            );
         }
         if ($sucursal->estado !== 1) {
-            $idDireccion = $sucursal->CLI_SUC_ID_DIRECCION;
-             throw new \RuntimeException(
-            "La {$contexto} con ID {$sucursalId} (Dirección: {$idDireccion}) no está activa."
-        );
+            $mensaje = sprintf(
+                "La %s no está activa:\n- ID: %d\n- Dirección: %s\n- RUC Cliente: %s\n- Estado: %s",
+                $contexto,
+                $sucursalId,
+                $sucursal->CLI_SUC_ID_DIRECCION ?? 'N/A',
+                $sucursal->CLI_SUC_RUC ?? 'N/A',
+                $sucursal->estado === 0 ? 'Inactiva' : 'Desconocido'
+            );
+
+            throw new \RuntimeException($mensaje);
         }
         return $sucursal;
     }
