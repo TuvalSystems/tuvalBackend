@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Contracts;
 
+use App\Models\GpClienteSucursal;
 use App\Models\GpUsuario;
 
 interface ClientQueryServiceInterface
@@ -15,4 +16,5 @@ interface ClientQueryServiceInterface
     public function getCustomerBranches(string $ruc, ?string $type = null): mixed;
 
     public function storeNewAddressClient(array $data, GpUsuario $user);
+    public function createRegisterBranchClient(GpClienteSucursal $data, int $mode, ?string $userIngreso = null, ?string $userModificacion = null, ?string $fechaModificacion = null);
 }

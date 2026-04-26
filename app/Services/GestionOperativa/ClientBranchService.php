@@ -8,12 +8,15 @@ use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
+use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ClientBranchService implements ClientBranchServiceInterface
 {
 
+    public  function __construct(protected readonly ClientQueryServiceInterface $client) {}
 
 
     public function listClientBranches(array $filters): LengthAwarePaginator
@@ -105,6 +108,7 @@ class ClientBranchService implements ClientBranchServiceInterface
             $newData = ['estado' => $branch->estado];
             $this->createHistoryRecord($user, $branch, 'UPDATE_STATUS', $oldData, $newData);
         }
+        $this->updateStatusBranchInGp($branch, $user);
         return $branch;
     }
 
@@ -121,5 +125,17 @@ class ClientBranchService implements ClientBranchServiceInterface
             'ip_address'     => request()->ip(),
             'user_agent'     => request()->header('User-Agent'),
         ]);
+    }
+
+    protected function updateStatusBranchInGp(GpClienteSucursal $branch, GpUsuario $userModificador): void
+    {
+        $fechaModificacion = Carbon::now()->format('Y-m-d H:i:s');
+        $this->client->createRegisterBranchClient(
+            $branch,
+            2,
+            null,
+            $userModificador->USERID,
+            $fechaModificacion
+        );
     }
 }
