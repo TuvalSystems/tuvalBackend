@@ -13,7 +13,7 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
-
+use Illuminate\Support\Facades\Log;
 
 class ClientQueryService implements ClientQueryServiceInterface
 {
@@ -164,7 +164,7 @@ class ClientQueryService implements ClientQueryServiceInterface
         $respInfo       = $this->sendToGpNewAddress($payloadGp);
         $identificador  = strtoupper(data_get($respInfo, 'identificador', ''));
         $newBranches    = $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
-        $this->createRegisterBranchClient($newBranches,  1, $userGp->USERID, Carbon::parse($newBranches->fecha_hora_creacion)->format('Y-m-d H:i:s'));
+        $this->createRegisterBranchClient($newBranches,  1, $userGp->USERID, Carbon::parse($newBranches->fecha_hora_creacion)->format('Y-m-d H:i:s'), null, null, false);
         return $newBranches;
     }
 
@@ -180,7 +180,7 @@ class ClientQueryService implements ClientQueryServiceInterface
     }
 
 
-    public function createRegisterBranchClient(GpClienteSucursal $data, int $mode, ?string $userIngreso = null, ?string $fechaCreacion = null,  ?string $userModificacion = null, ?string $fechaModificacion = null)
+    public function createRegisterBranchClient(GpClienteSucursal $data, int $mode, ?string $userIngreso = null, ?string $fechaCreacion = null,  ?string $userModificacion = null, ?string $fechaModificacion = null,  bool $autoRetry = true)
     {
         $data->refresh();
         $params = [
@@ -197,10 +197,39 @@ class ClientQueryService implements ClientQueryServiceInterface
 
         $resp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
         $status = data_get($resp, 'success', false);
-        if (!$status) {
-            $message = data_get($resp, 'message', 'Error desconocido al crear/actualizar registro de sucursal en GP');
-            $this->logSyncError($data, $params, $message);
+        $message = data_get($resp, 'message', '');
+        if (!$status && $mode === 2 && $autoRetry && $this->isNotFoundError($message)) {
+        Log::info('Registro no existe en GP (Error 900), intentando crear', [
+            'sucursal_id'       => $data->id,
+            'ruc'               => $data->CLI_SUC_RUC,
+            'id_direccion'      => $data->CLI_SUC_ID_DIRECCION,
+            'error_original'    => $message
+        ]);
+        $params['modo'] = 1;
+        $params['usuarioIngreso'] =  GpUsuario::where('id', $data->user_creator_id)->value('USERID')  ?? $userModificacion  ;
+        $params['fechaIngreso'] =   $data->fecha_hora_creacion ?? Carbon::parse($data->created_at)->format('Y-m-d H:i:s')  ?? Carbon::now()->format('Y-m-d H:i:s');
+
+        $retryResp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
+        $retryStatus = data_get($retryResp, 'success', false);
+
+        if ($retryStatus) {
+            Log::info('✅ Registro creado exitosamente después de fallar actualización', [
+                'sucursal_id' => $data->id,
+                'ruc' => $data->CLI_SUC_RUC,
+                'modo_usado' => 1
+            ]);
+            return;
         }
+
+        $retryMessage = data_get($retryResp, 'message', 'Error desconocido en retry');
+        $this->logSyncError($data, $params, "Falló actualización (Error 900) y creación. Error creación: {$retryMessage}");
+        return;
+    }
+
+    // ❌ Cualquier otro error
+    if (!$status) {
+        $this->logSyncError($data, $params, $message);
+    }
     }
 
     private function logSyncError(GpClienteSucursal $data, array $params, string $message): void
@@ -216,5 +245,31 @@ class ClientQueryService implements ClientQueryServiceInterface
             0,
             StatusSync::FAILED
         );
+    }
+
+    private function isNotFoundError(string $message): bool
+    {
+        // Patrón específico para tu API
+        if (str_contains($message, '[900]') && str_contains($message, 'No existe este registro')) {
+            return true;
+        }
+
+        // Otros patrones por si cambian el mensaje
+        $notFoundPatterns = [
+            'no existe este registro',
+            'error del sp [900]',
+            'not found',
+            'no encontrado',
+        ];
+
+        $messageLower = strtolower($message);
+
+        foreach ($notFoundPatterns as $pattern) {
+            if (str_contains($messageLower, strtolower($pattern))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

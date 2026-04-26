@@ -136,7 +136,8 @@ class ClientBranchService implements ClientBranchServiceInterface
             null,
             null,
             $userModificador->USERID,
-            $fechaModificacion
+            $fechaModificacion,
+            true
         );
     }
 }

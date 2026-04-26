@@ -864,11 +864,12 @@ class QuotationService implements QuotationServiceInterface
             $userCreator->USERID,
             $fechaCreacion,
             null,
-            null
+            null,
+            false
         );
     }
 
-   
+
 
     protected function getNivelPriceSeller(GpUsuario $user)
     {
