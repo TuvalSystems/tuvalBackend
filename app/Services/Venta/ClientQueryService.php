@@ -207,7 +207,7 @@ class ClientQueryService implements ClientQueryServiceInterface
     {
         SyncLog::logErrorSync(
             'SucursalesGP',
-            'API_UPDATE_OR_CREATE',
+            'actualizar-o-crear-registro-sucursal-cliente',
             'updateOrCreateRegisterBranchClient',
             $message,
             $data->CLI_SUC_RUC,
