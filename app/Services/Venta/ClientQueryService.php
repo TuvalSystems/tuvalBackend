@@ -9,7 +9,9 @@ use App\Services\Api\ApiGpService;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 
 class ClientQueryService implements ClientQueryServiceInterface
 {
@@ -159,11 +161,13 @@ class ClientQueryService implements ClientQueryServiceInterface
         $payloadGp      = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
         $respInfo       = $this->sendToGpNewAddress($payloadGp);
         $identificador  = strtoupper(data_get($respInfo, 'identificador', ''));
-        return $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
+        $newBranches   = $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
+        $this->createRegisterBranchClient($newBranches);
+        return $newBranches;
     }
 
 
-    public function sendToGpNewAddress($params)
+    protected function sendToGpNewAddress($params)
     {
         $resp = $this->apiGp->storeNewAddressClient($params);
         $success = data_get($resp, 'success', false);
@@ -171,5 +175,27 @@ class ClientQueryService implements ClientQueryServiceInterface
             abort(404, 'No se pudo crear la direccion del cliente');
         }
         return data_get($resp, 'data', []);
+    }
+
+
+    protected function createRegisterBranchClient(GpClienteSucursal $data)
+    {
+        $params = [
+            'ruc'                   => $data->CLI_SUC_RUC,
+            'idDireccion'           => $data->CLI_SUC_ID_DIRECCION,
+            'direccion'             => $data->CLI_SUC_DESCRIPCION,
+            'estado'                => $data->estado == 1 ? 'A' : 'I',
+            'usuarioIngreso'        => $data->user_creator_id,
+            'fechaIngreso'          => Carbon::parse($data->fecha_hora_creacion)->format('Y-m-d H:i:s'),
+            'usuarioModificacion'   => $data->user_creator_id,
+            'fechaModificacion'     => Carbon::parse($data->fecha_hora_creacion)->format('Y-m-d H:i:s'),
+            'modo'                  => 1
+        ];
+
+        $resp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
+        $status = data_get($resp, 'success', false);
+        if (!$status) {
+            Log::error('Error al crear/modificar registro de sucursal en GP', ['params' => $params, 'response' => $resp]);
+        }
     }
 }
