@@ -22,7 +22,7 @@ interface QuotationBuilderInterface
 
     public function formPayloadSendClientGp($data, $nivelPrice);
     public function formPayloadClientWeb(array $data, string $nivelPrecio, GpUsuario $user): array;
-    public function formPayloadClientSucursal(array $data,  GpUsuario $user): array;
+    public function formPayloadClientSucursal(array $data, int $clienteId, GpUsuario $user): array;
 
 
     /** proceso de creacion de cotizacion  */

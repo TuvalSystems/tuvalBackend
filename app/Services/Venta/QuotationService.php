@@ -32,6 +32,7 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -815,8 +816,8 @@ class QuotationService implements QuotationServiceInterface
         $nivelPrecio            = $this->getNivelPriceSeller($user);
         $params                 = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
         $this->apiGpService->storeClientGp($params);
-        $this->createClientWeb($data, $nivelPrecio, $user);
-        $this->createClientSucursalWeb($data,  $user);
+        $client = $this->createClientWeb($data, $nivelPrecio, $user);
+        $this->createClientSucursalWeb($data,$client,  $user);
         $this->sendToSegmentAndRucToGp($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
         $cliente                = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
         $vendedor               = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
@@ -847,24 +848,27 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function createClientSucursalWeb(array $data, GpUsuario $user)
+    public function createClientSucursalWeb(array $data, GpCliente $client, GpUsuario $user)
     {
-        return GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data, $user));
+        $sucursal = GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data, $client->id, $user));
+        $this->updateStatusBranchInGp($sucursal, $user);
+
     }
 
-    // public function getNivelPriceSeller(array $data, GpUsuario $user)
-    // {
+    protected function updateStatusBranchInGp(GpClienteSucursal $branch, GpUsuario $userCreator): void
+    {
+        $fechaCreacion = Carbon::now()->format('Y-m-d H:i:s');
+        $this->clientService->createRegisterBranchClient(
+            $branch,
+            1,
+            $userCreator->USERID,
+            $fechaCreacion,
+            null,
+            null
+        );
+    }
 
-    //     $nivelPrecioApi = $this->apiGpService->getTypeBySeller([
-    //         'usuario' => $user->USERID,
-    //         // 'usuario' => 'oficina',
-    //     ]);
-    //     if ($nivelPrecioApi['success'] === false) {
-    //         return 'GENERAL';
-    //     }
-    //     $payload = $nivelPrecioApi['data'];
-    //     return ((int) $payload['coTipVen'] === 1) ? 'TIENDA' : 'GENERAL';
-    // }
+   
 
     protected function getNivelPriceSeller(GpUsuario $user)
     {

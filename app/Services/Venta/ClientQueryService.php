@@ -164,7 +164,7 @@ class ClientQueryService implements ClientQueryServiceInterface
         $respInfo       = $this->sendToGpNewAddress($payloadGp);
         $identificador  = strtoupper(data_get($respInfo, 'identificador', ''));
         $newBranches    = $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
-        $this->createRegisterBranchClient($newBranches,  1, $userGp->USERID);
+        $this->createRegisterBranchClient($newBranches,  1, $userGp->USERID, Carbon::parse($newBranches->fecha_hora_creacion)->format('Y-m-d H:i:s'));
         return $newBranches;
     }
 
@@ -180,7 +180,7 @@ class ClientQueryService implements ClientQueryServiceInterface
     }
 
 
-    public function createRegisterBranchClient(GpClienteSucursal $data, int $mode, ?string $userIngreso = null, ?string $userModificacion = null, ?string $fechaModificacion = null)
+    public function createRegisterBranchClient(GpClienteSucursal $data, int $mode, ?string $userIngreso = null, ?string $fechaCreacion = null,  ?string $userModificacion = null, ?string $fechaModificacion = null)
     {
         $data->refresh();
         $params = [
@@ -189,7 +189,7 @@ class ClientQueryService implements ClientQueryServiceInterface
             'direccion'             => $data->CLI_SUC_DIRECCION,
             'estado'                => $data->estado === 1 ? "A" : "I",
             'usuarioIngreso'        => $userIngreso,
-            'fechaIngreso'          => Carbon::parse($data->fecha_hora_creacion)->format('Y-m-d H:i:s'),
+            'fechaIngreso'          => $fechaCreacion ?? "",
             'usuarioModificacion'   => $userModificacion ?? "",
             'fechaModificacion'     => $fechaModificacion ?? "",
             'modo'                  => $mode
