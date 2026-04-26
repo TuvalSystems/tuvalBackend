@@ -423,9 +423,15 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
     public function validateActiveSucursal(int $sucursalId, string $contexto = 'sucursal')
     {
-        $sucursal = GpClienteSucursal::where('id', $sucursalId)->where('estado', 1)->exists();
+        $sucursal = GpClienteSucursal::where('id', $sucursalId)->first();
         if (!$sucursal) {
-            throw new \RuntimeException("La sucursal con ID {$sucursalId} no existe o no está activa.");
+            throw new \RuntimeException("La {$contexto} con ID {$sucursalId} no existe.");
+        }
+        if ($sucursal->estado !== 1) {
+            $idDireccion = $sucursal->CLI_SUC_ID_DIRECCION;
+             throw new \RuntimeException(
+            "La {$contexto} con ID {$sucursalId} (Dirección: {$idDireccion}) no está activa."
+        );
         }
         return $sucursal;
     }
