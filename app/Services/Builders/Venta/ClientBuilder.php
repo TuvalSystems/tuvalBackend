@@ -7,6 +7,7 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpUsuario;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Calculation\MathTrig\Round;
 
 class ClientBuilder implements ClientBuilderInterface
 {
@@ -77,7 +78,7 @@ class ClientBuilder implements ClientBuilderInterface
             'CLI_CLASE'                                     => trim(data_get($data, 'idClase', '')),
             'CLI_PRIORIDAD'                                 => (int) data_get($data, 'prioridad', 0),
             'CLI_ID_DIRECCION'                              => trim(data_get($data, 'dirPrincipal', '')),
-            'CLI_CONTACTO'                                  => trim(data_get($data, 'contacto', '')),
+            'CLI_CONTACTO'                                  => trim(data_get($data, 'contacto', "")),
             'CLI_DIRECCION'                                 => trim(data_get($data, 'direccion', '')),
             'CLI_CIUDAD'                                    => trim(data_get($data, 'ciudad', '')),
             'CLI_PROVINCIA'                                 => trim(data_get($data, 'provincia', '')),
@@ -88,11 +89,11 @@ class ClientBuilder implements ClientBuilderInterface
             'CLI_TELEFONO_2'                                => trim(data_get($data, 'telefono2', '')),
             'CLI_TELEFONO_3'                                => trim(data_get($data, 'telefono3', '')),
             'CLI_TELEFONO_4'                                => trim(data_get($data, 'telefono4', '')),
-            'CLI_FECHA_MODIFICACION'                        => trim(data_get($data, 'fechaModif', '')),
-            'CLI_FECHA_CREACION'                            => trim(data_get($data, 'fechaCreacion', '')),
+            'CLI_FECHA_MODIFICACION'                        => Carbon::parse(data_get($data, 'fechaModif'))->format('Y-m-d'),
+            'CLI_FECHA_CREACION'                            => Carbon::parse(data_get($data, 'fechaCreacion', ''))->format('Y-m-d'),
             'CLI_CORREO_ELECT_SRI'                          => trim(data_get($data, 'emailSri', '')),
             'CLI_CORREO_ELECT_NOTIFICACION_INTERNA'         => trim(data_get($data, 'emailInterno', '')),
-            'CLI_IMPUESTO'                                  => (float)data_get($data, 'impVta', 0),
+            'CLI_IMPUESTO'                                  => (float) round(data_get($data, 'impVta', 0),2),
             'CLI_DIRECCION_ENVIO'                           => trim(data_get($data, 'dirEnvio', '')),
             'CLI_DIRECCION_FACTURA'                         => trim(data_get($data, 'dirFactura', '')),
             'CLI_VENDEDOR'                                  => trim(data_get($data, 'vendedor', '')),
@@ -102,7 +103,7 @@ class ClientBuilder implements ClientBuilderInterface
             'CLI_DIA_GRACIA_CHEQUE_A_FECHA'                 => (int)data_get($data, 'diaGraciaCheque', 0),
             'CLI_NIVEL_PRECIO'                              => trim(data_get($data, 'nivelPrecio', '')),
             'CLI_TIPO_CREDITO'                              => trim(data_get($data, 'tipoCredito', '')),
-            'CLI_MONTO_CREDITO'                             => (float)data_get($data, 'montoCredito', 0),
+            'CLI_MONTO_CREDITO'                             => (float) round(data_get($data, 'montoCredito', 0), 2),
             'CLI_GRUPO_ECONOMICO'                           => trim(data_get($data, 'grupoEconomico', '')),
             'CLI_GRUPO'                                     => trim(data_get($data, 'grupo', '')),
             'CLI_SUBGRUPO'                                  => trim(data_get($data, 'subGrupo', '')),

@@ -7,6 +7,7 @@ use App\Models\GpClienteSucursal;
 use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
 use App\Services\Api\Admin\ApiSync;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 class SyncClientsService implements SyncClientsServiceInterface
@@ -31,16 +32,68 @@ class SyncClientsService implements SyncClientsServiceInterface
     {
         $ruc = trim(data_get($data, 'ruc', ''));
         $client = GpCliente::where('CLI_RUC', $ruc)->first();
-        if (!$client) {
-            $client = new GpCliente();
+        $isNew = !$client;
+
+        if ($isNew) {
+            $client          = new GpCliente();
             $client->CLI_RUC = $ruc;
         }
         $payload = $this->builder->formPayloadNewClientSync($data);
         $client->fill($payload);
-        if ($client->isDirty()) {
+        if ($isNew) {
+            $client->save();
+            return;
+        }
+        Log::channel('cron_process')->debug('Dirty fields', [
+            'ruc'    => $ruc,
+            'dirty'  => $client->getDirty(),
+            'original' => collect($client->getDirty())
+                ->mapWithKeys(fn($_, $field) => [$field => $client->getOriginal($field)])
+                ->toArray(),
+        ]);
+        if ($this->hasRealChanges($client)) {
+            // Hay diferencias reales → updated_at se actualiza
+            $client->timestamps = true;
+            $client->save();
+        } else {
+            // Misma data → no tocar updated_at
             $client->timestamps = false;
             $client->save();
         }
+    }
+    private function hasRealChanges(Model $model): bool
+    {
+        foreach ($model->getDirty() as $field => $_) {
+            $original = $model->getOriginal($field);
+            $current  = $model->getAttribute($field); // ya casteado
+
+            // Normalizar a string para comparación final
+            $normalizedOriginal = $this->normalizeValue($original);
+            $normalizedCurrent  = $this->normalizeValue($current);
+
+            if ($normalizedOriginal !== $normalizedCurrent) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeValue(mixed $value): string
+    {
+        if ($value === null) return '';
+
+        // Carbon/DateTime → formato estándar
+        if ($value instanceof \Carbon\Carbon) {
+            return $value->format('Y-m-d');
+        }
+
+        // Numéricos → normalizar decimales
+        if (is_numeric($value)) {
+            return rtrim(rtrim(number_format((float)$value, 4, '.', ''), '0'), '.');
+        }
+
+        return trim((string) $value);
     }
 
 
