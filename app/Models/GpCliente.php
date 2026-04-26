@@ -109,6 +109,17 @@ use Illuminate\Database\Eloquent\Model;
 class GpCliente extends Model
 {
     use HasFactory;
+    protected $casts = [
+        'CLI_PRIORIDAD'                  => 'integer',
+        'CLI_DIA_GRACIA_VTA_CREDITO'     => 'integer',
+        'CLI_DIA_GRACIA_CHEQUE_A_FECHA'  => 'integer',
+        'CLI_DIA_MAXIMO_MES_FACTURACION' => 'integer',
+        'CLI_IMPUESTO'                   => 'decimal:2',
+        'CLI_DSTO_COMERCIAL'             => 'decimal:2',
+        'CLI_MONTO_CREDITO'              => 'decimal:2', 
+        'CLI_FECHA_MODIFICACION'         => 'datetime:Y-m-d',
+        'CLI_FECHA_CREACION'             => 'datetime:Y-m-d',
+    ];
     protected $fillable = [
         'CLI_RUC',
         'CLI_RAZON_SOCIAL',

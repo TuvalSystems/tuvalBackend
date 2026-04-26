@@ -14,6 +14,7 @@ use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\ImportarPedidosController;
 use App\Http\Controllers\test\TestController;
 use App\Http\Controllers\UserNotificationController;
@@ -127,8 +128,6 @@ Route::prefix('consultas')->group(function () {
     Route::get('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
     Route::get('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
     Route::get('stock-exposicion', [ConsultasController::class, 'consultaStockExposicion']);
-
-
 });
 
 Route::group(['prefix' => 'reservas-web'], function () {
@@ -204,10 +203,13 @@ Route::prefix('cobranzas')->group(function () {
     Route::get('consulta-cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
     Route::get('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
     Route::get('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
-
-
-
 });
+
+Route::prefix('gestion')->group(function () {
+    Route::get('lista-sucursales', [GestionSucursalesController::class, 'listaSucursales']);
+    Route::get('sucursal/detalle', [GestionSucursalesController::class, 'obtenerDetalleSucursal']);
+});
+
 
 Route::get('guia-remision-web/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
 Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'facturarexistente']);

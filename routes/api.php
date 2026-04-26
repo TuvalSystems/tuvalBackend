@@ -20,6 +20,7 @@ use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\borradores\CotizacionBorradorController;
+use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
 
@@ -449,6 +450,12 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('lista-logs', [AdminController::class, 'ListaLogs']);
     });
 
+
+    Route::prefix('gestion')->group(function () {
+        Route::post('lista-sucursales', [GestionSucursalesController::class, 'listaSucursales']);
+        Route::post('sucursal/detalle', [GestionSucursalesController::class, 'obtenerDetalleSucursal']);
+        Route::post('sucursal/actualizar-estado', [GestionSucursalesController::class, 'actualizarEstadoSucursal']);
+    });
 });
 Route::post('/login', [AuthController::class, 'login']);
 

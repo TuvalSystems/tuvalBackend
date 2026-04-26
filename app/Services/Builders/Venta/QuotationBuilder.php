@@ -242,9 +242,10 @@ class QuotationBuilder implements QuotationBuilderInterface
         ];
     }
 
-    public function formPayloadClientSucursal(array $data,  GpUsuario $user): array
+    public function formPayloadClientSucursal(array $data, int $clientId, GpUsuario $user): array
     {
         return [
+            'cliente_id'                                        => $clientId,
             'CLI_SUC_RUC'                                       => $data['CLI_RUC'],
             'CLI_SUC_DESCRIPCION'                               => $data['CLI_RAZON_SOCIAL'],
             'CLI_SUC_ID_DIRECCION'                              => 'PRINCIPAL',

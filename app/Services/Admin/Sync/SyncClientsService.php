@@ -7,10 +7,13 @@ use App\Models\GpClienteSucursal;
 use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
 use App\Services\Api\Admin\ApiSync;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
+use App\Traits\Sincronizacion\DetectsRealModelChanges;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 class SyncClientsService implements SyncClientsServiceInterface
 {
+    use DetectsRealModelChanges;
     public function __construct(protected readonly ApiSync $api, protected readonly ClientBuilderInterface $builder) {}
 
 
@@ -31,13 +34,28 @@ class SyncClientsService implements SyncClientsServiceInterface
     {
         $ruc = trim(data_get($data, 'ruc', ''));
         $client = GpCliente::where('CLI_RUC', $ruc)->first();
-        if (!$client) {
-            $client = new GpCliente();
+        $isNew = !$client;
+
+        if ($isNew) {
+            $client          = new GpCliente();
             $client->CLI_RUC = $ruc;
         }
         $payload = $this->builder->formPayloadNewClientSync($data);
         $client->fill($payload);
-        if ($client->isDirty()) {
+        if ($isNew) {
+            $client->save();
+            return;
+        }
+
+        if ($this->hasRealChanges($client)) {
+            Log::channel('cron_process')->info('Cliente actualizado', [
+                'ruc'     => $ruc,
+                'changes' => $client->getDirty(),
+            ]);
+            $client->timestamps = true;
+            $client->save();
+        } else {
+            // Misma data → no tocar updated_at
             $client->timestamps = false;
             $client->save();
         }
@@ -68,16 +86,33 @@ class SyncClientsService implements SyncClientsServiceInterface
         $direcciones = data_get($data, 'direcciones', []);
         foreach ($direcciones as $dir) {
             $idDireccion = trim(data_get($dir, 'idDireccion', ''));
+            $sucursal = GpClienteSucursal::where('cliente_id', $cliente->id)
+                ->where('CLI_SUC_ID_DIRECCION', $idDireccion)
+                ->first();
             $payload = $this->builder->formPayloadClientBranchesSync(
                 $cliente->id,
                 $ruc,
                 $descripcion,
                 $dir
             );
-            GpClienteSucursal::updateOrCreate(
-                ['cliente_id' => $cliente->id, 'CLI_SUC_ID_DIRECCION' => $idDireccion],
-                $payload
-            );
+            if (!$sucursal) {
+                // INSERT — nueva sucursal
+                GpClienteSucursal::create($payload);
+                continue;
+            }
+
+            $sucursal->fill($payload);
+            if ($this->hasRealChanges($sucursal)) {
+                Log::channel('cron_process')->info('Cliente sucursal actualizado', [
+                    'ruc'     => $ruc,
+                    'changes' => $sucursal->getDirty(),
+                ]);
+                $sucursal->timestamps = true;
+                $sucursal->save();
+            } else {
+                $sucursal->timestamps = false;
+                $sucursal->save();
+            }
         }
     }
 
@@ -101,7 +136,7 @@ class SyncClientsService implements SyncClientsServiceInterface
             Log::channel('cron_process')->warning("Coordenada ignorada: Sucursal [{$addressCode}] no existe para RUC [{$ruc}]. Posiblemente eliminada en GP.");
             return;
         }
-        $sucursal->coordenadas = data_get($data, 'datosCoordenadas', '');
+        $sucursal->coordenadas = trim(data_get($data, 'datosCoordenadas', '')) ?: null;
 
         if ($sucursal->isDirty('coordenadas')) {
             $sucursal->timestamps = false;
