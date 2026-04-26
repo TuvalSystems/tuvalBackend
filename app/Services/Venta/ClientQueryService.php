@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta;
 
+use App\Enums\Admin\Sync\StatusSync;
+use App\Models\Admin\SyncLog;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpUsuario;
@@ -180,22 +182,34 @@ class ClientQueryService implements ClientQueryServiceInterface
 
     protected function createRegisterBranchClient(GpClienteSucursal $data, GpUsuario $userGp)
     {
+        $data->refresh();
         $params = [
             'ruc'                   => $data->CLI_SUC_RUC,
             'idDireccion'           => $data->CLI_SUC_ID_DIRECCION,
             'direccion'             => $data->CLI_SUC_DIRECCION,
-            'estado'                => $data->estado == 1 ? 'A' : 'I',
+            'estado'                => $data->estado === 1 ? "A" : "I",
             'usuarioIngreso'        => $userGp->USERID,
             'fechaIngreso'          => Carbon::parse($data->fecha_hora_creacion)->format('Y-m-d H:i:s'),
-            'usuarioModificacion'   => "",//$userGp->USERID,
-            'fechaModificacion'     => "",//Carbon::parse($data->fecha_hora_creacion)->format('Y-m-d H:i:s'),
+            'usuarioModificacion'   => "", //$userGp->USERID,
+            'fechaModificacion'     => "", //Carbon::parse($data->fecha_hora_creacion)->format('Y-m-d H:i:s'),
             'modo'                  => 1
         ];
 
         $resp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
         $status = data_get($resp, 'success', false);
         if (!$status) {
-            Log::error('Error al crear/modificar registro de sucursal en GP', ['params' => $params, 'response' => $resp]);
+            $message = data_get($resp, 'message', 'Error desconocido al crear/actualizar registro de sucursal en GP');
+            SyncLog::logErrorSync(
+                'SucursalesGP',
+                'API_UPDATE_OR_CREATE',
+                'updateOrCreateRegisterBranchClient',
+                $message,
+                $data->CLI_SUC_RUC,
+                $data->id, // Usamos el ID local de la sucursal
+                $params,
+                0,
+                StatusSync::FAILED
+            );
         }
     }
 }
