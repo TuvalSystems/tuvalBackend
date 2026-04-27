@@ -33,7 +33,7 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE, 'POST', $params, 'json');
     }
 
-   
+
 
     public function getStockWarehouse(array $params = [])
     {
@@ -50,7 +50,7 @@ class ApiGpService
 
     public function transferCompartment(array $params = [])
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_TRANSFERENCIA_COMPARTIMENTO, 'POST', $params , 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_TRANSFERENCIA_COMPARTIMENTO, 'POST', $params, 'json');
     }
 
 
@@ -83,7 +83,8 @@ class ApiGpService
     }
 
 
-    public function getStockExposicionByArticleAndPv(array $params = []){
+    public function getStockExposicionByArticleAndPv(array $params = [])
+    {
         return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_CONSULTA_ITEM_EXPOSICION, 'POST', $params, 'json');
     }
 
@@ -115,7 +116,8 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_MODIFICAR, 'POST', $params, 'json');
     }
 
-    public function storeSubsegmentAssociation(array $params = []){
+    public function storeSubsegmentAssociation(array $params = [])
+    {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_SUBSEGMENTO_RUC, 'POST', $params, 'json');
     }
 
@@ -146,9 +148,14 @@ class ApiGpService
     }
 
 
-     public function fetchSegmentsAbcFromGp(array $params = [])
+    public function fetchSegmentsAbcFromGp(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_LISTA_SEGMENTACION_ARTICULO_ABC, 'POST', $params, 'json');
+    }
+
+    public function updateOrCreateRegisterBranchClient(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_CREAR_MODIFICAR_ESTADO_SUCURSAL, 'POST', $params, 'json');
     }
 
 
@@ -180,12 +187,13 @@ class ApiGpService
     }
 
 
-    public function updateAllOrdersPendingSql(array $params = []){
+    public function updateAllOrdersPendingSql(array $params = [])
+    {
         return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_ORDERS, 'POST', $params, 'json');
     }
 
-    public function updateAllOrdersDetailPendingSql(array $params = []){
+    public function updateAllOrdersDetailPendingSql(array $params = [])
+    {
         return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_ORDERS_DETAIL, 'POST', $params, 'json');
     }
-
 }

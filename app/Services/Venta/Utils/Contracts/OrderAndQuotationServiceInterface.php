@@ -39,4 +39,6 @@ interface OrderAndQuotationServiceInterface
 
     public function copyPdfsFromUrlsQuote(GpCotizacion $quote, array $urls);
     public function copyImagesFromUrlsQuote(GpCotizacion $quote, array $urls);
+
+    public function validateActiveSucursal(int $sucursalId, string $contexto = 'sucursal');
 }

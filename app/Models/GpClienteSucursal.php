@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Ventas\Vendedores\GpVendedor;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -64,7 +65,12 @@ class GpClienteSucursal extends Model
 
     protected $table = 'gp_cliente_sucursals';
 
-
+    protected $casts = [
+        'cliente_id'           => 'integer',
+        'user_creator_id'       => 'integer',
+        'estado'                => 'integer',
+        'fecha_hora_creacion'   => 'datetime',
+    ];
     protected $fillable = [
         'cliente_id',
         'CLI_SUC_RUC',
@@ -83,12 +89,21 @@ class GpClienteSucursal extends Model
         'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA',
         'coordenadas',
         'user_creator_id',
-        'fecha_hora_creacion'
+        'fecha_hora_creacion',
+        'estado'
     ];
 
-
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
     public function vendedor()
     {
         return $this->belongsTo(GpVendedor::class, 'CLI_SUC_VENDEDOR', 'VEND_ID');
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(GpCliente::class, 'cliente_id', 'id');
     }
 }

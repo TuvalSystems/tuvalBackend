@@ -20,6 +20,7 @@ use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
 use App\Http\Controllers\borradores\CotizacionBorradorController;
+use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
 
@@ -349,7 +350,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
         Route::post('buscar-clientes', [ConsultasController::class, 'buscarClientes']);
         Route::get('cliente/cupo-disponible/{ruc}', [ConsultasController::class, 'obtenerCupoDisponibleCliente']);
-        Route::get('cliente/sucursales/{ruc}', [ConsultasController::class, 'obtenerSucursalesCliente']);
+        Route::post('cliente/sucursales', [ConsultasController::class, 'obtenerSucursalesCliente']);
 
 
         Route::post('new-territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
@@ -452,6 +453,13 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::group(['prefix' => 'admin'], function () {
         Route::post('lista-logs', [AdminController::class, 'ListaLogs']);
+    });
+
+
+    Route::prefix('gestion')->group(function () {
+        Route::post('lista-sucursales', [GestionSucursalesController::class, 'listaSucursales']);
+        Route::post('sucursal/detalle', [GestionSucursalesController::class, 'obtenerDetalleSucursal']);
+        Route::post('sucursal/actualizar-estado', [GestionSucursalesController::class, 'actualizarEstadoSucursal']);
     });
 });
 Route::post('/login', [AuthController::class, 'login']);

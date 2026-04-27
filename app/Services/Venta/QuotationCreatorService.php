@@ -12,6 +12,7 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,9 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function __construct(
         protected readonly QuotationRepositoryInterface $repository,
         protected readonly QuotationBuilderInterface $builder,
-        protected readonly ApprovalQuotationServiceInterface $approval
+        protected readonly ApprovalQuotationServiceInterface $approval,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+
     ) {}
 
 
@@ -33,6 +36,17 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     {
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quoteId = data_get($data, 'cotizacion_id', null);
+            $direccionFacturacion = data_get($data, 'direccion_facturacion_id');
+            $direccionDespacho = data_get($data, 'direccion_entrega_id');
+
+            // --- VALIDACIONES DE NEGOCIO ---
+            if ($direccionFacturacion) {
+                $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
+            }
+
+            if ($direccionDespacho) {
+                $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
+            }
 
             if (!empty($quoteId)) {
                 GpCotizacionDetalle::where('cotizacion_id', $quoteId)
@@ -376,4 +390,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 ->toMediaCollection('documentos_pdf', 'public');
         }
     }
+
+
+
 }
