@@ -349,7 +349,7 @@ class DispatchService implements DispatchServiceInterface
         $query = GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gr')
             ->leftJoin('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
-            ->where('gr.estado', 'enviada')
+            // ->where('gr.estado', 'enviada')
             ->where('gr.bodega_origen', trim($bodOrigin))
 
             ->select([
@@ -415,7 +415,7 @@ class DispatchService implements DispatchServiceInterface
         $query = GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gr')
             ->join('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
-            ->where('gr.estado', 'recibida')
+            // ->where('gr.estado', 'recibida')
             ->where('gr.bodega_destino', $bodOrigin)
 
             ->select([
