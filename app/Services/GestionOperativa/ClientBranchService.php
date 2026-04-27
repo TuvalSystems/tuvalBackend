@@ -55,23 +55,30 @@ class ClientBranchService implements ClientBranchServiceInterface
     {
 
         $branch = GpClienteSucursal::find($id);
+        $cotizaciones = $this->hasBranchInProcessQuotes($branch->id);
+        $pedidos =  $this->hasBranchInProcessOrders($branch->id);
+        $listQuotes = collect($cotizaciones)->pluck('cotizacion')->unique()->values()->all();
+        $lisOrders = collect($pedidos)->pluck('pedido')->unique()->values()->all();
         return [
             'sucursal' => $branch,
-            'process_quotes' => $this->hasBranchInProcessQuotes($branch->id),
-            'process_orders' => $this->hasBranchInProcessOrders($branch->id),
+            'process_quotes' =>  $cotizaciones->isNotEmpty(),
+            'list_quotes' => $listQuotes,
+            'process_orders' => $pedidos->isNotEmpty(),
+            'list_orders' => $lisOrders
         ];
     }
 
-    protected function hasBranchInProcessQuotes($branchId): bool
+    protected function hasBranchInProcessQuotes($branchId)
     {
         return GpCotizacion::where(function ($query) use ($branchId) {
             $query->where('sucursal_id', $branchId)
                 ->orWhere('sucursal_facturacion_id', $branchId);
         })
-            ->whereNotIn('estado', ['procesado', 'rechazado', 'caducado', 'eliminado'])->exists();
+            ->whereNotIn('estado', ['procesado', 'rechazado', 'caducado', 'eliminado'])
+            ->select(['id', 'cotizacion', 'estado'])->get();
     }
 
-    protected function hasBranchInProcessOrders($branchId): bool
+    protected function hasBranchInProcessOrders($branchId)
     {
         return GpPedido::where(function ($query) use ($branchId) {
             $query->where('sucursal_id', $branchId)
@@ -89,7 +96,8 @@ class ClientBranchService implements ClientBranchServiceInterface
                             });
                     });
             })
-            ->exists();
+            ->select(['id', 'pedido', 'estado'])
+            ->get();
     }
 
 
