@@ -21,9 +21,7 @@ class DispatchService implements DispatchServiceInterface
     public function __construct(
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly StockWarehouseServiceInterface $stockService
-    ) {
-
-    }
+    ) {}
 
     public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc)
     {
@@ -349,7 +347,7 @@ class DispatchService implements DispatchServiceInterface
         $query = GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gr')
             ->leftJoin('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
-            ->where('gr.estado', 'enviada')
+            ->where('gr.estado', '!=',  'pendiente')
             ->where('gr.bodega_origen', trim($bodOrigin))
 
             ->select([
@@ -415,7 +413,7 @@ class DispatchService implements DispatchServiceInterface
         $query = GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gr')
             ->join('gp_usuarios as gpu', 'gpu.id', 'gr.user_id')
-            ->where('gr.estado', 'recibida')
+            ->where('gr.estado', '!=',  'pendiente')
             ->where('gr.bodega_destino', $bodOrigin)
 
             ->select([
