@@ -29,8 +29,51 @@ class TransferenciasController extends Controller
     {
         return $this->handleApiAction(function () use ($id, $pedido, $compartimiento) {
             $data = $this->transferService->fetchSalesTransfers($id, $pedido, $compartimiento);
-            return $this->successResponse('Transferencias obtenidas', $data, 200);
+            return $this->successResponse('Transferencias obtenidas correctamente', $data, 200);
         }, 'laravel', 'transferenciasVentas');
+    }
+
+
+    public function dashboardTransferenciaVentas(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'ptoVtaId' => 'required|string'
+            ]);
+            $ptoVtaId = data_get($validate, 'ptoVtaId');
+            $data = $this->transferService->fetchSalesTransfersSunnaries($ptoVtaId);
+            return $this->successResponse('Dashboard obtenido correctamente', $data, 200);
+        }, 'guia_ventas', 'transferenciaVentasDashboard');
+    }
+
+    public function obtenerCabeceraDetalleTransferenciaPorBodega(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'origen'    => 'required|string',
+                'destino'   => 'required|string'
+            ]);
+            $origen = data_get($validate, 'origen');
+            $destino = data_get($validate, 'destino');
+            $data = $this->transferService->getSalesTransferHeadersBetweenWarehouses($origen, $destino);
+            return $this->successResponse('Cabecera transferencias obtenidas correctamente', $data, 200);
+        }, 'guia_ventas', 'obtenerCabeceraDetalleTransferenciaPorBodega');
+    }
+
+    public function obtenerListaDetalleTransferenciaPorBodega(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'origen'    => 'required|string',
+                'destino'   => 'required|string',
+                'pedido'    => 'nullable|string'
+            ]);
+            $origen = data_get($validate, 'origen');
+            $destino = data_get($validate, 'destino');
+            $pedido = data_get($validate, 'pedido');
+            $data = $this->transferService->getListSalesTransferDetailsBetweenWarehouses($origen, $destino, $pedido);
+            return $this->successResponse('Cabecera transferencias obtenidas correctamente', $data, 200);
+        }, 'guia_ventas', 'obtenerCabeceraDetalleTransferenciaPorBodega');
     }
 
 

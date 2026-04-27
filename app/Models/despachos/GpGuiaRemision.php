@@ -2,6 +2,8 @@
 
 namespace App\Models\despachos;
 
+use App\Models\GpBodega;
+use App\Models\GpRelacionPuntoVentaBodega;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -137,5 +139,16 @@ class GpGuiaRemision extends Model
     public function guiadespacho()
     {
         return $this->hasMany(GpGuiaRemisionDespacho::class, 'guia_remision_id');
+    }
+
+
+    public function guiaBodegaDestino()
+    {
+        return $this->belongsTo(GpBodega::class, 'bodega_destino', 'BOD_BODEGA');
+    }
+
+    public function guiaPuntoVentaDestino()
+    {
+        return $this->belongsTo(GpRelacionPuntoVentaBodega::class, 'bodega_destino', 'PTO_VTA_BOD_BODEGA');
     }
 }

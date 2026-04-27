@@ -238,38 +238,22 @@ class ReservasController extends Controller
      *  Funcion para obtener la lista de transferencias por reserva pero son el contador por bodega y peso por cotización
      *
      */
-    public function TransferenciasPorReservaDashboard($ptovtaId)
+    public function TransferenciasPorReservaDashboard($ptovtaId): JsonResponse
     {
-        try {
-            $data = $this->reserveService->fetchReservedTransferSummaries($ptovtaId);
-            return $this->successResponse('Cotizaciones obtenidas correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion TransferenciasPorReservaDashboard -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        return $this->handleApiAction(function () use ($ptovtaId): JsonResponse {
+            $data   = $this->reserveService->fetchReservedTransferSummaries($ptovtaId);
+            return $this->successResponse('Dashboard obtenido correctamente', $data, 200);
+        }, 'reservas_log',  'TransferenciasPorReservaDashboard');
     }
 
     public function obtenerDetalleCabeceraTransferenciasReservaPorBodega(Request $request)
     {
-        try {
-            $ptoVtaOrigen = $request->input('origen', null);
-            $ptoVtaDestino = $request->input('destino', null);
-            $data = $this->reserveService->fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino);
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $ptoVtaOrigen   = $request->input('origen', null);
+            $ptoVtaDestino  = $request->input('destino', null);
+            $data           = $this->reserveService->fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino);
             return $this->successResponse('Cabeceras transferencias obtenidas correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion transferenciasReservaPorBodega -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log',  'obtenerDetalleCabeceraTransferenciasReservaPorBodega');
     }
 
     public function ListaTransferenciasReservaPorBodega(Request $request)
