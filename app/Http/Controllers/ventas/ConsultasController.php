@@ -311,10 +311,10 @@ class ConsultasController extends Controller
                 $cliente->vendedor = $vendedor;
 
                 $sucursales = GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
-                    ->where('CLI_SUC_RUC', $cliente->CLI_RUC);
-                if ($data['tipo'] !== 'consulta') {
-                    $sucursales->where('gp_cliente_sucursals.estado', 1);
-                }
+                    ->where('CLI_SUC_RUC', $cliente->CLI_RUC)->where('estado', 1);
+                // if ($data['tipo'] !== 'consulta') {
+                //     $sucursales->where('gp_cliente_sucursals.estado', 1);
+                // }
                 $sucursales = $sucursales->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
                     ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC')
                     ->get();
