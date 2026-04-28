@@ -17,4 +17,5 @@ interface TransferServiceInterface
     public function printPickingSalesTransfers(array $payload);
     public function checkOrderTranfer();
     public function cancelPicking(array $payload, GpUsuario $user);
+     public function fetchPendingSalesTransferDeliveryNotes(string $ptoVtaOrigen, string $ptoVtaDestino);
 }

@@ -15,6 +15,7 @@ use App\Models\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
+use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Notifications\User\UserNotification;
@@ -28,6 +29,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServiceInterface
 {
@@ -452,22 +454,65 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         $id         = data_get($payload, 'id');
         $guia       = GpGuiaRemision::findOrFail($id);
         $viewData   = $this->getDataSalesTransferDeliveryNote($guia);
+        $html       = view('pdf.guia-remision-transferencia-pendiente', $viewData)->render();
+        $pdf        = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary     = $pdf->output();
+        $filename   = 'guia-remision-' . Str::slug(data_get($guia, 'GUIA_REM_GUIA_REMISION')) . '.pdf';
+        return [
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf'
+
+        ];
     }
 
-    protected function getDataSalesTransferDeliveryNote(GpGuiaRemision $guia) : array
+    protected function getDataSalesTransferDeliveryNote(GpGuiaRemision $guia): array
     {
         $detalle = GpGuiaRemisionDetalle::with([
             'guia',
             'trasladoVenta.pedidoDetalle' => function ($q) {
                 $q->select('id', 'CHECK_ALTERNATIVO');
             },
+            'trasladoVenta.pedido:id,pedido'
         ])->where('guia_remision_id', $guia->id)->get();
 
         return [
             'guia'          => $guia,
             'claveAcceso'   => $guia->GUI_REM_CODIGO,
-            'detalle'       => $detalle
+            'detalle'       => $detalle,
+            'direccion'     => $this->common->getDirection($guia->GUI_REM_ESTABLECIMIENTO),
+            'descripcion'   => $this->getDescriptionWarehouse($guia->GUI_REM_ESTABLECIMIENTO),
+            'pesoTotal'     => $this->calculateKgTotal($detalle),
+            'orderList'     => $this->getListOrdersTransfers($detalle)
         ];
+    }
+
+    protected function getDescriptionWarehouse($warehouse)
+    {
+        return GpPuntoVenta::where('PTO_VTA_ID', $warehouse)->value('PTO_VTA_DESCRIPCION');
+    }
+
+    protected function calculateKgTotal(Collection $detalle)
+    {
+        return $detalle->filter(function ($d) {
+            $traslado = data_get($d, 'trasladoVenta');
+            return $traslado  && $traslado->ART_TIPO_COMPRA != 'SERV';
+        })->sum(function ($det) {
+            $peso = (float) data_get($det, 'trasladoVenta.ART_PESO', 0);
+            $cantidad = (float) data_get($det, 'GUI_REM_CANTIDAD', 0);
+            return round($peso * $cantidad, 2);
+        });
+    }
+    protected function getListOrdersTransfers($detalle)
+    {
+        return $detalle->pluck('trasladoVenta.pedido.pedido')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
     }
 
 

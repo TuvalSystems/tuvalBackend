@@ -300,8 +300,9 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
 
         $detalle = GpGuiaRemisionReservaDetalle::with([
             'detallecotizacion' => function ($q) {
-                $q->select('id', 'CHECK_ALTERNATIVO');
-            }
+                $q->select('id', 'CHECK_ALTERNATIVO', 'ART_TIPO_COMPRA', 'ART_PESO');
+            },
+            'cotizacion:id,cotizacion'
         ])->where('guia_id', $guia->id)->get();
 
         return [
@@ -310,35 +311,30 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             'detalle'       => $detalle,
             'direccion'     => $this->common->getDirection($guia->establecimiento),
             'descripcion'   => $this->getDescriptionWarehouse($guia->establecimiento),
-            'pesoTotal'     => $this->calculateKgTotal($detalle->pluck('traslado_id')->toArray()),
-            'quoteList'     => $this->getListQuotesTranfers($detalle->pluck('traslado_id')->toArray())
+            'pesoTotal'     => $this->calculateKgTotal($detalle),
+            'quoteList'     => $this->getListQuotesTranfers($detalle)
         ];
     }
 
-    public function calculateKgTotal($trasIds)
+    public function calculateKgTotal($detalle)
     {
-        if (empty($trasIds)) {
-            return [];
-        }
-        return (float) GpTrasladosReservas::from('gp_traslados_reservas as tr')
-            ->join('gp_cotizacion_detalles as cd', 'cd.id', '=', 'tr.detalle_id')
-            ->whereIn('tr.id', $trasIds)
-            ->where('cd.ART_TIPO_COMPRA', '<>', 'SERV')
-            ->selectRaw('ROUND(SUM(COALESCE(tr.art_peso,0) * COALESCE(tr.cantidad,0)), 2) as peso_total')
-            ->value('peso_total');
+        return $detalle->filter(function ($d) {
+            $cotizacion = data_get($d, 'detallecotizacion');
+            return $cotizacion && $cotizacion->ART_TIPO_COMPRA != 'SERV';
+        })->sum(function ($det) {
+            $peso       = (float) data_get($det, 'detallecotizacion.ART_PESO', 0);
+            $cantidad   = (float) data_get($det, 'cantidad', 0);
+            return round($peso * $cantidad, 2);
+        });
     }
 
-    public function getListQuotesTranfers($ids)
+    public function getListQuotesTranfers($detalle)
     {
-        if (empty($ids)) {
-            return [];
-        }
-        return GpTrasladosReservas::from('gp_traslados_reservas as tr')
-            ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
-            ->whereIn('tr.id', $ids)
-            ->distinct()
-            ->orderBy('c.cotizacion')
-            ->pluck('c.cotizacion')
+        return $detalle->pluck('cotizacion.cotizacion')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
             ->all();
     }
 

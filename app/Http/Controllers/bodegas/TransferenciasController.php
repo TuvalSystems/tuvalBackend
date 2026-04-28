@@ -17,6 +17,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class TransferenciasController extends Controller
@@ -283,6 +284,18 @@ class TransferenciasController extends Controller
         $picking['peso_total'] = number_format($peso_total, 2, '.', '');
 
         return $picking;
+    }
+
+
+
+    public function listaGuiaRemisionPendientes(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $ptoVtaOrigen = $request->input('origen', null);
+            $ptoVtaDestino = $request->input('destino', null);
+            $data = $this->transferService->fetchPendingSalesTransferDeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
+            return $this->successResponse('Datos obtenidos correctamente', $data, 200);
+        }, 'guia_ventas', 'listaGuiaRemisionPendientes');
     }
 
     public function checkpedidostraslados()

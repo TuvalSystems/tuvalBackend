@@ -319,6 +319,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('transferencia-venta/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
         Route::post('transferencia-venta/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
         Route::post('transferencia-venta/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
+        Route::post('transferencia-venta/lista-guias-pendientes', [TransferenciasController::class, 'listaGuiaRemisionPendientes']);
         Route::post('transferencia-venta/actualizar-picking', [TransferenciasController::class, 'actualizarPickingItemsTransferenciaVenta']);
         Route::post('transferencia-venta/imprimir-picking', [TransferenciasController::class, 'imprimirPickingTransferenciaVenta']);
 

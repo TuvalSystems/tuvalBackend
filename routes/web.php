@@ -110,8 +110,7 @@ Route::prefix('bodegas')->group(function () {
     Route::get('transferencia-ventas/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
     Route::get('transferencia-ventas/bodega/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
     Route::get('transferencia-ventas/bodega/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
-
-
+    Route::get('transferencia-ventas/bodega/lista-guias-pendientes', [TransferenciasController::class, 'listaGuiaRemisionPendientes']);
 });
 
 

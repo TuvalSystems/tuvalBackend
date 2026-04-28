@@ -363,7 +363,7 @@ class GuiasderemisionController extends Controller
         }, 'guia_ventas', 'despacharGuiaRemisionVenta -GuiasderemisionController');
     }
 
-    public function generarPdfGUiaRemisionVenta(Request $request): Response{
+    public function generarPdfGuiaRemisionVenta(Request $request): Response{
         return $this->handlePdfAction(function () use ($request): Response {
              $validated = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remisions,id',

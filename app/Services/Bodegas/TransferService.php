@@ -280,7 +280,7 @@ class TransferService implements TransferServiceInterface
                 ->all(),
             'direccion' => $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'],
         ];
-         $html   = view('pdf.picking-transferencia-venta', $viewData)->render();
+        $html   = view('pdf.picking-transferencia-venta', $viewData)->render();
         $pdf    = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
@@ -317,5 +317,18 @@ class TransferService implements TransferServiceInterface
         $title = 'Picking Cancelado';
         $msg = "El usuario {$user->USERID} canceló el picking del artículo {$artCode} del pedido {$codeOrder}";
         $user->notify(new UserNotification($title, $msg));
+    }
+
+    public function fetchPendingSalesTransferDeliveryNotes(string $ptoVtaOrigen, string $ptoVtaDestino)
+    {
+        $map = GpRelacionPuntoVentaBodega::query()
+            ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$ptoVtaOrigen, $ptoVtaDestino])
+            ->pluck('PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA');
+        $waOrigin       = $map[$ptoVtaOrigen] ?? null;
+        $waDestination  = $map[$ptoVtaDestino] ?? null;
+        if (!$waOrigin || !$waDestination) {
+            return [];
+        }
+        return $this->repository->findGuidesPendingByOriginWarehouse($waOrigin, $waDestination);
     }
 }
