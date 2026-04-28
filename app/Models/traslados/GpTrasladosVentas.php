@@ -2,7 +2,13 @@
 
 namespace App\Models\traslados;
 
+use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
+use App\Enums\bodegas\guiaremision\DeliveryNoteType;
+use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\GpArticulo;
+use App\Models\GpBodega;
 use App\Models\GpPedido;
+use App\Models\GpRelacionPuntoVentaBodega;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -56,7 +62,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class GpTrasladosVentas extends Model
 {
     use HasFactory;
+    protected $appends = ['pending_transfer', 'has_guide_active'];
 
+    protected $casts = [
+        'pending_transfer' => 'float',
+    ];
     protected $fillable = [
         'pedido_id',
         'detalle_id',
@@ -93,4 +103,58 @@ class GpTrasladosVentas extends Model
     }
 
 
+    public function bodDestino()
+    {
+        return $this->belongsTo(GpBodega::class, 'bodega_destino', 'BOD_BODEGA');
+    }
+
+
+    public function relacionPuntoVenta()
+    {
+        return $this->belongsTo(GpRelacionPuntoVentaBodega::class, 'bodega_destino', 'PTO_VTA_BOD_BODEGA');
+    }
+
+    public function guiasDetalle()
+    {
+        return $this->hasMany(GpGuiaRemisionDetalle::class, 'detalle_id', 'id')
+            ->whereHas('guia', function ($q) {
+                $q->where('tipo', DeliveryNoteType::TRANSFERENCIA->value)
+                    ->where('estado', '!=', DeliveryNoteStatus::ELIMINADA->value);
+            });
+    }
+
+    public function articulo()
+    {
+        return $this->belongsTo(GpArticulo::class, 'ART_CODIGO', 'ART_CODIGO');
+    }
+
+
+    //atributos
+
+    public function scopePendientes($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('completado')->orWhere('completado', 0);
+        });
+    }
+
+
+    public function getHasGuideActiveAttribute(): bool
+    {
+        return $this->guiasDetalle()->exists();
+    }
+
+
+
+
+
+
+
+    public function getPendingTransferAttribute(): float|int
+    {
+        $cant = $this->cantidad ?? 0;
+        $res = $this->reservado ?? 0;
+        $tras = $this->trasladado ?? 0;
+        return max(0, $cant - $res - $tras);
+    }
 }

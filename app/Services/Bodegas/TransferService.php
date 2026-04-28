@@ -3,6 +3,7 @@
 namespace App\Services\Bodegas;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Models\GpBodega;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpUsuario;
@@ -11,7 +12,6 @@ use App\Notifications\User\UserNotification;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
@@ -25,9 +25,8 @@ class TransferService implements TransferServiceInterface
     public function __construct(
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService,
-        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
-        protected readonly TransferRepositoryInterface $transferRepository,
-        protected readonly FunctionsServiceInterface $functionService
+        protected readonly StockWarehouseServiceInterface $stockService,
+        protected readonly TransferRepositoryInterface $repository,
     ) {}
 
 
@@ -36,7 +35,7 @@ class TransferService implements TransferServiceInterface
     {
         $bodegas = [];
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->value('PTO_VTA_BOD_BODEGA');
-        $trasladosVentas = $this->transferRepository->findPendingSalesTransfersByOriginWarehouse($bodega, $pedido);
+        $trasladosVentas = $this->repository->findPendingSalesTransfersByOriginWarehouse($bodega, $pedido);
         if ($trasladosVentas->isEmpty()) {
             return [];
         }
@@ -46,7 +45,7 @@ class TransferService implements TransferServiceInterface
         foreach ($uniqueKeys as $key) {
             [$art, $bod] = explode('@', $key);
             $params = ['articulo' => $art, 'bodega' => $bod, 'compartimento' => ''];
-            $resp = $this->stockWarehouseService->fetchStockWarehouseCompartiment($params);
+            $resp = $this->stockService->fetchStockWarehouseCompartiment($params);
             $compMap[$key] = Arr::get($resp, 'COMPARTIMIENTO', '');
         }
 
@@ -95,7 +94,7 @@ class TransferService implements TransferServiceInterface
 
         // 5) Guías por bodega destino (una sola ida a BD por bodega)
         foreach ($bodegas as $destID => &$bod) {
-            $guias                  = $this->transferRepository->findGuidesToWarehouseDestinoAndOrigin($bodega, $destID);
+            $guias                  = $this->repository->findGuidesToWarehouseDestinoAndOrigin($bodega, $destID);
             $bod['guias']           = $guias->values()->all();
             $bod['ultimaguia']      = $guias->first();
             $bod['pedidos']         = array_values($bod['pedidos']);
@@ -117,7 +116,131 @@ class TransferService implements TransferServiceInterface
 
 
 
+    public function fetchSalesTransfersSunnaries(string $ptoVtaId)
+    {
+        $bodOrigin = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
+        $items = $this->repository->getAllSalesTransfersByWarehouse($bodOrigin)
+            ->filter(fn($t) => (float) $t->pending_transfer > 0)
+            ->map(function ($item) {
+                $item->pending_transfer         = (float) $item->pending_transfer;
+                $item->art_pesoKg               = $item->pending_transfer * (float) $item->art_peso;
+                $item->bodega_destino_desc      = $item->bodDestino->BOD_DESCRIPCION;
+                $item->ptovtaId                 = $item->relacionPuntoVenta ? $item->relacionPuntoVenta->PTO_VTA_BOD_PUNTO_VENTA : null;
+                return $item;
+            })->groupBy('bodega_destino');
 
+        $guiasGrouped = $this->repository->findCountPendingGuidesByOriginWarehouse($bodOrigin)->map(function ($item) {
+            return [
+                'bodega_destino'        => $item->bodega_destino,
+                'total'                 => $item->total,
+                'bodega_destino_desc'   => $item->guiaBodegaDestino->BOD_DESCRIPCION,
+                'ptovtaId'              => $item->guiaPuntoVentaDestino->PTO_VTA_BOD_PUNTO_VENTA
+            ];
+        });
+        $allDestinosIds =  $items->keys()->merge($guiasGrouped->keys())->unique();
+        return $allDestinosIds->map(function ($destId) use ($items, $guiasGrouped) {
+            $traslados      = $items->get($destId); // Puede ser null
+            $guiaInfo       = $guiasGrouped->get($destId); // Puede ser null
+            $bodegaNombre   = $traslados ? $traslados->first()->bodega_destino_desc : data_get($guiaInfo, 'bodega_destino_desc', 'Desconocida');
+            return [
+                'bodega'            => $bodegaNombre,
+                'ptovtaId'          => $traslados ? $traslados->first()->ptovtaId : data_get($guiaInfo, 'ptovtaId'), // Usamos el que entra por parámetro, es más seguro
+                'pesoTon'           => $traslados ? round($traslados->sum('art_pesoKg') / 1000, 2) : 0,
+                'totalItems'        => $traslados ? $traslados->count() : 0,
+                'totalGuidePending' => data_get($guiaInfo, 'total', 0),
+            ];
+        })->values()->all();
+    }
+
+
+    public function getSalesTransferHeadersBetweenWarehouses(string $origen, string $destino)
+    {
+        $map = GpRelacionPuntoVentaBodega::query()
+            ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$origen, $destino])
+            ->pluck('PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA');
+
+        $waOrigin       = $map[$origen] ?? null;
+        $waDestination  = $map[$destino] ?? null;
+        if (!$waOrigin || !$waDestination) {
+            return [];
+        }
+        $waDestinationDesc = GpBodega::where('BOD_BODEGA', $waDestination)->value('BOD_DESCRIPCION');
+        $transferHeaders = $this->repository->getAllSalesTransfersByWarehouseOriginAndDestination($waOrigin, $waDestination);
+        if ($transferHeaders->isEmpty()) {
+            return [];
+        }
+        $items = $transferHeaders->filter(fn($tr) => (float) $tr->pending_transfer > 0)->map(function ($item) {
+            $qty                        = (float) $item->pending_transfer;
+            $kg                         = (float) $item->ART_PESO;
+            $item->art_pesoKg           = $qty * $kg;
+            $item->orderNumber          = $item->pedido->pedido;
+            $item->usuario              = $item->pedido->USERID;
+            $item->ART_CANTIDAD_DECIMAL = (float) $item->articulo->ART_DECIMAL_CANTIDAD;
+            //elimino esas relaciones porque no quiero cargarlas en la data
+            $item->makeHidden(['pedido', 'articulo', 'bodDestino', 'relacionPuntoVenta']);
+            return $item;
+        })->values();
+
+        $pesoTotal = round($items->sum('art_pesoKg') / 1000, 2);
+        $listOrdersByWarehouse = $this->getFiltersNumOrdersByWarehouses($items);
+        return [
+            'origen'         => $waOrigin,
+            'ptoOrigin'         => $origen,
+            'bodDestination'    => $waDestination,
+            'ptoDestination'    => $destino,
+            'destination'      => $waDestinationDesc,
+            'pesoTotal'         => $pesoTotal,
+            'listsOrders'      => $listOrdersByWarehouse
+        ];
+    }
+    protected function getFiltersNumOrdersByWarehouses($items)
+    {
+        return collect($items)
+            ->pluck('orderNumber')
+            ->filter()
+            ->unique()
+            ->values()
+            ->map(fn($c) => $c);
+    }
+
+
+
+    public function getListSalesTransferDetailsBetweenWarehouses(string $origen, string $destino, ?string $pedido = null)
+    {
+        $map = GpRelacionPuntoVentaBodega::query()
+            ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$origen, $destino])
+            ->pluck('PTO_VTA_BOD_BODEGA', 'PTO_VTA_BOD_PUNTO_VENTA');
+
+        $waOrigin       = $map[$origen] ?? null;
+        $waDestination  = $map[$destino] ?? null;
+        if (!$waOrigin || !$waDestination) {
+            return [];
+        }
+        $traslados = $this->repository->getAllSalesTransfersByWarehouseOriginAndDestination($waOrigin, $waDestination, $pedido);
+        if ($traslados->isEmpty()) {
+            return [];
+        }
+
+        return $traslados->filter(fn($tr) => (float) $tr->pending_transfer > 0)
+        ->map(function ($item) use ($waOrigin) {
+            $item->orderNumber              = $item->pedido->pedido;
+            $item->usuario                  = $item->pedido->USERID;
+            $item->ART_CANTIDAD_DECIMAL     = (float) $item->articulo->ART_DECIMAL_CANTIDAD;
+            $item->fecha                    = Carbon::parse($item->created_at)->format('Y-m-d H:i:s');
+            $artApi                         = $this->fetchItemCompartmentByWarehouse($item->ART_CODIGO, $waOrigin);
+            $item->compartimiento           = Arr::get($artApi, 'COMPARTIMIENTO', '');
+            $item->existencia               = round(Arr::get($artApi, 'STOCK_DISPONIBLE', 0), 2);
+            //elimino esas relaciones porque no quiero cargarlas en la data
+            $item->makeHidden(['pedido', 'articulo', 'bodDestino', 'relacionPuntoVenta']);
+            return $item;
+        })->values();
+    }
+
+    protected function fetchItemCompartmentByWarehouse($artCode, $warehouse)
+    {
+        $params = ['articulo' => $artCode, 'bodega' => $warehouse, 'compartimento' => ''];
+        return $this->stockService->fetchStockWarehouseCompartiment($params);
+    }
 
     public function checkOrderTranfer()
     {
