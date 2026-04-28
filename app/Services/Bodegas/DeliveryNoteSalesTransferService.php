@@ -446,7 +446,29 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
 
 
+    /** proceso para generar pdf de guias de remision pendientes */
+    public function generatePdfDeliveryNotesSalesTransfer(array $payload)
+    {
+        $id         = data_get($payload, 'id');
+        $guia       = GpGuiaRemision::findOrFail($id);
+        $viewData   = $this->getDataSalesTransferDeliveryNote($guia);
+    }
 
+    protected function getDataSalesTransferDeliveryNote(GpGuiaRemision $guia) : array
+    {
+        $detalle = GpGuiaRemisionDetalle::with([
+            'guia',
+            'trasladoVenta.pedidoDetalle' => function ($q) {
+                $q->select('id', 'CHECK_ALTERNATIVO');
+            },
+        ])->where('guia_remision_id', $guia->id)->get();
+
+        return [
+            'guia'          => $guia,
+            'claveAcceso'   => $guia->GUI_REM_CODIGO,
+            'detalle'       => $detalle
+        ];
+    }
 
 
 

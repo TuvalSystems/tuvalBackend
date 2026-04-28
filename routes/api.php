@@ -316,12 +316,14 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
         //transferencia de ventas
-        Route::post('transferencia-ventas/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
-        Route::post('transferencia-ventas/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
-        Route::post('transferencia-ventas/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
+        Route::post('transferencia-venta/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
+        Route::post('transferencia-venta/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
+        Route::post('transferencia-venta/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
+        Route::post('transferencia-venta/actualizar-picking', [TransferenciasController::class, 'actualizarPickingItemsTransferenciaVenta']);
+        Route::post('transferencia-venta/imprimir-picking', [TransferenciasController::class, 'imprimirPickingTransferenciaVenta']);
 
         //creacion de guia de remision de transferencia de venta
-        Route::post('transferencias/cancelar-picking', [TransferenciasController::class, 'cancelarPickingV2']);
+        Route::post('transferencia-venta/cancelar-picking', [TransferenciasController::class, 'cancelarPickingV2']);
         Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
         Route::post('transferencia-venta/guia-remision/despachar-guia-transferencia-venta', [GuiasderemisionController::class, 'despacharGuiaRemisionVenta']);

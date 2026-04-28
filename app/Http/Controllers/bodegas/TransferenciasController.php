@@ -17,6 +17,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
+use Symfony\Component\HttpFoundation\Response;
 
 class TransferenciasController extends Controller
 {
@@ -77,6 +78,36 @@ class TransferenciasController extends Controller
     }
 
 
+    public function actualizarPickingItemsTransferenciaVenta(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'items' => 'required|array'
+            ]);
+            $payload = data_get($validate, 'items');
+            $data = $this->transferService->updatePickingSalesTransfers($payload);
+            return $this->successResponse('Transferencias obtenidas correctamente', $data, 200);
+        }, 'guia_ventas', 'actualizarPickingItemsTransferenciaVenta');
+    }
+
+
+    public function imprimirPickingTransferenciaVenta(Request $request): Response
+    {
+        return $this->handlePdfAction(function () use ($request): Response {
+            $validated = $request->validate([
+                'origen'                => ['required', 'string', 'min:1'],
+                'destino'               => ['required', 'string', 'min:1'],
+                'pesototal'             => ['nullable', 'string'],
+                'items'                 => ['required', 'array', 'min:1'],
+                'items.*.id'            => ['required', 'integer', 'distinct', 'exists:gp_traslados_ventas,id'],
+                'items.*.seleccionado'  => ['required', 'numeric', 'min:0.001'],
+            ]);
+            $data = $this->transferService->printPickingSalesTransfers($validated);
+            return $this->buildPdfResponse($data);
+        }, 'guia_ventas', 'imprimirPickingTransferenciaVenta');
+    }
+
+
 
     public function recibosventa($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -133,9 +164,9 @@ class TransferenciasController extends Controller
             $validate = $request->validate([
                 'payload' => 'required'
             ]);
-            $payload = data_get($validate, 'payload');
+            $payload    = data_get($validate, 'payload');
             $data       = $this->transferService->cancelPicking($payload, $request->user());
-            return $this->successResponse('Transferencias obtenidas', $data, 200);
+            return $this->successResponse('Picking cancelado', $data, 200);
         }, 'laravel', 'cancelarPickingV2');
     }
 

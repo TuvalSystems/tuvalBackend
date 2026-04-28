@@ -11,5 +11,6 @@ interface DeliveryNoteSalesTransferServiceInterface
 
     public function dispatchDeliveryNoteSalesTransfer(int $guiaId, GpUsuario $user);
 
+     public function generatePdfDeliveryNotesSalesTransfer(array $payload);
     public function receiveDeliveryNoteSalesTransfer(array $payload, GpUsuario $user);
 }
