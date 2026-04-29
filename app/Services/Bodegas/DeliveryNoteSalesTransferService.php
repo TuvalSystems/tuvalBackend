@@ -45,18 +45,21 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
     public function createDeliveryNoteSalesTransfer(array $payload, GpUsuario $user)
     {
-        $items              = data_get($payload, 'items', []);
+        $ptoOrigen          = data_get($payload, 'pto_origen');
+        $ptoDestino         = data_get($payload, 'pto_destino');
+        $bodegaOrigen       = data_get($payload, 'bod_origen');
+        $bodegaDestino      = data_get($payload, 'bod_destino');
+        $datavehicle        = $this->common->getVehicleAndCarrierInfo($payload);
+        $dirOrigin          = $this->common->getDirection($ptoOrigen);
+        $dirDestination     = $this->common->getDirection($ptoDestino);
+        $bodGuide           = $this->common->getWarehouseDescriptionOrigin($bodegaOrigen);
         $tipo               = DeliveryNoteType::TRANSFERENCIA->value;
         $ptoEmision         = DeliveryNoteConstants::PTO_EMISION_DEFAULT;
-        $primerItem         = data_get($payload, 'items.0', []);
-        $documento          = data_get($primerItem, 'pedido', []);
-        $bodegaOrigen       = data_get($primerItem, 'bodega_origen');
-        $bodegaDestino      = data_get($primerItem, 'bodega_destino');
-        $bodGuide           = $this->common->getWarehouseDescriptionOrigin($bodegaOrigen);
-        $ptoOrigen          = $this->common->getPtoVtaByWarehouse($bodegaOrigen);
-        $ptoDestino         = $this->common->getPtoVtaByWarehouse($bodegaDestino);
-        $dirOrigen          = $this->common->getDirection($ptoOrigen);
-        $dirDestino         = $this->common->getDirection($ptoDestino);
+
+
+        $items              = data_get($payload, 'detalle', []);
+        $primerItem         = data_get($payload, 'detalle.0', []);
+        $documento          = data_get($primerItem, 'orderNumber', []);
         $idemKey            = $this->makeIdempotencyKeySalesTransfer($payload,  $tipo, $primerItem,  $ptoOrigen, $ptoDestino);
 
         $lock = Cache::lock('create_transfer_guide_' . $idemKey, 15);
@@ -73,16 +76,15 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                 'bodGuide'          => $bodGuide,
                 'bodegaOrigen'      => $bodegaOrigen,
                 'bodegaDestino'     => $bodegaDestino,
-                'dirOrigin'         => $dirOrigen,
-                'dirDestino'        => $dirDestino,
+                'dirOrigin'         => $dirOrigin,
+                'dirDestino'        => $dirDestination,
                 'ptoOrigen'         => $ptoOrigen,
                 'documento'         => $documento,
                 'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
                 'motivoTraslado'    => ReasonForTransfer::TRANSFERENCIA->value,
-
             ];
 
-            $guia = DB::transaction(function () use ($payload, &$infoGuia, $items, $ptoOrigen, $ptoEmision) {
+            $guia = DB::transaction(function () use ($payload, &$infoGuia, $items, $ptoOrigen, $ptoEmision, $datavehicle) {
                 $limitQty           = $this->validateQtyTransferedItems($items);
                 if ($limitQty) {
                     throw new \RuntimeException($limitQty);
@@ -101,7 +103,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
                     $numGuide   = $this->common->formatGuideNumber($ptoOrigen, $ptoEmision, $secuencial);
                     $infoGuia['secuencial'] = $secuencial;
                     $infoGuia['numeroGuia'] = $numGuide;
-                    $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia);
+                    $guia = $this->saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia, $datavehicle);
                     $this->saveDetailDeliveryNoteSalesTransferWeb($guia->id, $items);
                     $this->updateOrderAndDetail($items);
 
@@ -130,19 +132,19 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             'pto_origen'        => $ptoOrigen,
             'pto_destino'       => $ptoDestino,
             'tipo'              => $tipo,
-            'bodega_origen'     => data_get($primerItem, 'pedido.bodega_origen'),
-            'bodega_destino'    => data_get($primerItem, 'pedido.bodega_destino'),
-            // 'secuencial'        => $secuencial,
-            // 'num_guide'         => $numGuide,
-            'fecha_inicio'      => data_get($payload, 'fecha_inicio'),
-            'fecha_fin'         => data_get($payload, 'fecha_fin'),
-            'detalle'           => collect(data_get($payload, 'items', []))->map(fn($item) => [
+            'bodega_origen'     => data_get($payload, 'bod_origen'),
+            'bodega_destino'    => data_get($payload, 'bod_destino'),
+            'fecha_inicio'      => data_get($payload, 'fecha_salida'),
+            'fecha_fin'         => data_get($payload, 'fecha_llegada'),
+            'vehiculo'          => data_get($payload, 'vehiculo_id', null) ?? data_get($payload, 'placa', null),
+            'transportista'     => data_get($payload, 'transporte_id') ?? data_get($payload, 'identificacion', null),
+            'detalle'           => collect(data_get($payload, 'detalle', []))->map(fn($item) => [
                 'id'            => data_get($item, 'id'),
                 'art_code'      => data_get($item, 'ART_CODIGO'),
                 'pedido_id'     => data_get($item, 'pedido_id'),
-                'pedido'        => data_get($item, 'pedido'),
+                'pedido'        => data_get($item, 'orderNumber'),
                 'sel'           => (float) (data_get($item, 'seleccionado', 0)),
-                'pendiente'     => (float) (data_get($item, 'pendiente', 0)),
+                'pendiente'     => (float) (data_get($item, 'pending_transfer', 0)),
             ])->sortBy('id')->values()->all(),
         ];
 
@@ -195,9 +197,9 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         return $detail;
     }
 
-    protected function saveHeaderDeliveryNoteSalesTransferWeb($payload, $infoGuia)
+    protected function saveHeaderDeliveryNoteSalesTransferWeb(array $payload,array $infoGuia, array $dataVehicle)
     {
-        $guia = $this->builder->buildDeliveryNoteSalesTransferHeader($payload, $infoGuia);
+        $guia = $this->builder->buildDeliveryNoteSalesTransferHeader($payload, $infoGuia, $dataVehicle);
         $guia->save();
         return $guia->refresh();
     }
@@ -459,7 +461,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
         $binary     = $pdf->output();
-        $filename   = 'guia-remision-' . Str::slug(data_get($guia, 'GUIA_REM_GUIA_REMISION')) . '.pdf';
+        $filename   = 'guia-remision-' . Str::slug(data_get($guia, 'GUI_REM_GUIA_REMISION')) . '.pdf';
         return [
             'binary'        => $binary,
             'filename'      => $filename,

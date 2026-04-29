@@ -327,6 +327,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('transferencia-venta/cancelar-picking', [TransferenciasController::class, 'cancelarPickingV2']);
         Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
+        Route::post('transferencia-venta/guia-remision/generar/pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/despachar-guia-transferencia-venta', [GuiasderemisionController::class, 'despacharGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/recibir-guia-transferencia-venta', [GuiasderemisionController::class, 'recibirGuiaRemisionVenta']);
 

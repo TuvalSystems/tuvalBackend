@@ -82,8 +82,8 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
             'bod_origen'        => data_get($payload, 'bod_origen', null),
             'vehiculo'          => data_get($payload, 'vehiculo_id', null) ?? data_get($payload, 'placa', null),
             'transportista'     => data_get($payload, 'transporte_id') ?? data_get($payload, 'identificacion', null),
-            'fecha_inicio'      => data_get($payload, 'fecha_inicio', null),
-            'fecha_fin'         => data_get($payload, 'fecha_fin', null),
+            'fecha_inicio'      => data_get($payload, 'fecha_salida', null),
+            'fecha_fin'         => data_get($payload, 'fecha_llegada', null),
             'detalle'           => collect($payload['detalle'])->map(fn($d) => [
                 'id'            => data_get($d, 'id'),
                 'sel'           => (float) (data_get($d, 'seleccionado',  0)),
