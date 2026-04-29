@@ -10,7 +10,7 @@ use App\Models\GpUsuario;
 interface DeliveryNoteSalesTransferBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
-    public function buildDeliveryNoteSalesTransferHeader($payload, $infoGuia): GpGuiaRemision;
+    public function buildDeliveryNoteSalesTransferHeader(array $payload, array $infoGuia, array  $dataVehicle): GpGuiaRemision;
 
     public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, array $items, string $user, string $hash ,?string $movimiento): array;
 

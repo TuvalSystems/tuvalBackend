@@ -8,6 +8,7 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\GpArticulo;
 use App\Models\GpBodega;
 use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Models\GpRelacionPuntoVentaBodega;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -100,6 +101,11 @@ class GpTrasladosVentas extends Model
     public function pedido(): BelongsTo
     {
         return $this->belongsTo(GpPedido::class, 'pedido_id');
+    }
+
+    public function pedidoDetalle(): BelongsTo
+    {
+        return $this->belongsTo(GpPedidoDetalle::class, 'detalle_id');
     }
 
 
