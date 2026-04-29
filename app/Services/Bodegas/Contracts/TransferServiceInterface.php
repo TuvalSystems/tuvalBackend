@@ -8,7 +8,6 @@ interface TransferServiceInterface
 {
     // Define los métodos que debe implementar el servicio
 
-    public function fetchSalesTransfers($id, $pedido = null, $compartimiento = null);
 
     public function fetchSalesTransfersSunnaries(string $ptoVtaId);
     public function getSalesTransferHeadersBetweenWarehouses(string $origen, string $destino);

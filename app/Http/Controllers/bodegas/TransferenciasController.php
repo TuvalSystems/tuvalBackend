@@ -27,15 +27,6 @@ class TransferenciasController extends Controller
     public function __construct(protected readonly TransferServiceInterface $transferService) {}
 
 
-    public function transferenciasVentas($id, $pedido = null, $compartimiento = null)
-    {
-        return $this->handleApiAction(function () use ($id, $pedido, $compartimiento) {
-            $data = $this->transferService->fetchSalesTransfers($id, $pedido, $compartimiento);
-            return $this->successResponse('Transferencias obtenidas correctamente', $data, 200);
-        }, 'laravel', 'transferenciasVentas');
-    }
-
-
     public function dashboardTransferenciaVentas(Request $request)
     {
         return $this->handleApiAction(function () use ($request) {
