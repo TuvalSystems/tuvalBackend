@@ -178,7 +178,7 @@
                     <td>
                         <div class="bordered fondogris">
                             <h1>GUÍA DE REMISIÓN</h1>
-                            <h1>No. {{$guia['GUIA_REM_GUIA_REMISION']}}</h1>
+                            <h1>No. {{$guia['GUI_REM_GUIA_REMISION']}}</h1>
                             <table class="table table-striped">
                                 <tbody>
                                     <tr>
