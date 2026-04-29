@@ -176,26 +176,36 @@
             <table class="table table-sm table-striped tablacarrito">
                 <thead>
                     <tr>
-                        <th class="nowrap text-uppercase font-weight-bold">Compartimiento / Existencia </th>
-                        <th>Pedido</th>
-                        <th>CTL </th>
-                        <th>Descripción</th>
-                        <th>UDM</th>
-                        <th class="text-right "> Cantidad</th>
-                        <th class="text-right "> Peso</th>
-
+                        <td scope>#</td>
+                        <th scope class="nowrap text-uppercase font-weight-bold">Compartimiento / Existencia </th>
+                        <th scope>Pedido</th>
+                        <th scope>CTL </th>
+                        <th scope>Descripción</th>
+                        <th scope>UDM</th>
+                        <th scope class="text-right "> Cant</th>
+                        <th scope class="text-right "> Peso</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($rows as $key => $value)
                     <tr>
-                        <td>{{$value['compartimiento']}} / {{$value['existencia']}} </td>
+                        <td>{{ $key +1  }}</td>
+                        <td>
+                            <table style="width:100%">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-left"><b>{{$value['compartimiento']}}</b></td>
+                                        <td class="text-left">{{$value['existencia']}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
                         <td>{{$value['orderNumber']}}</td>
                         <td><b>{{$value['ART_CODIGO_TRES_LETRAS']}}</b></td>
                         <td>{{$value['ART_DESCRIPCION']}}</td>
                         <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
                         <td class="text-right"><b>{{$value['seleccionado']}}</b></td>
-                        <td class="text-right">{{ number_format($value['peso_kg'], 2) }} Kg</td>
+                        <td class="text-right">{{ number_format($value['peso_kg'], 2) }}Kg</td>
                     </tr>
                     @endforeach
                 </tbody>
