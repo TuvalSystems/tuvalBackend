@@ -16,6 +16,7 @@ use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
@@ -57,7 +58,7 @@ class TransferService implements TransferServiceInterface
             ];
         });
         $allDestinosIds =  $items->keys()->merge($guiasGrouped->keys())->unique();
-         $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
+        $this->logisticsOperationsService->assignAccessCodesForPendingGuides();
         return $allDestinosIds->map(function ($destId) use ($items, $guiasGrouped) {
             $traslados      = $items->get($destId); // Puede ser null
             $guiaInfo       = $guiasGrouped->get($destId); // Puede ser null
@@ -116,7 +117,7 @@ class TransferService implements TransferServiceInterface
             'listsOrders'       => $listOrdersByWarehouse
         ];
     }
-    protected function getFiltersNumOrdersByWarehouses($items)
+    protected function getFiltersNumOrdersByWarehouses(Collection $items)
     {
         return collect($items)
             ->pluck('orderNumber')
@@ -128,7 +129,7 @@ class TransferService implements TransferServiceInterface
 
 
 
-    public function getListSalesTransferDetailsBetweenWarehouses(string $origen, string $destino, ?string $pedido = null)
+    public function getListSalesTransferDetailsBetweenWarehouses(string $origen, string $destino, ?string $pedido = null, ?string $bin = null)
     {
         $map = GpRelacionPuntoVentaBodega::query()
             ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$origen, $destino])
@@ -156,10 +157,14 @@ class TransferService implements TransferServiceInterface
                 //elimino esas relaciones porque no quiero cargarlas en la data
                 $item->makeHidden(['pedido', 'articulo', 'bodDestino', 'relacionPuntoVenta']);
                 return $item;
-            })->values();
+            })
+            ->filter(function ($item) use ($bin) {
+                return empty($bin) || trim($item->compartimiento) === trim($bin);
+            })
+            ->values();
     }
 
-    protected function fetchItemCompartmentByWarehouse($artCode, $warehouse)
+    protected function fetchItemCompartmentByWarehouse(string $artCode, string $warehouse)
     {
         $params = ['articulo' => $artCode, 'bodega' => $warehouse, 'compartimento' => ''];
         return $this->stockService->fetchStockWarehouseCompartiment($params);

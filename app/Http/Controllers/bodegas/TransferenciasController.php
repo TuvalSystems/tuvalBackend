@@ -59,12 +59,14 @@ class TransferenciasController extends Controller
             $validate = $request->validate([
                 'origen'    => 'required|string',
                 'destino'   => 'required|string',
-                'pedido'    => 'nullable|string'
+                'pedido'    => 'nullable|string',
+                'compartimiento' => 'nullable|string'
             ]);
             $origen = data_get($validate, 'origen');
             $destino = data_get($validate, 'destino');
             $pedido = data_get($validate, 'pedido');
-            $data = $this->transferService->getListSalesTransferDetailsBetweenWarehouses($origen, $destino, $pedido);
+            $bin    = data_get($validate, 'compartimiento');
+            $data = $this->transferService->getListSalesTransferDetailsBetweenWarehouses($origen, $destino, $pedido, $bin);
             return $this->successResponse('Cabecera transferencias obtenidas correctamente', $data, 200);
         }, 'guia_ventas', 'obtenerCabeceraDetalleTransferenciaPorBodega');
     }
