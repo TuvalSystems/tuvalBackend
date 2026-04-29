@@ -1299,7 +1299,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      *
      */
 
-    public function fetchReservedTransferSummaries($ptoVtaId): array
+    public function fetchReservedTransferSummaries(string $ptoVtaId): array
     {
         $bodOrigin = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVtaId)->value('PTO_VTA_BOD_BODEGA');
         $traslados = $this->reservaRepository->getAllTransferReservedByWarehouses($bodOrigin);
@@ -1328,7 +1328,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         })->values()->all();
     }
 
-    public function fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino): array
+    public function fectchReservedTransferDetailsHeader(string $ptoVtaOrigen, string  $ptoVtaDestino): array
     {
         $map = GpRelacionPuntoVentaBodega::query()
             ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$ptoVtaOrigen, $ptoVtaDestino])
@@ -1339,7 +1339,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
             return [];
         }
-        $bodegaDestinoDescripcion = GpBodega::where('BOD_BODEGA', $waDestination)->value('BOD_DESCRIPCION');
+        $waDescripcions = GpBodega::query()
+            ->whereIn('BOD_BODEGA', [$waOrigin, $waDestination])
+            ->pluck('BOD_DESCRIPCION', 'BOD_BODEGA');
         $traslados = $this->reservaRepository->getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination);
         if (!$traslados) {
             return [];
@@ -1354,11 +1356,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $pesoTotal = round($items->sum('art_pesoKg') / 1000, 2);
         return [
             'bodOrigin'         => $waOrigin,
+            'origenDescription' => $waDescripcions[$waOrigin],
             'ptoOrigin'         => $ptoVtaOrigen,
             'origin'            => $waOrigin,
             'bodDestination'    => $waDestination,
             'ptoDestination'    => $ptoVtaDestino,
-            'destination'       => $bodegaDestinoDescripcion,
+            'destination'       => $waDescripcions[$waDestination],
             'pesoTotal'         => $pesoTotal,
             'listaQuotations'   => $listQuotations
         ];
@@ -1374,7 +1377,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->map(fn($c) => $c);
     }
 
-    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation = null): array
+    public function fetchReservedTransfersByDestinationWarehouses(string $ptoVtaOrigen, string $ptoVtaDestino, ?string $quotation = null): array
     {
         $map = GpRelacionPuntoVentaBodega::query()
             ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$ptoVtaOrigen, $ptoVtaDestino])

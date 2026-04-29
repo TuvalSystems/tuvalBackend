@@ -32,7 +32,7 @@ class TransferService implements TransferServiceInterface
 
 
 
-  
+
 
 
     public function fetchSalesTransfersSunnaries(string $ptoVtaId)
@@ -84,7 +84,9 @@ class TransferService implements TransferServiceInterface
         if (!$waOrigin || !$waDestination) {
             return [];
         }
-        $waDestinationDesc = GpBodega::where('BOD_BODEGA', $waDestination)->value('BOD_DESCRIPCION');
+        $waDescripcions = GpBodega::query()
+            ->whereIn('BOD_BODEGA', [$waOrigin, $waDestination])
+            ->pluck('BOD_DESCRIPCION', 'BOD_BODEGA');
         $transferHeaders = $this->repository->getAllSalesTransfersByWarehouseOriginAndDestination($waOrigin, $waDestination);
         if ($transferHeaders->isEmpty()) {
             return [];
@@ -105,10 +107,11 @@ class TransferService implements TransferServiceInterface
         $listOrdersByWarehouse = $this->getFiltersNumOrdersByWarehouses($items);
         return [
             'origen'            => $waOrigin,
+            'origenDescription' => $waDescripcions[$waOrigin],
             'ptoOrigin'         => $origen,
             'bodDestination'    => $waDestination,
             'ptoDestination'    => $destino,
-            'destination'       => $waDestinationDesc,
+            'destination'       => $waDescripcions[$waDestination],
             'pesoTotal'         => $pesoTotal,
             'listsOrders'       => $listOrdersByWarehouse
         ];

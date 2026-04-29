@@ -33,9 +33,9 @@ interface InventoryReservationServiceInterface
 
     /** proceso para lista de transferencias por reservas */
 
-    public function fetchReservedTransferSummaries($ptoVtaId);
-    public function fectchReservedTransferDetailsHeader($ptoVtaOrigen, $ptoVtaDestino): array;
-    public function fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation = null): array;
+    public function fetchReservedTransferSummaries(string $ptoVtaId);
+    public function fectchReservedTransferDetailsHeader(string $ptoVtaOrigen, string $ptoVtaDestino): array;
+    public function fetchReservedTransfersByDestinationWarehouses(string $ptoVtaOrigen, string $ptoVtaDestino, ?string $quotation = null): array;
 
     public function updatePickingItemsSelected($items): int;
 
