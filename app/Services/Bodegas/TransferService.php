@@ -124,7 +124,7 @@ class TransferService implements TransferServiceInterface
             ->filter(fn($t) => (float) $t->pending_transfer > 0)
             ->map(function ($item) {
                 $item->pending_transfer         = (float) $item->pending_transfer;
-                $item->art_pesoKg               = $item->pending_transfer * (float) $item->art_peso;
+                $item->art_pesoKg               = $item->pending_transfer * (float) $item->ART_PESO;
                 $item->bodega_destino_desc      = $item->bodDestino->BOD_DESCRIPCION;
                 $item->ptovtaId                 = $item->relacionPuntoVenta ? $item->relacionPuntoVenta->PTO_VTA_BOD_PUNTO_VENTA : null;
                 return $item;
