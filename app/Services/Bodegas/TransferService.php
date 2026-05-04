@@ -159,7 +159,11 @@ class TransferService implements TransferServiceInterface
                 return $item;
             })
             ->filter(function ($item) use ($bin) {
-                return empty($bin) || trim($item->compartimiento) === trim($bin);
+                $search = trim($bin);
+                if (empty($search)) {
+                    return true;
+                }
+                return stripos($item->compartimiento, $search) !== false;
             })
             ->values();
     }
