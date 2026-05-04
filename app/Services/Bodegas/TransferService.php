@@ -163,7 +163,7 @@ class TransferService implements TransferServiceInterface
                 if (empty($search)) {
                     return true;
                 }
-                return stripos($item->compartimiento, $search) !== false;
+                return Str::contains(Str::upper($item->compartimiento), Str::upper($search));
             })
             ->values();
     }
