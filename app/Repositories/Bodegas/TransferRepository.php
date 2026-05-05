@@ -129,7 +129,7 @@ class TransferRepository implements TransferRepositoryInterface
             ->where('ggr.bodega_destino', $bodDestino)
             ->where('ggr.estado', 'pendiente')
             ->where('ggr.tipo', 'transferencia')
-            ->select('ggr.id', 'ggr.GUI_REM_BODEGA', 'ggr.GUI_REM_FECHA_INICIO', 'ggr.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA',  'ggr.GUI_REM_PLACA')
+            ->select('ggr.id', 'ggr.GUI_REM_GUIA_REMISION','ggr.GUI_REM_BODEGA', 'ggr.GUI_REM_FECHA_INICIO', 'ggr.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA',  'ggr.GUI_REM_PLACA')
             ->orderByDesc('ggr.created_at')
             ->get();
     }
