@@ -605,7 +605,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function groupItemsByOrder(Collection $items, Collection $movimientos, Collection  $traslados): array
+    protected function groupItemsByOrder( \Illuminate\Support\Collection $items, Collection $movimientos, Collection  $traslados): array
     {
         $groups = [];
         foreach ($items as $itm) {
@@ -679,7 +679,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function updateQtyOrdersStockWeb(GpGuiaRemision $guia, array  $item, array  $traslado)
+    protected function updateQtyOrdersStockWeb(GpGuiaRemision $guia, array  $item, GpTrasladosVentas|array  $traslado)
     {
         $detalleId          = data_get($traslado, 'detalle_id');
         $guiaDetailId       = data_get($item, 'id');
