@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Builder;
 
 interface OrderRepositoryInterface
 {
-    public function getAllDetailsOrderById($id);
+    public function getAllDetailsOrderById(int $id);
 
-    public function getSuppliersByOrderAndItem($pedidoId, $itemId);
-    public function getPurchaseOrdersBySupplier($proveedorId);
+    public function getSuppliersByOrderAndItem(int $pedidoId, int $itemId);
+    public function getPurchaseOrdersBySupplier(int $proveedorId);
 
     public function getStockByItemAndWarehouse(array $itemId, string $warehouse);
 
@@ -27,7 +27,7 @@ interface OrderRepositoryInterface
     /** functiones  para el proceso de facturar existentes */
 
 
-    public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder);
+    public function getStockOrderDetailForCheckExistence(string $warehouseId, array  $detailOrder);
 
 
 
