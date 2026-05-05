@@ -52,7 +52,8 @@ class UserService implements UserServiceInterface
                 'USERID',
                 'USERNAME',
                 'must_change_password',
-                'status'
+                'status',
+                'app_access'
             ])
             ->first();
     }
@@ -107,11 +108,12 @@ class UserService implements UserServiceInterface
     public function formatUserData($user): array
     {
         return [
-            'id'        => $user->id,
-            'USERID'    => $user->USERID,
-            'USERNAME'  => $user->USERNAME,
-            'perfil_id' => $user->perfil_id,
-            'status'    => $user->status,
+            'id'            => $user->id,
+            'USERID'        => $user->USERID,
+            'USERNAME'      => $user->USERNAME,
+            'perfil_id'     => $user->perfil_id,
+            'status'        => $user->status,
+            'app_access'    => $user->app_access
         ];
     }
 
