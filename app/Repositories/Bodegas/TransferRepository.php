@@ -61,13 +61,16 @@ class TransferRepository implements TransferRepositoryInterface
 
     public function getAllSalesTransfersByWarehouseOriginAndDestination(string $origin, string $destination, ?string $orderNumber = null)
     {
-        $filtroPedido = function ($q) {
+        $filtroPedido = function ($q) use ($orderNumber) {
             $q->whereNotIn('estado', [
                 OrderStatus::ELIMINADO->value,
                 OrderStatus::ANULADA->value,
                 OrderStatus::RECHAZADO->value
             ])
                 ->select('id', 'pedido', 'USERID');
+            if ($orderNumber) {
+                $q->where('pedido', $orderNumber);
+            }
         };
 
         return GpTrasladosVentas::with([
@@ -77,11 +80,6 @@ class TransferRepository implements TransferRepositoryInterface
             'pedido' => $filtroPedido
         ])
             ->whereHas('pedido', $filtroPedido)
-            ->when($orderNumber, function ($q) use ($orderNumber) {
-                $q->whereHas('pedido', function ($q2) use ($orderNumber) {
-                    $q2->where('pedido', $orderNumber);
-                });
-            })
             ->where('bodega_origen', $origin)
             ->where('bodega_destino', $destination)
             ->pendientes()
