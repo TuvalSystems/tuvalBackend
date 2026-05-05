@@ -159,7 +159,7 @@ class GpDevoluciones extends Model
     }
 
 
-    public function scopeConCriterios(Builder $query, $criterio)
+    public function scopeConCriterios(Builder $query, array $criterio)
     {
         $query->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_devoluciones.pedido_id')
             ->select('gp_devoluciones.*', 'gp_pedidos.PTO_VTA_ID');

@@ -23,7 +23,7 @@ interface DevolucionServiceInterface
 
     public function validateItemPartialDispatch($devolucion);
 
-    public function getDetailOrderReturnById($order);
+    public function getDetailOrderReturnById(array $order);
 
     public function printReturn($devolucion_id);
     public function printReturnOld($devolucion_id);

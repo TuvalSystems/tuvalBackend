@@ -68,10 +68,10 @@ class DevolucionService implements DevolucionServiceInterface
      * PENDIENTE DE MEJORAR
      */
 
-    public function getAllOrdersWithDevoluciones($cienteId, $puntVentaId)
+    public function getAllOrdersWithDevoluciones(int $clienteId, string $puntVentaId)
     {
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $puntVentaId)
-            ->where('cliente_id', $cienteId)
+            ->where('cliente_id', $clienteId)
             ->whereIn('estado', [OrderStatus::FACTURADO, OrderStatus::ANULADA])
             ->orderBy('gp_pedidos.created_at', 'desc')->limit(10000)->get();
     }
@@ -319,7 +319,7 @@ class DevolucionService implements DevolucionServiceInterface
         return (bool) $succes;
     }
 
-    public function storeReturnDetail($returnId, $pedido, $details): void
+    public function storeReturnDetail(int $returnId, array $pedido, array $details): void
     {
         foreach ($details as $item) {
             $dispatched = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
@@ -328,7 +328,7 @@ class DevolucionService implements DevolucionServiceInterface
         }
     }
 
-    public function isDevolucionItemDispatchedInGuia($pedido, $item): bool
+    public function isDevolucionItemDispatchedInGuia(array $pedido, array  $item): bool
     {
         //verifica si el pedido tiene factura origen
         $pedidoConsulta = GpPedido::find($pedido['id']);
@@ -353,7 +353,7 @@ class DevolucionService implements DevolucionServiceInterface
         return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
     }
 
-    public function hasItemTrasladadoPedidoRelacionados($facturaOrigen, $artCodigo): bool
+    public function hasItemTrasladadoPedidoRelacionados(string $facturaOrigen, string $artCodigo): bool
     {
         $pedidoOrigenIds = GpPedido::where('factura', $facturaOrigen)->pluck('id');
         $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
@@ -385,7 +385,6 @@ class DevolucionService implements DevolucionServiceInterface
             $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id']);
         }
 
-        // $respuesta = $webservices->inventario('ConsultaItemCompartimento', $parameters);
         $detalleEnriquecido = collect($detalle)->map(function ($item) use ($pedido) {
             $resp = $this->stockWarehouseService->fetchStockWarehouseCompartmentDevolution([
                 'item' => $item['ART_CODIGO'],
@@ -406,7 +405,7 @@ class DevolucionService implements DevolucionServiceInterface
         ]);
     }
 
-    public function getSegmentoCliente($ruc)
+    public function getSegmentoCliente(string $ruc)
     {
         $response = $this->apiGpService->fetchClientSegment([
             'ruc' => $ruc,
@@ -422,7 +421,7 @@ class DevolucionService implements DevolucionServiceInterface
      * Metodo para obtener el detalle del pedido devuelto y que se solicitara devolucion.
      * Se migro la funcion de SP de MSW MST_Cliente_Grupo_Economico a Java
      */
-    public function getDetailOrderReturnById($order)
+    public function getDetailOrderReturnById(array $order)
     {
         $orderId = Arr::get($order, 'id');
         $clientId = Arr::get($order, 'cliente_id');

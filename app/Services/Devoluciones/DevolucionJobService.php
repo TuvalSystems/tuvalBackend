@@ -25,6 +25,7 @@ use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\Eloquent\Collection;
 
 class DevolucionJobService
 {
@@ -49,7 +50,7 @@ class DevolucionJobService
         return $devoluciones->unique('id'); // Evitar devoluciones repetidas si caen en más de un criterio
     }
 
-    public function listaDevolucionPorCriterio($criterio)
+    public function listaDevolucionPorCriterio(array $criterio)
     {
         // Trabaja con un Scope para aplicar los criterios de búsqueda
         return GpDevoluciones::conCriterios($criterio)->get();
@@ -84,7 +85,7 @@ class DevolucionJobService
     }
 
 
-    private function encontrarCriterioAplicable(GpDevoluciones $devolucion, $criterios)
+    private function encontrarCriterioAplicable(GpDevoluciones $devolucion, array $criterios)
     {
         foreach ($criterios as $criterio) {
             if (
@@ -102,7 +103,7 @@ class DevolucionJobService
     }
 
 
-    private function ejecutarProcesosDevolucion(GpDevoluciones $devolucion, $criterio)
+    private function ejecutarProcesosDevolucion(GpDevoluciones $devolucion, array $criterio)
     {
         // Procesar método si está definido
         if (!empty($criterio['metodo']) && method_exists($this, $criterio['metodo'])) {
@@ -163,19 +164,19 @@ class DevolucionJobService
             $ivaLineaParaApi = round($ivaLineaRaw, 2);
 
             $detalleDevolucion[] = [
-                'NC_VTA_DET_LINEA' => $key + 1,
-                'NC_VTA_DET_DOCU_ORIGEN' => $devolucion->devolucion,
-                'NC_VTA_DET_ID_TIPO' => '4',
-                'NC_VTA_DET_ARTICULO' => $detalle->ART_CODIGO,
-                'NC_VTA_DET_DESC_ARTICULO' => $detalle->ART_DESCRIPCION,
-                'NC_VTA_DET_UNIDAD_MEDIDA' => $detalle->ART_PLAN_UMEDIDA,
-                'NC_VTA_DET_BODEGA' => $pedido->BOD_BODEGA,
-                'NC_VTA_DET_CANTIDAD' => $cantidad,
-                'NC_VTA_DET_COSTO_UNITARIO' => $valorUnitario,
-                'NC_VTA_DET_PRECIO_UNITARIO' => $valorUnitario,
-                'NC_VTA_DET_DESCUENTO' => $descuento,
-                'NC_VTA_DET_IMPUESTO_IVA' => $ivaLineaParaApi,
-                'NC_VTA_DET_TOTAL' => $lineNet
+                'NC_VTA_DET_LINEA'              => $key + 1,
+                'NC_VTA_DET_DOCU_ORIGEN'        => $devolucion->devolucion,
+                'NC_VTA_DET_ID_TIPO'            => '4',
+                'NC_VTA_DET_ARTICULO'           => $detalle->ART_CODIGO,
+                'NC_VTA_DET_DESC_ARTICULO'      => $detalle->ART_DESCRIPCION,
+                'NC_VTA_DET_UNIDAD_MEDIDA'      => $detalle->ART_PLAN_UMEDIDA,
+                'NC_VTA_DET_BODEGA'             => $pedido->BOD_BODEGA,
+                'NC_VTA_DET_CANTIDAD'           => $cantidad,
+                'NC_VTA_DET_COSTO_UNITARIO'     => $valorUnitario,
+                'NC_VTA_DET_PRECIO_UNITARIO'    => $valorUnitario,
+                'NC_VTA_DET_DESCUENTO'          => $descuento,
+                'NC_VTA_DET_IMPUESTO_IVA'       => $ivaLineaParaApi,
+                'NC_VTA_DET_TOTAL'              => $lineNet
             ];
             $subtotal += $lineNet;
             $iva += $ivaLineaRaw;
@@ -185,27 +186,27 @@ class DevolucionJobService
 
         $cabecera = [
             [
-                'NC_VTA_DOCU_ORIGEN' => $devolucion->devolucion,
-                'NC_VTA_ID_TIPO' => '4',
-                'NC_VTA_PUNTO_VENTA' => $pedido->PTO_VTA_ID,
-                'NC_VTA_DOC_ID' => $docId->PTO_VTA_ID_FACTURA_NC,
-                'NC_VTA_ID_CLIENTE' => $cliente->CLI_RUC,
-                'NC_VTA_ID_VENDEDOR' => $pedido->VEND_ID,
-                'NC_VTA_ID_DIRECCION' => $sucursal->CLI_SUC_ID_DIRECCION,
-                'NC_VTA_COND_PAGO' => $pedido->COND_ID,
-                'NC_VTA_NOTA_DOCU' => $devolucion->factura,
-                'NC_VTA_FECHA' => now()->format('Y-m-d'),
-                'NC_VTA_BODEGA' => $pedido->BOD_BODEGA,
-                'NC_VTA_SUBTOTAL' => round($subtotal, 2),
-                'NC_VTA_DESCUENTO_COMERCIAL' => 0,
-                'NC_VTA_IMPUESTO' => $totalIvaFinal,
-                'NC_VTA_TOTAL' => $total,
+                'NC_VTA_DOCU_ORIGEN'            => $devolucion->devolucion,
+                'NC_VTA_ID_TIPO'                => '4',
+                'NC_VTA_PUNTO_VENTA'            => $pedido->PTO_VTA_ID,
+                'NC_VTA_DOC_ID'                 => $docId->PTO_VTA_ID_FACTURA_NC,
+                'NC_VTA_ID_CLIENTE'             => $cliente->CLI_RUC,
+                'NC_VTA_ID_VENDEDOR'            => $pedido->VEND_ID,
+                'NC_VTA_ID_DIRECCION'           => $sucursal->CLI_SUC_ID_DIRECCION,
+                'NC_VTA_COND_PAGO'              => $pedido->COND_ID,
+                'NC_VTA_NOTA_DOCU'              => $devolucion->factura,
+                'NC_VTA_FECHA'                  => now()->format('Y-m-d'),
+                'NC_VTA_BODEGA'                 => $pedido->BOD_BODEGA,
+                'NC_VTA_SUBTOTAL'               => round($subtotal, 2),
+                'NC_VTA_DESCUENTO_COMERCIAL'    => 0,
+                'NC_VTA_IMPUESTO'               => $totalIvaFinal,
+                'NC_VTA_TOTAL'                  => $total,
             ]
         ];
 
         $parameters = [
-            'cabecera' => $cabecera,
-            'detalle' => $detalleDevolucion,
+            'cabecera'  => $cabecera,
+            'detalle'   => $detalleDevolucion,
         ];
         $responseNtc = $this->apiGpReturnsIntegrationService->generateCreditNote($parameters);
         if ($responseNtc['success'] === false) {
@@ -237,13 +238,13 @@ class DevolucionJobService
     }
 
 
-    public function getApiResponseNoteCredit($params)
+    public function getApiResponseNoteCredit(array $params)
     {
         return $this->apiGpReturnsIntegrationService->retrieveCreditNoteResponse($params);
     }
 
 
-    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, $detalles, GpPedido $pedido)
+    public function bajarDevolucionAPedido(GpDevoluciones $devolucion, Collection $detalles, GpPedido $pedido)
     {
         if ($devolucion->rebajado) {
             return;
@@ -273,7 +274,7 @@ class DevolucionJobService
         $devolucion->save();
     }
 
-    public function totalDevoluciones($devolucion, $detalles)
+    public function totalDevoluciones(GpDevoluciones $devolucion, Collection $detalles)
     {
         $subtotal = 0.0;
         $totalDiscount = 0.0;
@@ -281,38 +282,39 @@ class DevolucionJobService
         $totalIva = 0.0;
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $detalles->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
 
-        foreach ($detalles as $key => $detalle) {
-            if ($detalle->devuelto == 0)
+        foreach ($detalles as  $detalle) {
+            if ($detalle->devuelto == 0) {
                 continue;
+            }
 
-            $cantidad = (float) $detalle->devuelto;
-            $valorUnitario = (float) $detalle->ART_VALOR;
-            $descuentoUnitario = (float) $detalle->ART_DESCUENTO;
-            $impuestoPorcentaje = (float) $articulosImpuesto[$detalle->ART_CODIGO] ?? 0;
+            $cantidad               = (float) $detalle->devuelto;
+            $valorUnitario          = (float) $detalle->ART_VALOR;
+            $descuentoUnitario      = (float) $detalle->ART_DESCUENTO;
+            $impuestoPorcentaje     = (float) $articulosImpuesto[$detalle->ART_CODIGO] ?? 0;
 
 
 
-            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+            $lineNet                = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount          = $descuentoUnitario * $cantidad;
+            $lineaSubtotal          = $lineNet + $lineaDiscount;
+            $lineaIva               = $lineNet * ($impuestoPorcentaje / 100);
 
-            $subtotal += $lineaSubtotal;
-            $totalDiscount += $lineaDiscount;
-            $netSubtotal += $lineNet;
-            $totalIva += $lineaIva;
+            $subtotal               += $lineaSubtotal;
+            $totalDiscount          += $lineaDiscount;
+            $netSubtotal            += $lineNet;
+            $totalIva               += $lineaIva;
         }
 
-        $devolucion->subtotal = round($subtotal, 2);
-        $devolucion->descuento = round($totalDiscount, 2);
-        $devolucion->subtotalmenosdescuento = round($netSubtotal, 2);
-        $devolucion->iva = round($totalIva, 2);
-        $devolucion->total = round($netSubtotal + $totalIva, 2);
+        $devolucion->subtotal                   = round($subtotal, 2);
+        $devolucion->descuento                  = round($totalDiscount, 2);
+        $devolucion->subtotalmenosdescuento     = round($netSubtotal, 2);
+        $devolucion->iva                        = round($totalIva, 2);
+        $devolucion->total                      = round($netSubtotal + $totalIva, 2);
         $devolucion->save();
     }
 
 
-    public function updateStatusOrdenDespacho($pedidoId)
+    public function updateStatusOrdenDespacho(int $pedidoId)
     {
         GpOrdenDespacho::where('pedido_id', $pedidoId)
             ->update(['estado' => 'cancelada']);
@@ -331,14 +333,15 @@ class DevolucionJobService
 
         $itemsDevolucion = $detalles->map(function ($detalle) use ($devolucion, $pedido) {
             $cantidad = ($devolucion->despachado && $devolucion->volver_a_facturar) ? $detalle->recibido : $detalle->devuelto;
-            if (!$cantidad)
+            if (!$cantidad) {
                 return null;
+            }
 
             $compartimiento = $detalle->ART_TIPO_COMPRA === 'L' ? $pedido->pedido : $detalle->compartimiento;
             return [
-                'item' => $detalle->ART_CODIGO,
-                'cantidad' => $cantidad,
-                'compartimiento' => $compartimiento
+                'item'              => $detalle->ART_CODIGO,
+                'cantidad'          => $cantidad,
+                'compartimiento'    => $compartimiento
             ];
         })->filter()->values()->toArray();
 
@@ -346,7 +349,6 @@ class DevolucionJobService
         if (empty($itemsDevolucion)) {
             $devolucion->devolucion_bodega = true;
             $devolucion->save();
-            // Log::channel('devolucion')->info("Devolución {$devolucion->id}: Sin items físicos para ajuste de stock.");
             return;
         }
 
@@ -376,7 +378,7 @@ class DevolucionJobService
         return GpIngreso::where('tipo', 'devolucion')->where('documento', $devolucion->devolucion)->value('USERID');
     }
 
-    public function createDocumentDevolution($devolucion, $responseApi)
+    public function createDocumentDevolution(GpDevoluciones $devolucion, array $responseApi)
     {
         $devDoc = new GpDevolucionDocument();
         $devDoc->devolucion_id = $devolucion->id;
@@ -387,42 +389,34 @@ class DevolucionJobService
     }
 
 
-    public function procesardevoluciontotalsinrf($devolucion)
+    public function procesardevoluciontotalsinrf(GpDevoluciones $devolucion)
     {
         $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
-        $afectados = DB::table('gp_devoluciones_detalles')
+        return DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
-            // ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        // Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
-        return $afectados;
     }
 
-    public function procesardevolucionparcialconrf($devolucion)
+    public function procesardevolucionparcialconrf(GpDevoluciones $devolucion)
     {
-        $origen = 'disponible'; // Por defecto, usamos 'seleccionado'
-        $afectados = DB::table('gp_devoluciones_detalles')
+        $origen = 'disponible';
+        return DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
-            //  ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        // Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id}");
-        return $afectados;
     }
 
-    public function procesarDevolucionesRecibirParcialesSinRf($devolucion)
+    public function procesarDevolucionesRecibirParcialesSinRf(GpDevoluciones $devolucion)
     {
-        $origen = 'seleccionado'; // Por defecto, usamos 'seleccionado'
-        $afectados = DB::table('gp_devoluciones_detalles')
+        $origen = 'seleccionado';
+        return  DB::table('gp_devoluciones_detalles')
             ->where('devolucion_id', $devolucion->id)
             ->where('despachado_parcial', 0)
             ->update([
                 'devuelto' => DB::raw("`$origen`")
             ]);
-        // Log::channel('devolucion')->info("Se actualizaron {$afectados} registros en 'devuelto' usando columna '$origen' para devolución ID {$devolucion->id} en devoluciones estado recibido");
-        return $afectados;
     }
 }
