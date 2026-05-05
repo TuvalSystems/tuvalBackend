@@ -283,7 +283,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('transportes/savevehiculo', [TransportesController::class, 'savevehiculo']);
         Route::delete('transportes/deletetransportista/{id}', [TransportesController::class, 'deletetransportista']);
         Route::delete('transportes/deletevehiculo/{id}', [TransportesController::class, 'deletevehiculo']);
-        Route::get('transferencias/transferenciasventa/{id}/{pedido?}/{compartimiento?}', [TransferenciasController::class, 'transferenciasVentas']);
+        // Route::get('transferencias/transferenciasventa/{id}/{pedido?}/{compartimiento?}', [TransferenciasController::class, 'transferenciasVentas']);
         Route::post('transferencias/picking', [TransferenciasController::class, 'picking']);
         Route::post('transferencias/imprimirpicking', [TransferenciasController::class, 'imprimirpicking']);
         // Route::post('transferencias/cancelarpicking', [TransferenciasController::class, 'cancelarpicking']);
@@ -316,14 +316,18 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
 
         //transferencia de ventas
-        Route::post('transferencia-ventas/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
-        Route::post('transferencia-ventas/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
-        Route::post('transferencia-ventas/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
+        Route::post('transferencia-venta/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
+        Route::post('transferencia-venta/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
+        Route::post('transferencia-venta/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
+        Route::post('transferencia-venta/lista-guias-pendientes', [TransferenciasController::class, 'listaGuiaRemisionPendientes']);
+        Route::post('transferencia-venta/actualizar-picking', [TransferenciasController::class, 'actualizarPickingItemsTransferenciaVenta']);
+        Route::post('transferencia-venta/imprimir-picking', [TransferenciasController::class, 'imprimirPickingTransferenciaVenta']);
 
         //creacion de guia de remision de transferencia de venta
-        Route::post('transferencias/cancelar-picking', [TransferenciasController::class, 'cancelarPickingV2']);
+        Route::post('transferencia-venta/cancelar-picking', [TransferenciasController::class, 'cancelarPickingV2']);
         Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
+        Route::post('transferencia-venta/guia-remision/generar/pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/despachar-guia-transferencia-venta', [GuiasderemisionController::class, 'despacharGuiaRemisionVenta']);
         Route::post('transferencia-venta/guia-remision/recibir-guia-transferencia-venta', [GuiasderemisionController::class, 'recibirGuiaRemisionVenta']);
 

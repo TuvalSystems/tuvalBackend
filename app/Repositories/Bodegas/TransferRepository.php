@@ -67,7 +67,7 @@ class TransferRepository implements TransferRepositoryInterface
                 OrderStatus::ANULADA->value,
                 OrderStatus::RECHAZADO->value
             ])
-            ->select('id', 'pedido','USERID');
+                ->select('id', 'pedido', 'USERID');
         };
 
         return GpTrasladosVentas::with([
@@ -116,6 +116,21 @@ class TransferRepository implements TransferRepositoryInterface
             ->where('gp_guia_remisions.tipo', 'transferencia')
             ->select('gp_guia_remisions.*', 'gp_bodegas.BOD_DESCRIPCION', 'gp_bodegas.BOD_BODEGA')
             ->orderByDesc('gp_guia_remisions.created_at')
+            ->get();
+    }
+
+
+    public function findGuidesPendingByOriginWarehouse(string $bodOrigin, string $bodDestino)
+    {
+        return GpGuiaRemision::query()
+            ->from('gp_guia_remisions as ggr')
+            ->join('gp_bodegas as gpb', 'ggr.bodega_destino', '=', 'gpb.BOD_BODEGA')
+            ->where('ggr.bodega_origen', $bodOrigin)
+            ->where('ggr.bodega_destino', $bodDestino)
+            ->where('ggr.estado', 'pendiente')
+            ->where('ggr.tipo', 'transferencia')
+            ->select('ggr.id', 'ggr.GUI_REM_BODEGA', 'ggr.GUI_REM_FECHA_INICIO', 'ggr.GUI_REM_RAZON_SOCIAL_TRANSPORTISTA',  'ggr.GUI_REM_PLACA')
+            ->orderByDesc('ggr.created_at')
             ->get();
     }
 }

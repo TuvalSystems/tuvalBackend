@@ -176,6 +176,7 @@
             <table class="table table-sm table-striped tablacarrito">
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th class="nowrap">Compartimiento / Existencia </th>
                         <th>Cotizacion</th>
                         <th>CTL </th>
@@ -188,15 +189,25 @@
                 </thead>
                 <tbody>
                     @foreach ($rows as $key => $value)
-                        <tr>
-                            <td>{{$value['compartimiento']}} / {{$value['existencia']}} </td>
-                            <td>{{$value['cotizacion']}}</td>
-                            <td><b>{{$value['art_cod_tres_letras']}}</b></td>
-                            <td>{{$value['art_descripcion']}}</td>
-                            <td>{{$value['art_plan_umedida']}}</td>
-                            <td class="text-right"><b>{{$value['seleccionado']}}</b></td>
-                            <td class="text-right">{{ number_format($value['peso_kg'], 2) }} Kg</td>
-                        </tr>
+                    <tr>
+                        <td>{{ $key +1 }}</td>
+                        <td>
+                            <table style="width:100%">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-left"><b>{{$value['compartimiento']}}</b></td>
+                                        <td class="text-left">{{$value['existencia']}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                        <td>{{$value['cotizacion']}}</td>
+                        <td><b>{{$value['art_cod_tres_letras']}}</b></td>
+                        <td>{{$value['art_descripcion']}}</td>
+                        <td>{{$value['art_plan_umedida']}}</td>
+                        <td class="text-right"><b>{{$value['seleccionado']}}</b></td>
+                        <td class="text-right">{{ number_format($value['peso_kg'], 2) }}Kg</td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>

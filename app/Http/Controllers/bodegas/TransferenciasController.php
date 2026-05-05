@@ -17,21 +17,14 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class TransferenciasController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
     public function __construct(protected readonly TransferServiceInterface $transferService) {}
-
-
-    public function transferenciasVentas($id, $pedido = null, $compartimiento = null)
-    {
-        return $this->handleApiAction(function () use ($id, $pedido, $compartimiento) {
-            $data = $this->transferService->fetchSalesTransfers($id, $pedido, $compartimiento);
-            return $this->successResponse('Transferencias obtenidas correctamente', $data, 200);
-        }, 'laravel', 'transferenciasVentas');
-    }
 
 
     public function dashboardTransferenciaVentas(Request $request)
@@ -66,14 +59,46 @@ class TransferenciasController extends Controller
             $validate = $request->validate([
                 'origen'    => 'required|string',
                 'destino'   => 'required|string',
-                'pedido'    => 'nullable|string'
+                'pedido'    => 'nullable|string',
+                'compartimiento' => 'nullable|string'
             ]);
             $origen = data_get($validate, 'origen');
             $destino = data_get($validate, 'destino');
             $pedido = data_get($validate, 'pedido');
-            $data = $this->transferService->getListSalesTransferDetailsBetweenWarehouses($origen, $destino, $pedido);
+            $bin    = data_get($validate, 'compartimiento');
+            $data = $this->transferService->getListSalesTransferDetailsBetweenWarehouses($origen, $destino, $pedido, $bin);
             return $this->successResponse('Cabecera transferencias obtenidas correctamente', $data, 200);
         }, 'guia_ventas', 'obtenerCabeceraDetalleTransferenciaPorBodega');
+    }
+
+
+    public function actualizarPickingItemsTransferenciaVenta(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'items' => 'required|array'
+            ]);
+            $payload = data_get($validate, 'items');
+            $data = $this->transferService->updatePickingSalesTransfers($payload);
+            return $this->successResponse('Transferencias obtenidas correctamente', $data, 200);
+        }, 'guia_ventas', 'actualizarPickingItemsTransferenciaVenta');
+    }
+
+
+    public function imprimirPickingTransferenciaVenta(Request $request): Response
+    {
+        return $this->handlePdfAction(function () use ($request): Response {
+            $validated = $request->validate([
+                'origen'                => ['required', 'string', 'min:1'],
+                'destino'               => ['required', 'string', 'min:1'],
+                'pesototal'             => ['nullable', 'string'],
+                'items'                 => ['required', 'array', 'min:1'],
+                'items.*.id'            => ['required', 'integer', 'distinct', 'exists:gp_traslados_ventas,id'],
+                'items.*.seleccionado'  => ['required', 'numeric', 'min:0.001'],
+            ]);
+            $data = $this->transferService->printPickingSalesTransfers($validated);
+            return $this->buildPdfResponse($data);
+        }, 'guia_ventas', 'imprimirPickingTransferenciaVenta');
     }
 
 
@@ -133,9 +158,9 @@ class TransferenciasController extends Controller
             $validate = $request->validate([
                 'payload' => 'required'
             ]);
-            $payload = data_get($validate, 'payload');
+            $payload    = data_get($validate, 'payload');
             $data       = $this->transferService->cancelPicking($payload, $request->user());
-            return $this->successResponse('Transferencias obtenidas', $data, 200);
+            return $this->successResponse('Picking cancelado', $data, 200);
         }, 'laravel', 'cancelarPickingV2');
     }
 
@@ -252,6 +277,18 @@ class TransferenciasController extends Controller
         $picking['peso_total'] = number_format($peso_total, 2, '.', '');
 
         return $picking;
+    }
+
+
+
+    public function listaGuiaRemisionPendientes(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $ptoVtaOrigen = $request->input('origen', null);
+            $ptoVtaDestino = $request->input('destino', null);
+            $data = $this->transferService->fetchPendingSalesTransferDeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
+            return $this->successResponse('Datos obtenidos correctamente', $data, 200);
+        }, 'guia_ventas', 'listaGuiaRemisionPendientes');
     }
 
     public function checkpedidostraslados()

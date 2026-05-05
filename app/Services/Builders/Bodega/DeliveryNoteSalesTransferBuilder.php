@@ -14,7 +14,7 @@ use Carbon\Carbon;
 class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuilderInterface
 {
 
-    public function buildDeliveryNoteSalesTransferHeader($payload, $infoGuia): GpGuiaRemision
+    public function buildDeliveryNoteSalesTransferHeader(array $payload, array $infoGuia,  array  $dataVehicle): GpGuiaRemision
     {
         $gr = new GpGuiaRemision();
         $gr->fill([
@@ -31,12 +31,12 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
             'GUI_REM_GUIA_REMISION'                         => data_get($infoGuia, 'numeroGuia'),
             'GUI_REM_DIRECCION_PARTIDA'                     => data_get($infoGuia, 'dirOrigin'),
             'idempotency_key'                               => data_get($infoGuia, 'idemKey'),
-            'GUI_REM_RAZON_SOCIAL_TRANSPORTISTA'            => data_get($payload, 'transportista.nombre'),
-            'GUI_REM_IDENTIFICACION_TRANSPORTISTA'          => data_get($payload, 'transportista.identificacion'),
-            'GUI_REM_TIPO_IDENTIFICACION_TRANSPORTISTA'     => data_get($payload, 'transportista.tipo_identificacion'),
-            'GUI_REM_FECHA_INICIO'                          => data_get($payload, 'fecha_inicio'),
-            'GUI_REM_FECHA_FIN'                             => data_get($payload, 'fecha_fin'),
-            'GUI_REM_PLACA'                                 => data_get($payload, 'vehiculo.placa'),
+            'GUI_REM_RAZON_SOCIAL_TRANSPORTISTA'            => data_get($dataVehicle, 'transportista.nombre'),
+            'GUI_REM_IDENTIFICACION_TRANSPORTISTA'          => data_get($dataVehicle, 'transportista.identificacion'),
+            'GUI_REM_TIPO_IDENTIFICACION_TRANSPORTISTA'     => data_get($dataVehicle, 'transportista.tipo_identificacion'),
+            'GUI_REM_FECHA_INICIO'                          => data_get($payload, 'fecha_salida'),
+            'GUI_REM_FECHA_FIN'                             => data_get($payload, 'fecha_llegada'),
+            'GUI_REM_PLACA'                                 => data_get($dataVehicle, 'vehiculo.placa'),
             'GUI_REM_OBSERVACION'                           => data_get($payload, 'observacion'),
             'GUI_REM_RAZON_SOCIAL_DESTINATARIO'             => DeliveryNoteConstants::RAZON_SOCIAL_DESTINATARIO_DEFAULT,
             'GUI_REM_DIRECCION_DESTINATARIO'                => data_get($infoGuia, 'dirDestino'),

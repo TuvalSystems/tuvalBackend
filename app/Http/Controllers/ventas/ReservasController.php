@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 
 class ReservasController extends Controller
 {
@@ -278,10 +279,9 @@ class ReservasController extends Controller
 
 
 
-    public function actualizacionPickingItemsTraslados(Request $request)
+    public function actualizacionPickingItemsTraslados(Request $request): JsonResponse
     {
-        try {
-
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $items = $request->input('items', null);
             $affected = $this->reserveService->updatePickingItemsSelected($items);
             if ($affected === 0) {
@@ -289,15 +289,7 @@ class ReservasController extends Controller
                 return $this->successResponse('No hubo cambios en el picking.', 0, 200);
             }
             return $this->successResponse('Picking actualizado correctamente', $affected, 200);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion actualizacionPickingItemsTraslados -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log',  'actualizacionPickingItemsTraslados');
     }
 
     public function cancelacionPickingItemTraslados(Request $request)
@@ -323,7 +315,7 @@ class ReservasController extends Controller
 
     public function generarPdfPickingReserva(Request $request)
     {
-        try {
+        return $this->handlePdfAction(function () use ($request): Response {
             $validated = $request->validate([
                 'origen' => ['required', 'string', 'min:1'],
                 'destino' => ['required', 'string', 'min:1'],
@@ -334,17 +326,7 @@ class ReservasController extends Controller
             ]);
             $data = $this->reserveService->generatePickingPdf($validated);
             return $this->buildPdfResponse($data);
-        } catch (\Illuminate\Validation\ValidationException $ve) {
-            return $this->errorResponse('validation error', $ve->errors(), 422);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion generarPdfPickingReserva -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'generarPdfPickingReserva');
     }
 
 

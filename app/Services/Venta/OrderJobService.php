@@ -41,7 +41,7 @@ class OrderJobService
 
         if ($this->isWeekend() || !$this->isBussinessDay()) {
             Log::channel('cron_process')->info("⏳ Día no hábil. Se reintentará mañana automáticamente.");
-            return false;
+            return ['abortado' => true, 'razon' => 'Día no habil, proceso se reintentara el día de mañana'];
         }
 
         $resultados = $this->invoicePreviousMonthOrders();

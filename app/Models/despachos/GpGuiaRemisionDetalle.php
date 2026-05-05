@@ -2,6 +2,9 @@
 
 namespace App\Models\despachos;
 
+use App\Models\GpPedidoDetalle;
+use App\Models\reposicion\GpTrasladosReposicion;
+use App\Models\traslados\GpTrasladosVentas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -57,5 +60,31 @@ class GpGuiaRemisionDetalle extends Model
     public function guia()
     {
         return $this->belongsTo(GpGuiaRemision::class, 'guia_remision_id');
+    }
+
+    public function trasladoVenta()
+    {
+        return $this->belongsTo(GpTrasladosVentas::class, 'detalle_id');
+    }
+
+    public function trasladoReposicion()
+    {
+        return $this->belongsTo(GpTrasladosReposicion::class, 'detalle_id');
+    }
+
+    public function detallePedido()
+    {
+        return $this->belongsTo(GpPedidoDetalle::class, 'detalle_id');
+    }
+
+    public function getDetalleOrigenAttribute()
+    {
+        $tipoGuia = $this->guia->tipo ?? null;
+        return match ($tipoGuia) {
+            'traslado'   => $this->trasladoVenta,
+            'reposicion' => $this->trasladoReposicion,
+            'despacho'   => $this->detallePedido,
+            default      => null,
+        };
     }
 }
