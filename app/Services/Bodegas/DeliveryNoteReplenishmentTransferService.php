@@ -22,7 +22,6 @@ use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInter
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-
 class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishmentTransferServiceInterface
 {
 
@@ -93,8 +92,8 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
                 $this->updateTransferReposition($items);
                 return $guia;
             } catch (\Throwable $e) {
-                if ($e->errorInfo[1] == 1062) {
-                    abort(409, 'El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
+               if ($e instanceof \Illuminate\Database\QueryException && $e->errorInfo[1] == 1062) {
+                    throw new  \RuntimeException( 'El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
                 }
                 throw $e;
             }
@@ -130,9 +129,9 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
     }
 
 
-    protected function saveHeaderDeliveryNoteReplenishmentTransferWeb($payload, $infoGuia)
+    protected function saveHeaderDeliveryNoteReplenishmentTransferWeb(array $payload, array $infoGuia)
     {
-        $guia = $this->builder->buildDeliveryNoteSalesTransferHeader($payload, $infoGuia);
+        $guia = $this->builder->buildDeliveryNoteReplenishmentTransferHeader($payload, $infoGuia);
         $guia->save();
         return $guia->refresh();
     }
@@ -183,7 +182,7 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
         return $guide->refresh();
     }
 
-    protected function validateExistenceDeliveryNoteDisptach($numGuide)
+    protected function validateExistenceDeliveryNoteDisptach(string $numGuide)
     {
         return  $this->api->checkExistenceDeliveryNote([
             'numDoc' => $numGuide

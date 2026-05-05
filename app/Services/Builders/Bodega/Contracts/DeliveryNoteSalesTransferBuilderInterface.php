@@ -11,6 +11,7 @@ interface DeliveryNoteSalesTransferBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
     public function buildDeliveryNoteSalesTransferHeader(array $payload, array $infoGuia, array  $dataVehicle): GpGuiaRemision;
+    public function buildDeliveryNoteReplenishmentTransferHeader(array $payload, array $infoGuia): GpGuiaRemision;
 
     public function buildDeliveryNoteReceivedPayload(GpGuiaRemision $guia, string $documento, array $items, string $user, string $hash ,?string $movimiento): array;
 
