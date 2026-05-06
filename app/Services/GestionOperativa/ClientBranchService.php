@@ -2,19 +2,19 @@
 
 namespace App\Services\GestionOperativa;
 
-use App\Models\Gestion\Auditoria;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use App\Traits\RegisterAudit;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ClientBranchService implements ClientBranchServiceInterface
 {
+    use RegisterAudit;
 
     public  function __construct(protected readonly ClientQueryServiceInterface $client) {}
 
@@ -120,20 +120,7 @@ class ClientBranchService implements ClientBranchServiceInterface
         return $branch;
     }
 
-    protected function createHistoryRecord(GpUsuario $user, Model $modelo, string $action, ?array $oldData, ?array $newData): void
-    {
-        Auditoria::create([
-            'user_id'        => $user->id,
-            'auditable_type' => get_class($modelo),
-            'auditable_id'   => $modelo->id,
-            'action'         => $action,
-            'old_values'     => $oldData,
-            'new_values'     => $newData,
-            'url'            => request()->fullUrl(),
-            'ip_address'     => request()->ip(),
-            'user_agent'     => request()->header('User-Agent'),
-        ]);
-    }
+
 
     protected function updateStatusBranchInGp(GpClienteSucursal $branch, GpUsuario $userModificador): void
     {

@@ -146,8 +146,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $query->orderByDesc('gp_cotizacions.cotizacion');
         }
         return $query->paginate($perpage)->through(function ($row) {
-            $row->cot_created_at = Carbon::parse($row->created_at)->timezone('America/Guayaquil')
-                ->format('Y-m-d H:i:s');
             $row->bodegas_uso = collect(explode(',', (string) $row->bodegas_usadas))
                 ->filter()
                 ->unique()

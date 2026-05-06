@@ -4,6 +4,7 @@ namespace App\Models\Reservas;
 
 use App\Models\GpCotizacion;
 use App\Models\GpUsuario;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -77,6 +78,10 @@ class GpReserva extends Model
         'estado_autorizacion_reserva',
     ];
 
+     protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
 
     public function cotizacion()
     {
