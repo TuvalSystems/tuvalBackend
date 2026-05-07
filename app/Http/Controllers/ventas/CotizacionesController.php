@@ -807,7 +807,7 @@ class CotizacionesController extends Controller
             'CLI_RUC' => '',
         ]);
 
-        $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->first();
+        $cliente = GpCliente::where('CLI_RUC', trim($data['CLI_RUC']))->first();
         if ($cliente) {
             $data['cliente_id'] = $cliente->id;
             $funciones = new FuncionesController();
@@ -819,7 +819,7 @@ class CotizacionesController extends Controller
             ]);
         }
 
-        $prospecto = GpProspecto::where('CLI_RUC', $data['CLI_RUC'])->first();
+        $prospecto = GpProspecto::where('CLI_RUC', trim($data['CLI_RUC']))->first();
         if ($prospecto) {
             return response([
                 'success' => true,
