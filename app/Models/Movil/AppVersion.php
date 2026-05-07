@@ -2,6 +2,7 @@
 
 namespace App\Models\Movil;
 
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -36,6 +37,11 @@ class AppVersion extends Model
         'created_by_user_id'        => 'integer',
         'updated_by_user_id'        => 'integer',
     ];
+
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
 
     public function scopeActive($query)
     {

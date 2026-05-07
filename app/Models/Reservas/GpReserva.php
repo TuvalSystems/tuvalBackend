@@ -78,7 +78,7 @@ class GpReserva extends Model
         'estado_autorizacion_reserva',
     ];
 
-     protected function serializeDate(DateTimeInterface $date)
+    protected function serializeDate(DateTimeInterface $date)
     {
         return $date->format('Y-m-d H:i:s');
     }
@@ -110,7 +110,8 @@ class GpReserva extends Model
     }
 
 
-    public function traslados ()  {
+    public function traslados()
+    {
         return $this->hasMany(GpTrasladosReservas::class, 'reserva_id');
     }
 }

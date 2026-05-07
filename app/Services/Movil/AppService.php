@@ -37,13 +37,49 @@ class AppService implements AppServiceInterface
     }
 
 
-    public function listVersions($page = 10, ?string $platform = null): LengthAwarePaginator
+    public function listVersions(array $filters): LengthAwarePaginator
     {
-        $query = AppVersion::query()->orderByDesc('build_number');
-        if ($platform) {
-            $query->where('platform', $platform);
+        $search = data_get($filters, 'search', '');
+        $perpage = data_get($filters, 'perpage', 10);
+        $sortField = data_get($filters, 'sortField', 'created_at');
+        $sortOrder = strtolower(data_get($filters, 'sortOrder', 'desc')) === 'asc'
+            ? 'asc'
+            : 'desc';
+        $allowedSorts = [
+            'id'                        => 'ap.id',
+            'platform'                  => 'ap.platform',
+            'version_name'              => 'ap.version_name',
+            'build_number'              => 'ap.build_number',
+            'minimum_required_build'    => 'ap.minimum_required_build',
+            'apk_size_bytes'            => 'ap.apk_size_bytes',
+            'is_active'                 => 'ap.is_active',
+            'created_at'                => 'ap.created_at',
+        ];
+
+        $orderColumn = $allowedSorts[$sortField] ?? 'ap.created_at';
+
+        $query = AppVersion::from('app_versions as ap')
+            ->select([
+                'ap.id',
+                'ap.platform',
+                'ap.version_name',
+                'ap.build_number',
+                'ap.minimum_required_build',
+                'ap.apk_size_bytes',
+                'ap.is_active',
+                'ap.apk_url',
+                'ap.created_at'
+            ])
+            ->orderByDesc('build_number');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('platform', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
         }
-        return  $query->paginate($page);
+        return $query
+            ->orderBy($orderColumn, $sortOrder)
+            ->paginate($perpage);
     }
 
 
@@ -174,5 +210,4 @@ class AppService implements AppServiceInterface
             return (bool) $version->delete();
         });
     }
-
 }

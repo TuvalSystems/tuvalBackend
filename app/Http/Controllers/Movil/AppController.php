@@ -19,9 +19,9 @@ class AppController extends Controller
     public function index(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $platform = $request->input('platform', null);
-            $perpage        = $request->integer('perpage', 10);
-            $data           = $this->appService->listVersions($perpage, $platform);
+
+            $filters        = $request->input('filters', []);
+            $data           = $this->appService->listVersions($filters);
             return $this->successResponse("Lista Obtenida Correctamente", $data, 200);
         }, 'laravel', 'movil - index');
     }
