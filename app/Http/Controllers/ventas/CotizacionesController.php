@@ -44,7 +44,12 @@ class CotizacionesController extends Controller
         protected readonly QuotationCreatorServiceInterface $quotationCreator
     ) {}
 
-
+    public function obtenerListaTipoIdentificacion(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            return $this->successResponse('Lista Obtenida', $this->clientService->getListTypeDni());
+        }, 'laravel', 'obtenerListaTipoIdentificacion');
+    }
 
 
     public function store(ValidateStoreQuotationRequest $request): JsonResponse
@@ -956,7 +961,7 @@ class CotizacionesController extends Controller
                 'articulo' => 'required',
             ]);
             $datosL = $this->quotationService->getMarginItem($request->articulo);
-             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
+            return $this->successResponse('Información obtenida correctamente', $datosL, 200);
         }, 'laravel', 'obteneMargenItemlL');
 
         try {

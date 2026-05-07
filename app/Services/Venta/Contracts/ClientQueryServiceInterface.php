@@ -17,4 +17,6 @@ interface ClientQueryServiceInterface
 
     public function storeNewAddressClient(array $data, GpUsuario $user);
     public function createRegisterBranchClient(GpClienteSucursal $data, int $mode, ?string $userIngreso = null, ?string $fechaCreacion = null,  ?string $userModificacion = null, ?string $fechaModificacion = null, bool $autoRetry = true);
-}
+    public function getListTypeDni();
+
+    }

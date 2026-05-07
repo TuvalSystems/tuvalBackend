@@ -7,6 +7,7 @@ use App\Models\Admin\SyncLog;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpUsuario;
+use App\Models\Ventas\TipoIdentificacion;
 use App\Services\Api\ApiGpService;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
@@ -199,37 +200,37 @@ class ClientQueryService implements ClientQueryServiceInterface
         $status = data_get($resp, 'success', false);
         $message = data_get($resp, 'message', '');
         if (!$status && $mode === 2 && $autoRetry && $this->isNotFoundError($message)) {
-        Log::info('Registro no existe en GP (Error 900), intentando crear', [
-            'sucursal_id'       => $data->id,
-            'ruc'               => $data->CLI_SUC_RUC,
-            'id_direccion'      => $data->CLI_SUC_ID_DIRECCION,
-            'error_original'    => $message
-        ]);
-        $params['modo'] = 1;
-        $params['usuarioIngreso'] =  GpUsuario::where('id', $data->user_creator_id)->value('USERID')  ?? $userModificacion  ;
-        $params['fechaIngreso'] =   $data->fecha_hora_creacion ?? Carbon::parse($data->created_at)->format('Y-m-d H:i:s')  ?? Carbon::now()->format('Y-m-d H:i:s');
-
-        $retryResp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
-        $retryStatus = data_get($retryResp, 'success', false);
-
-        if ($retryStatus) {
-            Log::info('✅ Registro creado exitosamente después de fallar actualización', [
-                'sucursal_id' => $data->id,
-                'ruc' => $data->CLI_SUC_RUC,
-                'modo_usado' => 1
+            Log::info('Registro no existe en GP (Error 900), intentando crear', [
+                'sucursal_id'       => $data->id,
+                'ruc'               => $data->CLI_SUC_RUC,
+                'id_direccion'      => $data->CLI_SUC_ID_DIRECCION,
+                'error_original'    => $message
             ]);
+            $params['modo'] = 1;
+            $params['usuarioIngreso'] =  GpUsuario::where('id', $data->user_creator_id)->value('USERID')  ?? $userModificacion;
+            $params['fechaIngreso'] =   $data->fecha_hora_creacion ?? Carbon::parse($data->created_at)->format('Y-m-d H:i:s')  ?? Carbon::now()->format('Y-m-d H:i:s');
+
+            $retryResp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
+            $retryStatus = data_get($retryResp, 'success', false);
+
+            if ($retryStatus) {
+                Log::info('✅ Registro creado exitosamente después de fallar actualización', [
+                    'sucursal_id' => $data->id,
+                    'ruc' => $data->CLI_SUC_RUC,
+                    'modo_usado' => 1
+                ]);
+                return;
+            }
+
+            $retryMessage = data_get($retryResp, 'message', 'Error desconocido en retry');
+            $this->logSyncError($data, $params, "Falló actualización (Error 900) y creación. Error creación: {$retryMessage}");
             return;
         }
 
-        $retryMessage = data_get($retryResp, 'message', 'Error desconocido en retry');
-        $this->logSyncError($data, $params, "Falló actualización (Error 900) y creación. Error creación: {$retryMessage}");
-        return;
-    }
-
-    // ❌ Cualquier otro error
-    if (!$status) {
-        $this->logSyncError($data, $params, $message);
-    }
+        // ❌ Cualquier otro error
+        if (!$status) {
+            $this->logSyncError($data, $params, $message);
+        }
     }
 
     private function logSyncError(GpClienteSucursal $data, array $params, string $message): void
@@ -271,5 +272,11 @@ class ClientQueryService implements ClientQueryServiceInterface
         }
 
         return false;
+    }
+
+
+    public function getListTypeDni()
+    {
+        return TipoIdentificacion::where('estado', 1)->get();
     }
 }

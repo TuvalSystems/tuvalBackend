@@ -135,6 +135,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::group(['prefix' => 'cotizaciones'], function () {
 
 
+        Route::get('lista-tipo-identificaciones', [CotizacionesController::class, 'obtenerListaTipoIdentificacion']);
         Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
         Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 
