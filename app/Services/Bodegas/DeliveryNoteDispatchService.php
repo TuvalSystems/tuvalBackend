@@ -552,6 +552,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $newGuide->GUI_REM_SECUENCIAL       = $sec;
         $newGuide->GUI_REM_GUIA_REMISION    = $numGuide;
         $newGuide->idempotency_key          = $idemKey;
+        $newGuide->GUI_REM_CODIGO           = null;
         $newGuide->save();
         return $newGuide;
     }
