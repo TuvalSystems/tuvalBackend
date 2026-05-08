@@ -340,6 +340,14 @@ class GuiasderemisionController extends Controller
     }
 
 
+    public function duplicarGuiaSoloPapeles(int $id){
+        return $this->handleApiAction(function() use($id){
+        $data = $this->dispatch->replicateDeliveryNoteDispatch($id);
+        return $this->successResponse('Guía de Despacho Duplicada exitosamente', $data, 200);
+        },'despachos','duplicarGuiaSolopapeles');
+    }
+
+
     /***
      * PROCESO DE CREACION DE GUIA DE VENTA
      */

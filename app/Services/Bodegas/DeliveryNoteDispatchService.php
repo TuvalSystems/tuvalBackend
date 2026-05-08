@@ -523,4 +523,69 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             $stock->save();
         }
     }
+
+
+
+    public function replicateDeliveryNoteDispatch(int $id): GpGuiaRemision
+    {
+        $guideOrigin = GpGuiaRemision::where('id', $id)->where('tipo', DeliveryNoteType::DESPACHO->value)->first();
+        if (!$guideOrigin) {
+            throw new \RuntimeException('El identificador no es de una guia de despacho, verifique nuevamente');
+        }
+        $pedidoOrigen = GpPedido::where('pedido', $guideOrigin->pedido)->first();
+        $detailOrigin = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
+        $secuencial             = $this->common->getNextGuideSequential($guideOrigin->GUI_REM_ESTABLECIMIENTO, $guideOrigin->GUI_REM_PTO_EMISION);
+        $numGuide               = $this->common->formatGuideNumber($guideOrigin->GUI_REM_ESTABLECIMIENTO, $guideOrigin->GUI_REM_PTO_EMISION, $secuencial);
+        $idemKey = $this->makeIdemKeyDispatchReplicate($guideOrigin, $pedidoOrigen, $detailOrigin);
+        $newGuide = $this->createNewHeaderDeliveryNoteReplicate($guideOrigin, $secuencial, $numGuide,  $idemKey);
+        $this->createNewDetailDeliveryNoteReplicate($detailOrigin, $newGuide);
+        $this->sendDeliveryNoteDispatchToGp($newGuide);
+        return $newGuide;
+
+    }
+
+
+
+    protected function createNewHeaderDeliveryNoteReplicate(GpGuiaRemision $guia, string $sec, string $numGuide, string $idemKey)
+    {
+        $newGuide                           = $guia->replicate();
+        $newGuide->GUI_REM_SECUENCIAL       = $sec;
+        $newGuide->GUI_REM_GUIA_REMISION    = $numGuide;
+        $newGuide->idempotency_key          = $idemKey;
+        $newGuide->GUI_REM_CODIGO           = null;
+        $newGuide->save();
+        return $newGuide;
+    }
+
+    protected function makeIdemKeyDispatchReplicate(GpGuiaRemision $guia, GpPedido $orderOrigin, Collection $detailOrigin): string
+    {
+        $base = [
+            'bodega'        => $guia->GUI_REM_BODEGA,
+            'pedido'        => $guia->pedido,
+            'tipo'          => $guia->tipo,
+            'sucursal_id'   => $orderOrigin->sucursal_id,
+            'pto_vta_id'    => $guia->GUI_REM_ESTABLECIMIENTO,
+            'vehiculo'      => $guia->GUI_REM_PLACA,
+            'transportista' => $guia->GUI_REM_IDENTIFICACION_TRANSPORTISTA,
+            'fecha_inicio'  => $guia->GUI_REM_FECHA_INICIO,
+            'fecha_fin'     => $guia->GUI_REM_FECHA_FIN,
+            'detalle'       => collect($detailOrigin)->map(fn($d) => [
+                'id'            => data_get($d, 'detalle_id'),
+                'sel'           => (float) (data_get($d, 'GUI_REM_CANTIDAD',  0)),
+                'pendiente'     => (float) (data_get($d, 'pendiente',  0)),
+            ])->sortBy('id')->values()->all(),
+        ];
+
+        return hash('sha256', json_encode($base));
+    }
+
+
+    protected function createNewDetailDeliveryNoteReplicate(Collection $detailOrigin, GpGuiaRemision $newGuide)
+    {
+        foreach ($detailOrigin as  $oldDetail) {
+            $nDetail = $oldDetail->replicate();
+            $nDetail->guia_remision_id = $newGuide->id;
+            $nDetail->save();
+        }
+    }
 }
