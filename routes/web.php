@@ -111,6 +111,15 @@ Route::prefix('bodegas')->group(function () {
     Route::get('transferencia-ventas/bodega/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
     Route::get('transferencia-ventas/bodega/lista', [TransferenciasController::class, 'obtenerListaDetalleTransferenciaPorBodega']);
     Route::get('transferencia-ventas/bodega/lista-guias-pendientes', [TransferenciasController::class, 'listaGuiaRemisionPendientes']);
+
+
+
+
+
+    //dupicacion guia despacho
+Route::get('guiasderemision/despacho/replicar/{id}', [GuiasderemisionController::class, 'duplicarGuiaSoloPapeles']);
+
+
 });
 
 
@@ -221,3 +230,6 @@ Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'factura
 
 
 Route::get('notificacion-prueba', [TestController::class, 'enviarNotificacion']);
+
+
+
