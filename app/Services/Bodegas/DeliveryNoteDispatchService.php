@@ -538,17 +538,10 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $numGuide               = $this->common->formatGuideNumber($guideOrigin->GUI_REM_ESTABLECIMIENTO, $guideOrigin->GUI_REM_PTO_EMISION, $secuencial);
         $idemKey = $this->makeIdemKeyDispatchReplicate($guideOrigin, $pedidoOrigen, $detailOrigin);
         $newGuide = $this->createNewHeaderDeliveryNoteReplicate($guideOrigin, $secuencial, $numGuide,  $idemKey);
-        $this->createNewDetailDeliveryNoteReplicate($detailOrigin, $guideOrigin);
+        $this->createNewDetailDeliveryNoteReplicate($detailOrigin, $newGuide);
         $this->sendDeliveryNoteDispatchToGp($newGuide);
         return $newGuide;
-        // return [
-            // 'guia_despacho_header'  => $guideOrigin,
-            // 'guia_detalle_origen'   => $detailOrigin,
-            // 'secuencial'            => $secuencial,
-            // 'numGuide'              => $numGuide,
-            // 'guia_nueva'            => $newGuide,
-            // 'idemKey'               => $idemKey,
-        // ];
+
     }
 
 
