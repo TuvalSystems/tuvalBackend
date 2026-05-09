@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Ventas\Vendedores\GpVendedor;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -78,6 +79,10 @@ class GpUsuario extends Authenticatable
         'password',
     ];
 
+     protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
 
 
     public function relacionptovta()
@@ -93,6 +98,10 @@ class GpUsuario extends Authenticatable
     public function perfil()
     {
         return $this->belongsTo(Perfiles::class, 'perfil_id');
+    }
+
+    public function perfilApp(){
+        return $this->belongsTo(Perfiles::class, 'perfil_app_id');
     }
 
 

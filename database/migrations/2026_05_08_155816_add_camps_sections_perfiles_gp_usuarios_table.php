@@ -19,23 +19,27 @@ class AddCampsSectionsPerfilesGpUsuariosTable extends Migration
                 ->after('perfil_id');
 
             $table->index('perfil_app_id', 'idx_gp_usuarios_perfil_app_id');
+            $table->foreign('perfil_app_id')
+                ->references('id')
+                ->on('perfiles')
+                ->nullOnDelete();
         });
 
-        Schema::table('perfiles', function (Blueprint $table) {
-            $table->enum('platform', ['web', 'app', 'both'])
-                ->default('web')
-                ->after('name');
-        });
+        // Schema::table('perfiles', function (Blueprint $table) {
+        //     $table->enum('platform', ['web', 'app', 'both'])
+        //         ->default('web')
+        //         ->after('name');
+        // });
 
-        Schema::table('sections', function (Blueprint $table) {
-            $table->enum('platform', ['web', 'app', 'both'])
-                ->default('web')
-                ->after('order');
-        });
+        // Schema::table('sections', function (Blueprint $table) {
+        //     $table->enum('platform', ['web', 'app', 'both'])
+        //         ->default('web')
+        //         ->after('order');
+        // });
 
-        Schema::table('perfil_sections', function (Blueprint $table) {
-            $table->boolean('state')->default(1)->after('home');
-        });
+        // Schema::table('perfil_sections', function (Blueprint $table) {
+        //     $table->boolean('state')->default(1)->after('home');
+        // });
     }
 
     /**

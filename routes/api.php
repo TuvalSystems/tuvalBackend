@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -54,11 +55,13 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('obtener-metodos-pago', [AuthController::class, 'obtenerMetodosDePago']);
 
 
-    Route::post('resetpassword', [AuthController::class, 'resetPassword']);
-    Route::post('change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('logout', [AuthController::class, 'logout']);
 
     Route::group(['prefix' => 'usuario'], function () {
+        Route::post('lista-usuarios', [UserController::class, 'listaUsuarios']);
+        Route::post('change-status-user', [AuthController::class, 'changeStatusGpUser']);
+        Route::post('resetpassword', [AuthController::class, 'resetPassword']);
+
         Route::post('obtener-bodegas-por-punto-de-venta', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
     });
 

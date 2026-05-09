@@ -16,14 +16,69 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Admin\Contracts\MenuServiceInterface;
 use App\Services\User\Contracts\UserServiceInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
 class UserService implements UserServiceInterface
 {
     use JsonResponseTrait;
 
-    public function __construct(protected readonly ApiGpService $apiGp,
-    protected readonly MenuServiceInterface $menu) {}
+    public function __construct(
+        protected readonly ApiGpService $apiGp,
+        protected readonly MenuServiceInterface $menu
+    ) {}
+
+
+    public function listUsers(array $filters): LengthAwarePaginator
+    {
+        $search = data_get($filters, 'search', '');
+        $perpage = data_get($filters, 'perpage', 10);
+        $sortField = data_get($filters, 'sortField', 'created_at');
+        $sortOrder = strtolower(data_get($filters, 'sortOrder', 'desc')) === 'asc'
+            ? 'asc'
+            : 'desc';
+
+        $allowedSorts = [
+            'id'                => 'us.id',
+            'USERID'            => 'us.USERID',
+            'USERNAME'          => 'us.USERNAME',
+            'perfil_name'       => 'pf.name',
+            'perfil_app_name'   => 'pfa.name',
+            'status'            => 'us.status',
+            'created_at'        => 'us.created_at',
+        ];
+        $orderColumn = data_get($allowedSorts, $sortField, 'us.created_at');
+
+        $query = GpUsuario::select([
+            'us.id',
+            'us.USERID',
+            'us.USERNAME',
+            'us.status',
+            'us.must_change_password',
+            'pf.name as perfil_name',
+            'pfa.name as perfil_app_name',
+            'us.created_at'
+        ])
+            ->from('gp_usuarios as us')
+            ->join('perfiles as pf', 'pf.id', '=', 'us.perfil_id')
+            ->leftJoin('perfiles as pfa', 'pfa.id', '=', 'us.perfil_app_id');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('us.USERID', 'like', "%{$search}%")
+                    ->orWhere('us.USERNAME', 'like', "%{$search}%")
+                    ->orWhere('pf.name', 'like', "%{$search}%")
+                    ->orWhere('pfa.name', 'like', "%{$search}%");
+            });
+        }
+
+        return $query
+            ->orderBy($orderColumn, $sortOrder)
+            ->paginate($perpage);
+    }
+
+
+
+
 
     public function isValidUserWeb(array $credentials): bool
     {
@@ -187,8 +242,8 @@ class UserService implements UserServiceInterface
     {
         $user = GpUsuario::where('USERID', $userID)->first();
         $user->must_change_password = true;
-        $user->password = Hash::make($user->USERID);
-        $user->process_job = 1;
+        $user->password             = Hash::make($user->USERID);
+        $user->process_job          = 1;
         $user->save();
         return $user->refresh();
     }
@@ -305,7 +360,7 @@ class UserService implements UserServiceInterface
     }
 
 
-    public function getAllPaymentMethods($condId)
+    public function getAllPaymentMethods(string $condId)
     {
         return GpDescuentoFormaPago::select(
             'id',

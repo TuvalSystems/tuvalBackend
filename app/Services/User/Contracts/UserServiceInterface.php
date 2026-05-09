@@ -5,9 +5,12 @@ namespace App\Services\User\Contracts;
 use App\Models\GpUsuario;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 interface UserServiceInterface
 {
+
+    public function listUsers(array $filters): LengthAwarePaginator;
 
     public function validateStatusGpUser($credentials): bool;
     public function validateCredentials(Request $request): array;
@@ -41,5 +44,5 @@ interface UserServiceInterface
     public function getWarehouesByUser(string $userId, string $ptoVtaId);
 
     public function getAllPaymentConditions();
-    public function getAllPaymentMethods($condId);
+    public function getAllPaymentMethods(string $condId);
 }

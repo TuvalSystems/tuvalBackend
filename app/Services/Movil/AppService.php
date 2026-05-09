@@ -56,7 +56,7 @@ class AppService implements AppServiceInterface
             'created_at'                => 'ap.created_at',
         ];
 
-        $orderColumn = $allowedSorts[$sortField] ?? 'ap.created_at';
+        $orderColumn = data_get($allowedSorts, $sortField, 'up.created_at');
 
         $query = AppVersion::from('app_versions as ap')
             ->select([

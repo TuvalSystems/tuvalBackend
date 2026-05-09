@@ -13,11 +13,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 class AuthController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
-    protected $userService;
 
-    public function __construct(UserServiceInterface $userService)
+    public function __construct(protected readonly UserServiceInterface $userService)
     {
-        $this->userService = $userService;
     }
 
     public function login(Request $request)
@@ -100,17 +98,7 @@ class AuthController extends Controller
     }
 
 
-    public function changeStatusGpUser(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $request->validate([
-                'USERID' => 'required|string',
-            ]);
-            $userId = $request->input('USERID');
-            $this->userService->changeStatusGpUser($userId);
-            return $this->buildSuccessResponse('Estado actualizado correctamente!', 200);
-        }, 'laravel', 'AuthController.changeStatusGpUser');
-    }
+
 
 
 
