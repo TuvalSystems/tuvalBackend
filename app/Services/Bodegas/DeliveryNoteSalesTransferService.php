@@ -151,7 +151,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         return hash('sha256', json_encode($base));
     }
 
-    protected function sendDeliveryNoteSalesTransferToGp($guide)
+    protected function sendDeliveryNoteSalesTransferToGp(GpGuiaRemision $guide)
     {
         $detalle    = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
         $validate   = $this->validateExistenceDeliveryNoteDisptach($guide->GUI_REM_GUIA_REMISION); //valida la existencia de la guia de remision
@@ -165,7 +165,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         return $guide->refresh();
     }
 
-    protected function validateExistenceDeliveryNoteDisptach($numGuide)
+    protected function validateExistenceDeliveryNoteDisptach(string $numGuide)
     {
         return  $this->api->checkExistenceDeliveryNote([
             'numDoc' => $numGuide
@@ -173,7 +173,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function sendToDataDeliveryNote($guide, $detalle)
+    protected function sendToDataDeliveryNote(GpGuiaRemision $guide, Collection $detalle)
     {
         $response  = $this->api->createDeliveryNote([
             'cabecera'      => $this->builderDispatch->buildDeliveryNoteHeaderToGp($guide),
@@ -188,7 +188,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function prepateDetailReservation($guide, $items): array
+    protected function prepateDetailReservation(GpGuiaRemision $guide, Collection $items): array
     {
         $detail = [];
         foreach ($items as $key => $value) {
@@ -204,7 +204,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         return $guia->refresh();
     }
 
-    protected function saveDetailDeliveryNoteSalesTransferWeb($guideId, $detalle)
+    protected function saveDetailDeliveryNoteSalesTransferWeb(int $guideId, array $detalle)
     {
         foreach ($detalle as $val) {
             $detail = $this->builderDispatch->buildDeliveryNoteDispatchDetail($guideId, $val);
@@ -213,7 +213,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function updateOrderAndDetail($items)
+    protected function updateOrderAndDetail(array $items)
     {
         foreach ($items as $item) {
             $pedidoId           = data_get($item, 'pedido_id');
@@ -226,7 +226,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         }
     }
 
-    protected function validateQtyTransferedItems($items): ?string
+    protected function validateQtyTransferedItems(array $items): ?string
     {
         $ids          = collect($items)->pluck('id');
         $transfers    = GpTrasladosVentas::whereIn('id', $ids)->lockForUpdate()->get(['id', 'ART_CODIGO', 'cantidad', 'reservado', 'trasladado'])->keyBy('id');
@@ -352,7 +352,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
 
 
 
-    protected function getTransferSales($itemsIds, $orderId = null): Collection
+    protected function getTransferSales(array $itemsIds, $orderId = null): Collection
     {
         return GpTrasladosVentas::query()
             ->join('gp_pedidos', 'gp_pedidos.id', '=', 'gp_traslados_ventas.pedido_id')
@@ -426,14 +426,14 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function processReservedTransferedAndDecrementStock($groupItems)
+    protected function processReservedTransferedAndDecrementStock(array $groupItems)
     {
         foreach ($groupItems as $item) {
             $this->common->moveReservedToTransferredForTrfvLine($item->traslado, $item->GUI_REM_CANTIDAD);
             $this->decrementOriginWarehouseReservedStock($item->traslado, $item->GUI_REM_CANTIDAD);
         }
     }
-    protected function decrementOriginWarehouseReservedStock($trl, $qty)
+    protected function decrementOriginWarehouseReservedStock(GpTrasladosVentas $trl, float $qty)
     {
         $dtP = GpPedidoDetalle::findOrFail($trl->detalle_id);
         if ($dtP->ART_TIPO_COMPRA != 'L' && $dtP->ART_TIPO_COMPRA != 'SERV') {
@@ -491,7 +491,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         ];
     }
 
-    protected function getDescriptionWarehouse($warehouse)
+    protected function getDescriptionWarehouse(string $warehouse)
     {
         return GpPuntoVenta::where('PTO_VTA_ID', $warehouse)->value('PTO_VTA_DESCRIPCION');
     }
@@ -507,7 +507,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
             return round($peso * $cantidad, 2);
         });
     }
-    protected function getListOrdersTransfers($detalle)
+    protected function getListOrdersTransfers(Collection $detalle)
     {
         return $detalle->pluck('trasladoVenta.pedido.pedido')
             ->filter()
@@ -605,7 +605,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function groupItemsByOrder($items, $movimientos, $traslados): array
+    protected function groupItemsByOrder( \Illuminate\Support\Collection $items, Collection $movimientos, Collection  $traslados): array
     {
         $groups = [];
         foreach ($items as $itm) {
@@ -629,7 +629,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         return $groups;
     }
 
-    protected function processReceivedSalesTransfer(GpGuiaRemision $guia, array $items, array $params, string $order, GpUsuario $user, $hash)
+    protected function processReceivedSalesTransfer(GpGuiaRemision $guia, array $items, array $params, string $order, GpUsuario $user, string $hash)
     {
         $transaction        = TransactionType::RTD;
         $typeMov            = $transaction->value;
@@ -670,7 +670,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function updateQtyTranferedItemsWeb(GpGuiaRemision $guia, $items)
+    protected function updateQtyTranferedItemsWeb(GpGuiaRemision $guia, array $items)
     {
         foreach ($items as  $item) {
             $traslado =  data_get($item, 'traslado');
@@ -679,7 +679,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function updateQtyOrdersStockWeb(GpGuiaRemision $guia, $item, $traslado)
+    protected function updateQtyOrdersStockWeb(GpGuiaRemision $guia, array  $item, GpTrasladosVentas|array  $traslado)
     {
         $detalleId          = data_get($traslado, 'detalle_id');
         $guiaDetailId       = data_get($item, 'id');
@@ -702,7 +702,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function createRegisterHistorySalesTransfer($guia, $items, $user, $order)
+    protected function createRegisterHistorySalesTransfer(GpGuiaRemision $guia, array $items, GpUsuario $user, string $order)
     {
         $ing = $this->builder->createRegisterHistoryHeader($guia, $user, $order, 'traslado_venta');
         $ing->save();
@@ -713,7 +713,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function validatePendingsReceived($items): ?string
+    protected function validatePendingsReceived(array $items): ?string
     {
         $ids        = collect($items)->pluck('id');
         $detalles   = GpGuiaRemisionDetalle::whereIn('id', $ids)->get(

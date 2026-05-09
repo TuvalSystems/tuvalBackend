@@ -191,6 +191,10 @@ return [
         App\Providers\Service\CollectionServiceProvider::class,
         App\Providers\Service\SyncServiceProvider::class,
         App\Providers\Service\GestionServiceProvider::class,
+        App\Providers\Service\Movil\AppsServiceProvider::class,
+
+
+
 
 
         //Provider Builders

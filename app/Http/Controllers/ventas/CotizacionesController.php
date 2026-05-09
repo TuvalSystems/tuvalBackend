@@ -44,7 +44,12 @@ class CotizacionesController extends Controller
         protected readonly QuotationCreatorServiceInterface $quotationCreator
     ) {}
 
-
+    public function obtenerListaTipoIdentificacion(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            return $this->successResponse('Lista Obtenida', $this->clientService->getListTypeDni());
+        }, 'laravel', 'obtenerListaTipoIdentificacion');
+    }
 
 
     public function store(ValidateStoreQuotationRequest $request): JsonResponse
@@ -807,7 +812,7 @@ class CotizacionesController extends Controller
             'CLI_RUC' => '',
         ]);
 
-        $cliente = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->first();
+        $cliente = GpCliente::where('CLI_RUC', trim($data['CLI_RUC']))->first();
         if ($cliente) {
             $data['cliente_id'] = $cliente->id;
             $funciones = new FuncionesController();
@@ -819,7 +824,7 @@ class CotizacionesController extends Controller
             ]);
         }
 
-        $prospecto = GpProspecto::where('CLI_RUC', $data['CLI_RUC'])->first();
+        $prospecto = GpProspecto::where('CLI_RUC', trim($data['CLI_RUC']))->first();
         if ($prospecto) {
             return response([
                 'success' => true,
@@ -956,7 +961,7 @@ class CotizacionesController extends Controller
                 'articulo' => 'required',
             ]);
             $datosL = $this->quotationService->getMarginItem($request->articulo);
-             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
+            return $this->successResponse('Información obtenida correctamente', $datosL, 200);
         }, 'laravel', 'obteneMargenItemlL');
 
         try {

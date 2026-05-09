@@ -4,16 +4,13 @@ namespace App\Http\Controllers\devoluciones;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
-use App\Models\GpCliente;
 use Illuminate\Http\Request;
 use App\Models\GpOrdenDespacho;
 use App\Traits\JsonResponseTrait;
-use App\Models\GpClienteSucursal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
-use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Notifications\User\UserNotification;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -34,7 +31,7 @@ class DevolucionesController extends Controller
     }
 
 
-    public function pedidoscliente($cliente_id, $puntodeventa_id)
+    public function pedidoscliente(int $cliente_id, string $puntodeventa_id)
     {
         $pedidos = GpPedido::with('direccion_entrega')->where('PTO_VTA_ID', $puntodeventa_id)
             ->where('cliente_id', $cliente_id)
@@ -155,53 +152,6 @@ class DevolucionesController extends Controller
     }
 
 
-    public function verdevolucionesporrecibir($puntodeventa): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $puntodeventa)->first();
-        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
-        $devoluciones = GpDevoluciones::join('gp_clientes', 'gp_clientes.id', 'gp_devoluciones.cliente_id')
-            ->join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')
-            ->join('gp_punto_ventas', 'gp_pedidos.PTO_VTA_ID', 'gp_punto_ventas.PTO_VTA_ID')
-            ->where(function ($query) {
-                $query->where('gp_devoluciones.estado', 'aprobado');
-                $query->orWhere('gp_devoluciones.estado', 'solicitado');
-            })
-            ->where('gp_devoluciones.despachado', 1)
-            ->where('gp_pedidos.BOD_BODEGA', $bodega)
-            ->select('gp_devoluciones.*', 'gp_clientes.CLI_RAZON_SOCIAL', 'gp_clientes.CLI_RUC', 'gp_punto_ventas.PTO_VTA_DESCRIPCION')
-            ->get();
-
-        //        ->where('volver_a_facturar',1)
-        //        ->where('tipo_devolucion', 'total')
-
-        foreach ($devoluciones as $key => $devolucion) {
-
-            if ($devolucion->volver_a_facturar == 1 && $devolucion->tipo_devolucion == 'total') {
-                unset($devoluciones[$key]);
-            }
-
-            $devolucion->orden_despacho = false;
-            $orden_despacho = GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)
-                ->where('estado', '!=', 'pendiente')
-                ->first();
-            if ($orden_despacho)
-                $devolucion->orden_despacho = true;
-
-            $devolucion->cliente = GpCliente::where('id', $devolucion->cliente_id)->first();
-            if ($devolucion->volver_a_facturar) {
-                $devolucion->cliente_volver_a_facturar = GpCliente::where('id', $devolucion->cliente_volver_a_facturar_id)->first();
-                $devolucion->sucursal_volver_a_facturar = GpClienteSucursal::where('id', $devolucion->sucursal_facturacion_id)->first();
-            }
-        }
-
-        $devoluciones = $devoluciones->toArray();
-        $devoluciones = array_values($devoluciones);
-
-        return response([
-            'success' => true,
-            'devoluciones' => $devoluciones,
-        ]);
-    }
 
     public function listaDevolucionesPorRecibir(Request $request): JsonResponse
     {
@@ -265,7 +215,7 @@ class DevolucionesController extends Controller
     }
 
 
-    public function imprimirdevolucion($id)
+    public function imprimirdevolucion(int $id)
     {
         $dev = GpDevoluciones::findOrFail($id);
         $order = GpPedido::where('id', $dev->pedido_id)->first();
@@ -293,7 +243,7 @@ class DevolucionesController extends Controller
      * PRUEBAS PARA GENERACION DE NOTA DE CREDITO --web
      */
 
-    public function generarNotaCreditoDevolucionesFallidas($id)
+    public function generarNotaCreditoDevolucionesFallidas(int $id)
     {
         return $this->handleApiAction(function () use ($id) {
         $devolucion = $this->devolucionService->generarNotaCreditoDevolucionesFallidas($id);
@@ -301,12 +251,12 @@ class DevolucionesController extends Controller
         }, 'devoluciones', 'generarNotaCreditoDevolucionesFallidas');
     }
 
-    public function generarAjusteDevolucionesFallidas($id)
+    public function generarAjusteDevolucionesFallidas(int $id)
     {
         return $this->devolucionService->generarAjusteDevolucionesVentaFallidas($id);
     }
 
-    public function restaurarNotaCreditoDevolucion($id)
+    public function restaurarNotaCreditoDevolucion(int $id)
     {
         try {
             $dev = $this->devolucionService->responseCreditNoteDevolution($id);

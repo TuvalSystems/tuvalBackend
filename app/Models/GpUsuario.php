@@ -57,6 +57,10 @@ class GpUsuario extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
     public $timestamps = true;
+
+    protected $casts = [
+        'app_access' => 'boolean'
+    ];
     protected $fillable = [
         'USERID',
         'USERNAME',
@@ -66,7 +70,8 @@ class GpUsuario extends Authenticatable
         'password',
         'must_change_password',
         'status',
-        'process_job'
+        'process_job',
+        'app_access'
 
     ];
     protected $hidden = [
@@ -101,17 +106,15 @@ class GpUsuario extends Authenticatable
 
 
 
-    public function puntoVentaPermitidos(){
+    public function puntoVentaPermitidos()
+    {
         return $this->belongsToMany(GpPuntoVenta::class, 'permisos_usuarios_pv_cajas', 'user_id', 'pv_id')->withPivot('estado')->wherePivot('estado', 1);
     }
 
     public function cajasAsignadas()
     {
         return $this->belongsToMany(GpCaja::class, 'gp_relacion_usuario_cajas', 'user_id', 'caja_id')
-        ->withPivot('estado')
+            ->withPivot('estado')
             ->wherePivot('estado', 1);
     }
-
-
-
 }

@@ -135,6 +135,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::group(['prefix' => 'cotizaciones'], function () {
 
 
+        Route::get('lista-tipo-identificaciones', [CotizacionesController::class, 'obtenerListaTipoIdentificacion']);
         Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
         Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
 
@@ -396,7 +397,6 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
         Route::post('enviardevolucion', [DevolucionesController::class, 'enviarDevolucion']);
         Route::post('detalledevolucion', [DevolucionesController::class, 'detalledevolucion']);
-        Route::get('verdevolucionesporrecibir/{puntodeventa}', [DevolucionesController::class, 'verdevolucionesporrecibir']);
         Route::get('procesardevoluciones', [DevolucionesController::class, 'procesardevoluciones']);
         Route::get('imprimirdevolucion/{id}', [DevolucionesController::class, 'imprimirdevolucion']);
 

@@ -5,7 +5,6 @@ namespace App\Repositories\Pedidos;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
@@ -22,12 +21,12 @@ use Illuminate\Support\Facades\DB;
 class OrderRepository implements OrderRepositoryInterface
 {
 
-    public function getAllDetailsOrderById($id)
+    public function getAllDetailsOrderById(int $id)
     {
         return GpPedidoDetalle::where('pedido_id', $id)->get();
     }
 
-    public function getSuppliersByOrderAndItem($pedidoId, $itemId)
+    public function getSuppliersByOrderAndItem(int $pedidoId, int $itemId)
     {
         return GpPedidoDetalleProveedores::where('pedido_id', $pedidoId)
             ->join('gp_proveedors', 'gp_proveedors.id', 'gp_pedido_detalle_proveedores.ID_PROVEEDOR')
@@ -36,7 +35,7 @@ class OrderRepository implements OrderRepositoryInterface
             ->get();
     }
 
-    public function getPurchaseOrdersBySupplier($proveedorId)
+    public function getPurchaseOrdersBySupplier(int $proveedorId)
     {
         return GpOrdenDeCompraGeneradoDetalle::join('gp_orden_de_compra_generados', 'gp_orden_de_compra_generados.id', 'gp_orden_de_compra_generado_detalles.orden_generada_id')
             ->where('gp_orden_de_compra_generado_detalles.detalle_proveedores_id', $proveedorId)
@@ -148,7 +147,7 @@ class OrderRepository implements OrderRepositoryInterface
 
 
 
-    public function getStockOrderDetailForCheckExistence($warehouseId, $detailOrder)
+    public function getStockOrderDetailForCheckExistence(string $warehouseId, array  $detailOrder)
     {
         return GpPedidoDetalleStock::query()
             ->where('STO_ART_BODEGA', $warehouseId)

@@ -57,7 +57,8 @@
     53 => 'App\\Providers\\Service\\CollectionServiceProvider',
     54 => 'App\\Providers\\Service\\SyncServiceProvider',
     55 => 'App\\Providers\\Service\\GestionServiceProvider',
-    56 => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
+    56 => 'App\\Providers\\Service\\Movil\\AppsServiceProvider',
+    57 => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
   ),
   'eager' => 
   array (
@@ -93,6 +94,7 @@
     29 => 'App\\Providers\\Service\\CollectionServiceProvider',
     30 => 'App\\Providers\\Service\\SyncServiceProvider',
     31 => 'App\\Providers\\Service\\GestionServiceProvider',
+    32 => 'App\\Providers\\Service\\Movil\\AppsServiceProvider',
   ),
   'deferred' => 
   array (
