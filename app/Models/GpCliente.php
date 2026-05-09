@@ -116,11 +116,12 @@ class GpCliente extends Model
         'CLI_DIA_MAXIMO_MES_FACTURACION' => 'integer',
         'CLI_IMPUESTO'                   => 'decimal:2',
         'CLI_DSTO_COMERCIAL'             => 'decimal:2',
-        'CLI_MONTO_CREDITO'              => 'decimal:2', 
+        'CLI_MONTO_CREDITO'              => 'decimal:2',
         'CLI_FECHA_MODIFICACION'         => 'datetime:Y-m-d',
         'CLI_FECHA_CREACION'             => 'datetime:Y-m-d',
     ];
     protected $fillable = [
+        'tipo_identificacion',
         'CLI_RUC',
         'CLI_RAZON_SOCIAL',
         'CLI_NOMBRE_CORTO',
