@@ -198,6 +198,7 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         $now = now()->toDateTimeString();
         return [
+            'tipo_identificacion'                   => $this->clean($data, 'CLI_TIPO_ID'),
             'CLI_RUC'                               => $this->clean($data, 'CLI_RUC'),
             'CLI_RAZON_SOCIAL'                      => $this->clean($data, 'CLI_RAZON_SOCIAL'),
             'CLI_NOMBRE_CORTO'                      => $this->clean($data, 'CLI_NOMBRE_CORTO'),
