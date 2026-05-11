@@ -30,11 +30,23 @@ class UserController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
-                'USERID' => 'required|string',
+                'id' => 'required|integer|exists:gp_usuarios,id',
             ]);
-            $userId = $request->input('USERID');
+            $userId = $request->input('id');
             $this->service->changeStatusGpUser($userId);
             return $this->buildSuccessResponse('Estado actualizado correctamente!', 200);
-        }, 'laravel', 'AuthController.changeStatusGpUser');
+        }, 'laravel', 'UserController.changeStatusGpUser');
+    }
+
+    public function resetPassword(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate([
+                'id' => 'required|integer|exists:gp_usuarios,id',
+            ]);
+            $id = $request->input('id');
+            $this->service->resetPassword($id);
+            return $this->buildSuccessResponse('Contraseña Reseteada correctamente!', 200);
+        }, 'laravel', 'UserController.resetPassword');
     }
 }

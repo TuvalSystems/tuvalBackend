@@ -28,12 +28,12 @@ interface UserServiceInterface
      * Reset password
      */
 
-    public function resetPassword($data);
+    public function resetPassword(int $id);
 
     /**
      * Cambio de status
      */
-    public function changeStatusGpUser(string $userId);
+    public function changeStatusGpUser(int $userId);
 
     /**notificaciones */
 

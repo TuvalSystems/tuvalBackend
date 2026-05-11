@@ -59,8 +59,8 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::group(['prefix' => 'usuario'], function () {
         Route::post('lista-usuarios', [UserController::class, 'listaUsuarios']);
-        Route::post('change-status-user', [AuthController::class, 'changeStatusGpUser']);
-        Route::post('resetpassword', [AuthController::class, 'resetPassword']);
+        Route::post('change-status-user', [UserController::class, 'changeStatusGpUser']);
+        Route::post('reset-password', [UserController::class, 'resetPassword']);
 
         Route::post('obtener-bodegas-por-punto-de-venta', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
     });

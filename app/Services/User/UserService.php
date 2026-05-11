@@ -238,9 +238,12 @@ class UserService implements UserServiceInterface
     /**
      * Reset password
      */
-    public function resetPassword($userID)
+    public function resetPassword(int $id)
     {
-        $user = GpUsuario::where('USERID', $userID)->first();
+        $user = GpUsuario::find($id);
+        if (!$user) {
+            throw new \RuntimeException('Usuario no encontrado');
+        }
         $user->must_change_password = true;
         $user->password             = Hash::make($user->USERID);
         $user->process_job          = 1;
@@ -255,9 +258,12 @@ class UserService implements UserServiceInterface
      *
      */
 
-    public function changeStatusGpUser(string $userId)
+    public function changeStatusGpUser(int $userId)
     {
-        $user = GpUsuario::where('USERID', $userId)->firstOrFail();
+        $user = GpUsuario::find($userId);
+        if (!$user) {
+            throw new \RuntimeException('Usuario no encontrado');
+        }
         $user->status = $user->status === 1 ? 0 : 1;
         $user->save();
     }

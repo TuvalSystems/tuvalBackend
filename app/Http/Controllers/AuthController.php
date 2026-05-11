@@ -87,18 +87,6 @@ class AuthController extends Controller
         }
     }
 
-    public function resetPassword(Request $request)
-    {
-        try {
-            $this->userService->resetPassword($request->input('USERID'));
-            return $this->buildSuccessResponse('Contraseña restaurada correctamente!', 200);
-        } catch (\Throwable $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
-    }
-
-
-
 
 
 
