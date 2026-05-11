@@ -511,7 +511,7 @@ class InvoiceService implements InvoiceServiceInterface
                 'descripcionOrginal'            => $detalle->ART_DESCRIPCION_ORIGINAL,
                 'valorOrginal'                  => $detalle->ART_VALOR_ORIGINAL,
                 'descuentoOrginal'              => $detalle->descuento_original,
-                'descuento'                     => (float)$detalle->descuento
+                'descuento'                     => $detalle->descuento
             ];
         })->toArray();
     }
