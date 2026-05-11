@@ -3,6 +3,7 @@
 namespace App\Repositories\Pedidos\Contracts;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 interface OrderRepositoryInterface
 {
@@ -27,7 +28,7 @@ interface OrderRepositoryInterface
     /** functiones  para el proceso de facturar existentes */
 
 
-    public function getStockOrderDetailForCheckExistence(string $warehouseId, array  $detailOrder);
+    public function getStockOrderDetailForCheckExistence(string $warehouseId, Collection  $detailOrder);
 
 
 

@@ -16,6 +16,7 @@ use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class OrderRepository implements OrderRepositoryInterface
@@ -147,7 +148,7 @@ class OrderRepository implements OrderRepositoryInterface
 
 
 
-    public function getStockOrderDetailForCheckExistence(string $warehouseId, array  $detailOrder)
+    public function getStockOrderDetailForCheckExistence(string $warehouseId, Collection  $detailOrder)
     {
         return GpPedidoDetalleStock::query()
             ->where('STO_ART_BODEGA', $warehouseId)

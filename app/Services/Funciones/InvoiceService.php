@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpRelacionPuntoVentaIdVenta;
+use App\Models\GpUsuario;
 use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Models\Reservas\GpCotizacionReservaDetalleLog;
 use App\Models\Reservas\GpReserva;
@@ -378,7 +379,8 @@ class InvoiceService implements InvoiceServiceInterface
             Log::error("Pedido {$pedido->pedido} sin detalles");
             throw new \Exception("El pedido {$pedido->pedido} no tiene detalles para facturar.");
         }
-        $cabecera       = $this->mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $factVtaDireccionEnvio);
+        $userApproval   = !empty($pedido->aprobador_comercial_id) ? GpUsuario::whereKey($pedido->aprobador_comercial_id)->value('USERID') : null;
+        $cabecera       = $this->mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $factVtaDireccionEnvio, $userApproval);
         $detallePedido  = $this->mapFormatDetailInvoice($detalles, $pedido);
 
         $params = [
@@ -447,7 +449,7 @@ class InvoiceService implements InvoiceServiceInterface
     }
 
 
-    protected function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio)
+    protected function mapFormatHeaderInvoice($pedido, $sucursalFacturacion, $docId, $direccionEnvio, $userApprovalId)
     {
         return [
             'FAC_VTA_DOCU_ORIGEN'           => $pedido->pedido,
@@ -474,6 +476,7 @@ class InvoiceService implements InvoiceServiceInterface
             //campos aidicionales para el envio a sp de creacion de facturas
             'userIdCreator'                => $pedido->USERID,
             'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
+            'userApprovalId'                 => $userApprovalId
         ];
     }
 
@@ -508,6 +511,7 @@ class InvoiceService implements InvoiceServiceInterface
                 'descripcionOrginal'            => $detalle->ART_DESCRIPCION_ORIGINAL,
                 'valorOrginal'                  => $detalle->ART_VALOR_ORIGINAL,
                 'descuentoOrginal'              => $detalle->descuento_original,
+                'descuento'                     => (float)$detalle->descuento
             ];
         })->toArray();
     }
