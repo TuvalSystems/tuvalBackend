@@ -476,7 +476,8 @@ class InvoiceService implements InvoiceServiceInterface
             //campos aidicionales para el envio a sp de creacion de facturas
             'userIdCreator'                => $pedido->USERID,
             'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
-            'userApprovalId'                 => $userApprovalId
+            'userApprovalId'               => $userApprovalId,
+            'pedidoId'                     => $pedido->id
         ];
     }
 
@@ -511,7 +512,9 @@ class InvoiceService implements InvoiceServiceInterface
                 'descripcionOrginal'            => $detalle->ART_DESCRIPCION_ORIGINAL,
                 'valorOrginal'                  => $detalle->ART_VALOR_ORIGINAL,
                 'descuentoOrginal'              => $detalle->descuento_original,
-                'descuento'                     => $detalle->descuento
+                'descuento'                     => $detalle->descuento,
+                'pedidoId'                      => $pedido->id,
+                'detalleId'                     => $detalle->id
             ];
         })->toArray();
     }
