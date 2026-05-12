@@ -38,7 +38,7 @@ class UserController extends Controller
         }, 'laravel', 'UserController.changeStatusGpUser');
     }
 
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
@@ -48,5 +48,32 @@ class UserController extends Controller
             $this->service->resetPassword($id);
             return $this->buildSuccessResponse('Contraseña Reseteada correctamente!', 200);
         }, 'laravel', 'UserController.resetPassword');
+    }
+
+    public function obtenerDetalleUsuario(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate([
+                'id' => 'required|integer|exists:gp_usuarios,id',
+            ]);
+            $id = $request->input('id');
+
+            $data = $this->service->getDetailUser($id);
+            return $this->successResponse('Detalle Obtenido', $data, 200);
+        }, 'laravel', 'UserController.resetPassword');
+    }
+    public function obtenerListaPerfilesWeb(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $data = $this->service->getProfilesWeb();
+            return $this->successResponse('Lista de Perfiles Web', $data, 200);
+        }, 'laravel', 'UserController. obtenerListaPerfilesWeb');
+    }
+    public function obtenerListaPerfilesApp(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $data = $this->service->getProfilesApp();
+            return $this->successResponse('Lista de Perfiles App', $data, 200);
+        }, 'laravel', 'UserController. obtenerListaPerfilesWeb');
     }
 }

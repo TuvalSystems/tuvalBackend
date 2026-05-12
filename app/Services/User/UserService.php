@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Models\Perfiles;
 use App\Services\Admin\Contracts\MenuServiceInterface;
 use App\Services\User\Contracts\UserServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -378,5 +379,29 @@ class UserService implements UserServiceInterface
         )
             ->where('DESC_FORMA_PAGO_CONDICION_PAGO', trim($condId))
             ->orderBy('DESC_FORMA_PAGO_CODIGO')->get();
+    }
+
+
+
+
+    public function getDetailUser(int $id): ?GpUsuario
+    {
+        $user = GpUsuario::find($id);
+        if (!$user) {
+            throw new \RuntimeException("Usuario no encontrado");
+        }
+
+        return $user;
+    }
+
+
+    public function getProfilesWeb()
+    {
+        return Perfiles::where('state', 1)->where('platform', '=', 'web')->get();
+    }
+
+    public function getProfilesApp()
+    {
+        return Perfiles::where('state', 1)->where('platform', '=', 'app')->get();
     }
 }

@@ -20,6 +20,8 @@ class MenuService implements MenuServiceInterface
         $sections = DB::table('sections')
             ->join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
             ->where('perfil_sections.perfil_id', '=', $perfilId)
+            ->where('sections.platform', '=', 'web')
+            ->where('perfil_sections.state', 1)
             ->select('sections.id', 'sections.parent_id', 'sections.url', 'sections.name', 'sections.icon', 'sections.order', 'sections.to')
             ->orderBY('sections.order')
             ->get()
@@ -34,6 +36,7 @@ class MenuService implements MenuServiceInterface
                 ->join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
                 ->where('perfil_sections.perfil_id', $perfilId)
                 ->where('perfil_sections.home', 'yes')
+                ->where('perfil_sections.state', 1)
                 ->select('sections.*')
                 ->first()
         ];
