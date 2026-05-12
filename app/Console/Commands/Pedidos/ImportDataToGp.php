@@ -54,7 +54,6 @@ class ImportDataToGp extends Command
                     })->values()->toArray();
 
                     SyncGpOrdersJob::dispatch('orders', $payload)->onQueue('sync-low');
-                    // SyncGpOrdersJob::dispatchSync('orders', $payload);
                     $this->info('Encolado chunk de pedidos: ' . count($payload));
                 });
             $import->getOrdersDetailByUpdate($fechaIni, $fechaFin)
@@ -75,7 +74,6 @@ class ImportDataToGp extends Command
                         ];
                     })->values()->toArray();
                     SyncGpOrdersJob::dispatch('details', $payload)->onQueue('sync-low');
-                    // SyncGpOrdersJob::dispatchSync('details', $payload);
                     $this->info('Encolado chunk de detalles: ' . count($payload));
                 });
 
