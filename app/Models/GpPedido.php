@@ -262,6 +262,7 @@ class GpPedido extends Model implements HasMedia
         'modificador_global',
         'fecha_hora_aprobacion_comercial',
         'fecha_hora_aprobacion_crediticia',
+        'import_job'
     ];
 
 
@@ -323,6 +324,10 @@ class GpPedido extends Model implements HasMedia
     public function usuario()
     {
         return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
+
+    public function usuarioComercial(){
+        return $this->belongsTo(GpUsuario::class, 'aprobador_comercial_id');
     }
 
     public function ordenDespacho() : HasMany

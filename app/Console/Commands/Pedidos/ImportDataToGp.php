@@ -14,19 +14,74 @@ class ImportDataToGp extends Command
 
 
     public function handle(OrdersImportInterface $import)
-     {
-    //     $start = Carbon::parse($this->argument('start_date'));
-    //     $end = Carbon::parse($this->argument('end_date'));
-    //     while ($start->lte($end)) {
-    //         $fechaIni = $start->copy()->format('Y-m-d');
-    //         $fechaFin = $start->copy()->endOfMonth()->lte($end)
-    //             ? $start->copy()->endOfMonth()->format('Y-m-d')
-    //             : $end->format('Y-m-d');
-    //         $this->info("Encolando periodo: $fechaIni al $fechaFin");
+    {
+        $start  = Carbon::parse($this->argument('start_date'))->startOfDay();
+        $end    = Carbon::parse($this->argument('end_date'))->startOfDay();
 
-    //         SyncGpOrdersJob::dispatch($fechaIni, $fechaFin)->onQueue('migration_local_history');
-    //         $start->addMonthNoOverflow();
-    //     }
-    //     $this->info("Todos los periodos han sido encolados.");
+        if ($start->gt($end)) {
+            $this->error('la fecha inicial no puede ser mayor que la fecha final.');
+            return self::FAILURE;
+        }
+
+        while ($start->lte($end)) {
+            $periodStart    = $start->copy();
+            $periodEnd      = $start->copy()->endOfMonth();
+
+            if ($periodEnd->gt($end)) {
+                $periodEnd = $end->copy();
+            }
+            $fechaIni = $periodStart->copy()->startOfDay()->format('Y-m-d H:i:s');
+            $fechaFin = $periodEnd->copy()->endOfDay()->format('Y-m-d H:i:s');
+            $this->info("Encolando periodo: $fechaIni al $fechaFin");
+            $import->getOrdersByUpdate($fechaIni, $fechaFin)
+                ->chunkById(500, function ($orders) use ($import) {
+                    $ids = $orders->pluck('id')->values()->toArray();
+
+                    if (empty($ids)) {
+                        return;
+                    }
+
+                    // Marcar como "en proceso" antes de encolar
+                    $import->markOrdersAsInProcess($ids);
+
+
+                    $payload = $orders->map(function ($order) {
+                        return [
+                            'id'            => $order->id,
+                            'pedido'        => $order->pedido,
+                            'userApproval'  => $order->usuarioComercial?->USERID,
+                        ];
+                    })->values()->toArray();
+
+                    SyncGpOrdersJob::dispatch('orders', $payload)->onQueue('sync-low');
+                    // SyncGpOrdersJob::dispatchSync('orders', $payload);
+                    $this->info('Encolado chunk de pedidos: ' . count($payload));
+                });
+            $import->getOrdersDetailByUpdate($fechaIni, $fechaFin)
+                ->chunkById(500, function ($details) use ($import) {
+                    $ids = $details->pluck('id')->values()->toArray();
+                    if (empty($ids)) {
+                        return;
+                    }
+                    $import->markOrderDetailsAsInProcess($ids);
+                    $payload = $details->map(function ($detail) {
+                        return [
+                            'id'            => $detail->id,
+                            'pedido_id'     => $detail->pedido_id,
+                            'pedido'        => $detail->pedido?->pedido,
+                            'orden'         => $detail->orden,
+                            'artCodigo'     => $detail->ART_CODIGO,
+                            'descuento'     => $detail->descuento,
+                        ];
+                    })->values()->toArray();
+                    SyncGpOrdersJob::dispatch('details', $payload)->onQueue('sync-low');
+                    // SyncGpOrdersJob::dispatchSync('details', $payload);
+                    $this->info('Encolado chunk de detalles: ' . count($payload));
+                });
+
+            $start = $periodEnd->copy()->addDay()->startOfDay();
+        }
+        $this->info("Todos los periodos han sido encolados.");
+        return self::SUCCESS;
     }
 }
