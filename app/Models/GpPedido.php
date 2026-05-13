@@ -6,6 +6,7 @@ use App\Enums\Ventas\OrderStatus;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\Ventas\Vendedores\GpVendedor;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -433,4 +434,16 @@ class GpPedido extends Model implements HasMedia
     {
         return $query->whereHas('devolucionesBloqueantes');
     }
+
+    public function scopeConDevolucionBloqueanteDelDia($query, $fecha = null)
+{
+    $fecha = $fecha ? Carbon::parse($fecha) : now();
+
+    $desde = $fecha->copy()->startOfDay();
+    $hasta = $fecha->copy()->endOfDay();
+
+    return $query->whereHas('devolucionesBloqueantes', function ($q) use ($desde, $hasta) {
+        $q->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
+    });
+}
 }
