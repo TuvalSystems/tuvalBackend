@@ -45,7 +45,9 @@ class ClientQueryService implements ClientQueryServiceInterface
                 'gpc.CLI_CORREO_ELECT_SRI',
             ])
             ->where('CLI_RUC', '!=', '9999999999999')
-            ->where('CLI_ESTADO', 'ACTIVO')
+            ->when($type !== 'consulta', function ($q) {
+                $q->where('gpc.CLI_ESTADO', 'ACTIVO');
+            })
             ->where(function (Builder $query) use ($searchTerm) {
                 $query->where('gpc.CLI_RUC', 'LIKE', $searchTerm)
                     ->orWhere('gpc.CLI_RAZON_SOCIAL', 'LIKE', $searchTerm)
