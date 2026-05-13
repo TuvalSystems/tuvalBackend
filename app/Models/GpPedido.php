@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Models\devoluciones\GpDevoluciones;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -326,11 +327,12 @@ class GpPedido extends Model implements HasMedia
         return $this->belongsTo(GpUsuario::class, 'user_id');
     }
 
-    public function usuarioComercial(){
+    public function usuarioComercial()
+    {
         return $this->belongsTo(GpUsuario::class, 'aprobador_comercial_id');
     }
 
-    public function ordenDespacho() : HasMany
+    public function ordenDespacho(): HasMany
     {
         return $this->hasMany(GpOrdenDespacho::class, 'pedido_id');
     }
@@ -405,5 +407,30 @@ class GpPedido extends Model implements HasMedia
                     ->orwhere('trasladado', '>', 0);
             })
             ->exists();
+    }
+
+
+    //funciones para validacion de recibir cobros
+    public function devoluciones()
+    {
+        return $this->hasMany(GpDevoluciones::class, 'pedido_id', 'id');
+    }
+
+    public function devolucionesBloqueantes()
+    {
+        return $this->hasMany(GpDevoluciones::class, 'pedido_id', 'id')
+            ->whereNotIn('estado', ['espera', 'rechazada']);
+    }
+
+    public function devolucionBloqueante()
+    {
+        return $this->hasOne(GpDevoluciones::class, 'pedido_id', 'id')
+            ->whereNotIn('estado', ['espera', 'rechazada'])
+            ->latestOfMany('id');
+    }
+
+    public function scopeConDevolucionBloqueante($query)
+    {
+        return $query->whereHas('devolucionesBloqueantes');
     }
 }
