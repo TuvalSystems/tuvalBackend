@@ -36,9 +36,7 @@ use App\Http\Controllers\ventas\ReservasController;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
-});
+
 Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
@@ -59,10 +57,17 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
 
     Route::group(['prefix' => 'usuario'], function () {
         Route::post('lista-usuarios', [UserController::class, 'listaUsuarios']);
-        Route::post('change-status-user', [UserController::class, 'changeStatusGpUser']);
-        Route::post('reset-password', [UserController::class, 'resetPassword']);
-
+        Route::post('acceso-app-movil', [UserController::class, 'actualizarAccesoApp']);
+        Route::post('acceso-admin-cobros', [UserController::class, 'actualizarAdminCobros']);
+        Route::post('change-status-user', [UserController::class, 'actualizarEstadoUsuario']);
+        Route::post('change-password', [UserController::class, 'actualizarContrasena']);
+        Route::post('reset-password', [UserController::class, 'resetearContrasenaUsuario']);
         Route::post('obtener-bodegas-por-punto-de-venta', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
+
+        Route::get('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
+        Route::get('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
+        Route::get('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
+
     });
 
 

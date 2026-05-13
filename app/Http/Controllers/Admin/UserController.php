@@ -15,8 +15,6 @@ class UserController extends Controller
 
     public function __construct(protected readonly UserServiceInterface $service) {}
 
-
-
     public function listaUsuarios(Request $request)
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
@@ -26,7 +24,7 @@ class UserController extends Controller
         }, 'laravel', 'lista usuarios');
     }
 
-    public function changeStatusGpUser(Request $request): JsonResponse
+    public function actualizarEstadoUsuario(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
@@ -38,7 +36,24 @@ class UserController extends Controller
         }, 'laravel', 'UserController.changeStatusGpUser');
     }
 
-    public function resetPassword(Request $request): JsonResponse
+    public function actualizarContrasena(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate(
+                ['password' => 'required|min:8'],
+                [
+                    'password.min' => 'La contraseña debe tener al menos 8 caracteres',
+                    'password.required' => 'La contraseña es requerida'
+                ]
+            );
+            $data = $request->all();
+            $user = $request->user();
+            $response =  $this->service->changePassword($data, $user);
+            return $this->successResponse('Contraseña actualizada correctamente!', ['must_change_password' => $response->must_change_password], 200);
+        }, 'laravel', 'changePassword');
+    }
+
+    public function resetearContrasenaUsuario(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
@@ -48,6 +63,31 @@ class UserController extends Controller
             $this->service->resetPassword($id);
             return $this->buildSuccessResponse('Contraseña Reseteada correctamente!', 200);
         }, 'laravel', 'UserController.resetPassword');
+    }
+
+    public function actualizarAccesoApp(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate([
+                'id' => 'required|integer|exists:gp_usuarios,id',
+            ]);
+            $id = $request->input('id');
+            $this->service->updateMobileAppAccess($id);
+            return $this->buildSuccessResponse('Acceso Actualizado Correctamente',  200);
+        }, 'laravel', 'actualizarAccesoApp');
+    }
+
+
+    public function actualizarAdminCobros(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate([
+                'id' => 'required|integer|exists:gp_usuarios,id',
+            ]);
+            $id = $request->input('id');
+            $this->service->updateAdminCollectionAccess($id);
+            return $this->buildSuccessResponse('Acceso Actualizado Correctamente',  200);
+        }, 'laravel', 'actualizarAdminCobros');
     }
 
     public function obtenerDetalleUsuario(Request $request)

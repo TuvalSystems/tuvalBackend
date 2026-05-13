@@ -60,7 +60,9 @@ class GpUsuario extends Authenticatable
     public $timestamps = true;
 
     protected $casts = [
-        'app_access' => 'boolean'
+        'app_access'        => 'boolean',
+        'is_admin_cobros'   => 'boolean',
+        'status'            => 'boolean'
     ];
     protected $fillable = [
         'USERID',
@@ -72,6 +74,7 @@ class GpUsuario extends Authenticatable
         'must_change_password',
         'status',
         'process_job',
+        'is_admin_cobros',
         'app_access'
 
     ];

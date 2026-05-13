@@ -12,18 +12,19 @@ interface UserServiceInterface
 
     public function listUsers(array $filters): LengthAwarePaginator;
 
-    public function validateStatusGpUser($credentials): bool;
+    public function validateStatusGpUser(array $credentials): bool;
     public function validateCredentials(Request $request): array;
     public function validateUserCredentials(array $credentials): array;
     public function isValidUser(array $validationResponse): bool;
     public function isValidUserWeb(array $credentials): bool;
-    public function getActiveUser($username): ?Model;
+    public function getActiveUser(string $username): ?Model;
+    public function updateMobileAppAccess(int $id);
+     public function updateAdminCollectionAccess(int $id);
 
-    public function buildSuccessResponseUser($user): array;
+    public function buildSuccessResponseUser(GpUsuario $user): array;
 
     // cambio de contraseña
-    public function changePassword($data, GpUsuario $user);
-
+    public function changePassword(array $data, GpUsuario $user);
     /**
      * Reset password
      */
@@ -34,6 +35,7 @@ interface UserServiceInterface
      * Cambio de status
      */
     public function changeStatusGpUser(int $userId);
+
 
     /**notificaciones */
 

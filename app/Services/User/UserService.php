@@ -47,6 +47,8 @@ class UserService implements UserServiceInterface
             'perfil_app_name'   => 'pfa.name',
             'status'            => 'us.status',
             'created_at'        => 'us.created_at',
+            'is_admin_cobros'   => 'us.is_admin_cobros',
+            'app_access'        => 'us.app_access'
         ];
         $orderColumn = data_get($allowedSorts, $sortField, 'us.created_at');
 
@@ -58,6 +60,8 @@ class UserService implements UserServiceInterface
             'us.must_change_password',
             'pf.name as perfil_name',
             'pfa.name as perfil_app_name',
+            'us.is_admin_cobros',
+            'us.app_access',
             'us.created_at'
         ])
             ->from('gp_usuarios as us')
@@ -89,7 +93,7 @@ class UserService implements UserServiceInterface
         }
         return true;
     }
-    public function validateStatusGpUser($credentials): bool
+    public function validateStatusGpUser(array $credentials): bool
     {
         $user = GpUsuario::where('USERID', $credentials['username'])->where('status', true)->first();
         if (!$user) {
@@ -98,7 +102,7 @@ class UserService implements UserServiceInterface
         return true;
     }
 
-    public function getActiveUser($username): ?Model
+    public function getActiveUser(string $username): ?Model
     {
         return GpUsuario::activo()
             ->where('USERID', trim($username))
@@ -145,7 +149,7 @@ class UserService implements UserServiceInterface
 
 
 
-    public function buildSuccessResponseUser($user): array
+    public function buildSuccessResponseUser(Gpusuario $user): array
     {
         return [
             'user'                  => $this->formatuserData($user),
@@ -228,7 +232,7 @@ class UserService implements UserServiceInterface
      * Cambio de contraseña
      */
 
-    public function changePassword($data, GpUsuario $user)
+    public function changePassword(array $data, GpUsuario $user)
     {
         $user->must_change_password = false;
         $user->password = Hash::make($data['password']);
@@ -265,7 +269,28 @@ class UserService implements UserServiceInterface
         if (!$user) {
             throw new \RuntimeException('Usuario no encontrado');
         }
-        $user->status = $user->status === 1 ? 0 : 1;
+        $user->status = $user->status === true ? false: true;
+        $user->save();
+    }
+
+
+    public function updateMobileAppAccess(int $id)
+    {
+        $user = GpUsuario::find($id);
+        if (!$user) {
+            throw new \RuntimeException('Usuario no encontrado');
+        }
+        $user->app_access = $user->app_access === true ? false: true;
+        $user->save();
+    }
+
+    public function updateAdminCollectionAccess(int $id)
+    {
+        $user = GpUsuario::find($id);
+        if (!$user) {
+            throw new \RuntimeException('Usuario no encontrado');
+        }
+        $user->is_admin_cobros = $user->is_admin_cobros === true ? false: true;
         $user->save();
     }
 
@@ -390,7 +415,6 @@ class UserService implements UserServiceInterface
         if (!$user) {
             throw new \RuntimeException("Usuario no encontrado");
         }
-
         return $user;
     }
 

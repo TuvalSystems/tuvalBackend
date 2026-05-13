@@ -6,8 +6,6 @@ use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\JsonResponse;
 
 
 class AuthController extends Controller
@@ -66,26 +64,7 @@ class AuthController extends Controller
 
 
 
-    public function changePassword(Request $request)
-    {
-        $request->validate(
-            ['password' => 'required|min:8'],
-            [
-                'password.min' => 'La contraseña debe tener al menos 8 caracteres',
-                'password.required' => 'La contraseña es requerida'
-            ]
-        );
-        try {
-            $data = $request->all();
-            $user = $request->user();
-            $response =  $this->userService->changePassword($data, $user);
-            return $this->successResponse('Contraseña actualizada correctamente!', ['must_change_password' => $response->must_change_password], 200);
-        } catch (ValidationException $e) {
-            return $this->validationErrorResponse($e->errors(), 'Validación fallida', 422);
-        } catch (\Exception $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
-    }
+
 
 
 
