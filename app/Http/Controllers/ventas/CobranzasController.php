@@ -496,6 +496,7 @@ class CobranzasController extends Controller
 
     public function validarExistenciaDevolucion(array $data)
     {
+        $fechaCobro = now();
         $arr = [
             'hasExistence'  => false,
             'mensaje'       => 'procede'
@@ -505,18 +506,22 @@ class CobranzasController extends Controller
             return  $arr;
         }
 
+        $desde = $fechaCobro->copy()->startOfDay();
+        $hasta = $fechaCobro->copy()->endOfDay();
         $datos =  GpPedido::query()
             ->whereIn('factura', $facturas)
-            ->conDevolucionBloqueante()
+            ->conDevolucionBloqueanteDelDia($fechaCobro)
             ->with([
-                'devolucionBloqueante' => function ($q) {
+                'devolucionBloqueante' => function ($q)  use ($desde, $hasta) {
                     $q->select([
                         'gp_devoluciones.id',
                         'gp_devoluciones.devolucion',
+                        'gp_devoluciones.DOC_GENERADO',
                         'gp_devoluciones.pedido_id',
                         'gp_devoluciones.estado',
                         'gp_devoluciones.created_at',
-                    ]);
+                    ])
+                        ->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
                 }
             ])
             ->get([
@@ -532,6 +537,7 @@ class CobranzasController extends Controller
                     'devolucion' => [
                         'id'            => $pedido->devolucionBloqueante?->id,
                         'devolucion'    => $pedido->devolucionBloqueante?->devolucion,
+                        'nota_credito'  => $pedido->devolucionBloqueante?->DOC_GENERADO,
                         'estado'        => $pedido->devolucionBloqueante?->estado,
                         'fecha'         => $pedido->devolucionBloqueante?->created_at,
                     ],
@@ -543,16 +549,23 @@ class CobranzasController extends Controller
         }
         $mensaje = 'No se puede registrar el cobro porque existen facturas con devolución generada: ';
 
-        $detalleMensaje = $datos->map(function ($item, $index) {
-            $factura    = data_get($item, 'factura', 'Sin Factura');
-            $pedido     = data_get($item, 'pedido', 'Sin Pedido');
-            $devolucion = data_get($item, 'devolucion.devolucion');
-            $estado     = data_get($item, 'devolucion.estado');
+        $detalleMensaje     = $datos->map(function ($item, $index) {
+            $factura        = data_get($item, 'factura', 'Sin Factura');
+            $pedido         = data_get($item, 'pedido', 'Sin Pedido');
+            $devolucion     = data_get($item, 'devolucion.devolucion');
+            $notaCredito    = data_get($item, 'devolucion.nota_credito', 'N/A');
+            $estado         = data_get($item, 'devolucion.estado');
+            $fecha       = data_get($item, 'devolucion.fecha');
+            $estadoTexto = is_object($estado) && property_exists($estado, 'value')
+                ? $estado->value
+                : ($estado ?? 'Sin estado');
 
             return ($index + 1) . ". Factura: {$factura}\n"
                 . "   Pedido: {$pedido}\n"
                 . "   Devolución: {$devolucion}\n"
-                . "   Estado: {$estado->value}";
+                . "   Nota Credito: {$notaCredito}\n"
+                . "   Estado: {$estadoTexto}\n"
+                . "   Fecha devolución: {$fecha}";
         })->implode("\n\n");
 
 
