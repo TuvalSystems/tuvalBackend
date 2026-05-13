@@ -64,9 +64,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('reset-password', [UserController::class, 'resetearContrasenaUsuario']);
         Route::post('obtener-bodegas-por-punto-de-venta', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
 
-        Route::get('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
-        Route::get('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
-        Route::get('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
+        Route::post('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
+        Route::post('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
+        Route::post('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
 
     });
 
