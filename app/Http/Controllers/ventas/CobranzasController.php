@@ -269,7 +269,7 @@ class CobranzasController extends Controller
 
         $data = $request->all();
         $validate = $this->validarExistenciaDevolucion($data);
-        if ($validate['hasExistence'] === true) {
+        if ($validate['hasExistence']) {
             return response([
                 'success' => false,
                 'message' => $validate['mensaje'],
