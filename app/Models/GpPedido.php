@@ -419,13 +419,13 @@ class GpPedido extends Model implements HasMedia
     public function devolucionesBloqueantes()
     {
         return $this->hasMany(GpDevoluciones::class, 'pedido_id', 'id')
-            ->whereNotIn('estado', ['espera', 'rechazada']);
+            ->whereNotIn('estado', ['espera', 'rechazada', 'no_procesado']);
     }
 
     public function devolucionBloqueante()
     {
         return $this->hasOne(GpDevoluciones::class, 'pedido_id', 'id')
-            ->whereNotIn('estado', ['espera', 'rechazada'])
+            ->whereNotIn('estado', ['espera', 'rechazada', 'no_procesado'])
             ->latestOfMany('id');
     }
 
