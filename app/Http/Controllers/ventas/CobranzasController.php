@@ -269,7 +269,7 @@ class CobranzasController extends Controller
 
         $data = $request->all();
         $validate = $this->validarExistenciaDevolucion($data);
-        if ($validate['hasExistence']) {
+        if ($validate['hasExistence'] === true) {
             return response([
                 'success' => false,
                 'message' => $validate['mensaje'],
@@ -544,7 +544,7 @@ class CobranzasController extends Controller
                 ];
             });
 
-        if (empty($datos)) {
+        if ($datos->isEmpty()) {
             return $arr;
         }
         $mensaje = 'No se puede registrar el cobro porque existen facturas con devolución generada: ';
