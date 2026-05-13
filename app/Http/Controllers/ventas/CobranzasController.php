@@ -544,7 +544,7 @@ class CobranzasController extends Controller
                 ];
             });
 
-        if (empty($datos)) {
+        if ($datos->isEmpty()) {
             return $arr;
         }
         $mensaje = 'No se puede registrar el cobro porque existen facturas con devolución generada: ';
