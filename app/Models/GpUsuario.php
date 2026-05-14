@@ -111,7 +111,7 @@ class GpUsuario extends Authenticatable
 
     public function scopeActivo($query)
     {
-        return $query->where('status', 1)
+        return $query->where('status', true)
             ->whereHas('perfil', function ($q) {
                 $q->where('state', 'active');
             });

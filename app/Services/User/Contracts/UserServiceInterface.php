@@ -3,8 +3,6 @@
 namespace App\Services\User\Contracts;
 
 use App\Models\GpUsuario;
-use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface UserServiceInterface
@@ -12,16 +10,10 @@ interface UserServiceInterface
 
     public function listUsers(array $filters): LengthAwarePaginator;
 
-    public function validateStatusGpUser(array $credentials): bool;
-    public function validateCredentials(Request $request): array;
-    public function validateUserCredentials(array $credentials): array;
-    public function isValidUser(array $validationResponse): bool;
-    public function isValidUserWeb(array $credentials): bool;
-    public function getActiveUser(string $username): ?Model;
     public function updateMobileAppAccess(int $id);
      public function updateAdminCollectionAccess(int $id);
 
-    public function buildSuccessResponseUser(GpUsuario $user): array;
+     public function authenticateUser(string $userName, string $password) : array;
 
     // cambio de contraseña
     public function changePassword(array $data, GpUsuario $user);

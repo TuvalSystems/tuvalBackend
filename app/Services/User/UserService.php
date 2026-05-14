@@ -6,19 +6,16 @@ use App\Models\GpUsuario;
 use App\Models\GpProveedor;
 use App\Models\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
-use Illuminate\Http\Request;
 use App\Models\GpCondicionPago;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\Perfiles;
 use App\Services\Admin\Contracts\MenuServiceInterface;
 use App\Services\User\Contracts\UserServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Validation\ValidationException;
 
 class UserService implements UserServiceInterface
 {
@@ -84,80 +81,31 @@ class UserService implements UserServiceInterface
 
 
 
-
-    public function isValidUserWeb(array $credentials): bool
+    /**
+     * Summary of authenticateUser
+     * @param string $userName
+     * @param string $password
+     * @return array
+     */
+    public function authenticateUser(string $userName, string $password): array
     {
-        $user = GpUsuario::where('USERID', $credentials['username'])->first();
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
-            return false;
-        }
-        return true;
-    }
-    public function validateStatusGpUser(array $credentials): bool
-    {
-        $user = GpUsuario::where('USERID', $credentials['username'])->where('status', true)->first();
-        if (!$user) {
-            return false;
-        }
-        return true;
-    }
-
-    public function getActiveUser(string $username): ?Model
-    {
-        return GpUsuario::activo()
-            ->where('USERID', trim($username))
-            ->select([
-                'id',
-                'perfil_id',
-                'USERID',
-                'USERNAME',
-                'must_change_password',
-                'status',
-                'app_access'
+        $user = GpUsuario::query()
+            ->activo()
+            ->with([
+                'perfil:id,name,state',
+                'perfilApp:id,name',
             ])
+            ->where('USERID', $userName)
             ->first();
-    }
 
-    public function validateCredentials(Request $request): array
-    {
-        return $request->validate([
-            'username' => 'required|string',
-            'password' => 'required'
-        ]);
-    }
-
-    public function validateUserCredentials(array $credentials): array
-    {
-        $params = array(
-            'idCompany' => config('services.api_gp.company'),
-            'username'  => $credentials['username'],
-            'password'  => $credentials['password']
-        );
-
-        $resp = $this->apiGp->validateUser($params);
-        $rSuccess = data_get($resp, 'success', false);
-        if (!$rSuccess) {
-            throw ValidationException::withMessages(['username' => 'El usuario no existe o la contraseña es incorrecta.']);
-        }
-        return data_get($resp, 'data', []);
-    }
-
-    public function isValidUser(array $validationResponse): bool
-    {
-        return isset($validationResponse['codRet']) && $validationResponse['codRet'] == '0';
-    }
-
-
-
-    public function buildSuccessResponseUser(Gpusuario $user): array
-    {
+        $this->isValidUserWeb($user, $password);
         return [
             'user'                  => $this->formatuserData($user),
             'token'                 => $this->generateAuthToken($user),
             'menu'                  => $this->menu->getFullMenuLayout($user->perfil_id)['arbol'],
             'home'                  => $this->menu->getFullMenuLayout($user->perfil_id)['home'],
-            'puntosdeventa'         => $this->getUserSalesPoints($user->USERID),
-            'puntodeventaselect'    => $this->getDefaultSalesPoint($user->USERID),
+            'puntosdeventa'         => $this->getUserSalesPoints($user->id),
+            'puntodeventaselect'    => $this->getDefaultSalesPoint($user->id),
             'formadepago'           => $this->getPaymentMethods(),
             'condiciondepago'       => $this->getPaymentConditions(),
             'proveedores'           => $this->getSuppliers(),
@@ -165,29 +113,51 @@ class UserService implements UserServiceInterface
         ];
     }
 
-    public function formatUserData($user): array
+
+
+    protected function isValidUserWeb(GpUsuario $user, string $password): void
+    {
+        if (!$user) {
+            throw new \RuntimeException('Opps! Verifique las credenciales o el perfil asignado');
+        }
+        if (!Hash::check($password, $user->password)) {
+            throw new \RuntimeException('Las credenciales no coinciden');
+        }
+
+        if (!$user->status) {
+            throw new \RuntimeException('El usuario no se encuentra activo');
+        }
+
+        if (!$user->perfil_id) {
+            throw new \RuntimeException('El usuario no tiene un perfil web asignado');
+        }
+    }
+
+
+    public function formatUserData(GpUsuario $user): array
     {
         return [
             'id'            => $user->id,
             'USERID'        => $user->USERID,
             'USERNAME'      => $user->USERNAME,
             'perfil_id'     => $user->perfil_id,
+            'perfil_app_id' => $user->perfil_app_id,
             'status'        => $user->status,
             'app_access'    => $user->app_access
         ];
     }
 
-    public function generateAuthToken($user): string
+    public function generateAuthToken(GpUsuario $user): string
     {
         return $user->createToken($user->USERID)->plainTextToken;
     }
 
 
 
-    public function getUserSalesPoints($userID)
+    public function getUserSalesPoints(int $userId)
     {
         return GpPuntoVenta::join('gp_relacion_usuario_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', '=', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA')
-            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userID)
+            ->where('gp_relacion_usuario_punto_ventas.user_id', $userId)
             ->select('gp_punto_ventas.*')
             ->with('bodegas')
             ->orderBy('gp_relacion_usuario_punto_ventas.orden', 'asc')
@@ -197,10 +167,10 @@ class UserService implements UserServiceInterface
     }
 
 
-    public function getDefaultSalesPoint($userId): mixed
+    public function getDefaultSalesPoint(int $userId): mixed
     {
         return GpPuntoVenta::join('gp_relacion_usuario_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', '=', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA')
-            ->where('gp_relacion_usuario_punto_ventas.USER_PTO_VTA_USUARIO', $userId)
+            ->where('gp_relacion_usuario_punto_ventas.user_id', $userId)
             ->select('gp_punto_ventas.*')
             ->with('bodegas')
             ->orderBy('gp_relacion_usuario_punto_ventas.orden', 'asc')
@@ -217,12 +187,15 @@ class UserService implements UserServiceInterface
         return GpCondicionPago::all();
     }
 
-    public function getSuppliers(): Collection
+    public function getSuppliers(): mixed
     {
         return GpProveedor::select('id', 'PROV_RAZON_SOCIAL')
             ->where('PROV_CLASE', '!=', 'PR-EXT')
             ->orderBy('PROV_RAZON_SOCIAL')->get();
     }
+
+
+
 
 
 
