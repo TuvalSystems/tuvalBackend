@@ -269,7 +269,7 @@ class UserService implements UserServiceInterface
         if (!$user) {
             throw new \RuntimeException('Usuario no encontrado');
         }
-        $user->status = $user->status === true ? false: true;
+        $user->status = $user->status === true ? false : true;
         $user->save();
     }
 
@@ -280,7 +280,7 @@ class UserService implements UserServiceInterface
         if (!$user) {
             throw new \RuntimeException('Usuario no encontrado');
         }
-        $user->app_access = $user->app_access === true ? false: true;
+        $user->app_access = $user->app_access === true ? false : true;
         $user->save();
     }
 
@@ -290,7 +290,7 @@ class UserService implements UserServiceInterface
         if (!$user) {
             throw new \RuntimeException('Usuario no encontrado');
         }
-        $user->is_admin_cobros = $user->is_admin_cobros === true ? false: true;
+        $user->is_admin_cobros = $user->is_admin_cobros === true ? false : true;
         $user->save();
     }
 
@@ -411,7 +411,10 @@ class UserService implements UserServiceInterface
 
     public function getDetailUser(int $id): ?GpUsuario
     {
-        $user = GpUsuario::find($id);
+        $user = GpUsuario::with([
+            'perfil:id,name',
+            'perfilApp:id,name',
+        ])->find($id);
         if (!$user) {
             throw new \RuntimeException("Usuario no encontrado");
         }
@@ -427,5 +430,25 @@ class UserService implements UserServiceInterface
     public function getProfilesApp()
     {
         return Perfiles::where('state', 1)->where('platform', '=', 'app')->get();
+    }
+
+
+    public function updateUserProfiles(array $payload)
+    {
+        $id = data_get($payload, 'user_id');
+        $user = GpUsuario::find($id);
+        if (!$user) {
+            throw new \RuntimeException("Usuario no encontrado");
+        }
+
+        if (array_key_exists('perfil_id', $payload)) {
+            $user->perfil_id = data_get($payload, 'perfil_id');
+        }
+
+        if (array_key_exists('perfil_app_id', $payload)) {
+            $user->perfil_app_id = data_get($payload, 'perfil_app_id');
+        }
+
+        $user->save();
     }
 }

@@ -69,6 +69,7 @@ class GpUsuario extends Authenticatable
         'USERNAME',
         'NIVEL_AUTORIZA_CRED',
         'perfil_id',
+        'perfil_app_id',
         'co_usr',
         'password',
         'must_change_password',

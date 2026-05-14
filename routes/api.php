@@ -67,7 +67,7 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
         Route::post('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
         Route::post('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
-
+        Route::post('actualizar-perfiles', [UserController::class, 'actualizarPerfilesUsuario']);
     });
 
 

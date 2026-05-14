@@ -116,4 +116,17 @@ class UserController extends Controller
             return $this->successResponse('Lista de Perfiles App', $data, 200);
         }, 'laravel', 'UserController. obtenerListaPerfilesWeb');
     }
+
+
+    public function actualizarPerfilesUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate([
+                'form.user_id' => 'required|integer|exists:gp_usuarios,id',
+            ]);
+            $payload = $request->input('form');
+            $this->service->updateUserProfiles($payload);
+            return $this->buildSuccessResponse("Perfil actualizado correctamente", 200);
+        }, 'laravel', 'actualizarPerfilesUsuario');
+    }
 }

@@ -51,4 +51,5 @@ interface UserServiceInterface
     public function getDetailUser(int $id): ?GpUsuario;
     public function getProfilesApp();
     public function getProfilesWeb();
+     public function updateUserProfiles(array $payload);
 }
