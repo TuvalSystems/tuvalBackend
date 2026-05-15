@@ -1115,7 +1115,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
         $newOrder       = $this->orderBuilder->formPayloadOrderDemand($infoCreator, $payload, $approvalComercial,  $puntoVenta, $requiereAprobacionCrediticia);
         $newOrder->save();
-        return $newOrder;
+        return $newOrder->refresh();
     }
 
 
