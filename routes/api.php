@@ -70,6 +70,14 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('actualizar-perfiles', [UserController::class, 'actualizarPerfilesUsuario']);
     });
 
+    Route::group(['prefix' => 'secciones'], function () {
+        Route::get('lista-secciones', [SectionsController::class, 'index']);
+        Route::get('options', [SectionsController::class, 'options']);
+        Route::post('/', [SectionsController::class, 'store']);
+        Route::put('/{section}', [SectionsController::class, 'update']);
+        Route::post('eliminar-seccion', [SectionsController::class, 'eliminarSeccion']);
+    });
+
 
     Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);
     Route::get('/llenabodegasgp', [SincronizacionController::class, 'llenabodegasgp']);
