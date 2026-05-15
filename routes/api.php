@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -35,9 +36,7 @@ use App\Http\Controllers\ventas\ReservasController;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
-});
+
 Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
@@ -54,12 +53,29 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     Route::post('obtener-metodos-pago', [AuthController::class, 'obtenerMetodosDePago']);
 
 
-    Route::post('resetpassword', [AuthController::class, 'resetPassword']);
-    Route::post('change-status-user', [AuthController::class, 'changeStatusGpUser']);
     Route::get('logout', [AuthController::class, 'logout']);
 
     Route::group(['prefix' => 'usuario'], function () {
+        Route::post('lista-usuarios', [UserController::class, 'listaUsuarios']);
+        Route::post('acceso-app-movil', [UserController::class, 'actualizarAccesoApp']);
+        Route::post('acceso-admin-cobros', [UserController::class, 'actualizarAdminCobros']);
+        Route::post('change-status-user', [UserController::class, 'actualizarEstadoUsuario']);
+        Route::post('change-password', [UserController::class, 'actualizarContrasena']);
+        Route::post('reset-password', [UserController::class, 'resetearContrasenaUsuario']);
         Route::post('obtener-bodegas-por-punto-de-venta', [AuthController::class, 'obtenerBodegasPorPuntoDeVentaUsuario']);
+
+        Route::post('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
+        Route::post('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
+        Route::post('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
+        Route::post('actualizar-perfiles', [UserController::class, 'actualizarPerfilesUsuario']);
+    });
+
+    Route::group(['prefix' => 'secciones'], function () {
+        Route::get('lista-secciones', [SectionsController::class, 'index']);
+        Route::get('options', [SectionsController::class, 'options']);
+        Route::post('/', [SectionsController::class, 'store']);
+        Route::put('/{section}', [SectionsController::class, 'update']);
+        Route::post('eliminar-seccion', [SectionsController::class, 'eliminarSeccion']);
     });
 
 

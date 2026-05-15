@@ -3,49 +3,39 @@
 namespace App\Http\Controllers;
 
 use App\Services\User\Contracts\UserServiceInterface;
+use App\Traits\CleansPayloadData;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\JsonResponse;
 
 
 class AuthController extends Controller
 {
-    use JsonResponseTrait, ExecuteApiTransactions;
-    protected $userService;
+    use JsonResponseTrait, ExecuteApiTransactions, CleansPayloadData;
 
-    public function __construct(UserServiceInterface $userService)
+    public function __construct(protected readonly UserServiceInterface $userService) {}
+
+    public function login(Request $request): JsonResponse
     {
-        $this->userService = $userService;
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'username' => ['required', 'string', 'max:100'],
+                'password' => ['required', 'string', 'max:100'],
+            ], [
+                'username.required' => 'El usuario es obligatorio.',
+                'username.string'   => 'El usuario debe ser texto.',
+                'username.max'      => 'El usuario no debe superar los 50 caracteres.',
+
+                'password.required' => 'La contraseña es obligatoria.',
+                'password.max'      => 'La contraseña no debe superar los 100 caracteres.',
+            ]);
+            $userName = $this->clean($validated, 'username');
+            $password = data_get($validated, 'password');
+            $data = $this->userService->authenticateUser($userName, $password);
+            return $this->successResponse('Login Exitoso', $data, 200);
+        }, 'laravel', 'login');
     }
-
-    public function login(Request $request)
-    {
-        try {
-            $credentials = $this->userService->validateCredentials($request);
-            $validationResponse = $this->userService->validateuserCredentials($credentials);
-
-            if (!$this->userService->isValidUser($validationResponse)) {
-                return $this->buildErrorResponse($validationResponse['msj'] ?? 'Usuario no encontrado', 404);
-            }
-            if (!$this->userService->isValidUserWeb($credentials)) {
-                return $this->buildErrorResponse('Las credenciales no son validas', 401);
-            }
-            if (!$this->userService->validateStatusGpUser($credentials)) {
-                return $this->buildErrorResponse('El usuario ingresado se encuentra inactivo', 404);
-            }
-            $user = $this->userService->getActiveUser($credentials['username']);
-            if (!$user) {
-                return $this->buildErrorResponse('El perfil asignado se encuentra inactivo', 404);
-            }
-            $data = $this->userService->buildSuccessResponseUser($user);
-            return $this->successResponse("Login successful", $data, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
 
     /**
      * Función de salida del sistema
@@ -68,49 +58,8 @@ class AuthController extends Controller
 
 
 
-    public function changePassword(Request $request)
-    {
-        $request->validate(
-            ['password' => 'required|min:8'],
-            [
-                'password.min' => 'La contraseña debe tener al menos 8 caracteres',
-                'password.required' => 'La contraseña es requerida'
-            ]
-        );
-        try {
-            $data = $request->all();
-            $user = $request->user();
-            $response =  $this->userService->changePassword($data, $user);
-            return $this->successResponse('Contraseña actualizada correctamente!', ['must_change_password' => $response->must_change_password], 200);
-        } catch (ValidationException $e) {
-            return $this->validationErrorResponse($e->errors(), 'Validación fallida', 422);
-        } catch (\Exception $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
-    }
-
-    public function resetPassword(Request $request)
-    {
-        try {
-            $this->userService->resetPassword($request->input('USERID'));
-            return $this->buildSuccessResponse('Contraseña restaurada correctamente!', 200);
-        } catch (\Throwable $th) {
-            return $this->errorResponse('Error', $th->getMessage(), 500);
-        }
-    }
 
 
-    public function changeStatusGpUser(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $request->validate([
-                'USERID' => 'required|string',
-            ]);
-            $userId = $request->input('USERID');
-            $this->userService->changeStatusGpUser($userId);
-            return $this->buildSuccessResponse('Estado actualizado correctamente!', 200);
-        }, 'laravel', 'AuthController.changeStatusGpUser');
-    }
 
 
 

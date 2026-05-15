@@ -3,34 +3,31 @@
 namespace App\Services\User\Contracts;
 
 use App\Models\GpUsuario;
-use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 interface UserServiceInterface
 {
 
-    public function validateStatusGpUser($credentials): bool;
-    public function validateCredentials(Request $request): array;
-    public function validateUserCredentials(array $credentials): array;
-    public function isValidUser(array $validationResponse): bool;
-    public function isValidUserWeb(array $credentials): bool;
-    public function getActiveUser($username): ?Model;
+    public function listUsers(array $filters): LengthAwarePaginator;
 
-    public function buildSuccessResponseUser($user): array;
+    public function updateMobileAppAccess(int $id);
+     public function updateAdminCollectionAccess(int $id);
+
+     public function authenticateUser(string $userName, string $password) : array;
 
     // cambio de contraseña
-    public function changePassword($data, GpUsuario $user);
-
+    public function changePassword(array $data, GpUsuario $user);
     /**
      * Reset password
      */
 
-    public function resetPassword($data);
+    public function resetPassword(int $id);
 
     /**
      * Cambio de status
      */
-    public function changeStatusGpUser(string $userId);
+    public function changeStatusGpUser(int $userId);
+
 
     /**notificaciones */
 
@@ -41,5 +38,10 @@ interface UserServiceInterface
     public function getWarehouesByUser(string $userId, string $ptoVtaId);
 
     public function getAllPaymentConditions();
-    public function getAllPaymentMethods($condId);
+    public function getAllPaymentMethods(string $condId);
+
+    public function getDetailUser(int $id): ?GpUsuario;
+    public function getProfilesApp();
+    public function getProfilesWeb();
+     public function updateUserProfiles(array $payload);
 }

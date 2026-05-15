@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Ventas\Vendedores\GpVendedor;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -59,18 +60,22 @@ class GpUsuario extends Authenticatable
     public $timestamps = true;
 
     protected $casts = [
-        'app_access' => 'boolean'
+        'app_access'        => 'boolean',
+        'is_admin_cobros'   => 'boolean',
+        'status'            => 'boolean'
     ];
     protected $fillable = [
         'USERID',
         'USERNAME',
         'NIVEL_AUTORIZA_CRED',
         'perfil_id',
+        'perfil_app_id',
         'co_usr',
         'password',
         'must_change_password',
         'status',
         'process_job',
+        'is_admin_cobros',
         'app_access'
 
     ];
@@ -78,6 +83,10 @@ class GpUsuario extends Authenticatable
         'password',
     ];
 
+     protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
 
 
     public function relacionptovta()
@@ -95,10 +104,14 @@ class GpUsuario extends Authenticatable
         return $this->belongsTo(Perfiles::class, 'perfil_id');
     }
 
+    public function perfilApp(){
+        return $this->belongsTo(Perfiles::class, 'perfil_app_id');
+    }
+
 
     public function scopeActivo($query)
     {
-        return $query->where('status', 1)
+        return $query->where('status', true)
             ->whereHas('perfil', function ($q) {
                 $q->where('state', 'active');
             });

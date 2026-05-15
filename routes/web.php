@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\bodegas\DashboardController;
 use Illuminate\Support\Facades\Route;
@@ -117,9 +118,7 @@ Route::prefix('bodegas')->group(function () {
 
 
     //dupicacion guia despacho
-Route::get('guiasderemision/despacho/replicar/{id}', [GuiasderemisionController::class, 'duplicarGuiaSoloPapeles']);
-
-
+    Route::get('guiasderemision/despacho/replicar/{id}', [GuiasderemisionController::class, 'duplicarGuiaSoloPapeles']);
 });
 
 
@@ -231,5 +230,6 @@ Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'factura
 
 Route::get('notificacion-prueba', [TestController::class, 'enviarNotificacion']);
 
-
-
+Route::get('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
+Route::get('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
+Route::get('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
