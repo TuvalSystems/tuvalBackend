@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Requests\Admin\StoreSectionRequest;
 use App\Http\Requests\Admin\UpdateSectionRequest;
@@ -14,7 +14,7 @@ use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-
+use App\Http\Controllers\Controller;
 
 class SectionsController extends Controller
 {

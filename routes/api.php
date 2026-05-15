@@ -1,12 +1,12 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\SectionsController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SincronizacionController;
-use App\Http\Controllers\SectionsController;
 use App\Http\Controllers\ventas\ConsultasController;
 use App\Http\Controllers\ventas\CotizacionesController;
 use App\Http\Controllers\ventas\PedidosController;
@@ -77,6 +77,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::put('/{section}', [SectionsController::class, 'update']);
         Route::post('eliminar-seccion', [SectionsController::class, 'eliminarSeccion']);
     });
+
+
+    Route::group(['prefix' => 'perfiles'], function () {});
 
 
     Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);

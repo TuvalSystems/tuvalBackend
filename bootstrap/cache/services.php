@@ -278,6 +278,7 @@
     'App\\Repositories\\Cobranzas\\Contracts\\CollectionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\User\\Contracts\\UserRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Services\\User\\Contracts\\UserServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
+    'App\\Services\\Admin\\Contracts\\ProfileServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
     'App\\Services\\Admin\\Contracts\\SectionServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
     'App\\Services\\Admin\\Contracts\\MenuServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
     'App\\Services\\Admin\\Contracts\\AdminLogServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
