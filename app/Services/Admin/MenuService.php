@@ -22,6 +22,7 @@ class MenuService implements MenuServiceInterface
             ->where('perfil_sections.perfil_id', '=', $perfilId)
             ->where('sections.platform', '=', 'web')
             ->where('perfil_sections.state', 1)
+            ->where('sections.status', 1)
             ->select('sections.id', 'sections.parent_id', 'sections.url', 'sections.name', 'sections.icon', 'sections.sort_order', DB::raw('sections.route_name as `to`'))
             ->orderBy('sections.parent_id')
             ->orderBy('sections.sort_order')
