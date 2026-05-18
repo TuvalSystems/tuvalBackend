@@ -41,6 +41,7 @@ use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
+use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
@@ -53,7 +54,8 @@ class CobranzasController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
-    public function __construct(protected readonly CollectionServiceInterface $collectionService) {}
+    public function __construct(protected readonly CollectionServiceInterface $collectionService,
+    protected readonly CustomerPaymentApplicationServiceInterface $customer) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -2343,5 +2345,15 @@ class CobranzasController extends Controller
             $pdf = $this->collectionService->generateCashClosurePdf($cajaId, $fecha);
             return $this->buildPdfResponse($pdf, 200);
         }, 'laravel', 'imprimirPdfCierreCaja');
+    }
+
+    /** funciones para la validacion de pagos de facturas  */
+
+    public function obtenerInformacionPagosFacturas(Request $request){
+        return $this->handleApiAction(function() use ($request){
+        $payload    = $request->input('data', []);
+        $info       = $this->customer->validateIdentifyPaymentInvoices($payload) ;
+        return $this->successResponse('Información de Pagos Obtenido!',$info, 200 );
+        },'laravel', 'obtenerInformacionPagosFacturas');
     }
 }
