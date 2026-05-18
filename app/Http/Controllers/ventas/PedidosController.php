@@ -354,10 +354,10 @@ class PedidosController extends Controller
     {
         try {
             $request->validate([
-                'rowId' => 'required|integer',
-                'sucursal_id' => 'required|integer',
-                'cliente_id' => 'required|integer',
-                'tipo' => 'required|string',
+                'rowId'         => 'required|integer',
+                'sucursal_id'   => 'required|integer',
+                'cliente_id'    => 'required|integer',
+                'tipo'          => 'required|string',
             ]);
             $user = $request->user();
             $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'), $user);

@@ -471,6 +471,9 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
         Route::post('consultas/cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
         Route::post('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
         Route::post('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
+
+        //validacion de aplicacion de pagos a faturas
+        Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
     });
 
 
