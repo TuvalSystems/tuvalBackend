@@ -52,8 +52,8 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
 
                     $precioEncontrado = $myPrice->firstWhere('idLista', $cliente->CLI_NIVEL_PRECIO);
                     $valor = $precioEncontrado ? data_get($precioEncontrado, 'valor', 0) : 0;
-                    $item->ART_VALOR = $valor;
-                    $item->ART_VALOR_ORIGINAL = $valor;
+                    $item->ART_VALOR = round($valor, 4);
+                    $item->ART_VALOR_ORIGINAL = round($valor, 4);
                 }
                 return $item;
             });
