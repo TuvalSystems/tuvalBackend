@@ -125,15 +125,8 @@ class ApiGpEndpoints
 
 
 
-
-
-
-
-
-
-
     // ---
-    // 🏷️ 9. Endpoints para actualizaciones masivas
+    // 🏷️ 10. Endpoints para actualizaciones masivas
     // ---
     public const UPDATE_BATCH_GET_ORDERS_HEADER = 'api/facturas-cabecera-pendientes';
     public const UPDATE_BATCH_GET_ORDERS_DETAIL = 'api/facturas-detalles-pendientes';
@@ -141,4 +134,15 @@ class ApiGpEndpoints
 
     public const UPDATE_BATCH_UPDATE_ORDERS = 'api/update-headers';
     public const UPDATE_BATCH_UPDATE_ORDERS_DETAIL = 'api/update-details';
+
+
+
+
+
+    // ---
+    // 🔄 11. Endpoints de  articulos
+    // ---
+
+    public const ARTICULOS_CONSULTAR_LISTA_TRAMPAS_VAPOR = 'api/articulos/seleccion-trampas-items';
+
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Movil\AppController;
+use App\Http\Controllers\Movil\SteamTrapController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -24,3 +25,15 @@ Route::middleware(['auth:sanctum'])->prefix('admin/app')->group(function () {
     Route::patch('/versions/{id}/active', [AppController::class, 'active']);
     Route::delete('/versions/{id}', [AppController::class, 'destroy']);
 });
+
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('trampas-vapor')->controller(SteamTrapController::class)->group(function () {
+        Route::post('/dimensionamiento', 'generarDimensionamientoPdf');
+    });
+});
+/*
+|--------------------------------------------------------------------------
+| Rutas de trampas de vapor
+|--------------------------------------------------------------------------
+*/

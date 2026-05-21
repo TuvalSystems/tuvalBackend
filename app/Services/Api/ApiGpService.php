@@ -10,7 +10,6 @@ class ApiGpService
 
     protected $httpClient;
 
-    protected $endpoints;
 
     public function __construct()
     {
