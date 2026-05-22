@@ -451,7 +451,7 @@ class DevolucionService implements DevolucionServiceInterface
             'motivos'               => $motivos,
             'clientes'              => $clientesArr,
             'devolucion_anterior'   => $devolucionAnterior,
-            'items_devueltos'       => $this->validarItemNoTengaDespachoParcial($detalles)
+            'items_devueltos'       => $this->validarItemsNoPuedenVolverAFacturar($detalles)
         ];
     }
 
@@ -552,6 +552,11 @@ class DevolucionService implements DevolucionServiceInterface
         return collect($result)->sortBy('ART_CODIGO')->values()->all();
     }
 
+    protected function validarItemsNoPuedenVolverAFacturar(Collection $detalles): bool
+    {
+        return $this->validarItemNoTengaDespachoParcial($detalles)
+            || $this->validarDetalleParcialmenteDespachado($detalles);
+    }
 
     protected function validarItemNoTengaDespachoParcial(Collection $detalles)
     {
@@ -560,6 +565,24 @@ class DevolucionService implements DevolucionServiceInterface
             $trasladado = (float) data_get($item, 'trasladado', 0);
             return $trasladado > 0 && $trasladado < $cantidad;
         });
+    }
+
+    protected function validarDetalleParcialmenteDespachado(Collection $detalles)
+    {
+        $tieneItemsDespachados = $detalles->contains(function ($item) {
+            $cantidad   = (float) data_get($item, 'ART_CANTIDAD', 0);
+            $trasladado = (float) data_get($item, 'trasladado', 0);
+
+           return $cantidad > 0 && $trasladado >= $cantidad;
+        });
+
+        $tieneItemsSinDespachar = $detalles->contains(function ($item) {
+            $cantidad   = (float) data_get($item, 'ART_CANTIDAD', 0);
+            $trasladado = (float) data_get($item, 'trasladado', 0);
+
+            return $cantidad > 0 && $trasladado == 0;
+        });
+        return $tieneItemsDespachados && $tieneItemsSinDespachar;
     }
 
 
