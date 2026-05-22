@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * App\Models\Perfiles
@@ -30,14 +31,13 @@ class Perfiles extends Model
 
     protected $table = 'perfiles';
 
-    protected $fillabe  = [
+    protected $fillable =  [
         'name',
         'platform',
         'state',
     ];
 
     protected $casts = [
-        'id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -73,7 +73,21 @@ class Perfiles extends Model
             'perfil_sections',
             'perfil_id',
             'section_id'
-        )->withTimestamps();
+        )
+            ->withPivot([
+                'home',
+                'state',
+            ])->withTimestamps();
+    }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(GpUsuario::class, 'perfil_id', 'id');
+    }
+
+    public function usersApp(): HasMany
+    {
+        return $this->hasMany(GpUsuario::class, 'perfil_app_id', 'id');
     }
 
     public function scopePlatform(Builder $query, ?string $platform): Builder
@@ -83,11 +97,13 @@ class Perfiles extends Model
         });
     }
 
-    public function scopeState(Builder $query, ?string $state ) : Builder
+    public function scopeState(Builder $query, ?string $state = null): Builder
     {
-        return $query->when($state, function($q) use($state){
-            return $q->where('state', $state);
-        });
+        if (!filled($state) || in_array($state, ['all', 'todos', 'null', 'undefined'], true)) {
+            return $query;
+        }
+
+        return $query->where('state', $state);
     }
     public function scopeActive(Builder $query): Builder
     {
@@ -108,12 +124,12 @@ class Perfiles extends Model
 
     public function isWeb(): bool
     {
-        return $this->platforms === self::PLATFORM_WEB;
+        return $this->platform === self::PLATFORM_WEB;
     }
 
     public function isApp(): bool
     {
-        return $this->platforms === self::PLATFORM_APP;
+        return $this->platform === self::PLATFORM_APP;
     }
 
     public function setNameAttribute(string $value): void

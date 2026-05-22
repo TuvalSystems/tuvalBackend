@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SectionsController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Http\Request;
@@ -79,7 +80,14 @@ Route::middleware(['auth:sanctum', 'must.change.password'])->group(function () {
     });
 
 
-    Route::group(['prefix' => 'perfiles'], function () {});
+    Route::group(['prefix' => 'perfiles'], function () {
+        Route::get('lista', [ProfileController::class, 'lista']);
+        Route::post('crear', [ProfileController::class, 'create']);
+        Route::post('actualizar', [ProfileController::class, 'update']);
+        Route::post('eliminar', [ProfileController::class, 'delete']);
+        Route::get('secciones-asignadas', [ProfileController::class, 'assignedSections']);
+        Route::post('secciones/guardar', [ProfileController::class, 'saveSections']);
+    });
 
 
     Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);

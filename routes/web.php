@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\bodegas\DashboardController;
@@ -235,3 +236,8 @@ Route::get('notificacion-prueba', [TestController::class, 'enviarNotificacion'])
 Route::get('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
 Route::get('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
 Route::get('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
+
+
+Route::group(['prefix' => 'perfiles-pruebas'], function () {
+    Route::get('lista', [ProfileController::class, 'lista']);
+});
