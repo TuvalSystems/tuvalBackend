@@ -212,9 +212,8 @@ class UserService implements UserServiceInterface
 
         $this->isValidUserWeb($user, $password);
         return [
-            'user'                  => $this->formatuserData($user),
+            'user'                  => $this->formatUserMobile($user),
             'token'                 => $this->generateAuthToken($user, 'mobile'),
-            'must_change_password'  => $user->must_change_password,
         ];
     }
 
@@ -240,6 +239,20 @@ class UserService implements UserServiceInterface
         if (!$user->perfil_app_id) {
             throw new \RuntimeException('El usuario no tiene un perfil móvil asignado');
         }
+    }
+
+    protected function formatUserMobile(GpUsuario $user): array
+    {
+        return [
+            'id'                   => $user->id,
+            'USERID'               => $user->USERID,
+            'USERNAME'             => $user->USERNAME,
+            'perfil_app_id'        => $user->perfil_app_id,
+            'perfil_app_name'      => optional($user->perfilApp)->name,
+            'status'               => (bool) $user->status,
+            'app_access'           => (bool) $user->app_access,
+            'must_change_password' => (int) $user->must_change_password,
+        ];
     }
 
     /**
@@ -436,7 +449,7 @@ class UserService implements UserServiceInterface
         return $user;
     }
 
-    
+
 
 
     public function getProfilesWeb()
