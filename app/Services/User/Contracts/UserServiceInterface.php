@@ -41,6 +41,7 @@ interface UserServiceInterface
     public function getAllPaymentMethods(string $condId);
 
     public function getDetailUser(int $id): ?GpUsuario;
+     public function getDetailUserMovil(int $id): array;
     public function getProfilesApp();
     public function getProfilesWeb();
      public function updateUserProfiles(array $payload);

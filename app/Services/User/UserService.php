@@ -449,6 +449,16 @@ class UserService implements UserServiceInterface
         return $user;
     }
 
+    public function getDetailUserMovil(int $id): array
+    {
+        $user = GpUsuario::with([
+            'perfilApp:id,name',
+        ])->find($id);
+        if (!$user) {
+            throw new \RuntimeException("Usuario no encontrado");
+        }
+        return $this->formatUserMobile($user);
+    }
 
 
 

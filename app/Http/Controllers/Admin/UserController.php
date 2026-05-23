@@ -134,7 +134,7 @@ class UserController extends Controller
     {
         return $this->handleApiAction(function (): JsonResponse {
             $user = auth()->user();
-            $data = $this->service->getDetailUser($user->id);
+            $data = $this->service->getDetailUserMovil($user->id);
             return $this->successResponse('Información de Usuario', $data, 200);
         }, 'laravel', 'UserController.obtenerUsuarioApp');
     }
