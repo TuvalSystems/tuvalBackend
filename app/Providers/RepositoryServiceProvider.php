@@ -18,6 +18,8 @@ use App\Repositories\Cobranzas\CollectionRepository;
 use App\Repositories\Cobranzas\Contracts\CashBoxRepositoryInterface;
 use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
 use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
+use App\Repositories\Cobranzas\Contracts\WebInvoiceApplicationRepositoryInterface;
+use App\Repositories\Cobranzas\WebInvoiceApplicationRepository;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\User\Contracts\UserRepositoryInterface;
 use App\Repositories\User\UserRepository;
@@ -28,18 +30,19 @@ class RepositoryServiceProvider extends ServiceProvider implements DeferrablePro
 {
 
     public array $singletons = [
-        DevolucionRepositoryInterface::class            => DevolucionRepository::class,
-        OrderRepositoryInterface::class                 => OrderRepository::class,
-        PurchaseReceipRepositoryInterface::class        => PurchaseReceipRepository::class,
-        QuotationRepositoryInterface::class             => QuotationRepository::class,
-        TransferRepositoryInterface::class              => TransferRepository::class,
-        InventoryReservationRepositoryInterface::class  => InventoryReservationRepository::class,
+        DevolucionRepositoryInterface::class                => DevolucionRepository::class,
+        OrderRepositoryInterface::class                     => OrderRepository::class,
+        PurchaseReceipRepositoryInterface::class            => PurchaseReceipRepository::class,
+        QuotationRepositoryInterface::class                 => QuotationRepository::class,
+        TransferRepositoryInterface::class                  => TransferRepository::class,
+        InventoryReservationRepositoryInterface::class      => InventoryReservationRepository::class,
 
 
         //cobranza
-        CashClosureRepositoryInterface::class           => CashClosureRepository::class,
-        CashBoxRepositoryInterface::class               => CashClosureRepository::class,
-        CollectionRepositoryInterface::class            => CollectionRepository::class,
+        CashClosureRepositoryInterface::class               => CashClosureRepository::class,
+        CashBoxRepositoryInterface::class                   => CashClosureRepository::class,
+        CollectionRepositoryInterface::class                => CollectionRepository::class,
+        WebInvoiceApplicationRepositoryInterface::class     => WebInvoiceApplicationRepository::class,
 
         //usuario
         UserRepositoryInterface::class                  => UserRepository::class,

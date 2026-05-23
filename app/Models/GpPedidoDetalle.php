@@ -158,7 +158,8 @@ class GpPedidoDetalle extends Model
         'cancelado',
         'CHECK_ALTERNATIVO',
         'traslado',
-        'valor_original_l'
+        'valor_original_l',
+        'import_job'
 
     ];
 

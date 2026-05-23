@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Movil;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Movil\Contracts\AppServiceInterface;

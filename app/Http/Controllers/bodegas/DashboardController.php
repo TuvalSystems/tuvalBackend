@@ -37,17 +37,17 @@ class DashboardController extends Controller
 
 
         $sections = Section::join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
-            ->select('sections.*')
+            ->select(['sections.id', 'sections.parent_id', 'sections.route_name as to', 'sections.url', 'sections.name', 'sections.icon', 'sections.sort_order as order'])
             ->where('perfil_sections.perfil_id', '=', $user->perfil_id)
             ->where('sections.parent_id', 10)
             ->where('sections.id', '!=', 11)
             ->where('sections.id', '!=', 27)
             ->where('sections.id', '!=', 37)
-            ->orderBy('sections.order')
+            ->orderBy('sections.sort_order')
             ->get();
 
         foreach ($sections as $section) {
-            if ($section->to == 'bodegas-recibosdecompral') {
+            if ($section->route_name == 'bodegas-recibosdecompral') {
                 $ordendecompra = GpOrdenDeCompraGenerado::leftJoin(
                     'gp_orden_de_compra_generado_detalles',
                     'gp_orden_de_compra_generados.id',

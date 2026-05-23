@@ -10,7 +10,6 @@ class ApiGpService
 
     protected $httpClient;
 
-    protected $endpoints;
 
     public function __construct()
     {
@@ -177,7 +176,7 @@ class ApiGpService
 
     public function fetchAllOrdersPendingSql(array $params = [])
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_GET_ORDERS_HEADER, 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_GET_ORDERS_HEADER, 'POST', $params, 'json');
     }
 
 

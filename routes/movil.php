@@ -1,8 +1,18 @@
 <?php
 
-use App\Http\Controllers\Movil\AppController;
+use App\Http\Controllers\Admin\AppController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Movil\Auth\AuthMobileController;
+use App\Http\Controllers\Movil\SteamTrapController;
 use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| Login app móvil
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/login', [AuthMobileController::class, 'login']);
 
 /*
 |--------------------------------------------------------------------------
@@ -14,13 +24,34 @@ Route::get('/app/latest', [AppController::class, 'latest']);
 
 /*
 |--------------------------------------------------------------------------
-| Rutas administrativas consumidas por el frontend web Tuval
+| Rutas autenticadas de la app móvil
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum'])->prefix('admin/app')->group(function () {
-    Route::post('/versions/list', [AppController::class, 'index']);
-    Route::post('/versions', [AppController::class, 'store']);
-    Route::patch('/versions/{id}/active', [AppController::class, 'active']);
-    Route::delete('/versions/{id}', [AppController::class, 'destroy']);
+Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Usuario autenticado / cambio de contraseña
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('user', [UserController::class, 'obtenerUsuarioApp']);
+    Route::post('change-password', [UserController::class, 'actualizarContrasena']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rutas móviles protegidas por cambio obligatorio de contraseña
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['must.change.password'])->group(function () {
+
+        Route::prefix('trampas-vapor')
+            ->controller(SteamTrapController::class)
+            ->group(function () {
+                Route::post('/dimensionamiento', 'generarDimensionamientoPdf');
+            });
+    });
 });
+

@@ -20,8 +20,13 @@ class MenuService implements MenuServiceInterface
         $sections = DB::table('sections')
             ->join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
             ->where('perfil_sections.perfil_id', '=', $perfilId)
-            ->select('sections.id', 'sections.parent_id', 'sections.url', 'sections.name', 'sections.icon', 'sections.order', 'sections.to')
-            ->orderBY('sections.order')
+            ->where('sections.platform', '=', 'web')
+            ->where('perfil_sections.state', 1)
+            ->where('sections.status', 1)
+            ->select('sections.id', 'sections.parent_id', 'sections.url', 'sections.name', 'sections.icon', 'sections.sort_order', DB::raw('sections.route_name as `to`'))
+            ->orderBy('sections.parent_id')
+            ->orderBy('sections.sort_order')
+            ->orderBy('sections.name')
             ->get()
             ->map(fn($sec) => (array) $sec)
             ->toArray();
@@ -29,26 +34,47 @@ class MenuService implements MenuServiceInterface
         $tree = $this->buildSectionTree($sections);
 
         return [
-            'arbol' => $this->formatForOneUI($tree),
-            'home'  =>  DB::table('sections')
-                ->join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
-                ->where('perfil_sections.perfil_id', $perfilId)
-                ->where('perfil_sections.home', 'yes')
-                ->select('sections.*')
-                ->first()
+            'arbol' =>  $this->formatForOneUI($tree),
+            'home'  =>  $this->getHomeSection($perfilId)
         ];
     }
 
+    private function getHomeSection(int $perfilId): ?object
+    {
+        return DB::table('sections')
+            ->join('perfil_sections', 'sections.id', '=', 'perfil_sections.section_id')
+            ->where('perfil_sections.perfil_id', $perfilId)
+            ->where('perfil_sections.home', 'yes')
+            ->where('perfil_sections.state', 1)
+            ->where('sections.status', 1)
+            ->whereIn('sections.platform', ['web'])
+            ->select([
+                'sections.id',
+                'sections.parent_id',
+                'sections.url',
+                'sections.name',
+                'sections.icon',
+                'sections.sort_order',
+                'sections.platform',
+                'sections.status',
+                DB::raw('sections.route_name as `to`'),
+            ])
+            ->orderBy('sections.sort_order')
+            ->first();
+    }
 
-    private function buildSectionTree(array $elements, $parentId = 0)
+
+    private function buildSectionTree(array $elements, $parentId = null): array
     {
         $branch = [];
         foreach ($elements as $element) {
             $idParent = data_get($element, 'parent_id');
             $elementId = data_get($element, 'id');
+
             if ($idParent == $parentId) {
                 $children = $this->buildSectionTree($elements, $elementId);
-                if ($children) {
+
+                if (!empty($children)) {
                     $element['sub'] = $children;
                 }
                 $branch[] = $element;
@@ -57,21 +83,28 @@ class MenuService implements MenuServiceInterface
         return $branch;
     }
 
-
     private function formatForOneUI(array $elements): array
     {
         foreach ($elements as $key => $item) {
-            if (isset($item['sub']) && count($item['sub']) > 0) {
+            $hasChildren = isset($item['sub']) && count($item['sub']) > 0;
+
+            if ($hasChildren) {
                 unset($elements[$key]['to']);
                 $elements[$key]['sub'] = $this->formatForOneUI($item['sub']);
             }
 
-            if ($item['parent_id'] == 0) {
+            if (is_null($item['parent_id'])) {
                 $elements[$key]['subActivePaths'] = $item['url'] ?? '';
             }
 
-            unset($elements[$key]['id'], $elements[$key]['parent_id'], $elements[$key]['url']);
+            unset(
+                $elements[$key]['id'],
+                $elements[$key]['parent_id'],
+                $elements[$key]['url'],
+                $elements[$key]['sort_order']
+            );
         }
+
         return $elements;
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\bodegas\DashboardController;
 use Illuminate\Support\Facades\Route;
@@ -117,9 +119,7 @@ Route::prefix('bodegas')->group(function () {
 
 
     //dupicacion guia despacho
-Route::get('guiasderemision/despacho/replicar/{id}', [GuiasderemisionController::class, 'duplicarGuiaSoloPapeles']);
-
-
+    Route::get('guiasderemision/despacho/replicar/{id}', [GuiasderemisionController::class, 'duplicarGuiaSoloPapeles']);
 });
 
 
@@ -211,12 +211,14 @@ Route::prefix('actualizaciones-masivas')->group(function () {
 });
 
 
-Route::prefix('cobranzas')->group(function () {
+Route::group(['prefix' => 'cobranzas'], function () {
     Route::get('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
     Route::get('lista-cajas', [CobranzasController::class, 'listarCajasPorUsuarioPuntoVenta']);
     Route::get('consulta-cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
     Route::get('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
     Route::get('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
+
+    Route::get('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
 });
 
 Route::prefix('gestion')->group(function () {
@@ -231,5 +233,11 @@ Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'factura
 
 Route::get('notificacion-prueba', [TestController::class, 'enviarNotificacion']);
 
+Route::get('perfiles-web', [UserController::class, 'obtenerListaPerfilesWeb']);
+Route::get('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
+Route::get('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
 
 
+Route::group(['prefix' => 'perfiles-pruebas'], function () {
+    Route::get('lista', [ProfileController::class, 'lista']);
+});

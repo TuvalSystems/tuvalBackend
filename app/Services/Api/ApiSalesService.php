@@ -8,18 +8,12 @@ use App\Services\Api\Endpoints\ApiSalesEndpoints;
 
 class ApiSalesService
 {
-    protected $baseUrl;
-    protected $timeout;
     protected $httpClient;
 
     public function __construct()
     {
-
         $config = config("services.api_sales");
         $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
-        $this->baseUrl = $config["url"];
-        $this->timeout = $config["timeout"];
-
     }
 
 

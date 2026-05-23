@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Cobranzas\GpCobro;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * App\Models\GpCobrosTarjetaFactura
@@ -30,4 +33,41 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobrosTarjetaFactura extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'cobro_id',
+        'id_factura',
+        'monto',
+        'observacion'
+    ];
+
+    protected $casts = [
+        'cobro_id'  => 'integer',
+        'monto'     => 'float'
+    ];
+
+
+    public function cobro(): BelongsTo
+    {
+        return $this->belongsTo(GpCobro::class, 'cobro_id', 'id');
+    }
+
+
+    public function cobroPendienteWeb(): BelongsTo
+    {
+        return $this->belongsTo(
+            GpCobro::class,
+            'cobro_id',
+            'id'
+        )->whereIn('estado', ['iniciado', 'revisado']);
+    }
+
+    public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null): Builder
+    {
+        return $query->whereHas('cobroPendienteWeb', function ($q) use ($desde, $hasta) {
+            if ($desde && $hasta) {
+                $q->whereBetween('created_at', [$desde, $hasta]);
+            }
+        });
+    }
 }

@@ -2,8 +2,10 @@
 
 namespace App\Models\Cobranzas;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * App\Models\Cobranzas\GpCobrosRetenciones
@@ -80,4 +82,74 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobrosRetenciones extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'cobro_id',
+        'ret_factura',
+        'ret_fecha_emision',
+        'ret_fecha_vencimiento',
+        'ret_subtotal_factura',
+        'ret_iva_factura',
+        'ret_total_factura',
+        'ret_saldo_factura',
+        'ret_iva',
+        'ret_porcentaje_iva',
+        'ret_renta',
+        'ret_porcentaje_renta',
+        'ret_iva_srv',
+        'ret_porcentaje_renta_srv',
+        'ret_emision',
+        'ret_caducidad',
+        'ret_comprobante',
+        'ret_autorizacion',
+        'total',
+        'codigo_ws_iva',
+        'mensaje_ws_iva',
+        'codigo_ws_renta',
+        'mensaje_ws_renta',
+        'codigo_ws_iva_srv',
+        'mensaje_ws_iva_srv',
+        'codigo_ws_renta_srv',
+        'mensaje_ws_renta_srv'
+    ];
+
+    protected $casts = [
+        'cobro_id'                  => 'integer',
+        'ret_subtotal_factura'      => 'float',
+        'ret_iva_factura'           => 'float',
+        'ret_total_factura'         => 'float',
+        'ret_saldo_factura'         => 'float',
+        'ret_iva'                   => 'float',
+        'ret_porcentaje_iva'        => 'float',
+        'ret_renta'                 => 'float',
+        'ret_porcentaje_renta'      => 'float',
+        'ret_iva_srv'               => 'float',
+        'ret_porcentaje_iva_srv'    => 'float',
+        'ret_renta_srv'             => 'float',
+        'ret_porcentaje_renta_srv'  => 'float',
+        'total'                     => 'float'
+    ];
+
+
+
+    public function cobro(): BelongsTo
+    {
+        return $this->belongsTo(GpCobro::class, 'cobro_id', 'id');
+    }
+
+
+    public function cobroPendienteWeb(): BelongsTo
+    {
+        return $this->belongsTo(GpCobro::class, 'cobro_id', 'id')
+            ->whereIn('estado', ['iniciado', 'revisado']);
+    }
+
+    public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null): Builder
+    {
+        return $query->whereHas('cobroPendienteWeb', function ($q) use ($desde, $hasta) {
+            if ($desde && $hasta) {
+                $q->whereBetween('created_at', [$desde, $hasta]);
+            }
+        });
+    }
 }

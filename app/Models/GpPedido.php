@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Models\devoluciones\GpDevoluciones;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\Ventas\Vendedores\GpVendedor;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
@@ -262,6 +264,7 @@ class GpPedido extends Model implements HasMedia
         'modificador_global',
         'fecha_hora_aprobacion_comercial',
         'fecha_hora_aprobacion_crediticia',
+        'import_job'
     ];
 
 
@@ -325,7 +328,12 @@ class GpPedido extends Model implements HasMedia
         return $this->belongsTo(GpUsuario::class, 'user_id');
     }
 
-    public function ordenDespacho() : HasMany
+    public function usuarioComercial()
+    {
+        return $this->belongsTo(GpUsuario::class, 'aprobador_comercial_id');
+    }
+
+    public function ordenDespacho(): HasMany
     {
         return $this->hasMany(GpOrdenDespacho::class, 'pedido_id');
     }
@@ -401,4 +409,41 @@ class GpPedido extends Model implements HasMedia
             })
             ->exists();
     }
+
+
+    //funciones para validacion de recibir cobros
+    public function devoluciones()
+    {
+        return $this->hasMany(GpDevoluciones::class, 'pedido_id', 'id');
+    }
+
+    public function devolucionesBloqueantes()
+    {
+        return $this->hasMany(GpDevoluciones::class, 'pedido_id', 'id')
+            ->whereNotIn('estado', ['espera', 'rechazada', 'no_procesado']);
+    }
+
+    public function devolucionBloqueante()
+    {
+        return $this->hasOne(GpDevoluciones::class, 'pedido_id', 'id')
+            ->whereNotIn('estado', ['espera', 'rechazada', 'no_procesado'])
+            ->latestOfMany('id');
+    }
+
+    public function scopeConDevolucionBloqueante($query)
+    {
+        return $query->whereHas('devolucionesBloqueantes');
+    }
+
+    public function scopeConDevolucionBloqueanteDelDia($query, $fecha = null)
+{
+    $fecha = $fecha ? Carbon::parse($fecha) : now();
+
+    $desde = $fecha->copy()->startOfDay();
+    $hasta = $fecha->copy()->endOfDay();
+
+    return $query->whereHas('devolucionesBloqueantes', function ($q) use ($desde, $hasta) {
+        $q->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
+    });
+}
 }

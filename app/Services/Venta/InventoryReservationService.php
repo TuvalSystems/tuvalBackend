@@ -1115,7 +1115,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
         $newOrder       = $this->orderBuilder->formPayloadOrderDemand($infoCreator, $payload, $approvalComercial,  $puntoVenta, $requiereAprobacionCrediticia);
         $newOrder->save();
-        return $newOrder;
+        return $newOrder->refresh();
     }
 
 
@@ -1190,20 +1190,26 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             || $order->requiere_aprobacion_comercial === 'yes';
         foreach ($stock as $sto) {
 
+            $cantidadSeleccionada  = (float) data_get($sto, 'seleccionado', 0);
             $newFormatStock = [
-                'STO_ART_STOCK_DISPONIBLE' => $sto['STO_ART_STOCK_DISPONIBLE'],
+                'STO_ART_STOCK_DISPONIBLE' => (float) data_get($sto, 'STO_ART_STOCK_DISPONIBLE', 0),
             ];
-            if ($sto['seleccionado'] > 0) {
+            if ($cantidadSeleccionada > 0) {
                 $newFormatStock = $this->orderAndQuotationService->getAndValidateOrderDetailStock($detailOrder, $sto, $order->id, $order->cotizacion_id);
+                $stockDisponibleActual = (float) data_get($newFormatStock, 'STO_ART_STOCK_DISPONIBLE', 0);
+
                 if (!$newFormatStock) {
                     throw new \DomainException("No se pudo obtener el stock del artículo {$detailOrder->ART_CODIGO} en la bodega {$sto['STO_ART_BODEGA']}");
                 }
-                if ($sto['STO_ART_STOCK_DISPONIBLE'] < $sto['seleccionado']) {
-                    throw new \DomainException("El stock disponible del artículo {$detailOrder['ART_CODIGO']} en la bodega {$sto['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada.");
+                if ($stockDisponibleActual < $cantidadSeleccionada) {
+                    throw new \DomainException(
+                        "El stock disponible del artículo {$detailOrder->ART_CODIGO} en la bodega {$sto['STO_ART_BODEGA']} es insuficiente para la cantidad seleccionada. " .
+                            "Disponible: {$stockDisponibleActual}, requerido: {$cantidadSeleccionada}."
+                    );
                 }
             }
-            $reservado = $requiereAprobacion ? 0 : $sto['seleccionado'];
-            $newStock = $this->orderBuilder->formPayloadOrderDetailStock($sto, $order->id, $detailOrder->id, $newFormatStock['STO_ART_STOCK_DISPONIBLE'], $reservado);
+            $reservado = $requiereAprobacion ? 0 :  $cantidadSeleccionada;
+            $newStock = $this->orderBuilder->formPayloadOrderDetailStock($sto, $order->id, $detailOrder->id, data_get($newFormatStock, 'STO_ART_STOCK_DISPONIBLE', 0), $reservado);
             $newStock->save();
         }
     }

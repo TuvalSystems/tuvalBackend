@@ -1,0 +1,57 @@
+<?php
+
+namespace App\Http\Controllers\Movil;
+
+use App\Http\Controllers\Controller;
+use App\Services\Movil\Gestion\Contracts\SteamTrapServiceInterface;
+use App\Traits\ExecuteApiTransactions;
+use App\Traits\JsonResponseTrait;
+use Illuminate\Http\Request;
+
+class SteamTrapController extends Controller
+{
+    use JsonResponseTrait, ExecuteApiTransactions;
+
+    public function __construct(protected readonly SteamTrapServiceInterface $service) {}
+
+    public function generarDimensionamientoPdf(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $data = $request->validate([
+                'process'                   => ['required', 'string'],
+                'trapType'                  => ['required', 'string'],
+                'calculationMethod'         => ['required', 'string'],
+
+                'workingPressurePsig'       => ['required', 'numeric', 'gt:0'],
+                'returnPressurePsig'        => ['required', 'numeric', 'gte:0'],
+                'pressureDifferentialPsig'  => ['required', 'numeric', 'gt:0'],
+
+                'fluid'                     => ['nullable', 'string'],
+                'volumeM3'                  => ['nullable', 'numeric'],
+                'densityKgM3'               => ['nullable', 'numeric'],
+                'cpKjKgC'                   => ['nullable', 'numeric'],
+                'initialTemperatureC'       => ['nullable', 'numeric'],
+                'finalTemperatureC'         => ['nullable', 'numeric'],
+                'heatingTimeMin'            => ['nullable', 'numeric'],
+                'requiredHeatKj'            => ['nullable', 'numeric'],
+                'hfgKjKg'                   => ['nullable', 'numeric'],
+
+                'knownLoadKgH'              => ['nullable', 'numeric'],
+                'boilerBhp'                 => ['nullable', 'numeric'],
+
+                'estimatedLoadKg'           => ['required', 'numeric', 'gt:0'],
+                'safetyFactor'              => ['required', 'numeric', 'gte:1'],
+                'loadWithSafetyFactorKg'    => ['required', 'numeric', 'gt:0'],
+
+                'spParams.workingPressurePsig'  => ['required', 'numeric', 'gt:0'],
+                'spParams.returnPressurePsig'   => ['required', 'numeric', 'gte:0'],
+                'spParams.estimatedLoadKg'      => ['required', 'numeric', 'gt:0'],
+                'spParams.safetyFactor'         => ['required', 'numeric', 'gte:1'],
+            ]);
+            $pdfUrl = $this->service->generateSizingPdf($data);
+            return $this->successResponse('Funcionalidad de generación de PDF aún no implementada', [
+                'pdfUrl' => $pdfUrl,
+            ], 200);
+        }, 'laravel', 'SteamTrapController.generateSizingPdf');
+    }
+}
