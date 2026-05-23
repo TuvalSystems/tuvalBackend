@@ -129,4 +129,13 @@ class UserController extends Controller
             return $this->buildSuccessResponse("Perfil actualizado correctamente", 200);
         }, 'laravel', 'actualizarPerfilesUsuario');
     }
+
+    public function obtenerUsuarioApp()
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $user = auth()->user();
+            $data = $this->service->getDetailUser($user->id);
+            return $this->successResponse('Información de Usuario', $data, 200);
+        }, 'laravel', 'UserController.obtenerUsuarioApp');
+    }
 }

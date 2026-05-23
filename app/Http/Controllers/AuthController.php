@@ -32,7 +32,7 @@ class AuthController extends Controller
             ]);
             $userName = $this->clean($validated, 'username');
             $password = data_get($validated, 'password');
-            $data = $this->userService->authenticateUser($userName, $password);
+            $data = $this->userService->authenticateUserWeb($userName, $password);
             return $this->successResponse('Login Exitoso', $data, 200);
         }, 'laravel', 'login');
     }

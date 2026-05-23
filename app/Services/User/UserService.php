@@ -82,15 +82,15 @@ class UserService implements UserServiceInterface
 
 
     /**
-     * Summary of authenticateUser
+     * Summary of authenticateUserWeb
      * @param string $userName
      * @param string $password
      * @return array
      */
-    public function authenticateUser(string $userName, string $password): array
+    public function authenticateUserWeb(string $userName, string $password): array
     {
         $user = GpUsuario::query()
-            ->activo()
+            ->activoWeb()
             ->with([
                 'perfil:id,name,state',
                 'perfilApp:id,name',
@@ -101,7 +101,7 @@ class UserService implements UserServiceInterface
         $this->isValidUserWeb($user, $password);
         return [
             'user'                  => $this->formatuserData($user),
-            'token'                 => $this->generateAuthToken($user),
+            'token'                 => $this->generateAuthToken($user, 'web'),
             'menu'                  => $this->menu->getFullMenuLayout($user->perfil_id)['arbol'],
             'home'                  => $this->menu->getFullMenuLayout($user->perfil_id)['home'],
             'puntosdeventa'         => $this->getUserSalesPoints($user->id),
@@ -147,9 +147,11 @@ class UserService implements UserServiceInterface
         ];
     }
 
-    public function generateAuthToken(GpUsuario $user): string
+    public function generateAuthToken(GpUsuario $user, string $type = 'web'): string
     {
-        return $user->createToken($user->USERID)->plainTextToken;
+        return $user
+            ->createToken($user->USERID . '-' . $type, [$type])
+            ->plainTextToken;
     }
 
 
@@ -194,11 +196,51 @@ class UserService implements UserServiceInterface
             ->orderBy('PROV_RAZON_SOCIAL')->get();
     }
 
+    /**
+     *  login movil
+     */
+
+    public function authenticateUserMobile(string $userName, string $password): array
+    {
+        $user = GpUsuario::query()
+            ->activoMobile()
+            ->with([
+                'perfilApp:id,name',
+            ])
+            ->where('USERID', $userName)
+            ->first();
+
+        $this->isValidUserWeb($user, $password);
+        return [
+            'user'                  => $this->formatuserData($user),
+            'token'                 => $this->generateAuthToken($user, 'mobile'),
+            'must_change_password'  => $user->must_change_password,
+        ];
+    }
 
 
+    public function isValidUserMobile(?GpUsuario $user, string $password)
+    {
+        if (!$user) {
+            throw new \RuntimeException('Opps! Verifique las credenciales o el perfil móvil asignado');
+        }
 
+        if (!Hash::check($password, $user->password)) {
+            throw new \RuntimeException('Las credenciales no coinciden');
+        }
 
+        if (!$user->status) {
+            throw new \RuntimeException('El usuario no se encuentra activo');
+        }
 
+        if (!$user->app_access) {
+            throw new \RuntimeException('El usuario no tiene acceso a la aplicación móvil');
+        }
+
+        if (!$user->perfil_app_id) {
+            throw new \RuntimeException('El usuario no tiene un perfil móvil asignado');
+        }
+    }
 
     /**
      * Get the validation rules that apply to the request.
@@ -393,6 +435,8 @@ class UserService implements UserServiceInterface
         }
         return $user;
     }
+
+    
 
 
     public function getProfilesWeb()
