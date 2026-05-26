@@ -36,7 +36,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function processRetenciones(array $retenciones, string $desde, string $hasta)
     {
         foreach ($retenciones as &$ret) {
-            $factura                = trim(data_get($ret, 'ret_factura'));
+            $facturaOrigen          = trim(data_get($ret, 'ret_factura'));
+            $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
             $valorIngresado         = $this->money(data_get($ret, 'total', 0));
             $saldoFactura           = $this->money(data_get($ret, 'ret_saldo_factura', 0));
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -80,10 +81,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         foreach ($dataInvoices as &$ing) {
-            $factura            = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
-            $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_efectivo', 0));
-            $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
-            $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
+            $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+            $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+            $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_efectivo', 0));
+            $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
+            $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
             $sumPayments            = $this->money($payments->sum('collectionAmount'));
@@ -122,10 +124,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         foreach ($dataInvoices as &$ing) {
-            $factura            = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
-            $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_tarjeta', 0));
-            $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
-            $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
+            $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+            $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+            $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_tarjeta', 0));
+            $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
+            $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
             $sumPayments            = $this->money($payments->sum('collectionAmount'));
@@ -166,10 +169,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             }
 
             foreach ($dataInvoices as &$ing) {
-                $factura            = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
-                $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_deposito', 0));
-                $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
-                $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
+                $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+                $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+
+                $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_deposito', 0));
+                $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
+                $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
                 $sumPayments            = $this->money($payments->sum('collectionAmount'));
@@ -212,10 +217,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             }
 
             foreach ($dataInvoices as &$ing) {
-                $factura            = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
-                $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_aplicacion', 0));
-                $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
-                $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
+                $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+                $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+                $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_aplicacion', 0));
+                $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
+                $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
                 $sumPayments            = $this->money($payments->sum('collectionAmount'));
@@ -256,7 +262,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         foreach ($dataInvoices as &$ing) {
-            $factura            = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+            $facturaOrigen      = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+            $factura            = $this->normalizeInvoiceNumber($facturaOrigen);
             $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_cheque', 0));
             $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -447,5 +454,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             'ruc'       => $ruc
         ]);
         return data_get($resp, 'data', []);
+    }
+
+
+    protected function normalizeInvoiceNumber(?string $invoice): string
+    {
+        $invoice = trim((string) $invoice);
+        return preg_replace('/\.\d+$/', '', $invoice);
     }
 }
