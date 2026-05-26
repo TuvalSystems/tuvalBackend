@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
@@ -430,20 +431,20 @@ class GpPedido extends Model implements HasMedia
             ->latestOfMany('id');
     }
 
-    public function scopeConDevolucionBloqueante($query)
+    public function scopeConDevolucionBloqueante(Builder $query)
     {
         return $query->whereHas('devolucionesBloqueantes');
     }
 
-    public function scopeConDevolucionBloqueanteDelDia($query, $fecha = null)
-{
-    $fecha = $fecha ? Carbon::parse($fecha) : now();
+    public function scopeConDevolucionBloqueanteDelDia(Builder $query, $fecha = null)
+    {
+        $fecha = $fecha ? Carbon::parse($fecha) : now();
 
-    $desde = $fecha->copy()->startOfDay();
-    $hasta = $fecha->copy()->endOfDay();
+        $desde = $fecha->copy()->startOfDay();
+        $hasta = $fecha->copy()->endOfDay();
 
-    return $query->whereHas('devolucionesBloqueantes', function ($q) use ($desde, $hasta) {
-        $q->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
-    });
-}
+        return $query->whereHas('devolucionesBloqueantes', function ($q) use ($desde, $hasta) {
+            $q->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
+        });
+    }
 }

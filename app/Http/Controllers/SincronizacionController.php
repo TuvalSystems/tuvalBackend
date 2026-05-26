@@ -465,8 +465,8 @@ class SincronizacionController extends Controller
             ->toArray();
         GpRelacionUsuarioPuntoVenta::truncate();
         foreach ($relacionusuariopuntodeventas as $data) {
-            $userExtId = strtolower(trim($data['USER_PTO_VTA_USUARIO']));
-            $pvExtId   = strtolower(trim($data['USER_PTO_VTA_PUNTO_VENTA']));
+            $userExtId = mb_strtolower(trim($data['USER_PTO_VTA_USUARIO']), 'UTF-8');
+            $pvExtId   = mb_strtolower(trim($data['USER_PTO_VTA_PUNTO_VENTA']), 'UTF-8');
             // if ($pvExtId != '') {
             // if (isset($usuario[$userExtId]) && isset($puntoVenta[$pvExtId])) {
             $relacionusuariopuntodeventa                            = new GpRelacionUsuarioPuntoVenta;
