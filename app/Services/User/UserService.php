@@ -62,7 +62,7 @@ class UserService implements UserServiceInterface
             'us.created_at'
         ])
             ->from('gp_usuarios as us')
-            ->join('perfiles as pf', 'pf.id', '=', 'us.perfil_id')
+            ->leftjoin('perfiles as pf', 'pf.id', '=', 'us.perfil_id')
             ->leftJoin('perfiles as pfa', 'pfa.id', '=', 'us.perfil_app_id');
         if ($search) {
             $query->where(function ($q) use ($search) {
