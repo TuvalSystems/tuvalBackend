@@ -349,7 +349,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $cod = data_get($dev, 'devolucion', 'N/A');
             $doc = data_get($dev, 'DOC_GENERADO', 'N/A');
             $fecha = Carbon::parse(data_get($dev, 'created_at'))->format('Y-m-d');
-            return "{$cod} - {$doc} - {$fecha}";
+            $total = $this->money(data_get($dev, 'total', 0));
+             return "{$cod} - {$doc} - {$fecha} - $" . number_format($total, 2, '.', '');
         })
             ->filter()
             ->values()
