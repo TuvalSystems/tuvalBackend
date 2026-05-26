@@ -38,6 +38,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         foreach ($retenciones as &$ret) {
             $facturaOrigen          = trim(data_get($ret, 'ret_factura'));
             $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+
+            if (!$this->isValidWebInvoiceNumber($factura)) {
+                $ret = $this->markSkippedInvoiceValidation($ret, $facturaOrigen, $factura);
+                continue;
+            }
+
             $valorIngresado         = $this->money(data_get($ret, 'total', 0));
             $saldoFactura           = $this->money(data_get($ret, 'ret_saldo_factura', 0));
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -83,6 +89,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         foreach ($dataInvoices as &$ing) {
             $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
             $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+            if (!$this->isValidWebInvoiceNumber($factura)) {
+                $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
+                continue;
+            }
             $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_efectivo', 0));
             $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -126,6 +136,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         foreach ($dataInvoices as &$ing) {
             $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
             $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+            if (!$this->isValidWebInvoiceNumber($factura)) {
+                $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
+                continue;
+            }
             $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_tarjeta', 0));
             $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -172,6 +186,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
                 $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
 
+                if (!$this->isValidWebInvoiceNumber($factura)) {
+                    $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
+                    continue;
+                }
                 $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_deposito', 0));
                 $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -219,6 +237,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             foreach ($dataInvoices as &$ing) {
                 $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
                 $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
+
+                if (!$this->isValidWebInvoiceNumber($factura)) {
+                    $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
+                    continue;
+                }
+
                 $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_aplicacion', 0));
                 $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -264,6 +288,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         foreach ($dataInvoices as &$ing) {
             $facturaOrigen      = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
             $factura            = $this->normalizeInvoiceNumber($facturaOrigen);
+            if (!$this->isValidWebInvoiceNumber($factura)) {
+                $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
+                continue;
+            }
             $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_cheque', 0));
             $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
@@ -461,5 +489,35 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     {
         $invoice = trim((string) $invoice);
         return preg_replace('/\.\d+$/', '', $invoice);
+    }
+
+
+    protected function isValidWebInvoiceNumber(?string $invoice): bool
+    {
+        $invoice = $this->normalizeInvoiceNumber($invoice);
+
+        return preg_match('/^\d{3}-\d{3}-\d{9}$/', $invoice) === 1;
+    }
+
+    protected function markSkippedInvoiceValidation(
+        array $item,
+        string $facturaOrigen,
+        string $facturaNormalizada
+    ): array {
+        return array_merge($item, [
+            'hasExcess'                  => false,
+            'totalApply'                 => 0,
+            'sumPayments'                => 0,
+            'sumPendingWeb'              => 0,
+            'sumDevolutions'             => 0,
+            'totalPendingNotAccounted'   => 0,
+            'excessValue'                => 0,
+            'priceRecommend'             => 0,
+            'devoluciones_info'          => [],
+            'factura_original'           => $facturaOrigen,
+            'factura_busqueda'           => $facturaNormalizada,
+            'validation_skipped'         => true,
+            'validation_skipped_reason'  => 'Documento omitido porque no corresponde al formato de factura web.',
+        ]);
     }
 }
