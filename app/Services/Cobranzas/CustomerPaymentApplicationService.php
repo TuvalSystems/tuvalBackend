@@ -5,6 +5,7 @@ namespace App\Services\Cobranzas;
 use App\Repositories\Cobranzas\Contracts\WebInvoiceApplicationRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 
@@ -52,8 +53,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
-
-
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
 
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -64,7 +64,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 false
             );
 
-            $ret = array_merge($ret, $validation);
+            $ret = array_merge($ret, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ret);
         return $retenciones;
@@ -95,7 +97,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
-
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
                 $saldoFactura,
@@ -105,7 +107,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 true
             );
 
-            $ing = array_merge($ing, $validation);
+            $ing = array_merge($ing, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ing);
 
@@ -137,6 +141,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
 
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -147,7 +152,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 true
             );
 
-            $ing = array_merge($ing, $validation);
+            $ing = array_merge($ing, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ing);
 
@@ -181,6 +188,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+                $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+
                 $validation = $this->buildInvoiceValidation(
                     $valorIngresado,
                     $saldoFactura,
@@ -190,7 +199,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     true
                 );
 
-                $ing = array_merge($ing, $validation);
+                $ing = array_merge($ing, $validation, [
+                    'devoluciones_info' => $devsInfo
+                ]);
             }
             unset($ing);
 
@@ -227,6 +238,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+                $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+
                 $validation = $this->buildInvoiceValidation(
                     $valorIngresado,
                     $saldoFactura,
@@ -236,7 +249,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     true
                 );
 
-                $ing = array_merge($ing, $validation);
+                $ing = array_merge($ing, $validation, [
+                    'devoluciones_info' => $devsInfo
+                ]);
             }
             unset($ing);
 
@@ -271,6 +286,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
                 $saldoFactura,
@@ -280,7 +297,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 true
             );
 
-            $ing = array_merge($ing, $validation);
+            $ing = array_merge($ing, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ing);
 
@@ -289,7 +308,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         return $data;
     }
 
-
+    protected function formatInfoDevolutions(SupportCollection $devs): array
+    {
+        return collect($devs)->map(function ($dev) {
+            $cod = data_get($dev, 'devolucion', 'N/A');
+            $doc = data_get($dev, 'DOC_GENERADO', 'N/A');
+            $fecha = Carbon::parse(data_get($dev, 'created_at'))->format('Y-m-d');
+            return "{$cod} - {$doc} - {$fecha}";
+        })
+            ->filter()
+            ->values()
+            ->all();
+    }
 
     protected function buildInvoiceValidation(
         int|float|string|null $valorIngresado,

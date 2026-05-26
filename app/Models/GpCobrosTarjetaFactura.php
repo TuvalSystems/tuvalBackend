@@ -59,7 +59,8 @@ class GpCobrosTarjetaFactura extends Model
             GpCobro::class,
             'cobro_id',
             'id'
-        )->whereIn('estado', ['iniciado', 'revisado']);
+        );
+        //->whereIn('estado', ['iniciado', 'revisado']);
     }
 
     public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null): Builder
