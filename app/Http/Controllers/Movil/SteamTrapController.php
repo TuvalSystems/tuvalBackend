@@ -18,6 +18,8 @@ class SteamTrapController extends Controller
     {
         return $this->handleApiAction(function () use ($request) {
             $data = $request->validate([
+                'customer_id'               => ['required', 'integer'],
+                'customer_ruc'              => ['required', 'string'],
                 'process'                   => ['required', 'string'],
                 'trapType'                  => ['required', 'string'],
                 'calculationMethod'         => ['required', 'string'],
