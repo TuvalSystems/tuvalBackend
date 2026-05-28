@@ -464,14 +464,17 @@ class SincronizacionController extends Controller
             ->mapWithKeys(fn($item, $key) => [strtolower(trim($key)) => $item])
             ->toArray();
         GpRelacionUsuarioPuntoVenta::truncate();
-        foreach ($relacionusuariopuntodeventas as $data) {
+          $ordenPorUsuario = [];
+        foreach ($relacionusuariopuntodeventas as $key => $data) {
             $userExtId = mb_strtolower(trim($data['USER_PTO_VTA_USUARIO']), 'UTF-8');
             $pvExtId   = mb_strtolower(trim($data['USER_PTO_VTA_PUNTO_VENTA']), 'UTF-8');
+             $ordenPorUsuario[$userExtId] = ($ordenPorUsuario[$userExtId] ?? 0) + 1;
             // if ($pvExtId != '') {
             // if (isset($usuario[$userExtId]) && isset($puntoVenta[$pvExtId])) {
             $relacionusuariopuntodeventa                            = new GpRelacionUsuarioPuntoVenta;
             $relacionusuariopuntodeventa->user_id                   = $usuario[$userExtId] ?? null;
             $relacionusuariopuntodeventa->pv_id                     = $puntoVenta[$pvExtId] ?? null;
+            $relacionusuariopuntodeventa->orden                     = $ordenPorUsuario[$userExtId];
             $relacionusuariopuntodeventa->USER_PTO_VTA_USUARIO      = $userExtId;
             $relacionusuariopuntodeventa->USER_PTO_VTA_PUNTO_VENTA  = $pvExtId;
             $relacionusuariopuntodeventa->save();

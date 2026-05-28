@@ -52,6 +52,7 @@ Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
             ->controller(SteamTrapController::class)
             ->group(function () {
                 Route::post('/dimensionamiento', 'generarDimensionamientoPdf');
+                Route::post('/borrador', 'generarCotizacionBorrador');
             });
 
         Route::prefix('cliente')->group(function(){

@@ -66,7 +66,7 @@ class GpClienteSucursal extends Model
     protected $table = 'gp_cliente_sucursals';
 
     protected $casts = [
-        'cliente_id'           => 'integer',
+        'cliente_id'            => 'integer',
         'user_creator_id'       => 'integer',
         'estado'                => 'integer',
         'fecha_hora_creacion'   => 'datetime',
