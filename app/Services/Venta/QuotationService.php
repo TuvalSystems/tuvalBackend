@@ -306,7 +306,7 @@ class QuotationService implements QuotationServiceInterface
             $valorUnitario      = (float) $item['ART_VALOR'];
             $cantidad           = (float) $item['ART_CANTIDAD'];
             $descuentoUnitario  = (float) $item['ART_DESCUENTO'];
-            $impuestoPorcentaje = (float) $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
+            $impuestoPorcentaje = $articulosImpuesto[$item['ART_CODIGO']] ?? 0;
             $lineNet            = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount      = $descuentoUnitario * $cantidad;
             $lineaSubtotal      = $lineNet + $lineaDiscount;
