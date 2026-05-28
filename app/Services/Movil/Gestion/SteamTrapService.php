@@ -51,7 +51,7 @@ class SteamTrapService implements SteamTrapServiceInterface
         return data_get($resp, 'data', []);
     }
 
-    public function getImageArticle($codArt): array
+    public function getImageArticle(string $codArt): array
     {
         $images = [];
 
