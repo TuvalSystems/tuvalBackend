@@ -62,15 +62,9 @@ class QuotationService implements QuotationServiceInterface
         return GpCotizacionVentaMotivo::orderBy('id')->get();
     }
 
-    /**
-     * ENVIAR LAS COTIZACIONES QUE TENGAN RECORDATORIO A DYNAMIC GP
-     * @param GpCotizacion $cotizacion
-     * @return void
-     * @throws \Exception
-     * @throws \Throwable
-     */
 
-    public function updateNonSaleAndReminderData($data, GpUsuario $user)
+
+    public function updateNonSaleAndReminderData(array $data, GpUsuario $user)
     {
         GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio'            => $data['fecha_recordatorio'],
@@ -81,14 +75,16 @@ class QuotationService implements QuotationServiceInterface
 
         ]);
         $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
-        $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($sendQuote);
-        $this->sendStoreReminderGp($params);
+        // $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($sendQuote);
+        $this->sendStoreReminderGp($sendQuote);
         return null;
     }
 
 
-    public function sendStoreReminderGp($params)
+    public function sendStoreReminderGp(GpCotizacion $quote): void
     {
+        $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($quote);
+
         $this->apiGpService->storeQuoteReminderGp($params);
     }
 
@@ -110,7 +106,7 @@ class QuotationService implements QuotationServiceInterface
     *
     */
 
-    public function restoreQuotationV2($quoteId): array
+    public function restoreQuotationV2(int $quoteId): array
     {
         $quote      = GpCotizacion::findOrFail($quoteId);
         $cliente    = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
@@ -135,7 +131,7 @@ class QuotationService implements QuotationServiceInterface
         ];
     }
 
-    protected function getQuotationDetailWithSuppliers($quotationId)
+    protected function getQuotationDetailWithSuppliers(int $quotationId)
     {
         $details        = GpCotizacionDetalle::where('cotizacion_id', $quotationId)->get();
         $proveedores    = $this->getQuotatioDetailProviders($quotationId, $details);
@@ -148,12 +144,12 @@ class QuotationService implements QuotationServiceInterface
         return $details;
     }
 
-    protected function getQuotatioDetailProviders($quotationId, $details)
+    protected function getQuotatioDetailProviders(int $quotationId, Collection $details)
     {
         return GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
     }
-    protected function getQuotationDetailStock($quotationId, $details)
+    protected function getQuotationDetailStock(int $quotationId, Collection $details)
     {
         return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
@@ -166,7 +162,7 @@ class QuotationService implements QuotationServiceInterface
      * PROCESO DE ACTUALIZAR CIENTE Y SUCURSALES EN UNA COTIZACION DE PROSPECTO
      */
 
-    public function updateQuoteClientData($quoteId, $clientId)
+    public function updateQuoteClientData(int $quoteId, int  $clientId)
     {
         $quote                           = GpCotizacion::findOrFail($quoteId);
         $cliente                         = GpCliente::with(['gpvendedor:id,VEND_ID,VEND_NOMBRES,VEND_APELLIDOS'])
@@ -189,7 +185,7 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function mergeSelectedStock(&$stockGeneral, $seleccionStockPorArticulo)
+    public function mergeSelectedStock(array &$stockGeneral, array $seleccionStockPorArticulo)
     {
         $seleccionIndex = [];
         foreach ($seleccionStockPorArticulo as $seleccion) {
@@ -212,7 +208,7 @@ class QuotationService implements QuotationServiceInterface
      */
 
 
-    public function loadQuotationForCopy($quoteId, GpUsuario $user): array
+    public function loadQuotationForCopy(int $quoteId, GpUsuario $user): array
     {
         $quote      = GpCotizacion::findOrFail($quoteId);
         $cliente    = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
@@ -272,7 +268,7 @@ class QuotationService implements QuotationServiceInterface
      * IMPRIMIR COTIZCIONES EN PDF
      */
 
-    public function printQuotationPdf($id, $withImages = false)
+    public function printQuotationPdf(int $id, $withImages = false)
     {
         $cotizacion = GpCotizacion::where('id', $id)->first()->toArray();
 
@@ -355,7 +351,7 @@ class QuotationService implements QuotationServiceInterface
         return $cotizacion;
     }
 
-    public function calcularDiasHabiles($dias, $desde)
+    public function calcularDiasHabiles(string $dias, string $desde)
     {
 
         $validez = $dias;
@@ -378,7 +374,7 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function updatePrintsQuotation($id)
+    public function updatePrintsQuotation(int $id)
     {
         $cotizacion = GpCotizacion::find($id);
         $cotizacion->impreso = 'yes';
@@ -393,10 +389,10 @@ class QuotationService implements QuotationServiceInterface
     /**
      *  consulta de cotizaciones con novedades
      * @param array $data
-     * @return JsonResponse
+     *
      */
 
-    public function consultQuotationsNews($data): array
+    public function consultQuotationsNews(array $data): array
     {
         $periodo = $data['periodo'] ?? null;
         $sucursal = $data['sucursal'] ?? null;
@@ -471,7 +467,7 @@ class QuotationService implements QuotationServiceInterface
 
     /** funcion para obtener el detalle de la cotización  */
 
-    public function detailQuotation($data, GpUsuario $user)
+    public function detailQuotation(array $data, GpUsuario $user)
     {
         $estadoCuenta = [
             'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
@@ -573,7 +569,7 @@ class QuotationService implements QuotationServiceInterface
         return $data;
     }
 
-    public function castDecimalValuesTemp($artTemp, $data = null)
+    public function castDecimalValuesTemp(GpCotizacionDetalle $artTemp, $data = null)
     {
         if ($artTemp->ART_DECIMAL_CANTIDAD == 0) {
             if (isset($data['test']) && $data['test'] !== 'recuperarcotizacion') {
@@ -585,7 +581,7 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function loadProviderDetailQuotation($quotationId, &$detalle, $descuentoGeneral)
+    public function loadProviderDetailQuotation(int $quotationId, &$detalle, int|float $descuentoGeneral)
     {
         $margenBruto = 0;
         if ($detalle->ART_TIPO_COMPRA == 'L') {
@@ -601,7 +597,7 @@ class QuotationService implements QuotationServiceInterface
         $detalle->proveedores = $detalle->proveedores ?? [];
     }
 
-    public function getTypeArticleLQuotationOrOrder($artArticulo)
+    public function getTypeArticleLQuotationOrOrder(string $artArticulo)
     {
         $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
         if (!$itemL) {
@@ -615,7 +611,7 @@ class QuotationService implements QuotationServiceInterface
         return $datosL;
     }
 
-    public function getAllProvidersQuotation($cotizacionId, $cotizacionDetalleId)
+    public function getAllProvidersQuotation(int $cotizacionId, int $cotizacionDetalleId)
     {
         return GpCotizacionDetalleProveedores::query()
             ->join('gp_proveedors', 'gp_proveedors.id', 'gp_cotizacion_detalle_proveedores.ID_PROVEEDOR')
@@ -628,12 +624,12 @@ class QuotationService implements QuotationServiceInterface
             ->get();
     }
 
-    public function calculateMargen($margenBruto, $descuentoGeneral, $costo)
+    public function calculateMargen(int|float $margenBruto, int|float $descuentoGeneral, int|float $costo): float
     {
         return ($costo / (1 - ($margenBruto / 100))) / (1 - ($descuentoGeneral / 100));
     }
 
-    public function calculatePorcentilDiscountAndPrice(&$detalle)
+    public function calculatePorcentilDiscountAndPrice(GpCotizacionDetalle &$detalle)
     {
         $detalle->priceChange       = round($this->orderAndQuotationService->calculatePriceVariationPercentage($detalle->ART_VALOR_ORIGINAL, $detalle->ART_VALOR), 3);
         $detalle->discountChange    = round($this->orderAndQuotationService->calculateDiscountChange($detalle->descuento_original, $detalle->descuento), 3);
@@ -646,7 +642,7 @@ class QuotationService implements QuotationServiceInterface
      *  Ya se manda filtrado los items L desde el Front End
      */
 
-    public function getStockItemsForWarehouse($article, $warehouse, $cotizacionId)
+    public function getStockItemsForWarehouse(array $article, string $warehouse, ?int $cotizacionId = null): array
     {
         $quoteReservedOriginId  = $this->validateExistsReserve($cotizacionId);
         $warehouses             = $this->functionService->getBodegas($warehouse, 1);
@@ -658,7 +654,7 @@ class QuotationService implements QuotationServiceInterface
         $availableArticulos     = [];
         if (!$artFormat['disponible']) {
             $clase                  = GpArticulo::where('ART_CODIGO', $article['ART_CODIGO'])->first();
-            $article->ART_CODIGO    = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
+            $article['ART_CODIGO']  = $this->functionService->findAvailableArticleCodeL($availableArticulos, $clase->ART_CLASE_ARTICULO);
             $availableArticulos[]   = $article['ART_CODIGO'];
         }
         $article['stock']           = $artFormat['stock'];
@@ -669,7 +665,7 @@ class QuotationService implements QuotationServiceInterface
 
 
     /** este me tiene el seleccionado del stock pero solo por item hay otra función pero lo hacer por lotes */
-    public function resolveAndFormatArticleStock($article)
+    public function resolveAndFormatArticleStock(array $article)
     {
         $result = [];
 
@@ -709,7 +705,7 @@ class QuotationService implements QuotationServiceInterface
         return $result;
     }
 
-    public function getStockItemByWarehouseRestoreQuotation($arrArticulos, $warehouses)
+    protected function getStockItemByWarehouseRestoreQuotation(array $arrArticulos, array  $warehouses)
     {
         $stockRequests = [];
         foreach ($warehouses as $warehouse) {
@@ -721,8 +717,12 @@ class QuotationService implements QuotationServiceInterface
 
 
     /** proceso para omitir reservas de cotizacion  */
-    public function validateExistsReserve($quotationId)
+    public function validateExistsReserve(?int $quotationId = null) : ?int
     {
+        if (!$quotationId) {
+            return null;
+        }
+
         $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
         if (!$quoteReserve) {
             return null;
@@ -735,7 +735,7 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function getStockItemsForWarehouseV2($articles, $warehouse, $quoteId)
+    public function getStockItemsForWarehouseV2(array $articles, string $warehouse, ?int $quoteId = null): array
     {
         $data                   = [];
         $quoteReservedOriginId  = $this->validateExistsReserve($quoteId);
@@ -768,7 +768,7 @@ class QuotationService implements QuotationServiceInterface
      * @param mixed $artArticulo
      *
      */
-    public function getMarginItem($artArticulo)
+    public function getMarginItem(string $artArticulo)
     {
 
         $itemL = GpArticulo::where('ART_CODIGO', $artArticulo)->first();
@@ -817,7 +817,7 @@ class QuotationService implements QuotationServiceInterface
         $params                 = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
         $this->apiGpService->storeClientGp($params);
         $client = $this->createClientWeb($data, $nivelPrecio, $user);
-        $this->createClientSucursalWeb($data,$client,  $user);
+        $this->createClientSucursalWeb($data, $client,  $user);
         $this->sendToSegmentAndRucToGp($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
         $cliente                = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
         $vendedor               = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
@@ -829,7 +829,7 @@ class QuotationService implements QuotationServiceInterface
         return $cliente;
     }
 
-    public function prepareForValidationDirection(&$data)
+    public function prepareForValidationDirection(array &$data)
     {
         $data['CLI_CORREO_ELECT_SRI'] = isset($data['CLI_CORREO_ELECT_SRI']) ? mb_strtoupper($data['CLI_CORREO_ELECT_SRI']) : strtolower($data['CLI_CORREO_ELECT_SRI']);
         $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'] = isset($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) ? mb_strtoupper($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) : strtolower($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
@@ -852,7 +852,6 @@ class QuotationService implements QuotationServiceInterface
     {
         $sucursal = GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data, $client->id, $user));
         $this->updateStatusBranchInGp($sucursal, $user);
-
     }
 
     protected function updateStatusBranchInGp(GpClienteSucursal $branch, GpUsuario $userCreator): void
@@ -888,7 +887,7 @@ class QuotationService implements QuotationServiceInterface
 
         return $vendedor->atributoValores->first()?->opcion?->codigo ?? 'GENERAL';
     }
-    public function sendToSegmentAndRucToGp($ruc, $subsegmentoId)
+    public function sendToSegmentAndRucToGp(string $ruc, int $subsegmentoId)
     {
         $this->apiGpService->storeSubsegmentAssociation([
             'ruc' => $ruc,
@@ -897,7 +896,7 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function checkClientWithSegmentExist($ruc)
+    public function checkClientWithSegmentExist(string $ruc)
     {
         return $this->apiGpService->fetchClientSegment([
             'ruc' => $ruc,

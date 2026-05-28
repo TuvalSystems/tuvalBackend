@@ -858,7 +858,8 @@ class CotizacionesController extends Controller
      */
     public function sendAllQuotesRecorderSQLServer()
     {
-        $cotizaciones = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->where('cotizacion_venta_motivo_id', '!=', null)->get();
+        $cotizaciones = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->whereNotNull('cotizacion_venta_motivo_id')
+            ->get();
         foreach ($cotizaciones as $cotizacion) {
             $this->quotationService->sendStoreReminderGp($cotizacion);
         }
@@ -947,6 +948,7 @@ class CotizacionesController extends Controller
             $items          = data_get($validated, 'articulos');
             $bodega         = data_get($validated, 'bodega');
             $cotizacionId   = data_get($validated, 'cotizacion_id', null);
+            $cotizacionId = $cotizacionId !== null ? (int) $cotizacionId : null;
             $response = $this->quotationService->getStockItemsForWarehouseV2($items, $bodega, $cotizacionId);
             return $this->successResponse('Lote obtenido correctamente', $response, 200);
         }, 'laravel', 'obtenerStockItemsLote');

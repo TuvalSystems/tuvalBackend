@@ -63,9 +63,9 @@ class FunctionsService implements FunctionsServiceInterface
     /** para aprobacion crediticia de pedidos y para validar stock antes de guardar pedido en InventoryQueryService */
 
 
-    public function getBodegas($bodega, $consulta = null)
+    public function getBodegas(string $warehouse, ?string $consulta = null)
     {
-        $query = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $bodega);
+        $query = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $warehouse);
         if ($consulta) {
             $query->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA');
         }
@@ -74,7 +74,7 @@ class FunctionsService implements FunctionsServiceInterface
 
 
     /** funcion de recalcular pedido  */
-    public function recalculateOrder($orderId)
+    public function recalculateOrder(int $orderId)
     {
         $order = GpPedido::find($orderId);
         $detalle = GpPedidoDetalle::where('pedido_id', $orderId)->get();
