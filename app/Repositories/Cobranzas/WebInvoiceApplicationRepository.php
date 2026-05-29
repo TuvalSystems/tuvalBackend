@@ -24,6 +24,7 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
                         'gp_devoluciones.id',
                         'gp_devoluciones.devolucion',
                         'gp_devoluciones.DOC_GENERADO',
+                        'gp_devoluciones.USERID',
                         'gp_devoluciones.pedido_id',
                         'gp_devoluciones.estado',
                         'gp_devoluciones.total',

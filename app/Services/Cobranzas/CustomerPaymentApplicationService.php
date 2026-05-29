@@ -238,8 +238,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function processIngresoAplicaciones(array $data, string $desde, string $hasta)
     {
         foreach ($data as  &$typeDeposits) {
-
-            $dataInvoices = data_get($typeDeposits, 'facturas', []);
+            $applyDoc = trim((string) data_get($typeDeposits, 'detalle.CN_DOCUMENTO', '')); //documento de cobro para aplicar
+            $dataInvoices   = data_get($typeDeposits, 'facturas', []);
 
             if (empty($dataInvoices)) {
                 continue;
@@ -263,7 +263,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
-
+                //validacion de aplicacion doble del mismo rc a la misma factura
+                $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $othersPaymentDocs);
                 //sumatoria de lo pendiente
                 $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
                 //sumatoria  de devoluciones pendeintes de procesar
@@ -278,6 +279,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     $sumDev,
                     true
                 );
+                if ($hasDoubleApply) {
+                    $validation = $this->applyDoubleApplyValidation($validation, $applyDoc);
+                }
 
                 $ing = array_merge($ing, $validation, [
                     'devoluciones_info' => $devsInfo
@@ -346,11 +350,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function formatInfoDevolutions(SupportCollection $devs): array
     {
         return collect($devs)->map(function ($dev) {
-            $cod = data_get($dev, 'devolucion', 'N/A');
-            $doc = data_get($dev, 'DOC_GENERADO', 'N/A');
-            $fecha = Carbon::parse(data_get($dev, 'created_at'))->format('Y-m-d');
-            $total = $this->money(data_get($dev, 'total', 0));
-             return "{$cod} - {$doc} - {$fecha} - $" . number_format($total, 2, '.', '');
+            $userName   = data_get($dev, 'USERID', 'N/A');
+            $cod        = data_get($dev, 'devolucion', 'N/A');
+            $doc        = data_get($dev, 'DOC_GENERADO', 'N/A');
+            $fecha      = Carbon::parse(data_get($dev, 'created_at'))->format('Y-m-d');
+            $total      = $this->money(data_get($dev, 'total', 0));
+            return "{$userName} - {$cod} - {$doc} - {$fecha} - $" . number_format($total, 2, '.', '');
         })
             ->filter()
             ->values()
@@ -396,9 +401,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         $excessValue = $this->money(
             max($valorIngresado - $saldoDisponible, 0)
         );
-
+        $hasExcess = $excessValue > 0;
         return [
-            'hasExcess'                => $excessValue > 0,
+            'hasExcess'                => $hasExcess,
+            'hasDoubleApply'           => false,
             'totalApply'               => $totalApply,
             'sumPayments'              => $sumPayments,
             'sumPendingWeb'            => $sumPendingWeb,
@@ -409,36 +415,47 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             'totalPendingNotAccounted' => $totalNoContabilizado,
             'excessValue'              => $excessValue,
             'priceRecommend'           => $priceRecommend,
+
+            //variables adicionales para el caso de aplicaciones dobles
+            'validationType'            => $hasExcess ? 'excess' : null,
+            'validationMessage'         => $hasExcess ? 'El valor ingresado supera el saldo disponible de la factura.' : null,
+            'doubleApplyDoc'            => null,
         ];
     }
 
 
     protected function hasAnyExcess(array $payload): bool
     {
-        if (collect(data_get($payload, 'retenciones', []))->contains('hasExcess', true)) {
+        return $this->hasAnyInvoiceValidationFlag($payload, 'hasExcess')
+            || $this->hasAnyInvoiceValidationFlag($payload, 'hasDoubleApply');
+    }
+
+    protected function hasAnyInvoiceValidationFlag(array $payload, string $flag): bool
+    {
+        if (collect(data_get($payload, 'retenciones', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_efectivo.facturas', []))->contains('hasExcess', true)) {
+        if (collect(data_get($payload, 'ingreso_efectivo.facturas', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_tarjeta.facturas', []))->contains('hasExcess', true)) {
+        if (collect(data_get($payload, 'ingreso_tarjeta.facturas', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_cheques.facturas', []))->contains('hasExcess', true)) {
+        if (collect(data_get($payload, 'ingreso_cheques.facturas', []))->contains($flag, true)) {
             return true;
         }
 
         foreach (data_get($payload, 'ingreso_depositos', []) as $deposito) {
-            if (collect(data_get($deposito, 'facturas', []))->contains('hasExcess', true)) {
+            if (collect(data_get($deposito, 'facturas', []))->contains($flag, true)) {
                 return true;
             }
         }
 
         foreach (data_get($payload, 'ingreso_aplicaciones', []) as $aplicacion) {
-            if (collect(data_get($aplicacion, 'facturas', []))->contains('hasExcess', true)) {
+            if (collect(data_get($aplicacion, 'facturas', []))->contains($flag, true)) {
                 return true;
             }
         }
@@ -537,6 +554,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     ): array {
         return array_merge($item, [
             'hasExcess'                  => false,
+            'hasDoubleApply'             => false,
+
             'totalApply'                 => 0,
             'sumPayments'                => 0,
             'sumPendingWeb'              => 0,
@@ -544,11 +563,49 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             'totalPendingNotAccounted'   => 0,
             'excessValue'                => 0,
             'priceRecommend'             => 0,
+
             'devoluciones_info'          => [],
             'factura_original'           => $facturaOrigen,
             'factura_busqueda'           => $facturaNormalizada,
+
+            'validationType'             => null,
+            'validationMessage'          => null,
+            'doubleApplyDoc'             => null,
+
             'validation_skipped'         => true,
             'validation_skipped_reason'  => 'Documento omitido porque no corresponde al formato de factura web.',
+        ]);
+    }
+
+
+    protected function validateDoubleApply(?string $applyDoc, array $othersDocuments): bool
+    {
+        $applyDoc = mb_strtoupper(trim((string) $applyDoc));
+
+        if ($applyDoc === '') {
+            return false;
+        }
+
+        return collect($othersDocuments)
+            ->map(fn($doc) => mb_strtoupper(trim((string) $doc)))
+            ->contains($applyDoc);
+    }
+
+    protected function applyDoubleApplyValidation(array $validation, ?string $applyDoc): array
+    {
+        $applyDoc = trim((string) $applyDoc);
+
+
+
+        return array_merge($validation, [
+            'hasDoubleApply'            => true,
+            'doubleApplyDoc'            => $applyDoc,
+
+            'priceRecommend'            => 0,
+            'validationType'            => 'double_apply',
+            'validationMessage' => $applyDoc !== ''
+                ? "El documento de cobro {$applyDoc} ya fue aplicado a esta factura. No se permite aplicarlo nuevamente."
+                : 'El documento de cobro ya fue aplicado a esta factura. No se permite aplicarlo nuevamente.',
         ]);
     }
 }
