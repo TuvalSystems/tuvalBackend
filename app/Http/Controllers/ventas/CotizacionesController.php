@@ -324,9 +324,9 @@ class CotizacionesController extends Controller
         if ($data['estado'] == 'pendientes') {
             $cotizaciones = $cotizaciones
                 ->where(function ($q) {
-                    $q->where('estado', '!=', 'procesado');
-                    $q->where('estado', '!=', 'caducado');
-                    $q->where('estado', '!=', 'rechazado');
+                    $q->where('gp_cotizacions.estado', '!=', 'procesado');
+                    $q->where('gp_cotizacions.estado', '!=', 'caducado');
+                    $q->where('gp_cotizacions.estado', '!=', 'rechazado');
                 })
                 ->where(function ($q) {
                     $q->whereNull('prospecto_id');
@@ -336,7 +336,7 @@ class CotizacionesController extends Controller
                     });
                 });
         } else if ($data['estado'] == 'caducado') {
-            $cotizaciones = $cotizaciones->where('estado', 'caducado')
+            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'caducado')
                 ->whereNull('prospecto_id');
         } else if ($data['estado'] == 'prospectos') {
             $cotizaciones = $cotizaciones
@@ -346,9 +346,9 @@ class CotizacionesController extends Controller
                 })
                 ->where('estado', '!=', 'procesado');
         } else if ($data['estado'] == 'procesadas') {
-            $cotizaciones = $cotizaciones->where('estado', 'procesado');
+            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'procesado');
         } else if ($data['estado'] == 'rechazadas') {
-            $cotizaciones = $cotizaciones->where('estado', 'rechazado');
+            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'rechazado');
         }
         if (isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != '') {
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
