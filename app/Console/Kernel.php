@@ -38,7 +38,8 @@ class Kernel extends ConsoleKernel
             ->runInBackground();
 
         $schedule->command('cotizaciones:notificar-noventa')
-            ->dailyAt('08:00')
+            ->timezone(self::TIMEZONE)
+            ->dailyAt('08:30')
             ->runInBackground();
 
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
