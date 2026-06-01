@@ -630,13 +630,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function applyDoubleApplyValidation(array $validation, ?string $applyDoc): array
     {
         $applyDoc = trim((string) $applyDoc);
-
-
-
         return array_merge($validation, [
             'hasDoubleApply'            => true,
             'doubleApplyDoc'            => $applyDoc,
-
             'priceRecommend'            => 0,
             'validationType'            => 'double_apply',
             'validationMessage' => $applyDoc !== ''
