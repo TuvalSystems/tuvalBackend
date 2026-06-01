@@ -829,7 +829,10 @@ class CotizacionesController extends Controller
 
     public function getlistNonSaleReasons()
     {
-        return $this->quotationService->getNonSalesReasons();
+        return $this->handleApiAction(function () {
+            $lista = $this->quotationService->getNonSalesReasons();
+            return $this->successResponse('Lista Obtenida', $lista, 200);
+        }, 'laravel', 'getlistNonSaleReasons');
     }
 
 
