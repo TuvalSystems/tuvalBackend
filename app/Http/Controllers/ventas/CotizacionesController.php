@@ -385,7 +385,7 @@ class CotizacionesController extends Controller
             'cotizaciones' => $cotizaciones,
         ]);
     }
-   
+
     public function guardardireccion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
@@ -596,12 +596,10 @@ class CotizacionesController extends Controller
 
     public function actualizarCotizacionPropectoV2(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $quote = $this->quotationService->updateQuoteClientData($request->input('id'), $request->input('cliente_id'));
             return $this->successResponse('Cotización actualizada', $quote,  200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'laravel', 'actualizarCotizacionPropectoV2');
     }
 
     public function limpiarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
