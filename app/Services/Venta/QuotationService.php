@@ -59,7 +59,7 @@ class QuotationService implements QuotationServiceInterface
      */
     public function getNonSalesReasons(): Collection
     {
-        return GpCotizacionVentaMotivo::orderBy('id')->get();
+        return GpCotizacionVentaMotivo::where('estado', 1)->orderBy('id')->get();
     }
 
     /**
