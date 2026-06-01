@@ -468,12 +468,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function filterGroupPayment(SupportCollection $payments) : array
+    protected function filterGroupPayment(SupportCollection $payments): array
     {
         return $this->filterGroupCollectionIds($payments, true);
     }
 
-    protected function filterGroupDocumentsPayments(SupportCollection $payments) : array
+    protected function filterGroupDocumentsPayments(SupportCollection $payments): array
     {
         return $this->filterGroupCollectionIds($payments, false);
     }
@@ -497,7 +497,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function filterGroupReceiptNumbers(SupportCollection $payments) : array
+    protected function filterGroupReceiptNumbers(SupportCollection $payments): array
     {
         return $payments
             ->filter(fn($payment) => (int) data_get($payment, 'typePayment') !== 8)
@@ -509,7 +509,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             ->all();
     }
 
-    protected function formatReceiptNumber(?string $rc) : ?string
+    protected function formatReceiptNumber(?string $rc): ?string
     {
         if (empty($rc)) {
             return null;
@@ -532,12 +532,14 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     protected function sumPendingWebNotAccountedByInvoice(string  $invoice, array $documents,  string $desde, string $hasta, array $rcPayments = [], ?string $type = null)
     {
-        $applications   = $this->applyRepository->getPendingWebInvoiceApplicationsExcludingDocuments($invoice, $documents, $desde, $hasta);
-        $checks         = $this->applyRepository->getPendingWebCheckPaymentsByInvoice($invoice, $desde, $hasta);
-        $deposits       = $this->applyRepository->getPendingWebDepositPaymentsByInvoice($invoice, $desde, $hasta);
-        $cash           = $this->applyRepository->getPendingWebCashPaymentsByInvoice($invoice, $desde, $hasta);
-        $withholdings   = $this->applyRepository->getPendingWebWithholdingPaymentsByInvoice($invoice, $desde, $hasta);
-        $creditCards    = $this->applyRepository->getPendingWebCreditCardPaymentsByInvoice($invoice, $desde, $hasta);
+
+        $rcsPorExcluir = $type === 'ingreso_aplicaciones' ? $rcPayments : [];
+        $applications   = $this->applyRepository->getPendingWebInvoiceApplicationsExcludingDocuments($invoice, $documents, $desde, $hasta, $rcsPorExcluir);
+        $checks         = $this->applyRepository->getPendingWebCheckPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $deposits       = $this->applyRepository->getPendingWebDepositPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $cash           = $this->applyRepository->getPendingWebCashPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $withholdings   = $this->applyRepository->getPendingWebWithholdingPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $creditCards    = $this->applyRepository->getPendingWebCreditCardPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
 
         $sumApplications    = $this->money($applications->sum('monto'));
         $sumChecks          = $this->money($checks->sum('monto'));

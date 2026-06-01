@@ -37,13 +37,13 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
 
 
     //aplicacion de facturas
-    public function getPendingWebInvoiceApplicationsExcludingDocuments(string $invoice, array $documents, string $desde, string $hasta)
+    public function getPendingWebInvoiceApplicationsExcludingDocuments(string $invoice, array $documents, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
         return GpCobrosAplicacionFactura::with([
             'cobroPendienteWeb',
             'aplicacionMonto'
         ])
-            ->pendientesWeb($desde, $hasta)
+            ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
             ->whereHas('aplicacionMonto', function ($q) use ($documents) {
                 if (!empty($documents)) {
@@ -62,10 +62,10 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
 
 
     //cheques facturas pendientes
-    public function getPendingWebCheckPaymentsByInvoice(string $invoice, string $desde, string $hasta)
+    public function getPendingWebCheckPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
         return GpCobrosChequesFacturas::with('cobroPendienteWeb')
-            ->pendientesWeb($desde, $hasta)
+            ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
             ->get([
                 'id',
@@ -79,39 +79,39 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
 
 
     //despositos facturas pendientes
-    public function getPendingWebDepositPaymentsByInvoice(string $invoice, string $desde, string $hasta)
+    public function getPendingWebDepositPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
         return GpCobrosDepositosFacturas::with('cobroPendienteWeb')
-            ->pendientesWeb($desde, $hasta)
+            ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
             ->get(['id', 'cobro_id', 'deposito_id', 'id_factura', 'monto', 'created_at']);
     }
 
 
     //efectivo de facturas pendientes
-    public function getPendingWebCashPaymentsByInvoice(string $invoice, string $desde, string $hasta)
+    public function getPendingWebCashPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
         return GpCobrosEfectivoFactura::with('cobroPendienteWeb')
-            ->pendientesWeb($desde, $hasta)
+            ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
             ->get(['id', 'cobro_id', 'id_factura', 'monto', 'created_at']);
     }
 
 
     //retenciones de facturas pendientes
-    public function getPendingWebWithholdingPaymentsByInvoice(string $invoice, string $desde, string $hasta)
+    public function getPendingWebWithholdingPaymentsByInvoice(string $invoice, string $desde, string $hasta,array $rcsPorExcluir = [])
     {
         return GpCobrosRetenciones::with('cobroPendienteWeb')
-            ->pendientesWeb($desde, $hasta)
+            ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('ret_factura', $invoice)
             ->get(['id', 'cobro_id', 'ret_factura', 'total', 'created_at']);
     }
 
     //tarjetas de facturas pendientes
-    public function getPendingWebCreditCardPaymentsByInvoice(string $invoice, string $desde, string $hasta)
+    public function getPendingWebCreditCardPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
         return GpCobrosTarjetaFactura::with('cobroPendienteWeb')
-            ->pendientesWeb($desde, $hasta)
+            ->pendientesWeb($desde, $hasta,$rcsPorExcluir)
             ->where('id_factura', $invoice)
             ->get(['id', 'cobro_id', 'id_factura', 'monto', 'created_at']);
     }

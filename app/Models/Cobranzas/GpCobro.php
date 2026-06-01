@@ -48,7 +48,20 @@ class GpCobro extends Model
 {
     use HasFactory;
 
-
+    protected $fillable = [
+        'numero_recibo',
+        'user_id',
+        'cliente_id',
+        'caja_id',
+        'caja',
+        'fecha',
+        'estado',
+        'pedido',
+        'referencia',
+        'alerta',
+        'fecha_aprobacion_rechazo',
+        'user_aprobador_id'
+    ];
 
     public function cheques()
     {

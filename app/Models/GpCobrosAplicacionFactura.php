@@ -69,14 +69,17 @@ class GpCobrosAplicacionFactura extends Model
             GpCobro::class,
             'cobro_id',
             'id'
-        ); //->whereIn('estado', ['iniciado', 'revisado']);
+        );
     }
 
-    public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null): Builder
+    public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null, array $numeroRecibos = []): Builder
     {
-        return $query->whereHas('cobroPendienteWeb', function ($q) use ($desde, $hasta) {
+        return $query->whereHas('cobroPendienteWeb', function ($q) use ($desde, $hasta, $numeroRecibos) {
             if ($desde && $hasta) {
                 $q->whereBetween('created_at', [$desde, $hasta]);
+            }
+            if (!empty($numeroRecibos)) {
+                $q->whereNotIn('numero_recibo', $numeroRecibos);
             }
         });
     }
