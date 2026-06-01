@@ -385,16 +385,7 @@ class CotizacionesController extends Controller
             'cotizaciones' => $cotizaciones,
         ]);
     }
-    public function guardarordenpedido(Request $request)
-    {
-        $data = $request->all();
-
-        foreach ($data as $key => $item) {
-            GpTempCart::where('id', $item['id'])
-                ->update(['orden' => $key + 1]);
-        }
-    }
-
+   
     public function guardardireccion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->all();
