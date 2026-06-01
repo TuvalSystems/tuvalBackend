@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Reservas\ValidateCancelReservationRequest;
 use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,8 @@ class ReservasController extends Controller
     use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
         protected readonly InventoryReservationServiceInterface $reserveService,
-        protected readonly ApprovalReservationServiceInterface $aprovalReservation
+        protected readonly ApprovalReservationServiceInterface $aprovalReservation,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotation
     ) {}
 
 
@@ -228,7 +230,7 @@ class ReservasController extends Controller
     public function recalcularCotizacionReserva($id)
     {
         try {
-            return $this->successResponse('Cotizacion recalcular correctamente', $this->reserveService->recalculateQuotation($id), 200);
+            return $this->successResponse('Cotizacion recalcular correctamente', $this->orderAndQuotation->recalculateQuotation($id), 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);
         }

@@ -26,7 +26,6 @@ interface InventoryReservationServiceInterface
 
     public function processReservedQuotation(array $data, $user);
     public function processReservedQuotationInvoiceDemand($payload, GpUsuario $user): array ;
-    public function recalculateQuotation($quotationId);
 
     public function fetchListTypeReservations();
 

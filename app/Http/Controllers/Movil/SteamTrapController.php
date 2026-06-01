@@ -98,7 +98,8 @@ class SteamTrapController extends Controller
             ]);
             $user = GpUsuario::find(179);
             $cotizacion = $this->service->generateQuoteDraft($data, $user);
-            return $this->successResponse('Cotización generada', $cotizacion, 200);
+            $msg = "Cotización generada {$cotizacion->cotizacion}";
+            return $this->buildSuccessResponse($msg, 200);
         }, 'laravel', 'generarCotizacionBorrador');
     }
 }

@@ -8,6 +8,7 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
+use App\Models\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
@@ -32,7 +33,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     ) {}
 
 
-    public function createOrUpdate(array $data,  $user, array $existingImages = [], array $newImages = [], array $pfdsExistings  = [], array $pfdsNew  = []): GpCotizacion
+    public function createOrUpdate(array $data, GpUsuario $user, array $existingImages = [], array $newImages = [], array $pfdsExistings  = [], array $pfdsNew  = []): GpCotizacion
     {
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quoteId = data_get($data, 'cotizacion_id', null);
@@ -74,7 +75,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
 
 
-    public function prepareQuotationHeader(array $data, $user): GpCotizacion
+    public function prepareQuotationHeader(array $data, GpUsuario $user): GpCotizacion
     {
         $id                         = data_get($data, 'cotizacion_id', null);
         $quotation                  = $id ? GpCotizacion::findOrNew($id) : new GpCotizacion();
@@ -99,7 +100,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         return $requiereAprobacion;
     }
 
-    public function mantenerAprobacionSiSigueValida($cotizacion, &$requiereAprobacionComercial)
+    public function mantenerAprobacionSiSigueValida(GpCotizacion $cotizacion, &$requiereAprobacionComercial)
     {
         $estabaAprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
 

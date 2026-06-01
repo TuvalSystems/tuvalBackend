@@ -8,13 +8,16 @@ use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
+use App\Models\GpCotizacionDetalle;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpUsuario;
+use App\Notifications\User\UserNotification;
 use App\Services\Api\Bodegas\ApiGestionArticleService;
 use App\Services\Movil\Gestion\Contracts\SteamTrapServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -27,6 +30,7 @@ class SteamTrapService implements SteamTrapServiceInterface
         protected readonly ApiGestionArticleService $api,
         protected readonly ClientQueryServiceInterface $client,
         protected readonly StockWarehouseServiceInterface $stockWarehouse,
+        protected readonly OrderAndQuotationServiceInterface $OrderQuoteCommon
     ) {}
 
     public function generateSizingPdf(array $data): string
@@ -136,23 +140,12 @@ class SteamTrapService implements SteamTrapServiceInterface
             'typePayment'   => $typePayment,
         ];
         $headerQuote        = $this->payloadQuotationHeaderDraft($user, data_get($cliente, 'cliente'),  $info);
-        $detailQuote        = $this->payloadQuotationDetailDraft($articulos, $headerQuote->id, data_get($cliente, 'cliente'));
-        return [
-            // 'cliente'               => $cliente,
-            // 'sucursalId'            => $sucursalId,
-            // 'metodo_pago'           => $typePayment,
-            // 'selectedItem'          => $selectedItem,
-            // 'suggestItems'          => $suggestItems,
-            'articulos'             => $articulos,
-            // 'bodegaRelacion'        => $salesPoint,
-            // 'warehouse'             => $warehouse,
-            // 'punto_venta_codigo'    => $ptoVtaCode,
-            // 'agencyDescripcion'     => $agency,
-            // 'artCodes'              => $artCodes,
-            // 'lista_precios'         => $groupPrices,
-            'headerQuote'           => $headerQuote,
-            'detailQuote'           => $detailQuote
-        ];
+        $this->payloadQuotationDetailDraft($articulos, $headerQuote->id, data_get($cliente, 'cliente'));
+        $this->OrderQuoteCommon->recalculateQuotation($headerQuote->id);
+        $clienteNombre = data_get($cliente, 'cliente.CLI_RUC', 'el cliente');
+        $mensaje = "Se generó la cotización borrador {$headerQuote->cotizacion} para {$clienteNombre}. Revísala desde el sistema Web antes de continuar.";
+        $user->notify(new UserNotification('Cotización Borrador', $mensaje));
+        return $headerQuote->refresh();
     }
 
     protected function getPrimarySalesPointWarehouseByUser(int $userId)
@@ -310,9 +303,9 @@ class SteamTrapService implements SteamTrapServiceInterface
     protected function payloadQuotationDetailDraft(EloquentCollection $articles, int $quteId, GpCliente $cliente)
     {
 
-        $artDetails = [];
         foreach ($articles as $art) {
-            $artDetails[] = [
+            $qd = new GpCotizacionDetalle();
+            $qd->fill([
                 'cotizacion_id'                 => $quteId,
                 'ART_CODIGO'                    => data_get($art, 'ART_CODIGO'),
                 'ART_DESCRIPCION'               => data_get($art, 'ART_DESCRIPCION'),
@@ -325,21 +318,20 @@ class SteamTrapService implements SteamTrapServiceInterface
                 'ART_MATERIAL'                  => data_get($art, 'ART_MATERIAL'),
                 'ART_PESO'                      => data_get($art, 'ART_PESO'),
                 'ART_TIPO_COMPRA'               => data_get($art, 'ART_TIPO_COMPRA'),
-                'ART_VALOR'                     => (float)data_get($articles, 'ART_VALOR'),
-                'ART_VALOR_ORIGINAL'            => (float)data_get($articles, 'ART_VALOR_ORIGINAL'),
+                'ART_VALOR'                     => (float)data_get($art, 'ART_VALOR'),
+                'ART_VALOR_ORIGINAL'            => (float)data_get($art, 'ART_VALOR_ORIGINAL'),
                 'ART_DESCUENTO'                 => 0,
-                'ART_IVA'                       => (float)data_get($articles, 'ART_IMP_VTA'),
-                'ART_CANTIDAD'                  => (float) round(data_get($articles, 'ART_CANTIDAD'), (int)data_get($articles, 'ART_DECIMAL_CANTIDAD')),
-                'ART_STOCK'                     => data_get($articles, 'ART_STOCK', 0),
-                'ART_IMP_VTA'                   => (float)data_get($articles, 'ART_IMP_VTA'),
-                'ART_COSTO_PROMEDIO'            => (float)data_get($articles, 'ART_COSTO_PROMEDIO'),
+                'ART_IVA'                       => (float)data_get($art, 'ART_IMP_VTA'),
+                'ART_CANTIDAD'                  => (float) round(data_get($art, 'ART_CANTIDAD'), (int)data_get($art, 'ART_DECIMAL_CANTIDAD')),
+                'ART_STOCK'                     => data_get($art, 'ART_STOCK', 0),
+                'ART_IMP_VTA'                   => (float)data_get($art, 'ART_IMP_VTA'),
+                'ART_COSTO_PROMEDIO'            => (float)data_get($art, 'ART_COSTO_PROMEDIO'),
                 'descuento'                     => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
                 'descuento_original'            => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
                 'modificador'                   => 0,
                 'valor_original_l'              => 0,
-
-            ];
+            ]);
+            $qd->save();
         }
-        return $artDetails;
     }
 }
