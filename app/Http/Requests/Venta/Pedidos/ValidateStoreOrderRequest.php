@@ -148,7 +148,7 @@ class ValidateStoreOrderRequest extends FormRequest
             'origen' => [
                 'required',
                 'string',
-                'in:cotizacion,reserva,facturar_existente,devolucion,factura_demanda'
+                'in:cotizacion,reserva,facturar_existente,devolucion,factura_demanda,app_movil'
             ],
 
             //almacenamiento de pdfs
