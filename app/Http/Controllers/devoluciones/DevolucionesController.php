@@ -33,7 +33,7 @@ class DevolucionesController extends Controller
 
     public function pedidoscliente(int $cliente_id, string $puntodeventa_id)
     {
-        $pedidos = GpPedido::with('direccion_entrega')->where('PTO_VTA_ID', $puntodeventa_id)
+        $pedidos = GpPedido::with('direccionEntrega')->where('PTO_VTA_ID', $puntodeventa_id)
             ->where('cliente_id', $cliente_id)
             ->where(function ($query) {
                 $query->where('estado', OrderStatus::FACTURADO)
