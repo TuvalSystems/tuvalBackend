@@ -53,7 +53,7 @@ class SteamTrapController extends Controller
                 'spParams.safetyFactor'         => ['required', 'numeric', 'gte:1'],
             ]);
             $pdfUrl = $this->service->generateSizingPdf($data);
-            return $this->successResponse('Funcionalidad de generación de PDF aún no implementada', [
+            return $this->successResponse('Pdf generado Correctamente', [
                 'pdfUrl' => $pdfUrl,
             ], 200);
         }, 'laravel', 'SteamTrapController.generateSizingPdf');
