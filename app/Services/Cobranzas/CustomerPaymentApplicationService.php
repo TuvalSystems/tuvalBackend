@@ -263,10 +263,14 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
+
+                //funcion para validacion de documentos contabilizados que no son de web
+                $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+
                 //validacion de aplicacion doble del mismo rc a la misma factura
                 $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $othersPaymentDocs);
                 //sumatoria de lo pendiente
-                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
+                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta,   $rcPayments, 'ingreso_aplicaciones');
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
                 $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
@@ -464,28 +468,58 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function filterGroupPayment(SupportCollection $payments)
+    protected function filterGroupPayment(SupportCollection $payments) : array
+    {
+        return $this->filterGroupCollectionIds($payments, true);
+    }
+
+    protected function filterGroupDocumentsPayments(SupportCollection $payments) : array
+    {
+        return $this->filterGroupCollectionIds($payments, false);
+    }
+
+    protected function filterGroupCollectionIds(SupportCollection $payments, bool $onlyTypePaymentEight): array
     {
         return $payments
-            ->where('typePayment', 8)
+            ->filter(function ($payment) use ($onlyTypePaymentEight) {
+                $typePayment = (int) data_get($payment, 'typePayment');
+
+                return $onlyTypePaymentEight
+                    ? $typePayment === 8
+                    : $typePayment !== 8;
+            })
             ->pluck('collectionId')
-            ->filter()
-            ->map(fn($doc) => trim((string) $doc))
+            ->map(fn($doc) => trim((string)$doc))
+            ->filter(fn($doc) => !empty($doc))
             ->unique()
             ->values()
             ->all();
     }
 
-    protected function filterGroupDocumentsPayments(SupportCollection $payments)
+
+    protected function filterGroupReceiptNumbers(SupportCollection $payments) : array
     {
         return $payments
-            ->where('typePayment', '!=', 8)
-            ->pluck('collectionId')
-            ->filter()
-            ->map(fn($doc) => trim((string)$doc))
+            ->filter(fn($payment) => (int) data_get($payment, 'typePayment') !== 8)
+            ->pluck('numeroRecibo')
+            ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
+            ->filter(fn($doc) => !empty($doc))
             ->unique()
             ->values()
             ->all();
+    }
+
+    protected function formatReceiptNumber(?string $rc) : ?string
+    {
+        if (empty($rc)) {
+            return null;
+        }
+        $rc = strtoupper(trim($rc));
+        if (preg_match('/^(RC-)(\d{1,8})/', $rc, $matches)) {
+            return $matches[1] . str_pad($matches[2], 8, '0', STR_PAD_LEFT);
+        }
+
+        return $rc;
     }
 
     protected function getDevolutions(Collection $devoluciones, array $devPaymentDocs)
@@ -496,7 +530,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function sumPendingWebNotAccountedByInvoice(string  $invoice, array $documents,  string $desde, string $hasta)
+    protected function sumPendingWebNotAccountedByInvoice(string  $invoice, array $documents,  string $desde, string $hasta, array $rcPayments = [], ?string $type = null)
     {
         $applications   = $this->applyRepository->getPendingWebInvoiceApplicationsExcludingDocuments($invoice, $documents, $desde, $hasta);
         $checks         = $this->applyRepository->getPendingWebCheckPaymentsByInvoice($invoice, $desde, $hasta);
