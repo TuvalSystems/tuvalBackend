@@ -324,9 +324,9 @@ class CotizacionesController extends Controller
         if ($data['estado'] == 'pendientes') {
             $cotizaciones = $cotizaciones
                 ->where(function ($q) {
-                    $q->where('estado', '!=', 'procesado');
-                    $q->where('estado', '!=', 'caducado');
-                    $q->where('estado', '!=', 'rechazado');
+                    $q->where('gp_cotizacions.estado', '!=', 'procesado');
+                    $q->where('gp_cotizacions.estado', '!=', 'caducado');
+                    $q->where('gp_cotizacions.estado', '!=', 'rechazado');
                 })
                 ->where(function ($q) {
                     $q->whereNull('prospecto_id');
@@ -336,7 +336,7 @@ class CotizacionesController extends Controller
                     });
                 });
         } else if ($data['estado'] == 'caducado') {
-            $cotizaciones = $cotizaciones->where('estado', 'caducado')
+            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'caducado')
                 ->whereNull('prospecto_id');
         } else if ($data['estado'] == 'prospectos') {
             $cotizaciones = $cotizaciones
@@ -346,9 +346,9 @@ class CotizacionesController extends Controller
                 })
                 ->where('estado', '!=', 'procesado');
         } else if ($data['estado'] == 'procesadas') {
-            $cotizaciones = $cotizaciones->where('estado', 'procesado');
+            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'procesado');
         } else if ($data['estado'] == 'rechazadas') {
-            $cotizaciones = $cotizaciones->where('estado', 'rechazado');
+            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'rechazado');
         }
         if (isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != '') {
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
@@ -384,15 +384,6 @@ class CotizacionesController extends Controller
             'success' => true,
             'cotizaciones' => $cotizaciones,
         ]);
-    }
-    public function guardarordenpedido(Request $request)
-    {
-        $data = $request->all();
-
-        foreach ($data as $key => $item) {
-            GpTempCart::where('id', $item['id'])
-                ->update(['orden' => $key + 1]);
-        }
     }
 
     public function guardardireccion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -605,12 +596,10 @@ class CotizacionesController extends Controller
 
     public function actualizarCotizacionPropectoV2(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $quote = $this->quotationService->updateQuoteClientData($request->input('id'), $request->input('cliente_id'));
             return $this->successResponse('Cotización actualizada', $quote,  200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'laravel', 'actualizarCotizacionPropectoV2');
     }
 
     public function limpiarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -840,7 +829,10 @@ class CotizacionesController extends Controller
 
     public function getlistNonSaleReasons()
     {
-        return $this->quotationService->getNonSalesReasons();
+        return $this->handleApiAction(function () {
+            $lista = $this->quotationService->getNonSalesReasons();
+            return $this->successResponse('Lista Obtenida', $lista, 200);
+        }, 'laravel', 'getlistNonSaleReasons');
     }
 
 
@@ -858,7 +850,8 @@ class CotizacionesController extends Controller
      */
     public function sendAllQuotesRecorderSQLServer()
     {
-        $cotizaciones = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->where('cotizacion_venta_motivo_id', '!=', null)->get();
+        $cotizaciones = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->whereNotNull('cotizacion_venta_motivo_id')
+            ->get();
         foreach ($cotizaciones as $cotizacion) {
             $this->quotationService->sendStoreReminderGp($cotizacion);
         }
@@ -947,6 +940,7 @@ class CotizacionesController extends Controller
             $items          = data_get($validated, 'articulos');
             $bodega         = data_get($validated, 'bodega');
             $cotizacionId   = data_get($validated, 'cotizacion_id', null);
+            $cotizacionId = $cotizacionId !== null ? (int) $cotizacionId : null;
             $response = $this->quotationService->getStockItemsForWarehouseV2($items, $bodega, $cotizacionId);
             return $this->successResponse('Lote obtenido correctamente', $response, 200);
         }, 'laravel', 'obtenerStockItemsLote');

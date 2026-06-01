@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Contracts;
 
+use App\Models\GpCotizacion;
 use App\Models\GpUsuario;
 
 interface QuotationServiceInterface
@@ -9,24 +10,24 @@ interface QuotationServiceInterface
 
     public function getNonSalesReasons();
 
-    public function updateNonSaleAndReminderData($data, GpUsuario $user);
+    public function updateNonSaleAndReminderData(array $data, GpUsuario $user);
     public function getQuotationsWithReminderToday();
 
     /**
      *  recuperar cotizacion
      */
 
-    public function restoreQuotationV2($quoteId);
+    public function restoreQuotationV2(int $quoteId);
 
     /** prospecto*/
-    public function updateQuoteClientData($quoteId, $clientId);
+    public function updateQuoteClientData(int $quoteId, int $clientId);
 
     /**
      *  volver a pedir
      */
-    public function loadQuotationForCopy($quoteId,  GpUsuario $user): array;
+    public function loadQuotationForCopy(int $quoteId,  GpUsuario $user): array;
     //  enviar cotizaciones sql server
-    public function sendStoreReminderGp($cotizacion);
+    public function sendStoreReminderGp(GpCotizacion $cotizacion);
 
 
     /** lista de items alternativos para cotizacione s */
@@ -38,29 +39,29 @@ interface QuotationServiceInterface
      *  imprimir cotizacion pdf
      */
 
-    public function printQuotationPdf($id, $withImages = false);
+    public function printQuotationPdf(int $id, $withImages = false);
 
     /***
      * API para obtener listado de cotizaciones con novedades
      */
-    public function consultQuotationsNews($data);
+    public function consultQuotationsNews(array $data);
 
 
     /** funcion para obtener el detalle de la cotizacion  */
 
-    public function detailQuotation($data, GpUsuario $user);
+    public function detailQuotation(array $data, GpUsuario $user);
 
     /** funcion para llenar la cotizacion  */
 
     /** funcion para obtener el stock del articulo en la cotizacion  */
-    public function getStockItemsForWarehouse($article, $warehouse, $cotizacionId);
+    public function getStockItemsForWarehouse(array $article, string $warehouse, ?int $cotizacionId = null) : array ;
 
 
     /** funcion para obtener el stock del articuo en la cotizacion v2  */
-     public function getStockItemsForWarehouseV2($articles, $warehouse, $quoteId);
+     public function getStockItemsForWarehouseV2(array $articles, string $warehouse, ?int $quoteId = null) : array ;
 
     /** funcion para obtener el margen del item l en cotizaciónes */
-    public function getMarginItem($artArticulo);
+    public function getMarginItem(string $artArticulo);
 
 
 
@@ -71,6 +72,6 @@ interface QuotationServiceInterface
     public function getSubSegmentBySegment(int $coAtrPadre);
     public function storeClientQuotation(array $data, GpUsuario $user);
 
-    public function checkClientWithSegmentExist($ruc);
+    public function checkClientWithSegmentExist(string $ruc);
     public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);
 }

@@ -270,14 +270,14 @@ class CobranzasController extends Controller
     {
 
         $data = $request->all();
-        $validate = $this->validarExistenciaDevolucion($data);
-        if ($validate['hasExistence']) {
-            return response([
-                'success' => false,
-                'message' => $validate['mensaje'],
-                'data'    => $validate['data'],
-            ], 422);
-        }
+        // $validate = $this->validarExistenciaDevolucion($data);
+        // if ($validate['hasExistence']) {
+        //     return response([
+        //         'success' => false,
+        //         'message' => $validate['mensaje'],
+        //         'data'    => $validate['data'],
+        //     ], 422);
+        // }
         $user = Auth::user();
         $cajas = GpCaja::get()->keyBy('CAJA_CODIGO');
         $bancos = GpCajaBancos::get()->keyBy('CB_ID');
@@ -496,87 +496,87 @@ class CobranzasController extends Controller
         ]);
     }
 
-    public function validarExistenciaDevolucion(array $data)
-    {
-        $fechaCobro = now();
-        $arr = [
-            'hasExistence'  => false,
-            'mensaje'       => 'procede'
-        ];
-        $facturas = $this->obtenerFacturasDelCobro($data);
-        if (empty($facturas)) {
-            return  $arr;
-        }
+    // public function validarExistenciaDevolucion(array $data)
+    // {
+    //     $fechaCobro = now();
+    //     $arr = [
+    //         'hasExistence'  => false,
+    //         'mensaje'       => 'procede'
+    //     ];
+    //     $facturas = $this->obtenerFacturasDelCobro($data);
+    //     if (empty($facturas)) {
+    //         return  $arr;
+    //     }
 
-        $desde = $fechaCobro->copy()->startOfDay();
-        $hasta = $fechaCobro->copy()->endOfDay();
-        $datos =  GpPedido::query()
-            ->whereIn('factura', $facturas)
-            ->conDevolucionBloqueanteDelDia($fechaCobro)
-            ->with([
-                'devolucionBloqueante' => function ($q)  use ($desde, $hasta) {
-                    $q->select([
-                        'gp_devoluciones.id',
-                        'gp_devoluciones.devolucion',
-                        'gp_devoluciones.DOC_GENERADO',
-                        'gp_devoluciones.pedido_id',
-                        'gp_devoluciones.estado',
-                        'gp_devoluciones.created_at',
-                    ])
-                        ->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
-                }
-            ])
-            ->get([
-                'id',
-                'pedido',
-                'factura',
-            ])
-            ->map(function ($pedido) {
-                return [
-                    'pedido_id'         => $pedido->id,
-                    'pedido'            => $pedido->pedido,
-                    'factura'           => $pedido->factura,
-                    'devolucion' => [
-                        'id'            => $pedido->devolucionBloqueante?->id,
-                        'devolucion'    => $pedido->devolucionBloqueante?->devolucion,
-                        'nota_credito'  => $pedido->devolucionBloqueante?->DOC_GENERADO,
-                        'estado'        => $pedido->devolucionBloqueante?->estado,
-                        'fecha'         => $pedido->devolucionBloqueante?->created_at,
-                    ],
-                ];
-            });
+    //     $desde = $fechaCobro->copy()->startOfDay();
+    //     $hasta = $fechaCobro->copy()->endOfDay();
+    //     $datos =  GpPedido::query()
+    //         ->whereIn('factura', $facturas)
+    //         ->conDevolucionBloqueanteDelDia($fechaCobro)
+    //         ->with([
+    //             'devolucionBloqueante' => function ($q)  use ($desde, $hasta) {
+    //                 $q->select([
+    //                     'gp_devoluciones.id',
+    //                     'gp_devoluciones.devolucion',
+    //                     'gp_devoluciones.DOC_GENERADO',
+    //                     'gp_devoluciones.pedido_id',
+    //                     'gp_devoluciones.estado',
+    //                     'gp_devoluciones.created_at',
+    //                 ])
+    //                     ->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
+    //             }
+    //         ])
+    //         ->get([
+    //             'id',
+    //             'pedido',
+    //             'factura',
+    //         ])
+    //         ->map(function ($pedido) {
+    //             return [
+    //                 'pedido_id'         => $pedido->id,
+    //                 'pedido'            => $pedido->pedido,
+    //                 'factura'           => $pedido->factura,
+    //                 'devolucion' => [
+    //                     'id'            => $pedido->devolucionBloqueante?->id,
+    //                     'devolucion'    => $pedido->devolucionBloqueante?->devolucion,
+    //                     'nota_credito'  => $pedido->devolucionBloqueante?->DOC_GENERADO,
+    //                     'estado'        => $pedido->devolucionBloqueante?->estado,
+    //                     'fecha'         => $pedido->devolucionBloqueante?->created_at,
+    //                 ],
+    //             ];
+    //         });
 
-        if ($datos->isEmpty()) {
-            return $arr;
-        }
-        $mensaje = 'No se puede registrar el cobro porque existen facturas con devolución generada: ';
+    //     if ($datos->isEmpty()) {
+    //         return $arr;
+    //     }
+    //     $mensaje = 'No se puede registrar el cobro porque existen facturas con devolución generada: ';
 
-        $detalleMensaje     = $datos->map(function ($item, $index) {
-            $factura        = data_get($item, 'factura', 'Sin Factura');
-            $pedido         = data_get($item, 'pedido', 'Sin Pedido');
-            $devolucion     = data_get($item, 'devolucion.devolucion');
-            $notaCredito    = data_get($item, 'devolucion.nota_credito', 'N/A');
-            $estado         = data_get($item, 'devolucion.estado');
-            $fecha       = data_get($item, 'devolucion.fecha');
-            $estadoTexto = is_object($estado) && property_exists($estado, 'value')
-                ? $estado->value
-                : ($estado ?? 'Sin estado');
+    //     $detalleMensaje     = $datos->map(function ($item, $index) {
+    //         $factura        = data_get($item, 'factura', 'Sin Factura');
+    //         $pedido         = data_get($item, 'pedido', 'Sin Pedido');
+    //         $devolucion     = data_get($item, 'devolucion.devolucion');
+    //         $notaCredito    = data_get($item, 'devolucion.nota_credito', 'N/A');
+    //         $estado         = data_get($item, 'devolucion.estado');
+    //         $fecha       = data_get($item, 'devolucion.fecha');
+    //         $estadoTexto = is_object($estado) && property_exists($estado, 'value')
+    //             ? $estado->value
+    //             : ($estado ?? 'Sin estado');
 
-            return ($index + 1) . ". Factura: {$factura}\n"
-                . "   Pedido: {$pedido}\n"
-                . "   Devolución: {$devolucion}\n"
-                . "   Nota Credito: {$notaCredito}\n"
-                . "   Estado: {$estadoTexto}\n"
-                . "   Fecha devolución: {$fecha}";
-        })->implode("\n\n");
+    //         return ($index + 1) . ". Factura: {$factura}\n"
+    //             . "   Pedido: {$pedido}\n"
+    //             . "   Devolución: {$devolucion}\n"
+    //             . "   Nota Credito: {$notaCredito}\n"
+    //             . "   Estado: {$estadoTexto}\n"
+    //             . "   Fecha devolución: {$fecha}";
+    //     })->implode("\n\n");
 
 
-        return [
-            'hasExistence'  => true,
-            'mensaje'      => $mensaje . "\n\nDetalle:\n" . $detalleMensaje,
-            'data'          => $datos->values(),
-        ];
-    }
+    //     return [
+    //         'hasExistence'  => true,
+    //         'mensaje'      => $mensaje . "\n\nDetalle:\n" . $detalleMensaje,
+    //         'data'          => $datos->values(),
+    //     ];
+    // }
 
     protected function obtenerFacturasDelCobro(array $data): array
     {

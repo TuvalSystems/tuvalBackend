@@ -22,11 +22,19 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioPuntoVenta whereUSERPTOVTAPUNTOVENTA($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioPuntoVenta whereUSERPTOVTAUSUARIO($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioPuntoVenta whereUpdatedAt($value)
- * @mixin \Eloquent
  */
 class GpRelacionUsuarioPuntoVenta extends Model
 {
     use HasFactory;
+
+    protected $fillable  =[
+        'id',
+        'user_id',
+        'pv_id',
+        'orden',
+        'USER_PTO_VTA_PUNTO_VENTA',
+        'USER_PTO_VTA_USUARIO'
+    ];
 
 
     public function usuario(){

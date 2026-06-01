@@ -52,15 +52,18 @@ class GpCobrosEfectivoFactura extends Model
 
     public function cobroPendienteWeb(): BelongsTo
     {
-        return $this->belongsTo(GpCobro::class, 'cobro_id', 'id')
-            ->whereIn('estado', ['iniciado', 'revisado']);
+        return $this->belongsTo(GpCobro::class, 'cobro_id', 'id');
+        //->whereIn('estado', ['iniciado', 'revisado']);
     }
 
-    public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null): Builder
+    public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null, array $rcsPorExcluir = []): Builder
     {
-        return $query->whereHas('cobroPendienteWeb', function ($q) use ($desde, $hasta) {
+        return $query->whereHas('cobroPendienteWeb', function ($q) use ($desde, $hasta, $rcsPorExcluir) {
             if ($desde && $hasta) {
                 $q->whereBetween('created_at', [$desde, $hasta]);
+            }
+            if (!empty($rcsPorExcluir)) {
+                $q->whereNotIn('numero_recibo', $rcsPorExcluir);
             }
         });
     }

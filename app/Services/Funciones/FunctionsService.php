@@ -63,9 +63,9 @@ class FunctionsService implements FunctionsServiceInterface
     /** para aprobacion crediticia de pedidos y para validar stock antes de guardar pedido en InventoryQueryService */
 
 
-    public function getBodegas($bodega, $consulta = null)
+    public function getBodegas(string $warehouse, ?string $consulta = null)
     {
-        $query = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $bodega);
+        $query = GpRelacionPuntoVentaBodegaRelacionada::where('PTO_VTA_BOD_REL_PUNTO_VENTA', $warehouse);
         if ($consulta) {
             $query->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '!=', 'CONSULTA');
         }
@@ -74,47 +74,42 @@ class FunctionsService implements FunctionsServiceInterface
 
 
     /** funcion de recalcular pedido  */
-    public function recalculateOrder($orderId)
+    public function recalculateOrder(int $orderId)
     {
-        $order = GpPedido::find($orderId);
-        $detalle = GpPedidoDetalle::where('pedido_id', $orderId)->get();
+        $order      = GpPedido::find($orderId);
+        $detalle    = GpPedidoDetalle::where('pedido_id', $orderId)->get();
         if ($detalle->isEmpty()) {
             return;
         }
         $articulosImpuesto = GpArticulo::whereIn('ART_CODIGO', $detalle->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
-
-        $subtotal = 0.0;
-        $totalDiscount = 0.0;
-        $netSubtotal = 0.0;
-        $totalIva = 0.0;
+        $subtotal           = 0.0;
+        $totalDiscount      = 0.0;
+        $netSubtotal        = 0.0;
+        $totalIva           = 0.0;
 
         foreach ($detalle as $item) {
-            $valorUnitario = (float) $item->ART_VALOR;
-            $cantidad = (float) $item->ART_CANTIDAD;
-            $descuentoUnitario = (float) $item->ART_DESCUENTO;
-
-            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineaSubtotal = $lineNet + $lineaDiscount;
-            $impuestoPorcentaje = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
-
-
-            $subtotal += $lineaSubtotal;
-            $totalDiscount += $lineaDiscount;
-            $netSubtotal += $lineNet;
-            $totalIva += $lineaIva;
-
-            $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = $lineaIva;
+            $valorUnitario              = (float) $item->ART_VALOR;
+            $cantidad                   = (float) $item->ART_CANTIDAD;
+            $descuentoUnitario          = (float) $item->ART_DESCUENTO;
+            $lineNet                    = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount              = $descuentoUnitario * $cantidad;
+            $lineaSubtotal              = $lineNet + $lineaDiscount;
+            $impuestoPorcentaje         = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
+            $lineaIva                   = $lineNet * ($impuestoPorcentaje / 100);
+            $subtotal                   += $lineaSubtotal;
+            $totalDiscount              += $lineaDiscount;
+            $netSubtotal                += $lineNet;
+            $totalIva                   += $lineaIva;
+            $item->ART_IMP_VTA          = $impuestoPorcentaje;
+            $item->ART_IVA              = $lineaIva;
             $item->save();
         }
 
-        $order->subtotal = round($subtotal, 2);
-        $order->descuento = round($totalDiscount, 2);
-        $order->subtotalmenosdescuento = round($netSubtotal, 2);
-        $order->iva = round($totalIva, 2);
-        $order->total = round($netSubtotal + $totalIva, 2);
+        $order->subtotal                = round($subtotal, 2);
+        $order->descuento               = round($totalDiscount, 2);
+        $order->subtotalmenosdescuento  = round($netSubtotal, 2);
+        $order->iva                     = round($totalIva, 2);
+        $order->total                   = round($netSubtotal + $totalIva, 2);
         $order->save();
     }
 

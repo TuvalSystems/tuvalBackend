@@ -205,7 +205,7 @@ class ConsultasController extends Controller
             $st = $this->inventoryService->getConsultStock($data);
             return $this->successResponse('Stock obtenido correctamente', $st, 200);
         } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)' . [
+            Log::error('Error al consultar Stock (getConsultStock)' , [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
@@ -237,7 +237,7 @@ class ConsultasController extends Controller
             $items = $this->inventoryService->getConsultItemTransito($data);
             return $this->successResponse('Transitos obtenidos correctamente', $items, 200);
         } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)' .
+            Log::error('Error al consultar Stock (getConsultStock)' ,
                 [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -350,7 +350,7 @@ class ConsultasController extends Controller
         }
     }
 
-    public function obtenerCupoDisponibleCliente($ruc)
+    public function obtenerCupoDisponibleCliente(string $ruc)
     {
         try {
             $response = $this->clientService->getAvailabeCreditCustomer($ruc);
@@ -374,7 +374,7 @@ class ConsultasController extends Controller
         }, 'laravel', 'obtenerSucursalesCliente');
     }
 
-    public function cupodisponible($ruc)
+    public function cupodisponible(string $ruc)
     {
         try {
             $cl = $this->inventoryService->getAvailableSpace($ruc);
@@ -452,7 +452,7 @@ class ConsultasController extends Controller
                 'reservados' => $this->inventoryService->listReservedInventory(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Error al consultar reservados' . ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
+            Log::error('Error al consultar reservados', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
             return $this->buildErrorResponse('Error al consultar reservados', 500);
         }
     }

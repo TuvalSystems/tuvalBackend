@@ -927,7 +927,8 @@ class DespachosController extends Controller
     {
         $ordenes = GpOrdenDespacho::where('estado', 'liberada')->get();
         foreach ($ordenes as $orden) {
-            $pedido = GpPedido::where('id', $orden->pedido_id)->first();
+            $pedido = GpPedido::where('id', $orden->pedido_id)
+            ->where('estado', OrderStatus::FACTURADO)->first();
             $listo = true;
 
             $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();

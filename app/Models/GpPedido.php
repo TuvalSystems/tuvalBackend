@@ -94,7 +94,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property string|null $fecha_bloqueo
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoDetalle> $detallepedido
  * @property-read int|null $detallepedido_count
- * @property-read \App\Models\GpClienteSucursal|null $direccion_entrega
+ * @property-read \App\Models\GpClienteSucursal|null $direccionEntrega
  * @property-read bool $check_traslado_venta
  * @property-read mixed $msg_registro_copia
  * @property-read \App\Models\GpCliente|null $gpcliente
@@ -279,7 +279,7 @@ class GpPedido extends Model implements HasMedia
         return $date->format('Y-m-d H:i:s');
     }
 
-    public function direccion_entrega()
+    public function direccionEntrega()
     {
         return $this->belongsTo(GpClienteSucursal::class, 'sucursal_id');
     }

@@ -654,7 +654,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         return  collect($response)->groupBy('item');
     }
 
-    public function getImageArticle($codArt)
+    public function getImageArticle(string $codArt)
     {
         $images = [];
         for ($i = 1; $i <= 3; $i++) {

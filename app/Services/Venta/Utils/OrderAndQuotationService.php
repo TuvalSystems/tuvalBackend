@@ -2,6 +2,7 @@
 
 namespace App\Services\Venta\Utils;
 
+use App\Models\GpArticulo;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpRegistroCopia;
@@ -442,5 +443,47 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             throw new \RuntimeException($mensaje);
         }
         return $sucursal;
+    }
+
+
+
+    public function recalculateQuotation(int $quotationId)
+    {
+        $qt         = GpCotizacion::where('id', $quotationId)->first();
+        $qtds       = GpCotizacionDetalle::where('cotizacion_id', $qt->id)->get();
+        if ($qtds->isEmpty()) {
+            return;
+        }
+        $articulosImpuesto  = GpArticulo::whereIn('ART_CODIGO', $qtds->pluck('ART_CODIGO'))->pluck('ART_IMP_VTA', 'ART_CODIGO');
+        $subtotal           = 0.0;
+        $totalDiscount      = 0.0;
+        $netSubtotal        = 0.0;
+        $totalIva           = 0.0;
+
+        foreach ($qtds as $item) {
+            $valorUnitario          = (float) $item->ART_VALOR;
+            $cantidad               = (float) $item->ART_CANTIDAD;
+            $descuentoUnitario      = (float) (($item->ART_VALOR * $item->descuento)/100);
+            $lineNet                = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+            $lineaDiscount          = $descuentoUnitario * $cantidad;
+            $lineaSubtotal          = $lineNet + $lineaDiscount;
+            $impuestoPorcentaje     = (float) $articulosImpuesto[$item->ART_CODIGO] ?? 0;
+            $lineaIva               = $lineNet * ($impuestoPorcentaje / 100);
+            $subtotal               += $lineaSubtotal;
+            $totalDiscount          += $lineaDiscount;
+            $netSubtotal            += $lineNet;
+            $totalIva               += $lineaIva;
+            $item->ART_DESCUENTO    = $descuentoUnitario;
+            $item->ART_IMP_VTA      = $impuestoPorcentaje;
+            $item->ART_IVA          = $lineaIva;
+            $item->save();
+        }
+        $qt->subtotal                   = round($subtotal, 2);
+        $qt->descuento                  = round($totalDiscount, 2);
+        $qt->subtotalmenosdescuento     = round($netSubtotal, 2);
+        $qt->iva                        = round($totalIva, 2);
+        $qt->total                      = round($netSubtotal + $totalIva, 2);
+        $qt->save();
+        return $qt;
     }
 }

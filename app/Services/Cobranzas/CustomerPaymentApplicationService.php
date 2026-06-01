@@ -5,6 +5,7 @@ namespace App\Services\Cobranzas;
 use App\Repositories\Cobranzas\Contracts\WebInvoiceApplicationRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 
@@ -59,8 +60,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
-
-
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
 
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -71,7 +71,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 false
             );
 
-            $ret = array_merge($ret, $validation);
+            $ret = array_merge($ret, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ret);
         return $retenciones;
@@ -107,7 +109,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
-
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
                 $saldoFactura,
@@ -117,7 +119,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 true
             );
 
-            $ing = array_merge($ing, $validation);
+            $ing = array_merge($ing, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ing);
 
@@ -154,6 +158,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
 
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -164,7 +169,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 true
             );
 
-            $ing = array_merge($ing, $validation);
+            $ing = array_merge($ing, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ing);
 
@@ -204,6 +211,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+                $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+
                 $validation = $this->buildInvoiceValidation(
                     $valorIngresado,
                     $saldoFactura,
@@ -213,7 +222,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     true
                 );
 
-                $ing = array_merge($ing, $validation);
+                $ing = array_merge($ing, $validation, [
+                    'devoluciones_info' => $devsInfo
+                ]);
             }
             unset($ing);
 
@@ -227,8 +238,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function processIngresoAplicaciones(array $data, string $desde, string $hasta)
     {
         foreach ($data as  &$typeDeposits) {
-
-            $dataInvoices = data_get($typeDeposits, 'facturas', []);
+            $applyDoc = trim((string) data_get($typeDeposits, 'detalle.CN_DOCUMENTO', '')); //documento de cobro para aplicar
+            $dataInvoices   = data_get($typeDeposits, 'facturas', []);
 
             if (empty($dataInvoices)) {
                 continue;
@@ -253,10 +264,17 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
 
+                //funcion para validacion de documentos contabilizados que no son de web
+                $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+
+                //validacion de aplicacion doble del mismo rc a la misma factura
+                $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $othersPaymentDocs);
                 //sumatoria de lo pendiente
-                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
+                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta,   $rcPayments, 'ingreso_aplicaciones');
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+                $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+
                 $validation = $this->buildInvoiceValidation(
                     $valorIngresado,
                     $saldoFactura,
@@ -265,8 +283,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     $sumDev,
                     true
                 );
+                if ($hasDoubleApply) {
+                    $validation = $this->applyDoubleApplyValidation($validation, $applyDoc);
+                }
 
-                $ing = array_merge($ing, $validation);
+                $ing = array_merge($ing, $validation, [
+                    'devoluciones_info' => $devsInfo
+                ]);
             }
             unset($ing);
 
@@ -306,6 +329,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
+            $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
                 $saldoFactura,
@@ -315,7 +340,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 true
             );
 
-            $ing = array_merge($ing, $validation);
+            $ing = array_merge($ing, $validation, [
+                'devoluciones_info' => $devsInfo
+            ]);
         }
         unset($ing);
 
@@ -324,7 +351,20 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         return $data;
     }
 
-
+    protected function formatInfoDevolutions(SupportCollection $devs): array
+    {
+        return collect($devs)->map(function ($dev) {
+            $userName   = data_get($dev, 'USERID', 'N/A');
+            $cod        = data_get($dev, 'devolucion', 'N/A');
+            $doc        = data_get($dev, 'DOC_GENERADO', 'N/A');
+            $fecha      = Carbon::parse(data_get($dev, 'created_at'))->format('Y-m-d');
+            $total      = $this->money(data_get($dev, 'total', 0));
+            return "{$userName} - {$cod} - {$doc} - {$fecha} - $" . number_format($total, 2, '.', '');
+        })
+            ->filter()
+            ->values()
+            ->all();
+    }
 
     protected function buildInvoiceValidation(
         int|float|string|null $valorIngresado,
@@ -365,9 +405,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         $excessValue = $this->money(
             max($valorIngresado - $saldoDisponible, 0)
         );
-
+        $hasExcess = $excessValue > 0;
         return [
-            'hasExcess'                => $excessValue > 0,
+            'hasExcess'                => $hasExcess,
+            'hasDoubleApply'           => false,
             'totalApply'               => $totalApply,
             'sumPayments'              => $sumPayments,
             'sumPendingWeb'            => $sumPendingWeb,
@@ -378,36 +419,47 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             'totalPendingNotAccounted' => $totalNoContabilizado,
             'excessValue'              => $excessValue,
             'priceRecommend'           => $priceRecommend,
+
+            //variables adicionales para el caso de aplicaciones dobles
+            'validationType'            => $hasExcess ? 'excess' : null,
+            'validationMessage'         => $hasExcess ? 'El valor ingresado supera el saldo disponible de la factura.' : null,
+            'doubleApplyDoc'            => null,
         ];
     }
 
 
     protected function hasAnyExcess(array $payload): bool
     {
-        if (collect(data_get($payload, 'retenciones', []))->contains('hasExcess', true)) {
+        return $this->hasAnyInvoiceValidationFlag($payload, 'hasExcess')
+            || $this->hasAnyInvoiceValidationFlag($payload, 'hasDoubleApply');
+    }
+
+    protected function hasAnyInvoiceValidationFlag(array $payload, string $flag): bool
+    {
+        if (collect(data_get($payload, 'retenciones', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_efectivo.facturas', []))->contains('hasExcess', true)) {
+        if (collect(data_get($payload, 'ingreso_efectivo.facturas', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_tarjeta.facturas', []))->contains('hasExcess', true)) {
+        if (collect(data_get($payload, 'ingreso_tarjeta.facturas', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_cheques.facturas', []))->contains('hasExcess', true)) {
+        if (collect(data_get($payload, 'ingreso_cheques.facturas', []))->contains($flag, true)) {
             return true;
         }
 
         foreach (data_get($payload, 'ingreso_depositos', []) as $deposito) {
-            if (collect(data_get($deposito, 'facturas', []))->contains('hasExcess', true)) {
+            if (collect(data_get($deposito, 'facturas', []))->contains($flag, true)) {
                 return true;
             }
         }
 
         foreach (data_get($payload, 'ingreso_aplicaciones', []) as $aplicacion) {
-            if (collect(data_get($aplicacion, 'facturas', []))->contains('hasExcess', true)) {
+            if (collect(data_get($aplicacion, 'facturas', []))->contains($flag, true)) {
                 return true;
             }
         }
@@ -416,28 +468,58 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function filterGroupPayment(SupportCollection $payments)
+    protected function filterGroupPayment(SupportCollection $payments): array
+    {
+        return $this->filterGroupCollectionIds($payments, true);
+    }
+
+    protected function filterGroupDocumentsPayments(SupportCollection $payments): array
+    {
+        return $this->filterGroupCollectionIds($payments, false);
+    }
+
+    protected function filterGroupCollectionIds(SupportCollection $payments, bool $onlyTypePaymentEight): array
     {
         return $payments
-            ->where('typePayment', 8)
+            ->filter(function ($payment) use ($onlyTypePaymentEight) {
+                $typePayment = (int) data_get($payment, 'typePayment');
+
+                return $onlyTypePaymentEight
+                    ? $typePayment === 8
+                    : $typePayment !== 8;
+            })
             ->pluck('collectionId')
-            ->filter()
-            ->map(fn($doc) => trim((string) $doc))
+            ->map(fn($doc) => trim((string)$doc))
+            ->filter(fn($doc) => !empty($doc))
             ->unique()
             ->values()
             ->all();
     }
 
-    protected function filterGroupDocumentsPayments(SupportCollection $payments)
+
+    protected function filterGroupReceiptNumbers(SupportCollection $payments): array
     {
         return $payments
-            ->where('typePayment', '!=', 8)
-            ->pluck('collectionId')
-            ->filter()
-            ->map(fn($doc) => trim((string)$doc))
+            ->filter(fn($payment) => (int) data_get($payment, 'typePayment') !== 8)
+            ->pluck('numeroRecibo')
+            ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
+            ->filter(fn($doc) => !empty($doc))
             ->unique()
             ->values()
             ->all();
+    }
+
+    protected function formatReceiptNumber(?string $rc): ?string
+    {
+        if (empty($rc)) {
+            return null;
+        }
+        $rc = strtoupper(trim($rc));
+        if (preg_match('/^(RC-)(\d{1,8})/', $rc, $matches)) {
+            return $matches[1] . str_pad($matches[2], 8, '0', STR_PAD_LEFT);
+        }
+
+        return $rc;
     }
 
     protected function getDevolutions(Collection $devoluciones, array $devPaymentDocs)
@@ -448,14 +530,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function sumPendingWebNotAccountedByInvoice(string  $invoice, array $documents,  string $desde, string $hasta)
+    protected function sumPendingWebNotAccountedByInvoice(string  $invoice, array $documents,  string $desde, string $hasta, array $rcPayments = [], ?string $type = null)
     {
-        $applications   = $this->applyRepository->getPendingWebInvoiceApplicationsExcludingDocuments($invoice, $documents, $desde, $hasta);
-        $checks         = $this->applyRepository->getPendingWebCheckPaymentsByInvoice($invoice, $desde, $hasta);
-        $deposits       = $this->applyRepository->getPendingWebDepositPaymentsByInvoice($invoice, $desde, $hasta);
-        $cash           = $this->applyRepository->getPendingWebCashPaymentsByInvoice($invoice, $desde, $hasta);
-        $withholdings   = $this->applyRepository->getPendingWebWithholdingPaymentsByInvoice($invoice, $desde, $hasta);
-        $creditCards    = $this->applyRepository->getPendingWebCreditCardPaymentsByInvoice($invoice, $desde, $hasta);
+
+        $rcsPorExcluir = $type === 'ingreso_aplicaciones' ? $rcPayments : [];
+        $applications   = $this->applyRepository->getPendingWebInvoiceApplicationsExcludingDocuments($invoice, $documents, $desde, $hasta, $rcsPorExcluir);
+        $checks         = $this->applyRepository->getPendingWebCheckPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $deposits       = $this->applyRepository->getPendingWebDepositPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $cash           = $this->applyRepository->getPendingWebCashPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $withholdings   = $this->applyRepository->getPendingWebWithholdingPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
+        $creditCards    = $this->applyRepository->getPendingWebCreditCardPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
 
         $sumApplications    = $this->money($applications->sum('monto'));
         $sumChecks          = $this->money($checks->sum('monto'));
@@ -506,6 +590,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     ): array {
         return array_merge($item, [
             'hasExcess'                  => false,
+            'hasDoubleApply'             => false,
+
             'totalApply'                 => 0,
             'sumPayments'                => 0,
             'sumPendingWeb'              => 0,
@@ -513,11 +599,45 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             'totalPendingNotAccounted'   => 0,
             'excessValue'                => 0,
             'priceRecommend'             => 0,
+
             'devoluciones_info'          => [],
             'factura_original'           => $facturaOrigen,
             'factura_busqueda'           => $facturaNormalizada,
+
+            'validationType'             => null,
+            'validationMessage'          => null,
+            'doubleApplyDoc'             => null,
+
             'validation_skipped'         => true,
             'validation_skipped_reason'  => 'Documento omitido porque no corresponde al formato de factura web.',
+        ]);
+    }
+
+
+    protected function validateDoubleApply(?string $applyDoc, array $othersDocuments): bool
+    {
+        $applyDoc = mb_strtoupper(trim((string) $applyDoc));
+
+        if ($applyDoc === '') {
+            return false;
+        }
+
+        return collect($othersDocuments)
+            ->map(fn($doc) => mb_strtoupper(trim((string) $doc)))
+            ->contains($applyDoc);
+    }
+
+    protected function applyDoubleApplyValidation(array $validation, ?string $applyDoc): array
+    {
+        $applyDoc = trim((string) $applyDoc);
+        return array_merge($validation, [
+            'hasDoubleApply'            => true,
+            'doubleApplyDoc'            => $applyDoc,
+            'priceRecommend'            => 0,
+            'validationType'            => 'double_apply',
+            'validationMessage' => $applyDoc !== ''
+                ? "El documento de cobro {$applyDoc} ya fue aplicado a esta factura. No se permite aplicarlo nuevamente."
+                : 'El documento de cobro ya fue aplicado a esta factura. No se permite aplicarlo nuevamente.',
         ]);
     }
 }

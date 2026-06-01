@@ -128,7 +128,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::post('/updateusuarioperfil', [SectionsController::class, 'updateusuarioperfil']);
 
         Route::post('/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
-        Route::post('/guardarordenpedido', [CotizacionesController::class, 'guardarordenpedido']);
         Route::get('/despachos/ordenespendientes/{puntodeventa_id}', [DespachosController::class, 'ordenespendientes']);
         Route::post('/despachos/liberarordendespacho', [DespachosController::class, 'liberarordendespacho']);
         Route::get('/despachos/ordenesliberadas/{puntodeventa_id}/{estado?}', [DespachosController::class, 'ordenesliberadas']);
