@@ -306,7 +306,7 @@ class SteamTrapService implements SteamTrapServiceInterface
     }
 
     protected function sendMailQuoteDraft(GpCotizacion $quote, GpUsuario $user){
-        $quote->load('detallecotizacion');
+        $quote->load('detallecotizacion')->refresh();
 
         $email = 'sistemas6@tuvalsa.com';
         Mail::to($email)->send(new CotizacionBorradorAppMail($quote));
