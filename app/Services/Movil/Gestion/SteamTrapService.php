@@ -12,6 +12,7 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpUsuario;
+use App\Models\Movil\Gestion\TrampaVapor;
 use App\Notifications\User\UserNotification;
 use App\Services\Api\Bodegas\ApiGestionArticleService;
 use App\Services\Movil\Gestion\Contracts\SteamTrapServiceInterface;
@@ -33,7 +34,7 @@ class SteamTrapService implements SteamTrapServiceInterface
         protected readonly OrderAndQuotationServiceInterface $OrderQuoteCommon
     ) {}
 
-    public function generateSizingPdf(array $data): string
+    public function generateSizingPdf(array $data, GpUsuario $user): string
     {
         $clienteId          = data_get($data, 'customer_id');
         $params             = data_get($data, 'spParams', []);
@@ -64,6 +65,7 @@ class SteamTrapService implements SteamTrapServiceInterface
         $path       = 'trampas-vapor/' . $fileName;
 
         Storage::disk('public')->put($path, $pdf->output());
+        $this->createRegisterSteamTramp($data, $user);
         return asset('storage/' . $path);
     }
 
@@ -89,6 +91,43 @@ class SteamTrapService implements SteamTrapServiceInterface
         return $images;
     }
 
+    protected function createRegisterSteamTramp(array $payload, GpUsuario $user)
+    {
+        $new = new TrampaVapor();
+        $new->fill([
+            'user_id'                           => data_get($user, 'id'),
+            'cliente_id'                        => data_get($payload, 'customer_id'),
+            'proceso'                           => data_get($payload, 'process'),
+            'tipo_trampa'                       => data_get($payload, 'trapType'),
+            'metodo_calculo'                    => data_get($payload, 'calculationMethod'),
+            'presion_trabajo_psig'              => data_get($payload, 'workingPressurePsig'),
+            'presion_retorno_psig'              => data_get($payload, 'returnPressurePsig'),
+            'presion_diferencial_psig'          => data_get($payload, 'pressureDifferentialPsig'),
+            'fluido'                            => data_get($payload, 'fluid'),
+            'volumen_m3'                        => data_get($payload, 'volumeM3'),
+            'densidad_kg_m3'                    => data_get($payload, 'densityKgM3'),
+            'cp_kj_kg_c'                        => data_get($payload, 'cpKjKgC'),
+            'temperatura_inicial_c'             => data_get($payload, 'initialTemperatureC'),
+            'temperatura_final_c'               => data_get($payload, 'finalTemperatureC'),
+            'tiempo_calentamiento_min'          => data_get($payload, 'heatingTimeMin'),
+            'calor_requerido_kj'                => data_get($payload, 'requiredHeatKj'),
+            'hfg_kj_kg'                         => data_get($payload, 'hfgKjKg'),
+            'carga_conocida_kg_h'               => data_get($payload, 'knownLoadKgH'),
+            'potencia_caldera_bhp'              => data_get($payload, 'boilerBhp'),
+            'carga_estimada_kg'                 => data_get($payload, 'estimatedLoadKg'),
+            'factor_seguridad'                  => data_get($payload, 'safetyFactor'),
+            'carga_con_factor_seguridad_kg'     => data_get($payload, 'loadWithSafetyFactorKg'),
+            'parametros_sp'                     => data_get($payload, 'spParams'),
+        ]);
+        $new->save();
+    }
+
+
+    /**
+     *
+     *  generacion de borrador de cotizacion
+     *
+     */
 
 
     public function generateQuoteDraft(array $payload, GpUsuario $user): mixed

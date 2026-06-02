@@ -5,10 +5,16 @@ namespace App\Models\Movil\Gestion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class TrampasVapor extends Model
+class TrampaVapor extends Model
 {
     use HasFactory;
+    protected $table = 'trampas_vapor';
+
+    protected $casts = [
+        'parametros_sp' => 'array'
+    ];
     protected $fillable = [
+        'user_id',
         'cliente_id',
         'proceso',
         'tipo_trampa',
