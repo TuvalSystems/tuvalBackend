@@ -316,7 +316,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 continue;
             }
             $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_cheque', 0));
-            $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_SALDO_CLIENTE', 0));
+            $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
@@ -331,7 +331,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
 
-            $validation = $this->buildInvoiceValidation(
+            $validation = $this->buildInvoiceChequeValidation(
                 $valorIngresado,
                 $saldoFactura,
                 $sumPayments,
@@ -405,6 +405,59 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         $excessValue = $this->money(
             max($valorIngresado - $saldoDisponible, 0)
         );
+        $hasExcess = $excessValue > 0;
+        return [
+            'hasExcess'                => $hasExcess,
+            'hasDoubleApply'           => false,
+            'totalApply'               => $totalApply,
+            'sumPayments'              => $sumPayments,
+            'sumPendingWeb'            => $sumPendingWeb,
+            'sumDevolutions'           => $sumDev,
+            'saldoFactura'             => $saldoFactura,
+            'saldoBase'                => $saldoBase,
+            'saldoDisponible'          => $saldoDisponible,
+            'totalPendingNotAccounted' => $totalNoContabilizado,
+            'excessValue'              => $excessValue,
+            'priceRecommend'           => $priceRecommend,
+
+            //variables adicionales para el caso de aplicaciones dobles
+            'validationType'            => $hasExcess ? 'excess' : null,
+            'validationMessage'         => $hasExcess ? 'El valor ingresado supera el saldo disponible de la factura.' : null,
+            'doubleApplyDoc'            => null,
+        ];
+    }
+
+    protected function buildInvoiceChequeValidation(
+        int|float|string|null $valorIngresado,
+        int|float|string|null $saldoFactura, //monto original de la factura
+        int|float|string|null $sumPayments,
+        int|float|string|null $sumPendingWeb,
+        int|float|string|null $sumDev,
+        bool $saldoIncluyeAplicacionActual = true
+    ) {
+
+        $totalNoContabilizado = $this->money($sumPendingWeb + $sumDev);
+
+        $saldoBase = $saldoIncluyeAplicacionActual
+            ? $this->money($saldoFactura)
+            : $saldoFactura;
+
+        $totalApply = $this->money(
+            $sumPayments + $totalNoContabilizado
+        );
+
+        $saldoDisponible = $this->money(
+            max($saldoFactura - $totalApply, 0)
+        );
+
+        $priceRecommend = $this->money(
+            min($valorIngresado, $saldoDisponible)
+        );
+
+        $excessValue = $this->money(
+            max($valorIngresado - $saldoDisponible, 0)
+        );
+
         $hasExcess = $excessValue > 0;
         return [
             'hasExcess'                => $hasExcess,
