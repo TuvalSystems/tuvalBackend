@@ -259,6 +259,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
+                $groupDocuments         = collect($othersPaymentDocs)
+                                            ->merge($devPaymentDocs)
+                                            ->map(fn($doc) => trim((string)$doc))
+                                            ->filter()
+                                            ->unique()
+                                            ->values()
+                                            ->all();
 
                 //funcion para validacion de documentos contabilizados que no son de web
                 $rcPayments             = $this->filterGroupReceiptNumbers($payments);
@@ -266,7 +273,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 //validacion de aplicacion doble del mismo rc a la misma factura
                 $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $othersPaymentDocs);
                 //sumatoria de lo pendiente
-                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta,   $rcPayments, 'ingreso_aplicaciones');
+                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments,  'ingreso_aplicaciones');
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
                 $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
@@ -319,7 +326,6 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
-
             //sumatoria de lo pendiente
             $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
@@ -525,7 +531,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function sumPendingWebNotAccountedByInvoice(string  $invoice, array $documents,  string $desde, string $hasta, array $rcPayments = [], ?string $type = null)
+    protected function sumPendingWebNotAccountedByInvoice(string  $invoice, array $documents,  string $desde, string $hasta, array $rcPayments = [],  ?string $type = null)
     {
 
         $rcsPorExcluir = $type === 'ingreso_aplicaciones' ? $rcPayments : [];
