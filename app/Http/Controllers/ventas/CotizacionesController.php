@@ -344,7 +344,7 @@ class CotizacionesController extends Controller
                     $q->whereNotNull('prospecto_id');
                     $q->whereNull('cliente_id');
                 })
-                ->where('estado', '!=', 'procesado');
+                ->where('gp_cotizacions.estado', '!=', 'procesado');
         } else if ($data['estado'] == 'procesadas') {
             $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'procesado');
         } else if ($data['estado'] == 'rechazadas') {
