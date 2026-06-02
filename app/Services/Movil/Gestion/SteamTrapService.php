@@ -4,6 +4,7 @@ namespace App\Services\Movil\Gestion;
 
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\TaxRateEnum;
+use App\Mail\Cotizacion\CotizacionBorradorAppMail;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
@@ -15,6 +16,7 @@ use App\Models\GpUsuario;
 use App\Models\Movil\Gestion\TrampaVapor;
 use App\Notifications\User\UserNotification;
 use App\Services\Api\Bodegas\ApiGestionArticleService;
+use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Movil\Gestion\Contracts\SteamTrapServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
@@ -22,6 +24,7 @@ use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -31,7 +34,8 @@ class SteamTrapService implements SteamTrapServiceInterface
         protected readonly ApiGestionArticleService $api,
         protected readonly ClientQueryServiceInterface $client,
         protected readonly StockWarehouseServiceInterface $stockWarehouse,
-        protected readonly OrderAndQuotationServiceInterface $OrderQuoteCommon
+        protected readonly OrderAndQuotationServiceInterface $OrderQuoteCommon,
+        protected readonly QuotationBuilderInterface $quoteBuilder
     ) {}
 
     public function generateSizingPdf(array $data, GpUsuario $user): string
@@ -184,6 +188,9 @@ class SteamTrapService implements SteamTrapServiceInterface
         $clienteNombre = data_get($cliente, 'cliente.CLI_RUC', 'el cliente');
         $mensaje = "Se generó la cotización borrador {$headerQuote->cotizacion} para {$clienteNombre}. Revísala desde el sistema Web antes de continuar.";
         $user->notify(new UserNotification('Cotización Borrador', $mensaje));
+
+        $this->sendMailQuoteDraft($headerQuote, $user);
+
         return $headerQuote->refresh();
     }
 
@@ -286,91 +293,22 @@ class SteamTrapService implements SteamTrapServiceInterface
 
     protected function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info): GpCotizacion
     {
-        $quote = new GpCotizacion();
-        $quote->fill([
-            'estado'                            => 'borrador_app',
-            'user_id'                           => $user->id,
-            'sucursal_id'                       => data_get($info, 'sucursalId'),
-            'sucursal_facturacion_id'           => data_get($info, 'sucursalId'),
-            'cliente_id'                        => $cliente->id,
-            'factura_posterior_despacho'        => 0,
-            'factura_a_demanda'                 => 0,
-            'factura_siguiente_mes'             => 0,
-            'facturado'                         => 0,
-            'BOD_BODEGA'                        => data_get($info, 'warehouse'),
-            'PTO_VTA_ID'                        => data_get($info, 'ptoVtaCode'),
-            'PTO_VTA_DESCRIPCION'               => data_get($info, 'agency'),
-            'USERID'                            => $user->USERID,
-            'DESC_FORMA_PAGO_CODIGO'            => data_get($info, 'typePayment'),
-            'CLI_RUC'                           => $cliente->CLI_RUC,
-            'CLI_RAZON_SOCIAL'                  => $cliente->CLI_RAZON_SOCIAL,
-            'CLI_CORREO_ELECT_SRI'              => $cliente->CLI_CORREO_ELECT_SRI,
-            'COND_ID'                           => $cliente->CLI_CONDICION_PAGO,
-            'COND_ID_ORIGINAL'                  => $cliente->CLI_CONDICION_PAGO,
-            'VEND_ID'                           => $cliente->gpvendedor->VEND_ID,
-            'VEND_NOMBRES'                      => $cliente->gpvendedor->VEND_NOMBRES,
-            'VEND_APELLIDOS'                    => $cliente->gpvendedor->VEND_APELLIDOS,
-            'despacho'                          => 'Retiro en bodega',
-            'orden_de_compra'                   => null,
-            'porcentage_descuento'              => $cliente->CLI_DSTO_COMERCIAL,
-            'porcentage_descuentooriginal'      => $cliente->CLI_DSTO_COMERCIAL,
-            'subtotal'                          => 0,
-            'descuento'                         => 0,
-            'subtotalmenosdescuento'            => 0,
-            'iva'                               => 0,
-            'total'                             => 0,
-            'requiere_aprobacion_comercial'     => 'no',
-            'motivo_aprobacion_comercial'       => null,
-            'aprobado_comercial'                => 'no',
-            'aprobador_comercial_id'            => null,
-            'requiere_aprobacion_crediticia'    => 'no',
-            'aprobado_crediticio'               => 'no',
-            'aprobador_crediticio_id'           => null,
-            'impreso'                           => 'no',
-            'nota_interna'                      => null,
-            'nota_cliente'                      => null,
-            'nota_operaciones'                  => null,
-            'impuesto'                          => TaxRateEnum::IVA_15->value,
-            'origen'                            => OrderOrigenEnum::APP_MOVIL->value,
-            'modificador_global'                => 0,
-        ]);
+        $quote = $this->quoteBuilder->payloadQuotationHeaderDraft($user, $cliente, $info);
         $quote->save();
         return $quote;
     }
 
-
-    protected function payloadQuotationDetailDraft(EloquentCollection $articles, int $quteId, GpCliente $cliente)
+    protected function payloadQuotationDetailDraft(EloquentCollection $articles, int $quoteId, GpCliente $cliente)
     {
-
         foreach ($articles as $art) {
-            $qd = new GpCotizacionDetalle();
-            $qd->fill([
-                'cotizacion_id'                 => $quteId,
-                'ART_CODIGO'                    => data_get($art, 'ART_CODIGO'),
-                'ART_DESCRIPCION'               => data_get($art, 'ART_DESCRIPCION'),
-                'ART_DESCRIPCION_ORIGINAL'      => data_get($art, 'ART_DESCRIPCION'),
-                'CHECK_ALTERNATIVO'             => data_get($art, 'CHECK_ALTERNATIVO', 0),
-                'ART_CODIGO_TRES_LETRAS'        => data_get($art, 'ART_CODIGO_TRES_LETRAS'),
-                'ART_DECIMAL_CANTIDAD'          => data_get($art, 'ART_DECIMAL_CANTIDAD'),
-                'ART_PLAN_UMEDIDA'              => data_get($art, 'ART_PLAN_UMEDIDA'),
-                'ART_MARCA'                     => data_get($art, 'ART_MARCA'),
-                'ART_MATERIAL'                  => data_get($art, 'ART_MATERIAL'),
-                'ART_PESO'                      => data_get($art, 'ART_PESO'),
-                'ART_TIPO_COMPRA'               => data_get($art, 'ART_TIPO_COMPRA'),
-                'ART_VALOR'                     => (float)data_get($art, 'ART_VALOR'),
-                'ART_VALOR_ORIGINAL'            => (float)data_get($art, 'ART_VALOR_ORIGINAL'),
-                'ART_DESCUENTO'                 => 0,
-                'ART_IVA'                       => (float)data_get($art, 'ART_IMP_VTA'),
-                'ART_CANTIDAD'                  => (float) round(data_get($art, 'ART_CANTIDAD'), (int)data_get($art, 'ART_DECIMAL_CANTIDAD')),
-                'ART_STOCK'                     => data_get($art, 'ART_STOCK', 0),
-                'ART_IMP_VTA'                   => (float)data_get($art, 'ART_IMP_VTA'),
-                'ART_COSTO_PROMEDIO'            => (float)data_get($art, 'ART_COSTO_PROMEDIO'),
-                'descuento'                     => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
-                'descuento_original'            => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
-                'modificador'                   => 0,
-                'valor_original_l'              => 0,
-            ]);
-            $qd->save();
+            $this->quoteBuilder->payloadQuotationDetailDraft($art, $quoteId, $cliente);
         }
+    }
+
+    protected function sendMailQuoteDraft(GpCotizacion $quote, GpUsuario $user){
+        $quote->load('detallecotizacion');
+
+        $email = 'sistemas6@tuvalsa.com';
+        Mail::to($email)->send(new CotizacionBorradorAppMail($quote));
     }
 }
