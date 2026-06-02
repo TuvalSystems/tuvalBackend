@@ -32,7 +32,7 @@ class QuotationRepository implements QuotationRepositoryInterface
             )
             ->where('requiere_aprobacion_comercial', 'yes')
             ->where('aprobado_comercial', 'no')
-            ->whereNotIn('estado', self::FINAL_STATES)
+            ->whereNotIn('gp_cotizacions.estado', self::FINAL_STATES)
             ->orderBy('created_at', 'ASC');
         return $query;
     }
