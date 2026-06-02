@@ -249,7 +249,7 @@ class SteamTrapService implements SteamTrapServiceInterface
     {
         $quote = new GpCotizacion();
         $quote->fill([
-            'estado'                            => 'borrador',
+            'estado'                            => 'borrador_app',
             'user_id'                           => $user->id,
             'sucursal_id'                       => data_get($info, 'sucursalId'),
             'sucursal_facturacion_id'           => data_get($info, 'sucursalId'),
