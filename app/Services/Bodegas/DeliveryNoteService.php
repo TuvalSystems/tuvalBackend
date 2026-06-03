@@ -223,17 +223,17 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
     }
 
 
-    public function processAjusteWevOrderGUideRemision($id)
+    public function processAjusteWevOrderGUideRemision(int $id)
     {
         $guia   = GpGuiaRemision::find($id);
         return $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
     }
 
-    public function fecthAjustmentGuideDispatch($orderNumber, $newOrderNumber)
+    public function fecthAjustmentGuideDispatch(string $orderNumber, string $newOrderNumber)
     {
         $response = $this->apiDeliveryNote->checkDispatchGuideAdjustment([
-            'orderNumber'   => $orderNumber,
-            'newOrderNumber' => $newOrderNumber
+            'orderNumber'       => $orderNumber,
+            'newOrderNumber'    => $newOrderNumber
         ]);
         if ($response['success'] === false) {
             throw new \Exception($response['message']);
@@ -243,7 +243,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
 
 
 
-    public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin)
+    public function getDeliveryNoteDispatchWithAjustment(string $fechaInicio, string $fechaFin)
     {
         $query = DB::table('gp_guia_remisions as gr')
             ->join('gp_guia_remision_despachos as grd', 'gr.id', '=', 'grd.guia_remision_id')
@@ -255,7 +255,7 @@ class DeliveryNoteService implements DeliveryNoteServiceInterface
         return $query->select('gr.id', 'grd.codigo', 'grd.pedido', 'gr.tipo', 'gr.estado')->get();
     }
 
-    public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null)
+    public function getDeliveryNoteTransferAndRepositionAjustment(string $fechaInicio, string $fechaFin, $estado = null)
     {
         $query = DB::table('gp_guia_remisions as gr')
             ->join('gp_guia_remision_transferencias as grt', 'gr.id', '=', 'grt.guia_remision_id')

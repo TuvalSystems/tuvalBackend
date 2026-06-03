@@ -142,14 +142,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function saveHeaderDeliveryNoteDispatchWeb($payload, $infoGuia)
+    protected function saveHeaderDeliveryNoteDispatchWeb(array $payload, array $infoGuia)
     {
         $guia = $this->builder->buildDeliveryNoteDispatchHeader($payload, $infoGuia);
         $guia->save();
         return $guia->refresh();
     }
 
-    protected function saveDetaildeliveryNoteDispatchWeb($guideId, $detalle)
+    protected function saveDetaildeliveryNoteDispatchWeb(int $guideId, array  $detalle)
     {
         foreach ($detalle as $val) {
             $detail = $this->builder->buildDeliveryNoteDispatchDetail($guideId, $val);
@@ -157,7 +157,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         }
     }
 
-    protected function updateDetailOrder($items)
+    protected function updateDetailOrder(array $items)
     {
         foreach ($items as $item) {
             GpPedidoDetalle::where('id', $item['id'])
@@ -167,7 +167,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
 
 
-    protected function sendDeliveryNoteDispatchToGp($guide)
+    protected function sendDeliveryNoteDispatchToGp(GpGuiaRemision $guide)
     {
         $ordenCompra    = GpPedido::where('pedido', $guide->pedido)->value('orden_de_compra');
         $detalle        = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
@@ -191,14 +191,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         return $guide->refresh();
     }
 
-    protected function validateExistenceDeliveryNoteDispatch($numGuide)
+    protected function validateExistenceDeliveryNoteDispatch(string $numGuide)
     {
         return  $this->api->checkExistenceDeliveryNote([
             'numDoc' => $numGuide
         ]);
     }
 
-    protected function sendToDataDeliveryNote($guide, $detalle, ?string $ordenCompra)
+    protected function sendToDataDeliveryNote(GpGuiaRemision $guide, Collection $detalle, ?string $ordenCompra)
     {
         $response  = $this->api->createDeliveryNote([
             'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide, $ordenCompra),
@@ -213,7 +213,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function prepareDetailReservation($guide, $items): array
+    protected function prepareDetailReservation(GpGuiaRemision $guide, Collection $items): array
     {
         $detail = [];
         foreach ($items as $key => $value) {
