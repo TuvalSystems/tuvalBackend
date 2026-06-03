@@ -12,10 +12,10 @@ interface DeliveryNoteServiceInterface
 
     public function getDeliveryNoteAdjustmentInfoByDeliveryNoteId(int $id);
 
-    public function processAjusteWevOrderGUideRemision($id);
+    public function processAjusteWevOrderGUideRemision(int $id);
 
-    public function getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin);
-    public function getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado = null);
+    public function getDeliveryNoteDispatchWithAjustment(string $fechaInicio, string $fechaFin);
+    public function getDeliveryNoteTransferAndRepositionAjustment(string $fechaInicio, string $fechaFin, $estado = null);
 
     public function consultExistenceGeneratedGuides(array $payload): string;
 }

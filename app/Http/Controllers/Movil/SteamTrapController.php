@@ -52,7 +52,8 @@ class SteamTrapController extends Controller
                 'spParams.estimatedLoadKg'      => ['required', 'numeric', 'gt:0'],
                 'spParams.safetyFactor'         => ['required', 'numeric', 'gte:1'],
             ]);
-            $pdfUrl = $this->service->generateSizingPdf($data);
+             $user = $request->user();
+            $pdfUrl = $this->service->generateSizingPdf($data, $user);
             return $this->successResponse('Pdf generado Correctamente', [
                 'pdfUrl' => $pdfUrl,
             ], 200);

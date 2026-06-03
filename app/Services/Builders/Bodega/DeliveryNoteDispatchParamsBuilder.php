@@ -6,6 +6,7 @@ use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\GpUsuario;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use Carbon\Carbon;
 
@@ -136,7 +137,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
     }
 
 
-    public function buildParameterHeaderAndDetailDispatchShipment(GpGuiaRemision $guia, string $documento, string $newOrder, array $items, $user, string $hashInterno): array
+    public function buildParameterHeaderAndDetailDispatchShipment(GpGuiaRemision $guia, string $documento, string $newOrder, array $items, GpUsuario $user, string $hashInterno): array
     {
         $header = [
             'idCompany'         => config('services.api_gp.company'),
