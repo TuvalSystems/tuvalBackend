@@ -280,12 +280,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $rcPayments             = $this->filterGroupReceiptNumbers($payments);
 
                 //validacion de aplicacion doble del mismo rc a la misma factura
-                $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $othersPaymentDocs);
+                $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $groupDocuments);
                 //sumatoria de lo pendiente
                 $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments,  'ingreso_aplicaciones');
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $groupDevs))->sum('total'));
-                $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+                $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $groupDevs));
 
                 $validation = $this->buildInvoiceValidation(
                     $valorIngresado,
