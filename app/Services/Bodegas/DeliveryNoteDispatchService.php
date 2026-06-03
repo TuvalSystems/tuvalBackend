@@ -43,7 +43,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
      * PROCESO DE CREACION DE GUIA DE DESPACHO
      */
 
-    public function createDeliveryNoteFromDispatch($payload, GpUsuario $user)
+    public function createDeliveryNoteFromDispatch(array $payload, GpUsuario $user)
     {
         $items          = data_get($payload, 'items', []);
         $tipo           = DeliveryNoteType::DESPACHO->value;
