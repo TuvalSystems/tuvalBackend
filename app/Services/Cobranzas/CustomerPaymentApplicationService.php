@@ -260,21 +260,21 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
                 $groupDocuments         = collect($othersPaymentDocs)
-                                            ->merge($devPaymentDocs)
-                                            ->map(fn($doc) => trim((string)$doc))
-                                            ->filter()
-                                            ->unique()
-                                            ->values()
-                                            ->all();
+                    ->merge($devPaymentDocs)
+                    ->map(fn($doc) => trim((string)$doc))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
 
                 //agrupacion de numeros de documentos a devoluciones para omitir cuando es aplicacion de la misma devolucion para evitar excedente
                 $groupDevs               = collect($devPaymentDocs)
-                                            ->push($applyDoc)
-                                            ->map(fn($doc) => trim((string)$doc))
-                                            ->filter()
-                                            ->unique()
-                                            ->values()
-                                            ->all();
+                    ->push($applyDoc)
+                    ->map(fn($doc) => trim((string)$doc))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
 
                 //funcion para validacion de documentos contabilizados que no son de web
                 $rcPayments             = $this->filterGroupReceiptNumbers($payments);
