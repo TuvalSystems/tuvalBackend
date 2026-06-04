@@ -330,7 +330,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
-            $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
+            $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $order->CLI_RUC));
             $sumPayments            = $this->money($payments->sum('collectionAmount'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
