@@ -41,6 +41,7 @@ use App\Notifications\User\UserNotification;
 use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
+use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
@@ -54,8 +55,11 @@ class CobranzasController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
-    public function __construct(protected readonly CollectionServiceInterface $collectionService,
-    protected readonly CustomerPaymentApplicationServiceInterface $customer) {}
+    public function __construct(
+        protected readonly CollectionServiceInterface $collectionService,
+        protected readonly CustomerPaymentApplicationServiceInterface $customer,
+        protected readonly CollectionUnapplicationServiceInterface $unapplycation
+    ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -270,14 +274,6 @@ class CobranzasController extends Controller
     {
 
         $data = $request->all();
-        // $validate = $this->validarExistenciaDevolucion($data);
-        // if ($validate['hasExistence']) {
-        //     return response([
-        //         'success' => false,
-        //         'message' => $validate['mensaje'],
-        //         'data'    => $validate['data'],
-        //     ], 422);
-        // }
         $user = Auth::user();
         $cajas = GpCaja::get()->keyBy('CAJA_CODIGO');
         $bancos = GpCajaBancos::get()->keyBy('CB_ID');
@@ -494,128 +490,6 @@ class CobranzasController extends Controller
             'success' => true,
             'message' => 'Cobro ' . $cobro->numero_recibo . ' correctamente guardado'
         ]);
-    }
-
-    // public function validarExistenciaDevolucion(array $data)
-    // {
-    //     $fechaCobro = now();
-    //     $arr = [
-    //         'hasExistence'  => false,
-    //         'mensaje'       => 'procede'
-    //     ];
-    //     $facturas = $this->obtenerFacturasDelCobro($data);
-    //     if (empty($facturas)) {
-    //         return  $arr;
-    //     }
-
-    //     $desde = $fechaCobro->copy()->startOfDay();
-    //     $hasta = $fechaCobro->copy()->endOfDay();
-    //     $datos =  GpPedido::query()
-    //         ->whereIn('factura', $facturas)
-    //         ->conDevolucionBloqueanteDelDia($fechaCobro)
-    //         ->with([
-    //             'devolucionBloqueante' => function ($q)  use ($desde, $hasta) {
-    //                 $q->select([
-    //                     'gp_devoluciones.id',
-    //                     'gp_devoluciones.devolucion',
-    //                     'gp_devoluciones.DOC_GENERADO',
-    //                     'gp_devoluciones.pedido_id',
-    //                     'gp_devoluciones.estado',
-    //                     'gp_devoluciones.created_at',
-    //                 ])
-    //                     ->whereBetween('gp_devoluciones.created_at', [$desde, $hasta]);
-    //             }
-    //         ])
-    //         ->get([
-    //             'id',
-    //             'pedido',
-    //             'factura',
-    //         ])
-    //         ->map(function ($pedido) {
-    //             return [
-    //                 'pedido_id'         => $pedido->id,
-    //                 'pedido'            => $pedido->pedido,
-    //                 'factura'           => $pedido->factura,
-    //                 'devolucion' => [
-    //                     'id'            => $pedido->devolucionBloqueante?->id,
-    //                     'devolucion'    => $pedido->devolucionBloqueante?->devolucion,
-    //                     'nota_credito'  => $pedido->devolucionBloqueante?->DOC_GENERADO,
-    //                     'estado'        => $pedido->devolucionBloqueante?->estado,
-    //                     'fecha'         => $pedido->devolucionBloqueante?->created_at,
-    //                 ],
-    //             ];
-    //         });
-
-    //     if ($datos->isEmpty()) {
-    //         return $arr;
-    //     }
-    //     $mensaje = 'No se puede registrar el cobro porque existen facturas con devolución generada: ';
-
-    //     $detalleMensaje     = $datos->map(function ($item, $index) {
-    //         $factura        = data_get($item, 'factura', 'Sin Factura');
-    //         $pedido         = data_get($item, 'pedido', 'Sin Pedido');
-    //         $devolucion     = data_get($item, 'devolucion.devolucion');
-    //         $notaCredito    = data_get($item, 'devolucion.nota_credito', 'N/A');
-    //         $estado         = data_get($item, 'devolucion.estado');
-    //         $fecha       = data_get($item, 'devolucion.fecha');
-    //         $estadoTexto = is_object($estado) && property_exists($estado, 'value')
-    //             ? $estado->value
-    //             : ($estado ?? 'Sin estado');
-
-    //         return ($index + 1) . ". Factura: {$factura}\n"
-    //             . "   Pedido: {$pedido}\n"
-    //             . "   Devolución: {$devolucion}\n"
-    //             . "   Nota Credito: {$notaCredito}\n"
-    //             . "   Estado: {$estadoTexto}\n"
-    //             . "   Fecha devolución: {$fecha}";
-    //     })->implode("\n\n");
-
-
-    //     return [
-    //         'hasExistence'  => true,
-    //         'mensaje'      => $mensaje . "\n\nDetalle:\n" . $detalleMensaje,
-    //         'data'          => $datos->values(),
-    //     ];
-    // }
-
-    protected function obtenerFacturasDelCobro(array $data): array
-    {
-
-        $facturas = [];
-
-        foreach (data_get($data, 'ingreso_efectivo.facturas', []) as $factura) {
-            $facturas[] = data_get($factura, 'ECD_DET_NUM_DOC');
-        }
-
-        foreach (data_get($data, 'ingreso_depositos', []) as $deposito) {
-            foreach (data_get($deposito, 'facturas', []) as $factura) {
-                $facturas[] = data_get($factura, 'ECD_DET_NUM_DOC');
-            }
-        }
-
-        foreach (data_get($data, 'ingreso_cheques.facturas', []) as $factura) {
-            $facturas[] = data_get($factura, 'ECD_DET_NUM_DOC');
-        }
-
-        foreach (data_get($data, 'ingreso_tarjeta.facturas', []) as $factura) {
-            $facturas[] = data_get($factura, 'ECD_DET_NUM_DOC');
-        }
-
-        foreach (data_get($data, 'ingreso_aplicaciones', []) as $aplicacion) {
-            foreach (data_get($aplicacion, 'facturas', []) as $factura) {
-                $facturas[] = data_get($factura, 'ECD_DET_NUM_DOC');
-            }
-        }
-
-        foreach (data_get($data, 'retenciones', []) as $retencion) {
-            $facturas[] = data_get($retencion, 'ret_factura');
-        }
-
-        return collect($facturas)
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
     }
     public function cobrosregistrados(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1298,13 +1172,10 @@ class CobranzasController extends Controller
     {
         $parameters = array(
             'IDCompania' => env('ID_COMPANIA'),
-            'Fecha' => date('Y-m-d'), //date('Y-m-d')
+            'Fecha' => date('Y-m-d'),
         );
         $webservice = new WebserviceController;
         $estadoDeCuenta = $webservice->cobranzas('ConsultaCobrosAnulados', $parameters);
-        //        echo '<pre>';
-        //        print_r($estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS']);
-        //        die();
         if (isset($estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS'])) {
             $cobrosAnulados = $estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS'];
             foreach ($cobrosAnulados as $anulado) {
@@ -2317,7 +2188,7 @@ class CobranzasController extends Controller
 
 
 
-    public function imprimirPdfConsultaCierreCaja(Request $request)
+    public function imprimirPdfConsultaCierreCaja(Request $request): Response
     {
         return $this->handlePdfAction(function () use ($request): Response {
             $validate = $request->validate([
@@ -2332,7 +2203,7 @@ class CobranzasController extends Controller
         }, 'laravel', 'imprimirPdfConsultaCierreCaja');
     }
 
-    public function imprimirPdfCierreCaja(Request $request)
+    public function imprimirPdfCierreCaja(Request $request): Response
     {
         return $this->handlePdfAction(function () use ($request): Response {
             $validate = $request->validate([
@@ -2349,11 +2220,24 @@ class CobranzasController extends Controller
 
     /** funciones para la validacion de pagos de facturas  */
 
-    public function obtenerInformacionPagosFacturas(Request $request){
-        return $this->handleApiAction(function() use ($request){
-        $payload    = $request->input('data', []);
-        $info       = $this->customer->validateIdentifyPaymentInvoices($payload) ;
-        return $this->successResponse('Información de Pagos Obtenido!',$info, 200 );
-        },'laravel', 'obtenerInformacionPagosFacturas');
+    public function obtenerInformacionPagosFacturas(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $payload    = $request->input('data', []);
+            $info       = $this->customer->validateIdentifyPaymentInvoices($payload);
+            return $this->successResponse('Información de Pagos Obtenido!', $info, 200);
+        }, 'laravel', 'obtenerInformacionPagosFacturas');
+    }
+
+    /** function para listar los cobros que pueden ser desaplicados  */
+
+    public function listaCobrosAplicados(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $filters  = $request->input('filters', []);
+            $perPage    = $request->input('perpage', 10);
+            $lista     = $this->unapplycation->fetchAppliedCollections($filters, $perPage);
+            return $this->successResponse('Lista obtenida', $lista, 200);
+        }, 'laravel', 'listaCobrosPorDesaplicar');
     }
 }
