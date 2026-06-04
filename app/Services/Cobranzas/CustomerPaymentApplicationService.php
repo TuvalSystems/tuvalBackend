@@ -55,9 +55,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
+            $groupDocuments         = collect($othersPaymentDocs)
+                ->merge($devPaymentDocs)
+                ->map(fn($doc) => trim((string)$doc))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
 
             //sumatoria de lo pendiente
-            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
+            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
@@ -103,9 +110,15 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
-
+            $groupDocuments         = collect($othersPaymentDocs)
+                ->merge($devPaymentDocs)
+                ->map(fn($doc) => trim((string)$doc))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
             //sumatoria de lo pendiente
-            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
+            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
@@ -151,9 +164,15 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
-
+            $groupDocuments         = collect($othersPaymentDocs)
+                ->merge($devPaymentDocs)
+                ->map(fn($doc) => trim((string)$doc))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
             //sumatoria de lo pendiente
-            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
+            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
@@ -203,9 +222,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
+                $groupDocuments         = collect($othersPaymentDocs)
+                    ->merge($devPaymentDocs)
+                    ->map(fn($doc) => trim((string)$doc))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
 
                 //sumatoria de lo pendiente
-                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
+                $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
                 //sumatoria  de devoluciones pendeintes de procesar
                 $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
                 $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
@@ -335,8 +361,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
+            $groupDocuments         = collect($othersPaymentDocs)
+                ->merge($devPaymentDocs)
+                ->map(fn($doc) => trim((string)$doc))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
             //sumatoria de lo pendiente
-            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $othersPaymentDocs, $desde, $hasta);
+            $sumPendingWeb          = $this->sumPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
             //sumatoria  de devoluciones pendeintes de procesar
             $sumDev                 = $this->money(collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs))->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
