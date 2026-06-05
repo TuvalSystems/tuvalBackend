@@ -5,5 +5,5 @@ interface CollectionUnapplicationServiceInterface
 {
     // Define los métodos
 
-     public function fetchAppliedCollections(array $filters, int $perPage);
+     public function fetchAppliedCollections(array $filters);
 }

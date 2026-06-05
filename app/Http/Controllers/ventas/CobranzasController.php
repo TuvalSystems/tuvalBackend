@@ -2235,8 +2235,7 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $filters  = $request->input('filters', []);
-            $perPage    = $request->input('perpage', 10);
-            $lista     = $this->unapplycation->fetchAppliedCollections($filters, $perPage);
+            $lista     = $this->unapplycation->fetchAppliedCollections($filters);
             return $this->successResponse('Lista obtenida', $lista, 200);
         }, 'laravel', 'listaCobrosPorDesaplicar');
     }

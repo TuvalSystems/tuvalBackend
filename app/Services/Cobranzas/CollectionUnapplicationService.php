@@ -12,12 +12,14 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 {
     public function __construct(protected ApiBillingService $api) {}
 
-    public function fetchAppliedCollections(array $filters, int $perPage): LengthAwarePaginator
+    public function fetchAppliedCollections(array $filters): LengthAwarePaginator
     {
         $sortField = data_get($filters, 'sortField', 'ultima_fecha_aplicacion');
         $sortOrder = data_get($filters, 'sortOrder', 'desc');
         $search =  data_get($filters, 'search');
+        $perPage = data_get($filters, 'perpage', 10);
         $sortColumns = [
+            'cliente_id'                => 'res.cliente_id',
             'factura'                   => 'res.factura',
             'ruc'                       => 'res.ruc',
             'cliente'                   => 'res.cliente',
