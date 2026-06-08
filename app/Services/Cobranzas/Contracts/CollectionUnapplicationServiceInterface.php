@@ -6,4 +6,5 @@ interface CollectionUnapplicationServiceInterface
     // Define los métodos
 
      public function fetchAppliedCollections(array $filters);
+      public function getAllDetailCollection(string $ruc, string $factura);
 }

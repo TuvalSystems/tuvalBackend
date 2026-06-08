@@ -85,13 +85,63 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 
 
 
-    protected function getPaymentApplyGp(string $documento, string $ruc): array
+
+
+    public function getAllDetailCollection(string $ruc, string $factura)
+    {
+
+        $query = DB::table('vw_cobros_aplicaciones_facturas_detalle as det')
+            ->where(function ($q) use ($ruc, $factura) {
+                $q->where('ruc', $ruc)
+                    ->where('factura', $factura);
+            })->get();
+        $docsApplys             = $this->getPaymentApplyGp($factura, $ruc);
+        $collectionDocs         = $this->filterCollectionIds($docsApplys);
+        $receiptsDocs           = $this->filterReceiptNumbers($docsApplys);
+
+        $applyDocsLookup = collect($collectionDocs)
+            ->filter()
+            ->mapWithKeys(fn($doc) => [$doc => true]);
+
+        $applyReceiptLookup  = collect($receiptsDocs)
+            ->filter()
+            ->mapWithKeys(fn($doc) => [$doc => true]);
+
+
+        $actives    = collect($query)
+            ->where('estado_aplicado', 1)
+            ->map(function ($item) use ($applyDocsLookup, $applyReceiptLookup) {
+                $documentoGp   = $this->normalizeDocument($item->documento_gp ?? null);
+                $existsInGp     = $applyDocsLookup->has($documentoGp) || $applyReceiptLookup->has($item->numero_recibo);
+
+                $item->can_unapplication = !$existsInGp;
+                $item->unapplication_message = $existsInGp
+                    ? 'No se puede desaplicar porque el documento se encuentra aplicado en GP.'
+                    : 'Disponible para desaplicar.';
+
+                return $item;
+            });
+
+        $inactives  = collect($query)->where('estado_aplicado', 0)->values();
+        return [
+            'activos'           => $actives,
+            'inactivos'         => $inactives,
+            'collectionsIds'    => $collectionDocs,
+            'receiptNumbers'    => $receiptsDocs,
+
+        ];
+    }
+
+
+
+
+    protected function getPaymentApplyGp(string $documento, string $ruc): Collection
     {
         $resp = $this->api->getListCustomerPaymentApply([
             'documento' => $documento,
             'ruc'       => $ruc
         ]);
-        return $this->filterCollectionIds(collect(data_get($resp, 'data', [])));
+        return collect(data_get($resp, 'data', []));
     }
 
     protected function filterCollectionIds(Collection $payments): array
@@ -103,6 +153,30 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
             ->unique()
             ->values()
             ->all();
+    }
+
+    protected function filterReceiptNumbers(Collection $payments): array
+    {
+        return $payments
+            ->pluck('numeroRecibo')
+            ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
+            ->filter(fn($doc) => !empty($doc))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected function formatReceiptNumber(?string $rc): ?string
+    {
+        if (empty($rc)) {
+            return null;
+        }
+        $rc = strtoupper(trim($rc));
+        if (preg_match('/^(RC-)(\d{1,8})/', $rc, $matches)) {
+            return $matches[1] . str_pad($matches[2], 8, '0', STR_PAD_LEFT);
+        }
+
+        return $rc;
     }
 
     protected function normalizeDocument(?string $doc): string

@@ -2239,4 +2239,14 @@ class CobranzasController extends Controller
             return $this->successResponse('Lista obtenida', $lista, 200);
         }, 'laravel', 'listaCobrosPorDesaplicar');
     }
+
+    public function detalleCobrosAplicados(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $ruc = $request->input('ruc');
+            $factura = $request->input('factura');
+            $data = $this->unapplycation->getAllDetailCollection($ruc, $factura);
+            return $this->successResponse('Obtenido con Éxito', $data, 200);
+        }, 'laravel', 'detaleCobrosAplicados');
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Cobranzas;
 
+use App\Models\GpCliente;
 use App\Repositories\Cobranzas\Contracts\WebInvoiceApplicationRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
@@ -20,21 +21,21 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     public function validateIdentifyPaymentInvoices(array $payload)
     {
 
-
+        $cliente                            = GpCliente::find(data_get($payload,'cliente_id'));
         $fechaCobro = now();
         $desde                              = $fechaCobro->copy()->startOfDay()->toDateTimeString();
         $hasta                              = $fechaCobro->copy()->endOfDay()->toDateTimeString();
-        $payload['retenciones']             = $this->processRetenciones(data_get($payload, 'retenciones', []),  $desde, $hasta);
-        $payload['ingreso_efectivo']        = $this->processIngresoEfectivo(data_get($payload, 'ingreso_efectivo', []), $desde, $hasta);
-        $payload['ingreso_tarjeta']         = $this->processIngresoTarjeta(data_get($payload, 'ingreso_tarjeta', []), $desde, $hasta);
-        $payload['ingreso_depositos']       = $this->processIngresoDeposito(data_get($payload, 'ingreso_depositos', []), $desde, $hasta);
-        $payload['ingreso_aplicaciones']    = $this->processIngresoAplicaciones(data_get($payload, 'ingreso_aplicaciones', []), $desde, $hasta);
-        $payload['ingreso_cheques']         = $this->processIngresoCheques(data_get($payload, 'ingreso_cheques', []), $desde, $hasta);
+        $payload['retenciones']             = $this->processRetenciones(data_get($payload, 'retenciones', []),  $desde, $hasta, $cliente);
+        $payload['ingreso_efectivo']        = $this->processIngresoEfectivo(data_get($payload, 'ingreso_efectivo', []), $desde, $hasta, $cliente);
+        $payload['ingreso_tarjeta']         = $this->processIngresoTarjeta(data_get($payload, 'ingreso_tarjeta', []), $desde, $hasta, $cliente);
+        $payload['ingreso_depositos']       = $this->processIngresoDeposito(data_get($payload, 'ingreso_depositos', []), $desde, $hasta, $cliente);
+        $payload['ingreso_aplicaciones']    = $this->processIngresoAplicaciones(data_get($payload, 'ingreso_aplicaciones', []), $desde, $hasta, $cliente);
+        $payload['ingreso_cheques']         = $this->processIngresoCheques(data_get($payload, 'ingreso_cheques', []), $desde, $hasta, $cliente);
         $payload['hasGlobalExcess']         = $this->hasAnyExcess($payload);
         return $payload;
     }
 
-    protected function processRetenciones(array $retenciones, string $desde, string $hasta)
+    protected function processRetenciones(array $retenciones, string $desde, string $hasta, GpCliente $cliente)
     {
         foreach ($retenciones as &$ret) {
             $facturaOrigen          = trim(data_get($ret, 'ret_factura'));
@@ -49,7 +50,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $saldoFactura           = $this->money(data_get($ret, 'ret_saldo_factura', 0));
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
-            $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
+            $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $sumPayments            = $this->money($payments->sum('collectionAmount'));
 
             //filtros de documentos
@@ -86,7 +87,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function processIngresoEfectivo(array $data, string $desde, string $hasta)
+    protected function processIngresoEfectivo(array $data, string $desde, string $hasta, GpCliente $cliente)
     {
         $dataInvoices = data_get($data, 'facturas', []);
 
@@ -105,7 +106,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
-            $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
+            $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $sumPayments            = $this->money($payments->sum('collectionAmount'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
@@ -140,7 +141,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
         return $data;
     }
-    protected function processIngresoTarjeta(array $data, string $desde, string $hasta)
+    protected function processIngresoTarjeta(array $data, string $desde, string $hasta, GpCliente $cliente)
     {
         $dataInvoices = data_get($data, 'facturas', []);
 
@@ -159,7 +160,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
-            $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
+            $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $sumPayments            = $this->money($payments->sum('collectionAmount'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
@@ -195,7 +196,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
         return $data;
     }
-    protected function processIngresoDeposito(array $data, string $desde, string $hasta)
+    protected function processIngresoDeposito(array $data, string $desde, string $hasta, GpCliente $cliente)
     {
         foreach ($data as  &$typeDeposits) {
 
@@ -217,7 +218,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
-                $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
+                $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
                 $sumPayments            = $this->money($payments->sum('collectionAmount'));
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
@@ -257,7 +258,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         return $data;
     }
 
-    protected function processIngresoAplicaciones(array $data, string $desde, string $hasta)
+    protected function processIngresoAplicaciones(array $data, string $desde, string $hasta, GpCliente $cliente)
     {
         foreach ($data as  &$typeDeposits) {
             $applyDoc = trim((string) data_get($typeDeposits, 'detalle.CN_DOCUMENTO', '')); //documento de cobro para aplicar
@@ -280,7 +281,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
-                $payments               = collect($this->getPaymentApplyGp($order->factura, $order->CLI_RUC));
+                $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
                 $sumPayments            = $this->money($payments->sum('collectionAmount'));
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
@@ -337,7 +338,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         return $data;
     }
 
-    protected function processIngresoCheques(array $data, string $desde, string $hasta)
+    protected function processIngresoCheques(array $data, string $desde, string $hasta, GpCliente $cliente)
     {
         $dataInvoices = data_get($data, 'facturas', []);
 
@@ -356,7 +357,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
-            $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $order->CLI_RUC));
+            $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $sumPayments            = $this->money($payments->sum('collectionAmount'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
