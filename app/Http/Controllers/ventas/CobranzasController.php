@@ -2249,4 +2249,15 @@ class CobranzasController extends Controller
             return $this->successResponse('Obtenido con Éxito', $data, 200);
         }, 'laravel', 'detaleCobrosAplicados');
     }
+
+     public function procesarDesaplicaciones(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $items = $request->input('payload', []);
+            $user = $request->user();
+            $data = $this->unapplycation->processUpdateUnapplicationItems($items, $user);
+            $mensaje = $data['updated'] > 0 ? 'Aplicaciones desaplicadas correctamente.' : 'No se desaplicó ningún registro.';
+            return $this->buildSuccessResponse($mensaje,  200);
+        }, 'laravel', 'actualizarAplicaciones');
+    }
 }

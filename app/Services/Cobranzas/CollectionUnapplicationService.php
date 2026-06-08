@@ -2,8 +2,16 @@
 
 namespace App\Services\Cobranzas;
 
+use App\Models\Cobranzas\GpCobrosChequesFacturas;
+use App\Models\Cobranzas\GpCobrosDepositosFacturas;
+use App\Models\Cobranzas\GpCobrosEfectivoFactura;
+use App\Models\Cobranzas\GpCobrosRetenciones;
+use App\Models\GpCobrosAplicacionFactura;
+use App\Models\GpCobrosTarjetaFactura;
+use App\Models\GpUsuario;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -116,13 +124,13 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 
                 $item->can_unapplication = !$existsInGp;
                 $item->unapplication_message = $existsInGp
-                    ? 'No se puede desaplicar porque el documento se encuentra aplicado en GP.'
+                    ? 'Documento aplicado en GP.'
                     : 'Disponible para desaplicar.';
 
                 return $item;
-            });
+            })->values()->all();
 
-        $inactives  = collect($query)->where('estado_aplicado', 0)->values();
+        $inactives  = collect($query)->where('estado_aplicado', 0)->values()->all();
         return [
             'activos'           => $actives,
             'inactivos'         => $inactives,
@@ -183,4 +191,79 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
     {
         return strtoupper(trim((string) $doc));
     }
+
+
+
+
+    public function processUpdateUnapplicationItems(array $items, GpUsuario $user)
+    {
+        $now = Carbon::now();
+        $modelsByType = [
+            'APLICACION_MONTO' => GpCobrosAplicacionFactura::class,
+            'EFECTIVO'         => GpCobrosEfectivoFactura::class,
+            'DEPOSITO'         => GpCobrosDepositosFacturas::class,
+            'TARJETA'          => GpCobrosTarjetaFactura::class,
+            'CHEQUE'           => GpCobrosChequesFacturas::class,
+            'RETENCION'        => GpCobrosRetenciones::class,
+        ];
+        return DB::transaction(function () use ($items, $user, $modelsByType, $now) {
+            $updated = 0;
+            $errors = [];
+            foreach ($items as $item) {
+                $type     = data_get($item, 'origen');
+                $id       = data_get($item, 'aplicacion_factura_id');
+                $obs      = data_get($item, 'observacion_desaplicacion');
+
+                if (empty($type) || empty($id)) {
+                    $errors[] = [
+                        'origen' => $type,
+                        'id'     => $id,
+                        'error'  => 'Origen o identificador vacío.',
+                    ];
+
+                    continue;
+                }
+
+                $modelClass = data_get($modelsByType, $type);
+
+                if (!$modelClass) {
+                    $errors[] = [
+                        'origen' => $type,
+                        'id'     => $id,
+                        'error'  => 'Tipo de aplicación no soportado.',
+                    ];
+
+                    continue;
+                }
+
+                $affected = $modelClass::where('id', $id)
+                    ->where('estado_aplicado', 1)
+                    ->update([
+                        'estado_aplicado'           => 0,
+                        'user_desaplicacion_id'     => $user->id,
+                        'fecha_desaplicacion'       => $now,
+                        'observacion_desaplicacion' => $obs,
+                    ]);
+
+                if ($affected === 0) {
+                    $errors[] = [
+                        'origen' => $type,
+                        'id'     => $id,
+                        'error'  => 'No se actualizó el registro. Puede que ya esté desaplicado o no exista.',
+                    ];
+
+                    continue;
+                }
+
+                $updated += $affected;
+            }
+
+            return [
+                'updated' => $updated,
+                'errors'  => $errors,
+            ];
+        });
+    }
+
+
 }

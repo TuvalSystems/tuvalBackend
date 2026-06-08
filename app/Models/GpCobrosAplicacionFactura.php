@@ -42,6 +42,10 @@ class GpCobrosAplicacionFactura extends Model
         'id_factura',
         'monto',
         'observacion',
+        'estado_aplicado',
+        'user_desaplicacion_id',
+        'fecha_desaplicacion',
+        'observacion_desaplicacion'
     ];
 
     protected $casts = [

@@ -488,6 +488,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('desaplicaciones')->group(function () {
                 Route::post('lista', [CobranzasController::class, 'listaCobrosAplicados']);
                 Route::post('detalle', [CobranzasController::class, 'detalleCobrosAplicados']);
+                Route::post('procesar', [CobranzasController::class, 'procesarDesaplicaciones']);
             });
         });
 
