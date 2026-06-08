@@ -22,10 +22,11 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 
     public function fetchAppliedCollections(array $filters): LengthAwarePaginator
     {
-        $sortField = data_get($filters, 'sortField', 'ultima_fecha_aplicacion');
-        $sortOrder = data_get($filters, 'sortOrder', 'desc');
-        $search =  data_get($filters, 'search');
-        $perPage = data_get($filters, 'perpage', 10);
+        $sortField  = data_get($filters, 'sortField', 'ultima_fecha_aplicacion');
+        $sortOrder  = data_get($filters, 'sortOrder', 'desc');
+        $search     =  data_get($filters, 'search');
+        $perPage    = data_get($filters, 'perpage', 10);
+        $ruc        = data_get($filters, 'cliente');
         $sortColumns = [
             'cliente_id'                => 'res.cliente_id',
             'factura'                   => 'res.factura',
@@ -76,9 +77,14 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
                 $q->where('res.factura', 'like', '%' . $search . '%')
                     ->orWhere('res.ruc', 'like', '%' . $search . '%')
                     ->orWhere('res.cliente', 'like', '%' . $search . '%')
+                    ->orWhere('res.recibos', 'like', '%' . $search . '%')
+                    ->orWhere('res.documentos_gp', 'like', '%' . $search . '%')
                     ->orWhere('res.tipos_medio', 'like', '%' . $search . '%')
                 ;
             });
+        }
+        if ($ruc) {
+            $query->where('res.ruc', '=', $ruc);
         }
         if (!empty($filters['fecha_desde'])) {
             $query->whereDate('res.ultima_fecha_aplicacion', '>=', $filters['fecha_desde']);
@@ -264,6 +270,4 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
             ];
         });
     }
-
-
 }
