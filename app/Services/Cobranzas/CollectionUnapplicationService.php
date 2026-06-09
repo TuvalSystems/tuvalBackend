@@ -101,9 +101,10 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 
 
 
-    public function getAllDetailCollection(string $ruc, string $factura)
+    public function getAllDetailCollection(string $ruc, string $factura, GpUsuario $user)
     {
-
+        $admin = [1,2];
+        $isVisible = in_array($user->perfil_id, $admin, true);
         $query = DB::table('vw_cobros_aplicaciones_facturas_detalle as det')
             ->where(function ($q) use ($ruc, $factura) {
                 $q->where('ruc', $ruc)
@@ -142,7 +143,7 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
             'inactivos'         => $inactives,
             'collectionsIds'    => $collectionDocs,
             'receiptNumbers'    => $receiptsDocs,
-
+            'isVisible'         => $isVisible
         ];
     }
 

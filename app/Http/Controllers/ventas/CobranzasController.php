@@ -2245,7 +2245,8 @@ class CobranzasController extends Controller
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $ruc = $request->input('ruc');
             $factura = $request->input('factura');
-            $data = $this->unapplycation->getAllDetailCollection($ruc, $factura);
+            $user = $request->user();
+            $data = $this->unapplycation->getAllDetailCollection($ruc, $factura, $user);
             return $this->successResponse('Obtenido con Éxito', $data, 200);
         }, 'laravel', 'detaleCobrosAplicados');
     }
