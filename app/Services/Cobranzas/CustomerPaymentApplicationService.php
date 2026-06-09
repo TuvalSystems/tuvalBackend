@@ -22,7 +22,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
 
 
-    public function validateIdentifyPaymentInvoices(array $payload)
+    public function validateIdentifyPaymentInvoices(array $payload, GpUsuario $user)
     {
 
         $cliente                            = GpCliente::find(data_get($payload, 'cliente_id'));
@@ -36,7 +36,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         $payload['ingreso_aplicaciones']    = $this->processIngresoAplicaciones(data_get($payload, 'ingreso_aplicaciones', []), $desde, $hasta, $cliente);
         $payload['ingreso_cheques']         = $this->processIngresoCheques(data_get($payload, 'ingreso_cheques', []), $desde, $hasta, $cliente);
         $payload['hasGlobalExcess']         = $this->hasAnyExcess($payload);
-        return $payload;
+        $this->storeFromValidationResult($payload, $user);
+
+        return $this->cleanInternalHistory($payload);
     }
 
     protected function processRetenciones(array $retenciones, string $desde, string $hasta, GpCliente $cliente)
@@ -73,7 +75,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
-            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
             $sumDev                 = $this->money($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation = $this->buildInvoiceValidation(
@@ -141,7 +143,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
-            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
             $sumDev                 = $this->money($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation             = $this->buildInvoiceValidation(
@@ -210,7 +212,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
-            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
             $sumDev                 = $this->money($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation             = $this->buildInvoiceValidation(
@@ -283,7 +285,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $sumPendingWeb          = $pendingWebResult['total'];
                 $pendingWebDetails      = $pendingWebResult['details'];
                 //sumatoria  de devoluciones pendeintes de procesar
-                $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+                $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
                 $sumDev                 = $this->money($devolutions->sum('total'));
                 $devsInfo               = $this->formatInfoDevolutions($devolutions);
                 $validation = $this->buildInvoiceValidation(
@@ -375,7 +377,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $sumPendingWeb          = $pendingWebResult['total'];
                 $pendingWebDetails      = $pendingWebResult['details'];
                 //sumatoria  de devoluciones pendeintes de procesar
-                $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes, $groupDevs));
+                $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $groupDevs));
                 $sumDev                 = $this->money($devolutions->sum('total'));
                 $devsInfo               = $this->formatInfoDevolutions($devolutions);
 
@@ -454,7 +456,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
-            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes, $devPaymentDocs));
+            $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
             $sumDev                 = $this->money($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation = $this->buildInvoiceValidation(
@@ -924,7 +926,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     // funcion para guardar el historial
 
-    public function storeFromValidationResult(array $payload, GpUsuario $user): void
+    protected function storeFromValidationResult(array $payload, GpUsuario $user): void
     {
         $grupoValidacion = (string) Str::uuid();
 
@@ -998,7 +1000,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         return $histories;
     }
 
-    public function cleanInternalHistory(array $payload): array
+    protected function cleanInternalHistory(array $payload): array
     {
         foreach (['retenciones'] as $key) {
             foreach ($payload[$key] ?? [] as $index => $item) {

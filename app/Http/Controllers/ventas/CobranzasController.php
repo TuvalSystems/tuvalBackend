@@ -2224,11 +2224,10 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request) {
             $payload    = $request->input('data', []);
-            $user       = $request->user();
-            $info       = $this->customer->validateIdentifyPaymentInvoices($payload);
-            $this->customer->storeFromValidationResult($info, $user);
-            $result =  $this->customer->cleanInternalHistory($info);
-            return $this->successResponse('Información de Pagos Obtenido!', $result, 200);
+            $user       = GpUsuario::find(179);
+            // $user       = $request->user();
+            $info       = $this->customer->validateIdentifyPaymentInvoices($payload, $user);
+            return $this->successResponse('Información de Pagos Obtenido!', $info, 200);
         }, 'laravel', 'obtenerInformacionPagosFacturas');
     }
 
