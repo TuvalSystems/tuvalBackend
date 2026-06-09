@@ -19,6 +19,7 @@ class CobroValidacionFacturaDetalle extends Model
         'documento',
         'numero_recibo',
         'monto',
+        'estado',
         'fecha_documento',
         'fecha_aplicacion',
     ];

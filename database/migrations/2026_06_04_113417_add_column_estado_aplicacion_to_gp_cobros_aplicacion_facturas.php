@@ -119,28 +119,22 @@ class AddColumnEstadoAplicacionToGpCobrosAplicacionFacturas extends Migration
     public function down()
     {
         Schema::table('gp_cobros_aplicacion_facturas', function (Blueprint $table) {
-            // $table->dropColumn(['estado_aplicado']);
-            $table->dropColumn(['user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
+            $table->dropColumn(['estado_aplicado','user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
         });
         Schema::table('gp_cobros_cheques_facturas', function (Blueprint $table) {
-            // $table->dropColumn(['estado_aplicado']);
-            $table->dropColumn(['user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
+            $table->dropColumn(['estado_aplicado','user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
         });
         Schema::table('gp_cobros_depositos_facturas', function (Blueprint $table) {
-            // $table->dropColumn(['estado_aplicado']);
-            $table->dropColumn(['user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
+            $table->dropColumn(['estado_aplicado','user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
         });
         Schema::table('gp_cobros_efectivo_facturas', function (Blueprint $table) {
-            // $table->dropColumn(['estado_aplicado']);
-            $table->dropColumn(['user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
+            $table->dropColumn(['estado_aplicado','user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
         });
         Schema::table('gp_cobros_tarjeta_facturas', function (Blueprint $table) {
-            // $table->dropColumn(['estado_aplicado']);
-            $table->dropColumn(['user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
+            $table->dropColumn(['estado_aplicado','user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
         });
         Schema::table('gp_cobros_retenciones', function (Blueprint $table) {
-            // $table->dropColumn(['estado_aplicado']);
-            $table->dropColumn(['user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
+            $table->dropColumn(['estado_aplicado','user_desaplicacion_id', 'fecha_desaplicacion', 'observacion_desaplicacion']);
         });
     }
 }

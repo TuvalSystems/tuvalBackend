@@ -2224,8 +2224,8 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request) {
             $payload    = $request->input('data', []);
-            // $user       = GpUsuario::find(179);
-            $user       = $request->user();
+            $user       = GpUsuario::find(179);
+            // $user       = $request->user();
             $info       = $this->customer->validateIdentifyPaymentInvoices($payload, $user);
             return $this->successResponse('Información de Pagos Obtenido!', $info, 200);
         }, 'laravel', 'obtenerInformacionPagosFacturas');

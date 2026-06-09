@@ -852,6 +852,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 'codigo_tipo_pago'  => data_get($payment, 'typePayment'),
                 'documento'         => data_get($payment, 'collectionId'),
                 'numero_recibo'     => $this->formatReceiptNumber(data_get($payment, 'numeroRecibo')),
+                'estado'            => null,
                 'monto'             => $this->money(data_get($payment, 'collectionAmount', 0)),
                 'fecha_documento'   => data_get($payment, 'collectionDocDate'),
                 'fecha_aplicacion'  => data_get($payment, 'collectionApplyDate'),
@@ -899,7 +900,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
                 'documento'         => data_get($dev, 'DOC_GENERADO'),
                 'numero_recibo'     => data_get($dev, 'devolucion'),
-
+                'estado'            => data_get($dev, 'estado'),
                 'monto'             => $this->money(data_get($dev, 'total', 0)),
 
                 'fecha_documento'   => data_get($dev, 'created_at')
@@ -914,10 +915,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function mapTypePayment(?int $typePayment): string
     {
         return match ((int) $typePayment) {
-            7       => 'retencion',
+            1       => 'factura',
+            2       => 'pago_programado',
+            3       => 'nota_debito',
+            4       => 'cargo_financiero',
+            5       => 'reparacion_servicio',
+            6       => 'garantia',
+            7       => 'nota_credito',
             8       => 'devolucion',
-            9       => 'efectivo',
-            default => 'otro',
+            9       => 'pago',
+            default => 'desconocido',
         };
     }
 
