@@ -2,14 +2,11 @@
 
 namespace App\Services\Movil\Gestion;
 
-use App\Enums\Ventas\OrderOrigenEnum;
-use App\Enums\Ventas\TaxRateEnum;
 use App\Mail\Cotizacion\CotizacionBorradorAppMail;
 use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpUsuario;
