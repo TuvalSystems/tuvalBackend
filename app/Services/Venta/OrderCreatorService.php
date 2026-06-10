@@ -37,9 +37,9 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     public function createOrder(array $data, $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
     {
         $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
-            $quotationId = data_get($data, 'cotizacion_id');
-            $direccionFacturacion = data_get($data, 'direccion_facturacion_id');
-            $direccionDespacho = data_get($data, 'direccion_entrega_id');
+            $quotationId            = data_get($data, 'cotizacion_id');
+            $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
+            $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
             if ($direccionFacturacion) {
                 $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
             }
