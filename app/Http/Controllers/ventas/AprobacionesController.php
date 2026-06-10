@@ -94,7 +94,7 @@ class AprobacionesController extends Controller
 
 
 
-    public function getSegmentoCliente($ruc)
+    public function getSegmentoCliente(string $ruc)
     {
         $response = $this->apiGpService->fetchClientSegment([
             'ruc' => $ruc,
