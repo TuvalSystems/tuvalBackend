@@ -47,7 +47,33 @@ class SteamTrapService implements SteamTrapServiceInterface
         if (empty($selectedItem)) {
             throw new \RuntimeException('No se encontró un artículo recomendado.');
         }
-        $originItems        = data_get($info, 'originItems', []);
+        $originItems        = collect(data_get($info, 'originItems', []));
+        $originItemsByCode = $originItems
+            ->mapWithKeys(function ($item) {
+                $codigo = trim((string) data_get($item, 'txItemDes'));
+
+                return [$codigo => $item];
+            });
+
+        $originKeys = $originItemsByCode
+            ->keys()
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $artSelects = GpArticulo::whereIn('ART_CODIGO_TRES_LETRAS', $originKeys)
+            ->get()
+            ->map(function ($articulo) use ($originItemsByCode) {
+                $codigo = trim((string) $articulo->ART_CODIGO_TRES_LETRAS);
+
+                $originItem = $originItemsByCode->get($codigo);
+
+                $articulo->neCan = data_get($originItem, 'neCan', 1);
+                $articulo->neOrd = data_get($originItem, 'neOrd');
+
+                return $articulo;
+            });
         $itemCode           = data_get($selectedItem, 'txItem');
         $itemImages         = $itemCode ? $this->getImageArticle($itemCode) : [];
         $mainItemImage      = $itemImages[0] ?? null;
@@ -55,7 +81,7 @@ class SteamTrapService implements SteamTrapServiceInterface
             'requestData'   => $data,
             'spParams'      => $params,
             'selectedItem'  => $selectedItem,
-            'originItems'   => $originItems,
+            'originItems'   => $artSelects,
             'rawResponse'   => $info,
             'cliente'       => GpCliente::find($clienteId),
             'articulo'      => GpArticulo::where('ART_CODIGO_TRES_LETRAS', $itemCode)->first(),
@@ -305,7 +331,8 @@ class SteamTrapService implements SteamTrapServiceInterface
         }
     }
 
-    protected function sendMailQuoteDraft(GpCotizacion $quote, GpUsuario $user){
+    protected function sendMailQuoteDraft(GpCotizacion $quote, GpUsuario $user)
+    {
         $quote->load('detallecotizacion')->refresh();
 
         $email = 'sistemas6@tuvalsa.com';

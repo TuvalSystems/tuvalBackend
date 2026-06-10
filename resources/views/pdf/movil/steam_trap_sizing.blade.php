@@ -31,100 +31,58 @@
         .header {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
-        }
-
-        .brand {
-            width: 28%;
-            background: #f97316;
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: bold;
-            letter-spacing: 4px;
-            text-align: center;
-            padding: 17px 10px;
-        }
-
-        .title {
-            width: 42%;
-            background: #fff7ed;
-            color: #111827;
-            font-size: 17px;
-            font-weight: bold;
-            text-align: center;
-            line-height: 1.25;
-            padding: 15px 10px;
-            border-top: 1px solid #fed7aa;
-            border-bottom: 1px solid #fed7aa;
-        }
-
-        .meta {
-            width: 30%;
-            background: #111827;
-            color: #ffffff;
-            text-align: center;
-            padding: 10px;
-            font-size: 10px;
-            line-height: 1.45;
-        }
-
-        .meta strong {
-            display: block;
-            font-size: 10px;
-            color: #d1d5db;
-        }
-
-        .meta span {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 6px;
-        }
-
-        @page {
-            margin: 14px 18px;
-        }
-
-        body {
-            font-size: 9.5px;
-            line-height: 1.18;
-        }
-
-        .header {
-            width: 100%;
-            border-collapse: collapse;
+            table-layout: fixed;
             margin-bottom: 12px;
         }
 
-        .brand {
-            width: 28%;
-            background: #f97316;
-            color: #ffffff;
-            font-size: 15px;
-            font-weight: bold;
-            letter-spacing: 4px;
-            text-align: center;
-            padding: 10px 8px;
+        .header tr {
+            height: 76px;
         }
 
+        .header td {
+            vertical-align: middle;
+        }
+
+        .brand {
+            width: 30%;
+            padding: 0 !important;
+            background: none !important;
+            line-height: 0;
+            font-size: 0;
+            text-align: center;
+        }
+
+        .brand-logo {
+            display: block;
+            width: 100%;
+            height: 76px;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+
         .title {
-            width: 42%;
+            width: 43%;
+            height: 76px;
             background: #fff7ed;
             color: #111827;
             font-size: 14px;
             font-weight: bold;
             text-align: center;
             line-height: 1.15;
-            padding: 9px 8px;
+            padding: 0 8px;
             border-top: 1px solid #fed7aa;
             border-bottom: 1px solid #fed7aa;
         }
 
         .meta {
-            width: 30%;
+            width: 27%;
+            height: 76px;
             background: #111827;
             color: #ffffff;
             text-align: center;
-            padding: 6px 8px;
+            padding: 0 8px;
             font-size: 8.5px;
             line-height: 1.2;
         }
@@ -140,6 +98,18 @@
             font-weight: bold;
             margin-bottom: 3px;
         }
+
+        @page {
+            margin: 14px 18px;
+        }
+
+        body {
+            font-size: 9.5px;
+            line-height: 1.18;
+        }
+
+
+
 
         .columns {
             width: 100%;
@@ -484,7 +454,7 @@
         .full-width-section {
             clear: both;
             width: 100%;
-            margin-top: 10px;
+            margin-top: 5px;
             page-break-inside: avoid;
         }
 
@@ -524,11 +494,16 @@
         }
 
         .accessories-table.full .col-item {
-            width: 54%;
+            width: 18%;
+        }
+
+
+        .accessories-table.full .col-descripcion {
+            width: 70%;
         }
 
         .accessories-table.full .col-qty {
-            width: 20%;
+            width: 8%;
             text-align: right;
         }
 
@@ -641,7 +616,9 @@
         <table class="header">
             <tr>
                 <td class="brand">
-                    TUVAL
+                    <img
+                        src="{{ public_path('images/tuval-logo.jpg') }}"
+                        alt="Tuval Logo" class="brand-logo">
                 </td>
 
                 <td class="title">
@@ -892,23 +869,32 @@
                 <table class="accessories-table full">
                     <thead>
                         <tr>
-                            <th class="col-order">Ord.</th>
-                            <th class="col-origin">Ítem origen</th>
-                            <th class="col-item">Ítem sugerido</th>
-                            <th class="col-qty">Cantidad sugerida</th>
+                            <th class="col-item">Artículo</th>
+                            <th class="col-descripcion">Descripción</th>
+                            <th class="col-item">Cod. Zafiro</th>
+                            <th class="col-item">Cod.3L </th>
+                            <th class="col-item"> Marca</th>
+                            <th class="col-qty">Cantidad</th>
+
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($originItems as $originItem)
                         <tr>
-                            <td class="col-order">
-                                {{ data_get($originItem, 'neOrd', '-') }}
+                            <td class="col-item">
+                                {{ data_get($originItem, 'ART_CODIGO', '-') }}
                             </td>
-                            <td class="col-origin">
-                                {{ data_get($originItem, 'txItemOri', '-') }}
+                            <td class="col-descripcion">
+                                {{ data_get($originItem, 'ART_DESCRIPCION', '-') }}
                             </td>
                             <td class="col-item">
-                                <strong>{{ data_get($originItem, 'txItemDes', '-') }}</strong>
+                                {{ data_get($originItem, 'ART_CODIGO_ZAFIRO', '-') }}
+                            </td>
+                            <td class="col-item">
+                                <strong>{{ data_get($originItem, 'ART_CODIGO_TRES_LETRAS', '-') }}</strong>
+                            </td>
+                            <td class="col-item">
+                                {{ data_get($originItem, 'ART_MARCA', '-') }}
                             </td>
                             <td class="col-qty">
                                 {{ data_get($originItem, 'neCan', '-') }}
