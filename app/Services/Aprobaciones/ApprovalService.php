@@ -26,7 +26,8 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
-
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -638,7 +639,7 @@ class ApprovalService implements ApprovalServiceInterface
      */
 
 
-    public function approveCreditOrder($data, $user)
+    public function approveCreditOrder(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
             ->where('estado', OrderStatus::ESPERA)
@@ -716,7 +717,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
 
-    public function approveComercialOrder($data, $user)
+    public function approveComercialOrder(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
@@ -734,7 +735,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $pedido;
     }
 
-    public function denyApproveComercialOrderForInsufficientStock($data, $user)
+    public function denyApproveComercialOrderForInsufficientStock(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
             ->lockForUpdate()->first();
@@ -761,7 +762,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function denyApproveComercialOrder($data, $user)
+    public function denyApproveComercialOrder(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
             ->lockForUpdate()->first();
@@ -784,7 +785,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function updateOrderStockOnCreditOrCommercialApproval($order, $typeApproval)
+    public function updateOrderStockOnCreditOrCommercialApproval(GpPedido $order, string $typeApproval)
     {
         $requiresComercialApproval = $order->requiere_aprobacion_comercial === 'yes';
         $requiresCreditApproval = $order->requiere_aprobacion_crediticia === 'yes';
@@ -813,7 +814,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function updateStockOnOrderApproval($order)
+    public function updateStockOnOrderApproval(GpPedido $order)
     {
         $quoteReservedOriginId = $this->validateExistsReserve($order->cotizacion_id);
         $detalles = $this->getDetailArticlesWithStock($order->id);
@@ -829,13 +830,13 @@ class ApprovalService implements ApprovalServiceInterface
         $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
     }
 
-    public function getDetailArticlesWithStock($orderId)
+    public function getDetailArticlesWithStock(int $orderId)
     {
         return GpPedidoDetalle::with('pedidoDetalleStocks')
             ->where('pedido_id', $orderId)
             ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
     }
-    public function stockFormatterForUpdateApproval($detalles)
+    public function stockFormatterForUpdateApproval(Collection $detalles)
     {
         return $detalles->pluck('pedidoDetalleStocks')
             ->flatten()
@@ -853,7 +854,7 @@ class ApprovalService implements ApprovalServiceInterface
             })->toArray();
     }
 
-    public function stockFormatterParametersUpdateApproval($newDetails)
+    public function stockFormatterParametersUpdateApproval(array $newDetails)
     {
         return collect($newDetails)
             ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
@@ -862,7 +863,7 @@ class ApprovalService implements ApprovalServiceInterface
             ->toArray();
     }
 
-    public function getStockWarehouseAsyncAndFormantter($parmas)
+    public function getStockWarehouseAsyncAndFormantter(array $parmas)
     {
         $stocksResult = $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
         Log::info("Resultado de stock para aprobacion: ", [
@@ -873,7 +874,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
+    public function formattedFlatDetailWithStockGeneral(array $flatDetails, array $stocksResult)
     {
         $stockMap = collect($stocksResult)->keyBy(function ($stock) {
             $art    = data_get($stock, 'STO_ART_ARTICULO', '');
@@ -898,7 +899,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $orderId, $quoteReservedOriginId = null)
+    public function updateOrderDetailStockAndGetStockDisponible(Collection $detalles, SupportCollection $newFormatStock, int $orderId, ?int $quoteReservedOriginId = null)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
@@ -912,8 +913,8 @@ class ApprovalService implements ApprovalServiceInterface
         }
         foreach ($allFormattedStock as $stock) {
             if (isset($stock['stock_id']) && ($st = GpPedidoDetalleStock::find($stock['stock_id']))) {
-                $st->STO_ART_STOCK_DISPONIBLE = $stock['STO_ART_STOCK_DISPONIBLE'];
-                $st->reservado = $stock['seleccionado'];
+                $st->STO_ART_STOCK_DISPONIBLE   = $stock['STO_ART_STOCK_DISPONIBLE'];
+                $st->reservado                  = $stock['seleccionado'];
                 $st->save();
             }
         }
@@ -922,7 +923,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function accountStatusClient($ruc)
+    public function accountStatusClient(string $ruc)
     {
         $detalle = [];
         $detalle['cupoDisponible'] = $this->functionService->getClientCheckAvailableQuota($ruc);

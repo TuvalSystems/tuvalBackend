@@ -23,7 +23,7 @@ interface ApprovalServiceInterface
     public function getOrderApprovalData(array $data);
 
     //function cuando cumple las condiciones para la aprobación
-    public function approveCreditOrder($data, $user);
+    public function approveCreditOrder(array $data, GpUsuario $user);
     // cuando se rechaza un pedido - credito
     public function denyCreditApproval($data, $user);
     // cuando se rechaza de forma automatica en caso de que el stock sea insuficiente
@@ -31,13 +31,13 @@ interface ApprovalServiceInterface
 
     /** funciones para aprobacion comercial  */
 
-    public function approveComercialOrder($data, $user);
-    public function denyApproveComercialOrderForInsufficientStock($data, $user);
-    public function denyApproveComercialOrder($data, $user);
+    public function approveComercialOrder(array $data, GpUsuario $user);
+    public function denyApproveComercialOrderForInsufficientStock(array $data, GpUsuario $user);
+    public function denyApproveComercialOrder(array $data, GpUsuario $user);
 
     /** funcion para obtener el estado de cuenta de un cliente */
 
-    public function accountStatusClient($ruc);
+    public function accountStatusClient(string $ruc);
 
 
     public function denyQuotationBeenWaiting(int $id, GpUsuario $user);
