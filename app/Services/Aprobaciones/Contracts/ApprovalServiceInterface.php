@@ -6,13 +6,13 @@ use App\Models\GpUsuario;
 interface ApprovalServiceInterface
 {
 
-    public function approveQuoteReservation($data);
-    public function checkoutApprovalCredit($condId, $total, $ruc);
+    public function approveQuoteReservation(array $data);
+    public function checkoutApprovalCredit(string $condId, float $total, string $ruc);
 
-    public function checkoutApprovalDevoluciones($data);
+    public function checkoutApprovalDevoluciones(array $data);
 
 
-    public function checkOutApprovalCommercialReservedOrder($data);
+    public function checkOutApprovalCommercialReservedOrder(array $data);
 
     /**
      *
@@ -20,7 +20,7 @@ interface ApprovalServiceInterface
      *
      * */
 
-    public function getOrderApprovalData($data);
+    public function getOrderApprovalData(array $data);
 
     //function cuando cumple las condiciones para la aprobación
     public function approveCreditOrder($data, $user);

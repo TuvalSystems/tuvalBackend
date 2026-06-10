@@ -47,7 +47,7 @@ class ApprovalService implements ApprovalServiceInterface
      *
      */
 
-    public function approveQuoteReservation($data)
+    public function approveQuoteReservation(array $data)
     {
         $motivosAprobacionComercial = [];
         $registroVolverAPedir = null;
@@ -237,7 +237,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function checkOutApprovalCommercialReservedOrder($data)
+    public function checkOutApprovalCommercialReservedOrder(array $data)
     {
         $motivosAprobacionComercial = [];
         $quoteId = data_get($data, 'id', null);
@@ -413,7 +413,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     /*** aprovacion crediciticia *** */
 
-    public function checkoutApprovalCredit($condId, $total, $ruc)
+    public function checkoutApprovalCredit(string $condId, float $total, string $ruc)
     {
           if ($condId == 'CONTADO') {
             return 'no';
@@ -449,7 +449,7 @@ class ApprovalService implements ApprovalServiceInterface
      *
      *
      */
-    public function checkoutApprovalDevoluciones($data)
+    public function checkoutApprovalDevoluciones(array $data)
     {
 
         $tipoDevolucion     = Arr::get($data, 'devolucion.tipo_devolucion');
@@ -563,7 +563,7 @@ class ApprovalService implements ApprovalServiceInterface
      * FUNCION PARA LA VERIFICACION DE STOCK DE LOS ARTICULOS DEL PEEDIDO ANTES DE APROBAR
      */
 
-    public function getOrderApprovalData($data)
+    public function getOrderApprovalData(array $data)
     {
         try {
             $quoteReservedOriginId  = $this->validateExistsReserve($data['cotizacion_id']);
