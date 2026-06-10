@@ -483,6 +483,13 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             //validacion de aplicacion de pagos a faturas
             Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+
+            //desaplicaciones
+            Route::prefix('desaplicaciones')->group(function () {
+                Route::post('lista', [CobranzasController::class, 'listaCobrosAplicados']);
+                Route::post('detalle', [CobranzasController::class, 'detalleCobrosAplicados']);
+                Route::post('procesar', [CobranzasController::class, 'procesarDesaplicaciones']);
+            });
         });
 
 

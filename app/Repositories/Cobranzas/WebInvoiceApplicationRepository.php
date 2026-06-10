@@ -40,11 +40,12 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
     public function getPendingWebInvoiceApplicationsExcludingDocuments(string $invoice, array $documents, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
         return GpCobrosAplicacionFactura::with([
-            'cobroPendienteWeb',
+            'cobroPendienteWeb:id,numero_recibo',
             'aplicacionMonto'
         ])
             ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
+            ->where('estado_aplicado', 1)
             ->whereHas('aplicacionMonto', function ($q) use ($documents) {
                 if (!empty($documents)) {
                     $q->whereNotIn('cobro', $documents);
@@ -64,9 +65,10 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
     //cheques facturas pendientes
     public function getPendingWebCheckPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
-        return GpCobrosChequesFacturas::with('cobroPendienteWeb')
+        return GpCobrosChequesFacturas::with( 'cobroPendienteWeb:id,numero_recibo')
             ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
+            ->where('estado_aplicado', 1)
             ->get([
                 'id',
                 'cobro_id',
@@ -81,8 +83,9 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
     //despositos facturas pendientes
     public function getPendingWebDepositPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
-        return GpCobrosDepositosFacturas::with('cobroPendienteWeb')
+        return GpCobrosDepositosFacturas::with( 'cobroPendienteWeb:id,numero_recibo',)
             ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
+            ->where('estado_aplicado', 1)
             ->where('id_factura', $invoice)
             ->get(['id', 'cobro_id', 'deposito_id', 'id_factura', 'monto', 'created_at']);
     }
@@ -91,28 +94,31 @@ class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepository
     //efectivo de facturas pendientes
     public function getPendingWebCashPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
-        return GpCobrosEfectivoFactura::with('cobroPendienteWeb')
+        return GpCobrosEfectivoFactura::with( 'cobroPendienteWeb:id,numero_recibo',)
             ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
+            ->where('estado_aplicado', 1)
             ->get(['id', 'cobro_id', 'id_factura', 'monto', 'created_at']);
     }
 
 
     //retenciones de facturas pendientes
-    public function getPendingWebWithholdingPaymentsByInvoice(string $invoice, string $desde, string $hasta,array $rcsPorExcluir = [])
+    public function getPendingWebWithholdingPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
-        return GpCobrosRetenciones::with('cobroPendienteWeb')
+        return GpCobrosRetenciones::with( 'cobroPendienteWeb:id,numero_recibo',)
             ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('ret_factura', $invoice)
+            ->where('estado_aplicado', 1)
             ->get(['id', 'cobro_id', 'ret_factura', 'total', 'created_at']);
     }
 
     //tarjetas de facturas pendientes
     public function getPendingWebCreditCardPaymentsByInvoice(string $invoice, string $desde, string $hasta, array $rcsPorExcluir = [])
     {
-        return GpCobrosTarjetaFactura::with('cobroPendienteWeb')
-            ->pendientesWeb($desde, $hasta,$rcsPorExcluir)
+        return GpCobrosTarjetaFactura::with( 'cobroPendienteWeb:id,numero_recibo',)
+            ->pendientesWeb($desde, $hasta, $rcsPorExcluir)
             ->where('id_factura', $invoice)
+            ->where('estado_aplicado', 1)
             ->get(['id', 'cobro_id', 'id_factura', 'monto', 'created_at']);
     }
 }

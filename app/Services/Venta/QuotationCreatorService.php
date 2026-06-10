@@ -37,8 +37,8 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     {
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quoteId = data_get($data, 'cotizacion_id', null);
-            $direccionFacturacion = data_get($data, 'direccion_facturacion_id');
-            $direccionDespacho = data_get($data, 'direccion_entrega_id');
+            $direccionFacturacion = (int) data_get($data, 'direccion_facturacion_id');
+            $direccionDespacho = (int)data_get($data, 'direccion_entrega_id');
 
             // --- VALIDACIONES DE NEGOCIO ---
             if ($direccionFacturacion) {

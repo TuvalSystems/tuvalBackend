@@ -219,6 +219,8 @@ Route::group(['prefix' => 'cobranzas'], function () {
     Route::get('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
 
     Route::get('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+    Route::get('lista-aplicaciones', [CobranzasController::class, 'listaCobrosAplicados']);
+    Route::get('detalle-aplicaciones', [CobranzasController::class, 'detalleCobrosAplicados']);
 });
 
 Route::prefix('gestion')->group(function () {
