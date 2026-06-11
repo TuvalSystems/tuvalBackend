@@ -127,9 +127,10 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
             $tipoMedio = strtoupper(trim($item->tipo_medio ?? ''));
             if ($tipoMedio == 'CHEQUE') {
                 $itemGp             = $checkReceipts->get($item->numero_recibo);
-                $item->documento_gp = $this->normalizeDocument(
-                    data_get($itemGp, 'documentGp', $item->documento_gp ?? null)
-                );
+                $documentGp        = data_get($itemGp, 'documentGp', $item->documento_gp ?? null);
+                $item->documento_gp = blank($documentGp)
+                    ? null
+                    : $this->normalizeDocument($documentGp);
             }
             return $item;
         });
@@ -145,7 +146,7 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 
         $actives    = collect($query)
             ->where('estado_aplicado', 1)
-            ->map(function ($item) use ($applyDocsLookup, $applyReceiptLookup, $docsApplys) {
+            ->map(function ($item) use ($applyDocsLookup, $applyReceiptLookup) {
                 $averageType            = strtoupper(trim($item->tipo_medio ?? ''));
                 $documentoGp            = $this->normalizeDocument($item->documento_gp ?? null);
                 $isCheckPending         = $averageType === 'CHEQUE' && blank($documentoGp);
