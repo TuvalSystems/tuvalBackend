@@ -16,6 +16,9 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+use function PHPUnit\Framework\isEmpty;
+use function PHPUnit\Framework\isNull;
+
 class CollectionUnapplicationService implements CollectionUnapplicationServiceInterface
 {
     public function __construct(protected ApiBillingService $api) {}
@@ -103,16 +106,33 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 
     public function getAllDetailCollection(string $ruc, string $factura, GpUsuario $user)
     {
-        $admin = [1,2];
+        $admin = [1, 2];
         $isVisible = in_array($user->perfil_id, $admin, true);
         $query = DB::table('vw_cobros_aplicaciones_facturas_detalle as det')
             ->where(function ($q) use ($ruc, $factura) {
                 $q->where('ruc', $ruc)
                     ->where('factura', $factura);
             })->get();
+        $checkReceipts      = $this->getCheckReceiptPaymentsGp($factura, $ruc)->map(function ($it) {
+            $it['receiptNum'] =  $this->formatReceiptNumber(data_get($it, 'receiptNum'));
+            $it['documentGp'] = $this->normalizeDocument(data_get($it, 'documentGp'));
+            return $it;
+        })->filter(fn($it) => filled(data_get($it, 'receiptNum')))->keyBy('receiptNum');
+
         $docsApplys             = $this->getPaymentApplyGp($factura, $ruc);
         $collectionDocs         = $this->filterCollectionIds($docsApplys);
         $receiptsDocs           = $this->filterReceiptNumbers($docsApplys);
+
+        $query->map(function ($item) use ($checkReceipts) {
+            $tipoMedio = strtoupper(trim($item->tipo_medio ?? ''));
+            if ($tipoMedio == 'CHEQUE') {
+                $itemGp             = $checkReceipts->get($item->numero_recibo);
+                $item->documento_gp = $this->normalizeDocument(
+                    data_get($itemGp, 'documentGp', $item->documento_gp ?? null)
+                );
+            }
+            return $item;
+        });
 
         $applyDocsLookup = collect($collectionDocs)
             ->filter()
@@ -125,15 +145,22 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
 
         $actives    = collect($query)
             ->where('estado_aplicado', 1)
-            ->map(function ($item) use ($applyDocsLookup, $applyReceiptLookup) {
-                $documentoGp   = $this->normalizeDocument($item->documento_gp ?? null);
-                $existsInGp     = $applyDocsLookup->has($documentoGp) || $applyReceiptLookup->has($item->numero_recibo);
+            ->map(function ($item) use ($applyDocsLookup, $applyReceiptLookup, $docsApplys) {
+                $averageType            = strtoupper(trim($item->tipo_medio ?? ''));
+                $isCheckPending         =  $averageType == 'CHEQUE' && isEmpty($item->documento_gp);
+                $documentoGp            = $this->normalizeDocument($item->documento_gp ?? null);
+                $existsInGp             = $applyDocsLookup->has($documentoGp) || $applyReceiptLookup->has($item->numero_recibo);
 
-                $item->can_unapplication = !$existsInGp;
-                $item->unapplication_message = $existsInGp
-                    ? 'Documento aplicado en GP.'
-                    : 'Disponible para desaplicar.';
-
+                if ($isCheckPending) {
+                    $item->can_unapplication = false;
+                    $item->unapplication_message = 'Cheque pendiente de contabilizar en GP.';
+                } elseif ($existsInGp) {
+                    $item->can_unapplication = false;
+                    $item->unapplication_message = 'Documento aplicado en GP.';
+                } else {
+                    $item->can_unapplication = true;
+                    $item->unapplication_message = 'Disponible para desaplicar.';
+                }
                 return $item;
             })->values()->all();
 
@@ -154,6 +181,15 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
     {
         $resp = $this->api->getListCustomerPaymentApply([
             'documento' => $documento,
+            'ruc'       => $ruc
+        ]);
+        return collect(data_get($resp, 'data', []));
+    }
+
+    protected function getCheckReceiptPaymentsGp(string $doc, string $ruc): Collection
+    {
+        $resp = $this->api->getListCustomerCheckReceipts([
+            'documento' => $doc,
             'ruc'       => $ruc
         ]);
         return collect(data_get($resp, 'data', []));
