@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\Perfiles;
 use App\Services\Admin\Contracts\MenuServiceInterface;
+use App\Services\Movil\Menu\Contracts\MobileMenuServiceInterface;
 use App\Services\User\Contracts\UserServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -23,7 +24,8 @@ class UserService implements UserServiceInterface
 
     public function __construct(
         protected readonly ApiGpService $apiGp,
-        protected readonly MenuServiceInterface $menu
+        protected readonly MenuServiceInterface $menu,
+        protected readonly MobileMenuServiceInterface $menuApp
     ) {}
 
 
@@ -210,10 +212,11 @@ class UserService implements UserServiceInterface
             ->where('USERID', $userName)
             ->first();
 
-        $this->isValidUserWeb($user, $password);
+        $this->isValidUserMobile($user, $password);
         return [
-            'user'                  => $this->formatUserMobile($user),
-            'token'                 => $this->generateAuthToken($user, 'mobile'),
+            'user'   => $this->formatUserMobile($user),
+            'token'  => $this->generateAuthToken($user, 'mobile'),
+            'menu'   => $this->menuApp->getMenuLayout((int)$user->perfil_app_id)
         ];
     }
 

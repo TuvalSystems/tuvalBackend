@@ -4,10 +4,10 @@ namespace App\Traits;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -33,7 +33,7 @@ trait ExecuteApiTransactions
     }
 
 
-    private function captureAndFormatException(\Throwable $e, string $canalLog, string $contextoLog): Response
+    private function captureAndFormatException(\Throwable $e, string $canalLog, string $contextoLog): JsonResponse
     {
         if ($e instanceof ValidationException) {
             return $this->validationErrorResponse($e->errors(), 'validation error', 422);

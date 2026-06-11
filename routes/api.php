@@ -119,13 +119,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::get('/llenapaisesyterritoriosgp', [SincronizacionController::class, 'llenapaisesyterritoriosgp']);
         Route::get('/llenaclaseclientegp', [SincronizacionController::class, 'llenaclaseclientegp']);
         Route::post('/checkusuario', [SincronizacionController::class, 'checkusuario']);
-        Route::get('/listadesecciones', [SectionsController::class, 'listadesecciones']);
-        Route::get('/perfiles', [SectionsController::class, 'perfiles']);
-        Route::post('/updateseccion', [SectionsController::class, 'updateseccion']);
-        Route::get('/eliminarperfil/{id}', [SectionsController::class, 'eliminarperfil']);
-        Route::post('/updateperfil', [SectionsController::class, 'updateperfil']);
-        Route::post('/updateperfilsection', [SectionsController::class, 'updateperfilsection']);
-        Route::post('/updateusuarioperfil', [SectionsController::class, 'updateusuarioperfil']);
+      
 
         Route::post('/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
         Route::get('/despachos/ordenespendientes/{puntodeventa_id}', [DespachosController::class, 'ordenespendientes']);
