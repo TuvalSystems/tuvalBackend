@@ -147,8 +147,8 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
             ->where('estado_aplicado', 1)
             ->map(function ($item) use ($applyDocsLookup, $applyReceiptLookup, $docsApplys) {
                 $averageType            = strtoupper(trim($item->tipo_medio ?? ''));
-                $isCheckPending         =  $averageType == 'CHEQUE' && isEmpty($item->documento_gp);
                 $documentoGp            = $this->normalizeDocument($item->documento_gp ?? null);
+                $isCheckPending         = $averageType === 'CHEQUE' && blank($documentoGp);
                 $existsInGp             = $applyDocsLookup->has($documentoGp) || $applyReceiptLookup->has($item->numero_recibo);
 
                 if ($isCheckPending) {
