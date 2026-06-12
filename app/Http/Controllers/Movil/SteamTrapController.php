@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Movil;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpUsuario;
 use App\Services\Movil\Gestion\Contracts\SteamTrapServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
