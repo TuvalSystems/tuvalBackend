@@ -27,7 +27,7 @@ class GpRelacionUsuarioPuntoVenta extends Model
 {
     use HasFactory;
 
-    protected $fillable  =[
+    protected $fillable  = [
         'id',
         'user_id',
         'pv_id',
@@ -37,7 +37,13 @@ class GpRelacionUsuarioPuntoVenta extends Model
     ];
 
 
-    public function usuario(){
-        return $this->belongsTo(GpUsuario::class,'USER_PTO_VTA_USUARIO');
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'USER_PTO_VTA_USUARIO');
+    }
+
+    public function puntoVenta()
+    {
+        return $this->belongsTo(GpPuntoVenta::class, 'pv_id');
     }
 }

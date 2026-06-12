@@ -8,6 +8,7 @@ use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpUsuario;
 use App\Models\Movil\Gestion\TrampaVapor;
@@ -169,7 +170,7 @@ class SteamTrapService implements SteamTrapServiceInterface
             throw new \RuntimeException('No se encontró información del cliente.');
         }
 
-        $sucursalId           = GpClienteSucursal::where('id', $clienteId)->where('estado', true)->where('CLI_SUC_ID_DIRECCION', 'PRINCIPAL')->value('id');
+        $sucursalId           = GpClienteSucursal::where('cliente_id', $clienteId)->where('estado', true)->where('CLI_SUC_ID_DIRECCION', 'PRINCIPAL')->value('id');
         if (!$sucursalId) {
             throw new \RuntimeException('La sucursal seleccionada no existe o no se encuentra activa.');
         }
@@ -197,15 +198,13 @@ class SteamTrapService implements SteamTrapServiceInterface
         $groupPrices        = $this->getPriceListGroupedByArticle($articulos);
         $this->identifyGroupPricesToArticle($articulos, $groupPrices, $itemMetaByCode, data_get($cliente, 'cliente', []));
         $articulos          = $articulos->sortBy(fn($item) => $item->orden ?? 999)->values();
-        $salesPoint         = $this->getPrimarySalesPointWarehouseByUser($user->id);
-        $warehouse          = data_get($salesPoint, 'PTO_VTA_BOD_REL_BODEGA');
-        $ptoVtaCode         = data_get($salesPoint, 'PTO_VTA_BOD_REL_PUNTO_VENTA');
-        $agency             = data_get($salesPoint, 'puntoVenta.PTO_VTA_DESCRIPCION');
+        $warehouse         = $this->getWarehouseByPtoVta(data_get($payload, 'pvCode'));
+
         $info = [
             'sucursalId'    => $sucursalId,
             'warehouse'     => $warehouse,
-            'ptoVtaCode'    => $ptoVtaCode,
-            'agency'        => $agency,
+            'ptoVtaCode'    => data_get($payload, 'pvCode'),
+            'agency'        => data_get($payload, 'pvDescription'),
             'typePayment'   => $typePayment,
         ];
         $headerQuote        = $this->payloadQuotationHeaderDraft($user, data_get($cliente, 'cliente'),  $info);
@@ -220,21 +219,9 @@ class SteamTrapService implements SteamTrapServiceInterface
         return $headerQuote->refresh();
     }
 
-    protected function getPrimarySalesPointWarehouseByUser(int $userId)
+    protected function getWarehouseByPtoVta(string $ptoVta): ?string
     {
-        return GpRelacionPuntoVentaBodegaRelacionada::query()
-            ->with([
-                'relacionBodega:id,BOD_BODEGA,PERMITE_DESPACHO',
-                'puntoVenta:id,PTO_VTA_ID,PTO_VTA_DESCRIPCION'
-
-            ])
-            ->where('PTO_VTA_BOD_REL_NIVEL_ACCESO', '<>', 'CONSULTA')
-            ->whereHas('puntoVenta.relacionUsuarioPtoVta', function ($query) use ($userId) {
-                $query->where('user_id', $userId)
-                    ->where('orden', 1);
-            })
-            ->orderBy('id')
-            ->first();
+        return GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $ptoVta)->value('PTO_VTA_BOD_BODEGA');
     }
 
     protected function resolveSteamTrapArticleCodes(array  $suggestItems, array $selectedItem)

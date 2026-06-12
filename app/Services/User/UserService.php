@@ -12,6 +12,7 @@ use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Models\GpRelacionUsuarioPuntoVenta;
 use App\Models\Perfiles;
 use App\Services\Admin\Contracts\MenuServiceInterface;
 use App\Services\Movil\Menu\Contracts\MobileMenuServiceInterface;
@@ -493,5 +494,38 @@ class UserService implements UserServiceInterface
         }
 
         $user->save();
+    }
+
+
+
+    /** agencias con su punto de venta  */
+
+    public function getPointSalesMobile(GpUsuario $user)
+    {
+
+        $relations = GpRelacionUsuarioPuntoVenta::query()
+            ->with([
+                'puntoVenta:id,PTO_VTA_ID,PTO_VTA_DESCRIPCION'
+            ])
+            ->where('user_id', $user->id)
+            ->orderBy('orden')
+            ->orderBy('pv_id')
+            ->get();
+
+        $pvDefault = $relations->firstWhere('orden', 1)?->pv_id
+            ?? $relations->first()?->pv_id;
+
+        $pvList = $relations->map(function ($item) use ($pvDefault) {
+            return [
+                'pv_id'          => $item->pv_id,
+                'pv_code'        => $item->puntoVenta?->PTO_VTA_ID,
+                'pv_descripcion' => $item->puntoVenta?->PTO_VTA_DESCRIPCION,
+                'is_default'     => (int) $item->pv_id === (int) $pvDefault,
+            ];
+        })->values();
+        return [
+            'pv_default' => $pvDefault,
+            'pv_list'       => $pvList
+        ];
     }
 }

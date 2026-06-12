@@ -58,6 +58,11 @@ Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
 
         //menu
         Route::get('/menu', [MobileMenuController::class, 'index']);
+
+        //puntos de venta
+        Route::get('point-sales', [AuthMobileController::class, 'obtenerPuntosVenta']);
+
+        //clientes
         Route::prefix('cliente')->group(function () {
             Route::post('buscar', [ConsultasController::class, 'buscarClientes']);
         });
