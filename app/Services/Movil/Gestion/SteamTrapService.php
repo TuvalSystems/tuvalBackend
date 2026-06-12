@@ -343,6 +343,9 @@ class SteamTrapService implements SteamTrapServiceInterface
             // $email = 'sistemas6@tuvalsa.com';
             Mail::to($email)->queue(new CotizacionBorradorAppMail($quote));
         }
+        Log::info('email no encontrado para el usuario ', [
+            'usuario' => $user
+        ]);
     }
 
 
