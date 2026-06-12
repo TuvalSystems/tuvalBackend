@@ -97,7 +97,8 @@ class SteamTrapController extends Controller
                 'spParams.estimatedLoadKg'      => ['required', 'numeric', 'gt:0'],
                 'spParams.safetyFactor'         => ['required', 'numeric', 'gte:1'],
             ]);
-            $user = $request->user();
+            // $user = $request->user();
+            $user = GpUsuario::find(78);
             $cotizacion = $this->service->generateQuoteDraft($data, $user);
             $msg = "Cotización generada {$cotizacion->cotizacion}";
             return $this->buildSuccessResponse($msg, 200);

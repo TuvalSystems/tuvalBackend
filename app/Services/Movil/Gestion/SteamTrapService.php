@@ -12,6 +12,7 @@ use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpUsuario;
 use App\Models\Movil\Gestion\TrampaVapor;
 use App\Notifications\User\UserNotification;
+use App\Services\Api\ApiGpService;
 use App\Services\Api\Bodegas\ApiGestionArticleService;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Movil\Gestion\Contracts\SteamTrapServiceInterface;
@@ -21,6 +22,7 @@ use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -29,6 +31,7 @@ class SteamTrapService implements SteamTrapServiceInterface
 {
     public function __construct(
         protected readonly ApiGestionArticleService $api,
+        protected readonly ApiGpService  $apiGp,
         protected readonly ClientQueryServiceInterface $client,
         protected readonly StockWarehouseServiceInterface $stockWarehouse,
         protected readonly OrderAndQuotationServiceInterface $OrderQuoteCommon,
@@ -331,8 +334,23 @@ class SteamTrapService implements SteamTrapServiceInterface
     protected function sendMailQuoteDraft(GpCotizacion $quote, GpUsuario $user)
     {
         $quote->load('detallecotizacion')->refresh();
+        $data = $this->searchEmailByUserName($user->USERID);
+        $email = data_get($data, 'email');
+        if ($email) {
+            Log::info('email encontrado para envio de correo de appMovil', [
+                'data' => $data
+            ]);
+            // $email = 'sistemas6@tuvalsa.com';
+            Mail::to($email)->queue(new CotizacionBorradorAppMail($quote));
+        }
+    }
 
-        $email = 'sistemas6@tuvalsa.com';
-        Mail::to($email)->send(new CotizacionBorradorAppMail($quote));
+
+    protected function searchEmailByUserName(string $username)
+    {
+        $resp = $this->apiGp->getEmailUser([
+            'userName' => $username,
+        ]);
+        return data_get($resp, 'data', []);
     }
 }

@@ -22,6 +22,10 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_VALIDAR_USUARIO, 'POST', $params, 'json');
     }
 
+    public function getEmailUser(array $params){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_CORREO_USUARIO, 'POST', $params, 'json');
+    }
+
     public function getTransferHeader(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTA_TRANSFERENCIA_CABECERA, 'POST', $params, 'json');
