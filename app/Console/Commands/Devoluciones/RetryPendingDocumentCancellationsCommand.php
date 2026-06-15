@@ -14,9 +14,9 @@ class RetryPendingDocumentCancellationsCommand extends Command
     public function handle(DocumentCancellationRetryServiceInterface $service)
     {
         $this->info('Iniciando verificación de anulaciones pendientes...');
-         $service->handleCancellationRetries();
-         return 0;
+        $service->handleCancellationRetries();
+        $this->info('Proceso finalizado.');
+
+        return self::SUCCESS;
     }
-
-
 }

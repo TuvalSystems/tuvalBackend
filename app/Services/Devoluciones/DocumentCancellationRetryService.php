@@ -2,6 +2,7 @@
 
 namespace App\Services\Devoluciones;
 
+use App\Enums\devoluciones\InvoiceAnulationStatus;
 use App\Mail\Devoluciones\FacturasNoAnuladasMail;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpPedido;
@@ -20,7 +21,10 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
 
 
 
-
+    /**
+     *  proceso de envio de documentos no anulados del dia anterior
+     *
+     */
     public function handleCancellationRetries()
     {
         $docs = $this->getYesterdayCancellations()->map(function ($item) {
@@ -31,12 +35,7 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
         $docsCanSend = $docs->where('can_resend', 1);
         $docsCantSend = $docs->where('can_resend', 0);
 
-        Log::info('Logica de envio a api SeedBilling', [
-            'datos' => $docsCanSend
-        ]);
-        Log::info('Logica de no enviados ', [
-            'datos' => $docsCantSend
-        ]);
+
 
         $this->retryValidCancellations($docsCanSend);
         $this->reportUnprocessableCancellations($docsCantSend);
@@ -129,9 +128,75 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
             'formateados' => $invoices
         ]);
         if ($invoices->isNotEmpty()) {
-            $email = 'sistemas6@tuvalsa.com';
+            $email = 'sistemas_desarrollo@tuvalsa.com';
             // Mail::to($email)->send(new FacturasNoAnuladasMail($invoices));
             Mail::to($email)->queue(new FacturasNoAnuladasMail($invoices));
         }
+    }
+
+
+    /**
+     *  proceso de enviar anulaciones del dia que dieron problemas
+     */
+
+    public function handleSendCancellationsWithError()
+    {
+        $docs = $this->getCancellationsOnDay()->map(function ($item) {
+            $item->can_resend = $this->isWithinCancellationDeadline($item->gpPedido);
+            return $item;
+        })->values();
+        $docsCanSend = $docs->where('can_resend', 1);
+        $this->resendCancellationWithError($docsCanSend);
+    }
+
+    protected function getCancellationsOnDay(): Collection
+    {
+        $startDate  = Carbon::now()->startOfDay();
+        $endDate    = Carbon::now()->endOfDay();
+        $msg = 'COMPROBANTE ENVIADO PARA SER ANULADO';
+        return GpFacturaAnulada::with([
+            'gpPedido:id,pedido,factura,fecha_factura,PTO_VTA_ID,CLI_RUC,CLI_RAZON_SOCIAL',
+            'gpPedido.puntoVenta:PTO_VTA_ID,PTO_VTA_DIAS_MAXIMO_PARA_ANULACION',
+            'gpDevolucion:id,devolucion,DOC_GENERADO,fecha_NC'
+        ])->where(function ($q) use ($msg) {
+            $q->where('resp_seedbilling', '!=', $msg)
+                ->orWhereNull('resp_seedbilling')
+                ->orWhere('resp_seedbilling', '');
+        })->whereBetween('created_at', [
+            $startDate,
+            $endDate
+        ])->get();
+    }
+
+    protected function resendCancellationWithError(Collection $docs)
+    {
+
+        $docs->map(function ($item) {
+            $codeAccess = trim((string) $item->claveacceso);
+            if ($codeAccess === '') {
+                Log::warning('No se puede reenviar anulación porque no tiene clave de acceso', [
+                    'factura_anulada_id' => $item->id,
+                    'pedido' => $item->pedido ?? null,
+                    'factura' => $item->factura ?? null,
+                ]);
+                return;
+            }
+
+            $resp       = $this->consultApiSeedBilling($codeAccess);
+            $status     = strtoupper(trim((string) data_get($resp, 'status', '')));
+            $canResend  = $status !== 'ANU';
+            if (!$canResend) {
+                return;
+            }
+
+            $resp =  $this->apiResponseSeedBelling($codeAccess);
+            $message = data_get($resp, 'respuesta', null);
+            GpFacturaAnulada::where('id', $item->id)->update(
+                [
+                    'estado' => InvoiceAnulationStatus::ENVIADA,
+                    'resp_seedbilling' => $message
+                ]
+            );
+        });
     }
 }

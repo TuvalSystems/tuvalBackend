@@ -129,8 +129,13 @@ class Kernel extends ConsoleKernel
             ->runInBackground();
 
         $schedule->command('seedbilling:retry-pending-cancelations')
-            ->weekdays()
             ->dailyAt('07:00')
+            ->timezone(self::TIMEZONE)
+            ->withoutOverlapping(60)
+            ->runInBackground();
+
+        $schedule->command('seedbilling:retry-failed-today-cancellations')
+            ->dailyAt('18:00')
             ->timezone(self::TIMEZONE)
             ->withoutOverlapping(60)
             ->runInBackground();
