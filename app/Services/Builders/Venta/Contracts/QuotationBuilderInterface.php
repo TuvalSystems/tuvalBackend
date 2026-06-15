@@ -2,7 +2,7 @@
 
 namespace App\Services\Builders\Venta\Contracts;
 
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;

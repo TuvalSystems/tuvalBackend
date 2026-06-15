@@ -4,7 +4,7 @@ namespace App\Services\Reposiciones;
 
 use App\Enums\Ventas\OrderStatus;
 use Carbon\Carbon;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpTempCart;
 use App\Models\GpDatosItemsL;
 use App\Models\GpPedidoDetalle;

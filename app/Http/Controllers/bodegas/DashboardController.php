@@ -13,7 +13,7 @@ use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Models\Reservas\GpTrasladosReservas;
 use App\Models\Section;
 use App\Models\traslados\GpTrasladosVentas;
-use App\Services\Bodegas\Contracts\DashboardServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DashboardServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

@@ -5,7 +5,7 @@ namespace App\Services\Venta;
 use App\Enums\bodegas\AbcSegment;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\GpRelacionPuntoVentaBodega;

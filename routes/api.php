@@ -106,7 +106,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);
         Route::get('/llenabodegasgp', [SincronizacionController::class, 'llenabodegasgp']);
         Route::get('/llenacondicionpagogp', [SincronizacionController::class, 'llenacondicionpagogp']);
-        Route::get('/llenaarticulosgp', [SincronizacionController::class, 'llenaarticulosgp']);
+        
         Route::get('/llenalistadepreciosgp', [SincronizacionController::class, 'llenalistadepreciosgp']);
         Route::get('/llenapuntodeventaycajasgp', [SincronizacionController::class, 'llenapuntodeventaycajasgp']);
         Route::get('/llenadescuentoformapagogp', [SincronizacionController::class, 'llenadescuentoformapagogp']);
@@ -119,7 +119,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::get('/llenapaisesyterritoriosgp', [SincronizacionController::class, 'llenapaisesyterritoriosgp']);
         Route::get('/llenaclaseclientegp', [SincronizacionController::class, 'llenaclaseclientegp']);
         Route::post('/checkusuario', [SincronizacionController::class, 'checkusuario']);
-      
+
 
         Route::post('/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
         Route::get('/despachos/ordenespendientes/{puntodeventa_id}', [DespachosController::class, 'ordenespendientes']);

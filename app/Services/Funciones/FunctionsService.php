@@ -2,7 +2,7 @@
 
 namespace App\Services\Funciones;
 
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;

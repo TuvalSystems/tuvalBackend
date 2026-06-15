@@ -3,7 +3,7 @@
 namespace App\Services\Movil\Gestion;
 
 use App\Mail\Cotizacion\CotizacionBorradorAppMail;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;

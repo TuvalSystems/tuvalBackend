@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas\Contracts;
+namespace App\Services\Inventario\Bodegas\Contracts;
 
 use App\Models\GpUsuario;
 use App\Models\Reservas\GpGuiaRemisionReserva;

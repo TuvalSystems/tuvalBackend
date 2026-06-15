@@ -4,7 +4,7 @@ namespace App\Services\Builders\Venta;
 
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\TaxRateEnum;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;

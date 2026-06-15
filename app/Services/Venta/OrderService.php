@@ -7,7 +7,7 @@ use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\QuotationMode;
 use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\despachos\GpGuiaRemisionDespacho;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
 use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;

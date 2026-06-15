@@ -15,7 +15,7 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Services\Bodegas\Contracts\TransferServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;

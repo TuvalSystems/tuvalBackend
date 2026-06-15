@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
@@ -9,7 +9,7 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 class LogisticsOperationsService implements LogisticsOperationsServiceInterface

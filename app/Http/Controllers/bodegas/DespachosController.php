@@ -32,8 +32,8 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpPedidoImagen;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Contracts\Foundation\Application;
@@ -41,7 +41,6 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DateTime;
 use Illuminate\Support\Facades\Log;
@@ -50,19 +49,11 @@ use stdClass;
 class DespachosController extends Controller
 {
     use JsonResponseTrait;
-    protected $orderService;
-    protected $dispatchService;
-    protected $deliveryNoteService;
-    protected $logisticsOperationsService;
     public function __construct(
-        OrderServiceInterface $orderService,
-        DispatchServiceInterface $dispatchService,
-        LogisticsOperationsServiceInterface $logisticsOperationsService
-    ) {
-        $this->orderService = $orderService;
-        $this->dispatchService = $dispatchService;
-        $this->logisticsOperationsService = $logisticsOperationsService;
-    }
+        protected readonly OrderServiceInterface $orderService,
+        protected readonly DispatchServiceInterface $dispatchService,
+        protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService
+    ) {}
     public function generarordendespacho($pedido)
     {
         if ($this->dispatchService->checkTraslado($pedido)) {

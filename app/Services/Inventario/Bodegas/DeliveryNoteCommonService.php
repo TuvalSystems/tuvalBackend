@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\EstablishmentGuideSequential;
@@ -17,7 +17,7 @@ use App\Models\GpUsuario;
 use App\Models\GpVehiculo;
 use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
-use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 

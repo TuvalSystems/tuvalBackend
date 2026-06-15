@@ -25,7 +25,7 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;

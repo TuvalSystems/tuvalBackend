@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas\Contracts;
+namespace App\Services\Inventario\Bodegas\Contracts;
 
 interface PurchaseReceiptServiceInterface
 {

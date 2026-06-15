@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Articulos;
 
+use App\Models\GpCotizacionDetalle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -126,6 +127,10 @@ class GpArticulo extends Model
         'dias_transcurridos',
         'dias_restantes',
         'dias_enfriamiento',
+        'cod_categoria',
+        'cod_linea',
+        'cod_clase',
+        'nivel'
     ];
 
     public static function busqueda($buscar): Collection

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Jobs\Bodegas\NotifyPurchaseReceiptItemLJob;
 use App\Models\GpCliente;
@@ -9,13 +9,12 @@ use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Notifications\User\UserNotification;
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Services\Api\Transacciones\ApiGpReceivedItemL;
-use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
-use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 

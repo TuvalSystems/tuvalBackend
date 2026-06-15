@@ -7,7 +7,7 @@ use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpUsuario;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\reposicion\GpTrasladosReposicionCabecera;

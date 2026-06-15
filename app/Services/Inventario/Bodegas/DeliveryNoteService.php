@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\traslados\GpTrasladosVentas;
@@ -11,10 +11,10 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
-use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 

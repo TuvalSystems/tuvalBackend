@@ -6,7 +6,7 @@ use App\Enums\Ventas\OrderOrigenEnum;
 use Carbon\Carbon;
 use App\Models\GpBodega;
 use App\Models\GpUsuario;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpVehiculo;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;

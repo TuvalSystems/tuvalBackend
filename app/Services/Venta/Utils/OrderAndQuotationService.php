@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Utils;
 
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpRegistroCopia;

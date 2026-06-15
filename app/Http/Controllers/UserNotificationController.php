@@ -9,11 +9,8 @@ use Illuminate\Http\Request;
 class UserNotificationController extends Controller
 {
     use JsonResponseTrait;
-    protected $userService;
-    public function __construct(UserServiceInterface $userService)
-    {
-        $this->userService = $userService;
-    }
+
+    public function __construct(protected readonly UserServiceInterface $userService) {}
 
     public function index(Request $request)
     {
@@ -31,7 +28,8 @@ class UserNotificationController extends Controller
         }
     }
 
-    public function marcarNotificacion(Request $request){
+    public function marcarNotificacion(Request $request)
+    {
         $notifyId = $request->input('notifyId');
         $user = $request->input('userId');
         try {
@@ -42,10 +40,11 @@ class UserNotificationController extends Controller
         }
     }
 
-    public function marcarTodasNotificaciones(Request $request){
+    public function marcarTodasNotificaciones(Request $request)
+    {
         $user = $request->input('userId');
         try {
-             $this->userService->markAllReadNotify($user);
+            $this->userService->markAllReadNotify($user);
             return $this->successResponse('Todas las notificaciones marcadas con exito', null, 200);
         } catch (\Throwable $th) {
             return $this->buildErrorResponse($th->getMessage(), 500);

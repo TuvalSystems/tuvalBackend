@@ -4,7 +4,6 @@ namespace App\Http\Controllers\ventas;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
-use App\Models\GpArticulo;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -15,6 +14,7 @@ use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
+use App\Models\Articulos\GpArticulo;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;

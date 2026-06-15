@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
-use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 
 class PurchaseReceiptService implements PurchaseReceiptServiceInterface
 {

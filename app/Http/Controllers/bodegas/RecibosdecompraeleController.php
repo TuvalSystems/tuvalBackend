@@ -3,28 +3,23 @@
 namespace App\Http\Controllers\bodegas;
 
 
-use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 
 class RecibosdecompraeleController extends Controller
 {
     use JsonResponseTrait;
-    protected $purchaseReceiptLItemService;
 
-    public function __construct(PurchaseReceiptLItemServiceInterface $purchaseReceiptLItemService)
-    {
-        $this->purchaseReceiptLItemService = $purchaseReceiptLItemService;
-    }
+    public function __construct(protected readonly PurchaseReceiptLItemServiceInterface $purchaseReceiptLItemService) {}
     public function bandeja(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 

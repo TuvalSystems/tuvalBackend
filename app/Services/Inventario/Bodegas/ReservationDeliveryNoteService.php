@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Jobs\Venta\Reservas\NotifyReceivedReservationsJob;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\Reservas\GpTrasladosReservas;
 use App\Models\GpPuntoVenta;
@@ -14,10 +14,10 @@ use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
 use App\Models\Reservas\GpGuiaRemisionReservaMovimiento;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
-use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;

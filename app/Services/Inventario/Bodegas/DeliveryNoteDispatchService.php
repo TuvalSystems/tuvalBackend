@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
@@ -15,15 +15,15 @@ use Illuminate\Support\Facades\DB;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDespacho;
 use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
-use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;

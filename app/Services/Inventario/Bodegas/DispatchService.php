@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\devoluciones\GpDevolucionesDetalle;
@@ -9,8 +9,8 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Reservas\GpGuiaRemisionReserva;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;

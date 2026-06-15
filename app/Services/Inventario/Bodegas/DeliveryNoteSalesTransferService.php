@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
@@ -8,10 +8,10 @@ use App\Enums\bodegas\guiaremision\DeliveryNoteType;
 use App\Enums\bodegas\guiaremision\ReasonForTransfer;
 use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Enums\Ventas\OrderStatus;
+use App\Models\Articulos\GpArticulo;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
@@ -20,12 +20,12 @@ use App\Models\GpUsuario;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Notifications\User\UserNotification;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
-use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;

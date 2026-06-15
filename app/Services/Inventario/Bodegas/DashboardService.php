@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Models\GpOrdenDespacho;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Services\Bodegas\Contracts\DashboardServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DashboardServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Http\Controllers\WebserviceController;
-use App\Models\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpDatosItemsL;

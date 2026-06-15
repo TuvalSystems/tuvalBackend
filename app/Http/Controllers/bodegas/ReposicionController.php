@@ -13,28 +13,26 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 class ReposicionController extends Controller
 {
     use JsonResponseTrait;
-    protected $transferRepositionService;
-    protected $logisticsOperationsService;
 
-    public function __construct(TransferRepositionServiceInterface $transferRepositionService, LogisticsOperationsServiceInterface $logisticsOperationsService)
-    {
-        $this->transferRepositionService = $transferRepositionService;
-        $this->logisticsOperationsService = $logisticsOperationsService;
-    }
+
+    public function __construct(
+        protected readonly TransferRepositionServiceInterface $transferRepositionService,
+        protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService
+    ) {}
 
 
     public function getreposicion(Request $request)
     {
         set_time_limit(300);
 
-       $validated =  $request->validate([
+        $validated =  $request->validate([
             'fecha'     => 'required|date_format:Y-m-d',
             'numDoc'    => 'nullable',
         ]);

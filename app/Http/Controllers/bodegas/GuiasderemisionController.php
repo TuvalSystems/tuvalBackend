@@ -2,34 +2,34 @@
 
 namespace App\Http\Controllers\bodegas;
 
-use App\Models\GpPedido;
-use App\Models\GpPuntoVenta;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use App\Models\GpOrdenDespacho;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\GpPedidoDetalle;
-use App\Traits\JsonResponseTrait;
-use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Models\despachos\GpGuiaRemision;
-use App\Models\traslados\GpTrasladosVentas;
-use App\Models\Reservas\GpGuiaRemisionReserva;
-use Illuminate\Validation\ValidationException;
 use App\Models\despachos\GpGuiaRemisionDetalle;
+use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\GpOrdenDespacho;
+use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
+use App\Models\GpPuntoVenta;
 use App\Models\reposicion\GpTrasladosReposicion;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Services\Devoluciones\Contracts\EntryServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use App\Traits\ExecuteApiTransactions;
+use App\Traits\JsonResponseTrait;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
-use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
-use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class GuiasderemisionController extends Controller
 {

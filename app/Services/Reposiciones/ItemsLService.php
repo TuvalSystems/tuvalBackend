@@ -3,7 +3,7 @@
 namespace App\Services\Reposiciones;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpDatosItemsL;
 use App\Models\GpTempCart;
 use Carbon\Carbon;

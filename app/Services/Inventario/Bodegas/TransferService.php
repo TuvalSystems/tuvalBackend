@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Bodegas;
+namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpBodega;
@@ -11,9 +11,9 @@ use App\Models\GpUsuario;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Notifications\User\UserNotification;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Bodegas\Contracts\TransferServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
 use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;

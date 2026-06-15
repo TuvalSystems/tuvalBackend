@@ -2,32 +2,33 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Bodegas\Contracts\DashboardServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DashboardServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
+use App\Services\Inventario\Bodegas\DashboardService;
+use App\Services\Inventario\Bodegas\DeliveryNoteCommonService;
+use App\Services\Inventario\Bodegas\DeliveryNoteDispatchService;
+use App\Services\Inventario\Bodegas\DeliveryNoteReplenishmentTransferService;
+use App\Services\Inventario\Bodegas\DeliveryNoteSalesTransferService;
+use App\Services\Inventario\Bodegas\DeliveryNoteService;
+use App\Services\Inventario\Bodegas\DispatchService;
+use App\Services\Inventario\Bodegas\LogisticsOperationsService;
+use App\Services\Inventario\Bodegas\PurchaseReceiptLItemService;
+use App\Services\Inventario\Bodegas\PurchaseReceiptService;
+use App\Services\Inventario\Bodegas\ReservationDeliveryNoteService;
+use App\Services\Inventario\Bodegas\TransferService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
-use App\Services\Bodegas\DispatchService;
-use App\Services\Bodegas\DeliveryNoteService;
-use App\Services\Bodegas\PurchaseReceiptService;
-use App\Services\Bodegas\PurchaseReceiptLItemService;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Bodegas\Contracts\DeliveryNoteServiceInterface;
-use App\Services\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Bodegas\Contracts\PurchaseReceiptServiceInterface;
-use App\Services\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
-use App\Services\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
-use App\Services\Bodegas\Contracts\TransferServiceInterface;
-use App\Services\Bodegas\DashboardService;
-use App\Services\Bodegas\DeliveryNoteCommonService;
-use App\Services\Bodegas\DeliveryNoteDispatchService;
-use App\Services\Bodegas\DeliveryNoteReplenishmentTransferService;
-use App\Services\Bodegas\DeliveryNoteSalesTransferService;
-use App\Services\Bodegas\LogisticsOperationsService;
-use App\Services\Bodegas\ReservationDeliveryNoteService;
-use App\Services\Bodegas\TransferService;
+
 
 class BodegasServiceProvider extends ServiceProvider implements DeferrableProvider
 {
