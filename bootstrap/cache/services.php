@@ -232,6 +232,7 @@
     'App\\Services\\Devoluciones\\Contracts\\DevolucionServiceInterface' => 'App\\Providers\\Service\\DevolucionServiceProvider',
     'App\\Services\\Devoluciones\\Contracts\\ReturnCancellationServiceInterface' => 'App\\Providers\\Service\\DevolucionServiceProvider',
     'App\\Services\\Devoluciones\\Contracts\\ReInvoiceServiceInterface' => 'App\\Providers\\Service\\DevolucionServiceProvider',
+    'App\\Services\\Devoluciones\\Contracts\\DocumentCancellationRetryServiceInterface' => 'App\\Providers\\Service\\DevolucionServiceProvider',
     0 => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Aprobaciones\\Contracts\\ApprovalServiceInterface' => 'App\\Providers\\Service\\AprobacionServiceProvider',
     'App\\Services\\Aprobaciones\\Contracts\\ApprovalReservationServiceInterface' => 'App\\Providers\\Service\\AprobacionServiceProvider',

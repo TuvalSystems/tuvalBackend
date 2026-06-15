@@ -9,7 +9,6 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpUsuario;
 use App\Models\Movil\Gestion\TrampaVapor;
 use App\Notifications\User\UserNotification;

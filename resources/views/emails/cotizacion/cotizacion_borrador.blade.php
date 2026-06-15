@@ -6,20 +6,19 @@
     <title>Cotización Borrador - Trampas de Vapor</title>
 </head>
 
-<body style="margin: 0; padding: 0;  font-family: Arial, Helvetica, sans-serif; color: #333333; font-size: 14px; line-height: 1.5;">
+<body bgcolor="#ffffff" style="margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5;">
+
 
     @php
-        $fechaCreacion = $cotizacion->created_at
-            ? \Carbon\Carbon::parse($cotizacion->created_at)->format('d/m/Y')
-            : 'N/A';
+    $fechaCreacion = $cotizacion->created_at
+    ? \Carbon\Carbon::parse($cotizacion->created_at)->format('d/m/Y')
+    : 'N/A';
     @endphp
 
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f6f8; padding: 24px 0;">
-        <tr>
-            <td align="center">
-
-                <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 980px; background-color: #ffffff; border-radius: 10px; overflow: hidden; border: 1px solid #e1e5ea;">
-
+   <table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" style="width: 100%; margin: 0; padding: 0; border-collapse: collapse; background-color: #ffffff;">
+    <tr>
+        <td width="100%" bgcolor="#ffffff" style="width: 100%; padding: 0; margin: 0; background-color: #ffffff;">
+            <table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; border: 1px solid #e1e5ea; background-color: #ffffff;">
                     {{-- Header --}}
                     <tr>
                         <td style="background-color: #1f4e79; padding: 22px 28px; color: #ffffff;">
@@ -117,49 +116,49 @@
 
                                 <tbody>
                                     @forelse ($cotizacion->detallecotizacion as $detalle)
-                                        <tr>
-                                            <td style="border: 1px solid #d5dbe1;">
-                                                {{ $detalle->ART_CODIGO }}
-                                            </td>
+                                    <tr>
+                                        <td style="border: 1px solid #d5dbe1;">
+                                            {{ $detalle->ART_CODIGO }}
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1;">
-                                                {{ $detalle->ART_DESCRIPCION }}
-                                            </td>
+                                        <td style="border: 1px solid #d5dbe1;">
+                                            {{ $detalle->ART_DESCRIPCION }}
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1;">
-                                                {{ $detalle->ART_CODIGO_TRES_LETRAS }}
-                                            </td>
+                                        <td style="border: 1px solid #d5dbe1;">
+                                            {{ $detalle->ART_CODIGO_TRES_LETRAS }}
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1; text-align: right;">
-                                                {{ number_format((float) $detalle->ART_STOCK, 2) }}
-                                            </td>
+                                        <td style="border: 1px solid #d5dbe1; text-align: right;">
+                                            {{ number_format((float) $detalle->ART_STOCK, 2) }}
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1; text-align: right;">
-                                                {{ number_format((float) $detalle->ART_CANTIDAD, 2) }}
-                                            </td>
+                                        <td style="border: 1px solid #d5dbe1; text-align: right;">
+                                            {{ number_format((float) $detalle->ART_CANTIDAD, 2) }}
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1; text-align: right;">
-                                                {{ number_format((float) $detalle->descuento, 2) }}%
-                                            </td>
+                                        <td style="border: 1px solid #d5dbe1; text-align: right;">
+                                            {{ number_format((float) $detalle->descuento, 2) }}%
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1; text-align: right;">
-                                                ${{ number_format((float) $detalle->ART_VALOR, 2) }}
-                                            </td>
+                                        <td style="border: 1px solid #d5dbe1; text-align: right;">
+                                            ${{ number_format((float) $detalle->ART_VALOR, 2) }}
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1; text-align: right;">
-                                                ${{ number_format((float) $detalle->ART_IVA, 2) }}
-                                            </td>
+                                        <td style="border: 1px solid #d5dbe1; text-align: right;">
+                                            ${{ number_format((float) $detalle->ART_IVA, 2) }}
+                                        </td>
 
-                                            <td style="border: 1px solid #d5dbe1; text-align: right;">
-                                                ${{ number_format((float) $detalle->ART_DESCUENTO, 2) }}
-                                            </td>
-                                        </tr>
+                                        <td style="border: 1px solid #d5dbe1; text-align: right;">
+                                            ${{ number_format((float) $detalle->ART_DESCUENTO, 2) }}
+                                        </td>
+                                    </tr>
                                     @empty
-                                        <tr>
-                                            <td colspan="9" style="border: 1px solid #d5dbe1; text-align: center; padding: 14px; color: #777777;">
-                                                No existen ítems registrados en el detalle de la cotización.
-                                            </td>
-                                        </tr>
+                                    <tr>
+                                        <td colspan="9" style="border: 1px solid #d5dbe1; text-align: center; padding: 14px; color: #777777;">
+                                            No existen ítems registrados en el detalle de la cotización.
+                                        </td>
+                                    </tr>
                                     @endforelse
                                 </tbody>
                             </table>

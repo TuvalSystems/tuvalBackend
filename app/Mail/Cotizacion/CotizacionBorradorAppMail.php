@@ -26,8 +26,8 @@ class CotizacionBorradorAppMail extends Mailable implements ShouldQueue
     {
         return $this->subject('Cotización Generada desde App Móvil')
             ->view('emails.cotizacion.cotizacion_borrador')
-            ->with(([
+            ->with([
                 'cotizacion'    => $this->quote,
-            ]));
+            ]);
     }
 }
