@@ -26,6 +26,11 @@ use App\Services\Inventario\Bodegas\PurchaseReceiptLItemService;
 use App\Services\Inventario\Bodegas\PurchaseReceiptService;
 use App\Services\Inventario\Bodegas\ReservationDeliveryNoteService;
 use App\Services\Inventario\Bodegas\TransferService;
+use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Inventario\Reposiciones\ItemsLService;
+use App\Services\Inventario\Reposiciones\TransferRepositionService;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\StockWarehouseService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,18 +40,21 @@ class BodegasServiceProvider extends ServiceProvider implements DeferrableProvid
 
 
     public array $singletons = [
-        DispatchServiceInterface::class                 => DispatchService::class,
-        PurchaseReceiptServiceInterface::class          => PurchaseReceiptService::class,
-        PurchaseReceiptLItemServiceInterface::class     => PurchaseReceiptLItemService::class,
-        DeliveryNoteServiceInterface::class             => DeliveryNoteService::class,
-        LogisticsOperationsServiceInterface::class      => LogisticsOperationsService::class,
-        TransferServiceInterface::class                 => TransferService::class,
-        ReservationDeliveryNoteServiceInterface::class  => ReservationDeliveryNoteService::class,
-        DeliveryNoteCommonServiceInterface::class       => DeliveryNoteCommonService::class,
-        DashboardServiceInterface::class                => DashboardService::class,
-        DeliveryNoteDispatchServiceInterface::class     => DeliveryNoteDispatchService::class,
-        DeliveryNoteSalesTransferServiceInterface::class => DeliveryNoteSalesTransferService::class,
-        DeliveryNoteReplenishmentTransferServiceInterface::class => DeliveryNoteReplenishmentTransferService::class
+        DispatchServiceInterface::class                             => DispatchService::class,
+        PurchaseReceiptServiceInterface::class                      => PurchaseReceiptService::class,
+        PurchaseReceiptLItemServiceInterface::class                 => PurchaseReceiptLItemService::class,
+        DeliveryNoteServiceInterface::class                         => DeliveryNoteService::class,
+        LogisticsOperationsServiceInterface::class                  => LogisticsOperationsService::class,
+        TransferServiceInterface::class                             => TransferService::class,
+        ReservationDeliveryNoteServiceInterface::class              => ReservationDeliveryNoteService::class,
+        DeliveryNoteCommonServiceInterface::class                   => DeliveryNoteCommonService::class,
+        DashboardServiceInterface::class                            => DashboardService::class,
+        DeliveryNoteDispatchServiceInterface::class                 => DeliveryNoteDispatchService::class,
+        DeliveryNoteSalesTransferServiceInterface::class            => DeliveryNoteSalesTransferService::class,
+        DeliveryNoteReplenishmentTransferServiceInterface::class    => DeliveryNoteReplenishmentTransferService::class,
+        TransferRepositionServiceInterface::class                   => TransferRepositionService::class,
+        StockWarehouseServiceInterface::class                       => StockWarehouseService::class,
+        ItemsLService::class                                       ,
 
     ];
 
@@ -56,5 +64,4 @@ class BodegasServiceProvider extends ServiceProvider implements DeferrableProvid
     {
         return array_keys($this->singletons);
     }
-
 }

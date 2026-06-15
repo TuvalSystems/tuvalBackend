@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Reposiciones;
+namespace App\Services\Inventario\Stock;
 
 use App\Enums\Ventas\OrderStatus;
 use Carbon\Carbon;
@@ -14,7 +14,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 
 class StockWarehouseService implements StockWarehouseServiceInterface
 {

@@ -11,7 +11,7 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 

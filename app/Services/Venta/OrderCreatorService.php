@@ -12,7 +12,7 @@ use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Http\UploadedFile;

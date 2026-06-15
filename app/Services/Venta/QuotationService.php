@@ -28,7 +28,7 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Carbon\Carbon;

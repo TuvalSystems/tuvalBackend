@@ -5,7 +5,7 @@ namespace App\Services\Aprobaciones;
 use App\Models\GpCotizacionDetalle;
 use App\Models\Reservas\GpReserva;
 use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 class ApprovalReservationService implements ApprovalReservationServiceInterface

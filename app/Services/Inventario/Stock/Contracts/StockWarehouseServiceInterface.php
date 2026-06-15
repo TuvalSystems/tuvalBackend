@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Reposiciones\Contracts;
+namespace App\Services\Inventario\Stock\Contracts;
 
 
 interface StockWarehouseServiceInterface

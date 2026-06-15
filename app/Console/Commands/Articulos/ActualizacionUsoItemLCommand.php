@@ -4,7 +4,7 @@ namespace App\Console\Commands\Articulos;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\Articulos\GpArticulo;
-use App\Services\Reposiciones\ItemsLService;
+use App\Services\Inventario\Reposiciones\ItemsLService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;

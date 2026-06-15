@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Reposiciones;
+namespace App\Services\Inventario\Reposiciones;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\Articulos\GpArticulo;

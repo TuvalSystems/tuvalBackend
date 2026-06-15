@@ -12,7 +12,7 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpTerritorio;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Collection;

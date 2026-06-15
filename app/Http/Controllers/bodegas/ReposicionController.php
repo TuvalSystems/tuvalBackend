@@ -14,7 +14,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 class ReposicionController extends Controller

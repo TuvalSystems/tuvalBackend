@@ -10,7 +10,7 @@ use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 
 class FunctionsService implements FunctionsServiceInterface
 {

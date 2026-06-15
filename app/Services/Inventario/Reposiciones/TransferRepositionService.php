@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Reposiciones;
+namespace App\Services\Inventario\Reposiciones;
 
-use App\Http\Controllers\bodegas\IngresosController;
+
 use App\Http\Controllers\WebserviceController;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
@@ -14,8 +14,8 @@ use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
-use App\Services\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

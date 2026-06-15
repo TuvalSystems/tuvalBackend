@@ -24,7 +24,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;

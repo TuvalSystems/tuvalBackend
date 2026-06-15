@@ -14,7 +14,7 @@ use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
