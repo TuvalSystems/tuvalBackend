@@ -130,8 +130,8 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
         ]);
         if ($invoices->isNotEmpty()) {
             $email = 'sistemas6@tuvalsa.com';
-            Mail::to($email)->send(new FacturasNoAnuladasMail($invoices));
-            // Mail::to($email)->queue(new FacturasNoAnuladasMail($invoices));
+            // Mail::to($email)->send(new FacturasNoAnuladasMail($invoices));
+            Mail::to($email)->queue(new FacturasNoAnuladasMail($invoices));
         }
     }
 }

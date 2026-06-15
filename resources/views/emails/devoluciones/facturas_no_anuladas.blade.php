@@ -49,20 +49,23 @@
                             <table width="100%" cellpadding="7" cellspacing="0" style="border-collapse: collapse; font-size: 12px;">
                                 <thead>
                                     <tr style="background-color: #eef2f6;">
+                                        <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">Pedido</th>
                                         <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">RUC</th>
                                         <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">Razón Social</th>
-                                        <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">Pedido</th>
                                         <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">Factura</th>
                                         <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">Clave Acceso</th>
                                         <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">Fecha Factura</th>
-                                        <th style="border: 1px solid #d5dbe1; text-align: center; text-transform: uppercase; color: #334e68;">Días Máx.</th>
                                         <th style="border: 1px solid #d5dbe1; text-align: left; text-transform: uppercase; color: #334e68;">Devolución</th>
+                                        <th style="border: 1px solid #d5dbe1; text-align: center; text-transform: uppercase; color: #334e68;">Días Máx.</th>
                                     </tr>
                                 </thead>
 
                                 <tbody>
                                     @forelse ($facturas as $fac)
                                     <tr>
+                                        <td style="border: 1px solid #d5dbe1; color: #243b53; white-space: nowrap;">
+                                            {{ $fac['pedido'] ?? '' }}
+                                        </td>
                                         <td style="border: 1px solid #d5dbe1; color: #243b53; white-space: nowrap;">
                                             {{ $fac['ruc'] ?? '' }}
                                         </td>
@@ -71,9 +74,6 @@
                                             {{ $fac['razon_social'] ?? '' }}
                                         </td>
 
-                                        <td style="border: 1px solid #d5dbe1; color: #243b53; white-space: nowrap;">
-                                            {{ $fac['pedido'] ?? '' }}
-                                        </td>
 
                                         <td style="border: 1px solid #d5dbe1; color: #243b53; white-space: nowrap;">
                                             <strong>{{ $fac['factura'] ?? '' }}</strong>
@@ -87,13 +87,14 @@
                                             {{ $fac['fecha_factura'] ?? '' }}
                                         </td>
 
+                                        <td style="border: 1px solid #d5dbe1; color: #243b53; white-space: nowrap;">
+                                            {{ $fac['devolucion'] ?? '' }}
+                                        </td>
+
                                         <td style="border: 1px solid #d5dbe1; color: #9a3412; text-align: center; font-weight: bold;">
                                             {{ $fac['dias_max_anulacion'] ?? '' }}
                                         </td>
 
-                                        <td style="border: 1px solid #d5dbe1; color: #243b53; white-space: nowrap;">
-                                            {{ $fac['devolucion'] ?? '' }}
-                                        </td>
                                     </tr>
                                     @empty
                                     <tr>
