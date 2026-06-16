@@ -22,6 +22,7 @@ use App\Http\Controllers\test\TestController;
 use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\ReservasController;
+use Illuminate\Support\Facades\Mail;
 
 /*
 |--------------------------------------------------------------------------
@@ -240,4 +241,15 @@ Route::get('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
 
 Route::group(['prefix' => 'perfiles-pruebas'], function () {
     Route::get('lista', [ProfileController::class, 'lista']);
+});
+
+
+Route::get('/test-mail', function () {
+    Mail::raw('¡Hola! Este es un correo de prueba enviado desde Laravel 9 tras la actualización.', function ($message) {
+        // Reemplaza esto con tu correo real
+        $message->to('sistemas6@tuvalsa.com')
+                ->subject('Prueba de configuración de correo - Laravel 9');
+    });
+
+    return '¡Comando ejecutado! Revisa tu bandeja de entrada.';
 });
