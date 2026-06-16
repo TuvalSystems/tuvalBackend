@@ -125,8 +125,7 @@ class Kernel extends ConsoleKernel
         $schedule->job(new EnqueueDevoluciones(10))
             ->timezone(self::TIMEZONE)
             ->everyMinute()
-            ->withoutOverlapping(5)
-            ->runInBackground();
+            ->withoutOverlapping(5);
 
         $schedule->command('seedbilling:retry-pending-cancelations')
             ->dailyAt('07:00')
