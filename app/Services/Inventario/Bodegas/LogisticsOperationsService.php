@@ -100,6 +100,7 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
             ])->save();
             GpOrdenDespacho::query()
                 ->where('pedido_id', $pedido->id)
+                ->where('estado', '!=','cancelada')
                 ->update(['estado' => 'despachada']);
         }
         return $pedido->refresh();
