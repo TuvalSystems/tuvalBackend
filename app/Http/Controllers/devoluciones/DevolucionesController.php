@@ -24,11 +24,9 @@ class DevolucionesController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
-      protected readonly  EntryServiceInterface $entryService,
-         protected readonly  DevolucionServiceInterface $devolucionService,
-    ) {
-
-    }
+        protected readonly  EntryServiceInterface $entryService,
+        protected readonly  DevolucionServiceInterface $devolucionService,
+    ) {}
 
 
     public function pedidoscliente(int $cliente_id, string $puntodeventa_id)
@@ -246,8 +244,8 @@ class DevolucionesController extends Controller
     public function generarNotaCreditoDevolucionesFallidas(int $id)
     {
         return $this->handleApiAction(function () use ($id) {
-        $devolucion = $this->devolucionService->generarNotaCreditoDevolucionesFallidas($id);
-        return $this->successResponse('Nota de credito generada correctamente', $devolucion, 200);
+            $devolucion = $this->devolucionService->generarNotaCreditoDevolucionesFallidas($id);
+            return $this->successResponse('Nota de credito generada correctamente', $devolucion, 200);
         }, 'devoluciones', 'generarNotaCreditoDevolucionesFallidas');
     }
 
