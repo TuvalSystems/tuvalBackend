@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Borradores_temp;
+namespace App\Http\Controllers\Borradores;
 
 use App\Http\Controllers\Controller;
 use App\Services\Venta\Contracts\QuoteDraftServiceInterface;

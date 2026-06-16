@@ -22,7 +22,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
-use App\Http\Controllers\Borradores_temp\CotizacionBorradorController;
+use App\Http\Controllers\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
