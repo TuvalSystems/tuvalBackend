@@ -23,6 +23,6 @@ class ArticuloController extends Controller
             $payload = $request->all();
             $resp = $this->service->createOrUpdateArticle($payload);
             return $this->successResponse('Articulo creado o actualizado con exito.', $resp, 200);
-        }, 'laravel', 'crearOActualizarArticulo');
+        }, 'laravel', 'sincronizarDesdeApi');
     }
 }
