@@ -22,7 +22,7 @@ use App\Http\Controllers\bodegas\TransferenciasController;
 use App\Http\Controllers\bodegas\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
 use App\Http\Controllers\bodegas\ReposicionController;
-use App\Http\Controllers\borradores\CotizacionBorradorController;
+use App\Http\Controllers\Borradores_temp\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
@@ -106,7 +106,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);
         Route::get('/llenabodegasgp', [SincronizacionController::class, 'llenabodegasgp']);
         Route::get('/llenacondicionpagogp', [SincronizacionController::class, 'llenacondicionpagogp']);
-        
+
         Route::get('/llenalistadepreciosgp', [SincronizacionController::class, 'llenalistadepreciosgp']);
         Route::get('/llenapuntodeventaycajasgp', [SincronizacionController::class, 'llenapuntodeventaycajasgp']);
         Route::get('/llenadescuentoformapagogp', [SincronizacionController::class, 'llenadescuentoformapagogp']);
