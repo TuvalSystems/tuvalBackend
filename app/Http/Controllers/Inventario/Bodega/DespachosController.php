@@ -907,7 +907,7 @@ class DespachosController extends Controller
             $pedido->despacho_en_proceso = 0;
             $pedido->save();
 
-            $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
+            $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->where('estado','!=', 'cancelada')->first();
             $orden->estado = 'despachada';
             $orden->save();
         }
