@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\bodegas\DashboardController;
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Inventario\Bodega\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\PedidosController;
@@ -11,15 +11,15 @@ use App\Http\Controllers\ventas\CobranzasController;
 use App\Http\Controllers\ventas\CotizacionesController;
 use App\Http\Controllers\ventas\ConsultasController;
 use App\Http\Controllers\ventas\OrdendecompraController;
-use App\Http\Controllers\bodegas\DespachosController;
+use App\Http\Controllers\Inventario\Bodega\DespachosController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
-use App\Http\Controllers\bodegas\GuiasderemisionController;
-use App\Http\Controllers\bodegas\ReposicionController;
-use App\Http\Controllers\bodegas\TransferenciasController;
+use App\Http\Controllers\Inventario\Bodega\GuiasderemisionController;
+use App\Http\Controllers\Inventario\Bodega\ReposicionController;
+use App\Http\Controllers\Inventario\Bodega\TransferenciasController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\ImportarPedidosController;
 use App\Http\Controllers\test\TestController;
-use App\Http\Controllers\UserNotificationController;
+use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\ReservasController;
 
@@ -206,9 +206,7 @@ Route::prefix('dashboard')->group(function () {
 });
 
 
-Route::prefix('actualizaciones-masivas')->group(function () {
-    Route::get('actualizar-pedidos-detalles', [ImportarPedidosController::class, 'actualizarPedidosYDetallesSqlServer']);
-});
+
 
 
 Route::group(['prefix' => 'cobranzas'], function () {

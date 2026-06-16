@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\bodegas;
+namespace App\Http\Controllers\Inventario\Bodega;
 
 
 use Illuminate\Http\Request;

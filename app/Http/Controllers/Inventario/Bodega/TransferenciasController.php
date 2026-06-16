@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\bodegas;
+namespace App\Http\Controllers\Inventario\Bodega;
 
 use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
@@ -17,7 +17,7 @@ use App\Models\reposicion\GpTrasladosReposicion;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class TransferenciasController extends Controller

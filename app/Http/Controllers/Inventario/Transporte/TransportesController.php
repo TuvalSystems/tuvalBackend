@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\bodegas;
+namespace App\Http\Controllers\Inventario\Transporte;
 
 use App\Http\Controllers\Controller;
 use App\Models\GpTransportista;

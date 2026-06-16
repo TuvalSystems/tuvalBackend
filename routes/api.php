@@ -7,24 +7,24 @@ use App\Http\Controllers\Admin\SectionsController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\ConsultasController;
 use App\Http\Controllers\ventas\CotizacionesController;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\CobranzasController;
-use App\Http\Controllers\bodegas\DashboardController;
-use App\Http\Controllers\bodegas\RecibosdecompraeleController;
-use App\Http\Controllers\bodegas\TransportesController;
-use App\Http\Controllers\bodegas\DespachosController;
-use App\Http\Controllers\bodegas\TransferenciasController;
-use App\Http\Controllers\bodegas\GuiasderemisionController;
+use App\Http\Controllers\Inventario\Bodega\DashboardController;
+use App\Http\Controllers\Inventario\Bodega\RecibosdecompraeleController;
+use App\Http\Controllers\Inventario\Transporte\TransportesController;
+use App\Http\Controllers\Inventario\Bodega\DespachosController;
+use App\Http\Controllers\Inventario\Bodega\TransferenciasController;
+use App\Http\Controllers\Inventario\Bodega\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
-use App\Http\Controllers\bodegas\ReposicionController;
+use App\Http\Controllers\Inventario\Bodega\ReposicionController;
 use App\Http\Controllers\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
-use App\Http\Controllers\UserNotificationController;
+use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\ventas\ReservasController;
 
 /*
@@ -510,4 +510,5 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 Route::group(['prefix' => 'consultas-externas'], function () {
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
+
 });
