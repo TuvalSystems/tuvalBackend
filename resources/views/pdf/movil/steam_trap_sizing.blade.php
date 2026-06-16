@@ -843,10 +843,10 @@
                             <td class="key">Conexión</td>
                             <td class="value">{{ $pipe }}</td>
                         </tr>
-                        <tr>
+                        <!-- <tr>
                             <td class="key">Diámetro</td>
                             <td class="value">{{ $pipeDecimal }}</td>
-                        </tr>
+                        </tr> -->
                         <tr>
                             <td class="key">Presión dif. tabla</td>
                             <td class="value">{{ $fmt(data_get($selectedItem, 'ndPredifTabPsig'), 2) }} psig</td>
