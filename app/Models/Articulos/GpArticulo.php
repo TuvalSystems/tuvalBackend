@@ -116,7 +116,6 @@ class GpArticulo extends Model
         'ART_MATERIAL',
         'ART_REFERENCIA_GENERAL',
         'ART_REFERENCIA_DETALLADA',
-        'ART_TIPO_COMPRA',
         'ART_PESO',
         'ART_TAMANO',
         'ART_CODIGO_MARCA_MATERIAL',

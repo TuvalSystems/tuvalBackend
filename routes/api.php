@@ -25,6 +25,7 @@ use App\Http\Controllers\Inventario\Bodega\ReposicionController;
 use App\Http\Controllers\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\Admin\UserNotificationController;
+use App\Http\Controllers\Inventario\Articulo\ArticuloController;
 use App\Http\Controllers\ventas\ReservasController;
 
 /*
@@ -506,9 +507,15 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
 
-// rutas para usar en SQLServer como api
 
 Route::group(['prefix' => 'consultas-externas'], function () {
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
+});
+
+// para la sincronizacion global de articulo 1 por registro
+Route::group(['prefix' => 'inventario'], function () {
+      Route::prefix('articulos')->group(function () {
+           Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
+        });
 
 });
