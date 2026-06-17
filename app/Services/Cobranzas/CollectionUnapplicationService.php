@@ -114,10 +114,10 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
                     ->where('factura', $factura);
             })->get();
         $checkReceipts      = $this->getCheckReceiptPaymentsGp($factura, $ruc)->map(function ($it) {
-            $it['receiptNum'] =  $this->formatReceiptNumber(data_get($it, 'receiptNum'));
-            $it['documentGp'] = $this->normalizeDocument(data_get($it, 'documentGp'));
+            $it['numeroRecibo'] =  $this->formatReceiptNumber(data_get($it, 'numeroRecibo'));
+            $it['documentoGp'] = $this->normalizeDocument(data_get($it, 'documentoGp'));
             return $it;
-        })->filter(fn($it) => filled(data_get($it, 'receiptNum')))->keyBy('receiptNum');
+        })->filter(fn($it) => filled(data_get($it, 'numeroRecibo')))->keyBy('numeroRecibo');
 
         $docsApplys             = $this->getPaymentApplyGp($factura, $ruc);
         $collectionDocs         = $this->filterCollectionIds($docsApplys);
