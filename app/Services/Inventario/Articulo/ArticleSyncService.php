@@ -5,7 +5,9 @@ namespace App\Services\Inventario\Articulo;
 use App\Models\Articulos\GpArticulo;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use App\Traits\CleansPayloadData;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ArticleSyncService implements ArticleSyncServiceInterface
 {
@@ -13,6 +15,39 @@ class ArticleSyncService implements ArticleSyncServiceInterface
     public function __construct()
     {
         // Inyecta dependencias
+    }
+
+
+    public function getArticlesWithoutUpdate(string $fechaIni, string $fechaFin): Collection
+    {
+        return GpArticulo::whereBetween('updated_at', [
+            $fechaIni,
+            $fechaFin
+        ])
+            ->where('import_job', 0)->orderBy('ART_CODIGO')->get();
+    }
+
+
+    public function markArticleInProgress(array $ids)
+    {
+        return GpArticulo::whereIn('id', $ids)
+            ->where('import_job', 0)
+            ->update([
+                'import_job' => 3
+            ]);
+    }
+
+
+    public function updateArticlesFromSqlServer(Collection $articles)
+    {
+        $articlesCode = $articles->pluck('ART_CODIGO')->filter()->unique()->values()->toArray();
+        if (empty($articlesCode)) {
+            return;
+        }
+        $request = ['coidgosArticulos' => $articlesCode];
+        Log::info('Informacion de Job', [
+            $request
+        ]);
     }
 
 
@@ -59,7 +94,7 @@ class ArticleSyncService implements ArticleSyncServiceInterface
                     'cod_categoria'                     => $this->cleanNullable($payload, 'codigoCategoria'),
                     'cod_linea'                         => $this->cleanNullable($payload, 'codigoLinea'),
                     'cod_clase'                         => $this->cleanNullable($payload, 'codigoClase'),
-                    'nivel'                             => $this->cleanInt($payload, 'nivel', 0),
+                    // 'nivel'                             => $this->cleanInt($payload, 'nivel', 0),
                 ]
             );
         });

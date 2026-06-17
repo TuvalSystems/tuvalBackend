@@ -129,7 +129,7 @@ class GpArticulo extends Model
         'cod_categoria',
         'cod_linea',
         'cod_clase',
-        'nivel'
+        'import_job'
     ];
 
     public static function busqueda($buscar): Collection

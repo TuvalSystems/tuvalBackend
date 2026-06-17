@@ -17,9 +17,9 @@ class AddColumnCodigosToGpArticulosTable extends Migration
             $table->string('cod_categoria')->nullable()->after('ART_MARCA');
             $table->string('cod_linea')->nullable()->after('cod_categoria');
             $table->string('cod_clase')->nullable()->after('cod_linea');
-            $table->unsignedTinyInteger('nivel')
-                ->default(0)
-                ->after('cod_clase');
+            // $table->unsignedTinyInteger('nivel')
+            //     ->default(0)
+            //     ->after('cod_clase');
 
             $table->index('cod_categoria', 'idx_gp_articulos_cod_categoria');
             $table->index('cod_linea', 'idx_gp_articulos_cod_linea');
