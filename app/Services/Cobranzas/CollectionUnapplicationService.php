@@ -199,7 +199,7 @@ class CollectionUnapplicationService implements CollectionUnapplicationServiceIn
     protected function filterCollectionIds(Collection $payments): array
     {
         return $payments
-            ->pluck('collectionId')
+            ->pluck('documentoCobro')
             ->map(fn($doc) =>  $this->normalizeDocument($doc))
             ->filter(fn($doc) => !empty($doc))
             ->unique()

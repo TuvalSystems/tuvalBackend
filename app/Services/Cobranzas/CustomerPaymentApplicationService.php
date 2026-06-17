@@ -127,7 +127,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('collectionAmount'));
+            $sumPayments            = $this->money($payments->sum('valorCobro'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -196,7 +196,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('collectionAmount'));
+            $sumPayments            = $this->money($payments->sum('valorCobro'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -268,7 +268,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->money($payments->sum('collectionAmount'));
+                $sumPayments            = $this->money($payments->sum('valorCobro'));
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -345,7 +345,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->money($payments->sum('collectionAmount'));
+                $sumPayments            = $this->money($payments->sum('valorCobro'));
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -439,7 +439,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('collectionAmount'));
+            $sumPayments            = $this->money($payments->sum('valorCobro'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -622,13 +622,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     {
         return $payments
             ->filter(function ($payment) use ($onlyTypePaymentEight) {
-                $typePayment = (int) data_get($payment, 'typePayment');
+                $typePayment = (int) data_get($payment, 'tipoPago');
 
                 return $onlyTypePaymentEight
                     ? $typePayment === 8
                     : $typePayment !== 8;
             })
-            ->pluck('collectionId')
+            ->pluck('documentoCobro')
             ->map(fn($doc) => trim((string)$doc))
             ->filter(fn($doc) => !empty($doc))
             ->unique()
@@ -640,7 +640,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function filterGroupReceiptNumbers(SupportCollection $payments): array
     {
         return $payments
-            ->filter(fn($payment) => (int) data_get($payment, 'typePayment') !== 8)
+            ->filter(fn($payment) => (int) data_get($payment, 'tipoPago') !== 8)
             ->pluck('numeroRecibo')
             ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
             ->filter(fn($doc) => !empty($doc))
