@@ -82,6 +82,6 @@ class SyncGpArticlesJob implements ShouldQueue
             StatusSync::FAILED
         );
         $usersAlert = GpUsuario::whereIn('perfil_id', [1, 2])->get();
-        Notification::send($usersAlert, (new UserNotification('Update Masivo Pedidos', $exception->getMessage())));
+        Notification::send($usersAlert, (new UserNotification('Update Masivo Clasificación Articulos', $exception->getMessage())));
     }
 }
