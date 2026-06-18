@@ -36,7 +36,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         $payload['ingreso_aplicaciones']    = $this->processIngresoAplicaciones(data_get($payload, 'ingreso_aplicaciones', []), $desde, $hasta, $cliente);
         $payload['ingreso_cheques']         = $this->processIngresoCheques(data_get($payload, 'ingreso_cheques', []), $desde, $hasta, $cliente);
         $payload['hasGlobalExcess']         = $this->hasAnyExcess($payload);
-        // $this->storeFromValidationResult($payload, $user);
+        $this->storeFromValidationResult($payload, $user);
 
         return $this->cleanInternalHistory($payload);
     }
@@ -1068,7 +1068,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     return trim((string) data_get($document, 'documento', ''));
                 }
             );
-            
+
         return collect($documents)
             ->map(function ($document) use ($pendingApplicationDocuments) {
                 $documentNumber = trim((string) data_get($document, 'CN_DOCUMENTO', ''));
