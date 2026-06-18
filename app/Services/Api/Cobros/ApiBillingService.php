@@ -54,7 +54,7 @@ class   ApiBillingService extends ApiGpService
 
     public function getListCustomerPaymentApply(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_APLICACIONES_PAGO, 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_DOCUMENTOS_COBROS_APLICADOS, 'POST', $params, 'json');
     }
 
     public function getListCustomerCheckReceipts(array $params)

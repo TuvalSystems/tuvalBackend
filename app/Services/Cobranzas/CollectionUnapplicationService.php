@@ -16,8 +16,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-use function PHPUnit\Framework\isEmpty;
-use function PHPUnit\Framework\isNull;
 
 class CollectionUnapplicationService implements CollectionUnapplicationServiceInterface
 {
