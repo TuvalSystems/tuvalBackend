@@ -17,7 +17,6 @@ use App\Http\Controllers\Inventario\Bodega\GuiasderemisionController;
 use App\Http\Controllers\Inventario\Bodega\ReposicionController;
 use App\Http\Controllers\Inventario\Bodega\TransferenciasController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
-use App\Http\Controllers\ImportarPedidosController;
 use App\Http\Controllers\test\TestController;
 use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\ventas\AprobacionesController;
