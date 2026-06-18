@@ -211,6 +211,7 @@ class TransferService implements TransferServiceInterface
                 ->all(),
             'direccion' => $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'],
         ];
+        
         $html   = view('pdf.picking-transferencia-venta', $viewData)->render();
         $pdf    = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');

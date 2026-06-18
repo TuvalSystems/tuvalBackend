@@ -189,7 +189,7 @@
                 <tbody>
                     @foreach ($rows as $key => $value)
                     <tr>
-                        <td>{{ $key +1  }}</td>
+                        <td>{{ $key + 1  }}</td>
                         <td>
                             <table style="width:100%">
                                 <tbody>

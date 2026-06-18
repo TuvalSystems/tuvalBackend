@@ -93,8 +93,8 @@ class TransferenciasController extends Controller
                 'destino'               => ['required', 'string', 'min:1'],
                 'pesototal'             => ['nullable', 'string'],
                 'items'                 => ['required', 'array', 'min:1'],
-                'items.*.id'            => ['required', 'integer', 'distinct', 'exists:gp_traslados_ventas,id'],
-                'items.*.seleccionado'  => ['required', 'numeric', 'min:0.001'],
+                // 'items.*.id'            => ['required', 'integer', 'distinct', 'exists:gp_traslados_ventas,id'],
+                // 'items.*.seleccionado'  => ['required', 'numeric', 'min:0.001'],
             ]);
             $data = $this->transferService->printPickingSalesTransfers($validated);
             return $this->buildPdfResponse($data);
