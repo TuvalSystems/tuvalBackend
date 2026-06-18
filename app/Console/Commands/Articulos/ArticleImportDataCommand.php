@@ -39,7 +39,7 @@ class ArticleImportDataCommand extends Command
                     if (empty($ids)) {
                         return;
                     }
-                    // $service->markArticleInProgress($ids);
+                    $service->markArticleInProgress($ids);
                     // SyncGpArticlesJob::dispatchSync($articles);
                     SyncGpArticlesJob::dispatch($articles)->onQueue('sync-low');
                     $this->info('Encolando chuck de articulos' . $articles->count());

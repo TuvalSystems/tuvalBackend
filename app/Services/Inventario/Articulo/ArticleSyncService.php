@@ -70,7 +70,8 @@ class ArticleSyncService implements ArticleSyncServiceInterface
                 'cod_categoria' => data_get($datosApi, 'categoriaCompra'),
                 'cod_linea'     => data_get($datosApi, 'lineaCompra'),
                 'cod_clase'     => data_get($datosApi, 'claseCompra'),
-                'ART_MARCA'     => data_get($datosApi, 'marca')
+                'ART_MARCA'     => data_get($datosApi, 'marca'),
+                'import_job'    => 1
             ]);
         });
     }
