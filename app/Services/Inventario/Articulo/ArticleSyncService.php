@@ -63,14 +63,17 @@ class ArticleSyncService implements ArticleSyncServiceInterface
                 Log::warning('No se encontró clasificación de compra para el artículo', [
                     'articulo' => $artCode,
                 ]);
+                $item->update([
+                    'import_job' => 2,
+                ]);
                 return;
             }
 
             $item->update([
-                'cod_categoria' => trim(data_get($datosApi, 'categoriaCompra')),
-                'cod_linea'     => trim(data_get($datosApi, 'lineaCompra')),
-                'cod_clase'     => trim(data_get($datosApi, 'claseCompra')),
-                'ART_MARCA'     => trim(data_get($datosApi, 'marca')),
+                'cod_categoria' => $this->cleanNullable($datosApi, 'categoriaCompra'),
+                'cod_linea'     => $this->cleanNullable($datosApi, 'lineaCompra'),
+                'cod_clase'     => $this->cleanNullable($datosApi, 'claseCompra'),
+                'ART_MARCA'     => $this->cleanNullable($datosApi, 'marca'),
                 'import_job'    => 1
             ]);
         });

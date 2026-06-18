@@ -9,7 +9,6 @@ use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -35,10 +34,6 @@ class SyncGpArticlesJob implements ShouldQueue
         $service->updateArticlesFromSqlServer($this->articles);
     }
 
-    public function backoff(): array
-    {
-        return [60, 300, 900];
-    }
 
     public function middleware(): array
     {
@@ -58,15 +53,15 @@ class SyncGpArticlesJob implements ShouldQueue
 
     public function failed(Throwable $exception)
     {
-        $ids = collect($this->articles)
+        $ids = $this->articles
             ->pluck('id')
-            ->values()
-            ->toArray();
-        GpArticulo::whereIn('id', $ids)->updated([
+            ->sort()
+            ->implode(',');
+        GpArticulo::whereIn('id', $ids)->update([
             'import_job' => 2
         ]);
 
-     $payloadLog = [
+        $payloadLog = [
             'count' => count($this->articles),
             'ids'   => $ids,
         ];

@@ -21,7 +21,8 @@ class ArticleImportDataCommand extends Command
         $start  = Carbon::parse($this->argument('start_date'))->startOfDay();
         $end    = Carbon::parse($this->argument('end_date'))->startOfDay();
         if ($start->gt($end)) {
-            $this->error('La fecha inicial no puede ser mayor que la fecha inicial');
+            $this->error('La fecha inicial no puede ser mayor que la fecha final.');
+            return self::FAILURE;
         }
         while ($start->lte($end)) {
             $periodStart    = $start->copy();
