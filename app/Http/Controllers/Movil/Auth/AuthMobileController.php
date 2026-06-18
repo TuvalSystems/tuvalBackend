@@ -44,8 +44,8 @@ class AuthMobileController extends Controller
     public function obtenerPuntosVenta(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $user = GpUsuario::find(179);
-            // $user = $request->user();
+            // $user = GpUsuario::find(179);
+            $user = $request->user();
             $info = $this->userService->getPointSalesMobile($user);
             return $this->successResponse('Información Obtenida correctamente.', $info, 200);
         }, 'laravel', 'obtenerPuntosVenta');
