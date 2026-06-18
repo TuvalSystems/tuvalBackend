@@ -40,7 +40,7 @@ class ArticleImportDataCommand extends Command
                         return;
                     }
                     $service->markArticleInProgress($ids);
-                    // SyncGpArticlesJob::dispatchSync($articles);
+
                     SyncGpArticlesJob::dispatch($articles)->onQueue('sync-low');
                     $this->info('Encolando chuck de articulos' . $articles->count());
                 });
