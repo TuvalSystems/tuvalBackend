@@ -339,6 +339,10 @@ class GpPedido extends Model implements HasMedia
         return $this->hasMany(GpOrdenDespacho::class, 'pedido_id');
     }
 
+    public function puntoVenta(){
+        return $this->belongsTo(GpPuntoVenta::class, 'PTO_VTA_ID', 'PTO_VTA_ID');
+    }
+
     public function getMsgRegistroCopiaAttribute()
     {
         if (!$this->relationLoaded('gpcotizacion')) {

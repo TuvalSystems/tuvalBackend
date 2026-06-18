@@ -18,6 +18,7 @@ use Illuminate\Notifications\Notifiable;
  * @property string|null $USERNAME
  * @property int|null $NIVEL_AUTORIZA_CRED
  * @property int|null $perfil_id
+ * @property int|null $perfil_app_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property int|null $co_usr

@@ -4,8 +4,8 @@ namespace App\Models\traslados;
 
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\DeliveryNoteType;
+use App\Models\Articulos\GpArticulo;
 use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\GpArticulo;
 use App\Models\GpBodega;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;

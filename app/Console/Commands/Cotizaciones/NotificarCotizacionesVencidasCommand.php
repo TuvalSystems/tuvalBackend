@@ -69,7 +69,7 @@ class NotificarCotizacionesVencidasCommand extends Command
 
         try {
 
-            $ptoVentasEmail = GpPuntoVenta::where('PTO_VTA_ESTADO', 'ACTIVO')->select('id', 'PTO_VTA_ID','PTO_VTA_DESCRIPCION' ,'email')->get()->keyBy('PTO_VTA_ID');
+            $ptoVentasEmail = GpPuntoVenta::where('PTO_VTA_ESTADO', 'ACTIVO')->select('id', 'PTO_VTA_ID', 'PTO_VTA_DESCRIPCION', 'email')->get()->keyBy('PTO_VTA_ID');
             $cotizacionesAgrupadas = collect($cotizacionesSearch)->groupBy('PTO_VTA_ID');
             $resultado = [];
             foreach ($cotizacionesAgrupadas as $ptoVentaId => $cotizacion) {

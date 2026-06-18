@@ -25,11 +25,10 @@ use App\Models\devoluciones\GpDevoluciones;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
-use App\Services\Bodegas\Contracts\DispatchServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
@@ -38,7 +37,8 @@ use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Services\Devoluciones\Contracts\ReturnCancellationServiceInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 class DevolucionService implements DevolucionServiceInterface

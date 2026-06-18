@@ -56,7 +56,7 @@ class AprobacionesController extends Controller
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
         }, 'laravel', 'AprobacionesController.listaCotizacionesPendientesPorAprobar');
     }
-      public function listaCotizacionesPendientesConsulta(Request $request): JsonResponse
+    public function listaCotizacionesPendientesConsulta(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate  = $request->validate([
@@ -94,7 +94,7 @@ class AprobacionesController extends Controller
 
 
 
-    public function getSegmentoCliente($ruc)
+    public function getSegmentoCliente(string $ruc)
     {
         $response = $this->apiGpService->fetchClientSegment([
             'ruc' => $ruc,
@@ -143,17 +143,14 @@ class AprobacionesController extends Controller
 
     public function aprobarpedido(Request $request)
     {
-        try {
-
-            $gpuser = $request->user();
-            $data = $request->all();
-            $pedido = DB::transaction(function () use ($data, $gpuser) {
+        return $this->handleApiAction(function () use ($request) {
+            $gpuser     = $request->user();
+            $data       = $request->all();
+            $pedido     = DB::transaction(function () use ($data, $gpuser) {
                 return $this->approvalService->approveComercialOrder($data, $gpuser);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al aprobar el pedido: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'aprobarpedido');
     }
 
 
@@ -237,17 +234,14 @@ class AprobacionesController extends Controller
 
     public function aprobarpedidocrediticio(Request $request)
     {
-        try {
-
-            $gpuser = $request->user();
-            $pedido = DB::transaction(function () use ($request, $gpuser) {
-                $data = $request->all();
+        return $this->handleApiAction(function () use ($request) {
+            $gpuser     = $request->user();
+            $data       = $request->all();
+            $pedido = DB::transaction(function () use ($data, $gpuser) {
                 return $this->approvalService->approveCreditOrder($data, $gpuser);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error en la aprobación crediticia del pedido: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'aprobarpedidocrediticio');
     }
 
     public function rechazarpedidocrediticio(Request $request)

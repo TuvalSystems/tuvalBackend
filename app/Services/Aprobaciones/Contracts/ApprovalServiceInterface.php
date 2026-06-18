@@ -6,13 +6,13 @@ use App\Models\GpUsuario;
 interface ApprovalServiceInterface
 {
 
-    public function approveQuoteReservation($data);
-    public function checkoutApprovalCredit($condId, $total, $ruc);
+    public function approveQuoteReservation(array $data);
+    public function checkoutApprovalCredit(string $condId, float $total, string $ruc);
 
-    public function checkoutApprovalDevoluciones($data);
+    public function checkoutApprovalDevoluciones(array $data);
 
 
-    public function checkOutApprovalCommercialReservedOrder($data);
+    public function checkOutApprovalCommercialReservedOrder(array $data);
 
     /**
      *
@@ -20,29 +20,29 @@ interface ApprovalServiceInterface
      *
      * */
 
-    public function getOrderApprovalData($data);
+    public function getOrderApprovalData(array $data);
 
     //function cuando cumple las condiciones para la aprobación
-    public function approveCreditOrder($data, $user);
+    public function approveCreditOrder(array $data, GpUsuario $user);
     // cuando se rechaza un pedido - credito
-    public function denyCreditApproval($data, $user);
+    public function denyCreditApproval(array $data, GpUsuario $user);
     // cuando se rechaza de forma automatica en caso de que el stock sea insuficiente
-    public function rejectCreditOrderForInsufficientStock($data, $user);
+    public function rejectCreditOrderForInsufficientStock(array $data, GpUsuario $user);
 
     /** funciones para aprobacion comercial  */
 
-    public function approveComercialOrder($data, $user);
-    public function denyApproveComercialOrderForInsufficientStock($data, $user);
-    public function denyApproveComercialOrder($data, $user);
+    public function approveComercialOrder(array $data, GpUsuario $user);
+    public function denyApproveComercialOrderForInsufficientStock(array $data, GpUsuario $user);
+    public function denyApproveComercialOrder(array $data, GpUsuario $user);
 
     /** funcion para obtener el estado de cuenta de un cliente */
 
-    public function accountStatusClient($ruc);
+    public function accountStatusClient(string $ruc);
 
 
     public function denyQuotationBeenWaiting(int $id, GpUsuario $user);
     public function denyOrderBeenWaiting(int $id,  GpUsuario $user);
 
     /**  aprobacicon comercial de cotizacion */
-    public function approveComercialQuote($id, $user);
+    public function approveComercialQuote(int $id, GpUsuario $user);
 }

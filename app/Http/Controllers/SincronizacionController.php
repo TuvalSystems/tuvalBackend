@@ -8,8 +8,6 @@ use App\Models\GpDatosItemsL;
 use App\Models\GpUsuario;
 use App\Models\GpBodega;
 use App\Models\GpCondicionPago;
-use App\Models\GpArticulo;
-use App\Models\GpArticuloSugerido;
 use App\Models\GpPuntoVenta;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpRelacionPuntoVentaBodega;
@@ -36,12 +34,8 @@ use Illuminate\Support\Facades\Auth;
 
 class SincronizacionController extends Controller
 {
-    protected $apiGp;
 
-    public function __construct(ApiGpService $apiGp)
-    {
-        $this->apiGp = $apiGp;
-    }
+    public function __construct(protected readonly ApiGpService $apiGp) {}
 
     /*
      * Sincroniza usuarios desde Dynamics GP
@@ -138,98 +132,6 @@ class SincronizacionController extends Controller
         return response([
             'success' => true,
             'message' => 'Condiciones de pago correctamente sincronizadas'
-        ]);
-    }
-
-    /*
-     * Sincroniza Condicion de Pago desde Dynamics GP
-     */
-
-    public function llenaarticulosgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $metodo = 'MST_Articulo';
-        $fecha = '';
-        $obj = new WebserviceController;
-
-        $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if ($cronLog) {
-            $fecha = $cronLog->fecha;
-        }
-
-        $parameters = [
-            'FechaModificacion' => $fecha
-        ];
-
-        $articulos = $obj->maestros($metodo, $parameters);
-
-        if (!isset($articulos['MST_ArticuloResult']['CS_ARTICULO'])) {
-            return response([
-                'success' => true,
-                'message' => 'Ningun artículo por actualizar',
-            ]);
-        }
-
-        $articulos = $articulos['MST_ArticuloResult']['CS_ARTICULO'];
-
-        foreach ($articulos as $key => $data) {
-
-            $articulo = GpArticulo::where('ART_CODIGO', trim($data['ART_CODIGO']))->first();
-            if (!$articulo) {
-                $articulo = new GpArticulo;
-            }
-            $articulo->ART_CODIGO = trim($data['ART_CODIGO']);
-            $articulo->ART_DESCRIPCION = trim($data['ART_DESCRIPCION']);
-            $articulo->ART_CODIGO_ZAFIRO = trim($data['ART_CODIGO_ZAFIRO']);
-            $articulo->ART_CODIGO_TRES_LETRAS = trim($data['ART_CODIGO_TRES_LETRAS']);
-            $articulo->ART_CLASE_ARTICULO = trim($data['ART_CLASE_ARTICULO']);
-            $articulo->ART_METODO_VALUACION = trim($data['ART_METODO_VALUACION']);
-            $articulo->ART_TIPO_PRODUCTO = trim($data['ART_TIPO_PRODUCTO']);
-            $articulo->ART_TIPO_PRODUCTO = trim($data['ART_TIPO_PRODUCTO']);
-            $articulo->ART_FECHA_MODIFICACION = trim($data['ART_FECHA_MODIFICACION']['date']);
-            $articulo->ART_FECHA_CREACION = trim($data['ART_FECHA_CREACION']['date']);
-            $articulo->ART_ESTADO = trim($data['ART_ESTADO']);
-            $articulo->ART_IMP_VTA = (float) trim($data['ART_IMP_VTA']);
-            $articulo->ART_DECIMAL_CANTIDAD = (int) trim($data['ART_DECIMAL_CANTIDAD']);
-            $articulo->ART_DECIMAL_MONEDA = trim($data['ART_DECIMAL_MONEDA']);
-            $articulo->ART_COSTO_PROMEDIO = (float) trim($data['ART_COSTO_PROMEDIO']);
-            $articulo->ART_PLAN_UMEDIDA = trim($data['ART_PLAN_UMEDIDA']);
-            $articulo->ART_IMP_COMPRA = (float) trim($data['ART_IMP_COMPRA']);
-            $articulo->ART_SUSTITUTO_1 = trim($data['ART_SUSTITUTO_1']);
-            $articulo->ART_SUSTITUTO_2 = trim($data['ART_SUSTITUTO_2']);
-            $articulo->ART_MARCA = trim($data['ART_MARCA']);
-            $articulo->ART_MATERIAL = trim($data['ART_MATERIAL']);
-            $articulo->ART_REFERENCIA_GENERAL = trim($data['ART_REFERENCIA_GENERAL']);
-            $articulo->ART_REFERENCIA_DETALLADA = trim($data['ART_REFERENCIA_DETALLADA']);
-            $articulo->ART_TIPO_COMPRA = trim($data['ART_TIPO_COMPRA']);
-            $articulo->ART_CODIGO_MARCA_MATERIAL = trim($data['ART_CODIGO']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
-            $articulo->ART_DESCRIPCION_MARCA_MATERIAL = trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
-            $articulo->ART_PESO = (float) trim($data['ART_PESO']);
-            $articulo->ART_TAMANO = (float) trim($data['ART_TAMANO']);
-            $articulo->combinado = trim($data['ART_CODIGO']) . ' ' . trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_CODIGO_TRES_LETRAS']) . ' ' . trim($data['ART_CODIGO']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']) . ' ' . trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
-            $articulo->save();
-
-            if (isset($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) && count($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) > 0) {
-                $sugeridos = $data['ART_SUGERIDO']['CS_ARTICULO_ADI'];
-                GpArticuloSugerido::where('ART_CODIGO', trim($data['ART_CODIGO']))->delete();
-                foreach ($sugeridos as $keyS => $dataS) {
-                    $sugerido = new GpArticuloSugerido;
-                    $sugerido->ART_CODIGO = trim($data['ART_CODIGO']);
-                    $sugerido->ART_ADI_CANTIDAD = (int) trim($dataS['ART_ADI_CANTIDAD']);
-                    $sugerido->ART_ADI_SUGERIDO = trim($dataS['ART_ADI_SUGERIDO']);
-                    $sugerido->save();
-                }
-            }
-        }
-
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = $metodo;
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
-
-        return response([
-            'success' => true,
-            'message' => 'Artículos correctamente sincronizadas',
-            'total' => count($articulos),
         ]);
     }
 
@@ -464,11 +366,11 @@ class SincronizacionController extends Controller
             ->mapWithKeys(fn($item, $key) => [strtolower(trim($key)) => $item])
             ->toArray();
         GpRelacionUsuarioPuntoVenta::truncate();
-          $ordenPorUsuario = [];
+        $ordenPorUsuario = [];
         foreach ($relacionusuariopuntodeventas as $key => $data) {
             $userExtId = mb_strtolower(trim($data['USER_PTO_VTA_USUARIO']), 'UTF-8');
             $pvExtId   = mb_strtolower(trim($data['USER_PTO_VTA_PUNTO_VENTA']), 'UTF-8');
-             $ordenPorUsuario[$userExtId] = ($ordenPorUsuario[$userExtId] ?? 0) + 1;
+            $ordenPorUsuario[$userExtId] = ($ordenPorUsuario[$userExtId] ?? 0) + 1;
             // if ($pvExtId != '') {
             // if (isset($usuario[$userExtId]) && isset($puntoVenta[$pvExtId])) {
             $relacionusuariopuntodeventa                            = new GpRelacionUsuarioPuntoVenta;

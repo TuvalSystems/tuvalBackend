@@ -8,7 +8,6 @@ use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
 use App\Services\Api\Admin\ApiSync;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Traits\Sincronizacion\DetectsRealModelChanges;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 class SyncClientsService implements SyncClientsServiceInterface

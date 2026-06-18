@@ -15,48 +15,48 @@ return [
     */
 
     'mailgun' => [
-        'domain' => env('MAILGUN_DOMAIN'),
-        'secret' => env('MAILGUN_SECRET'),
-        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'domain'    => env('MAILGUN_DOMAIN'),
+        'secret'    => env('MAILGUN_SECRET'),
+        'endpoint'  => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
     ],
 
     'postmark' => [
-        'token' => env('POSTMARK_TOKEN'),
+        'token'     => env('POSTMARK_TOKEN'),
     ],
 
     'ses' => [
-        'key' => env('AWS_ACCESS_KEY_ID'),
-        'secret' => env('AWS_SECRET_ACCESS_KEY'),
-        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+        'key'       => env('AWS_ACCESS_KEY_ID'),
+        'secret'    => env('AWS_SECRET_ACCESS_KEY'),
+        'region'    => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
     'api_gp' => [
-        'url' => env('API_GP_URL'),
-        'timeout' => env('API_GP_TIMEOUT', default: 30),
+        'url'       => env('API_GP_URL'),
+        'timeout'   => env('API_GP_TIMEOUT', default: 30),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
-        'company' => env('ID_COMPANIA'),
+        'company'   => env('ID_COMPANIA'),
         'endpoints' => [
 
         ],
     ],
     'api_sales' => [
-        'url' => env('API_SALES_URL'),
-        'timeout' => env('API_GP_TIMEOUT',  30),
+        'url'       => env('API_SALES_URL'),
+        'timeout'   => env('API_GP_TIMEOUT',  30),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
-        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
-        'endpoints' => [
+        'retry_delay'   => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'endpoints'     => [
 
 
         ],
     ],
     'api_seedbilling' => [
-        'url' => env('API_SEED_BILLING_URL'),
-        'timeout' => env('API_SEED_BILLING_TIMEOUT', 150),
-        'token' => env('API_SEED_BILLING_TOKEN'),
-        'idSuscriptor' => env('API_SEED_BILLING_ID_SUSCRIPTOR'),
-        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
-        'endpoints' => [
-            'anular_comprobante' => 'api/anulacionComprobante',
+        'url_cancel'    => env('API_SEED_BILLING_CANCEL_URL'),
+        'url_consult'   => env('API_SEED_BILLING_CONSULT_URL'),
+        'timeout'       => env('API_SEED_BILLING_TIMEOUT', 150),
+        'token'         => env('API_SEED_BILLING_TOKEN'),
+        'idSuscriptor'  => env('API_SEED_BILLING_ID_SUSCRIPTOR'),
+        'retry_delay'   => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'endpoints'     => [
         ]
     ]
 

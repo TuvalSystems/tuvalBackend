@@ -9,10 +9,10 @@ class SeedBillingHttpClient
 {
     protected string $baseUrl;
     protected int $timeout;
-    protected $token;
-    protected $idSuscriptor;
+    protected string $token;
+    protected int $idSuscriptor;
 
-    public function __construct(string $baseUrl, int $timeout, string $token, string $idSuscriptor)
+    public function __construct(string $baseUrl, int $timeout, string $token, int $idSuscriptor)
     {
         $this->baseUrl = $baseUrl;
         $this->timeout = $timeout;
@@ -21,84 +21,106 @@ class SeedBillingHttpClient
     }
 
 
-    public function makeRequest(string $urlKey, string $method, array $data)
-    {
+    public function makeRequest(
+       string $endpoint,
+        string $method,
+        array $data,
+        ?string $successKeyword = null,
+        bool $includeCredentials = true
+    ) {
         $url = null;
         try {
-            if (empty($urlKey)) {
-                throw new \InvalidArgumentException("Endpoint '{$urlKey}' no definido en configuración.");
+            if (empty($endpoint)) {
+                throw new \InvalidArgumentException("Endpoint '{$endpoint}' no definido en configuración.");
             }
-            $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'delete'];
+            $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
             if (!in_array($method, $allowedMethods)) {
                 throw new \InvalidArgumentException("HTTP method '{$method}' is not allowed.");
             }
 
             // ✅ Construcción de URL
-            $url = rtrim($this->baseUrl, '/') . '/' . ltrim($urlKey, '/');
-
-            $data['token'] = $this->token;
-            $data['idSuscriptor'] = $this->idSuscriptor;
-
-            $client = Http::timeout($this->timeout)->withHeaders([
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-            ]);
+            $url = rtrim($this->baseUrl, '/') . '/' . ltrim($endpoint, '/');
 
 
-            $response = $method === 'GET'
-                ? $client->get($url, $data)
-                : $client->{$method}($url, $data);
+            $payload = $data;
+
+            if ($includeCredentials) {
+                $payload['token'] = $this->token;
+                $payload['idSuscriptor'] = $this->idSuscriptor;
+            }
+
+            $client = Http::timeout($this->timeout)
+                ->acceptJson()
+                ->asJson();
+
+
+
+
+            $response = match ($method) {
+                'GET'    => $client->get($url, $payload),
+                'POST'   => $client->post($url, $payload),
+                'PUT'    => $client->put($url, $payload),
+                'PATCH'  => $client->patch($url, $payload),
+                'DELETE' => $client->delete($url, $payload),
+            };
 
             // ✅ Manejo de respuesta
-            $responseBody = $response->json();
-            return $this->normalizeResponse($response, $responseBody);
+            return $this->normalizeResponse($response, $successKeyword);
         } catch (\InvalidArgumentException $e) {
-            Log::warning("❌ Petición inválida a API - {$urlKey}: " . $e->getMessage(), [
-                'urlKey' => $urlKey,
-                'method' => $method,
-                'data' => $data
+            Log::warning("Petición inválida a SeedBilling: {$e->getMessage()}", [
+                'urlKey'    => $endpoint,
+                'method'    => $method,
+                'data'      => $data,
             ]);
-             return [
-                'success' => false,
-                'message' => 'Error interno de petición con SeedBilling: ' . $e->getMessage(),
-                'respuesta' => 'ERROR_INTERNO',
-                'data' => []
+
+            return [
+                'success'       => false,
+                'message'       => 'Error interno de petición con SeedBilling: ' . $e->getMessage(),
+                'respuesta'     => 'ERROR_INTERNO',
+                'data'          => [],
             ];
         } catch (\Exception $e) {
-            Log::error("💥 Error al realizar petición a API - {$url}: " . $e->getMessage(), [
-                'url' => $url,
-                'method' => $method,
-                'data' => $data
+            Log::error("Error al realizar petición a SeedBilling: {$e->getMessage()}", [
+                'url'           => $url,
+                'method'        => $method ?? null,
+                'data'          => $data,
             ]);
+
             return [
-                'success' => false,
-                'message' => 'Error interno de conexión con SeedBilling: ' . $e->getMessage(),
-                'respuesta' => 'ERROR_INTERNO',
-                'data' => []
+                'success'       => false,
+                'message'       => 'Error interno de conexión con SeedBilling: ' . $e->getMessage(),
+                'respuesta'     => 'ERROR_INTERNO',
+                'data'          => [],
             ];
         }
     }
 
 
-    private function normalizeResponse($response, $body): array
+    private function normalizeResponse($response, ?string $successKeyword = null): array
     {
-        // 1. Mensaje que devuelve la API
+        $body = $response->json();
+
+        if (!is_array($body)) {
+            $body = [
+                'raw_response' => $response->body(),
+            ];
+        }
+
         $apiMessage = data_get($body, 'respuesta', '');
 
-        // 2. Definimos cuál es el mensaje de éxito esperado
-        // NOTA: Asegúrate que este string sea exacto o usa str_contains
-        $successKeyword = "COMPROBANTE ENVIADO PARA SER ANULADO";
+        $isSuccess = $response->successful();
 
-        // 3. Determinamos si fue exitoso
-        // Debe ser status 200 Y contener el mensaje de éxito
-        $isSuccess = $response->successful() &&
-            str_contains(strtoupper($apiMessage), $successKeyword);
+        if ($successKeyword !== null) {
+            $isSuccess = $isSuccess &&
+                str_contains(strtoupper($apiMessage), strtoupper($successKeyword));
+        }
 
         return [
-            'success'   => $isSuccess, // Ahora sí devolvemos un booleano real
+            'success'   => $isSuccess,
+            'status'    => $response->status(),
             'message'   => $apiMessage ?: 'Sin respuesta del servidor',
-            'respuesta' => $apiMessage, // Mantenemos compatibilidad si lo usas en otro lado
-            'data'      => $body
+            'respuesta' => $apiMessage,
+            'data'      => $body,
         ];
     }
 }

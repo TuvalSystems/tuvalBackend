@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Movil\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\GpUsuario;
 use App\Services\User\Contracts\UserServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
@@ -17,9 +18,9 @@ class AuthMobileController extends Controller
 
 
 
-    public function login(Request $request) : JsonResponse
+    public function login(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) : JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validated = $request->validate([
                 'username' => ['required', 'string', 'max:100'],
                 'password' => ['required', 'string', 'max:100'],
@@ -36,5 +37,17 @@ class AuthMobileController extends Controller
             $data = $this->userService->authenticateUserMobile($userName, $password);
             return $this->successResponse('Login Exitoso', $data, 200);
         }, 'laravel', 'login');
+    }
+
+
+
+    public function obtenerPuntosVenta(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            // $user = GpUsuario::find(179);
+            $user = $request->user();
+            $info = $this->userService->getPointSalesMobile($user);
+            return $this->successResponse('Información Obtenida correctamente.', $info, 200);
+        }, 'laravel', 'obtenerPuntosVenta');
     }
 }

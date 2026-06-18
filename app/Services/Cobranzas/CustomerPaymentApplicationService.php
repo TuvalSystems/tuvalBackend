@@ -127,7 +127,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('collectionAmount'));
+            $sumPayments            = $this->money($payments->sum('valorCobro'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -196,7 +196,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('collectionAmount'));
+            $sumPayments            = $this->money($payments->sum('valorCobro'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -268,7 +268,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->money($payments->sum('collectionAmount'));
+                $sumPayments            = $this->money($payments->sum('valorCobro'));
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -327,8 +327,20 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $applyDoc = trim((string) data_get($typeDeposits, 'detalle.CN_DOCUMENTO', '')); //documento de cobro para aplicar
             $dataInvoices   = data_get($typeDeposits, 'facturas', []);
 
+
             if (empty($dataInvoices)) {
                 continue;
+            }
+            $totalAmountToApply         = $this->money(collect($dataInvoices)->sum('aplicar_monto_aplicacion'));
+            $pendingApplicationDocument             = $this->getApplyDocumentsPendings($applyDoc, $cliente->CLI_RUC);
+            $gpApplicationBalance       = $this->money(data_get($pendingApplicationDocument, 'saldoCliente', 0));
+            if ($totalAmountToApply > $gpApplicationBalance) {
+                throw new \RuntimeException(
+                    'El monto total a aplicar supera el saldo disponible en GP. ' .
+                        'Documento: ' . $applyDoc . ', ' .
+                        'Total a aplicar: ' . number_format($totalAmountToApply, 2) . ', ' .
+                        'Saldo GP: ' . number_format($gpApplicationBalance, 2)
+                );
             }
 
             foreach ($dataInvoices as &$ing) {
@@ -345,7 +357,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->money($payments->sum('collectionAmount'));
+                $sumPayments            = $this->money($payments->sum('valorCobro'));
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -439,7 +451,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('collectionAmount'));
+            $sumPayments            = $this->money($payments->sum('valorCobro'));
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -622,13 +634,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     {
         return $payments
             ->filter(function ($payment) use ($onlyTypePaymentEight) {
-                $typePayment = (int) data_get($payment, 'typePayment');
+                $typePayment = (int) data_get($payment, 'tipoPago');
 
                 return $onlyTypePaymentEight
                     ? $typePayment === 8
                     : $typePayment !== 8;
             })
-            ->pluck('collectionId')
+            ->pluck('documentoCobro')
             ->map(fn($doc) => trim((string)$doc))
             ->filter(fn($doc) => !empty($doc))
             ->unique()
@@ -640,7 +652,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function filterGroupReceiptNumbers(SupportCollection $payments): array
     {
         return $payments
-            ->filter(fn($payment) => (int) data_get($payment, 'typePayment') !== 8)
+            ->filter(fn($payment) => (int) data_get($payment, 'tipoPago') !== 8)
             ->pluck('numeroRecibo')
             ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
             ->filter(fn($doc) => !empty($doc))
@@ -928,6 +940,17 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         };
     }
 
+    protected function getApplyDocumentsPendings(string $document, string $ruc): array
+    {
+        $resp = $this->api->getPendingApplicationDocument([
+            'documento' => $document,
+            'ruc'       => $ruc
+        ]);
+
+        $data = data_get($resp, 'data');
+        return is_array($data) ? $data : [];
+    }
+
 
 
 
@@ -1030,5 +1053,40 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         return $payload;
+    }
+
+
+    /**
+     * funcion dedicada para actualizar los saldos pendintes de documentos de aplicaciones
+     */
+
+    public function updatePendingApplicationDocumentBalances(int $clientId, array $documents)
+    {
+        $client = GpCliente::find($clientId);
+        $pendingApplicationDocuments  = collect($this->getPendingApplicationDocumentsFromGp($client->CLI_RUC))
+            ->keyBy(
+                function ($document) {
+                    return trim((string) data_get($document, 'documento', ''));
+                }
+            );
+
+        return collect($documents)
+            ->map(function ($document) use ($pendingApplicationDocuments) {
+                $documentNumber = trim((string) data_get($document, 'CN_DOCUMENTO', ''));
+
+                $pendingApplicationDocument = $pendingApplicationDocuments->get($documentNumber);
+                $document['CN_SALDO_PENDIENTE'] = (float) data_get($pendingApplicationDocument, 'saldoCliente', 0);
+                return $document;
+            })
+            ->values()
+            ->all();
+    }
+
+
+    protected function getPendingApplicationDocumentsFromGp(string $ruc): array
+    {
+        return data_get($this->api->getUnappliedCollections([
+            'ruc' => $ruc
+        ]), 'data', []);
     }
 }

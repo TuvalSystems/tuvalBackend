@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AppController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Movil\Auth\AuthMobileController;
+use App\Http\Controllers\Movil\Menu\MobileMenuController;
 use App\Http\Controllers\Movil\SteamTrapController;
 use App\Http\Controllers\ventas\ConsultasController;
 use Illuminate\Support\Facades\Route;
@@ -55,10 +56,15 @@ Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
                 Route::post('/borrador', 'generarCotizacionBorrador');
             });
 
-        Route::prefix('cliente')->group(function(){
-            Route::post('buscar', [ConsultasController::class, 'buscarClientes']);
+        //menu
+        Route::get('/menu', [MobileMenuController::class, 'index']);
 
+        //puntos de venta
+        Route::get('point-sales', [AuthMobileController::class, 'obtenerPuntosVenta']);
+
+        //clientes
+        Route::prefix('cliente')->group(function () {
+            Route::post('buscar', [ConsultasController::class, 'buscarClientes']);
         });
     });
 });
-

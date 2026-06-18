@@ -2,7 +2,7 @@
 
 namespace App\Services\Funciones;
 
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
@@ -10,7 +10,7 @@ use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 
 class FunctionsService implements FunctionsServiceInterface
 {

@@ -24,9 +24,10 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
-
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class ApprovalService implements ApprovalServiceInterface
 {
@@ -47,7 +48,7 @@ class ApprovalService implements ApprovalServiceInterface
      *
      */
 
-    public function approveQuoteReservation($data)
+    public function approveQuoteReservation(array $data)
     {
         $motivosAprobacionComercial = [];
         $registroVolverAPedir = null;
@@ -138,7 +139,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $this->approvalFuntions->finalizeApprovalReasons($motivosAprobacionComercial);
     }
 
-    public function validateQuotationDetailToApprove($detalles, $ptoVenta, $dsctGlobalCliente): array
+    public function validateQuotationDetailToApprove(array $detalles, GpPuntoVenta $ptoVenta, float $dsctGlobalCliente): array
     {
         $detailMotivos  = [];
         $ids            = collect($detalles)->pluck('id')->filter();
@@ -237,7 +238,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function checkOutApprovalCommercialReservedOrder($data)
+    public function checkOutApprovalCommercialReservedOrder(array $data)
     {
         $motivosAprobacionComercial = [];
         $quoteId = data_get($data, 'id', null);
@@ -317,7 +318,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function validateReservedDetailQuotationType($detalles, $ptoVenta,  $dsctGlobalCliente)
+    public function validateReservedDetailQuotationType(array $detalles, GpPuntoVenta $ptoVenta, float $dsctGlobalCliente)
     {
         $detailMotivos = [];
         $ids = collect($detalles)->pluck('id')->filter();
@@ -413,7 +414,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     /*** aprovacion crediciticia *** */
 
-    public function checkoutApprovalCredit($condId, $total, $ruc)
+    public function checkoutApprovalCredit(string $condId, float $total, string $ruc)
     {
           if ($condId == 'CONTADO') {
             return 'no';
@@ -449,7 +450,7 @@ class ApprovalService implements ApprovalServiceInterface
      *
      *
      */
-    public function checkoutApprovalDevoluciones($data)
+    public function checkoutApprovalDevoluciones(array $data)
     {
 
         $tipoDevolucion     = Arr::get($data, 'devolucion.tipo_devolucion');
@@ -496,7 +497,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function daysDifference($fecha)
+    public function daysDifference(string $fecha)
     {
         if (!$fecha)
             return 0;
@@ -507,7 +508,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function hasDispatchedOrderDetails($pedido, $detallepedido, $volverAFacturar): bool
+    public function hasDispatchedOrderDetails(array $pedido, array  $detallepedido, bool $volverAFacturar): bool
     {
         if ($volverAFacturar === true) {
             $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
@@ -549,7 +550,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $this->hasDetailDispatched($detallepedido);
     }
 
-    public function hasDetailDispatched($detallepedido): bool
+    public function hasDetailDispatched(array $detallepedido): bool
     {
         return collect($detallepedido)
             ->contains(fn($item) =>
@@ -563,7 +564,7 @@ class ApprovalService implements ApprovalServiceInterface
      * FUNCION PARA LA VERIFICACION DE STOCK DE LOS ARTICULOS DEL PEEDIDO ANTES DE APROBAR
      */
 
-    public function getOrderApprovalData($data)
+    public function getOrderApprovalData(array $data)
     {
         try {
             $quoteReservedOriginId  = $this->validateExistsReserve($data['cotizacion_id']);
@@ -586,7 +587,7 @@ class ApprovalService implements ApprovalServiceInterface
         }
     }
 
-    public function validateExistsReserve($quotationId)
+    public function validateExistsReserve(int $quotationId)
     {
         $quoteReserve = GpCotizacion::where('origen', 'reserva')->find($quotationId);
         if (!$quoteReserve) {
@@ -600,7 +601,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
+    public function getAlertWithoutStockArticles(Collection $detalles, SupportCollection $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
@@ -638,7 +639,7 @@ class ApprovalService implements ApprovalServiceInterface
      */
 
 
-    public function approveCreditOrder($data, $user)
+    public function approveCreditOrder(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
             ->where('estado', OrderStatus::ESPERA)
@@ -658,7 +659,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $pedido;
     }
 
-    public function denyCreditApproval($data, $user)
+    public function denyCreditApproval(array $data, GpUsuario $user)
     {
 
         $pedido = GpPedido::where('id', $data['id'])
@@ -680,7 +681,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function rejectCreditOrderForInsufficientStock($data, $user)
+    public function rejectCreditOrderForInsufficientStock(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
             ->whereNotIn('estado', [OrderStatus::ELIMINADO, OrderStatus::ANULADA])
@@ -704,7 +705,7 @@ class ApprovalService implements ApprovalServiceInterface
         ];
     }
 
-    public function cleanDetailOrderStock($pedido)
+    public function cleanDetailOrderStock(GpPedido $pedido)
     {
         $bodega = $pedido->BOD_BODEGA;
         $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->pluck('id')->toArray();
@@ -716,7 +717,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
 
-    public function approveComercialOrder($data, $user)
+    public function approveComercialOrder(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
@@ -734,7 +735,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $pedido;
     }
 
-    public function denyApproveComercialOrderForInsufficientStock($data, $user)
+    public function denyApproveComercialOrderForInsufficientStock(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
             ->lockForUpdate()->first();
@@ -761,7 +762,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function denyApproveComercialOrder($data, $user)
+    public function denyApproveComercialOrder(array $data, GpUsuario $user)
     {
         $pedido = GpPedido::where('id', $data['id'])
             ->lockForUpdate()->first();
@@ -784,7 +785,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function updateOrderStockOnCreditOrCommercialApproval($order, $typeApproval)
+    public function updateOrderStockOnCreditOrCommercialApproval(GpPedido $order, string $typeApproval)
     {
         $requiresComercialApproval = $order->requiere_aprobacion_comercial === 'yes';
         $requiresCreditApproval = $order->requiere_aprobacion_crediticia === 'yes';
@@ -813,7 +814,7 @@ class ApprovalService implements ApprovalServiceInterface
     }
 
 
-    public function updateStockOnOrderApproval($order)
+    public function updateStockOnOrderApproval(GpPedido $order)
     {
         $quoteReservedOriginId = $this->validateExistsReserve($order->cotizacion_id);
         $detalles = $this->getDetailArticlesWithStock($order->id);
@@ -829,13 +830,13 @@ class ApprovalService implements ApprovalServiceInterface
         $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
     }
 
-    public function getDetailArticlesWithStock($orderId)
+    public function getDetailArticlesWithStock(int $orderId)
     {
         return GpPedidoDetalle::with('pedidoDetalleStocks')
             ->where('pedido_id', $orderId)
             ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
     }
-    public function stockFormatterForUpdateApproval($detalles)
+    public function stockFormatterForUpdateApproval(Collection $detalles)
     {
         return $detalles->pluck('pedidoDetalleStocks')
             ->flatten()
@@ -853,7 +854,7 @@ class ApprovalService implements ApprovalServiceInterface
             })->toArray();
     }
 
-    public function stockFormatterParametersUpdateApproval($newDetails)
+    public function stockFormatterParametersUpdateApproval(array $newDetails)
     {
         return collect($newDetails)
             ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
@@ -862,7 +863,7 @@ class ApprovalService implements ApprovalServiceInterface
             ->toArray();
     }
 
-    public function getStockWarehouseAsyncAndFormantter($parmas)
+    public function getStockWarehouseAsyncAndFormantter(array $parmas)
     {
         $stocksResult = $this->stockWarehouseService->fetchStockBatchWarehouses($parmas);
         Log::info("Resultado de stock para aprobacion: ", [
@@ -873,7 +874,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
+    public function formattedFlatDetailWithStockGeneral(array $flatDetails, array $stocksResult)
     {
         $stockMap = collect($stocksResult)->keyBy(function ($stock) {
             $art    = data_get($stock, 'STO_ART_ARTICULO', '');
@@ -898,7 +899,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $orderId, $quoteReservedOriginId = null)
+    public function updateOrderDetailStockAndGetStockDisponible(Collection $detalles, SupportCollection $newFormatStock, int $orderId, ?int $quoteReservedOriginId = null)
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
@@ -912,8 +913,8 @@ class ApprovalService implements ApprovalServiceInterface
         }
         foreach ($allFormattedStock as $stock) {
             if (isset($stock['stock_id']) && ($st = GpPedidoDetalleStock::find($stock['stock_id']))) {
-                $st->STO_ART_STOCK_DISPONIBLE = $stock['STO_ART_STOCK_DISPONIBLE'];
-                $st->reservado = $stock['seleccionado'];
+                $st->STO_ART_STOCK_DISPONIBLE   = $stock['STO_ART_STOCK_DISPONIBLE'];
+                $st->reservado                  = $stock['seleccionado'];
                 $st->save();
             }
         }
@@ -922,7 +923,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
-    public function accountStatusClient($ruc)
+    public function accountStatusClient(string $ruc)
     {
         $detalle = [];
         $detalle['cupoDisponible'] = $this->functionService->getClientCheckAvailableQuota($ruc);
@@ -956,7 +957,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
     /** aprobacion comercial de cotizaciones */
-    public function approveComercialQuote($id, $user)
+    public function approveComercialQuote(int $id, GpUsuario $user)
     {
         $gpUser = GpUsuario::find($user->id);
         $quote = GpCotizacion::where('id', $id)->where('estado', 'espera')
@@ -974,7 +975,7 @@ class ApprovalService implements ApprovalServiceInterface
         return $quote;
     }
 
-    public function updateRegisterCopyApprovalComercialDestination($quoteId)
+    public function updateRegisterCopyApprovalComercialDestination(int $quoteId)
     {
         $rgCopy = GpRegistroCopia::where('cotizacion_destino', $quoteId)->where('tipo', 'volver_a_pedir')->first();
         if (!$rgCopy) {
