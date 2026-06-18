@@ -23,7 +23,7 @@ class ArticleSyncService implements ArticleSyncServiceInterface
     public function getArticlesWithoutUpdateQuery(string $fechaIni, string $fechaFin): Builder
     {
         return GpArticulo::query()
-            ->whereBetween('updated_at', [
+            ->whereBetween('created_at', [
                 $fechaIni,
                 $fechaFin
             ])
