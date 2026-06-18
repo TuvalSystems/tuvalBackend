@@ -43,7 +43,7 @@ class   ApiBillingService extends ApiGpService
 
     public function getUnappliedCollections(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_COBROS_SIN_APLICAR, 'GET', $params);
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_APLICACIONES_PENDIENTES, 'GET', $params);
     }
 
 
