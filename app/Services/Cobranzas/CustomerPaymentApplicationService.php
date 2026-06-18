@@ -947,7 +947,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             'ruc'       => $ruc
         ]);
 
-        return data_get($resp, 'data', []);
+        $data = data_get($resp, 'data');
+        return is_array($data) ? $data : [];
     }
 
 
