@@ -4,7 +4,6 @@ namespace App\Http\Controllers\ventas;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\TaxRateEnum;
-use App\Http\Controllers\bodegas\DespachosController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
@@ -35,6 +34,7 @@ use App\Models\GpCajaBancos;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
+use App\Http\Controllers\Inventario\Bodega\DespachosController;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
