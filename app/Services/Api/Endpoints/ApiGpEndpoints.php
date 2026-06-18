@@ -44,10 +44,11 @@ class ApiGpEndpoints
     public const COBROS_CONSULTAR_LISTA_SIN_SOPORTE = 'api/cobros/consultar-lista-documentos-sin-soporte-cliente';
 
     public const COBROS_CONSULTA_DIAS_FERIADOS = 'api/cobros/consultar-dias-feriado';
-    public const COBROS_CONSULTA_COBROS_SIN_APLICAR = 'api/cobros/consultar-cobros-sin-aplicar';
+    public const COBROS_CONSULTA_APLICACIONES_PENDIENTES = 'api/cobros/consultar-documentos-pendientes-aplicacion';
     public const COBROS_CONSULTA_DETALLE_ESTADO_CUENTA_CLIENTE = 'api/cobros/consultar-detalle-estado-cuenta-cliente';
 
     public const COBROS_CONSULTA_APLICACIONES_PAGO = 'api/cobros/consulta-aplicaciones-pago';
+    public const COBROS_CONSULTA_APLICACIONES_PENDIENTES_POR_DOCUMENTO = 'api/cobros/consulta-aplicaciones-pendientes';
 
 
     // ---

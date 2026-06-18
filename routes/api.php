@@ -481,6 +481,10 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
             Route::post('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
 
+
+            //documentos aplicacion
+            Route::post('actualizar-aplicaciones-pendientes', [CobranzasController::class, 'actualizarListaDocumentosAplicacion']);
+
             //validacion de aplicacion de pagos a faturas
             Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
 

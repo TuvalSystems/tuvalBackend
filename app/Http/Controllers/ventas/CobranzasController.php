@@ -2263,4 +2263,14 @@ class CobranzasController extends Controller
             return $this->buildSuccessResponse($mensaje,  200);
         }, 'laravel', 'actualizarAplicaciones');
     }
+
+    public function actualizarListaDocumentosAplicacion(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $clientId   = $request->input('clienteId');
+            $documents  = $request->input('documentos', []);
+            $response   = $this->customer->updatePendingApplicationDocumentBalances($clientId, $documents);
+            return $this->successResponse('Lista actualizada correctamente', $response, 200);
+        }, 'laravel', 'actualizacionDocumentosAplicacion');
+    }
 }

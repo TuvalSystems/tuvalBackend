@@ -36,7 +36,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         $payload['ingreso_aplicaciones']    = $this->processIngresoAplicaciones(data_get($payload, 'ingreso_aplicaciones', []), $desde, $hasta, $cliente);
         $payload['ingreso_cheques']         = $this->processIngresoCheques(data_get($payload, 'ingreso_cheques', []), $desde, $hasta, $cliente);
         $payload['hasGlobalExcess']         = $this->hasAnyExcess($payload);
-        $this->storeFromValidationResult($payload, $user);
+        // $this->storeFromValidationResult($payload, $user);
 
         return $this->cleanInternalHistory($payload);
     }
@@ -327,8 +327,20 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $applyDoc = trim((string) data_get($typeDeposits, 'detalle.CN_DOCUMENTO', '')); //documento de cobro para aplicar
             $dataInvoices   = data_get($typeDeposits, 'facturas', []);
 
+
             if (empty($dataInvoices)) {
                 continue;
+            }
+            $totalAmountToApply         = $this->money(collect($dataInvoices)->sum('aplicar_monto_aplicacion'));
+            $pendingApplicationDocument             = $this->getApplyDocumentsPendings($applyDoc, $cliente->CLI_RUC);
+            $gpApplicationBalance       = $this->money(data_get($pendingApplicationDocument, 'saldoCliente', 0));
+            if ($totalAmountToApply > $gpApplicationBalance) {
+                throw new \RuntimeException(
+                    'El monto total a aplicar supera el saldo disponible en GP. ' .
+                        'Documento: ' . $applyDoc . ', ' .
+                        'Total a aplicar: ' . number_format($totalAmountToApply, 2) . ', ' .
+                        'Saldo GP: ' . number_format($gpApplicationBalance, 2)
+                );
             }
 
             foreach ($dataInvoices as &$ing) {
@@ -928,6 +940,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         };
     }
 
+    protected function getApplyDocumentsPendings(string $document, string $ruc): array
+    {
+        $resp = $this->api->getPendingApplicationDocument([
+            'documento' => $document,
+            'ruc'       => $ruc
+        ]);
+
+        return data_get($resp, 'data', []);
+    }
+
 
 
 
@@ -1030,5 +1052,40 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         return $payload;
+    }
+
+
+    /**
+     * funcion dedicada para actualizar los saldos pendintes de documentos de aplicaciones
+     */
+
+    public function updatePendingApplicationDocumentBalances(int $clientId, array $documents)
+    {
+        $client = GpCliente::find($clientId);
+        $pendingApplicationDocuments  = collect($this->getPendingApplicationDocumentsFromGp($client->CLI_RUC))
+            ->keyBy(
+                function ($document) {
+                    return trim((string) data_get($document, 'documento', ''));
+                }
+            );
+            
+        return collect($documents)
+            ->map(function ($document) use ($pendingApplicationDocuments) {
+                $documentNumber = trim((string) data_get($document, 'CN_DOCUMENTO', ''));
+
+                $pendingApplicationDocument = $pendingApplicationDocuments->get($documentNumber);
+                $document['CN_SALDO_PENDIENTE'] = (float) data_get($pendingApplicationDocument, 'saldoCliente', 0);
+                return $document;
+            })
+            ->values()
+            ->all();
+    }
+
+
+    protected function getPendingApplicationDocumentsFromGp(string $ruc): array
+    {
+        return data_get($this->api->getUnappliedCollections([
+            'ruc' => $ruc
+        ]), 'data', []);
     }
 }
