@@ -12,4 +12,8 @@ class ApiGestionArticleService extends ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::ARTICULOS_CONSULTAR_LISTA_TRAMPAS_VAPOR, 'POST', $params, 'json');
     }
+
+    public function getArticlePurchaseClassification(array $params){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::ARTICULOS_OBTENER_CLASIFICACION, 'GET', $params);
+    }
 }

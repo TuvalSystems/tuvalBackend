@@ -33,16 +33,17 @@ class ArticleImportDataCommand extends Command
             $fechaIni = $periodStart->copy()->startOfDay()->format('Y-m-d H:i:s');
             $fechaFin = $periodEnd->copy()->endOfDay()->format('Y-m-d H:i:s');
             $this->info("Encolando artuculos: $fechaIni al $fechaFin");
-            $service->getArticlesWithoutUpdate($fechaIni, $fechaFin)
-            ->chuckById(200, function($articles) use($service){
-            $ids = $articles->pluck('id')->values()->toArray();
-            if(empty($ids)){
-                return;
-            }
-            $service->markArticleInProgress($ids);
-            SyncGpArticlesJob::dispatch($articles)->onQueue('sync-low');
-            $this->info('Encolando chuck de articulos'. $articles->count());
-            });
+            $service->getArticlesWithoutUpdateQuery($fechaIni, $fechaFin)
+                ->chunkById(200, function ($articles) use ($service) {
+                    $ids = $articles->pluck('id')->values()->toArray();
+                    if (empty($ids)) {
+                        return;
+                    }
+                    // $service->markArticleInProgress($ids);
+                    SyncGpArticlesJob::dispatchSync($articles);
+                    // SyncGpArticlesJob::dispatch($articles)->onQueue('sync-low');
+                    $this->info('Encolando chuck de articulos' . $articles->count());
+                });
             $start = $periodEnd->copy()->addDay()->startOfDay();
         }
         $this->info("Todos los periodos han sido encolados.");

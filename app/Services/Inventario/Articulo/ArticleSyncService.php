@@ -3,8 +3,10 @@
 namespace App\Services\Inventario\Articulo;
 
 use App\Models\Articulos\GpArticulo;
+use App\Services\Api\Bodegas\ApiGestionArticleService;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use App\Traits\CleansPayloadData;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,19 +14,20 @@ use Illuminate\Support\Facades\Log;
 class ArticleSyncService implements ArticleSyncServiceInterface
 {
     use CleansPayloadData;
-    public function __construct()
+    public function __construct(protected readonly ApiGestionArticleService $api)
     {
         // Inyecta dependencias
     }
 
 
-    public function getArticlesWithoutUpdate(string $fechaIni, string $fechaFin): Collection
+    public function getArticlesWithoutUpdateQuery(string $fechaIni, string $fechaFin): Builder
     {
-        return GpArticulo::whereBetween('updated_at', [
-            $fechaIni,
-            $fechaFin
-        ])
-            ->where('import_job', 0)->orderBy('ART_CODIGO')->get();
+        return GpArticulo::query()
+            ->whereBetween('updated_at', [
+                $fechaIni,
+                $fechaFin
+            ])
+            ->where('import_job', 0)->orderBy('ART_CODIGO');
     }
 
 
@@ -44,13 +47,46 @@ class ArticleSyncService implements ArticleSyncServiceInterface
         if (empty($articlesCode)) {
             return;
         }
-        $request = ['coidgosArticulos' => $articlesCode];
+        $request = ['codigosArticulos' => $articlesCode];
         Log::info('Informacion de Job', [
             $request
         ]);
+
+        $articles->each(function ($item) {
+            $artCode = trim($item->ART_CODIGO);
+            if ($artCode === '') {
+                return;
+            }
+            $datosApi = $this->getArticlePurchaseClassificationFromGp($artCode);
+
+            if (empty($datosApi)) {
+                Log::warning('No se encontró clasificación de compra para el artículo', [
+                    'articulo' => $artCode,
+                ]);
+                return;
+            }
+
+            $item->update([
+                'cod_categoria' => data_get($datosApi, 'categoriaCompra'),
+                'cod_linea'     => data_get($datosApi, 'lineaCompra'),
+                'cod_clase'     => data_get($datosApi, 'claseCompra'),
+                'ART_MARCA'     => data_get($datosApi, 'marca')
+            ]);
+        });
     }
 
 
+    protected function getArticlePurchaseClassificationFromGp(string $artCode): array
+    {
+        $resp = $this->api->getArticlePurchaseClassification([
+            'item' => $artCode
+        ]);
+        $data = data_get($resp, 'data');
+        return is_array($data) ? $data : [];
+    }
+
+
+    /** proceso para la actualizacion o creacion de un articulo  (api) */
     public function createOrUpdateArticle(array $payload): GpArticulo
     {
         $codigo = $this->clean($payload, 'codigo');

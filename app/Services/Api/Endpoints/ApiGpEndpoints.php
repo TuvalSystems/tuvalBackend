@@ -146,4 +146,5 @@ class ApiGpEndpoints
     // ---
 
     public const ARTICULOS_CONSULTAR_LISTA_TRAMPAS_VAPOR = 'api/articulos/seleccion-trampas-items';
+    public const ARTICULOS_OBTENER_CLASIFICACION    = 'api/articulos/obtener-clasificacion';
 }
