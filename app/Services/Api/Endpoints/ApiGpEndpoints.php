@@ -49,6 +49,7 @@ class ApiGpEndpoints
     public const COBROS_CONSULTA_DETALLE_ESTADO_CUENTA_CLIENTE = 'api/cobros/consultar-detalle-estado-cuenta-cliente';
 
     public const COBROS_CONSULTA_APLICACIONES_PAGO = 'api/cobros/consulta-aplicaciones-pago';
+     public const COBROS_CONSULTA_APLICACIONES_PENDIENTES_POR_DOCUMENTO = 'api/cobros/consulta-aplicaciones-pendientes';
     public const COBROS_CONSULTA_RECIBOS_CHEQUES = 'api/cobros/consulta-recibos-cheques';
 
     // ---
