@@ -18,7 +18,7 @@ class AddColumnOrigenToGpCotizacionsTable extends Migration
                 ->nullable()
                 ->default('cotizacion')
                 ->index();
-            $table->foreignId('pedido_reserva_id')->nullable()->constrained('gp_pedidos')->nullOnDelete();;
+            $table->foreignId('pedido_reserva_id')->nullable()->constrained('gp_pedidos')->nullOnDelete();
             $table->dateTime('pedido_generado_at')->nullable();
         });
     }

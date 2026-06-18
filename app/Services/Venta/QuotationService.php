@@ -345,7 +345,7 @@ class QuotationService implements QuotationServiceInterface
         $cotizacion['sucursal']         = $sucursal;
         $cotizacion['validez']          = $validezTexto;
         $cotizacion['expira']           = $validezReal;
-        $cotizacion['totalCotizacion']  = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');;
+        $cotizacion['totalCotizacion']  = number_format($subtotalmenosDescuento + $sumIva, 2, '.', '');
         $cotizacion['direccion']        = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
         return $cotizacion;
     }
