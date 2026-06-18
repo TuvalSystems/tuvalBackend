@@ -3,6 +3,7 @@
 namespace App\Models\devoluciones;
 
 use App\Enums\devoluciones\InvoiceAnulationStatus;
+use App\Models\GpPedido;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -64,4 +65,12 @@ class GpFacturaAnulada extends Model
         'resp_seedbilling',
         'estado'
     ];
+
+    public function gpPedido(){
+        return $this->belongsTo(GpPedido::class, 'pedido_id', 'id');
+    }
+
+    public function gpDevolucion(){
+        return $this->belongsTo(GpDevoluciones::class, 'devolucion_id', 'id');
+    }
 }

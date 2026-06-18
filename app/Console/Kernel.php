@@ -21,6 +21,7 @@ class Kernel extends ConsoleKernel
         $this->scheduleStockAndArticles($schedule);
         $this->scheduleSynchronizations($schedule);
         $this->scheduleCleanUpTasks($schedule);
+        $this->scheduleDevolutions($schedule);
     }
 
 
@@ -31,12 +32,6 @@ class Kernel extends ConsoleKernel
 
     private function scheduleOrdersAndQuotes(Schedule $schedule)
     {
-        $schedule->job(new EnqueueDevoluciones(10))
-            ->timezone(self::TIMEZONE)
-            ->everyMinute()
-            ->withoutOverlapping(5)
-            ->runInBackground();
-
         $schedule->command('cotizaciones:notificar-noventa')
             ->timezone(self::TIMEZONE)
             ->dailyAt('08:30')
@@ -123,6 +118,26 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(30);
 
         $schedule->command('queue:prune-failed --hours=72')->daily();
+    }
+
+    private function scheduleDevolutions(Schedule $schedule)
+    {
+        $schedule->job(new EnqueueDevoluciones(10))
+            ->timezone(self::TIMEZONE)
+            ->everyMinute()
+            ->withoutOverlapping(5);
+
+        $schedule->command('seedbilling:retry-pending-cancelations')
+            ->dailyAt('07:00')
+            ->timezone(self::TIMEZONE)
+            ->withoutOverlapping(60)
+            ->runInBackground();
+
+        $schedule->command('seedbilling:retry-failed-today-cancellations')
+            ->dailyAt('18:00')
+            ->timezone(self::TIMEZONE)
+            ->withoutOverlapping(60)
+            ->runInBackground();
     }
 
 

@@ -6,7 +6,7 @@ use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;;
 use App\Models\GpCliente;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;

@@ -10,11 +10,11 @@
     "require": {
         "php": "^8.1",
         "barryvdh/laravel-dompdf": "^2.1",
-        "codedredd/laravel-soap": "2.x",
+        "codedredd/laravel-soap": "3.*",
         "fruitcake/laravel-cors": "^3.0",
         "guzzlehttp/guzzle": "^7.0.1",
         "guzzlehttp/psr7": "^2.6",
-        "laravel/framework": "^8.75",
+        "laravel/framework": "9.*",
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
         "maatwebsite/excel": "^3.1",
@@ -24,17 +24,17 @@
         "picqer/php-barcode-generator": "^2.2",
         "predis/predis": "^3.2",
         "pusher/pusher-php-server": "^7.2",
-        "spatie/laravel-medialibrary": "9.0.0"
+        "spatie/laravel-medialibrary": "10.*"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^2.14",
         "doctrine/dbal": "^3.10",
-        "facade/ignition": "^2.5",
         "fakerphp/faker": "^1.9.1",
         "laravel/sail": "^1.0.1",
         "mockery/mockery": "^1.4.4",
-        "nunomaduro/collision": "^5.10",
-        "phpunit/phpunit": "^9.5.10"
+        "nunomaduro/collision": "^6.1",
+        "phpunit/phpunit": "^9.5.10",
+        "spatie/laravel-ignition": "1.*"
     },
     "autoload": {
         "psr-4": {

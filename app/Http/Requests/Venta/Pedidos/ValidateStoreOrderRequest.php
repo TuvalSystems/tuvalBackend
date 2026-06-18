@@ -130,13 +130,35 @@ class ValidateStoreOrderRequest extends FormRequest
             'peso'                      => ['nullable', 'numeric'],
             'descuento_articulo'        => ['nullable', 'numeric'],
             'descuento_original'        => ['nullable', 'numeric'],
-            // --- VALIDACIÓN DE ITEMS ---
-            'items'                     => ['required', 'array', 'min:1'],
-            'items.*.ART_CODIGO'        => ['required'],
-            'items.*.ART_CANTIDAD'      => ['required', 'numeric', 'min:0.00001'],
-            'items.*.ART_VALOR'         => ['required', 'numeric', 'min:0'],
-            'items.*.stock'             => ['nullable', 'array'],
-            'items.*.proveedores'       => ['nullable', 'array'],
+            // --- VALIDACIÓN DE ITEMS -    --
+            'items'                         => ['required', 'array', 'min:1'],
+            'items.*.ART_CODIGO'            => ['required'],
+            'items.*.ART_CANTIDAD'          => ['required', 'numeric', 'min:0.00001'],
+            'items.*.ART_VALOR'             => ['required', 'numeric', 'min:0'],
+            'items.*.ART_VALOR_ORIGINAL'    => ['nullable', 'numeric'],
+            'items.*.ART_DESCUENTO'         => ['nullable', 'numeric'],
+            'items.*.ART_IVA'               => ['nullable', 'numeric'],
+            'items.*.ART_PESO'              => ['nullable', 'numeric'],
+
+            'items.*.ART_TIPO_COMPRA'       => ['nullable', 'string'],
+            'items.*.ART_CODIGO_TRES_LETRAS' => ['nullable', 'string'],
+            'items.*.ART_DESCRIPCION'       => ['nullable', 'string'],
+            'items.*.ART_DESCRIPCION_ORIGINAL' => ['nullable', 'string'],
+             'items.*.ART_PLAN_UMEDIDA'      => ['nullable', 'string'],
+            'items.*.CHECK_ALTERNATIVO'     => ['required', 'boolean'],
+
+            'items.*.descuento'             => ['nullable', 'numeric'],
+            'items.*.descuento_original'    => ['nullable', 'numeric'],
+            'items.*.subtotal'              => ['nullable', 'numeric'],
+            'items.*.modificador'           => ['nullable', 'numeric'],
+
+            'items.*.cod_categoria'         => ['nullable', 'string'],
+            'items.*.cod_linea'             => ['nullable', 'string'],
+            'items.*.cod_clase'             => ['nullable', 'string'],
+            'items.*.nivel'                 => ['nullable', 'integer'],
+
+            'items.*.stock'                 => ['nullable', 'array'],
+            'items.*.proveedores'           => ['nullable', 'array'],
             // --- VALIDACIÓN DE IMÁGENES (AGREGADO) ---
             // Validamos 'imagenes' porque así lo llamaste en el formData.append
             'imagenes_nuevas'           => ['nullable', 'array'],

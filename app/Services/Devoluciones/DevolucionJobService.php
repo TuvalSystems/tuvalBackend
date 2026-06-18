@@ -6,7 +6,7 @@ use App\Enums\devoluciones\DevolutionStatus;
 use App\Models\GpPedido;
 use App\Models\GpIngreso;
 use App\Models\GpCliente;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoDetalle;
 use App\Traits\JsonResponseTrait;

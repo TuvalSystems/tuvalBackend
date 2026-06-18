@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Utils;
 
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpRegistroCopia;
@@ -16,7 +16,7 @@ use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpPedidoImagen;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Reposiciones\Contracts\StockWarehouseServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;

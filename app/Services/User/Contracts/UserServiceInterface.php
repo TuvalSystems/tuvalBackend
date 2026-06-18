@@ -45,4 +45,6 @@ interface UserServiceInterface
     public function getProfilesApp();
     public function getProfilesWeb();
      public function updateUserProfiles(array $payload);
+
+     public function getPointSalesMobile(GpUsuario $user);
 }

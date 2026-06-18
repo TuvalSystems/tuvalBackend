@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\Movil\Contracts\AppServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\JsonResponse;
 
 
 class AppController extends Controller

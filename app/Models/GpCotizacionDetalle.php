@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Articulos\GpArticulo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -35,7 +36,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $modificador
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\GpArticulo|null $articulo
+ * @property-read \App\Models\Articulos\GpArticulo|null $articulo
  * @property-read \App\Models\GpCotizacion $cotizacion
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpCotizacionDetalleProveedores> $proveedores
  * @property-read int|null $proveedores_count

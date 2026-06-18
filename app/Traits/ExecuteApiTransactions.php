@@ -4,13 +4,12 @@ namespace App\Traits;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 trait ExecuteApiTransactions
 {
 
@@ -23,7 +22,7 @@ trait ExecuteApiTransactions
         }
     }
 
-    protected function handlePdfAction(\Closure $accion, string $canalLog, string $contextoLog): Response
+    protected function handlePdfAction(\Closure $accion, string $canalLog, string $contextoLog): SymfonyResponse|JsonResponse
     {
         try {
             return $accion();
@@ -33,7 +32,7 @@ trait ExecuteApiTransactions
     }
 
 
-    private function captureAndFormatException(\Throwable $e, string $canalLog, string $contextoLog): Response
+    private function captureAndFormatException(\Throwable $e, string $canalLog, string $contextoLog): JsonResponse
     {
         if ($e instanceof ValidationException) {
             return $this->validationErrorResponse($e->errors(), 'validation error', 422);

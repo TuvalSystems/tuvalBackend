@@ -9,6 +9,7 @@ class ApiGpEndpoints
     // ✅ 1. Endpoints de Autenticación y Generales
     // ---
     public const GENERAL_VALIDAR_USUARIO = 'api/validar-usuario';
+    public const GENERAL_CONSULTAR_CORREO_USUARIO = 'api/buscar-correo-usuario';
     public const GENERAL_CONSULTA_TRANSFERENCIA_CABECERA = 'api/consultar-cabecera-transferencia';
     public const GENERAL_CONSULTAR_TRANSFERENCIA_DETALLE = 'api/consultar-detalle-transferencia';
     public const GENERAL_CONSULTAR_LISTA_PRECIO_ARTICULO = 'api/consultar-lista-precio-articulos';
@@ -49,7 +50,7 @@ class ApiGpEndpoints
 
     public const COBROS_CONSULTA_APLICACIONES_PAGO = 'api/cobros/consulta-aplicaciones-pago';
     public const COBROS_CONSULTA_APLICACIONES_PENDIENTES_POR_DOCUMENTO = 'api/cobros/consulta-aplicaciones-pendientes';
-
+    public const COBROS_CONSULTA_RECIBOS_CHEQUES = 'api/cobros/consulta-recibos-cheques';
 
     // ---
     // 📄 5. Endpoints de Transacciones ( Recibos, Facturación )
@@ -145,5 +146,4 @@ class ApiGpEndpoints
     // ---
 
     public const ARTICULOS_CONSULTAR_LISTA_TRAMPAS_VAPOR = 'api/articulos/seleccion-trampas-items';
-
 }

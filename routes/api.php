@@ -7,24 +7,25 @@ use App\Http\Controllers\Admin\SectionsController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\ConsultasController;
 use App\Http\Controllers\ventas\CotizacionesController;
 use App\Http\Controllers\ventas\PedidosController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\CobranzasController;
-use App\Http\Controllers\bodegas\DashboardController;
-use App\Http\Controllers\bodegas\RecibosdecompraeleController;
-use App\Http\Controllers\bodegas\TransportesController;
-use App\Http\Controllers\bodegas\DespachosController;
-use App\Http\Controllers\bodegas\TransferenciasController;
-use App\Http\Controllers\bodegas\GuiasderemisionController;
+use App\Http\Controllers\Inventario\Bodega\DashboardController;
+use App\Http\Controllers\Inventario\Bodega\RecibosdecompraeleController;
+use App\Http\Controllers\Inventario\Transporte\TransportesController;
+use App\Http\Controllers\Inventario\Bodega\DespachosController;
+use App\Http\Controllers\Inventario\Bodega\TransferenciasController;
+use App\Http\Controllers\Inventario\Bodega\GuiasderemisionController;
 use App\Http\Controllers\devoluciones\DevolucionesController;
-use App\Http\Controllers\bodegas\ReposicionController;
-use App\Http\Controllers\borradores\CotizacionBorradorController;
+use App\Http\Controllers\Inventario\Bodega\ReposicionController;
+use App\Http\Controllers\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
-use App\Http\Controllers\UserNotificationController;
+use App\Http\Controllers\Admin\UserNotificationController;
+use App\Http\Controllers\Inventario\Articulo\ArticuloController;
 use App\Http\Controllers\ventas\ReservasController;
 
 /*
@@ -106,7 +107,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::get('/llenausuariosgp', [SincronizacionController::class, 'llenausuariosgp']);
         Route::get('/llenabodegasgp', [SincronizacionController::class, 'llenabodegasgp']);
         Route::get('/llenacondicionpagogp', [SincronizacionController::class, 'llenacondicionpagogp']);
-        Route::get('/llenaarticulosgp', [SincronizacionController::class, 'llenaarticulosgp']);
+
         Route::get('/llenalistadepreciosgp', [SincronizacionController::class, 'llenalistadepreciosgp']);
         Route::get('/llenapuntodeventaycajasgp', [SincronizacionController::class, 'llenapuntodeventaycajasgp']);
         Route::get('/llenadescuentoformapagogp', [SincronizacionController::class, 'llenadescuentoformapagogp']);
@@ -119,13 +120,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::get('/llenapaisesyterritoriosgp', [SincronizacionController::class, 'llenapaisesyterritoriosgp']);
         Route::get('/llenaclaseclientegp', [SincronizacionController::class, 'llenaclaseclientegp']);
         Route::post('/checkusuario', [SincronizacionController::class, 'checkusuario']);
-        Route::get('/listadesecciones', [SectionsController::class, 'listadesecciones']);
-        Route::get('/perfiles', [SectionsController::class, 'perfiles']);
-        Route::post('/updateseccion', [SectionsController::class, 'updateseccion']);
-        Route::get('/eliminarperfil/{id}', [SectionsController::class, 'eliminarperfil']);
-        Route::post('/updateperfil', [SectionsController::class, 'updateperfil']);
-        Route::post('/updateperfilsection', [SectionsController::class, 'updateperfilsection']);
-        Route::post('/updateusuarioperfil', [SectionsController::class, 'updateusuarioperfil']);
+
 
         Route::post('/verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
         Route::get('/despachos/ordenespendientes/{puntodeventa_id}', [DespachosController::class, 'ordenespendientes']);
@@ -516,8 +511,15 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
 
-// rutas para usar en SQLServer como api
 
 Route::group(['prefix' => 'consultas-externas'], function () {
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
+});
+
+// para la sincronizacion global de articulo 1 por registro
+Route::group(['prefix' => 'inventario'], function () {
+      Route::prefix('articulos')->group(function () {
+           Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
+        });
+
 });

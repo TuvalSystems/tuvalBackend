@@ -3,7 +3,7 @@
 namespace App\Services\Aprobaciones\Utils;
 
 use App\Models\aprobacion\GpReglaAprobacion;
-use App\Models\GpArticulo;
+use App\Models\Articulos\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpDatosItemsL;

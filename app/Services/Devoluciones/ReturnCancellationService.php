@@ -190,7 +190,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     public function apiResponseSeedBelling($accesCode)
     {
 
-        return $this->apiSeedBilling->anularComprobante(array(
+        return $this->apiSeedBilling->cancelDocument(array(
             'claveAcceso' => $accesCode,
         ));
     }
