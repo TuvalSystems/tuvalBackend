@@ -131,7 +131,13 @@ class ValidateStoreOrderRequest extends FormRequest
             'descuento_articulo'        => ['nullable', 'numeric'],
             'descuento_original'        => ['nullable', 'numeric'],
             // --- VALIDACIÓN DE ITEMS -    --
-            'items'                         => ['required', 'array', 'min:1'],
+             'items'                         => ['required', 'array', 'min:1'],
+
+            'items.*.id'                    => ['nullable', 'integer'],
+            'items.*.detalle_id'            => ['nullable', 'integer'],
+            'items.*.cotizacion_id'         => ['nullable', 'integer', 'exists:gp_cotizacions,id'],
+            'items.*.id_temp'               => ['nullable', 'string', 'max:100'],
+
             'items.*.ART_CODIGO'            => ['required'],
             'items.*.ART_CANTIDAD'          => ['required', 'numeric', 'min:0.00001'],
             'items.*.ART_VALOR'             => ['required', 'numeric', 'min:0'],
@@ -159,6 +165,15 @@ class ValidateStoreOrderRequest extends FormRequest
             'items.*.cod_linea'             => ['nullable', 'string'],
             'items.*.cod_clase'             => ['nullable', 'string'],
             'items.*.nivel'                 => ['nullable', 'integer'],
+
+            'items.*.tipo'                      => ['nullable', 'string', 'max:50'],
+            'items.*.ART_IMP_VTA'               => ['nullable', 'numeric'],
+            'items.*.ART_MARCA'                 => ['nullable', 'string', 'max:100'],
+            'items.*.ART_MATERIAL'              => ['nullable', 'string', 'max:100'],
+            'items.*.valor_original_l'          => ['nullable', 'numeric'],
+            'items.*.imagenes'                  => ['nullable', 'array'],
+            'items.*.imagenes.*'                => ['nullable', 'string'],
+
 
             'items.*.stock'                 => ['nullable', 'array'],
             'items.*.proveedores'           => ['nullable', 'array'],
