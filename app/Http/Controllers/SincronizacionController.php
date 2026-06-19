@@ -147,7 +147,7 @@ class SincronizacionController extends Controller
         $obj = new WebserviceController;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
-        if($cronLog){
+        if ($cronLog) {
             $fecha = $cronLog->fecha;
         }
 
@@ -157,7 +157,7 @@ class SincronizacionController extends Controller
 
         $articulos = $obj->maestros($metodo, $parameters);
 
-        if(!isset($articulos['MST_ArticuloResult']['CS_ARTICULO'])){
+        if (!isset($articulos['MST_ArticuloResult']['CS_ARTICULO'])) {
             return response([
                 'success' => true,
                 'message' => 'Ningun artículo por actualizar',
@@ -166,10 +166,10 @@ class SincronizacionController extends Controller
 
         $articulos = $articulos['MST_ArticuloResult']['CS_ARTICULO'];
 
-        foreach($articulos as $key => $data){
+        foreach ($articulos as $key => $data) {
 
             $articulo = GpArticulo::where('ART_CODIGO', trim($data['ART_CODIGO']))->first();
-            if(!$articulo){
+            if (!$articulo) {
                 $articulo = new GpArticulo;
             }
             $articulo->ART_CODIGO = trim($data['ART_CODIGO']);
@@ -196,17 +196,17 @@ class SincronizacionController extends Controller
             $articulo->ART_REFERENCIA_GENERAL = trim($data['ART_REFERENCIA_GENERAL']);
             $articulo->ART_REFERENCIA_DETALLADA = trim($data['ART_REFERENCIA_DETALLADA']);
             $articulo->ART_TIPO_COMPRA = trim($data['ART_TIPO_COMPRA']);
-            $articulo->ART_CODIGO_MARCA_MATERIAL = trim($data['ART_CODIGO']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']);
-            $articulo->ART_DESCRIPCION_MARCA_MATERIAL = trim($data['ART_DESCRIPCION']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']);
+            $articulo->ART_CODIGO_MARCA_MATERIAL = trim($data['ART_CODIGO']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
+            $articulo->ART_DESCRIPCION_MARCA_MATERIAL = trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
             $articulo->ART_PESO = (float)trim($data['ART_PESO']);
             $articulo->ART_TAMANO = (float)trim($data['ART_TAMANO']);
-            $articulo->combinado = trim($data['ART_CODIGO']).' '.trim($data['ART_DESCRIPCION']).' '.trim($data['ART_CODIGO_TRES_LETRAS']).' '.trim($data['ART_CODIGO']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']).' '.trim($data['ART_DESCRIPCION']).' '.trim($data['ART_MARCA']).' '.trim($data['ART_MATERIAL']);
+            $articulo->combinado = trim($data['ART_CODIGO']) . ' ' . trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_CODIGO_TRES_LETRAS']) . ' ' . trim($data['ART_CODIGO']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']) . ' ' . trim($data['ART_DESCRIPCION']) . ' ' . trim($data['ART_MARCA']) . ' ' . trim($data['ART_MATERIAL']);
             $articulo->save();
 
-            if(isset($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) && count($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) > 0){
+            if (isset($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) && count($data['ART_SUGERIDO']['CS_ARTICULO_ADI']) > 0) {
                 $sugeridos = $data['ART_SUGERIDO']['CS_ARTICULO_ADI'];
                 GpArticuloSugerido::where('ART_CODIGO', trim($data['ART_CODIGO']))->delete();
-                foreach($sugeridos as $keyS => $dataS){
+                foreach ($sugeridos as $keyS => $dataS) {
                     $sugerido = new GpArticuloSugerido();
                     $sugerido->ART_CODIGO = trim($data['ART_CODIGO']);
                     $sugerido->ART_ADI_CANTIDAD = (int)trim($dataS['ART_ADI_CANTIDAD']);
@@ -214,7 +214,6 @@ class SincronizacionController extends Controller
                     $sugerido->save();
                 }
             }
-
         }
 
         $cronLog = new GpCronLog();
