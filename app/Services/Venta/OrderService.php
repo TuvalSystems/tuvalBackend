@@ -476,12 +476,12 @@ class OrderService implements OrderServiceInterface
 
     /** facturar pedido  */
 
-    public function generateInvoiceOrder($orderId)
+    public function generateInvoiceOrder(int $orderId)
     {
 
         $order = $this->getOrderOrFail($orderId);
         if (!empty($order->factura) || $order->factura != '' || $order->factura != null) {
-            abort(409, 'El pedido ya se encuentra facturado');
+            throw new  \RuntimeException('El pedido ya fue facturado');
         }
         if ($order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value) {
             $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
@@ -510,11 +510,15 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function getOrderOrFail($orderId)
+    public function getOrderOrFail(int $orderId)
     {
-        $order = GpPedido::findOrFail($orderId);
+        $order = GpPedido::where('id', $orderId)->whereNotIn('estado', [
+            OrderStatus::RECHAZADO,
+            OrderStatus::ANULADA,
+            OrderStatus::ELIMINADO
+        ])->first();
         if (!$order) {
-            abort(404, 'Pedido no encontrado');
+            throw new  \RuntimeException('Pedido no encontrado o no cumple las condiciones para facturarse');
         }
         return $order;
     }
