@@ -147,6 +147,8 @@ class ValidateStoreOrderRequest extends FormRequest
             'items.*.ART_PLAN_UMEDIDA'          => ['nullable', 'string'],
             'items.*.CHECK_ALTERNATIVO'         => ['required', 'boolean'],
             'items.*.ART_DECIMAL_CANTIDAD'      => ['nullable', 'numeric'],
+            'items.*.ART_STOCK'                 => ['nullable', 'numeric'],
+            'items.*.ART_COSTO_PROMEDIO'        => ['nullable', 'numeric'],
 
             'items.*.descuento'             => ['nullable', 'numeric'],
             'items.*.descuento_original'    => ['nullable', 'numeric'],
