@@ -22,7 +22,7 @@ interface OrderServiceInterface
      public function loadOrderForCopy($orderId, GpUsuario $user): array ;
 
     /** facturar pedido */
-    public function generateInvoiceOrder($orderId);
+    public function generateInvoiceOrder(int $orderId);
 
     /** funcion de copiar pedido  */
 

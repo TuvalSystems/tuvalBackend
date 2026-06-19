@@ -141,10 +141,12 @@ class PedidosController extends Controller
 
     public function facturarpedidoTest($codPedido)
     {
-        $pedido = GpPedido::where('pedido', $codPedido)
-        ->first();
-
-        return $this->orderService->generateInvoiceOrder($pedido->id);
+        return $this->handleApiAction(function () use ($codPedido) {
+            $pedido = GpPedido::where('pedido', $codPedido)
+                ->first();
+            $order = $this->orderService->generateInvoiceOrder($pedido->id);
+            return $this->successResponse('Pedido Facturado', $order, 200);
+        }, 'laravel', 'facturarPedidoTest');
     }
 
 
