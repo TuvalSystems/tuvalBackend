@@ -510,9 +510,13 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function getOrderOrFail($orderId)
+    public function getOrderOrFail(int $orderId)
     {
-        $order = GpPedido::findOrFail($orderId);
+        $order = GpPedido::where('id', $orderId)->whereIn('estado', [
+            OrderStatus::RECHAZADO,
+            OrderStatus::ANULADA,
+            OrderStatus::ELIMINADO
+        ])->first();
         if (!$order) {
             abort(404, 'Pedido no encontrado');
         }

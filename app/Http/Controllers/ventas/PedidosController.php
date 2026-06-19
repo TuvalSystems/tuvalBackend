@@ -141,7 +141,8 @@ class PedidosController extends Controller
 
     public function facturarpedidoTest($codPedido)
     {
-        $pedido = GpPedido::where('pedido', $codPedido)->first();
+        $pedido = GpPedido::where('pedido', $codPedido)
+        ->first();
 
         return $this->orderService->generateInvoiceOrder($pedido->id);
     }
