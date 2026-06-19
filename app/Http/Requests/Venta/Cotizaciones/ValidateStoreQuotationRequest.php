@@ -148,6 +148,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'items.*.ART_DESCRIPCION_ORIGINAL' => ['nullable', 'string'],
             'items.*.ART_PLAN_UMEDIDA'      => ['nullable', 'string'],
             'items.*.CHECK_ALTERNATIVO'     => ['required', 'boolean'],
+            'items.*.ART_DECIMAL_CANTIDAD'      => ['nullable', 'numeric'],
 
             'items.*.descuento'             => ['nullable', 'numeric'],
             'items.*.descuento_original'    => ['nullable', 'numeric'],
