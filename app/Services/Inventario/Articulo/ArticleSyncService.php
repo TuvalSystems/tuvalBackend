@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventario\Articulo;
 
+use App\Models\Articulos\ConfiguracionNivelesArticulo;
 use App\Models\Articulos\GpArticulo;
 use App\Services\Api\Bodegas\ApiGestionArticleService;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
@@ -90,6 +91,13 @@ class ArticleSyncService implements ArticleSyncServiceInterface
     }
 
 
+    /** funcioon para obtener la configuracion de colores  */
+    public function getConfigColorsWithSegment() : Collection
+    {
+        return ConfiguracionNivelesArticulo::activo()->get();
+    }
+
+
     /** proceso para la actualizacion o creacion de un articulo  (api) */
     public function createOrUpdateArticle(array $payload): GpArticulo
     {
@@ -107,6 +115,7 @@ class ArticleSyncService implements ArticleSyncServiceInterface
                     'ART_CLASE_ARTICULO'                => $this->clean($payload, 'claseArticulo'),
                     'ART_METODO_VALUACION'              => $this->clean($payload, 'metodoValuacion'),
                     'ART_TIPO_COMPRA'                   => $this->clean($payload, 'tipoCompra'),
+                    'ART_TIPO_PRODUCTO'                   => $this->clean($payload, 'tipoProducto'),
                     'ART_FECHA_MODIFICACION'            => $this->clean($payload, 'fechaModificacion'),
                     'ART_FECHA_CREACION'                => $this->clean($payload, 'fechaCreacion'),
                     'ART_ESTADO'                        => $this->clean($payload, 'estado'),
