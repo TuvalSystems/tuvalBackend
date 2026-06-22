@@ -363,6 +363,12 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('reposiciones/guia-remision/recibir-guia-reposicion', [GuiasderemisionController::class, 'recibirGuiaRemisionReposicion']);
         });
 
+        Route::group(['prefix' => 'inventario'], function () {
+            Route::prefix('articulos')->group(function () {
+                Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
+                Route::post('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
+            });
+        });
         Route::group(['prefix' => 'consultas'], function () {
             Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
             Route::post('territorios', [ConsultasController::class, 'territorios']);
@@ -518,8 +524,7 @@ Route::group(['prefix' => 'consultas-externas'], function () {
 
 // para la sincronizacion global de articulo 1 por registro
 Route::group(['prefix' => 'inventario'], function () {
-      Route::prefix('articulos')->group(function () {
-           Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
-        });
-
+    Route::prefix('articulos')->group(function () {
+        Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
+    });
 });

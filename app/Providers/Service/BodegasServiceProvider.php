@@ -2,7 +2,9 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Inventario\Articulo\ArticleSegmentConfigService;
 use App\Services\Inventario\Articulo\ArticleSyncService;
+use App\Services\Inventario\Articulo\Contracts\ArticleSegmentConfigServiceInterface;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DashboardServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
@@ -58,6 +60,7 @@ class BodegasServiceProvider extends ServiceProvider implements DeferrableProvid
         StockWarehouseServiceInterface::class                       => StockWarehouseService::class,
         ItemsLService::class                                       ,
         ArticleSyncServiceInterface::class                          => ArticleSyncService::class,
+        ArticleSegmentConfigServiceInterface::class                 => ArticleSegmentConfigService::class
 
     ];
 

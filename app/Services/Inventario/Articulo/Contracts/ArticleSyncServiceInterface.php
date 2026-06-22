@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Inventario\Articulo\Contracts;
 
 use App\Models\Articulos\GpArticulo;
@@ -9,8 +10,9 @@ interface ArticleSyncServiceInterface
 {
     // Define los métodos
 
-    public function getArticlesWithoutUpdateQuery(string $fechaIni, string $fechaFin) : Builder;
+    public function getArticlesWithoutUpdateQuery(string $fechaIni, string $fechaFin): Builder;
     public function markArticleInProgress(array $ids);
     public function updateArticlesFromSqlServer(Collection $articles);
-      public function createOrUpdateArticle(array $payload): GpArticulo;
+    public function getConfigColorsWithSegment(): Collection;
+    public function createOrUpdateArticle(array $payload): GpArticulo;
 }
