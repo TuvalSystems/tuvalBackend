@@ -19,7 +19,7 @@ class QuotationHistoryCreatorService implements QuotationHistoryCreatorServiceIn
     {
         DB::transaction(function () use ($quote) {
             $quote->load(['detallecotizacion.stock', 'detallecotizacion.proveedores']);
-            $lastVersion = HiCotizacion::where('cot_id', $quote->id)->max('version');
+            $lastVersion = HiCotizacion::where('cot_id', $quote->id)->max('co_his');
             $version = ((int) $lastVersion) + 1;
             $history = $this->builder->formPayloadHistoryHeaderQuote($quote, $version);
             $history->save();
