@@ -19,7 +19,6 @@ use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleStock;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Traits\CleansPayloadData;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 
 class QuotationBuilder implements QuotationBuilderInterface
 {
