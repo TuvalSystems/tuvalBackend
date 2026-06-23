@@ -502,7 +502,7 @@ class QuotationBuilder implements QuotationBuilderInterface
         $hi = new HiCotizacion();
         $hi->fill([
             'cot_id'                            => $quote->id,
-            'version'                           => $version,
+            'co_his'                            => $version,
             'cotizacion'                        => $quote->cotizacion,
             'user_id'                           => $quote->user_id,
             'sucursal_id'                       => $quote->sucursal_id,

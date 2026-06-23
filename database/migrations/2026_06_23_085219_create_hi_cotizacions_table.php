@@ -17,8 +17,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('cot_id')->nullable()->constrained('gp_cotizacions')->nullOnDelete();
             $table->string('cotizacion', 20)->nullable()->index();
-            $table->unsignedInteger('version')->default(1);
-            $table->unique(['cot_id', 'version']);
+            $table->unsignedInteger('co_his')->default(1);
+            $table->unique(['cot_id', 'co_his']);
             $table->foreignId('user_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
             $table->foreignId('sucursal_id')->nullable()->constrained('gp_cliente_sucursals')->nullOnDelete();
             $table->foreignId('sucursal_facturacion_id')->nullable()->constrained('gp_cliente_sucursals')->nullOnDelete();

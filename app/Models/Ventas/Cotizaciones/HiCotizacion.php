@@ -21,7 +21,7 @@ class HiCotizacion extends Model
 
     protected $fillable = [
         'cot_id',
-        'version',
+        'co_his',
         'cotizacion',
         'user_id',
         'sucursal_id',
