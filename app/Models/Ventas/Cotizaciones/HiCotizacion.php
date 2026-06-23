@@ -85,7 +85,7 @@ class HiCotizacion extends Model
 
     protected $casts = [
         'cot_id'                            => 'integer',
-        'version'                           => 'integer',
+        'co_his'                            => 'integer',
         'user_id'                           => 'integer',
         'sucursal_id'                       => 'integer',
         'sucursal_facturacion_id'           => 'integer',
