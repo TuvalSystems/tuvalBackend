@@ -10,6 +10,10 @@ use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
+use App\Models\Ventas\Cotizaciones\HiCotizacion;
+use App\Models\Ventas\Cotizaciones\HiCotizacionDetalle;
+use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleProveedores;
+use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleStock;
 
 interface QuotationBuilderInterface
 {
@@ -34,7 +38,13 @@ interface QuotationBuilderInterface
     public function formPayloadProvidersDetailQuotation(int $quoteId, int $detailId, array $provider): GpCotizacionDetalleProveedores;
     public function formPayloadStocksDetailQuotation(int $quoteId, int $detailId, array $stock): GpCotizacionDetalleStock;
 
-     public function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info): GpCotizacion;
-     public function payloadQuotationDetailDraft(GpArticulo $art, int $quoteId, GpCliente $cliente);
+    public function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info): GpCotizacion;
+    public function payloadQuotationDetailDraft(GpArticulo $art, int $quoteId, GpCliente $cliente);
 
-    }
+
+    /** proceso de creacion de historico de cotizaciones */
+    public function formPayloadHistoryHeaderQuote(GpCotizacion $quote, int $version): HiCotizacion;
+    public function formPayloadHistoryDetailQuote(int $cotId, int $hCotId,int $detId, GpCotizacionDetalle $detail): HiCotizacionDetalle;
+    public function formPayloadHistoryDetailQuoteProvider(int $hQuoteId, int $hDetailId, int $quoteId, int $detId,GpCotizacionDetalleProveedores $prov) : HiCotizacionDetalleProveedores;
+      public function formPayloadHistoryDetailQuoteStock(int $hQuoteId, int $hDetailId, int $quoteId, int $detId, GpCotizacionDetalleStock $stock): HiCotizacionDetalleStock;
+}

@@ -57,17 +57,17 @@ class GpCotizacionDetalleStock extends Model
     protected $table = 'gp_cotizacion_detalle_stocks';
     protected $appends = ['disable_movimiento', 'pendiente', 'disable_traslado', 'picking'];
     protected $casts = [
-        'disable_movimiento' => 'boolean',
-        'pendiente' => 'float',
-        'disable_traslado' => 'boolean',
-        'picking' => 'boolean',
+        'disable_movimiento'    => 'boolean',
+        'pendiente'             => 'float',
+        'disable_traslado'      => 'boolean',
+        'picking'               => 'boolean',
 
-        'cantidad_autorizada_reserva' => 'float',
-        'cantidad_facturada' => 'float',
-        'cantidad_cancelada' => 'float',
-        'cantidad_cotizada' => 'float',
-        'cantidad_traslado' => 'float',
-        'cantidad_reservada' => 'float',
+        'cantidad_autorizada_reserva'   => 'float',
+        'cantidad_facturada'            => 'float',
+        'cantidad_cancelada'            => 'float',
+        'cantidad_cotizada'             => 'float',
+        'cantidad_traslado'             => 'float',
+        'cantidad_reservada'            => 'float',
     ];
     protected $fillable = [
         'cotizacion_id',

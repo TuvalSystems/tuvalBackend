@@ -12,9 +12,14 @@ use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
+use App\Models\Ventas\Cotizaciones\HiCotizacion;
+use App\Models\Ventas\Cotizaciones\HiCotizacionDetalle;
+use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleProveedores;
+use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleStock;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Traits\CleansPayloadData;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class QuotationBuilder implements QuotationBuilderInterface
 {
@@ -484,5 +489,155 @@ class QuotationBuilder implements QuotationBuilderInterface
             'valor_original_l'              => 0,
         ]);
         $qd->save();
+    }
+
+
+
+    /**
+     *  proceso de creacion de registro de cotizacion historicas
+     */
+
+    public function formPayloadHistoryHeaderQuote(GpCotizacion $quote, int $version): HiCotizacion
+    {
+        $hi = new HiCotizacion();
+        $hi->fill([
+            'cot_id'                            => $quote->id,
+            'version'                           => $version,
+            'cotizacion'                        => $quote->cotizacion,
+            'user_id'                           => $quote->user_id,
+            'sucursal_id'                       => $quote->sucursal_id,
+            'sucursal_facturacion_id'           => $quote->sucursal_facturacion_id,
+            'cliente_id'                        => $quote->cliente_id,
+            'prospecto_id'                      => $quote->prospecto_id,
+            'estado'                            => $quote->estado,
+            'facturado'                         => $quote->facturado,
+            'factura_posterior_despacho'        => $quote->factura_posterior_despacho,
+            'factura_a_demanda'                 => $quote->factura_a_demanda,
+            'factura_siguiente_mes'             => $quote->factura_siguiente_mes,
+            'BOD_BODEGA'                        => $quote->BOD_BODEGA,
+            'PTO_VTA_ID'                        => $quote->PTO_VTA_ID,
+            'PTO_VTA_DESCRIPCION'               => $quote->PTO_VTA_DESCRIPCION,
+            'USERID'                            => $quote->USERID,
+            'DESC_FORMA_PAGO_CODIGO'            => $quote->DESC_FORMA_PAGO_CODIGO,
+            'CLI_RUC'                           => $quote->CLI_RUC,
+            'CLI_RAZON_SOCIAL'                  => $quote->CLI_RAZON_SOCIAL,
+            'CLI_CORREO_ELECT_SRI'              => $quote->CLI_CORREO_ELECT_SRI,
+            'COND_ID'                           => $quote->COND_ID,
+            'COND_ID_ORIGINAL'                  => $quote->COND_ID_ORIGINAL,
+            'VEND_ID'                           => $quote->VEND_ID,
+            'VEND_NOMBRES'                      => $quote->VEND_NOMBRES,
+            'VEND_APELLIDOS'                    => $quote->VEND_APELLIDOS,
+            'despacho'                          => $quote->despacho,
+            'porcentage_descuentooriginal'      => $quote->porcentage_descuentooriginal,
+            'porcentage_descuento'              => $quote->porcentage_descuento,
+            'descuento'                         => $quote->descuento,
+            'subtotalmenosdescuento'            => $quote->subtotalmenosdescuento,
+            'iva'                               => $quote->iva,
+            'total'                             => $quote->total,
+            'requiere_aprobacion_comercial'     => $quote->requiere_aprobacion_comercial,
+            'motivo_aprobacion_comercial'       => $quote->motivo_aprobacion_comercial,
+            'aprobado_comercial'                => $quote->aprobado_comercial,
+            'aprobador_comercial_id'            => $quote->aprobador_comercial_id,
+            'aprobado_comercial_mensaje'        => $quote->aprobado_comercial_mensaje,
+            'fecha_hora_aprobacion_comercial'   => $quote->fecha_hora_aprobacion_comercial,
+            'requiere_aprobacion_crediticia'    => $quote->requiere_aprobacion_crediticia,
+            'aprobado_crediticio'               => $quote->aprobado_crediticio,
+            'aprobador_crediticio_id'           => $quote->aprobador_crediticio_id,
+            'nota_interna'                      => $quote->nota_interna,
+            'nota_cliente'                      => $quote->nota_cliente,
+            'nota_operaciones'                  => $quote->nota_operaciones,
+            'orden_de_compra'                   => $quote->orden_de_compra,
+            'impreso'                           => $quote->impreso,
+            'fecha_impreso'                     => $quote->fecha_impreso,
+            'fecha_entrega'                     => $quote->fecha_entrega,
+            'impuesto'                          => $quote->impuesto,
+            'cotizacion_venta_motivo_id'        => $quote->cotizacion_venta_motivo_id,
+            'recordar'                          => $quote->recordar,
+            'fecha_recordatorio'                => $quote->fecha_recordatorio,
+            'observacion'                       => $quote->observacion,
+            'user_ing_recordatorio'             => $quote->user_ing_recordatorio,
+            'origen'                            => $quote->origen,
+            'fe_facturacion_reserva'            => $quote->fe_facturacion_reserva,
+            'pedido_reserva_id'                 => $quote->pedido_reserva_id,
+            'pedido_generado_at'                => $quote->pedido_generado_at,
+            'user_rechazo_id'                   => $quote->user_rechazo_id,
+            'fe_rechazo'                        => $quote->fe_rechazo,
+        ]);
+        return $hi;
+    }
+
+
+    public function formPayloadHistoryDetailQuote(int $cotId,int $detId, int $hCotId, GpCotizacionDetalle $detail): HiCotizacionDetalle
+    {
+        $nHDetail = new HiCotizacionDetalle();
+        $nHDetail->fill([
+            'hi_cot_id'                     => $hCotId,
+            'cot_id'                        => $cotId,
+            'det_id'                        => $detId,
+            'ART_CODIGO'                    => $detail->ART_CODIGO,
+            'ART_DESCRIPCION'               => $detail->ART_DESCRIPCION,
+            'ART_DESCRIPCION_ORIGINAL'      => $detail->ART_DESCRIPCION_ORIGINAL,
+            'CHECK_ALTERNATIVO'             => $detail->CHECK_ALTERNATIVO,
+            'ART_CODIGO_TRES_LETRAS'        => $detail->ART_CODIGO_TRES_LETRAS,
+            'ART_DECIMAL_CANTIDAD'          => $detail->ART_DECIMAL_CANTIDAD,
+            'ART_PLAN_UMEDIDA'              => $detail->ART_PLAN_UMEDIDA,
+            'ART_MARCA'                     => $detail->ART_MARCA,
+            'ART_MATERIAL'                  => $detail->ART_MATERIAL,
+            'ART_PESO'                      => $detail->ART_PESO,
+            'ART_TIPO_COMPRA'               => $detail->ART_TIPO_COMPRA,
+            'ART_VALOR'                     => $detail->ART_VALOR,
+            'ART_VALOR_ORIGINAL'            => $detail->ART_VALOR_ORIGINAL,
+            'ART_DESCUENTO'                 => $detail->ART_DESCUENTO,
+            'ART_IVA'                       => $detail->ART_IVA,
+            'ART_CANTIDAD'                  => $detail->ART_CANTIDAD,
+            'ART_STOCK'                     => $detail->ART_STOCK,
+            'ART_IMP_VTA'                   => $detail->ART_IMP_VTA,
+            'ART_COSTO_PROMEDIO'            => $detail->ART_COSTO_PROMEDIO,
+            'descuento'                     => $detail->descuento,
+            'descuento_original'            => $detail->descuento_original,
+            'modificador'                   => $detail->modificador,
+            'valor_original_l'              => $detail->valor_original_l,
+        ]);
+        return $nHDetail;
+    }
+
+    public function formPayloadHistoryDetailQuoteProvider(int $hQuoteId, int $hDetailId, int $quoteId, int $detId, GpCotizacionDetalleProveedores $prov): HiCotizacionDetalleProveedores
+    {
+        $nHProv = new HiCotizacionDetalleProveedores();
+        $nHProv->fill([
+            'hi_cot_id'             => $hQuoteId,
+            'hi_cot_det_id'         => $hDetailId,
+            'cot_id'                => $quoteId,
+            'det_id'                => $detId,
+            'ID_PROVEEDOR'          => $prov->ID_PROVEEDOR,
+            'DESCRIPCION_ARTICULO'  => $prov->DESCRIPCION_ARTICULO,
+            'FECHA_ENTREGA'         => $prov->FECHA_ENTREGA,
+            'CANTIDAD'              => $prov->CANTIDAD,
+            'COSTO_UNITARIO'        => $prov->COSTO_UNITARIO,
+            'IMPUESTO'              => $prov->IMPUESTO,
+            'TOTAL'                 => $prov->TOTAL,
+            'TOTALCONIMPUESTO'      => $prov->TOTALCONIMPUESTO,
+            'NOTA'                  => $prov->NOTA,
+            'MARGEN'                => $prov->MARGEN,
+        ]);
+        return $nHProv;
+    }
+
+
+    public function formPayloadHistoryDetailQuoteStock(int $hQuoteId, int $hDetailId, int $quoteId, int $detId, GpCotizacionDetalleStock $stock): HiCotizacionDetalleStock
+    {
+        $nHStock = new HiCotizacionDetalleStock();
+        $nHStock->fill([
+            'hi_cot_id'                     => $hQuoteId,
+            'hi_cot_det_id'                 => $hDetailId,
+            'cot_id'                        => $quoteId,
+            'det_id'                        => $detId,
+            'STO_ART_BODEGA'                => $stock->STO_ART_BODEGA,
+            'STO_ART_STOCK_DISPONIBLE'      => $stock->STO_ART_STOCK_DISPONIBLE,
+            'seleccionado'                  => $stock->seleccionado,
+        ]);
+
+
+        return $nHStock;
     }
 }
