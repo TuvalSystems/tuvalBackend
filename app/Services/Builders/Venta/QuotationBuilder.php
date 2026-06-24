@@ -29,7 +29,7 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-    public function formPayloadSendStoreReminderGp($quote): array
+    public function formPayloadSendStoreReminderGp(GpCotizacion $quote): array
     {
         return [
             'txCot'             => $quote->cotizacion,
@@ -56,7 +56,7 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-    public function fromPayloadReservedToQuotation(array $data, array $requiereApproval, GpUsuario $user, $origen)
+    public function fromPayloadReservedToQuotation(array $data, array $requiereApproval, GpUsuario $user, string $origen): GpCotizacion
     {
 
         $cot = new GpCotizacion();
@@ -118,7 +118,7 @@ class QuotationBuilder implements QuotationBuilderInterface
 
 
 
-    public function formPayloadReservedToDetail($cotizacionId, $item, $totalLines)
+    public function formPayloadReservedToDetail(int $cotizacionId, GpCotizacionDetalle $item, float $totalLines): GpCotizacionDetalle
     {
         $det = new GpCotizacionDetalle();
         $det->fill([
@@ -150,7 +150,7 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-    public function formPayloadReservedToDetaiLStock($cotizacionId, $detalleId, $stock, $line)
+    public function formPayloadReservedToDetaiLStock(int $cotizacionId, int $detalleId, GpCotizacionDetalleStock $stock, array $line): GpCotizacionDetalleStock
     {
         $st = new GpCotizacionDetalleStock();
         $st->fill([
@@ -166,7 +166,7 @@ class QuotationBuilder implements QuotationBuilderInterface
 
 
 
-    public function formPayloadSendClientGp($data, $nivelPrice): array
+    public function formPayloadSendClientGp(array $data, string $nivelPrice): array
     {
         $lines = str_split($data['CLI_DIRECCION'], 61);
         $line1 = $lines[0] ?? '';
@@ -458,7 +458,7 @@ class QuotationBuilder implements QuotationBuilderInterface
         return $quote;
     }
 
-    public function payloadQuotationDetailDraft(GpArticulo $art, int $quoteId, GpCliente $cliente)
+    public function payloadQuotationDetailDraft(GpArticulo $art, int $quoteId, GpCliente $cliente): void
     {
         $qd = new GpCotizacionDetalle();
         $qd->fill([

@@ -76,7 +76,7 @@ class OrderBuilder implements OrderBuilderInterface
 
 
 
-    public function formPayloadOrderDetail($orderId, $item, $i)
+    public function formPayloadOrderDetail(int $orderId, array $item, int $i): GpPedidoDetalle
     {
         $det = new GpPedidoDetalle();
         $det->fill([
@@ -108,7 +108,7 @@ class OrderBuilder implements OrderBuilderInterface
         return $det;
     }
 
-    public function formPayloadOrderDetailProvider($provider, $orderId, $detailOrder, $recibido)
+    public function formPayloadOrderDetailProvider(array $provider, int $orderId, int $detailOrder, string $recibido): GpPedidoDetalleProveedores
     {
         $prov = new GpPedidoDetalleProveedores();
         $prov->fill([
@@ -131,7 +131,7 @@ class OrderBuilder implements OrderBuilderInterface
     }
 
 
-    public function formPayloadOrderDetailStock($item, $orderId, $detailOrderId, $disponible, $reservado): GpPedidoDetalleStock
+    public function formPayloadOrderDetailStock(mixed $item, int $orderId, int $detailOrderId, float $disponible, float $reservado): GpPedidoDetalleStock
     {
         $newStock = new GpPedidoDetalleStock();
         $newStock->fill([
@@ -153,7 +153,7 @@ class OrderBuilder implements OrderBuilderInterface
      */
 
 
-    public function formPayloadOrderV2(array $data, $user, GpPuntoVenta $ptoVta,  array $requiredApprovalCommercial, array $extras): GpPedido
+    public function formPayloadOrderV2(array $data, GpUsuario $user, GpPuntoVenta $ptoVta,  array $requiredApprovalCommercial, array $extras): GpPedido
     {
         $od = new GpPedido();
         $od->fill([

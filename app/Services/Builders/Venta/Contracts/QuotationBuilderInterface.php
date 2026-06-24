@@ -18,15 +18,15 @@ use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleStock;
 interface QuotationBuilderInterface
 {
     // Define los métodos que debe implementar el servicio
-    public function formPayloadSendStoreReminderGp($quote): array;
-    public function fromPayloadReservedToQuotation(array $data, array $requiereApproval, GpUsuario $user, $origen);
-    public function formPayloadReservedToDetail($cotizacionId, $item, $totalLines);
-    public function formPayloadReservedToDetaiLStock($cotizacionId, $detalleId, $stock, $line);
+    public function formPayloadSendStoreReminderGp(GpCotizacion $quote): array;
+    public function fromPayloadReservedToQuotation(array $data, array $requiereApproval, GpUsuario $user, string $origen): GpCotizacion;
+    public function formPayloadReservedToDetail(int $cotizacionId, GpCotizacionDetalle $item, float $totalLines): GpCotizacionDetalle;
+    public function formPayloadReservedToDetaiLStock(int $cotizacionId, int $detalleId, GpCotizacionDetalleStock $stock, array $line): GpCotizacionDetalleStock;
 
 
     /** proceso de clientes */
 
-    public function formPayloadSendClientGp($data, $nivelPrice);
+    public function formPayloadSendClientGp(array $data, string $nivelPrice): array;
     public function formPayloadClientWeb(array $data, string $nivelPrecio, GpUsuario $user): array;
     public function formPayloadClientSucursal(array $data, int $clienteId, GpUsuario $user): array;
 
@@ -39,12 +39,12 @@ interface QuotationBuilderInterface
     public function formPayloadStocksDetailQuotation(int $quoteId, int $detailId, array $stock): GpCotizacionDetalleStock;
 
     public function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info): GpCotizacion;
-    public function payloadQuotationDetailDraft(GpArticulo $art, int $quoteId, GpCliente $cliente);
+    public function payloadQuotationDetailDraft(GpArticulo $art, int $quoteId, GpCliente $cliente): void;
 
 
     /** proceso de creacion de historico de cotizaciones */
     public function formPayloadHistoryHeaderQuote(GpCotizacion $quote, int $version): HiCotizacion;
-    public function formPayloadHistoryDetailQuote(int $cotId, int $hCotId,int $detId, GpCotizacionDetalle $detail): HiCotizacionDetalle;
-    public function formPayloadHistoryDetailQuoteProvider(int $hQuoteId, int $hDetailId, int $quoteId, int $detId,GpCotizacionDetalleProveedores $prov) : HiCotizacionDetalleProveedores;
-      public function formPayloadHistoryDetailQuoteStock(int $hQuoteId, int $hDetailId, int $quoteId, int $detId, GpCotizacionDetalleStock $stock): HiCotizacionDetalleStock;
+    public function formPayloadHistoryDetailQuote(int $cotId, int $detId, int $hCotId, GpCotizacionDetalle $detail): HiCotizacionDetalle;
+    public function formPayloadHistoryDetailQuoteProvider(int $hQuoteId, int $hDetailId, int $quoteId, int $detId, GpCotizacionDetalleProveedores $prov): HiCotizacionDetalleProveedores;
+    public function formPayloadHistoryDetailQuoteStock(int $hQuoteId, int $hDetailId, int $quoteId, int $detId, GpCotizacionDetalleStock $stock): HiCotizacionDetalleStock;
 }
