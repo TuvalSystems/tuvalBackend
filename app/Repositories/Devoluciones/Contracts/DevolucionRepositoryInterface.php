@@ -45,9 +45,9 @@ interface DevolucionRepositoryInterface
     public function getClientsByClientIdToArray($cliente_id);
     public function getSucursalByInvoiceToArray($invoice_id);
     public function getDetailDevolucionById($devolucion_id);
-     public function getDispatchOrder($orderId);
+     public function getDispatchOrder(int $orderId);
 
      //refactura
 
-     public function shouldMarkAsDispatched($devId) : bool;
+     public function shouldMarkAsDispatched(int $devId) : bool;
 }

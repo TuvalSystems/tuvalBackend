@@ -181,7 +181,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->first()->toArray();
     }
 
-  
+
 
     public function getByPtoVtaIdReturns($punto_venta_id)
     {
@@ -214,13 +214,13 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getDispatchOrder($orderId)
+    public function getDispatchOrder(int $orderId)
     {
         return GpOrdenDespacho::where('pedido_id', $orderId)->where('estado', '!=', 'pendiente')->exists();
     }
 
 
-    public function shouldMarkAsDispatched($devId): bool
+    public function shouldMarkAsDispatched(int $devId): bool
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devId)
             ->where('despachado_parcial', 1)
