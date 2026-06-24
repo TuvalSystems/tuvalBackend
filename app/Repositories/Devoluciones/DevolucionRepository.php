@@ -181,21 +181,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->first()->toArray();
     }
 
-    public function getDetailDevolucionByIdAnyConditionalDispatchParcial($devolucion_id)
-    {
-        return GpDevolucionesDetalle::where('devolucion_id', $devolucion_id)
-            ->where('seleccionado', '>', 0)
-            ->get()
-            ->filter(function ($item) {
-                // ✅ Verificación de datos correctos y no nulos
-                return is_array($item->toArray()) && isset($item['ART_CODIGO']);
-            })
-            ->map(function ($item) {
-                // 🚀 Convertimos cada item a array para asegurar tipado
-                return $item->toArray();
-            })
-            ->toArray();
-    }
+  
 
     public function getByPtoVtaIdReturns($punto_venta_id)
     {

@@ -150,18 +150,6 @@ class PedidosController extends Controller
     }
 
 
-
-    public function generarordendespacho($id)
-    {
-        $pedido = GpPedido::where('id', $id)
-            ->first();
-        $this->invoiceService->generateDisptachOrder($pedido);
-    }
-
-
-
-
-
     public function corregirenviando(): void
     {
         $enviando = GpPedido::where('estado', OrderStatus::ENVIANDO)
@@ -320,13 +308,7 @@ class PedidosController extends Controller
         $this->functionService->recalculateOrder($id);
     }
 
-    public function corregirpedidos()
-    {
-        $pedidos = GpPedido::whereNotNull('pedido_origen')->get();
-        foreach ($pedidos as $pedido) {
-            $this->functionService->recalculateOrder($pedido->id);
-        }
-    }
+
 
 
 

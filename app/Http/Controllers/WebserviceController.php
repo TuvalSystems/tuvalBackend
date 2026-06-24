@@ -26,23 +26,6 @@ class WebserviceController extends Controller
     }
 
     /**
-     * VALIDA USUARIO CON LOS DATOS INGRESADOS DESDE WEBSERVICE GP
-     */
-
-    public function validarusuario($data)
-    {
-        $data = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Userid' => $data['username'],
-            'Password' => $data['password'],
-        );
-        $response = Soap::baseWsdl(env('WEBSERVICES_USUARIOS_URL'))
-            ->ValidaUsuario($data);
-        $response->throw();
-        return $response->json()['ValidaUsuarioResult']['VALIDA_USUARIO'][0];
-    }
-
-    /**
      * Devuelve la lista de bodegas de GP
      */
 
@@ -124,14 +107,7 @@ class WebserviceController extends Controller
             ]);
         return $response->json()['MST_Punto_VentaResult']['CS_PUNTO_VENTA'];
     }
-    public function clientesucursal()
-    {
-        $response = Soap::baseWsdl(env('WEBSERVICES_URL'))
-            ->MST_Cliente_Sucursal([
-                'IDCompania' => env('ID_COMPANIA'),
-            ]);
-        return $response->json()['MST_Cliente_SucursalResult']['CS_CLIENTE_SUCURSAL'];
-    }
+   
     public function descuentoformapago()
     {
         $response = Soap::baseWsdl(env('WEBSERVICES_URL'))
