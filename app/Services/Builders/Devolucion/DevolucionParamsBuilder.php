@@ -82,7 +82,7 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
         return $dvd;
     }
 
-    public function builderParamsDevolutionAdjustment(GpDevoluciones $devolucion, GpPedido $pedido, $userId, $items)
+    public function builderParamsDevolutionAdjustment(GpDevoluciones $devolucion, GpPedido $pedido, string $userId, array $items): array
     {
         $header = [
             'idCompany'         => config('services.api_gp.company'),
@@ -99,7 +99,7 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
     }
 
 
-    public function formPayloadInvoiceAnulation($order, $devolucion, $diario, $documentId, $claveAcceso): GpFacturaAnulada
+    public function formPayloadInvoiceAnulation(GpPedido $order, GpDevoluciones $devolucion, ?int $diario, ?int $documentId, string $claveAcceso): GpFacturaAnulada
     {
         $inv = new GpFacturaAnulada();
         $inv->fill([
@@ -118,7 +118,7 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
     }
 
 
-     public function createRegisterHistortyHeaderDev($dev, GpUsuario $user){
+     public function createRegisterHistortyHeaderDev(GpDevoluciones $dev, GpUsuario $user): GpIngreso{
         $ing = new GpIngreso();
         $ing->fill([
             'user_id'   => $user->id,
@@ -129,7 +129,7 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
         return $ing;
     }
 
-    public function createRegisterHistoryDetailDev($items, $ing){
+    public function createRegisterHistoryDetailDev(array $items, GpIngreso $ing): GpIngresosDetalle{
         $d = new GpIngresosDetalle();
         $d->fill([
             'ingreso_id'    => $ing->id,
