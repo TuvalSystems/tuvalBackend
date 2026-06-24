@@ -14,7 +14,7 @@ use Carbon\Carbon;
 class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuilderInterface
 {
 
-    public function buildDeliveryNoteSalesTransferHeader(array $payload, array $infoGuia,  array  $dataVehicle): GpGuiaRemision
+    public function buildDeliveryNoteSalesTransferHeader(array $payload, array $infoGuia, array $dataVehicle): GpGuiaRemision
     {
         $gr = new GpGuiaRemision();
         $gr->fill([
@@ -132,7 +132,7 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
 
 
 
-    public function createRegisterHistoryHeader(GpGuiaRemision $guia, GpUsuario $user, $document, string $type): GpIngreso
+    public function createRegisterHistoryHeader(GpGuiaRemision $guia, GpUsuario $user, string $document, string $type): GpIngreso
     {
         $ing = new GpIngreso();
         $ing->fill([
@@ -145,7 +145,7 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
         return $ing;
     }
 
-    public function ceateRegisterHistoryDetail($item, $ing): GpIngresosDetalle
+    public function ceateRegisterHistoryDetail(array $item, GpIngreso $ing): GpIngresosDetalle
     {
         $d = new GpIngresosDetalle();
         $d->fill([
