@@ -20,7 +20,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
 
 
 
-    public function buildDeliveryNoteDispatchHeader($payload, $infoGuia): GpGuiaRemision
+    public function buildDeliveryNoteDispatchHeader(array $payload, array $infoGuia): GpGuiaRemision
     {
         $gr = new GpGuiaRemision();
         $gr->fill([
@@ -59,7 +59,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
     }
 
 
-    public function buildDeliveryNoteDispatchDetail($guiaId, $detalle): GpGuiaRemisionDetalle
+    public function buildDeliveryNoteDispatchDetail(int $guiaId, array $detalle): GpGuiaRemisionDetalle
     {
         $new = new GpGuiaRemisionDetalle();
         $new->fill([
@@ -74,7 +74,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
         return $new;
     }
 
-    public function buildDeliveryNoteHeaderToGp($guia, ?string $ordenCompra = null): array
+    public function buildDeliveryNoteHeaderToGp(GpGuiaRemision $guia, ?string $ordenCompra = null): array
     {
         return [
             'guiaRemision'                      => $guia->GUI_REM_GUIA_REMISION,
@@ -97,7 +97,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
     }
 
 
-    public function buildDeliveryNoteDestinationToGp($guia, ?string $ordenCompra = null): array
+    public function buildDeliveryNoteDestinationToGp(GpGuiaRemision $guia, ?string $ordenCompra = null): array
     {
         return [
             'guiaRemision'                  => $guia->GUI_REM_GUIA_REMISION,
@@ -157,7 +157,8 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
     }
 
 
-    public function buildDeliveryNoteValidateDispatchShipment(array $params,  string $tipoMovimiento, string $tipo): array{
+    public function buildDeliveryNoteValidateDispatchShipment(array $params, string $tipoMovimiento, string $tipo): array
+    {
         return [
             'orderNumber'       => data_get($params, 'pedido'),
             'newOrderNumber'    => data_get($params, 'pedidoNuevo'),
