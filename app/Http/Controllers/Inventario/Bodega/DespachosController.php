@@ -54,7 +54,7 @@ class DespachosController extends Controller
         protected readonly DispatchServiceInterface $dispatchService,
         protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService
     ) {}
-  
+
     public function checkfacturasdespachos($cobro_id)
     {
 
@@ -236,7 +236,7 @@ class DespachosController extends Controller
 
 
         $ordenDespacho = GpOrdenDespacho::where('pedido_id', $pedido_id)
-           ->where('estado', 'pendiente')
+            ->where('estado', 'pendiente')
             ->get()->first();
 
         if ($ordenDespacho) {
@@ -861,34 +861,29 @@ class DespachosController extends Controller
 
     public function checkdespachadoscompletos()
     {
-        $ordenes = GpOrdenDespacho::where('estado', 'liberada')->get();
+        $ordenes = GpOrdenDespacho::with([
+            'pedido' => function ($q) {
+                $q->where('estado', OrderStatus::FACTURADO)->with('detallepedido');
+            },
+
+        ])->where('estado', 'liberada')->get();
         foreach ($ordenes as $orden) {
-            $pedido = GpPedido::where('id', $orden->pedido_id)
-                ->where('estado', OrderStatus::FACTURADO)->first();
+            $pedido = $orden->pedido;
+            if (!$pedido) {
+                continue;
+            }
             $listo = true;
 
-            $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
-
-            foreach ($detallepedido as $item) {
-
-                // if ($item->ART_TIPO_COMPRA != 'SERV') {
-
+            foreach ($pedido->detallepedido as $item) {
                 if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
                     $listo = false;
+                    break;
                 }
-                // if ($item->ART_TIPO_COMPRA = 'SERV') {
-                //     if ($item->trasladado < $item->ART_CANTIDAD) {
-                //         $listo = false;
-                //     }
-                // }
-                // }
             }
 
             if ($listo) {
                 $pedido->despachado = 1;
                 $pedido->save();
-
-                //$orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
                 $orden->estado = 'despachada';
                 $orden->save();
             }
