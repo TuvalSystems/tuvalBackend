@@ -73,14 +73,14 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     }
 
 
-    public function getOrderAccesKey($invoice)
+    public function getOrderAccesKey(string $invoice)
     {
         return $this->apiSales->retrieveDocumentAccessKey([
             'numdoc' => $invoice
         ]);
     }
 
-    public function sendAnulationTpGpInvoice(string $invoice, string $ruc, int $userId, $devolucion)
+    public function sendAnulationTpGpInvoice(string $invoice, string $ruc, int $userId, string $devolucion)
     {
         $params = [
             'numDoc' => $invoice,
@@ -92,7 +92,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     }
 
 
-    public function createRegisterInvoiceAnulation($order, $devolucion, $diario, $documentId, $claveAcceso): GpFacturaAnulada
+    protected function createRegisterInvoiceAnulation($order, $devolucion, $diario, $documentId, $claveAcceso): GpFacturaAnulada
     {
         $invoice = $this->devolucionBuilder->formPayloadInvoiceAnulation($order, $devolucion, $diario, $documentId, $claveAcceso);
         $invoice->save();
@@ -100,21 +100,14 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     }
 
 
-    public function finalizeCancellation(GpFacturaAnulada $invoice, GpPedido $order, GpDevoluciones $devolucion)
+    protected function finalizeCancellation(GpFacturaAnulada $invoice, GpPedido $order, GpDevoluciones $devolucion)
     {
         $resp = $this->apiResponseSeedBelling($invoice->claveacceso);
-        // $success = data_get($resp, 'success', false);
         $message = data_get($resp, 'respuesta', null);
-
-        // quito el sucess porque solo voy a guardar el mensaje nada mas
-        // if (!$success) {
-        //     abort(400, 'Error al enviar la anulación al SRI: ' . data_get($resp, 'message', 'Error desconocido'));
-        // }
-
         DB::transaction(function () use ($invoice, $order, $devolucion, $message) {
             $invoice->update([
-                'estado' => InvoiceAnulationStatus::ENVIADA,
-                'resp_seedbilling' => $message
+                'estado'            => InvoiceAnulationStatus::ENVIADA,
+                'resp_seedbilling'  => $message
             ]);
 
             //1.- sincronizar cantidades (prepara los dato seleccionados para anular)
@@ -176,7 +169,6 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     public function updateStatusDevolutionAndOrder(GpPedido $order, GpDevoluciones $devolucion)
     {
         $devolucion->update(['estado' => DevolutionStatus::ANULADA]);
-
         $order->update([
             'estado'                => OrderStatus::ANULADA,
             'despacho_en_proceso'   => 0,
@@ -194,7 +186,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     }
 
 
-    public function apiResponseSeedBelling($accesCode)
+    public function apiResponseSeedBelling(string $accesCode)
     {
 
         return $this->apiSeedBilling->cancelDocument(array(
