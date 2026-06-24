@@ -298,7 +298,7 @@ class DespachosController extends Controller
 
 
         $ordenDespacho = GpOrdenDespacho::where('pedido_id', $pedido_id)
-            ->where('estado', '!=', 'despachada')
+           ->where('estado', 'pendiente')
             ->get()->first();
 
         if ($ordenDespacho) {
@@ -679,6 +679,13 @@ class DespachosController extends Controller
         $user = $request->user();
 
         $orden = GpOrdenDespacho::where('id', $data['id'])->first();
+        if (!$orden || $orden->estado !== 'pendiente') {
+            return response([
+                'success' => false,
+                'message' => 'La orden de despacho no está pendiente y no puede ser liberada.',
+                'orden' => $orden,
+            ], 409);
+        }
         $orden->autorizacion_fecha = date('Y-m-d H:i:s');
         if (!$orden->fecha_hora_liberacion) {
             $orden->fecha_hora_liberacion = date('Y-m-d H:i:s');
@@ -907,7 +914,7 @@ class DespachosController extends Controller
             $pedido->despacho_en_proceso = 0;
             $pedido->save();
 
-            $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->where('estado','!=', 'cancelada')->first();
+            $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->where('estado', '!=', 'cancelada')->first();
             $orden->estado = 'despachada';
             $orden->save();
         }
@@ -919,7 +926,7 @@ class DespachosController extends Controller
         $ordenes = GpOrdenDespacho::where('estado', 'liberada')->get();
         foreach ($ordenes as $orden) {
             $pedido = GpPedido::where('id', $orden->pedido_id)
-            ->where('estado', OrderStatus::FACTURADO)->first();
+                ->where('estado', OrderStatus::FACTURADO)->first();
             $listo = true;
 
             $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();

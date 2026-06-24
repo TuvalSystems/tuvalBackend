@@ -43,6 +43,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class GpOrdenDespacho extends Model
 {
     use HasFactory;
+    
     protected $fillable = [
         'pedido_id',
         'orden',

@@ -31,8 +31,7 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
         protected readonly ApiSeedBillingService $apiSeedBilling,
         protected readonly DevolucionRepositoryInterface $repository,
         protected readonly DevolucionParamsBuilderInterface $devolucionBuilder
-    ) {
-    }
+    ) {}
 
 
     public function execute(array $order, GpDevoluciones $devolucion)
@@ -170,7 +169,6 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
                     $stockRecord->update(['reservado' => $newReserved]);
                 }
             }
-
         }
         $devolucion->update(['rebajado' => true]);
     }
@@ -179,11 +177,20 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
     {
         $devolucion->update(['estado' => DevolutionStatus::ANULADA]);
 
-        $order->update(['estado' => OrderStatus::ANULADA]);
+        $order->update([
+            'estado'                => OrderStatus::ANULADA,
+            'despacho_en_proceso'   => 0,
+        ]);
 
+        $this->cancelDispatchOrders($order);
+    }
+    protected function cancelDispatchOrders(GpPedido $order): void
+    {
         GpOrdenDespacho::where('pedido_id', $order->id)
-            ->update(['estado' => 'cancelada']);
-
+            ->where('estado', '!=', 'cancelada')
+            ->update([
+                'estado' => 'cancelada',
+            ]);
     }
 
 
@@ -194,5 +201,4 @@ class ReturnCancellationService implements ReturnCancellationServiceInterface
             'claveAcceso' => $accesCode,
         ));
     }
-
 }
