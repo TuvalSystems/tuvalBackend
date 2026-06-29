@@ -25,13 +25,15 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use App\Traits\RegisterAudit;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
+use RuntimeException;
 
 class ApprovalService implements ApprovalServiceInterface
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, RegisterAudit;
 
     public function __construct(
         protected readonly FunctionsServiceInterface $functionService,
@@ -416,7 +418,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function checkoutApprovalCredit(string $condId, float $total, string $ruc)
     {
-          if ($condId == 'CONTADO') {
+        if ($condId == 'CONTADO') {
             return 'no';
         }
         $cupoDisponible = $this->functionService->getClientCheckAvailableQuota($ruc);
@@ -605,7 +607,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail,false, $orderId, $quoteReservedOriginId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, false, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
@@ -641,43 +643,91 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function approveCreditOrder(array $data, GpUsuario $user)
     {
-        $pedido = GpPedido::where('id', $data['id'])
+        $order = GpPedido::where('id', $data['id'])
             ->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
-        if (!$pedido) {
-            throw new \Exception("Pedido no encontrado", 500);
+        if (!$order) {
+            throw new \RuntimeException("Pedido no encontrado");
         }
-        $pedido->aprobado_crediticio                = 'yes';
-        $pedido->aprobador_crediticio_id            = $user->id;
-        $pedido->fecha_hora_aprobacion_crediticia   = Carbon::now()->format('Y-m-d H:i:s');
-        $pedido->save();
-        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'crediticia');
+        $order->fill([
+            'aprobado_crediticio'               => 'yes',
+            'aprobador_crediticio_id'           => $user->id,
+            'fecha_hora_aprobacion_crediticia'  => Carbon::now()->format('Y-m-d H:i:s')
+        ]);
 
-        DB::afterCommit(function () use ($pedido) {
-            $this->invoiceService->checkSendInvoice($pedido);
+        $camposModificados = array_keys($order->getDirty());
+        $oldOrder = [
+            'pedido_anterior' => Arr::only(
+                $order->getOriginal(),
+                $camposModificados
+            ),
+        ];
+        $order->save();
+        $newOrder = [
+            'pedido_nuevo' => Arr::only(
+                $order->fresh()->toArray(),
+                $camposModificados
+            ),
+        ];
+        $this->updateOrderStockOnCreditOrCommercialApproval($order, 'crediticia');
+
+        DB::afterCommit(function () use ($order) {
+            $this->invoiceService->checkSendInvoice($order);
         });
-        return $pedido;
+        $this->createHistoryRecord(
+            $user,
+            $order,
+            'APPROVAL_CREDIT_ORDER',
+            $oldOrder,
+            $newOrder
+        );
+        return $order->fresh();
     }
 
     public function denyCreditApproval(array $data, GpUsuario $user)
     {
 
-        $pedido = GpPedido::where('id', $data['id'])
+        $order = GpPedido::where('id', $data['id'])
             ->whereNotIn('estado', [OrderStatus::ELIMINADO, OrderStatus::ANULADA])
             ->lockForUpdate()->first();
-        if (!$pedido) {
+        if (!$order) {
             throw new \Exception("Pedido no encontrado", 500);
         }
-        $pedido->estado                     = OrderStatus::RECHAZADO;
-        $pedido->aprobado_crediticio        = 'no';
-        $pedido->aprobador_crediticio_id    = $user->id;
-        $pedido->fecha_hora_rechazado       = Carbon::now()->format('Y-m-d H:i:s');
-        $pedido->rechazado                  = 1;
-        $pedido->save();
-        GpTrasladosVentas::where('pedido_id', $pedido->id)->delete();
-        $this->updateStockOnOrderApproval($pedido);
-        $this->cleanDetailOrderStock($pedido);
-        return $pedido;
+        $order->fill([
+            'estado'                            => OrderStatus::RECHAZADO,
+            'aprobado_crediticio'               => 'no',
+            'aprobador_crediticio_id'           => $user->id,
+            'fecha_hora_rechazado'              => Carbon::now()->format('Y-m-d H:i:s'),
+            'rechazado'                         => 1
+        ]);
+
+        $camposModificados = array_keys($order->getDirty());
+        $oldOrder = [
+            'pedido_anterior' => Arr::only(
+                $order->getOriginal(),
+                $camposModificados
+            ),
+        ];
+        $order->save();
+
+        $newOrder = [
+            'pedido_nuevo' => Arr::only(
+                $order->fresh()->toArray(),
+                $camposModificados
+            ),
+        ];
+
+        GpTrasladosVentas::where('pedido_id', $order->id)->delete();
+        $this->updateStockOnOrderApproval($order);
+        $this->cleanDetailOrderStock($order);
+        $this->createHistoryRecord(
+            $user,
+            $order,
+            'DENNY_CREDIT_ORDER',
+            $oldOrder,
+            $newOrder
+        );
+        return $order->fresh();
     }
 
 
@@ -719,20 +769,44 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function approveComercialOrder(array $data, GpUsuario $user)
     {
-        $pedido = GpPedido::where('id', $data['id'])->where('estado', OrderStatus::ESPERA)
+        $order = GpPedido::where('id', $data['id'])->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
-        if (!$pedido) {
-            throw new \Exception("Pedido no encontrado", 500);
+        if (!$order) {
+            throw new \RuntimeException("Pedido no encontrado");
         }
-        $pedido->aprobado_comercial              = 'yes';
-        $pedido->aprobador_comercial_id          = $user->id;
-        $pedido->fecha_hora_aprobacion_comercial = Carbon::now()->format('Y-m-d H:i:s');
-        $pedido->save();
-        $this->updateOrderStockOnCreditOrCommercialApproval($pedido, 'comercial');
-        DB::afterCommit(function () use ($pedido) {
-            $this->invoiceService->checkSendInvoice($pedido);
+        $order->fill([
+            'aprobado_comercial'                => 'yes',
+            'aprobador_comercial_id'            => $user->id,
+            'fecha_hora_aprobacion_comercial'   =>  Carbon::now()->format('Y-m-d H:i:s')
+        ]);
+        $camposModificados = array_keys($order->getDirty());
+        $oldOrder = [
+            'pedido_anterior' => Arr::only(
+                $order->getOriginal(),
+                $camposModificados
+            ),
+        ];
+
+        $order->save();
+        $newOrder = [
+            'pedido_nuevo' => Arr::only(
+                $order->fresh()->toArray(),
+                $camposModificados
+            ),
+        ];
+        $this->updateOrderStockOnCreditOrCommercialApproval($order, 'comercial');
+        DB::afterCommit(function () use ($order) {
+            $orderFresh = GpPedido::find($order->id);
+            $this->invoiceService->checkSendInvoice($orderFresh);
         });
-        return $pedido;
+        $this->createHistoryRecord(
+            $user,
+            $order,
+            'APPROVAL_COMERCIAL_ORDER',
+            $oldOrder,
+            $newOrder
+        );
+        return $order->fresh();
     }
 
     public function denyApproveComercialOrderForInsufficientStock(array $data, GpUsuario $user)
@@ -903,7 +977,7 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
-            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail,true, $orderId, $quoteReservedOriginId);
+            $stockList = $this->stockWarehouseService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, true, $orderId, $quoteReservedOriginId);
             if (!empty($stockList)) {
                 $allFormattedStock = $allFormattedStock->merge($stockList);
             }
@@ -935,24 +1009,71 @@ class ApprovalService implements ApprovalServiceInterface
 
     public function denyQuotationBeenWaiting(int $id, GpUsuario $user)
     {
-        $quote = GpCotizacion::find($id);
-        $quote->estado = 'rechazado';
-        $quote->fe_rechazo = Carbon::now()->format('Y-m-d H:i:s');
-        $quote->user_rechazo_id = $user->id;
-        $quote->save();
-        return $quote->refresh();
+        return DB::transaction(function () use ($id, $user) {
+            $quote = GpCotizacion::where('id', $id)->lockForUpdate()->first();
+            if (!$quote) {
+                throw new \RuntimeException("No se encontro la cotización");
+            }
+
+            $quote->fill([
+                'aprobado_comercial'    => 'no',
+                'user_rechazo_id'       => $user->id,
+                'estado'                => 'rechazado',
+                'fe_rechazo'            => Carbon::now()->format('Y-m-d H:i:s'),
+            ]);
+            $camposModificados = array_keys($quote->getDirty());
+
+            $oldQuote = [
+                'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),
+            ];
+            $quote->save();
+            $newQuote = [
+                'cotizacion_nueva' => Arr::only($quote->fresh()->toArray(), $camposModificados),
+            ];
+            $this->createHistoryRecord($user, $quote, 'DENNY_QUOTE', $oldQuote, $newQuote);
+            return $quote->refresh();
+        });
     }
 
 
     public function denyOrderBeenWaiting(int $id,  GpUsuario $user)
     {
-        $order = GpPedido::find($id);
-        $order->estado = OrderStatus::RECHAZADO;
-        $order->user_rechazo_id = $user->id;
-        $order->fecha_hora_rechazado = Carbon::now()->format('Y-m-d H:i:s');
-        $order->rechazado = 1;
-        $order->save();
-        return $order;
+        return DB::transaction(function () use ($id, $user) {
+            $order = GpPedido::where('id', $id)
+                ->lockForUpdate()
+                ->first();
+            if (!$order) {
+                throw new \RuntimeException("No se encontro el pedido");
+            }
+            $order->fill([
+                'estado'                => OrderStatus::RECHAZADO,
+                'user_rechazo_id'       => $user->id,
+                'fecha_hora_rechazado'  => Carbon::now()->format('Y-m-d H:i:s'),
+                'rechazado'             => 1,
+            ]);
+            $camposModificados = array_keys($order->getDirty());
+            $oldOrder = [
+                'pedido_anterior' => Arr::only(
+                    $order->getOriginal(),
+                    $camposModificados
+                ),
+            ];
+            $order->save();
+            $newOrder = [
+                'pedido_nuevo' => Arr::only(
+                    $order->fresh()->toArray(),
+                    $camposModificados
+                ),
+            ];
+            $this->createHistoryRecord(
+                $user,
+                $order,
+                'DENY_ORDER',
+                $oldOrder,
+                $newOrder
+            );
+            return $order->fresh();
+        });
     }
 
 
@@ -962,17 +1083,28 @@ class ApprovalService implements ApprovalServiceInterface
         $gpUser = GpUsuario::find($user->id);
         $quote = GpCotizacion::where('id', $id)->where('estado', 'espera')
             ->lockForUpdate()->first();
-
         if (!$quote) {
-            abort(404, "Cotización no encontrada");
+            throw new \RuntimeException("Cotización no encontrada");
         }
-        $quote->aprobado_comercial = 'yes';
-        $quote->aprobador_comercial_id = $gpUser->id;
-        $quote->estado = 'aprobado';
-        $quote->fecha_hora_aprobacion_comercial = Carbon::now()->format('Y-m-d H:i:s');
+
+        $quote->fill([
+            'aprobado_comercial'                => 'yes',
+            'aprobador_comercial_id'            => $gpUser->id,
+            'estado'                            => 'aprobado',
+            'fecha_hora_aprobacion_comercial'   => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
+        $camposModificados = array_keys($quote->getDirty());
+        $oldQuote = [
+            'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),
+        ];
         $quote->save();
+        $newQuote = [
+            'cotizacion_nueva' => Arr::only($quote->fresh()->toArray(), $camposModificados),
+        ];
+
         $this->updateRegisterCopyApprovalComercialDestination($quote->id);
-        return $quote;
+        $this->createHistoryRecord($user, $quote, 'APPROVAL_QUOTE', $oldQuote, $newQuote);
+        return $quote->fresh();
     }
 
     public function updateRegisterCopyApprovalComercialDestination(int $quoteId)

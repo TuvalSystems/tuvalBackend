@@ -13,7 +13,6 @@ use App\Models\GpOrdenDespacho;
 use App\Models\GpClienteSucursal;
 use App\Http\Controllers\Controller;
 use App\Models\devoluciones\GpDevoluciones;
-use App\Models\GpUsuario;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
@@ -21,7 +20,6 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AprobacionesController extends Controller
 {
@@ -157,7 +155,6 @@ class AprobacionesController extends Controller
     public function rechazarpedidoporstock(Request $request)
     {
         try {
-
             $gpuser = $request->user();
             $data   = $request->all();
             $response = DB::transaction(function () use ($data, $gpuser) {
@@ -246,52 +243,40 @@ class AprobacionesController extends Controller
 
     public function rechazarpedidocrediticio(Request $request)
     {
-        try {
-
-            $gpuser = $request->user();
-            $pedido = DB::transaction(function () use ($request, $gpuser) {
-                $data = $request->all();
-                return $this->approvalService->denyCreditApproval($data, $gpuser);
+        return $this->handleApiAction(function () use ($request) {
+            $user = $request->user();
+            $data = $request->all();
+            $pedido = DB::transaction(function () use ($data, $user) {
+                return $this->approvalService->denyCreditApproval($data, $user);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'rechazarPedidoCrediticio');
     }
 
     public function rechazarpedidocrediticioporstock(Request $request)
     {
-        try {
-            $gpuser = $request->user();
-            $response = DB::transaction(function () use ($request, $gpuser) {
-                $data = $request->all();
-                return $this->approvalService->rejectCreditOrderForInsufficientStock($data, $gpuser);
+        return $this->handleApiAction(function () use ($request) {
+            $user = $request->user();
+            $data = $request->all();
+            $response = DB::transaction(function () use ($data, $user) {
+                return $this->approvalService->rejectCreditOrderForInsufficientStock($data, $user);
             });
-            $pedido = $response['pedido'];
-            $alert = $response['alert'];
+            $pedido = data_get($response, 'pedido');
+            $alert  = data_get($response, 'alert');
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al rechazar el pedido por Stock: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'rechazarPedidoCrediticioPorStock');
     }
 
 
 
     public function aprobacionComercialCotizacion(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $data = $request->all();
             $user = $request->user();
             $quote = DB::transaction(fn() => $this->approvalService->approveComercialQuote($data['id'], $user));
             return $this->buildSuccessResponse("Cotización {$quote->cotizacion} aprobada", 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al aprobar la cotización: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', ' aprobacionComercialCotizacion');
     }
     public function rechazarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -320,17 +305,14 @@ class AprobacionesController extends Controller
 
     public function rechazarpedido(Request $request)
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $user = $request->user();
-            $gpuser = GpUsuario::where('id', $user->id)->first();
             $data = $request->all();
-            $pedido = DB::transaction(function () use ($data, $gpuser) {
-                return $this->approvalService->denyApproveComercialOrder($data, $gpuser);
+            $pedido = DB::transaction(function () use ($data, $user) {
+                return $this->approvalService->denyApproveComercialOrder($data, $user);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al obtener la información: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'rechazarpedido');
     }
 
 
@@ -371,23 +353,19 @@ class AprobacionesController extends Controller
     /** proceso nuevo de rechazar cotizacion cuando esta en espera */
     public function recharCotizacionEstadoEspera(Request $request)
     {
-        $id = data_get($request->all(), 'id');
-        try {
+        return $this->handleApiAction(function () use ($request) {
+            $id = data_get($request->all(), 'id');
             $quote = $this->approvalService->denyQuotationBeenWaiting($id, $request->user());
             return $this->successResponse('Cotización rechazada', $quote, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al rechazar la cotización: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'rechazarCotizacionEstadoEspera');
     }
 
     public function rechazarPedidoEstadoEspera(Request $request)
     {
-        $id = data_get($request->all(), 'id');
-        try {
+        return $this->handleApiAction(function () use ($request) {
+            $id = data_get($request->all(), 'id');
             $order = $this->approvalService->denyOrderBeenWaiting($id, $request->user());
             return $this->successResponse('Pedido rechazado', $order, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'rechazarPedidoEstadoEspera');
     }
 }
