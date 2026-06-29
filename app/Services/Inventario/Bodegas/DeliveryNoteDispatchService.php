@@ -25,6 +25,7 @@ use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -43,7 +44,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
      * PROCESO DE CREACION DE GUIA DE DESPACHO
      */
 
-    public function createDeliveryNoteFromDispatch(array $payload, GpUsuario $user)
+    public function createDeliveryNoteFromDispatch(array $payload, GpUsuario $user): GpGuiaRemision
     {
         $items          = data_get($payload, 'items', []);
         $tipo           = DeliveryNoteType::DESPACHO->value;
@@ -142,14 +143,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function saveHeaderDeliveryNoteDispatchWeb(array $payload, array $infoGuia)
+    protected function saveHeaderDeliveryNoteDispatchWeb(array $payload, array $infoGuia): GpGuiaRemision
     {
         $guia = $this->builder->buildDeliveryNoteDispatchHeader($payload, $infoGuia);
         $guia->save();
         return $guia->refresh();
     }
 
-    protected function saveDetaildeliveryNoteDispatchWeb(int $guideId, array  $detalle)
+    protected function saveDetaildeliveryNoteDispatchWeb(int $guideId, array  $detalle): void
     {
         foreach ($detalle as $val) {
             $detail = $this->builder->buildDeliveryNoteDispatchDetail($guideId, $val);
@@ -157,7 +158,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         }
     }
 
-    protected function updateDetailOrder(array $items)
+    protected function updateDetailOrder(array $items): void
     {
         foreach ($items as $item) {
             GpPedidoDetalle::where('id', $item['id'])
@@ -167,7 +168,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
 
 
-    protected function sendDeliveryNoteDispatchToGp(GpGuiaRemision $guide)
+    protected function sendDeliveryNoteDispatchToGp(GpGuiaRemision $guide): GpGuiaRemision
     {
         $ordenCompra    = GpPedido::where('pedido', $guide->pedido)->value('orden_de_compra');
         $detalle        = GpGuiaRemisionDetalle::where('guia_remision_id', $guide->id)->get();
@@ -191,14 +192,14 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         return $guide->refresh();
     }
 
-    protected function validateExistenceDeliveryNoteDispatch(string $numGuide)
+    protected function validateExistenceDeliveryNoteDispatch(string $numGuide): array
     {
         return  $this->api->checkExistenceDeliveryNote([
             'numDoc' => $numGuide
         ]);
     }
 
-    protected function sendToDataDeliveryNote(GpGuiaRemision $guide, Collection $detalle, ?string $ordenCompra)
+    protected function sendToDataDeliveryNote(GpGuiaRemision $guide, Collection $detalle, ?string $ordenCompra): bool
     {
         $response  = $this->api->createDeliveryNote([
             'cabecera'      => $this->builder->buildDeliveryNoteHeaderToGp($guide, $ordenCompra),
@@ -351,7 +352,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function getPhysicalOrderDetailsByIds($ids): Collection
+    protected function getPhysicalOrderDetailsByIds(SupportCollection $ids): Collection
     {
         return GpPedidoDetalle::query()->whereIn('id', $ids)
             ->where('reservado', '>', 0)
@@ -360,7 +361,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             ->keyBy('id');
     }
 
-    protected function getServiceOrderDetailsByIds($ids)
+    protected function getServiceOrderDetailsByIds(SupportCollection $ids): Collection
     {
         return GpPedidoDetalle::query()->whereIn('id', $ids)
             ->where('reservado', '>', 0)
@@ -369,7 +370,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             ->keyBy('id');
     }
 
-    protected function hasItemsWithIncompleteMasterData($ids)
+    protected function hasItemsWithIncompleteMasterData(SupportCollection $ids): bool
     {
         return GpPedidoDetalle::query()
             ->whereIn('id', $ids)
@@ -388,8 +389,8 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     protected function groupDispatchItemsBySourceOrder(GpGuiaRemision $guia, Collection $detalle, Collection $articulos): array
     {
         $pedidoOrigen       = GpPedido::where('pedido', $guia->pedido)->value('pedido_origen');
-        $documento          = $pedidoOrigen ?: $guia->pedido;
-        $pedidoNuevo        = $pedidoOrigen ? $guia->pedido : '';
+        $documento          = (string) ($pedidoOrigen ?: $guia->pedido);
+        $pedidoNuevo        = $pedidoOrigen ? (string) $guia->pedido : '';
         $groups             = [];
 
         foreach ($detalle as $item) {
@@ -412,7 +413,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function sendItemsDeliveryNoteDispatchToGp(GpGuiaRemision $guia, string $pedido, array $params, array $groupItems, string $hashInterno)
+    protected function sendItemsDeliveryNoteDispatchToGp(GpGuiaRemision $guia, string $pedido, array $params, array $groupItems, string $hashInterno): void
     {
         $transaction    = TransactionType::DSP;
         $typeMov        = $transaction->value;
@@ -441,8 +442,11 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         if ($docGp === '') {
             throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
         }
+        if (!is_array($data)) {
+            throw new \RuntimeException('La respuesta del ajuste de guia en GP no tiene el formato esperado.');
+        }
         $already = $this->existMovementDispatchWeb($guia->id, $docGp, $pedido, $hashInterno,  $typeMov, $type);
-        return DB::transaction(function () use ($groupItems, $guia, $data, $pedido,  $typeMov, $type, $hashInterno, $already) {
+        DB::transaction(function () use ($groupItems, $guia, $data, $pedido,  $typeMov, $type, $hashInterno, $already) {
             if (!$already) {
                 $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
                 $this->createDocumentDispatchTrfv($guia, $data, $pedido, $typeMov, $type, $hashInterno);
@@ -466,7 +470,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function processReservedDispatchedAndDecrementStock($guia, $groupItems)
+    protected function processReservedDispatchedAndDecrementStock(GpGuiaRemision $guia, array $groupItems): void
     {
         foreach ($groupItems as $item) {
             $this->applyDispatchToOrderDetail($item, $item->GUI_REM_CANTIDAD);
@@ -474,9 +478,12 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         }
     }
 
-    protected function applyDispatchToOrderDetail($item, $qty)
+    protected function applyDispatchToOrderDetail(GpGuiaRemisionDetalle $item, float $qty): GpPedidoDetalle
     {
         $dt = GpPedidoDetalle::where('id', $item->detalle_id)->lockForUpdate()->first();
+        if (!$dt) {
+            throw new \RuntimeException("No se encontro el detalle de pedido {$item->detalle_id} para despachar.");
+        }
 
         $rsvdac = (float)  data_get($dt, 'reservado', 0);
         $trlsac = (float)  data_get($dt, 'trasladado', 0);
@@ -496,27 +503,34 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         return $dt->refresh();
     }
 
-    public function createDocumentDispatchTrfv(GpGuiaRemision $guia, $responseApi, string $documento, string $typeMov, string $type, string $hashInterno)
+    public function createDocumentDispatchTrfv(GpGuiaRemision $guia, array $responseApi, string $documento, string $typeMov, string $type, string $hashInterno): GpGuiaRemisionDespacho
     {
         $dispatchTrfv = new GpGuiaRemisionDespacho();
         $dispatchTrfv->guia_remision_id     = $guia->id;
-        $dispatchTrfv->id_movimiento        =  data_get($responseApi, 'idMovimiento', '');
+        $dispatchTrfv->id_movimiento        = data_get($responseApi, 'idMovimiento');
         $dispatchTrfv->pedido               = $documento;
         $dispatchTrfv->codigo               = data_get($responseApi, 'docGp', '');
         $dispatchTrfv->hash_interno         = $hashInterno;
         $dispatchTrfv->tipo_movimiento      = $typeMov;
         $dispatchTrfv->tipo                 = $type;
         $dispatchTrfv->save();
+        return $dispatchTrfv;
     }
 
-    protected function decrementOriginWarehouseReservedStockDispatch($detalleId, $warehouse, $qty)
+    protected function decrementOriginWarehouseReservedStockDispatch(int $detalleId, string $warehouse, float $qty): void
     {
         $det = GpPedidoDetalle::find($detalleId);
+        if (!$det) {
+            throw new \RuntimeException("No se encontro el detalle de pedido {$detalleId} para actualizar stock reservado.");
+        }
         if ($det->ART_TIPO_COMPRA != 'L') {
             $stock = GpPedidoDetalleStock::where('detalle_id', $detalleId)
                 ->where('STO_ART_BODEGA', $warehouse)
                 ->lockForUpdate()
                 ->first();
+            if (!$stock) {
+                throw new \RuntimeException("No se encontro stock reservado para el detalle {$detalleId} en bodega {$warehouse}.");
+            }
             $reservado = data_get($stock, 'reservado', 0);
             $nuevo = max(0, $reservado - $qty);
             $stock->reservado = $nuevo;
@@ -533,6 +547,9 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             throw new \RuntimeException('El identificador no es de una guia de despacho, verifique nuevamente');
         }
         $pedidoOrigen = GpPedido::where('pedido', $guideOrigin->pedido)->first();
+        if (!$pedidoOrigen) {
+            throw new \RuntimeException("No se encontro el pedido {$guideOrigin->pedido} para duplicar la guia.");
+        }
         $detailOrigin = GpGuiaRemisionDetalle::where('guia_remision_id', $id)->get();
         $secuencial             = $this->common->getNextGuideSequential($guideOrigin->GUI_REM_ESTABLECIMIENTO, $guideOrigin->GUI_REM_PTO_EMISION);
         $numGuide               = $this->common->formatGuideNumber($guideOrigin->GUI_REM_ESTABLECIMIENTO, $guideOrigin->GUI_REM_PTO_EMISION, $secuencial);
@@ -546,7 +563,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
 
 
-    protected function createNewHeaderDeliveryNoteReplicate(GpGuiaRemision $guia, string $sec, string $numGuide, string $idemKey)
+    protected function createNewHeaderDeliveryNoteReplicate(GpGuiaRemision $guia, string $sec, string $numGuide, string $idemKey): GpGuiaRemision
     {
         $newGuide                           = $guia->replicate();
         $newGuide->GUI_REM_SECUENCIAL       = $sec;
@@ -580,7 +597,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
     }
 
 
-    protected function createNewDetailDeliveryNoteReplicate(Collection $detailOrigin, GpGuiaRemision $newGuide)
+    protected function createNewDetailDeliveryNoteReplicate(Collection $detailOrigin, GpGuiaRemision $newGuide): void
     {
         foreach ($detailOrigin as  $oldDetail) {
             $nDetail = $oldDetail->replicate();
