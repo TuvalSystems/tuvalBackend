@@ -434,6 +434,18 @@ class DevolucionService implements DevolucionServiceInterface
             abort(409, 'El pedido está siendo despachado');
         }
 
+        $pendingGuide = GpGuiaRemision::query()
+            ->select('id', 'pedido', 'tipo', 'estado', 'GUI_REM_GUIA_REMISION')
+            ->where('pedido', $pedido->pedido)
+            ->where('tipo', 'despacho')
+            ->where('estado', 'pendiente')
+            ->first();
+
+        abort_if(
+            $pendingGuide !== null,
+            409,
+            "El pedido {$pedido->pedido} tiene una guía de despacho pendiente: {$pendingGuide->GUI_REM_GUIA_REMISION}. Procese la guía antes de generar la devolución."
+        );
         $detalles   = $this->orderRepository->getAllDetailsOrderById($orderId);
         $motivos    = $this->devolucionRepository->getMotivosDevolucion();
         $cliente    = $this->devolucionRepository->getClientsByClientId($clientId);
