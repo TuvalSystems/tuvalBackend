@@ -26,6 +26,7 @@ use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\devoluciones\GpDevolucionDocument;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\Articulos\GpArticulo;
+use App\Models\despachos\GpGuiaRemision;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
@@ -99,9 +100,20 @@ class DevolucionService implements DevolucionServiceInterface
         }
 
         if ($order->despacho_en_proceso && !$order->despachado) {
-            abort(400, 'El pedido esta en proceso de despacho, no se puede enviar la devolucion');
+            abort(409, 'El pedido esta en proceso de despacho, no se puede enviar la devolucion');
         }
+        $pendingGuide = GpGuiaRemision::query()
+            ->select('id', 'pedido', 'tipo', 'estado', 'GUI_REM_GUIA_REMISION')
+            ->where('pedido', $order->pedido)
+            ->where('tipo', 'despacho')
+            ->where('estado', 'pendiente')
+            ->first();
 
+        abort_if(
+            $pendingGuide !== null,
+            409,
+            "El pedido {$order->pedido} tiene una guía de despacho pendiente: {$pendingGuide->GUI_REM_GUIA_REMISION}. Procese la guía antes de generar la devolución."
+        );
         $detailInfo = [
             'devolucion'    => $devolucion,
             'pedido'        => $pedidoDev,
@@ -573,7 +585,7 @@ class DevolucionService implements DevolucionServiceInterface
             $cantidad   = (float) data_get($item, 'ART_CANTIDAD', 0);
             $trasladado = (float) data_get($item, 'trasladado', 0);
 
-           return $cantidad > 0 && $trasladado >= $cantidad;
+            return $cantidad > 0 && $trasladado >= $cantidad;
         });
 
         $tieneItemsSinDespachar = $detalles->contains(function ($item) {
