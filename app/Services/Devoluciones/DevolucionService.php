@@ -108,11 +108,11 @@ class DevolucionService implements DevolucionServiceInterface
             ->where('tipo', 'despacho')
             ->where('estado', 'pendiente')
             ->first();
-
+        $numGuide = data_get($pendingGuide, 'GUI_REM_GUIA_REMISION', 'N/A');
         abort_if(
             $pendingGuide !== null,
             409,
-            "El pedido {$order->pedido} tiene una guía de despacho pendiente: {$pendingGuide->GUI_REM_GUIA_REMISION}. Procese la guía antes de generar la devolución."
+            "El pedido {$order->pedido} tiene una guía de despacho pendiente: {$numGuide}. Procese la guía antes de generar la devolución."
         );
         $detailInfo = [
             'devolucion'    => $devolucion,
