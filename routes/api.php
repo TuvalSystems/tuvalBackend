@@ -83,6 +83,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('perfiles-app', [UserController::class, 'obtenerListaPerfilesApp']);
             Route::post('detalle-usuario', [UserController::class, 'obtenerDetalleUsuario']);
             Route::post('actualizar-perfiles', [UserController::class, 'actualizarPerfilesUsuario']);
+            Route::post('obtener-secciones-activas', [SectionsController::class, 'obtenerMenuActivo']);
         });
 
         Route::group(['prefix' => 'secciones'], function () {

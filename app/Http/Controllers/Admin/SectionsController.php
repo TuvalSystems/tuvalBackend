@@ -76,8 +76,15 @@ class SectionsController extends Controller
     }
 
 
-    public function obtenerMenu()
+    public function obtenerMenuActivo(Request $request)
     {
-        return $this->menu->getFullMenuLayout(1);
+        return $this->handleApiAction(function () use ($request) {
+            $user = $request->user();
+            $menu = [
+                'menu'                  => $this->menu->getFullMenuLayout($user->perfil_id)['arbol'],
+                'home'                  => $this->menu->getFullMenuLayout($user->perfil_id)['home'],
+            ];
+            return $this->successResponse('Secciones Obtenidas Correctamente', $menu, 200);
+        }, 'laravel', 'obtenerMenu');
     }
 }
