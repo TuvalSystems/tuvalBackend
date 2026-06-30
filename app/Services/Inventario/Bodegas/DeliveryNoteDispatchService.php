@@ -418,43 +418,104 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $transaction    = TransactionType::DSP;
         $typeMov        = $transaction->value;
         $type           = $transaction->type();
-        $response       = $this->api->createDispatchShipmentGuideVta($params);
-        $success        = data_get($response, 'success', false);
-        $msg            = data_get($response, 'message');
-        $docGp          = trim(data_get($response, 'data.docGp', ''));
-        if (!$success) {
-            $cabecera               = data_get($params, 'cabecera', []);
-            $payloadHeader          = $this->builder->buildDeliveryNoteValidateDispatchShipment($cabecera, $typeMov, $type);
-            $respValidate           = $this->api->checkDispatchGuideAdjustment($payloadHeader);
-            $headerRespValidate     = data_get($respValidate, 'data');
-            $docGpValidate          = trim(data_get($headerRespValidate, 'docGp', ''));
-            if (!empty($headerRespValidate) && filled($docGpValidate)) {
-                // Usamos el documento que encontró la validación
-                $docGp  = $docGpValidate;
-                $data   = $headerRespValidate;
-            } else {
-                // Si falló la creación y la validación tampoco trajo nada útil, lanzamos el error.
-                throw new \RuntimeException($msg ?: 'Error creando el ajuste de guía en GP.');
+        $cabecera       = data_get($params, 'cabecera', []);
+        $payloadHeader  = $this->builder->buildDeliveryNoteValidateDispatchShipment($cabecera, $typeMov, $type);
+        $lock           = Cache::lock("dispatch_adjustment_{$hashInterno}", 300);
+
+        if (!$lock->get()) {
+            throw new \RuntimeException('Este ajuste de guia ya esta en proceso. Por favor, espere un momento.');
+        }
+
+        try {
+            $existing = $this->findMovementDispatchByHash($guia->id, $pedido, $hashInterno, $typeMov, $type);
+            if ($existing && filled($existing->codigo)) {
+                return;
             }
-        } else {
-            $data = data_get($response, 'data', []);
-        }
-        if ($docGp === '') {
-            throw new \RuntimeException('No se ha generado el documento de ajuste de guía en Gp.');
-        }
-        if (!is_array($data)) {
-            throw new \RuntimeException('La respuesta del ajuste de guia en GP no tiene el formato esperado.');
-        }
-        $already = $this->existMovementDispatchWeb($guia->id, $docGp, $pedido, $hashInterno,  $typeMov, $type);
-        DB::transaction(function () use ($groupItems, $guia, $data, $pedido,  $typeMov, $type, $hashInterno, $already) {
-            if (!$already) {
-                $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
-                $this->createDocumentDispatchTrfv($guia, $data, $pedido, $typeMov, $type, $hashInterno);
-                $guia->update(['rebajado' => 1]);
+
+            $data = $this->findDispatchAdjustmentInGp($payloadHeader);
+            if (!$data) {
+                $response = $this->api->createDispatchShipmentGuideVta($params);
+                $success  = data_get($response, 'success', false);
+                $msg      = data_get($response, 'message');
+                $data     = $success ? data_get($response, 'data', []) : null;
+
+                if (!$success || !is_array($data) || blank(data_get($data, 'docGp'))) {
+                    $data = $this->findDispatchAdjustmentInGp($payloadHeader);
+                    if (!$data) {
+                        throw new \RuntimeException($msg ?: 'Error creando el ajuste de guia en GP.');
+                    }
+                }
             }
-        });
+
+            $this->registerDispatchAdjustmentResult($guia, $pedido, $data, $groupItems, $hashInterno, $typeMov, $type);
+        } finally {
+            $lock->release();
+        }
     }
 
+
+    protected function findMovementDispatchByHash(int $guiaId, string $order, string $hashInterno, string $typeMov, string $type): ?GpGuiaRemisionDespacho
+    {
+        return GpGuiaRemisionDespacho::where([
+            ['guia_remision_id',    $guiaId],
+            ['pedido',              $order],
+            ['hash_interno',        trim((string) $hashInterno)],
+            ['tipo_movimiento',     $typeMov],
+            ['tipo',                $type],
+        ])->first();
+    }
+
+    protected function findDispatchAdjustmentInGp(array $payloadHeader): ?array
+    {
+        $response = $this->api->checkDispatchGuideAdjustment($payloadHeader);
+        $data     = data_get($response, 'data');
+
+        if (!is_array($data) || blank(data_get($data, 'docGp'))) {
+            return null;
+        }
+
+        return $data;
+    }
+
+    protected function registerDispatchAdjustmentResult(
+        GpGuiaRemision $guia,
+        string $pedido,
+        array $data,
+        array $groupItems,
+        string $hashInterno,
+        string $typeMov,
+        string $type
+    ): void {
+        if (blank(data_get($data, 'docGp'))) {
+            throw new \RuntimeException('No se ha generado el documento de ajuste de guia en Gp.');
+        }
+
+        DB::transaction(function () use ($guia, $pedido, $data, $groupItems, $hashInterno, $typeMov, $type) {
+            $existing = GpGuiaRemisionDespacho::where([
+                ['guia_remision_id',    $guia->id],
+                ['pedido',              $pedido],
+                ['hash_interno',        trim((string) $hashInterno)],
+                ['tipo_movimiento',     $typeMov],
+                ['tipo',                $type],
+            ])->lockForUpdate()->first();
+
+            if ($existing && filled($existing->codigo)) {
+                return;
+            }
+
+            $this->processReservedDispatchedAndDecrementStock($guia, $groupItems);
+
+            if ($existing) {
+                $existing->id_movimiento    = data_get($data, 'idMovimiento');
+                $existing->codigo           = data_get($data, 'docGp', '');
+                $existing->save();
+            } else {
+                $this->createDocumentDispatchTrfv($guia, $data, $pedido, $typeMov, $type, $hashInterno);
+            }
+
+            $guia->update(['rebajado' => 1]);
+        });
+    }
 
     protected function existMovementDispatchWeb(int $guiaId, string $docGp, string $order, string $hashInterno, string $typeMov, string $type): bool
     {
