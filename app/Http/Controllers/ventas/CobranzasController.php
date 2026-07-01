@@ -292,14 +292,16 @@ class CobranzasController extends Controller
             $ultimoPedido = new \stdClass();
             $ultimoPedido->id = 0;
         }
+        $pvId = GpPuntoVenta::where('PTO_VTA_ID', $data['puntodeventa'])->first();
         $cobro->numero_recibo = 'RC-' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
-        $cobro->user_id = $user->id;
-        $cobro->cliente_id = $data['cliente_id'];
-        $cobro->caja = $caja->CAJ_USER_CAJA;
-        $cobro->caja_id = $cajas[$caja->CAJ_USER_CAJA]->id;
-        $cobro->fecha = date('Y-m-d H:i:s');
-        $cobro->estado = 'iniciado';
-        $cobro->referencia = $data['referencia'];
+        $cobro->user_id     = $user->id;
+        $cobro->pv_id       = $pvId->id;
+        $cobro->cliente_id  = $data['cliente_id'];
+        $cobro->caja        = $caja->CAJ_USER_CAJA;
+        $cobro->caja_id     = $cajas[$caja->CAJ_USER_CAJA]->id;
+        $cobro->fecha       = date('Y-m-d H:i:s');
+        $cobro->estado      = 'iniciado';
+        $cobro->referencia  = $data['referencia'];
         if (!isset($data['pago_a_padido']))
             $data['pago_a_padido'] = null;
         $cobro->pedido = $data['pago_a_padido'];
@@ -514,9 +516,10 @@ class CobranzasController extends Controller
             ->join('gp_cobros', 'gp_cobros.id', '=', 'gp_cobros_depositos.cobro_id')
             ->join('gp_caja_bancos', 'gp_caja_bancos.CB_ID', '=', 'gp_cobros_depositos.banco')
             ->join('gp_clientes', 'gp_clientes.id', '=', 'gp_cobros.cliente_id')
+            ->leftJoin('gp_punto_ventas', 'gp_punto_ventas.id', '=', 'gp_cobros.pv_id')
             ->where('gp_cobros_depositos.estado', 'iniciado')
             ->orderBy('gp_cobros_depositos.fecha', 'DESC')
-            ->get(['gp_cobros_depositos.*', 'gp_cobros.numero_recibo', 'gp_caja_bancos.CB_DESCRIPCION', 'gp_clientes.CLI_RUC', 'gp_clientes.CLI_RAZON_SOCIAL']);
+            ->get(['gp_cobros_depositos.*', 'gp_cobros.numero_recibo', 'gp_cobros.fecha as fecha_creacion_cobro', 'gp_punto_ventas.PTO_VTA_DESCRIPCION as agencia','gp_caja_bancos.CB_DESCRIPCION', 'gp_clientes.CLI_RUC', 'gp_clientes.CLI_RAZON_SOCIAL']);
 
         return response([
             'success' => true,
