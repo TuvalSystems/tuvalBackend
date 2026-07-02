@@ -122,7 +122,7 @@
             <thead>
             <tr class="table-success">
                 <th colspan="6">APLICACIÓN DE SALDOS (NOTAS DE CRÉDITO / ANTICIPOS)</th>
-                <th class="text-end">Total: ${{ $aplicacion_saldos_total }}</th>
+                <th class="text-end">Total: {{ format_money($aplicacion_saldos_total) }}</th>
             </tr>
             <tr class="table-active">
                 <th>Recibo</th>
@@ -140,7 +140,7 @@
                 <td>{{ $saldo['numero_recibo'] }}</td>
                 <td>{{ $saldo['cobro'] }}</td>
                 <td>{{ $saldo['tipo'] }}</td>
-                <td class="text-end">${{ $saldo['monto'] }}</td>
+                <td class="text-end">{{ format_money($saldo['monto']) }}</td>
                 <td>{{ $saldo['CLI_RUC'] }}</td>
                 <td>{{ $saldo['CLI_RAZON_SOCIAL'] }}</td>
                 <td>{{ $saldo['fecha'] }}</td>
@@ -157,7 +157,7 @@
             <thead>
             <tr class="table-success">
                 <th colspan="7">Depósitos</th>
-                <th class="text-end">Total: ${{ $depositos_total }}</th>
+                <th class="text-end">Total: {{ format_money($depositos_total) }}</th>
             </tr>
             <tr class="table-active">
                 <th>Recibo</th>
@@ -177,7 +177,7 @@
                 <td>{{ $deposito['comprobante'] }}</td>
                 <td>{{ $deposito['CB_DESCRIPCION'] }}</td>
                 <td>{{ $deposito['fecha_deposito'] }}</td>
-                <td class="text-end">${{  $deposito['monto'] }}</td>
+                <td class="text-end">{{  format_money($deposito['monto'] )}}</td>
                 <td>{{ $deposito['CLI_RUC'] }}</td>
                 <td>{{ $deposito['CLI_RAZON_SOCIAL'] }}</td>
                 <td>{{ $deposito['fecha'] }}</td>
@@ -194,7 +194,7 @@
             <thead>
             <tr class="table-success">
                 <th colspan="9">Cheques al día</th>
-                <th class="text-end">Total: ${{ $cheques_aldia_total }}</th>
+                <th class="text-end">Total: {{ format_money($cheques_aldia_total) }}</th>
             </tr>
             <tr class="table-active">
                 <th>Recibo</th>
@@ -218,7 +218,7 @@
                     <td>{{  $cheque['CB_DESCRIPCION'] }}</td>
                     <td>{{  $cheque['fecha_emision'] }}</td>
                     <td>{{  $cheque['fecha_vencimiento'] }}</td>
-                    <td class="text-end">${{  $cheque['monto'] }}</td>
+                    <td class="text-end">{{  format_money($cheque['monto']) }}</td>
                     <td>{{ $cheque['CLI_RUC'] }}</td>
                     <td>{{ $cheque['CLI_RAZON_SOCIAL'] }}</td>
                     <td>{{ $cheque['fecha'] }}</td>
@@ -235,7 +235,7 @@
             <thead>
                 <tr class="table-success">
                     <th colspan="9">Cheques Posfechados</th>
-                    <th class="text-end">Total: ${{ $cheques_posfechados_total }}</th>
+                    <th class="text-end">Total: {{ format_money($cheques_posfechados_total) }}</th>
                 </tr>
                 <tr class="table-active">
                     <th>Recibo</th>
@@ -259,7 +259,7 @@
                     <td>{{  $cheque['CB_DESCRIPCION'] }}</td>
                     <td>{{  $cheque['fecha_emision'] }}</td>
                     <td>{{  $cheque['fecha_vencimiento'] }}</td>
-                    <td class="text-end">${{  $cheque['monto'] }}</td>
+                    <td class="text-end">{{  format_money($cheque['monto']) }}</td>
                     <td>{{ $cheque['CLI_RUC'] }}</td>
                     <td>{{ $cheque['CLI_RAZON_SOCIAL'] }}</td>
                     <td>{{ $cheque['fecha'] }}</td>
@@ -276,7 +276,7 @@
             <thead>
             <tr class="table-success">
                 <th colspan="4">Efectivo</th>
-                <th class="text-end">Total: ${{ $efectivo_total }}</th>
+                <th class="text-end">Total: {{ format_money($efectivo_total) }}</th>
             </tr>
             <tr class="table-active">
                 <th>Recibo</th>
@@ -290,7 +290,7 @@
             @foreach($efectivo as $efe)
             <tr>
                 <td>{{  $efe['numero_recibo'] }}</td>
-                <td class="text-end">${{  $efe['monto'] }}</td>
+                <td class="text-end">{{  format_money($efe['monto']) }}</td>
                 <td>{{ $efe['CLI_RUC'] }}</td>
                 <td>{{ $efe['CLI_RAZON_SOCIAL'] }}</td>
                 <td>{{ $efe['fecha'] }}</td>
@@ -307,7 +307,7 @@
             <thead>
             <tr class="table-success">
                 <th colspan="11">Retenciones</th>
-                <th class="text-end">Total: ${{ $retenciones_total }}</th>
+                <th class="text-end">Total: {{ format_money($retenciones_total) }}</th>
             </tr>
             <tr class="table-active">
                 <th>Recibo</th>
@@ -332,19 +332,19 @@
                 <td>{{  $retencion['ret_comprobante'] }}</td>
                 <td>{{  $retencion['ret_fecha_emision'] }}</td>
                 <td>{{  $retencion['ret_fecha_vencimiento'] }}</td>
-                <td>{{  $retencion['ret_porcentaje_iva'] }}% ${{ $retencion['ret_iva'] }}</td>
-                <td>{{  $retencion['ret_porcentaje_renta'] }}% ${{ $retencion['ret_renta'] }}</td>
+                <td>{{  $retencion['ret_porcentaje_iva'] }}% {{ format_money($retencion['ret_iva']) }}</td>
+                <td>{{  $retencion['ret_porcentaje_renta'] }}% {{ format_money($retencion['ret_renta']) }}</td>
                 <td>
                 @if($retencion['ret_iva_srv'] > 0)
                   <span>
-                    {{  $retencion['ret_porcentaje_iva_srv'] }}% ${{ $retencion['ret_iva_srv'] }}
+                    {{  $retencion['ret_porcentaje_iva_srv'] }}% {{ format_money($retencion['ret_iva_srv']) }}
                   </span>
                 @endif
                 </td>
                 <td>
                 @if($retencion['ret_renta_srv'] > 0)
                   <span>
-                    {{  $retencion['ret_porcentaje_renta_srv'] }}% ${{ $retencion['ret_renta_srv'] }}
+                    {{  $retencion['ret_porcentaje_renta_srv'] }}% {{ format_money($retencion['ret_renta_srv']) }}
                   </span>
                 @endif
                 </td>
@@ -363,7 +363,7 @@
             <thead>
                 <tr class="table-success">
                     <th colspan="6">Tarjeta de crédito</th>
-                    <th class="text-end">Total: ${{ $tarjeta_total }}</th>
+                    <th class="text-end">Total: {{ format_money($tarjeta_total) }}</th>
                 </tr>
                 <tr class="table-active">
                     <th>Recibo</th>
@@ -381,7 +381,7 @@
                     <td>{{  $tar['numero_recibo'] }}</td>
                     <td>{{  $tar['comprobante'] }}</td>
                     <td>{{  $tar['banco'] }}</td>
-                    <td class="text-end">${{  $tar['monto'] }}</td>
+                    <td class="text-end">{{  format_money($tar['monto']) }}</td>
                     <td>{{ $tar['CLI_RUC'] }}</td>
                     <td>{{ $tar['CLI_RAZON_SOCIAL'] }}</td>
                     <td>{{ $tar['fecha'] }}</td>
