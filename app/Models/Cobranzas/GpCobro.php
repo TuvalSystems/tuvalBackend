@@ -61,16 +61,13 @@ class GpCobro extends Model
         'pedido',
         'referencia',
         'alerta',
-        'fecha_aprobacion',
-        'user_aprobador_id',
-        'fecha_rechazo',
-        'user_rechazo_id'
+        'fecha_aprobacion_rechazo',
+        'user_aprobador_rechazo_id',
     ];
 
     protected $casts = [
-        'fecha'             => 'datetime:Y-m-d H:i:s',
-        'fecha_aprobacion'  => 'datetime:Y-m-d H:i:s',
-        'fecha_rechazo'     => 'datetime:Y-m-d H:i:s',
+        'fecha'                     => 'datetime:Y-m-d H:i:s',
+        'fecha_aprobacion_rechazo'  => 'datetime:Y-m-d H:i:s',
     ];
 
 

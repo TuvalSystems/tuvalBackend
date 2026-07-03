@@ -41,6 +41,7 @@ use App\Notifications\User\UserNotification;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
+use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
@@ -58,7 +59,8 @@ class CobranzasController extends Controller
     public function __construct(
         protected readonly CollectionServiceInterface $collectionService,
         protected readonly CustomerPaymentApplicationServiceInterface $customer,
-        protected readonly CollectionUnapplicationServiceInterface $unapplycation
+        protected readonly CollectionUnapplicationServiceInterface $unapplycation,
+        protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits
     ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -534,16 +536,16 @@ class CobranzasController extends Controller
         ]);
         $user = $request->user();
         $deposito = GpCobrosDeposito::where('id', $request->id)->first();
-        $deposito->fecha_aprobacion = Carbon::now()->format('Y-m-d H:i:s');
-        $deposito->user_aprobador_id = $user->id;
+        $deposito->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $deposito->user_aprobador_rechazo_id = $user->id;
         $deposito->estado = 'revisado';
         $deposito->save();
 
         $this->enviarcobro($deposito->cobro_id);
 
         $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
-        $cobro->fecha_aprobacion = Carbon::now()->format('Y-m-d H:i:s');
-        $cobro->user_aprobador_id = $user->id;
+        $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $cobro->user_aprobador_rechazo_id = $user->id;
         $cobro->save();
         $dato = GpCobrosDeposito::where('gp_cobros_depositos.id', $request->id)
             ->join('gp_cobros', 'gp_cobros.id', '=', 'gp_cobros_depositos.cobro_id')
@@ -577,8 +579,8 @@ class CobranzasController extends Controller
         $data       = $request->all();
         $user       = $request->user();
         $deposito   = GpCobrosDeposito::where('id', $data['id'])->first();
-        $deposito->user_rechazo_id  = $user->id;
-        $deposito->fecha_rechazo    = Carbon::now()->format('Y-m-d H:i:s');
+        $deposito->user_aprobador_rechazo_id  = $user->id;
+        $deposito->fecha_aprobacion_rechazo    = Carbon::now()->format('Y-m-d H:i:s');
         $deposito->mensaje_ws       =  data_get($data, 'motivo', null);
         $deposito->estado           = 'rechazado';
         $deposito->save();
@@ -602,10 +604,10 @@ class CobranzasController extends Controller
         if ($data['motivo'] != '') {
             $mensaje .= '<br> Motivo: ' . $data['motivo'];
         }
-        $cobro                  = GpCobro::where('id', $deposito->cobro_id)->first();
-        $cobro->fecha_rechazo   = Carbon::now()->format('Y-m-d H:i:s');
-        $cobro->user_rechazo_id = $user->id;
-        $cobro->estado          = 'rechazado';
+        $cobro                              = GpCobro::where('id', $deposito->cobro_id)->first();
+        $cobro->fecha_aprobacion_rechazo    = Carbon::now()->format('Y-m-d H:i:s');
+        $cobro->user_aprobador_rechazo_id   = $user->id;
+        $cobro->estado                      = 'rechazado';
         $cobro->save();
 
         if ($user) {
@@ -2275,5 +2277,13 @@ class CobranzasController extends Controller
             $response   = $this->customer->updatePendingApplicationDocumentBalances($clientId, $documents);
             return $this->successResponse('Lista actualizada correctamente', $response, 200);
         }, 'laravel', 'actualizacionDocumentosAplicacion');
+    }
+
+    public function listaHistoricaDepositos(Request $request){
+      return $this->handleApiAction(function() use($request){
+        $filters = $request->input('filters', []);
+        $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
+        return $this->successResponse('Datos obtenidos correctamente', $response,200);
+      }, 'laravel', 'listaHistoricaDepositos');
     }
 }

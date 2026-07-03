@@ -496,6 +496,11 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('detalle', [CobranzasController::class, 'detalleCobrosAplicados']);
                 Route::post('procesar', [CobranzasController::class, 'procesarDesaplicaciones']);
             });
+
+
+            Route::prefix('depositos-historicos')->group(function () {
+                Route::post('lista', [CobranzasController::class, 'listaHistoricaDepositos']);
+            });
         });
 
 
