@@ -47,6 +47,7 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobro extends Model
 {
     use HasFactory;
+    protected $table = 'gp_cobros';
 
     protected $fillable = [
         'numero_recibo',
@@ -60,9 +61,18 @@ class GpCobro extends Model
         'pedido',
         'referencia',
         'alerta',
-        'fecha_aprobacion_rechazo',
-        'user_aprobador_id'
+        'fecha_aprobacion',
+        'user_aprobador_id',
+        'fecha_rechazo',
+        'user_rechazo_id'
     ];
+
+    protected $casts = [
+        'fecha'             => 'datetime:Y-m-d H:i:s',
+        'fecha_aprobacion'  => 'datetime:Y-m-d H:i:s',
+        'fecha_rechazo'     => 'datetime:Y-m-d H:i:s',
+    ];
+
 
     public function cheques()
     {
