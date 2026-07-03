@@ -574,13 +574,13 @@ class CobranzasController extends Controller
 
     public function rechazardeposito(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $data = $request->all();
-        $user = $request->user();
-        $deposito = GpCobrosDeposito::where('id', $data['id'])->first();
-        $deposito->user_rechazo_id = $user->id;
-        $deposito->fecha_rechazo = Carbon::now()->format('Y-m-d H:i:s');
-        $deposito->mensaje_ws =  data_get($data, 'motivo', null);
-        $deposito->estado = 'rechazado';
+        $data       = $request->all();
+        $user       = $request->user();
+        $deposito   = GpCobrosDeposito::where('id', $data['id'])->first();
+        $deposito->user_rechazo_id  = $user->id;
+        $deposito->fecha_rechazo    = Carbon::now()->format('Y-m-d H:i:s');
+        $deposito->mensaje_ws       =  data_get($data, 'motivo', null);
+        $deposito->estado           = 'rechazado';
         $deposito->save();
 
         $dato = GpCobrosDeposito::where('gp_cobros_depositos.id', $request->id)
@@ -602,22 +602,16 @@ class CobranzasController extends Controller
         if ($data['motivo'] != '') {
             $mensaje .= '<br> Motivo: ' . $data['motivo'];
         }
-
-
-        $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
-        $cobro->fecha_rechazo = Carbon::now()->format('Y-m-d H:i:s');
+        $cobro                  = GpCobro::where('id', $deposito->cobro_id)->first();
+        $cobro->fecha_rechazo   = Carbon::now()->format('Y-m-d H:i:s');
         $cobro->user_rechazo_id = $user->id;
-        $cobro->estado = 'rechazado';
+        $cobro->estado          = 'rechazado';
         $cobro->save();
 
         if ($user) {
             $user->notify(new UserNotification('Depósito/Transferencia rechazado', $mensaje));
         }
-
-
-
-        $this->enviarcobro($dato->cobro_id);
-
+        // $this->enviarcobro($dato->cobro_id);
         return response([
             'success' => true,
             'message' => 'Depósito rechazado'
