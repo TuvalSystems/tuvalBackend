@@ -860,14 +860,14 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         return $payments->map(function ($payment) {
             return [
                 'tipo_origen'       => 'GP_APLICADO',
-                'tipo_pago'         => $this->mapTypePayment(data_get($payment, 'typePayment')),
-                'codigo_tipo_pago'  => data_get($payment, 'typePayment'),
-                'documento'         => data_get($payment, 'collectionId'),
+                'tipo_pago'         => $this->mapTypePayment(data_get($payment, 'tipoPago')),
+                'codigo_tipo_pago'  => data_get($payment, 'tipoPago'),
+                'documento'         => data_get($payment, 'documentoCobro'),
                 'numero_recibo'     => $this->formatReceiptNumber(data_get($payment, 'numeroRecibo')),
                 'estado'            => null,
-                'monto'             => $this->money(data_get($payment, 'collectionAmount', 0)),
-                'fecha_documento'   => data_get($payment, 'collectionDocDate'),
-                'fecha_aplicacion'  => data_get($payment, 'collectionApplyDate'),
+                'monto'             => $this->money(data_get($payment, 'valorCobro', 0)),
+                'fecha_documento'   => data_get($payment, 'documentoFecha'),
+                'fecha_aplicacion'  => data_get($payment, 'fechaAplicacion'),
             ];
         })->values();
     }
