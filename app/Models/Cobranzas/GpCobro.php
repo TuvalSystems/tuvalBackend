@@ -51,6 +51,7 @@ class GpCobro extends Model
     protected $fillable = [
         'numero_recibo',
         'user_id',
+        'pv_id',
         'cliente_id',
         'caja_id',
         'caja',

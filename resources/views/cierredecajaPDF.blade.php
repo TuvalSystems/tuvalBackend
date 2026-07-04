@@ -147,35 +147,35 @@
             <tbody>
                 <tr>
                     <td>Retenciones IVA</td>
-                    <td class="text-right">${{$retenciones['ret_iva']}}</td>
+                    <td class="text-right">{{format_money($retenciones['ret_iva'])}}</td>
                 </tr>
                 <tr>
                     <td>Retenciones Renta</td>
-                    <td class="text-right">${{$retenciones['ret_renta']}}</td>
+                    <td class="text-right">{{format_money($retenciones['ret_renta'])}}</td>
                 </tr>
                 <tr>
                     <td>Efectivo</td>
-                    <td class="text-right">${{$efectivo}}</td>
+                    <td class="text-right">{{format_money($efectivo)}}</td>
                 </tr>
                 <tr>
                     <td>Cheques al día</td>
-                    <td class="text-right">${{$cheques}}</td>
+                    <td class="text-right">{{format_money($cheques)}}</td>
                 </tr>
                 <tr>
                     <td>Cheques posfechados</td>
-                    <td class="text-right">${{$cheques_p}}</td>
+                    <td class="text-right">{{format_money($cheques_p)}}</td>
                 </tr>
                 <tr>
                     <td>Depósitos/Transferencias</td>
-                    <td class="text-right">${{$depositos}}</td>
+                    <td class="text-right">{{format_money($depositos)}}</td>
                 </tr>
                 <tr>
                     <td>Tarjetas</td>
-                    <td class="text-right">${{$tarjetas}}</td>
+                    <td class="text-right">{{format_money($tarjetas)}}</td>
                 </tr>
                 <tr>
                     <th>Total</th>
-                    <th class="text-right">${{$total}}</th>
+                    <th class="text-right">{{format_money($total)}}</th>
                 </tr>
             </tbody>
         </table>

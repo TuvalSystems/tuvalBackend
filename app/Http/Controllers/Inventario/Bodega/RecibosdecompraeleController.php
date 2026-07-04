@@ -137,29 +137,7 @@ class RecibosdecompraeleController extends Controller
 
 
 
-    public function setdetalleordendecompra($ordendecompra)
-    {
-        $detalleOrdendecompra = GpOrdenDeCompraGeneradoDetalle::join('gp_pedido_detalle_proveedores', 'gp_pedido_detalle_proveedores.id', 'gp_orden_de_compra_generado_detalles.detalle_proveedores_id')
-            ->join('gp_pedido_detalles', 'gp_pedido_detalles.id', 'gp_pedido_detalle_proveedores.detalle_id')
-            ->where('orden_generada_id', $ordendecompra->id)
-            ->select('gp_orden_de_compra_generado_detalles.*', 'gp_pedido_detalles.ART_PESO')
-            ->get();
-        $ordendecompra->subtotal = 0;
-        $ordendecompra->iva = 0;
-        foreach ($detalleOrdendecompra as $det) {
-            $ordendecompra->subtotal += $det->ORDEN_COMPRA_DETALLE_TOTAL;
-            $ordendecompra->iva += $det->ORDEN_COMPRA_DETALLE_IMPUESTO;
-        }
-
-        $ordendecompra->subtotal = number_format($ordendecompra->subtotal, '2', '.', '');
-        $ordendecompra->iva = number_format($ordendecompra->iva, '2', '.', '');
-        $ordendecompra->total = number_format($ordendecompra->subtotal + $ordendecompra->iva, '2', '.', '');
-
-        $ordendecompra->detalle = $detalleOrdendecompra;
-        return $ordendecompra;
-    }
-
-
+ 
 
     public function imprimir($id)
     {

@@ -2,6 +2,7 @@
 
 namespace App\Services\Builders\Venta;
 
+use App\Models\GpCotizacionDetalle;
 use App\Models\GpUsuario;
 use App\Models\Reservas\GpCotizacionReservaDetalleLog;
 use App\Models\Reservas\GpCotizacionReservaLog;
@@ -22,7 +23,7 @@ class ReservedBuilder implements ReservedBuilderInterface
     }
 
 
-    public function fromPayloadReserved(array $data, GpUsuario $user)
+    public function fromPayloadReserved(array $data, GpUsuario $user): GpReserva
     {
         $new = new GpReserva();
         $new->fill([
@@ -41,7 +42,7 @@ class ReservedBuilder implements ReservedBuilderInterface
 
 
 
-    public function fromPayloadQuoteReservedLog($reserveId, $oldQuoteId, $newQuoteId, $userId, $warehouse)
+    public function fromPayloadQuoteReservedLog(int $reserveId, int $oldQuoteId, int $newQuoteId, int $userId, string $warehouse): GpCotizacionReservaLog
     {
         $new = new GpCotizacionReservaLog();
         $new->fill([
@@ -55,7 +56,7 @@ class ReservedBuilder implements ReservedBuilderInterface
     }
 
 
-    public function fromPayloadQuoteReservedDetailLog($ctRsLogId, $stockId, $artCode, $warehouse, $qty)
+    public function fromPayloadQuoteReservedDetailLog(int $ctRsLogId, ?int $stockId, string $artCode, string $warehouse, float $qty): GpCotizacionReservaDetalleLog
     {
         $new = new GpCotizacionReservaDetalleLog();
 
@@ -70,7 +71,7 @@ class ReservedBuilder implements ReservedBuilderInterface
     }
 
 
-    public function fromPayloadOrderReservedLog($reserveId, $oldQuoteId, $newQuoteId, $userId, $warehouse)
+    public function fromPayloadOrderReservedLog(int $reserveId, int $oldQuoteId, int $newQuoteId, int $userId, string $warehouse): GpPedidoReservaLog
     {
         $new = new GpPedidoReservaLog();
         $new->fill([
@@ -83,7 +84,7 @@ class ReservedBuilder implements ReservedBuilderInterface
         return $new;
     }
 
-    public function formPayloadOrderReservedDetailLog($ctRsLogId, $stockId, $artCode, $warehouse, $qty)
+    public function formPayloadOrderReservedDetailLog(int $ctRsLogId, ?int $stockId, string $artCode, string $warehouse, float $qty): GpPedidoReservaDetalleLog
     {
         $new = new GpPedidoReservaDetalleLog();
         $new->fill([
@@ -99,7 +100,7 @@ class ReservedBuilder implements ReservedBuilderInterface
 
     /** aqui funcion de traslado reservas formPayload */
 
-    public function formPayloadTransferReserved($detail)
+    public function formPayloadTransferReserved(GpCotizacionDetalle $detail): GpTrasladosReservas
     {
         $tr = new GpTrasladosReservas();
         $tr->fill([

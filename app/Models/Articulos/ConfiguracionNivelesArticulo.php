@@ -2,6 +2,7 @@
 
 namespace App\Models\Articulos;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,10 +12,17 @@ class ConfiguracionNivelesArticulo extends Model
 
     protected $table = 'configuracion_niveles_articulos';
 
-    protected $fillable =[
+    protected $fillable = [
         'nivel',
         'color',
         'descripcion',
         'estado',
     ];
+
+
+    public function scopeActivo(Builder $query): Builder
+    {
+        return $query->where('estado', 1);
+    }
+
 }

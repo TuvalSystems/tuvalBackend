@@ -3,6 +3,10 @@
 namespace App\Services\Builders\Venta;
 
 use App\Enums\Ventas\PurchaseOrdersL;
+use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
+use App\Models\GpPedidoDetalleProveedores;
+use App\Models\GpProveedor;
 use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Services\Builders\Venta\Contracts\PurchaseOrderBuilderInterface;
 
@@ -10,7 +14,7 @@ class PurchaseOrderBuilder implements PurchaseOrderBuilderInterface
 {
 
 
-    public function formBuilderPruchaseOrder($order, $detalle, $prov, $dataProvider, $line): GpOrdenDeCompra
+    public function formBuilderPruchaseOrder(GpPedido $order, GpPedidoDetalle $detalle, GpPedidoDetalleProveedores $prov, GpProveedor $dataProvider, string $line): GpOrdenDeCompra
     {
         $nOrdL = new GpOrdenDeCompra();
         $nOrdL->fill([
@@ -38,7 +42,7 @@ class PurchaseOrderBuilder implements PurchaseOrderBuilderInterface
         return $nOrdL;
     }
 
-    public function formBuilderHeaderOrderSendGp($order, string $descripcion): array
+    public function formBuilderHeaderOrderSendGp(GpOrdenDeCompra $order, string $descripcion): array
     {
         return [
             'docuOrigen'            => $order->ORDEN_COMPRA_DOCU_ORIGEN,

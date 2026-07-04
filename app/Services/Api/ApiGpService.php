@@ -17,10 +17,6 @@ class ApiGpService
         $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
     }
 
-    public function validateUser(array $params)
-    {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_VALIDAR_USUARIO, 'POST', $params, 'json');
-    }
 
     public function getEmailUser(array $params){
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_CORREO_USUARIO, 'POST', $params, 'json');
@@ -93,12 +89,6 @@ class ApiGpService
 
 
 
-    public function getTypeBySeller(array $params = [])
-    {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TIPO_VENDEDOR, 'POST', $params, 'json');
-    }
-
-
     public function fetchAllSegments(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TODOS_SEGMENTOS, 'GET', $params);
@@ -124,24 +114,14 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_GUARDAR_SUBSEGMENTO_RUC, 'POST', $params, 'json');
     }
 
-
-
     public function fetchReservedNotifyLocal(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::RESERVAS_OBTENER_NOTIFICACIONES_LOCAL, 'GET', $params);
     }
 
-
-
     public function fetchItemPriceListFromGp(array $params = [])
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_LISTA_PRECIO_ARTICULO, 'GET', $params);
-    }
-
-
-    public function fetchDetailsTypeSellerFromGp(array $params = [])
-    {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::CLIENTE_OBTENER_TIPO_VENDEDOR_DETALLE, 'GET', $params);
     }
 
 

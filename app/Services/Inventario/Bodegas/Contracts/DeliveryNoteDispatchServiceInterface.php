@@ -8,8 +8,8 @@ use App\Models\GpUsuario;
 interface DeliveryNoteDispatchServiceInterface
 {
     // Define los métodos que debe implementar el servicio
-    public function createDeliveryNoteFromDispatch(array $payload, GpUsuario $user);
-     public function dispatchGuideTransferShipment(int $guiaId, GpUsuario $user);
+    public function createDeliveryNoteFromDispatch(array $payload, GpUsuario $user): GpGuiaRemision;
+    public function dispatchGuideTransferShipment(int $guiaId, GpUsuario $user): array;
 
-     public function replicateDeliveryNoteDispatch(int $id): GpGuiaRemision ;
+    public function replicateDeliveryNoteDispatch(int $id): GpGuiaRemision;
 }

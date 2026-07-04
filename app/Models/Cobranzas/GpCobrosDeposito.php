@@ -2,6 +2,7 @@
 
 namespace App\Models\Cobranzas;
 
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -47,7 +48,28 @@ class GpCobrosDeposito extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'cobro_id',
+        'estado',
+        'tipo',
+        'banco',
+        'comprobante',
+        'fecha',
+        'monto',
+        'codigo_ws',
+        'mensaje_ws',
+        'fecha_aprobacion',
+        'user_aprobador_id'
+    ];
+    protected $cast = [
+        'created_at' => 'datetime:Y-m-d H:i:s',
+        'updated_at' => 'datetime:Y-m-d H:i:s',
+    ];
 
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
     public function depositosFactura()
     {
         return $this->hasMany(GpCobrosDepositosFacturas::class, 'cobro_id', 'cobro_id');

@@ -16,4 +16,8 @@ class ApiGestionArticleService extends ApiGpService
     public function getArticlePurchaseClassification(array $params){
         return $this->httpClient->makeRequest(ApiGpEndpoints::ARTICULOS_OBTENER_CLASIFICACION, 'GET', $params);
     }
+
+    public function getArticleSegmentClassificationConfig(array $params){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::ARTICULOS_OBTENER_CONFIGURACION_SEGMENTO, 'POST', $params, 'json');
+    }
 }

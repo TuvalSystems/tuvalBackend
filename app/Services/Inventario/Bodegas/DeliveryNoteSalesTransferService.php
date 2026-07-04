@@ -60,7 +60,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         $items              = data_get($payload, 'detalle', []);
         $primerItem         = data_get($payload, 'detalle.0', []);
         $documento          = data_get($primerItem, 'orderNumber', []);
-        $idemKey            = $this->makeIdempotencyKeySalesTransfer($payload,  $tipo, $primerItem,  $ptoOrigen, $ptoDestino);
+        $idemKey            = $this->makeIdempotencyKeySalesTransfer($payload,  $tipo,  $ptoOrigen, $ptoDestino);
 
         $lock = Cache::lock('create_transfer_guide_' . $idemKey, 15);
         if (!$lock->get()) {
@@ -126,7 +126,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function makeIdempotencyKeySalesTransfer(array $payload, string $tipo, array  $primerItem,  string $ptoOrigen, string $ptoDestino): string
+    protected function makeIdempotencyKeySalesTransfer(array $payload, string $tipo,  string $ptoOrigen, string $ptoDestino): string
     {
         $base = [
             'pto_origen'        => $ptoOrigen,

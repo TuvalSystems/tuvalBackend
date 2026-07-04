@@ -19,6 +19,7 @@ use App\Http\Controllers\Inventario\Bodega\TransferenciasController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\test\TestController;
 use App\Http\Controllers\Admin\UserNotificationController;
+use App\Http\Controllers\Inventario\Articulo\ArticuloController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\ReservasController;
 use Illuminate\Support\Facades\Mail;
@@ -39,7 +40,6 @@ Route::get('/', function () {
 });
 
 Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarcobros']);
-Route::get('/enviarordenesdecompraurl', [OrdendecompraController::class, 'enviarordenesdecompraurl']);
 Route::get('/cotizaciones/checkvalidezcotizaciones', [CotizacionesController::class, 'checkvalidezcotizaciones']);
 Route::get('/cobranzas/consultacobrosanulados', [CobranzasController::class, 'consultacobrosanulados']);
 Route::get('/facturarsiguientemescron', [PedidosController::class, 'facturarsiguientemescron']);
@@ -242,12 +242,19 @@ Route::group(['prefix' => 'perfiles-pruebas'], function () {
     Route::get('lista', [ProfileController::class, 'lista']);
 });
 
+Route::group(['prefix' => 'inventario-web'], function () {
+    Route::prefix('articulos')->group(function () {
+        Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
+        Route::get('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
+    });
+});
+
 
 Route::get('/test-mail', function () {
     Mail::raw('¡Hola! Este es un correo de prueba enviado desde Laravel 9 tras la actualización.', function ($message) {
         // Reemplaza esto con tu correo real
         $message->to('sistemas6@tuvalsa.com')
-                ->subject('Prueba de configuración de correo - Laravel 9');
+            ->subject('Prueba de configuración de correo - Laravel 9');
     });
 
     return '¡Comando ejecutado! Revisa tu bandeja de entrada.';

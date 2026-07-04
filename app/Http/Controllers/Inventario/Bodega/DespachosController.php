@@ -54,68 +54,6 @@ class DespachosController extends Controller
         protected readonly DispatchServiceInterface $dispatchService,
         protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService
     ) {}
-    public function generarordendespacho($pedido)
-    {
-        if ($this->dispatchService->checkTraslado($pedido)) {
-            return;
-        }
-
-        if (in_array($pedido->estado, [OrderStatus::ORDEN_DE_COMPRA, OrderStatus::TRASLADO], true)) {
-            return;
-        }
-
-        $generada = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
-        if ($generada) {
-            return;
-        }
-
-        if ($pedido->despachado) {
-            return;
-        }
-        $ordenDespacho = new GpOrdenDespacho();
-        $estado = 'pendiente';
-        $fecha_hora_liberacion = null;
-        if ($pedido->COND_ID != 'CONTADO') {
-            $fecha_hora_liberacion = date('Y-m-d H:i:s');
-            $estado = 'liberada';
-        }
-        $formaPago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $pedido->COND_ID)->first();
-
-        if (isset($formaPago->DESC_FORMA_PAGO_TIPO_COBRO) && $formaPago->DESC_FORMA_PAGO_TIPO_COBRO == 'CHEQUE') {
-            $cliente = GpCliente::where('id', $pedido->cliente_id)->first();
-            if ($cliente->CLI_DIA_GRACIA_CHEQUE_A_FECHA == 0) {
-                $estado = 'pendiente';
-            }
-        }
-
-        if (
-            ($pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes)
-            //            ||
-            //            ($pedido->factura_posterior_despacho && !$pedido->factura_a_demanda && $pedido->factura_siguiente_mes)
-        ) {
-            $estado = 'pendiente';
-        }
-
-        $orden_anterior = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
-        if ($orden_anterior) {
-            return;
-        }
-
-        $ultimaOrden = GpOrdenDespacho::orderBy('id', 'DESC')->first();
-
-        if (!$ultimaOrden) {
-            $ultimaOrden = new stdClass();
-            $ultimaOrden->id = 0;
-        }
-
-        $ordenDespacho->orden = 'ODD' . str_pad($ultimaOrden->id + 1, 8, "0", STR_PAD_LEFT);
-        $ordenDespacho->pedido_id = $pedido->id;
-        $ordenDespacho->estado = $estado;
-        $ordenDespacho->fecha_hora_liberacion = $fecha_hora_liberacion;
-        $ordenDespacho->PTO_VTA_ID = $pedido->PTO_VTA_ID;
-        $ordenDespacho->BOD_BODEGA = $pedido->BOD_BODEGA;
-        $ordenDespacho->save();
-    }
 
     public function checkfacturasdespachos($cobro_id)
     {
@@ -298,7 +236,7 @@ class DespachosController extends Controller
 
 
         $ordenDespacho = GpOrdenDespacho::where('pedido_id', $pedido_id)
-            ->where('estado', '!=', 'despachada')
+            ->where('estado', 'pendiente')
             ->get()->first();
 
         if ($ordenDespacho) {
@@ -679,6 +617,13 @@ class DespachosController extends Controller
         $user = $request->user();
 
         $orden = GpOrdenDespacho::where('id', $data['id'])->first();
+        if (!$orden || $orden->estado !== 'pendiente') {
+            return response([
+                'success' => false,
+                'message' => 'La orden de despacho no está pendiente y no puede ser liberada.',
+                'orden' => $orden,
+            ], 409);
+        }
         $orden->autorizacion_fecha = date('Y-m-d H:i:s');
         if (!$orden->fecha_hora_liberacion) {
             $orden->fecha_hora_liberacion = date('Y-m-d H:i:s');
@@ -907,7 +852,7 @@ class DespachosController extends Controller
             $pedido->despacho_en_proceso = 0;
             $pedido->save();
 
-            $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->where('estado','!=', 'cancelada')->first();
+            $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->where('estado', '!=', 'cancelada')->first();
             $orden->estado = 'despachada';
             $orden->save();
         }
@@ -916,34 +861,29 @@ class DespachosController extends Controller
 
     public function checkdespachadoscompletos()
     {
-        $ordenes = GpOrdenDespacho::where('estado', 'liberada')->get();
+        $ordenes = GpOrdenDespacho::with([
+            'pedido' => function ($q) {
+                $q->where('estado', OrderStatus::FACTURADO)->with('detallepedido');
+            },
+
+        ])->where('estado', 'liberada')->get();
         foreach ($ordenes as $orden) {
-            $pedido = GpPedido::where('id', $orden->pedido_id)
-            ->where('estado', OrderStatus::FACTURADO)->first();
+            $pedido = $orden->pedido;
+            if (!$pedido) {
+                continue;
+            }
             $listo = true;
 
-            $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
-
-            foreach ($detallepedido as $item) {
-
-                // if ($item->ART_TIPO_COMPRA != 'SERV') {
-
+            foreach ($pedido->detallepedido as $item) {
                 if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
                     $listo = false;
+                    break;
                 }
-                // if ($item->ART_TIPO_COMPRA = 'SERV') {
-                //     if ($item->trasladado < $item->ART_CANTIDAD) {
-                //         $listo = false;
-                //     }
-                // }
-                // }
             }
 
             if ($listo) {
                 $pedido->despachado = 1;
                 $pedido->save();
-
-                //$orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->first();
                 $orden->estado = 'despachada';
                 $orden->save();
             }

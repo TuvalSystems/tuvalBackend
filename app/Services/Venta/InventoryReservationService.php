@@ -607,12 +607,15 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             'gp_tipo_reservas.descripcion as tipo_reserva',
             'gp_reserva_tipo_traslado.descripcion as tipo_traslado',
             'gp_reservas.obs_solicitud_reserva',
+            'gpu.USERID as usuario_aprobador',
             'gp_reservas.fe_autorizacion_reserva',
+            'gp_reservas.fe_ingreso_autorizacion_reserva',
             DB::raw($this->getWarehouseUsageSubquery()),
         ])->from('gp_reservas')
             ->join('gp_tipo_reservas', 'gp_reservas.tipo_reserva_id', '=', 'gp_tipo_reservas.id')
             ->leftJoin('gp_reserva_tipo_traslado', 'gp_reservas.tipo_traslado_reserva_id', '=', 'gp_reserva_tipo_traslado.id')
             ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
+            ->leftJoin('gp_usuarios as gpu', 'gp_reservas.user_autorizacion_reserva_id', '=', 'gpu.id')
             ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id');
         if ($gpUser->perfil_id !== 2) {
             $query->where('gp_reservas.user_ingreso_reserva_id', $gpUser->id);

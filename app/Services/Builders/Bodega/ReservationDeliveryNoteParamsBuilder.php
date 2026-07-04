@@ -22,7 +22,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
     }
 
 
-    public function buildReservationGuideHeader($payload, GpUsuario $user, array $datavehicle, string $secuencial, string $dirDestination, string $numGuide, string $bodGuide, string $dirOrigin): GpGuiaRemisionReserva
+    public function buildReservationGuideHeader(array $payload, GpUsuario $user, array $datavehicle, string $secuencial, string $dirDestination, string $numGuide, string $bodGuide, string $dirOrigin): GpGuiaRemisionReserva
     {
         $guia = new GpGuiaRemisionReserva();
         $guia->fill([
@@ -52,7 +52,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
         return $guia;
     }
 
-    public function buildReservationGuideDetails($data, $guiaId): GpGuiaRemisionReservaDetalle
+    public function buildReservationGuideDetails(array $data, int $guiaId): GpGuiaRemisionReservaDetalle
     {
         $d = new GpGuiaRemisionReservaDetalle();
         $d->fill([
@@ -73,7 +73,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
 
 
 
-    public function buildReservationHeaderToGp($guia): array
+    public function buildReservationHeaderToGp(GpGuiaRemisionReserva $guia): array
     {
         return [
             'guiaRemision'                      => $guia->numero_guia,
@@ -96,7 +96,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
     }
 
 
-    public function buildReservationDestinationToGp($guia): array
+    public function buildReservationDestinationToGp(GpGuiaRemisionReserva $guia): array
     {
         return [
             'guiaRemision'                  => $guia->numero_guia,
@@ -175,7 +175,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
     }
 
 
-    public function createRegisterHistortyHeader($guia, GpUsuario $user, $quote): GpIngreso
+    public function createRegisterHistortyHeader(GpGuiaRemisionReserva $guia, GpUsuario $user, string $quote): GpIngreso
     {
         $ing = new GpIngreso();
         $ing->fill([
@@ -188,7 +188,7 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
         return $ing;
     }
 
-    public function createRegisterHistoryDetail($items, $ing): GpIngresosDetalle
+    public function createRegisterHistoryDetail(array $items, GpIngreso $ing): GpIngresosDetalle
     {
         $d = new GpIngresosDetalle();
         $d->fill([

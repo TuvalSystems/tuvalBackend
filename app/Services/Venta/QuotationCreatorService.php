@@ -13,6 +13,7 @@ use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         protected readonly QuotationBuilderInterface $builder,
         protected readonly ApprovalQuotationServiceInterface $approval,
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
+        protected readonly QuotationHistoryCreatorServiceInterface $history
 
     ) {}
 
@@ -36,9 +38,9 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function createOrUpdate(array $data, GpUsuario $user, array $existingImages = [], array $newImages = [], array $pfdsExistings  = [], array $pfdsNew  = []): GpCotizacion
     {
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
-            $quoteId = data_get($data, 'cotizacion_id', null);
-            $direccionFacturacion = (int) data_get($data, 'direccion_facturacion_id');
-            $direccionDespacho = (int)data_get($data, 'direccion_entrega_id');
+            $quoteId                = data_get($data, 'cotizacion_id', null);
+            $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
+            $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
 
             // --- VALIDACIONES DE NEGOCIO ---
             if ($direccionFacturacion) {
@@ -70,6 +72,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             if ($mode == QuotationMode::UPDATE->value) {
                 $cotizacion->update(['estado' => 'procesado', 'facturado' => 1]);
             }
+            $this->history->createQuoteHistory($cotizacion);
             return $cotizacion;
         });
     }

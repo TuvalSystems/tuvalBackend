@@ -7,7 +7,6 @@ use App\Models\GpClienteSucursal;
 use App\Models\GpUsuario;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig\Round;
 
 class ClientBuilder implements ClientBuilderInterface
 {
@@ -18,7 +17,7 @@ class ClientBuilder implements ClientBuilderInterface
     }
 
 
-    public function formPayloadNewAddress(array $data, GpCliente $cliente, $direccion, $email): array
+    public function formPayloadNewAddress(array $data, GpCliente $cliente, array $direccion, string $email): array
     {
         return [
             'ruc'                   => $cliente->CLI_RUC,
@@ -42,7 +41,7 @@ class ClientBuilder implements ClientBuilderInterface
     }
 
 
-    public function formPayloadNewSucursal(array $data, GpCliente $cliente, $identificador, $email, $direccion, GpUsuario   $user): GpClienteSucursal
+    public function formPayloadNewSucursal(array $data, GpCliente $cliente, string $identificador, string $email, array $direccion, GpUsuario $user): GpClienteSucursal
     {
         $nw = new GpClienteSucursal();
         $nw->fill([
@@ -114,7 +113,7 @@ class ClientBuilder implements ClientBuilderInterface
 
 
 
-    public function formPayloadClientBranchesSync(int $clienteId, string $ruc, string $descripcion,  array $data)
+    public function formPayloadClientBranchesSync(int $clienteId, string $ruc, string $descripcion,  array $data): array
     {
         return [
             'cliente_id'                                        => $clienteId,
