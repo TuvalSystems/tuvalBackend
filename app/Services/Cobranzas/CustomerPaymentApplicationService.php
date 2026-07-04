@@ -70,8 +70,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->values()
                 ->all();
 
+            //funcion para validacion de documentos contabilizados que no son de web
+            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+
+
             //sumatoria de lo pendiente
-            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
+            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
@@ -138,8 +142,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->unique()
                 ->values()
                 ->all();
+            //funcion para validacion de documentos contabilizados que no son de web
+            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+
+
             //sumatoria de lo pendiente
-            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
+            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta , $rcPayments);
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
@@ -207,8 +215,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->unique()
                 ->values()
                 ->all();
+            //funcion para validacion de documentos contabilizados que no son de web
+            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
             //sumatoria de lo pendiente
-            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
+            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
@@ -279,9 +289,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     ->unique()
                     ->values()
                     ->all();
+                //funcion para validacion de documentos contabilizados que no son de web
+                $rcPayments             = $this->filterGroupReceiptNumbers($payments);
 
                 //sumatoria de lo pendiente
-                $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
+                $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
                 $sumPendingWeb          = $pendingWebResult['total'];
                 $pendingWebDetails      = $pendingWebResult['details'];
                 //sumatoria  de devoluciones pendeintes de procesar
@@ -385,7 +397,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $groupDocuments);
 
                 //sumatoria de lo pendiente
-                $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta,  $rcPayments,  'ingreso_aplicaciones');
+                $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta,  $rcPayments);
                 $sumPendingWeb          = $pendingWebResult['total'];
                 $pendingWebDetails      = $pendingWebResult['details'];
                 //sumatoria  de devoluciones pendeintes de procesar
@@ -463,8 +475,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->values()
                 ->all();
 
+            //funcion para validacion de documentos contabilizados que no son de web
+            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+
             //sumatoria de lo pendiente
-            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta);
+            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
@@ -682,10 +697,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     }
 
 
-    protected function getPendingWebNotAccountedByInvoice(string $invoice, array $documents,  string $desde, string $hasta, array $rcPayments = [],  ?string $type = null): array
+    protected function getPendingWebNotAccountedByInvoice(string $invoice, array $documents,  string $desde, string $hasta, array $rcsPorExcluir = []): array
     {
 
-        $rcsPorExcluir = $type === 'ingreso_aplicaciones' ? $rcPayments : [];
         $applications   = $this->applyRepository->getPendingWebInvoiceApplicationsExcludingDocuments($invoice, $documents, $desde, $hasta, $rcsPorExcluir);
         $checks         = $this->applyRepository->getPendingWebCheckPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
         $deposits       = $this->applyRepository->getPendingWebDepositPaymentsByInvoice($invoice, $desde, $hasta, $rcsPorExcluir);
