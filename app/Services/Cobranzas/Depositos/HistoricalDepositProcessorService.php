@@ -14,7 +14,7 @@ class HistoricalDepositProcessorService implements HistoricalDepositProcessorSer
     }
 
 
-    public function fetchListHistoricalDeposits(array $filters) :LengthAwarePaginator
+    public function fetchListHistoricalDeposits(array $filters): LengthAwarePaginator
     {
 
         $search     = data_get($filters, 'search', '');
@@ -22,23 +22,33 @@ class HistoricalDepositProcessorService implements HistoricalDepositProcessorSer
         $sortField  = data_get($filters, 'sortField', 'created_at');
         $sortOrder  = strtolower(data_get($filters, 'sortOrder', 'desc')) === 'asc' ? 'asc' : 'desc';
 
+        if (!$sortField || trim($sortField) === '') {
+            $sortField = 'created_at';
+        }
+
         $allowedSorts = [
             'id'                    => 'gcd.id',
             'agencia'               => 'gpv.PTO_VTA_DESCRIPCION',
-            'usuario_ingreso'       => 'us2.USERID',
+            'usuario_ingreso'       => 'us.USERID',
+            'usuario_registro'      => 'us1.USERID',
             'ruc'                   => 'gcli.CLI_RUC',
             'razon_social'          => 'gcli.CLI_RAZON_SOCIAL',
             'banco'                 => 'gcb.CB_DESCRIPCION',
-            'fecha_creacion_cobro'  => 'gc.fecha'
+            'fecha_creacion_cobro'  => 'gc.fecha',
+            'fecha_registro'        => 'gcd.fecha_aprobacion_rechazo',
+            'monto'                 => 'gcd.monto',
+            'estado'                => 'gcd.estado',
+            'created_at'            => 'gcd.created_at',
         ];
-        $orderColumn = data_get($allowedSorts, $sortField . 'gdc.created_at');
+
+        $orderColumn = data_get($allowedSorts, $sortField , 'gcd.created_at');
 
         $query = GpCobrosDeposito::select([
             'gcd.id',
             'gpv.PTO_VTA_DESCRIPCION as agencia',
             'gc.numero_recibo',
             'gc.fecha as fecha_creacion_cobro',
-            'us2.USERID as usuario_ingreso',
+            'us.USERID as usuario_ingreso',
             'gcli.CLI_RUC as ruc',
             'gcli.CLI_RAZON_SOCIAL as razon_social',
             'gcb.CB_DESCRIPCION as banco',
@@ -47,12 +57,13 @@ class HistoricalDepositProcessorService implements HistoricalDepositProcessorSer
             'gcd.monto',
             'gcd.estado',
             'gcd.fecha_aprobacion_rechazo as fecha_registro',
-            'us.USERID as usuario_registro'
+            'us1.USERID as usuario_registro',
+            'gcd.created_at'
         ])
             ->from('gp_cobros_depositos as gcd')
-            ->leftJoin('gp_usuarios as us', 'gcd.user_aprobador_rechazo_id', '=', 'us.id')
             ->join('gp_cobros as gc', 'gcd.cobro_id', '=', 'gc.id')
-            ->join('gp_usuarios as us2 ', 'gc.user_id', '=', 'us2.id')
+            ->leftJoin('gp_usuarios as us', 'us.id', '=', 'gc.user_id')
+            ->leftJoin('gp_usuarios as us1', 'us1.id', '=', 'gcd.user_aprobador_rechazo_id')
             ->join('gp_clientes as gcli', 'gc.cliente_id', '=', 'gcli.id')
             ->leftJoin('gp_punto_ventas as gpv', 'gpv.id', '=', 'gc.pv_id')
             ->join('gp_caja_bancos as gcb', 'gcd.banco_id', '=', 'gcb.id');
@@ -60,6 +71,7 @@ class HistoricalDepositProcessorService implements HistoricalDepositProcessorSer
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('us.USERID', 'like', "%{$search}%")
+                    ->orWhere('us1.USERID', 'like', "%{$search}%")
                     ->orWhere('gc.numero_recibo', 'like', "%{$search}%")
                     ->orWhere('gcli.CLI_RUC', 'like', "%{$search}%")
                     ->orWhere('gcli.CLI_RAZON_SOCIAL', 'like', "%{$search}%")
@@ -68,8 +80,7 @@ class HistoricalDepositProcessorService implements HistoricalDepositProcessorSer
         }
 
         return $query
-        ->orderBy($orderColumn, $sortOrder)
-        ->paginate($perpage);
-
+            ->orderBy($orderColumn, $sortOrder)
+            ->paginate($perpage);
     }
 }
