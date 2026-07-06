@@ -8,6 +8,8 @@ use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
 use App\Services\Cobranzas\CustomerPaymentApplicationService;
+use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorServiceInterface;
+use App\Services\Cobranzas\Depositos\HistoricalDepositProcessorService;
 use Illuminate\Support\ServiceProvider;
 
 class CollectionServiceProvider extends ServiceProvider
@@ -17,6 +19,7 @@ class CollectionServiceProvider extends ServiceProvider
         CollectionServiceInterface::class                   => CollectionService::class,
         CustomerPaymentApplicationServiceInterface::class   => CustomerPaymentApplicationService::class,
         CollectionUnapplicationServiceInterface::class      => CollectionUnapplicationService::class,
+        HistoricalDepositProcessorServiceInterface::class   => HistoricalDepositProcessorService::class
 
     ];
 

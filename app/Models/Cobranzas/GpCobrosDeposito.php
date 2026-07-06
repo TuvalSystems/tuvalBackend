@@ -2,6 +2,7 @@
 
 namespace App\Models\Cobranzas;
 
+use App\Models\GpUsuario;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +49,8 @@ class GpCobrosDeposito extends Model
 {
     use HasFactory;
 
+    protected $table = 'gp_cobros_depositos';
+
     protected $fillable = [
         'cobro_id',
         'estado',
@@ -58,12 +61,14 @@ class GpCobrosDeposito extends Model
         'monto',
         'codigo_ws',
         'mensaje_ws',
-        'fecha_aprobacion',
-        'user_aprobador_id'
+        'fecha_aprobacion_rechazo',
+        'user_aprobador_rechazo_id',
     ];
     protected $cast = [
-        'created_at' => 'datetime:Y-m-d H:i:s',
-        'updated_at' => 'datetime:Y-m-d H:i:s',
+        'created_at'                    => 'datetime:Y-m-d H:i:s',
+        'updated_at'                    => 'datetime:Y-m-d H:i:s',
+        'fecha'                         => 'datetime:Y-m-d H:i:s',
+        'fecha_aprobacion_rechazo'      => 'datetime:Y-m-d H:i:s',
     ];
 
     protected function serializeDate(DateTimeInterface $date)
@@ -74,4 +79,11 @@ class GpCobrosDeposito extends Model
     {
         return $this->hasMany(GpCobrosDepositosFacturas::class, 'cobro_id', 'cobro_id');
     }
+
+    public function usuarioAutorizador()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_aprobador_rechazo_id', 'id');
+    }
+
+
 }
