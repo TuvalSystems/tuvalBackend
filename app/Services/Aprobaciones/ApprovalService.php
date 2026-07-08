@@ -402,12 +402,4 @@ class ApprovalService implements ApprovalServiceInterface
         return $detailMotivos;
     }
 
-
-
-
-
-
-
-
-
 }
