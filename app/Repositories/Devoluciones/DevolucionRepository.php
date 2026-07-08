@@ -161,12 +161,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
 
 
-    /** --funciones para imprimir la devolucion
-     * Retrieve a return record by its ID.
-     *
-     * @param int $devolucion_id The ID of the return to retrieve.
-     *
-     */
+    
 
     public function getReturnByIdToArray(int|string $devolucionId): array
     {
