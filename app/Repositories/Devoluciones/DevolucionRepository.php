@@ -33,25 +33,25 @@ class DevolucionRepository implements DevolucionRepositoryInterface
         })->where(function ($q) {
             $q->where('despacho_en_proceso', 0)->orWhereNull('despacho_en_proceso');
         })
-            ->where('id', $pedido['id'])->exists();
+            ->where('id', data_get($pedido, 'id'))->exists();
     }
 
     public function hasOtherActiveReturns(array|GpPedido $pedido, array|GpDevoluciones $devolucion): bool
     {
-        return GpDevoluciones::where('pedido_id', $pedido['id'])->where('id', '!=', $devolucion['id'])
+        return GpDevoluciones::where('pedido_id', data_get($pedido, 'id'))->where('id', '!=', data_get($devolucion, 'id'))
             ->whereNotIn('estado', [DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])->exists();
     }
 
     public function validateItemLDetailInvoice(array|GpDevoluciones $devolucion): bool
     {
-        return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])->where('ART_TIPO_COMPRA', 'L')->exists();
+        return GpDevolucionesDetalle::where('devolucion_id', data_get($devolucion, 'id'))->where('ART_TIPO_COMPRA', 'L')->exists();
     }
 
 
-    public function getOrderbyId(int|string|null $pedidoId): ?GpPedido
+    public function getOrderbyId(int|string|null $pedidoId): GpPedido
     {
 
-        return GpPedido::find($pedidoId);
+        return GpPedido::findOrFail($pedidoId);
     }
 
     public function getDetailDevolucion(int|string $devolucionId, int|bool|null $despachadoParcial = null): array
@@ -75,7 +75,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
     public function hasPartiallyDispatchedItems(array|GpDevoluciones $devolucion): bool
     {
-        return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])
+        return GpDevolucionesDetalle::where('devolucion_id', data_get($devolucion, 'id'))
             ->where('despachado_parcial', 1)
             ->exists();
     }
@@ -170,7 +170,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
     public function getReturnByIdToArray(int|string $devolucionId): array
     {
-        return GpDevoluciones::where('id', $devolucionId)->first()->toArray();
+        return GpDevoluciones::where('id', $devolucionId)->firstOrFail()->toArray();
     }
 
     public function getOrderByIdWithUsers(int|string $pedidoId): array
@@ -178,24 +178,24 @@ class DevolucionRepository implements DevolucionRepositoryInterface
         return GpPedido::join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
             ->where('gp_pedidos.id', $pedidoId)
             ->select('gp_pedidos.*', 'gp_usuarios.USERNAME')
-            ->first()->toArray();
+            ->firstOrFail()->toArray();
     }
 
 
 
-    public function getByPtoVtaIdReturns(string $puntoVentaId): ?GpPuntoVenta
+    public function getByPtoVtaIdReturns(string $puntoVentaId): GpPuntoVenta
     {
-        return GpPuntoVenta::where('PTO_VTA_ID', $puntoVentaId)->first();
+        return GpPuntoVenta::where('PTO_VTA_ID', $puntoVentaId)->firstOrFail();
     }
 
-    public function getClientsByClientIdToArray(int|string $clienteId): ?array
+    public function getClientsByClientIdToArray(int|string|null $clienteId): array
     {
-        return GpCliente::where('ID', $clienteId)->first()?->toArray();
+        return GpCliente::where('ID', $clienteId)->firstOrFail()->toArray();
     }
 
-    public function getSucursalByInvoiceToArray(int|string $invoiceId): array
+    public function getSucursalByInvoiceToArray(int|string|null $invoiceId): array
     {
-        return GpClienteSucursal::where('id', $invoiceId)->first()->toarray();
+        return GpClienteSucursal::where('id', $invoiceId)->firstOrFail()->toarray();
     }
 
     public function getDetailDevolucionById(int|string $devolucionId): array

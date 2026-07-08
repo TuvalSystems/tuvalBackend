@@ -16,7 +16,7 @@ interface DevolucionRepositoryInterface
     public function hasOtherActiveReturns(array|GpPedido $pedido, array|GpDevoluciones $devolucion): bool;
     public function validateItemLDetailInvoice(array|GpDevoluciones $devolucion): bool;
 
-    public function getOrderbyId(int|string|null $pedidoId): ?GpPedido;
+    public function getOrderbyId(int|string|null $pedidoId): GpPedido;
     public function getDetailDevolucion(int|string $devolucionId, int|bool|null $despachadoParcial = null): array;
 
     public function hasPartiallyDispatchedItems(array|GpDevoluciones $devolucion): bool;
@@ -46,9 +46,9 @@ interface DevolucionRepositoryInterface
     // imprimir devolucion
     public function getReturnByIdToArray(int|string $devolucionId): array;
     public function getOrderByIdWithUsers(int|string $pedidoId): array;
-    public function getByPtoVtaIdReturns(string $puntoVentaId): ?GpPuntoVenta;
-    public function getClientsByClientIdToArray(int|string $clienteId): ?array;
-    public function getSucursalByInvoiceToArray(int|string $invoiceId): array;
+    public function getByPtoVtaIdReturns(string $puntoVentaId): GpPuntoVenta;
+    public function getClientsByClientIdToArray(int|string|null $clienteId): array;
+    public function getSucursalByInvoiceToArray(int|string|null $invoiceId): array;
     public function getDetailDevolucionById(int|string $devolucionId): array;
     public function getDispatchOrder(int $orderId): bool;
 
