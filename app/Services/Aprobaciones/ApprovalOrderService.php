@@ -515,9 +515,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         if ($detalles->isEmpty()) {
             return;
         }
-        $flatDetails = $this->stockFormatterForUpdateApproval($detalles);
-        $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
-        $stocksResult = $this->getStockWarehouseAsyncAndFormatter($parmas);
+        $flatDetails    = $this->stockFormatterForUpdateApproval($detalles);
+        $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
+        $stocksResult   = $this->getStockWarehouseAsyncAndFormatter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
         $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
     }
@@ -569,9 +569,6 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         $order->fecha_hora_rechazado   = now();
         $order->rechazado              = 1;
 
-        if ($isRejectedByStock) {
-            $order->aprobado_comercial_mensaje = strip_tags($alert);
-        }
         $order->save();
         GpTrasladosVentas::where('pedido_id', $order->id)->delete();
         $this->updateStockOnOrderApproval($order);
@@ -582,7 +579,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
         $notificationMessage = $isRejectedByStock
             ? $alert
-            : "El pedido {$order->pedido} ha sido rechazado";
+            : "El pedido {$order->pedido} ha sido rechazado por el usuario {$approver->USERID}";
 
         DB::afterCommit(function () use ($order, $notificationTitle, $notificationMessage) {
             $orderUser = GpUsuario::find($order->user_id);
@@ -623,9 +620,6 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             'rechazado'                    => 1,
         ]);
 
-        if ($isRejectedByStock) {
-            $order->aprobado_crediticio_mensaje = strip_tags($alert);
-        }
 
         $modifiedFields = array_keys($order->getDirty());
         $oldOrder = [

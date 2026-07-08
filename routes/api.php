@@ -407,12 +407,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('aprobardevolucion', [AprobacionesController::class, 'aprobardevolucion']);
             Route::post('rechazardevolucion', [AprobacionesController::class, 'rechazardevolucion']);
 
-            Route::post('cotizacion/rechazar-estado-espera', [AprobacionesController::class, 'recharCotizacionEstadoEspera']);
-            Route::post('pedido/rechazar-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
-            Route::post('cotizaciones/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
-            Route::post('pedidos/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
-            Route::post('cotizaciones/consulta/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesConsulta']);
-            Route::post('pedidos/consulta/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesConsulta']);
+
+
             Route::get('verdevolucionesporaprobar', [AprobacionesController::class, 'verdevolucionesporaprobar']);
             Route::post('verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
 
@@ -422,6 +418,14 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
             Route::prefix('comercial')->group(function () {
+                Route::post('consulta/lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesConsulta']);
+                Route::post('rechazar-cotizacion-estado-espera', [AprobacionesController::class, 'recharCotizacionEstadoEspera']);
+                Route::post('lista-cotizaciones-pendientes', [AprobacionesController::class, 'listaCotizacionesPendientesPorAprobar']);
+
+
+                Route::post('consulta/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesConsulta']);
+                Route::post('rechazar-pedido-estado-espera', [AprobacionesController::class, 'rechazarPedidoEstadoEspera']);
+                Route::post('lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesPorAprobar']);
                 Route::post('rechazar-pedido', [AprobacionesController::class, 'rechazarAprobacionComercialPedido']);
                 Route::post('rechazar-pedido-stock', [AprobacionesController::class, 'rechazarAprobacionComercialPedidoStock']);
                 Route::post('aprobar-pedido', [AprobacionesController::class, 'aprobacionComercialPedido']);
@@ -432,7 +436,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('lista-pedidos-pendientes', [AprobacionesController::class,  'listaPedidosPendientesAprobacionCrediticia']);
                 Route::post('detalle-pedido', [PedidosController::class, 'obtenerPedidoDetalleCrediticio']);
                 Route::post('estado-cuenta', [AprobacionesController::class, 'estadoCuentaCliente']);
-                
+
                 Route::post('aprobar-pedido', [AprobacionesController::class, 'aprobarpedidocrediticio']);
                 Route::post('rechazar-pedido', [AprobacionesController::class, 'rechazarAprobacionCrediticiaPedido']);
                 Route::post('rechazar-pedido-stock', [AprobacionesController::class, 'rechazarAprobacionCrediticiaPedidoStock']);

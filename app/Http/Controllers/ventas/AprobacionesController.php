@@ -110,7 +110,7 @@ class AprobacionesController extends Controller
     public function aprobacionComercialPedido(Request $request)
     {
         return $this->handleApiAction(function () use ($request) {
-           $validate = $request->validate([
+            $validate = $request->validate([
                 'id'    => 'required|integer|exists:gp_pedidos,id',
                 'msg'   => 'nullable|string'
             ]);
@@ -130,11 +130,13 @@ class AprobacionesController extends Controller
         return $this->handleApiAction(function () use ($request) {
             $validate = $request->validate([
                 'id'   => 'required|integer|exists:gp_pedidos,id',
+                'msg'  => 'nullable|string'
             ]);
             $user       = $request->user();
             $orderId    = data_get($validate, 'id');
-            $pedido     = DB::transaction(function () use ($orderId, $user) {
-                return $this->approvalOrder->rejectCommercialOrder($orderId, $user);
+            $alert      = data_get($validate, 'msg');
+            $pedido     = DB::transaction(function () use ($orderId, $user, $alert) {
+                return $this->approvalOrder->rejectCommercialOrder($orderId,  $user, $alert,);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
         }, 'laravel', 'rechazarpedido');
@@ -145,17 +147,17 @@ class AprobacionesController extends Controller
         return $this->handleApiAction(function () use ($request) {
             $validate = $request->validate([
                 'id'    => 'required|integer|exists:gp_pedidos,id',
-                'alert' => 'required|string'
+                'msg'   => 'nullable|string'
             ]);
             $orderId    = data_get($validate, 'id');
-            $alert      = data_get($validate, 'alert');
+            $alert      = data_get($validate, 'msg');
 
             $gpuser = $request->user();
-            $response = DB::transaction(function () use ($orderId, $alert, $gpuser) {
-                return $this->approvalOrder->rejectCommercialOrder($orderId, $alert,  $gpuser);
+            $order = DB::transaction(function () use ($orderId, $alert, $gpuser) {
+                return $this->approvalOrder->rejectCommercialOrder($orderId,   $gpuser, $alert);
             });
-            $pedido = data_get($response, 'pedido');
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
+
+            return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado por: {$alert}", 200);
         }, 'laravel', 'rechazarpedidoporstock');
     }
 
@@ -173,10 +175,10 @@ class AprobacionesController extends Controller
             $orderId    = data_get($validate, 'id');
             $mensaje    = data_get($validate, 'msg');
             $gpuser     = $request->user();
-            $pedido     = DB::transaction(function () use ($orderId, $gpuser, $mensaje) {
+            $order      = DB::transaction(function () use ($orderId, $gpuser, $mensaje) {
                 return $this->approvalOrder->approveCreditOrder($orderId, $gpuser, $mensaje);
             });
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
+            return $this->buildSuccessResponse("Pedido {$order->pedido} aprobado", 200);
         }, 'laravel', 'aprobarpedidocrediticio');
     }
 
@@ -185,13 +187,15 @@ class AprobacionesController extends Controller
         return $this->handleApiAction(function () use ($request) {
             $validate = $request->validate([
                 'id'    => 'required|integer|exists:gp_pedidos,id',
+                'msg'   => 'nullable|string'
             ]);
             $orderId    = data_get($validate, 'id');
+            $alert      = data_get($validate, 'msg');
             $user       = $request->user();
-            $pedido     = DB::transaction(function () use ($orderId, $user) {
-                return $this->approvalOrder->rejectCreditOrder($orderId, $user);
+            $order     = DB::transaction(function () use ($orderId, $user, $alert) {
+                return $this->approvalOrder->rejectCreditOrder($orderId, $user, $alert);
             });
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
+            return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado", 200);
         }, 'laravel', 'rechazarPedidoCrediticio');
     }
 
@@ -200,16 +204,16 @@ class AprobacionesController extends Controller
         return $this->handleApiAction(function () use ($request) {
             $validate = $request->validate([
                 'id'    => 'required|integer|exists:gp_pedidos,id',
-                'alert' => 'required|string'
+                'msg'   => 'nullable|string'
             ]);
             $orderId    = data_get($validate, 'id');
-            $alert      = data_get($validate, 'alert');
+            $alert      = data_get($validate, 'msg');
             $user       = $request->user();
-            $response = DB::transaction(function () use ($orderId, $user, $alert) {
-                return $this->approvalOrder->rejectCreditOrder($orderId, $alert, $user);
+            $order = DB::transaction(function () use ($orderId, $user, $alert) {
+                return $this->approvalOrder->rejectCreditOrder($orderId,  $user, $alert);
             });
-            $pedido = data_get($response, 'pedido');
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
+
+            return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado por: {$alert}", 200);
         }, 'laravel', 'rechazarPedidoCrediticioPorStock');
     }
 
