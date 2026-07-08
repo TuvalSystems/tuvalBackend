@@ -9,7 +9,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class DispatchPendings implements ShouldBroadcastNow //ShouldBroadcast
+class DispatchPendings implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
