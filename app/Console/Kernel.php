@@ -127,17 +127,17 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping(5);
 
-        // $schedule->command('seedbilling:retry-pending-cancelations')
-        //     ->dailyAt('07:00')
-        //     ->timezone(self::TIMEZONE)
-        //     ->withoutOverlapping(60)
-        //     ->runInBackground();
+        $schedule->command('seedbilling:retry-pending-cancelations')
+            ->dailyAt('07:00')
+            ->timezone(self::TIMEZONE)
+            ->withoutOverlapping(60)
+            ->runInBackground();
 
-        // $schedule->command('seedbilling:retry-failed-today-cancellations')
-        //     ->dailyAt('18:00')
-        //     ->timezone(self::TIMEZONE)
-        //     ->withoutOverlapping(60)
-        //     ->runInBackground();
+        $schedule->command('seedbilling:retry-failed-today-cancellations')
+            ->dailyAt('18:00')
+            ->timezone(self::TIMEZONE)
+            ->withoutOverlapping(60)
+            ->runInBackground();
     }
 
 
