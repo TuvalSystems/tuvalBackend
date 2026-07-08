@@ -18,7 +18,6 @@ use App\Models\GpCotizacionDetalle;
 use Illuminate\Support\Facades\Log;
 use App\Models\Reservas\GpTipoReservas;
 use App\Models\GpCotizacionDetalleStock;
-use Illuminate\Database\Eloquent\Builder;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Reservas\GpTrasladosReservas;
 use Illuminate\Validation\ValidationException;
@@ -67,13 +66,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     ) {}
 
 
-    public function hasAnyReserveState(int $quotationId)
+    public function hasAnyReserveState(int $quotationId): bool
     {
         return GpReserva::where('cotizacion_id', $quotationId)->exists();
     }
 
 
-    public function saveQuotationHeaderReserved(array $data, GpUsuario $user)
+    public function saveQuotationHeaderReserved(array $data, GpUsuario $user): GpCotizacion
     {
         $reserved =  DB::transaction(function () use ($data, $user) {
             $quoteId = data_get($data, 'cotizacion_id');
@@ -91,14 +90,16 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function fetchListTipeReserved()
+    public function fetchListTipeReserved(): EloquentCollection
     {
         return GpTipoReservas::where('estado', 1)->get();
     }
 
 
-    public function fetchListReservedPending($perpage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $tipoReserva = null, $ptoVtaId = null, $clienteRuc)
+    public function fetchListReservedPending(int $perPage, ?string $search = null, ?string $sortBy = 'gp_reservas.created_at', ?string $sortOrder = 'desc', int|string|null $tipoReserva = null, int|string|null $ptoVtaId = null, ?string $clienteRuc = null): LengthAwarePaginator
     {
+        $sortOrder = strtolower((string) $sortOrder) === 'asc' ? 'asc' : 'desc';
+
         $query = GpReserva::select([
             'gp_reservas.id',
             'gp_cotizacions.id as cotizacion_id',
@@ -147,7 +148,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         } else {
             $query->orderByDesc('gp_cotizacions.cotizacion');
         }
-        return $query->paginate($perpage)->through(function ($row) {
+        return $query->paginate($perPage)->through(function ($row) {
             $row->bodegas_uso = collect(explode(',', (string) $row->bodegas_usadas))
                 ->filter()
                 ->unique()
@@ -173,16 +174,16 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function cancelReservedQuotation(int $id): Builder|GpReserva
+    public function cancelReservedQuotation(int $id): GpReserva
     {
-        $reserva = GpReserva::find($id);
+        $reserva = GpReserva::findOrFail($id);
         $reserva->update([
             'estado' => 'cancelado'
         ]);
         return $reserva;
     }
 
-    public function getQuotationWithDetails(int $id)
+    public function getQuotationWithDetails(int $id): array
     {
         $reserva = GpReserva::with(['cotizacion', 'cotizacion.detallecotizacion', 'tipoReserva', 'tipoTraslado', 'usuarioIngreso'])->find($id);
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($reserva->cotizacion->CLI_RUC);
@@ -193,7 +194,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function getQuotationWithDetailsAndStock(int $id)
+    public function getQuotationWithDetailsAndStock(int $id): array
     {
 
         $reserva = GpReserva::with(['cotizacion', 'tipoTraslado', 'tipoReserva', 'usuarioIngreso'])->find($id);
@@ -259,7 +260,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
-    public function getQuotationWithDetailsAndActiveStockById(int $id)
+    public function getQuotationWithDetailsAndActiveStockById(int $id): array
     {
         $reserva = GpReserva::with([
             'cotizacion',
@@ -285,7 +286,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
-    protected function getQuotationsCreatedByReservedQuotationOrigin(int $id)
+    protected function getQuotationsCreatedByReservedQuotationOrigin(int $id): Collection
     {
         return GpCotizacionReservaLog::query()->from('gp_cotizacion_reserva_logs as gprs')
             ->select('gpd.cotizacion')
@@ -294,7 +295,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function denyApplicationReservedQuotation(array $data, GpUsuario $gpUser)
+    public function denyApplicationReservedQuotation(array $data, GpUsuario $gpUser): GpReserva
     {
         GpReserva::find($data['id'])->update([
             'estado' => 'rechazada',
@@ -315,7 +316,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function approvalApplicationReservedQuotation(array $data, GpUsuario $gpUser)
+    public function approvalApplicationReservedQuotation(array $data, GpUsuario $gpUser): array
     {
         $reservaId      = data_get($data, 'id');
         $reserva        = GpReserva::find($reservaId);
@@ -578,7 +579,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
     /** funcion para la limpieza de stock */
 
-    protected function cleanStockQuotationForDeny($quotationId)
+    protected function cleanStockQuotationForDeny(int $quotationId): int
     {
         return GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
             ->where('seleccionado', '>', 0)
@@ -595,8 +596,11 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      *  lista de reservas aprobadas con detalles y filtros para el módulo de aprobaciones
      *
      */
-    public function fetchListApprovedQuotation($perPage, $search, $sortBy = 'gp_reservas.created_at', $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $estado = null, $ptoVtaId = null, $clienteRuc, GpUsuario $gpUser)
+    public function fetchListApprovedQuotation(int $perPage, ?string $search, ?string $sortBy, ?string $sortOrder, ?string $fecha_desde, ?string $fecha_hasta, ?string $estado, int|string|null $ptoVtaId, ?string $clienteRuc, GpUsuario $gpUser): LengthAwarePaginator
     {
+        $sortBy = $sortBy ?: 'gp_reservas.created_at';
+        $sortOrder = strtolower((string) $sortOrder) === 'asc' ? 'asc' : 'desc';
+
         $query = GpReserva::select([
             'gp_reservas.id',
             'gp_cotizacions.cotizacion',
@@ -668,7 +672,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    protected function getWarehouseUsageSubquery()
+    protected function getWarehouseUsageSubquery(): string
     {
         return "(
               SELECT GROUP_CONCAT(DISTINCT s.STO_ART_BODEGA ORDER BY s.STO_ART_BODEGA SEPARATOR ',')
@@ -684,7 +688,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      *Liberar o facturar cotización reservada
      */
 
-    public function processReservedQuotation(array $payload, $user)
+    public function processReservedQuotation(array $payload, GpUsuario $user): array
     {
         return DB::transaction(function () use ($payload, $user) {
             $items = collect(data_get($payload, 'cotizacion.detallecotizacion', []))->flatMap(function ($det) {
@@ -789,13 +793,13 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         });
     }
 
-    public function updateQtyTransferReserved($row, $qty)
+    public function updateQtyTransferReserved(GpCotizacionDetalleStock $row, int|float $qty): void
     {
         GpTrasladosReservas::where('stock_id', $row->id)->where('cantidad', '>=', $qty)->decrement('cantidad', $qty);
     }
 
 
-    public function toCancelStockQuotationReserved($row, $itm, $user)
+    public function toCancelStockQuotationReserved(GpCotizacionDetalleStock $row, array $itm, GpUsuario $user): void
     {
         DB::table($row->getTable())->where('id', $row->id)->increment(
             'cantidad_cancelada',
@@ -804,7 +808,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->storeQuotationReservedStockLogs($row, $user, 'liberar', $itm['to_cancel']);
     }
 
-    public function toInvoiceStockQuotationReserved($row, $itm, $user)
+    public function toInvoiceStockQuotationReserved(GpCotizacionDetalleStock $row, array $itm, GpUsuario $user): void
     {
         DB::table($row->getTable())->where('id', $row->id)->increment(
             'cantidad_cotizada',
@@ -813,7 +817,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $this->storeQuotationReservedStockLogs($row, $user, 'cotizar', $itm['to_quote']);
     }
 
-    public function storeQuotationReservedStockLogs($row, $user, $type, $qty)
+    public function storeQuotationReservedStockLogs(GpCotizacionDetalleStock $row, GpUsuario $user, string $type, int|float $qty): void
     {
         DB::table('gp_cotizacion_detalle_stocks_logs')->insert([
             'stock_id' => $row->id,
@@ -826,7 +830,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function createQuotationReserveWithDetailAndStock(array $payload, array $linesToQuote, GpUsuario $user)
+    public function createQuotationReserveWithDetailAndStock(array $payload, array $linesToQuote, GpUsuario $user): GpCotizacion
     {
         // proceso de creación de nueva cotizacion
         $linesGroupedDetail = collect($linesToQuote)->groupBy('detalle_id');
@@ -848,7 +852,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    protected function createHeaderQuotationReserve(array $payload, GpUsuario $user)
+    protected function createHeaderQuotationReserve(array $payload, GpUsuario $user): GpCotizacion
     {
         $cotOld                                     = [];
         $cotOld                                     = Arr::get($payload, 'cotizacion') ?? [];
@@ -864,7 +868,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    protected function createDetailAndStockQuotationReserve(GpCotizacion $cotizacion, $linesGroupedDetail, $linesGroupStock, $oldStocks, $oldDetails)
+    protected function createDetailAndStockQuotationReserve(GpCotizacion $cotizacion, Collection $linesGroupedDetail, Collection $linesGroupStock, Collection $oldStocks, EloquentCollection $oldDetails): void
     {
         foreach ($oldDetails as $oldDetail) {
             $line       = $linesGroupedDetail->get($oldDetail->id);
@@ -887,7 +891,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    protected function storeQuotationReservedLogs($reservedId, $quotationIdOld, $quotationIdNew, $bodega, $linesToQuote, $user)
+    protected function storeQuotationReservedLogs(int|string $reservedId, int|string $quotationIdOld, int|string $quotationIdNew, string $bodega, array $linesToQuote, GpUsuario $user): void
     {
         $ctRsLog = $this->reservaBuilder->fromPayloadQuoteReservedLog($reservedId, $quotationIdOld, $quotationIdNew, $user->id, $bodega);
         $ctRsLog->save();
@@ -900,7 +904,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    protected function closeReservationIfEmpty($reserveId)
+    protected function closeReservationIfEmpty(int|string|null $reserveId): bool
     {
         $reserve = GpReserva::find($reserveId);
         if (empty($reserve)) {
@@ -932,7 +936,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return $affected > 0;
     }
 
-    protected function cloneMediaFromReservedQuote(GpCotizacion $parentQuote, GpCotizacion $newQuote)
+    protected function cloneMediaFromReservedQuote(GpCotizacion $parentQuote, GpCotizacion $newQuote): void
     {
         $parentImages = GpCotizacionImagen::where('cotizacion_id', $parentQuote->id)->get();
         if ($parentImages->isNotEmpty()) {
@@ -954,7 +958,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      * @param mixed $payload
      * @param mixed $user
      */
-    public function processReservedQuotationInvoiceDemand($payload, GpUsuario $user): array
+    public function processReservedQuotationInvoiceDemand(array $payload, GpUsuario $user): array
     {
         $reserveId      = data_get($payload, 'id');
         $quoteId        = data_get($payload, 'cotizacion.id');
@@ -1024,7 +1028,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
-    public function cloneMediaFromParentQuote(GpCotizacion $parentQuote, GpPedido $newOrder)
+    public function cloneMediaFromParentQuote(GpCotizacion $parentQuote, GpPedido $newOrder): void
     {
         $parentImages = GpCotizacionImagen::where('cotizacion_id', $parentQuote->id)->get();
         if ($parentImages->isNotEmpty()) {
@@ -1040,7 +1044,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function updateQuotationStocksAuthorizedDontConsolidate(int $quotationId)
+    public function updateQuotationStocksAuthorizedDontConsolidate(int $quotationId): void
     {
         $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $quotationId)
             ->get();
@@ -1054,7 +1058,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function storeReservedHeaderOrder(array $payload, GpUsuario $user, $dateAuthoReserved)
+    public function storeReservedHeaderOrder(array $payload, GpUsuario $user, ?string $dateAuthoReserved): GpPedido
     {
         $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $payload['PTO_VTA_ID'])->first();
         $approvalComercial              = $this->approvalService->checkOutApprovalCommercialReservedOrder($payload);
@@ -1094,7 +1098,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         return $limpio;
     }
 
-    protected function prepareApprovalCreditOrder(array $data)
+    protected function prepareApprovalCreditOrder(array $data): string
     {
         $total          = data_get($data, 'total', 0);
         $condicionPago  = data_get($data, 'COND_ID', 'CONTADO');
@@ -1178,7 +1182,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    protected function updateQuotationReservedStatus(GpReserva $reserva, GpCotizacion $quoteBlock, array $payload, GpUsuario $user,  string $newStatus, int $statusAuth, ?string $observacionFinal)
+    protected function updateQuotationReservedStatus(GpReserva $reserva, GpCotizacion $quoteBlock, array $payload, GpUsuario $user, string $newStatus, int $statusAuth, ?string $observacionFinal): bool
     {
         $statusQuote    = $newStatus === 'procesado' ? 'procesado' : 'rechazado';
         $invoiced       = $newStatus === 'procesado' ? 1 : 0;
@@ -1198,7 +1202,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    protected function formPayloadReservedQuotationLog($reservedId, $quotation, $order, $userId)
+    protected function formPayloadReservedQuotationLog(int|string $reservedId, array $quotation, GpPedido $order, int|string $userId): array
     {
         $header = [
             'reserva_id'            => $reservedId,
@@ -1239,7 +1243,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
-    protected function insertReservedOrderLogs($rows)
+    protected function insertReservedOrderLogs(array $rows): void
     {
         $haderOrderLog = $rows['header'];
         $details = $rows['detalles'];
@@ -1252,7 +1256,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function fetchListTypeReservations()
+    public function fetchListTypeReservations(): EloquentCollection
     {
         return GpTipoReservas::where('estado', 1)->get();
     }
@@ -1333,7 +1337,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         ];
     }
 
-    protected function getfilterListQuotationsByTransfered($items)
+    protected function getfilterListQuotationsByTransfered(Collection $items): Collection
     {
         return collect($items)
             ->pluck('cotizacion')
@@ -1372,7 +1376,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    protected function fetchItemCompartmentByWarehouse($artCode, $warehouse)
+    protected function fetchItemCompartmentByWarehouse(string $artCode, string $warehouse): array
     {
         $params = ['articulo' => $artCode, 'bodega' => $warehouse, 'compartimento' => ''];
         return $this->stockService->fetchStockWarehouseCompartiment($params);
@@ -1389,7 +1393,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      * */
 
 
-    public function updatePickingItemsSelected($items): int
+    public function updatePickingItemsSelected(array|Collection|null $items): int
     {
         $ids = collect($items)->pluck('id')->filter()->unique();
         if ($ids->isEmpty()) {
@@ -1399,7 +1403,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function cancelPickingOneItemSelected($item): int
+    public function cancelPickingOneItemSelected(?array $item): int
     {
         $id = (int) Arr::get($item, 'id', 0);
         if ($id <= 0) {
@@ -1413,7 +1417,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function generatePickingPdf($payload): array
+    public function generatePickingPdf(array $payload): array
     {
         $itemsPayload = collect($payload['items']);
         $puntodeventa = GpPuntoVenta::join('gp_relacion_punto_venta_bodegas', 'gp_relacion_punto_venta_bodegas.PTO_VTA_BOD_PUNTO_VENTA', 'gp_punto_ventas.PTO_VTA_ID')
@@ -1450,7 +1454,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function fetchVehicles()
+    public function fetchVehicles(): array
     {
         return [
             'vehiculos'         => GpVehiculo::get(),
@@ -1461,7 +1465,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
     /** proceso de listado de guias de remision Reservas - pendientes */
-    public function fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino)
+    public function fetchPendingReservationdeliveryNotes(?string $ptoVtaOrigen, ?string $ptoVtaDestino): array|EloquentCollection
     {
         $map = GpRelacionPuntoVentaBodega::query()
             ->whereIn('PTO_VTA_BOD_PUNTO_VENTA', [$ptoVtaOrigen, $ptoVtaDestino])
@@ -1532,7 +1536,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
 
-    public function getTransferToReceiveDetails(int $id)
+    public function getTransferToReceiveDetails(int $id): Collection
     {
         return GpGuiaRemisionReservaDetalle::query()
             ->with(['cotizacion:id,cotizacion'])
@@ -1696,7 +1700,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function updateDisponibleStockReserved($stockId, $disponible)
+    public function updateDisponibleStockReserved(int|string $stockId, int|float $disponible): void
     {
         $stock = GpCotizacionDetalleStock::find($stockId);
         $stock->STO_ART_STOCK_DISPONIBLE = $disponible;
