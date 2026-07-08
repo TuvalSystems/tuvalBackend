@@ -56,7 +56,7 @@ class ValidateStoreOrderRequest extends FormRequest
     public function rules()
     {
         return [
-            'cotizacion_id'             => ['nullable', 'integer', 'exists:gp_cotizacions,id'],
+            'cotizacion_id'             => ['required', 'integer', 'exists:gp_cotizacions,id'],
             'cotizacion_codigo'         => ['nullable', 'string', 'max:50'],
             'mode'                      => ['required'],
             // -- datos del cliente

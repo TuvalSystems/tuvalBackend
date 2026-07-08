@@ -40,6 +40,10 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     {
         $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quotationId            = data_get($data, 'cotizacion_id');
+            if (!$quotationId) {
+                throw new \DomainException('La cotizacion es obligatoria para crear el pedido.');
+            }
+
             $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
             $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
             if ($direccionFacturacion) {
