@@ -31,10 +31,10 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Traits\Devoluciones\DevolucionesCriteriosTrait;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
+use App\Services\Aprobaciones\Contracts\ApprovalDevolutionServiceInterface;
 use App\Services\Devoluciones\Contracts\ReturnCancellationServiceInterface;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
@@ -52,7 +52,7 @@ class DevolucionService implements DevolucionServiceInterface
     public function __construct(
         protected readonly ApiGpReturnsIntegrationService $apiGpReturnsIntegrationService,
         protected readonly ApiSalesService $apiSales,
-        protected readonly ApprovalServiceInterface $approvalService,
+        protected readonly ApprovalDevolutionServiceInterface $approvalDevolution,
         protected readonly DevolucionRepositoryInterface $devolucionRepository,
         protected readonly OrderRepositoryInterface $orderRepository,
         protected readonly DevolucionParamsBuilderInterface $devolucionBuilder,
@@ -168,7 +168,7 @@ class DevolucionService implements DevolucionServiceInterface
     public function executeReturn(array $data, GpUsuario $user): GpDevoluciones
     {
         $gpUser             = GpUsuario::where('id', $user->id)->first();
-        $requiredApproval   = $this->approvalService->checkoutApprovalDevoluciones($data);
+        $requiredApproval   = $this->approvalDevolution->checkoutApprovalDevoluciones($data);
         $status             = $requiredApproval === 'yes' ? 'espera' : 'solicitado';
         $calculatedData = [
             'status'                => $requiredApproval === 'yes' ? DevolutionStatus::ESPERA : DevolutionStatus::SOLICITADO,

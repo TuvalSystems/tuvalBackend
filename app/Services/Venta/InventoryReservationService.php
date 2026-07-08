@@ -43,6 +43,7 @@ use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -291,7 +292,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function denyApplicationReservedQuotation(array $data, $gpUser)
+    public function denyApplicationReservedQuotation(array $data, GpUsuario $gpUser)
     {
         GpReserva::find($data['id'])->update([
             'estado' => 'rechazada',
@@ -460,7 +461,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         }
     }
 
-    protected function getDetailReserveWithStock($quoteId)
+    protected function getDetailReserveWithStock(int $quoteId)
     {
         return GpCotizacionDetalle::with([
             'stock' => function ($q) {
@@ -1590,7 +1591,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
      *
      */
 
-    public function validateAndProcessQuotationStock($quoteId): ?string
+    public function validateAndProcessQuotationStock(int $quoteId): ?string
     {
         $quote = GpCotizacion::find($quoteId);
         if (!$quote) {
@@ -1603,9 +1604,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     }
 
 
-    public function normalizeStockDataForReservation($detailStock): Collection
+    public function normalizeStockDataForReservation(EloquentCollection $detailStock): Collection
     {
-        return collect($detailStock)->flatMap(function ($item) {
+        return $detailStock->flatMap(function ($item) {
             return $item->stock->map(function ($sto) use ($item) {
                 return [
                     'cotizacion_id'             => data_get($item, 'cotizacion_id'),
@@ -1622,7 +1623,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->keyBy('stock_id');
     }
 
-    public function validateStockAgainstSelection($normalize): ?string
+    public function validateStockAgainstSelection(Collection $normalize): ?string
     {
         $selectedStock = $normalize->filter(fn($item) => data_get($item, 'seleccionado', 0) > 0);
 

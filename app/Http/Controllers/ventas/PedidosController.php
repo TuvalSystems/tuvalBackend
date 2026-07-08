@@ -139,7 +139,7 @@ class PedidosController extends Controller
         }
     }
 
-    public function facturarpedidoTest($codPedido)
+    public function facturarpedidoTest(string $codPedido)
     {
         return $this->handleApiAction(function () use ($codPedido) {
             $pedido = GpPedido::where('pedido', $codPedido)
@@ -246,6 +246,19 @@ class PedidosController extends Controller
         }
     }
 
+    public function obtenerPedidoDetalleCrediticio(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'id'                  => 'required|integer|exists:gp_pedidos,id',
+            ]);
+            $id     = data_get($validated, 'id', null);
+            $user   = $request->user();
+            $detail = $this->orderService->getOrderDetailStatement($id, $user);
+            return $this->successResponse('Detalle Obtenido', $detail, 200);
+        }, 'laravel', 'obtenerDetallePedido');
+    }
+
 
     public function consultarexistente(Request $request)
     {
@@ -303,7 +316,7 @@ class PedidosController extends Controller
 
 
 
-    public function recalcularpedido($id): void
+    public function recalcularpedido(int $id): void
     {
         $this->functionService->recalculateOrder($id);
     }
@@ -314,30 +327,21 @@ class PedidosController extends Controller
 
     public function volverAPedirPedido(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
                 'id' => 'required|exists:gp_pedidos,id',
             ]);
             $user = $request->user() ?? GpUsuario::find(179);
             $response = $this->orderService->loadOrderForCopy($request->get('id'),  $user);
             return $this->successResponse('Pedido copiado correctamente', $response, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error en volverAPedirPedido', [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTrace(),
-                'data' => $request->all(),
-                'exception' => $e,
-            ]);
-            return $this->buildErrorResponse('Datos inválidos para volver a pedir el pedido: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'volverAPedirPedido');
     }
 
 
 
     public function copiarCotizacionOPedido(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $request->validate([
                 'rowId'         => 'required|integer',
                 'sucursal_id'   => 'required|integer',
@@ -347,22 +351,13 @@ class PedidosController extends Controller
             $user = $request->user();
             $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'), $user);
             return $this->successResponse('Pedido/Cotización copiado correctamente', $response, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error en copiarCotizacionOPedido', [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTrace(),
-                'data' => $request->all(),
-                'exception' => $e,
-            ]);
-            return $this->buildErrorResponse('Datos inválidos para copiar el pedido o cotizacion: ' . $e->getMessage(), 500);
-        }
+        }, 'laravel', 'copiarCotizacionPedido');
     }
 
 
 
 
-    public function imprimirpedido($id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
+    public function imprimirpedido(int $id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
     {
         try {
             $pedido = $this->orderService->getOrderInfo($id);
@@ -376,7 +371,7 @@ class PedidosController extends Controller
             abort(500, 'Error al generar el PDF del pedido');
         }
     }
-    public function imprimirpedidoimagenes($id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
+    public function imprimirpedidoimagenes(int $id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
     {
         try {
             $pedido = $this->orderService->getOrderInfo($id);
@@ -391,7 +386,7 @@ class PedidosController extends Controller
         }
     }
 
-    public function imprimirpedidoride($id)
+    public function imprimirpedidoride(int $id)
     {
         try {
 
@@ -407,7 +402,7 @@ class PedidosController extends Controller
         }
     }
 
-    public function imprimirpedidoridesinimagen($id)
+    public function imprimirpedidoridesinimagen(int $id)
     {
         try {
             $pedido = $this->orderService->generateInvoiceRide($id);
@@ -425,7 +420,7 @@ class PedidosController extends Controller
         }
     }
 
-    public function imprimirpedidoxml($id)
+    public function imprimirpedidoxml(int $id)
     {
         try {
             $xmlContent = $this->orderService->generateInvoiceXml($id);
@@ -448,7 +443,7 @@ class PedidosController extends Controller
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
-    public function despachoenproceso($id)
+    public function despachoenproceso(int $id)
     {
         try {
             $order = $this->orderService->verifyOrderDispatchOrItemLRecived($id);
@@ -500,7 +495,7 @@ class PedidosController extends Controller
 
 
 
-    public function volveraFacuturarTest($devolucionId)
+    public function volveraFacuturarTest(int $devolucionId)
     {
         try {
             $devolucion = GpDevoluciones::where('id', $devolucionId)->first();
@@ -553,19 +548,22 @@ class PedidosController extends Controller
     }
 
 
-    public function buscarIteml($artCode)
+    public function buscarIteml(string $artCode)
     {
         $item = GpArticulo::where('ART_CODIGO', $artCode)->first()->toArray();
         return $this->orderService->buscarItemlTest($item);
     }
 
-    public function generarOrdenDeDespacho($id)
+    public function generarOrdenDeDespacho(int $id)
     {
-        return $this->orderService->generateOrderDispatch($id);
+        return $this->handleApiAction(function () use ($id) {
+            DB::transaction(fn()=> $this->orderService->generateOrderDispatch($id));
+            return $this->buildSuccessResponse('Orden Generada', 200);
+        }, 'laravel', 'generarOrdenDeDespacho');
     }
 
 
-    public function recalcularPedidoTest($id)
+    public function recalcularPedidoTest(int $id)
     {
 
         $pedido = GpPedido::where('id', $id)->get()->first();
@@ -607,7 +605,7 @@ class PedidosController extends Controller
 
     /** funcion para actualizar un pedido  */
 
-    public function actualizarPedidoYRecalcular($id)
+    public function actualizarPedidoYRecalcular(int $id)
     {
         return $this->orderService->updateOrderAndRecalculate($id);
     }
@@ -655,7 +653,7 @@ class PedidosController extends Controller
 
 
 
-    /** funcion de lisras de pedido reservas  */
+    /** funcion de listas de pedido reservas  */
 
 
     public function listarPedidosReservas(Request $request): JsonResponse
@@ -710,10 +708,9 @@ class PedidosController extends Controller
     }
 
 
-    public function crearTrasladoPedidos($pedido)
+    public function crearTrasladoPedidos(string $pedido)
     {
         return $this->handleApiAction(function () use ($pedido) {
-
             $pedido = $this->orderService->createTransferVtaOrders($pedido);
             return $this->successResponse('Traslado creado correctamente', $pedido, 200);
         }, 'laravel', 'crearTrasladoPedidos');

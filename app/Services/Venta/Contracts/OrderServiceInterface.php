@@ -6,20 +6,21 @@ use App\Models\GpUsuario;
 
 interface OrderServiceInterface
 {
-    public function getOrderInfo($id);
-    public function generateInvoiceRide($id);
-    public function generateInvoiceXml($id);
+    public function getOrderInfo(int $id);
+    public function generateInvoiceRide(int $id);
+    public function generateInvoiceXml(int $id);
 
 
-    public function verifyOrderDispatchOrItemLRecived($orderId);
+    public function verifyOrderDispatchOrItemLRecived(int $orderId);
     public function detailOrderById(array $data, GpUsuario $user);
+     public function getOrderDetailStatement(int $id, GpUsuario $user): array;
 
 
     public function getLisOrdersWithoutCoordinated();
 
     //recuperar pedidos
 
-     public function loadOrderForCopy($orderId, GpUsuario $user): array ;
+     public function loadOrderForCopy(int $orderId, GpUsuario $user): array ;
 
     /** facturar pedido */
     public function generateInvoiceOrder(int $orderId);
@@ -32,10 +33,9 @@ interface OrderServiceInterface
     public function buscarItemlTest($item);
 
 
-    public function generateOrderDispatch($id);
+    public function generateOrderDispatch(int $id);
 
 
-    public function recalculateOrder($order);
 
     /**
      *  funcion de facturar siguiente mes de sincronizar
@@ -45,7 +45,7 @@ interface OrderServiceInterface
 
     /** funcion para la actualizacion de un pedido y el recalculo del mismo  */
 
-    public function updateOrderAndRecalculate($orderId);
+    public function updateOrderAndRecalculate(int $orderId);
 
     /*** proceso de facturar existente  */
 

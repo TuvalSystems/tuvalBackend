@@ -2,39 +2,51 @@
 
 namespace App\Services\Aprobaciones;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
+use App\Models\GpPedidoDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
 use App\Models\GpUsuario;
+use App\Models\traslados\GpTrasladosVentas;
+use App\Notifications\User\UserNotification;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
+use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use App\Traits\RegisterAudit;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\DB;
 
 class ApprovalOrderService implements ApprovalOrderServiceInterface
 {
+    use RegisterAudit;
 
     public function __construct(
         protected readonly FunctionsServiceInterface $functionService,
         protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
-        protected readonly OrderRepositoryInterface $repository
+        protected readonly OrderRepositoryInterface $repository,
+        protected readonly ApiGpService $api,
+        protected readonly StockWarehouseServiceInterface $stockService,
+        protected readonly InvoiceServiceInterface $invoiceService
 
-    ) {
-        // Inyecta dependencias si es necesario
-    }
+    ) {}
 
 
-    /**
-     *
-     * CHECK DE APROBACION COMERCIAL
-     *
-     */
+    /** * CHECK DE APROBACION COMERCIAL **/
 
-    public function approveOrder($data)
+    public function approveOrder(array $data)
     {
         $quoteId = data_get($data, 'cotizacion_id', null);
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
@@ -110,7 +122,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         return $this->approvalFuntions->finalizeApprovalReasons($motivosAprobacionComercial);
     }
 
-    public function validateOrdersDetailToApprove($detalles, $ptoVta, $dsctGlobalCliente): array
+    protected function validateOrdersDetailToApprove($detalles, $ptoVta, $dsctGlobalCliente): array
     {
         $detailMotivos = [];
 
@@ -213,18 +225,122 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         return $detailMotivos;
     }
 
+    /** funcion de validacion de stock de articulos de pedidos  */
 
+    public function validateOrderStockForApproval(int $id): ?string
+    {
+        $order                  = GpPedido::find($id);
+        $quoteReservedOriginId  = $this->approvalFuntions->validateExistsReserve($order->cotizacion_id);
+        $detalles               = $this->getDetailArticlesWithStock($order->id);
+        $flatDetails            = $this->stockFormatterForUpdateApproval($detalles);
+        $parmas                 = $this->stockFormatterParametersUpdateApproval($flatDetails);
+        $stocksResult           = $this->getStockWarehouseAsyncAndFormatter($parmas);
+        $newFormatStock         = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+        return  $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
+    }
 
+    protected function getDetailArticlesWithStock(int $orderId)
+    {
+        return GpPedidoDetalle::with('pedidoDetalleStocks')
+            ->where('pedido_id', $orderId)
+            ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
+    }
+    protected function stockFormatterForUpdateApproval(Collection $detalles): array
+    {
+        $detailsById = $detalles->keyBy('id');
 
-    /**
-     *
-     *
-     * check aprobacion crediticia
-     *
-     *
-     *
-     * */
-    public function checkoutApprovalCreditOrder($condId, $total, $ruc): string
+        return $detalles
+            ->pluck('pedidoDetalleStocks')
+            ->flatten()
+            ->map(function ($stock) use ($detailsById) {
+                $detalle = $detailsById->get($stock->detalle_id);
+                if (!$detalle) {
+                    return null;
+                }
+                return [
+                    'stock_id'                 => $stock->id,
+                    'pedido_id'                => $stock->pedido_id,
+                    'detalle_id'               => $stock->detalle_id,
+                    'STO_ART_ARTICULO'         => $detalle->ART_CODIGO,
+                    'STO_ART_BODEGA'           => $stock->STO_ART_BODEGA,
+                    'STO_ART_STOCK_DISPONIBLE' => $stock->STO_ART_STOCK_DISPONIBLE,
+                    'seleccionado'             => $stock->seleccionado,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+    }
+
+    protected function stockFormatterParametersUpdateApproval(array $newDetails)
+    {
+        return collect($newDetails)
+            ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    protected function getStockWarehouseAsyncAndFormatter(array $parmas)
+    {
+        $stocksResult = $this->stockService->fetchStockBatchWarehouses($parmas);
+        return $this->stockService->transformStockResponse($stocksResult);
+    }
+
+    protected function formattedFlatDetailWithStockGeneral(array $flatDetails, array $stocksResult)
+    {
+        $stockMap = collect($stocksResult)->keyBy(function ($stock) {
+            $art    = data_get($stock, 'STO_ART_ARTICULO', '');
+            $bodega = data_get($stock, 'STO_ART_BODEGA', '');
+            return $art . '|' . $bodega;
+        });
+        return collect($flatDetails)->map(function ($detail) use ($stockMap) {
+            $key = data_get($detail, 'STO_ART_ARTICULO') . '|' . data_get($detail, 'STO_ART_BODEGA');
+            $stockDisponible = data_get($stockMap->get($key), 'STO_ART_STOCK_DISPONIBLE', 0);
+            return [
+                'stock_id'                  => data_get($detail, 'stock_id', null),
+                'cotizacion_id'             => data_get($detail, 'cotizacion_id', null),
+                'detalle_id'                => data_get($detail, 'detalle_id', null),
+                'STO_ART_ARTICULO'          => data_get($detail, 'STO_ART_ARTICULO', null),
+                'STO_ART_BODEGA'            => data_get($detail, 'STO_ART_BODEGA', null),
+                'STO_ART_STOCK_DISPONIBLE'  => $stockDisponible,
+                'seleccionado'              => data_get($detail, 'seleccionado', 0)
+            ];
+        });
+    }
+
+    protected function getAlertWithoutStockArticles(Collection $detalles, SupportCollection $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
+    {
+        $allFormattedStock = collect();
+        foreach ($detalles as $detail) {
+            $stockList = $this->stockService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, false, $orderId, $quoteReservedOriginId);
+            if (!empty($stockList)) {
+                $allFormattedStock = $allFormattedStock->merge($stockList);
+            }
+        }
+
+        if ($allFormattedStock->isEmpty()) {
+            return null;
+        }
+        $alert = null;
+        $groupStock = $allFormattedStock->unique('stock_id')->groupBy(fn($item) => $item['STO_ART_ARTICULO'] . '|' . $item['STO_ART_BODEGA']);
+        foreach ($groupStock as $group) {
+            $firstItemStock     = $group->first();
+            $art                = data_get($firstItemStock, 'STO_ART_ARTICULO', '');
+            $bodega             = data_get($firstItemStock, 'STO_ART_BODEGA', '');
+            $disponibleReal     = (float) data_get($firstItemStock, 'STO_ART_STOCK_DISPONIBLE', 0);
+            $totalRequerido     = $group->sum('seleccionado');
+            if ($disponibleReal < $totalRequerido) {
+                $alert .= "El artículo <b>{$art}</b> en bodega <b>{$bodega}</b> tiene stock insuficiente.<br>" .
+                    "Stock Disponible: <b>{$disponibleReal}</b> <br>" .
+                    "Cantidad Requerida (Suma filas): <b>{$totalRequerido}</b><br><hr>";
+            }
+        }
+        return empty($alert) ? null : $alert;
+    }
+
+    /*** check aprobacion crediticia * * *    * */
+    public function checkoutApprovalCreditOrder(string $condId, float $total, string $ruc): string
     {
         if ($condId == 'CONTADO') {
             return 'no';
@@ -253,6 +369,311 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         return 'no';
     }
 
+
+    /** aprobacion crediticia y comercial  */
+
+    /***  FUNCIONES PARA LA APROBACIÓN CREDITICIA DE PEDIDOS */
+
+
+    public function approveCreditOrder(int $id, GpUsuario $user, ?string $msg = null)
+    {
+        $order = GpPedido::where('id', $id)
+            ->where('estado', OrderStatus::ESPERA)
+            ->lockForUpdate()->first();
+        if (!$order) {
+            throw new \RuntimeException("Pedido no encontrado");
+        }
+        $order->fill([
+            'aprobado_crediticio'               => 'yes',
+            'aprobador_crediticio_id'           => $user->id,
+            'fecha_hora_aprobacion_crediticia'  => Carbon::now()->format('Y-m-d H:i:s'),
+            'aprobado_crediticio_mensaje'       => $msg,
+        ]);
+
+        $camposModificados = array_keys($order->getDirty());
+        $oldOrder = [
+            'pedido_anterior' => Arr::only(
+                $order->getOriginal(),
+                $camposModificados
+            ),
+        ];
+        $order->save();
+        $newOrder = [
+            'pedido_nuevo' => Arr::only(
+                $order->fresh()->toArray(),
+                $camposModificados
+            ),
+        ];
+        $this->updateOrderStockOnCreditOrCommercialApproval($order, 'crediticia');
+
+        DB::afterCommit(function () use ($order) {
+            $this->invoiceService->checkSendInvoice($order);
+        });
+        $this->createHistoryRecord(
+            $user,
+            $order,
+            'APPROVAL_CREDIT_ORDER',
+            $oldOrder,
+            $newOrder
+        );
+        return $order->fresh();
+    }
+
+
+
+    protected function cleanDetailOrderStock(GpPedido $pedido)
+    {
+        $bodega = $pedido->BOD_BODEGA;
+        $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->pluck('id')->toArray();
+        GpPedidoDetalleStock::whereIn('detalle_id', $detalles)
+            ->where('STO_ART_BODEGA', $bodega)->update(['reservado' => 0]);
+    }
+
+
+
+    /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
+
+    public function approveComercialOrder(int $id, GpUsuario $user,  ?string $msg = null)
+    {
+        $order = GpPedido::where('id', $id)->where('estado', OrderStatus::ESPERA)
+            ->lockForUpdate()->first();
+        if (!$order) {
+            throw new \RuntimeException("Pedido no encontrado");
+        }
+        $order->fill([
+            'aprobado_comercial'                => 'yes',
+            'aprobador_comercial_id'            => $user->id,
+            'fecha_hora_aprobacion_comercial'   => Carbon::now()->format('Y-m-d H:i:s'),
+            'aprobado_comercial_mensaje'        => $msg
+        ]);
+        $camposModificados = array_keys($order->getDirty());
+        $oldOrder = [
+            'pedido_anterior' => Arr::only(
+                $order->getOriginal(),
+                $camposModificados
+            ),
+        ];
+
+        $order->save();
+        $newOrder = [
+            'pedido_nuevo' => Arr::only(
+                $order->fresh()->toArray(),
+                $camposModificados
+            ),
+        ];
+        $this->updateOrderStockOnCreditOrCommercialApproval($order, 'comercial');
+        DB::afterCommit(function () use ($order) {
+            $orderFresh = GpPedido::find($order->id);
+            $this->invoiceService->checkSendInvoice($orderFresh);
+        });
+        $this->createHistoryRecord(
+            $user,
+            $order,
+            'APPROVAL_COMERCIAL_ORDER',
+            $oldOrder,
+            $newOrder
+        );
+        return $order->fresh();
+    }
+
+
+
+
+    protected function updateOrderStockOnCreditOrCommercialApproval(GpPedido $order, string $typeApproval)
+    {
+        $requiresComercialApproval = $order->requiere_aprobacion_comercial === 'yes';
+        $requiresCreditApproval = $order->requiere_aprobacion_crediticia === 'yes';
+        $isComercialApproved = $order->aprobado_comercial === 'yes';
+        $isCreditApproved = $order->aprobado_crediticio === 'yes';
+
+        // solo requiere aprobacion comercial
+        if ($requiresComercialApproval && !$requiresCreditApproval) {
+            if ($isComercialApproved && !$isCreditApproved && $typeApproval == 'comercial') {
+                $this->updateStockOnOrderApproval($order);
+            }
+        }
+
+        // solo requiere aprobacion crediticia
+        if (!$requiresComercialApproval && $requiresCreditApproval) {
+            if (!$isComercialApproved && $isCreditApproved && $typeApproval == 'crediticia') {
+                $this->updateStockOnOrderApproval($order);
+            }
+        }
+        // requiere ambas aprobaciones
+        if ($requiresComercialApproval && $requiresCreditApproval) {
+            if ($isComercialApproved && $isCreditApproved && $typeApproval == 'crediticia') {
+                $this->updateStockOnOrderApproval($order);
+            }
+        }
+    }
+
+
+    protected function updateStockOnOrderApproval(GpPedido $order)
+    {
+        $quoteReservedOriginId = $this->approvalFuntions->validateExistsReserve($order->cotizacion_id);
+        $detalles = $this->getDetailArticlesWithStock($order->id);
+        if ($detalles->isEmpty()) {
+            return;
+        }
+        $flatDetails = $this->stockFormatterForUpdateApproval($detalles);
+        $parmas = $this->stockFormatterParametersUpdateApproval($flatDetails);
+        $stocksResult = $this->getStockWarehouseAsyncAndFormatter($parmas);
+        $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
+        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
+    }
+
+
+
+
+
+
+
+
+    protected function updateOrderDetailStockAndGetStockDisponible(Collection $detalles, SupportCollection $newFormatStock, int $orderId, ?int $quoteReservedOriginId = null)
+    {
+        $allFormattedStock = collect();
+        foreach ($detalles as $detail) {
+            $stockList = $this->stockService->formatStockDisponibleApprovalCreditOrComercial($newFormatStock, $detail, true, $orderId, $quoteReservedOriginId);
+            if (!empty($stockList)) {
+                $allFormattedStock = $allFormattedStock->merge($stockList);
+            }
+        }
+        if ($allFormattedStock->isEmpty()) {
+            return;
+        }
+        foreach ($allFormattedStock as $stock) {
+            if (isset($stock['stock_id']) && ($st = GpPedidoDetalleStock::find($stock['stock_id']))) {
+                $st->STO_ART_STOCK_DISPONIBLE   = $stock['STO_ART_STOCK_DISPONIBLE'];
+                $st->reservado                  = $stock['seleccionado'];
+                $st->save();
+            }
+        }
+    }
+
+
+    /** rechazo de aprobacion comercial de pedido por stock o por forma manual*/
+    public function rejectCommercialOrder(int $id, GpUsuario $approver, ?string $alert = null): GpPedido
+    {
+        $order = GpPedido::where('id', $id)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$order) {
+            throw new \Exception("Pedido no encontrado", 500);
+        }
+        $isRejectedByStock = !empty($alert);
+
+        $order->estado                 = OrderStatus::RECHAZADO;
+        $order->aprobado_comercial     = 'no';
+        $order->aprobador_comercial_id = $approver->id;
+        $order->fecha_hora_rechazado   = now();
+        $order->rechazado              = 1;
+
+        if ($isRejectedByStock) {
+            $order->aprobado_comercial_mensaje = strip_tags($alert);
+        }
+        $order->save();
+        GpTrasladosVentas::where('pedido_id', $order->id)->delete();
+        $this->updateStockOnOrderApproval($order);
+        $this->cleanDetailOrderStock($order);
+        $notificationTitle = $isRejectedByStock
+            ? 'Pedido rechazado por falta de stock'
+            : 'Pedido rechazado';
+
+        $notificationMessage = $isRejectedByStock
+            ? $alert
+            : "El pedido {$order->pedido} ha sido rechazado";
+
+        DB::afterCommit(function () use ($order, $notificationTitle, $notificationMessage) {
+            $orderUser = GpUsuario::find($order->user_id);
+
+            if ($orderUser) {
+                $orderUser->notify(new UserNotification(
+                    $notificationTitle,
+                    $notificationMessage
+                ));
+            }
+        });
+        return $order;
+    }
+
+
+    /** rechazo de aprobacion crediticio por stock o por rechazo manual  */
+    public function rejectCreditOrder(int $id, GpUsuario $user, ?string $alert = null): GpPedido
+    {
+        $order = GpPedido::where('id', $id)
+            ->whereNotIn('estado', [
+                OrderStatus::ELIMINADO,
+                OrderStatus::ANULADA,
+            ])
+            ->lockForUpdate()
+            ->first();
+
+        if (!$order) {
+            throw new \Exception("Pedido no encontrado", 500);
+        }
+
+        $isRejectedByStock = !empty($alert);
+
+        $order->fill([
+            'estado'                       => OrderStatus::RECHAZADO,
+            'aprobado_crediticio'          => 'no',
+            'aprobador_crediticio_id'      => $user->id,
+            'fecha_hora_rechazado'         => now(),
+            'rechazado'                    => 1,
+        ]);
+
+        if ($isRejectedByStock) {
+            $order->aprobado_crediticio_mensaje = strip_tags($alert);
+        }
+
+        $modifiedFields = array_keys($order->getDirty());
+        $oldOrder = [
+            'pedido_anterior' => Arr::only(
+                $order->getOriginal(),
+                $modifiedFields
+            ),
+        ];
+        $order->save();
+        $newOrder = [
+            'pedido_nuevo' => Arr::only(
+                $order->fresh()->toArray(),
+                $modifiedFields
+            ),
+        ];
+        GpTrasladosVentas::where('pedido_id', $order->id)->delete();
+        $this->updateStockOnOrderApproval($order);
+        $this->cleanDetailOrderStock($order);
+
+        $this->createHistoryRecord(
+            $user,
+            $order,
+            $isRejectedByStock ? 'DENY_CREDIT_ORDER_STOCK' : 'DENY_CREDIT_ORDER',
+            $oldOrder,
+            $newOrder
+        );
+
+        $notificationTitle = $isRejectedByStock
+            ? 'Pedido rechazado por falta de stock'
+            : 'Pedido rechazado';
+
+        $notificationMessage = $isRejectedByStock
+            ? $alert
+            : "El pedido {$order->pedido} ha sido rechazado";
+
+        DB::afterCommit(function () use ($order, $notificationTitle, $notificationMessage) {
+            $orderUser = GpUsuario::find($order->user_id);
+
+            if ($orderUser) {
+                $orderUser->notify(new UserNotification(
+                    $notificationTitle,
+                    $notificationMessage
+                ));
+            }
+        });
+
+        return $order->fresh();
+    }
 
 
     public function getAllOrdersPendingApprovals(string $ptoVta, GpUsuario $user): Collection
@@ -388,6 +809,148 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             $order->segmento    = data_get($segmentData, 'segmento');
             $order->subsegmento = data_get($segmentData, 'subsegmento');
             return $order->makeHidden(['detallepedido', 'gpcotizacion', 'usuario.vendedor.zonas', 'usuario']);
+        });
+    }
+
+
+    /**
+     * lista de pedidos pendientes de aprobación crediticia
+     */
+
+    public function fetchOrdersPendingCreditApproval(array $filters): LengthAwarePaginator
+    {
+        $search     = data_get($filters, 'search', '');
+        $perpage    = data_get($filters, 'perpage', 10);
+        $sortField  = data_get($filters, 'sortField', 'created_at');
+        $sortOrder  = strtolower(data_get($filters, 'sortOrder', 'desc')) === 'asc' ? 'asc' : 'desc';
+        if (!$sortField || trim($sortField) === '') {
+            $sortField = 'created_at';
+        }
+
+        $allowedSorts = [
+            'id'           => 'pd.id',
+            'pedido'       => 'pd.pedido',
+            'ruc'          => 'pd.CLI_RUC',
+            'razon_social' => 'pd.CLI_RAZON_SOCIAL',
+            'USERID'       => 'pd.USERID',
+            'agencia'      => 'pd.PTO_VTA_DESCRIPCION',
+            'motivo'       => 'pd.motivo_crediticio',
+            'created_at'   => 'pd.created_at',
+            'total'        => 'pd.total',
+        ];
+
+        $orderColumn = data_get($allowedSorts, $sortField, 'pd.created_at');
+        $query = GpPedido::query()
+            ->select([
+                'pd.id',
+                'pd.pedido',
+                'pd.CLI_RAZON_SOCIAL AS razon_social',
+                'pd.CLI_RUC as ruc',
+                'pd.USERID',
+                'pd.PTO_VTA_DESCRIPCION as agencia',
+                'pd.motivo_crediticio as motivo',
+                'pd.total',
+                'pd.created_at',
+                'pd.requiere_aprobacion_comercial',
+                'pd.aprobado_comercial',
+                'pd.aprobador_comercial_id',
+                'pd.fecha_hora_aprobacion_comercial',
+                'pd.estado'
+            ])
+            ->from('gp_pedidos as pd')
+            ->where('pd.requiere_aprobacion_crediticia', 'yes')
+            ->where('pd.aprobado_crediticio', 'no')
+            ->whereNotIn('estado', [
+                OrderStatus::ELIMINADO,
+                OrderStatus::ANULADA,
+                OrderStatus::RECHAZADO,
+                OrderStatus::FACTURADO,
+                OrderStatus::ENVIANDO,
+                OrderStatus::PROCESADO,
+            ]);
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('pd.USERID', 'like', "%{$search}%")
+                    ->orWhere('pd.pedido', 'like', "%{$search}%")
+                    ->orWhere('pd.CLI_RUC', 'like', "%{$search}%")
+                    ->orWhere('pd.CLI_RAZON_SOCIAL', 'like', "%{$search}%")
+                    ->orWhere('pd.PTO_VTA_DESCRIPCION', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderBy($orderColumn, $sortOrder)
+            ->paginate($perpage)->through(function ($row) {
+                $res                = $this->getSegmentClient($row->ruc);
+                $row->segmento      = data_get($res, 'segmento', null);
+                $row->subsegmento   = data_get($res, 'subsegmento', null);
+                $row->pendiente_aprobacion_comercial = $this->approvalFuntions->validatePendingCommercialApproval($row);
+                return $row;
+            });
+    }
+
+    public function getSegmentClient(string $ruc)
+    {
+        $response = $this->api->fetchClientSegment([
+            'ruc' => $ruc,
+        ]);
+        $data = data_get($response, 'data', []);
+        return is_array($data) ? $data : (array) $data;
+    }
+
+
+
+
+
+    public function accountStatusClient(int $id)
+    {
+        $order = GpPedido::find($id);
+        return [
+            'pedido'                            => $order,
+            'cupoDisponible'                    => $this->functionService->getClientCheckAvailableQuota($order->CLI_RUC),
+            'documentosVencidos'                => $this->functionService->getListClientDocumentExpired($order->CLI_RUC),
+            'documentosSinSoporte'              => $this->functionService->getListClientDocumentWithoutSupport($order->CLI_RUC),
+            'pendiente_aprobacion_comercial'    => $this->approvalFuntions->validatePendingCommercialApproval($order),
+        ];
+    }
+
+
+    public function denyOrderBeenWaiting(int $id, GpUsuario $user)
+    {
+        return DB::transaction(function () use ($id, $user) {
+            $order = GpPedido::where('id', $id)
+                ->lockForUpdate()
+                ->first();
+            if (!$order) {
+                throw new \RuntimeException("No se encontro el pedido");
+            }
+            $order->fill([
+                'estado'                => OrderStatus::RECHAZADO,
+                'user_rechazo_id'       => $user->id,
+                'fecha_hora_rechazado'  => Carbon::now()->format('Y-m-d H:i:s'),
+                'rechazado'             => 1,
+            ]);
+            $camposModificados = array_keys($order->getDirty());
+            $oldOrder = [
+                'pedido_anterior' => Arr::only(
+                    $order->getOriginal(),
+                    $camposModificados
+                ),
+            ];
+            $order->save();
+            $newOrder = [
+                'pedido_nuevo' => Arr::only(
+                    $order->fresh()->toArray(),
+                    $camposModificados
+                ),
+            ];
+            $this->createHistoryRecord(
+                $user,
+                $order,
+                'DENY_ORDER',
+                $oldOrder,
+                $newOrder
+            );
+            return $order->fresh();
         });
     }
 }

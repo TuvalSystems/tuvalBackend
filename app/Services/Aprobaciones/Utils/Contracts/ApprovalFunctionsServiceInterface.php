@@ -3,6 +3,7 @@
 namespace App\Services\Aprobaciones\Utils\Contracts;
 
 use App\Models\GpDatosItemsL;
+use App\Models\GpPedido;
 use Illuminate\Database\Eloquent\Collection;
 
 interface ApprovalFunctionsServiceInterface
@@ -26,4 +27,9 @@ interface ApprovalFunctionsServiceInterface
 
     public function calculateDiscountChange(float $originalDiscount, float $currentDiscount): float;
     public function getClientSegments(array $rucs): array;
+
+    public function validatePendingCommercialApproval(GpPedido $row): bool;
+
+
+    public function validateExistsReserve(int $quotationId);
 }

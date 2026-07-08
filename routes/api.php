@@ -396,16 +396,14 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
         Route::group(['prefix' => 'aprobaciones'], function () {
 
-            Route::post('aprobarpedido', [AprobacionesController::class, 'aprobarpedido']);
+            // Route::post('aprobarpedido', [AprobacionesController::class, 'aprobacionComercialPedido']);
             Route::post('aprobarcotizacion', [AprobacionesController::class, 'aprobacionComercialCotizacion']);
             Route::post('rechazarcotizacion', [AprobacionesController::class, 'rechazarcotizacion']);
-            Route::post('rechazarpedido', [AprobacionesController::class, 'rechazarpedido']);
-            Route::post('consultaparaaprobarpedido', [AprobacionesController::class, 'consultaparaaprobarpedido']);
-            Route::post('aprobarpedidocrediticio', [AprobacionesController::class, 'aprobarpedidocrediticio']);
-            Route::post('rechazarpedidocrediticio', [AprobacionesController::class, 'rechazarpedidocrediticio']);
-            Route::post('rechazarpedidocrediticioporstock', [AprobacionesController::class, 'rechazarpedidocrediticioporstock']);
-            Route::post('rechazarpedidoporstock', [AprobacionesController::class, 'rechazarpedidoporstock']);
-            Route::post('estadodecuenta', [AprobacionesController::class, 'estadodecuenta']);
+            // Route::post('rechazarpedido', [AprobacionesController::class, 'rechazarpedido']);
+            // Route::post('aprobarpedidocrediticio', [AprobacionesController::class, 'aprobarpedidocrediticio']);
+            // Route::post('rechazarpedidocrediticio', [AprobacionesController::class, 'rechazarpedidocrediticio']);
+            // Route::post('rechazarpedidocrediticioporstock', [AprobacionesController::class, 'rechazarpedidocrediticioporstock']);
+            // Route::post('rechazarpedidoporstock', [AprobacionesController::class, 'rechazarpedidoporstock']);
             Route::post('aprobardevolucion', [AprobacionesController::class, 'aprobardevolucion']);
             Route::post('rechazardevolucion', [AprobacionesController::class, 'rechazardevolucion']);
 
@@ -417,6 +415,28 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('pedidos/consulta/lista-pedidos-pendientes', [AprobacionesController::class, 'listaPedidosPendientesConsulta']);
             Route::get('verdevolucionesporaprobar', [AprobacionesController::class, 'verdevolucionesporaprobar']);
             Route::post('verpedidosporaprobarcrediticios', [AprobacionesController::class, 'verpedidosporaprobarcrediticios']);
+
+
+
+            Route::post('verificar-stock-pedido', [AprobacionesController::class, 'verificarStockPedidoParaAprobacion']);
+
+
+            Route::prefix('comercial')->group(function () {
+                Route::post('rechazar-pedido', [AprobacionesController::class, 'rechazarAprobacionComercialPedido']);
+                Route::post('rechazar-pedido-stock', [AprobacionesController::class, 'rechazarAprobacionComercialPedidoStock']);
+                Route::post('aprobar-pedido', [AprobacionesController::class, 'aprobacionComercialPedido']);
+            });
+
+
+            Route::prefix('crediticia')->group(function () {
+                Route::post('lista-pedidos-pendientes', [AprobacionesController::class,  'listaPedidosPendientesAprobacionCrediticia']);
+                Route::post('detalle-pedido', [PedidosController::class, 'obtenerPedidoDetalleCrediticio']);
+                Route::post('estado-cuenta', [AprobacionesController::class, 'estadoCuentaCliente']);
+                
+                Route::post('aprobar-pedido', [AprobacionesController::class, 'aprobarpedidocrediticio']);
+                Route::post('rechazar-pedido', [AprobacionesController::class, 'rechazarAprobacionCrediticiaPedido']);
+                Route::post('rechazar-pedido-stock', [AprobacionesController::class, 'rechazarAprobacionCrediticiaPedidoStock']);
+            });
         });
 
 

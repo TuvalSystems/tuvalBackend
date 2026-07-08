@@ -33,7 +33,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
 use App\Services\Api\Transacciones\ApiGpReceivedItemL;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptServiceInterface;
@@ -54,7 +54,6 @@ class OrderService implements OrderServiceInterface
     public function __construct(
         protected readonly ApiSalesService $apiSalesService,
         protected readonly ApiGpService $apiGpService,
-        protected readonly ApprovalServiceInterface $approvalService,
         protected readonly OrderRepositoryInterface $orderRepository,
         protected readonly FunctionsServiceInterface $functionsService,
         protected readonly PurchaseReceiptServiceInterface $purchaseReceiptService,
@@ -64,13 +63,15 @@ class OrderService implements OrderServiceInterface
         protected readonly OrderBuilderInterface $orderBuilder,
         protected readonly ApiGpReceivedItemL $apiGpReceiptService,
         protected readonly ClientQueryServiceInterface $clientService,
+        protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
+
     ) {}
 
     //me obtiene la informacion del documento xml_notificaciones
 
 
 
-    public function getOrderInfo($id)
+    public function getOrderInfo(int $id)
     {
 
         $pedido = $this->getOrderInfoById($id);
@@ -88,7 +89,7 @@ class OrderService implements OrderServiceInterface
         return $pedido;
     }
 
-    public function getOrderInfoById($id)
+    public function getOrderInfoById(int $id)
     {
         return GpPedido::leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
             ->join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
@@ -152,11 +153,11 @@ class OrderService implements OrderServiceInterface
         return compact('detalle', 'peso', 'tipoImpuesto', 'sumaImpuesto');
     }
 
-    public function getCompartimento($articulo, $bodega)
+    public function getCompartimento(string $articulo, string $bodega)
     {
         $params = array(
-            'articulo' => $articulo,
-            'bodega' => $bodega,
+            'articulo'      => $articulo,
+            'bodega'        => $bodega,
             'compartimento' => '',
         );
         $response = $this->apiGpService->getStockByWarehouseAndCompartment($params);
@@ -202,7 +203,7 @@ class OrderService implements OrderServiceInterface
 
 
 
-    public function generateInvoiceRide($id)
+    public function generateInvoiceRide(int $id)
     {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
@@ -229,7 +230,7 @@ class OrderService implements OrderServiceInterface
         return data_get($resp, 'data', []);
     }
 
-    public function generateInvoiceXml($id)
+    public function generateInvoiceXml(int $id)
     {
         $pedido = $this->getOrderInfo($id);
         $datosFactura = $this->getInvoiceDocumentInfo($pedido);
@@ -248,7 +249,7 @@ class OrderService implements OrderServiceInterface
      */
 
 
-    public function verifyOrderDispatchOrItemLRecived($orderId)
+    public function verifyOrderDispatchOrItemLRecived(int $orderId)
     {
         $order = GpPedido::find($orderId);
         $existeItemLRecibido = GpPedidoDetalleProveedores::where('pedido_id', $orderId)->where('recibido', 'yes')->exists();
@@ -297,6 +298,23 @@ class OrderService implements OrderServiceInterface
             'documentosPdf'         => $documentosPdf
         ];
     }
+
+    /** detalle de pedido para visualizar en lista de crediticio */
+    public function getOrderDetailStatement(int $id, GpUsuario $user): array
+    {
+        $order              = GpPedido::find($id);
+        $rulesApproval      = $this->getPorcentilChangeDiscount($user, $order);
+        $detalle            = $this->orderRepository->getAllDetailsOrderById($order->id);
+        $segmento           = $this->orderAndQuotationService->getSegmentoCliente($order->CLI_RUC);
+        $enrichedDetails    = $this->enrichOrderDetails($detalle, $order->id, $order->BOD_BODEGA,  $rulesApproval);
+        return [
+            'pedido'                            => $order,
+            'detalle'                           => data_get($enrichedDetails, 'details', []),
+            'segmento'                          => $segmento,
+            'pendiente_aprobacion_comercial'    => $this->approvalFuntions->validatePendingCommercialApproval($order),
+        ];
+    }
+
 
 
     protected function enrichOrderDetails(Collection $details, int $orderId, string $warehouse, array $reglasAprobacion)
@@ -523,26 +541,14 @@ class OrderService implements OrderServiceInterface
         return $order;
     }
 
-    public function getOrderExistenceByQuotation($orderId): bool
-    {
-        $oldOrder = GpPedido::findOrFail($orderId);
-        $orders = GpPedido::Where('cotizacion_id', $oldOrder->cotizacion_id)
-            ->where('pedido_origen', $oldOrder->pedido)
-            ->whereNotNull('factura')->where('factura', '!=', '')->exists();
 
-        return (bool) $orders;
-    }
 
-    public function recalculateAndSendInvoice($order)
+    protected function recalculateAndSendInvoice(GpPedido $order)
     {
         $this->functionsService->recalculateOrder($order->id);
         $this->invoiceService->sendInvoiceGp($order);
     }
 
-    public function recalculateOrder($order)
-    {
-        $this->functionsService->recalculateOrder($order->id);
-    }
 
 
 
@@ -552,7 +558,7 @@ class OrderService implements OrderServiceInterface
      *   FUNCION PARA VOLVER A PEDIR UN PEDIDO
      */
 
-    public function loadOrderForCopy($orderId, GpUsuario $user): array
+    public function loadOrderForCopy(int $orderId, GpUsuario $user): array
     {
         $order = GpPedido::findOrFail($orderId);
         $cliente = $this->clientService->getAvailabeCreditCustomer($order->CLI_RUC);
@@ -619,20 +625,10 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function generateOrderDispatch($id)
+    public function generateOrderDispatch(int $id)
     {
-        try {
-            DB::beginTransaction();
-            $order = GpPedido::find($id);
-            $this->invoiceService->generateDisptachOrder($order);
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error generating order dispatch', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        $order = GpPedido::find($id);
+        $this->invoiceService->generateDisptachOrder($order);
     }
 
 
@@ -731,7 +727,7 @@ class OrderService implements OrderServiceInterface
      */
 
 
-    public function updateOrderAndRecalculate($orderId)
+    public function updateOrderAndRecalculate(int $orderId)
     {
         try {
             DB::beginTransaction();
@@ -768,7 +764,7 @@ class OrderService implements OrderServiceInterface
         }
     }
 
-    public function getDataQuotationToUpdateOrder($quotationId)
+    protected function getDataQuotationToUpdateOrder(int $quotationId)
     {
         $data = GpCotizacion::with([
             'detallecotizacion.proveedores',
@@ -777,7 +773,7 @@ class OrderService implements OrderServiceInterface
         return $data->toArray();
     }
 
-    public function fillOrderHeader(GpPedido $order, $dataQuotation)
+    public function fillOrderHeader(GpPedido $order, array $dataQuotation)
     {
 
         $order->fill([
@@ -1518,4 +1514,7 @@ class OrderService implements OrderServiceInterface
         $this->invoiceService->checkTraslado($pedido);
         return $pedido;
     }
+
+
+
 }
