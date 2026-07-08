@@ -6,7 +6,9 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\Reservas\GpReserva;
 use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 class ApprovalReservationService implements ApprovalReservationServiceInterface
 {
@@ -17,9 +19,9 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    public function checkValidateApprovalReservation(int $id): string|null
+    public function checkValidateApprovalReservation(int $id): ?string
     {
-        $reserva        = GpReserva::find($id);
+        $reserva        = GpReserva::findOrFail($id);
         $detalleQuote   = $this->getDetailReserveWithStock($reserva->cotizacion_id);
         $flatDetails    = $this->stockFormatterForUpdateApproval($detalleQuote);
         $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
@@ -28,7 +30,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
         return $this->getAlertWithoutStockArticles($detalleQuote, $newFormatStock, null, null);
     }
 
-    protected function getDetailReserveWithStock($quoteId)
+    protected function getDetailReserveWithStock(int $quoteId): EloquentCollection
     {
         return GpCotizacionDetalle::with([
             'stock' => function ($q) {
@@ -40,7 +42,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    protected function stockFormatterForUpdateApproval($detalles)
+    protected function stockFormatterForUpdateApproval(EloquentCollection $detalles): array
     {
         return $detalles->pluck('stock')
             ->flatten()
@@ -59,7 +61,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    protected function stockFormatterParametersUpdateApproval($newDetails)
+    protected function stockFormatterParametersUpdateApproval(array $newDetails): array
     {
         return collect($newDetails)
             ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
@@ -69,7 +71,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    protected function getStockWarehouseAsyncAndFormantter($parmas)
+    protected function getStockWarehouseAsyncAndFormantter(array $parmas): array
     {
         $stocksResult = $this->stockService->fetchStockBatchWarehouses($parmas);
         Log::info("Resultado de stock para aprobacion - reservas: ", [
@@ -79,7 +81,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    protected function formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult)
+    protected function formattedFlatDetailWithStockGeneral(array $flatDetails, array $stocksResult): Collection
     {
         $stockMap = collect($stocksResult)->keyBy(function ($stock) {
             $art    = data_get($stock, 'STO_ART_ARTICULO', '');
@@ -102,7 +104,7 @@ class ApprovalReservationService implements ApprovalReservationServiceInterface
     }
 
 
-    protected function getAlertWithoutStockArticles($detalles, $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
+    protected function getAlertWithoutStockArticles(EloquentCollection $detalles, Collection $newFormatStock, ?int $orderId = null, ?int $quoteReservedOriginId = null): ?string
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
