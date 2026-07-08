@@ -2,52 +2,57 @@
 
 namespace App\Repositories\Devoluciones\Contracts;
 
+use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpCliente;
+use App\Models\GpPedido;
+use App\Models\GpPuntoVenta;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 interface DevolucionRepositoryInterface
 {
 
-    public function isInvoiceAlreadyVoided($pedido, $devolucion);
-    public function isOrderNotDispatchedOrProcessing($pedido);
-    public function hasOtherActiveReturns($pedido, $devolucion) :bool;
-    public function validateItemLDetailInvoice($devolucion) : bool;
+    public function isInvoiceAlreadyVoided(GpPedido $pedido, GpDevoluciones $devolucion): bool;
+    public function isOrderNotDispatchedOrProcessing(array|GpPedido $pedido): bool;
+    public function hasOtherActiveReturns(array|GpPedido $pedido, array|GpDevoluciones $devolucion): bool;
+    public function validateItemLDetailInvoice(array|GpDevoluciones $devolucion): bool;
 
-    public function getOrderbyId($pedidoId);
-    public function getDetailDevolucion($devolucion_id, $despachadoParcial = null);
+    public function getOrderbyId(int|string|null $pedidoId): ?GpPedido;
+    public function getDetailDevolucion(int|string $devolucionId, int|bool|null $despachadoParcial = null): array;
 
-    public function hasPartiallyDispatchedItems($devolucion);
+    public function hasPartiallyDispatchedItems(array|GpDevoluciones $devolucion): bool;
 
-    public function getReturnsAnulated($pedido_id) : bool;
+    public function getReturnsAnulated(int|string|null $pedidoId): bool;
 
 
     // funciones para el detallepedidodevolucion - getDetailOrderReturnById
-    public function getReturnsInProcess($pedido_id) : bool;
+    public function getReturnsInProcess(int|string|null $pedidoId): bool;
 
-    public function getMotivosDevolucion();
+    public function getMotivosDevolucion(): EloquentCollection;
 
-    public function getClientsByClientId($cliente_id);
+    public function getClientsByClientId(int|string|null $clienteId): GpCliente;
 
-    public function getClientsByClientRuc($ruc);
+    public function getClientsByClientRuc(string $ruc): ?GpCliente;
 
-    public function getClientsSucursByClientRuc($ruc);
+    public function getClientsSucursByClientRuc(string $ruc): EloquentCollection;
 
-    public function getSumGuidesRemisionByOrderDetailId($detalle_id);
+    public function getSumGuidesRemisionByOrderDetailId(int|string $detalleId): int|float;
 
-    public function sumReturnedQtyByDetailId($detalle_id, $despacho_parcial);
+    public function sumReturnedQtyByDetailId(int|string $detalleId, int|bool|null $despachoParcial): int|float;
 
-    public function sumReturnedQtyByDetailIdDontDispatch($detalle_id);
+    public function sumReturnedQtyByDetailIdDontDispatch(int|string $detalleId): int|float;
 
-    public function getReturnsHistoryByOrderId($pedido_id);
+    public function getReturnsHistoryByOrderId(int|string|null $pedidoId): bool;
 
     // imprimir devolucion
-    public function getReturnByIdToArray($devolucion_id);
-    public function  getOrderByIdWithUsers($pedido_id);
-    public function getByPtoVtaIdReturns($punto_venta_id);
-    public function getClientsByClientIdToArray($cliente_id);
-    public function getSucursalByInvoiceToArray($invoice_id);
-    public function getDetailDevolucionById($devolucion_id);
-     public function getDispatchOrder(int $orderId);
+    public function getReturnByIdToArray(int|string $devolucionId): array;
+    public function getOrderByIdWithUsers(int|string $pedidoId): array;
+    public function getByPtoVtaIdReturns(string $puntoVentaId): ?GpPuntoVenta;
+    public function getClientsByClientIdToArray(int|string $clienteId): ?array;
+    public function getSucursalByInvoiceToArray(int|string $invoiceId): array;
+    public function getDetailDevolucionById(int|string $devolucionId): array;
+    public function getDispatchOrder(int $orderId): bool;
 
      //refactura
 
-     public function shouldMarkAsDispatched(int $devId) : bool;
+    public function shouldMarkAsDispatched(int $devId): bool;
 }

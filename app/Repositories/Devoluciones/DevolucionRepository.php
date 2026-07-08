@@ -14,18 +14,19 @@ use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPuntoVenta;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 
 class DevolucionRepository implements DevolucionRepositoryInterface
 {
 
-    public function isInvoiceAlreadyVoided($pedido, $devolucion): bool
+    public function isInvoiceAlreadyVoided(GpPedido $pedido, GpDevoluciones $devolucion): bool
     {
         return GpFacturaAnulada::where('factura', $pedido->factura)->where('devolucion_id', $devolucion->id)
             ->where('pedido_id', $pedido->id)->where('estado', InvoiceAnulationStatus::ENVIADA)->exists();
     }
 
-    public function isOrderNotDispatchedOrProcessing($pedido)
+    public function isOrderNotDispatchedOrProcessing(array|GpPedido $pedido): bool
     {
         return GpPedido::where(function ($q) {
             $q->where('despachado', 0)->orWhereNull('despachado');
@@ -35,27 +36,27 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->where('id', $pedido['id'])->exists();
     }
 
-    public function hasOtherActiveReturns($pedido, $devolucion): bool
+    public function hasOtherActiveReturns(array|GpPedido $pedido, array|GpDevoluciones $devolucion): bool
     {
         return GpDevoluciones::where('pedido_id', $pedido['id'])->where('id', '!=', $devolucion['id'])
             ->whereNotIn('estado', [DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])->exists();
     }
 
-    public function validateItemLDetailInvoice($devolucion): bool
+    public function validateItemLDetailInvoice(array|GpDevoluciones $devolucion): bool
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])->where('ART_TIPO_COMPRA', 'L')->exists();
     }
 
 
-    public function getOrderbyId($pedidoId)
+    public function getOrderbyId(int|string|null $pedidoId): ?GpPedido
     {
 
         return GpPedido::find($pedidoId);
     }
 
-    public function getDetailDevolucion($devolucion_id, $despachadoParcial = null)
+    public function getDetailDevolucion(int|string $devolucionId, int|bool|null $despachadoParcial = null): array
     {
-        $query = GpDevolucionesDetalle::where('devolucion_id', $devolucion_id);
+        $query = GpDevolucionesDetalle::where('devolucion_id', $devolucionId);
         if (!is_null($despachadoParcial)) {
             $query->where('despachado_parcial', $despachadoParcial);
         }
@@ -72,7 +73,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function hasPartiallyDispatchedItems($devolucion): bool
+    public function hasPartiallyDispatchedItems(array|GpDevoluciones $devolucion): bool
     {
         return GpDevolucionesDetalle::where('devolucion_id', $devolucion['id'])
             ->where('despachado_parcial', 1)
@@ -80,36 +81,35 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getReturnsAnulated($pedido_id): bool
+    public function getReturnsAnulated(int|string|null $pedidoId): bool
     {
-        return GpDevoluciones::where('pedido_id', $pedido_id)->where('estado', DevolutionStatus::ANULADA)->exists();
+        return GpDevoluciones::where('pedido_id', $pedidoId)->where('estado', DevolutionStatus::ANULADA)->exists();
     }
 
 
     // funciones para el detallepedidodevolucion - getDetailOrderReturnById
-    public function getReturnsInProcess($pedido_id): bool
+    public function getReturnsInProcess(int|string|null $pedidoId): bool
     {
-        return GpDevoluciones::where('pedido_id', $pedido_id)
+        return GpDevoluciones::where('pedido_id', $pedidoId)
             ->whereNotIn('estado', [DevolutionStatus::PROCESADO, DevolutionStatus::RECHAZADO, DevolutionStatus::NO_PROCESADO])
             ->exists();
     }
 
-    public function getMotivosDevolucion()
+    public function getMotivosDevolucion(): EloquentCollection
     {
         return GpMotivosDevolucion::get();
     }
 
-    public function getClientsByClientId($cliente_id)
+    public function getClientsByClientId(int|string|null $clienteId): GpCliente
     {
-        return GpCliente::where('id', $cliente_id)->firstOrFail();
-        ;
+        return GpCliente::where('id', $clienteId)->firstOrFail();
     }
-    public function getClientsByClientRuc($ruc)
+    public function getClientsByClientRuc(string $ruc): ?GpCliente
     {
         return GpCliente::where('CLI_RUC', $ruc)->first();
     }
 
-    public function getClientsSucursByClientRuc($ruc)
+    public function getClientsSucursByClientRuc(string $ruc): EloquentCollection
     {
         return GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
             ->where('CLI_SUC_RUC', $ruc)
@@ -118,43 +118,43 @@ class DevolucionRepository implements DevolucionRepositoryInterface
             ->get();
     }
 
-    public function getSumGuidesRemisionByOrderDetailId($detalle_id)
+    public function getSumGuidesRemisionByOrderDetailId(int|string $detalleId): int|float
     {
         return DB::table('gp_guia_remision_detalles')
             ->join('gp_guia_remisions', 'gp_guia_remisions.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
-            ->where('gp_guia_remision_detalles.detalle_id', $detalle_id)
+            ->where('gp_guia_remision_detalles.detalle_id', $detalleId)
             ->where('gp_guia_remisions.estado', 'enviada')
             ->where('gp_guia_remisions.tipo', 'despacho')
             ->sum('gp_guia_remision_detalles.GUI_REM_CANTIDAD');
     }
 
-    public function sumReturnedQtyByDetailId($detalle_id, $despacho_parcial)
+    public function sumReturnedQtyByDetailId(int|string $detalleId, int|bool|null $despachoParcial): int|float
     {
         $query = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-            ->where('gp_devoluciones_detalles.detalle_id', $detalle_id);
+            ->where('gp_devoluciones_detalles.detalle_id', $detalleId);
 
-        if (!is_null($despacho_parcial)) {
-            $query->where('gp_devoluciones_detalles.despachado_parcial', $despacho_parcial);
+        if (!is_null($despachoParcial)) {
+            $query->where('gp_devoluciones_detalles.despachado_parcial', $despachoParcial);
         }
         return $query->sum('gp_devoluciones_detalles.devuelto');
 
     }
 
-    public function sumReturnedQtyByDetailIdDontDispatch($detalle_id)
+    public function sumReturnedQtyByDetailIdDontDispatch(int|string $detalleId): int|float
     {
         return GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
             ->where(function ($q) {
                 $q->where('gp_devoluciones.despachado', 0);
                 $q->orWhereNull('gp_devoluciones.despachado');
             })
-            ->where('gp_devoluciones_detalles.detalle_id', $detalle_id)
+            ->where('gp_devoluciones_detalles.detalle_id', $detalleId)
             ->sum('gp_devoluciones_detalles.devuelto');
     }
 
 
-    public function getReturnsHistoryByOrderId($pedido_id)
+    public function getReturnsHistoryByOrderId(int|string|null $pedidoId): bool
     {
-        return GpDevoluciones::where('pedido_id', $pedido_id)
+        return GpDevoluciones::where('pedido_id', $pedidoId)
             ->whereNotIn('estado', ['no_procesado', 'rechazada'])
             ->exists();
     }
@@ -168,38 +168,39 @@ class DevolucionRepository implements DevolucionRepositoryInterface
      *
      */
 
-    public function getReturnByIdToArray($devolucion_id)
+    public function getReturnByIdToArray(int|string $devolucionId): array
     {
-        return GpDevoluciones::where('id', $devolucion_id)->first()->toArray();
+        return GpDevoluciones::where('id', $devolucionId)->first()->toArray();
     }
 
-    public function getOrderByIdWithUsers($pedido_id)
+    public function getOrderByIdWithUsers(int|string $pedidoId): array
     {
         return GpPedido::join('gp_usuarios', 'gp_usuarios.USERID', 'gp_pedidos.USERID')
-            ->where('gp_pedidos.id', $pedido_id)
+            ->where('gp_pedidos.id', $pedidoId)
             ->select('gp_pedidos.*', 'gp_usuarios.USERNAME')
             ->first()->toArray();
     }
 
 
 
-    public function getByPtoVtaIdReturns($punto_venta_id)
+    public function getByPtoVtaIdReturns(string $puntoVentaId): ?GpPuntoVenta
     {
-        return GpPuntoVenta::where('PTO_VTA_ID', $punto_venta_id)->first();
-    }
-    public function getClientsByClientIdToArray($cliente_id)
-    {
-        return GpCliente::where('ID', $cliente_id)->first();
+        return GpPuntoVenta::where('PTO_VTA_ID', $puntoVentaId)->first();
     }
 
-    public function getSucursalByInvoiceToArray($invoice_id)
+    public function getClientsByClientIdToArray(int|string $clienteId): ?array
     {
-        return GpClienteSucursal::where('id', $invoice_id)->first()->toarray();
+        return GpCliente::where('ID', $clienteId)->first()?->toArray();
     }
 
-    public function getDetailDevolucionById($devolucion_id)
+    public function getSucursalByInvoiceToArray(int|string $invoiceId): array
     {
-        return GpDevolucionesDetalle::where('devolucion_id', $devolucion_id)
+        return GpClienteSucursal::where('id', $invoiceId)->first()->toarray();
+    }
+
+    public function getDetailDevolucionById(int|string $devolucionId): array
+    {
+        return GpDevolucionesDetalle::where('devolucion_id', $devolucionId)
             // ->where('seleccionado', '>', 0)  //comente la condicional porque tambien se considera para el volver a facturar
             ->get()
             ->filter(function ($item) {
@@ -214,7 +215,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getDispatchOrder(int $orderId)
+    public function getDispatchOrder(int $orderId): bool
     {
         return GpOrdenDespacho::where('pedido_id', $orderId)->where('estado', '!=', 'pendiente')->exists();
     }
