@@ -6,8 +6,10 @@ use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoImagen;
 use App\Models\GpPuntoVenta;
+use App\Models\GpUsuario;
 use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
@@ -34,7 +36,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     ) {
         // Inyecta dependencias si es necesario
     }
-    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
+    public function createOrder(array $data, GpUsuario $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
     {
         $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quotationId            = data_get($data, 'cotizacion_id');
@@ -90,7 +92,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
 
 
-    protected function prepareOrderHeader(array $data, $user): GpPedido
+    protected function prepareOrderHeader(array $data, GpUsuario $user): GpPedido
     {
         $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
         $approvalCommercial             = $this->approval->approveOrder($data);
@@ -181,7 +183,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     }
 
 
-    protected function storeDetailProviders($providers, $detail, $newOrder)
+    protected function storeDetailProviders(array $providers, GpPedidoDetalle $detail, GpPedido $newOrder)
     {
         foreach ($providers as $provider) {
             $recibido = isset($provider['recibido']) ? $provider['recibido'] : 'no';
@@ -191,7 +193,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     }
 
 
-    protected function storeDetailStock($stock, $detail, $newOrder)
+    protected function storeDetailStock(array $stock, GpPedidoDetalle $detail, GpPedido $newOrder)
     {
         $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes' || $newOrder->requiere_aprobacion_comercial === 'yes';
         $quoteReservedId = $this->getReservedOriginQuote($newOrder->cotizacion_id);

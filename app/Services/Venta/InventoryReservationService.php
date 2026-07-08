@@ -41,6 +41,7 @@ use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
+use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -61,7 +62,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         protected readonly ReservedBuilderInterface $reservaBuilder,
         protected readonly InventoryReservationRepositoryInterface $reservaRepository,
         protected readonly ApiDeliverNoteService $apiDelivery,
-        protected readonly FunctionsServiceInterface $functionService
+        protected readonly FunctionsServiceInterface $functionService,
+        protected readonly ApprovalOrderServiceInterface $approvalOrder
     ) {}
 
 
@@ -1097,7 +1099,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $total          = data_get($data, 'total', 0);
         $condicionPago  = data_get($data, 'COND_ID', 'CONTADO');
         $rucCliente     = data_get($data, 'CLI_RUC', '');
-        return $this->approvalService->checkoutApprovalCredit($condicionPago, $total, $rucCliente);
+        return $this->approvalOrder->checkoutApprovalCreditOrder($condicionPago, $total, $rucCliente);
     }
 
     protected function storeReservedDetailOrder($detailOrder, $order)

@@ -402,36 +402,8 @@ class ApprovalService implements ApprovalServiceInterface
         return $detailMotivos;
     }
 
-    /*** funcion que se encarga de verificar si va a requerir aprobacion crediciticia *** */
 
-    public function checkoutApprovalCredit(string $condId, float $total, string $ruc)
-    {
-        if ($condId == 'CONTADO') {
-            return 'no';
-        }
-        $cupoDisponible = $this->functionService->getClientCheckAvailableQuota($ruc);
-        $cupo = data_get($cupoDisponible, 'cupoDisponibleGp', 0);
 
-        if ($total > $cupo) {
-            return 'Cupo';
-        }
-
-        $documentosVencidos = $this->functionService->getClientDocumentExpired($ruc);
-        $pendiente = data_get($documentosVencidos, 'pendienteGpMc', 0);
-
-        if ($pendiente > 0) {
-            return 'Documentos Vencidos';
-        }
-
-        $documentosSinSoporte = $this->functionService->getClientDocumentWithoutSupport($ruc);
-        $saldo = data_get($documentosSinSoporte, 'saldoPendiente', 0);
-
-        if ($saldo > 0) {
-            return 'Saldo Pendiente';
-        }
-
-        return 'no';
-    }
 
 
 
