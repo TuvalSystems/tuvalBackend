@@ -23,7 +23,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Traits\RegisterAudit;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection as SupportCollection;
@@ -46,7 +46,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
     /** * CHECK DE APROBACION COMERCIAL **/
 
-    public function approveOrder(array $data)
+    public function approveOrder(array $data): array
     {
         $quoteId = data_get($data, 'cotizacion_id', null);
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
@@ -113,7 +113,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             }
         }
 
-        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->firstOrFail();
         $motivosDetalle = $this->validateOrdersDetailToApprove($data['items'], $ptoVenta, $dsctGlobalCliente);
         if (!empty($motivosDetalle)) {
             $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
@@ -122,7 +122,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         return $this->approvalFuntions->finalizeApprovalReasons($motivosAprobacionComercial);
     }
 
-    protected function validateOrdersDetailToApprove($detalles, $ptoVta, $dsctGlobalCliente): array
+    protected function validateOrdersDetailToApprove(array $detalles, GpPuntoVenta $ptoVta, float $dsctGlobalCliente): array
     {
         $detailMotivos = [];
 
@@ -229,7 +229,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
     public function validateOrderStockForApproval(int $id): ?string
     {
-        $order                  = GpPedido::find($id);
+        $order                  = GpPedido::findOrFail($id);
         $quoteReservedOriginId  = $this->approvalFuntions->validateExistsReserve($order->cotizacion_id);
         $detalles               = $this->getDetailArticlesWithStock($order->id);
         $flatDetails            = $this->stockFormatterForUpdateApproval($detalles);
@@ -239,13 +239,13 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         return  $this->getAlertWithoutStockArticles($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
     }
 
-    protected function getDetailArticlesWithStock(int $orderId)
+    protected function getDetailArticlesWithStock(int $orderId): EloquentCollection
     {
         return GpPedidoDetalle::with('pedidoDetalleStocks')
             ->where('pedido_id', $orderId)
             ->where('ART_TIPO_COMPRA', '!=', 'L')->get();
     }
-    protected function stockFormatterForUpdateApproval(Collection $detalles): array
+    protected function stockFormatterForUpdateApproval(EloquentCollection $detalles): array
     {
         $detailsById = $detalles->keyBy('id');
 
@@ -272,7 +272,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             ->toArray();
     }
 
-    protected function stockFormatterParametersUpdateApproval(array $newDetails)
+    protected function stockFormatterParametersUpdateApproval(array $newDetails): array
     {
         return collect($newDetails)
             ->map(fn($d) => ['articulo' => $d['STO_ART_ARTICULO'], 'bodega' => $d['STO_ART_BODEGA']])
@@ -281,13 +281,13 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             ->toArray();
     }
 
-    protected function getStockWarehouseAsyncAndFormatter(array $parmas)
+    protected function getStockWarehouseAsyncAndFormatter(array $parmas): array
     {
         $stocksResult = $this->stockService->fetchStockBatchWarehouses($parmas);
         return $this->stockService->transformStockResponse($stocksResult);
     }
 
-    protected function formattedFlatDetailWithStockGeneral(array $flatDetails, array $stocksResult)
+    protected function formattedFlatDetailWithStockGeneral(array $flatDetails, array $stocksResult): SupportCollection
     {
         $stockMap = collect($stocksResult)->keyBy(function ($stock) {
             $art    = data_get($stock, 'STO_ART_ARTICULO', '');
@@ -309,7 +309,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         });
     }
 
-    protected function getAlertWithoutStockArticles(Collection $detalles, SupportCollection $newFormatStock, $orderId = null, $quoteReservedOriginId = null): string|null
+    protected function getAlertWithoutStockArticles(EloquentCollection $detalles, SupportCollection $newFormatStock, ?int $orderId = null, ?int $quoteReservedOriginId = null): ?string
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
@@ -375,7 +375,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     /***  FUNCIONES PARA LA APROBACIÓN CREDITICIA DE PEDIDOS */
 
 
-    public function approveCreditOrder(int $id, GpUsuario $user, ?string $msg = null)
+    public function approveCreditOrder(int $id, GpUsuario $user, ?string $msg = null): GpPedido
     {
         $order = GpPedido::where('id', $id)
             ->where('estado', OrderStatus::ESPERA)
@@ -416,12 +416,12 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             $oldOrder,
             $newOrder
         );
-        return $order->fresh();
+        return $order->refresh();
     }
 
 
 
-    protected function cleanDetailOrderStock(GpPedido $pedido)
+    protected function cleanDetailOrderStock(GpPedido $pedido): void
     {
         $bodega = $pedido->BOD_BODEGA;
         $detalles = GpPedidoDetalle::where('pedido_id', $pedido->id)->pluck('id')->toArray();
@@ -433,7 +433,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
     /**  FUNCIONES DE APROBACIÓN COMERCIAL DE PEDIDOS Y COTIZACIONES  */
 
-    public function approveComercialOrder(int $id, GpUsuario $user,  ?string $msg = null)
+    public function approveComercialOrder(int $id, GpUsuario $user, ?string $msg = null): GpPedido
     {
         $order = GpPedido::where('id', $id)->where('estado', OrderStatus::ESPERA)
             ->lockForUpdate()->first();
@@ -473,13 +473,13 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             $oldOrder,
             $newOrder
         );
-        return $order->fresh();
+        return $order->refresh();
     }
 
 
 
 
-    protected function updateOrderStockOnCreditOrCommercialApproval(GpPedido $order, string $typeApproval)
+    protected function updateOrderStockOnCreditOrCommercialApproval(GpPedido $order, string $typeApproval): void
     {
         $requiresComercialApproval = $order->requiere_aprobacion_comercial === 'yes';
         $requiresCreditApproval = $order->requiere_aprobacion_crediticia === 'yes';
@@ -508,7 +508,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     }
 
 
-    protected function updateStockOnOrderApproval(GpPedido $order)
+    protected function updateStockOnOrderApproval(GpPedido $order): void
     {
         $quoteReservedOriginId = $this->approvalFuntions->validateExistsReserve($order->cotizacion_id);
         $detalles = $this->getDetailArticlesWithStock($order->id);
@@ -529,7 +529,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
 
 
-    protected function updateOrderDetailStockAndGetStockDisponible(Collection $detalles, SupportCollection $newFormatStock, int $orderId, ?int $quoteReservedOriginId = null)
+    protected function updateOrderDetailStockAndGetStockDisponible(EloquentCollection $detalles, SupportCollection $newFormatStock, int $orderId, ?int $quoteReservedOriginId = null): void
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
@@ -670,7 +670,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     }
 
 
-    public function getAllOrdersPendingApprovals(string $ptoVta, GpUsuario $user): Collection
+    public function getAllOrdersPendingApprovals(string $ptoVta, GpUsuario $user): SupportCollection
     {
         $filteredOrders = collect([]);
         $user->load(['vendedor.jerarquia.relaciones', 'vendedor.zonas']);
@@ -704,14 +704,14 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         });
     }
 
-    protected function filterOrdersForVicePresidency($orders, GpUsuario $user): Collection
+    protected function filterOrdersForVicePresidency(SupportCollection $orders, GpUsuario $user): SupportCollection
     {
         return $orders->filter(function ($order) use ($user) {
             return in_array($user->id, $order->authorizer_ids_list ?? []);
         })->values();
     }
 
-    protected function filterOrdersByTySeller(Collection $orders, GpUsuario $user): Collection
+    protected function filterOrdersByTySeller(SupportCollection $orders, GpUsuario $user): SupportCollection
     {
         return $orders->filter(function ($order) use ($user) {
             return in_array($user->id, $order->authorizer_ids_list ?? []);
@@ -786,7 +786,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
 
     /** funcion para visualizar todas las cotizaciones pendientes de aprobar (consulta) */
-    public function getAllOrdersForGlobalConsultation(string $ptoVta): Collection
+    public function getAllOrdersForGlobalConsultation(string $ptoVta): SupportCollection
     {
         $query = $this->repository->fetchPendingOrders($ptoVta)
             ->with(['detallepedido', 'gpcotizacion', 'usuario.vendedor.zonas']);
@@ -882,7 +882,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             });
     }
 
-    public function getSegmentClient(string $ruc)
+    public function getSegmentClient(string $ruc): array
     {
         $response = $this->api->fetchClientSegment([
             'ruc' => $ruc,
@@ -895,9 +895,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
 
 
-    public function accountStatusClient(int $id)
+    public function accountStatusClient(int $id): array
     {
-        $order = GpPedido::find($id);
+        $order = GpPedido::findOrFail($id);
         return [
             'pedido'                            => $order,
             'cupoDisponible'                    => $this->functionService->getClientCheckAvailableQuota($order->CLI_RUC),
@@ -908,7 +908,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     }
 
 
-    public function denyOrderBeenWaiting(int $id, GpUsuario $user)
+    public function denyOrderBeenWaiting(int $id, GpUsuario $user): GpPedido
     {
         return DB::transaction(function () use ($id, $user) {
             $order = GpPedido::where('id', $id)
@@ -944,7 +944,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 $oldOrder,
                 $newOrder
             );
-            return $order->fresh();
+            return $order->refresh();
         });
     }
 }
