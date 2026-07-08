@@ -54,13 +54,26 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
             }
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
-            if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
-                $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
-                    ->where('estado', '!=', OrderStatus::ANULADA) // Importante: ignorar anulados
-                    ->first();
-                if ($pedidoExistente) {
-                    return $pedidoExistente;
-                }
+            if (!$quoteBlock) {
+                throw new \DomainException('La cotizacion no existe o no esta disponible.');
+            }
+
+            $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
+                ->whereNotIn('estado', [
+                    OrderStatus::ANULADA->value,
+                    OrderStatus::ELIMINADO->value,
+                    OrderStatus::RECHAZADO->value,
+                ])
+                ->oldest('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($pedidoExistente) {
+                Log::warning("Intento duplicado de creacion de pedido para cotizacion {$quotationId}. Se retorna pedido existente {$pedidoExistente->pedido}.");
+                return $pedidoExistente;
+            }
+
+            if ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1) {
                 Log::warning("Inconsistencia detectada: Cotización {$quotationId} estaba marcada como procesada pero sin pedido. Creando pedido ahora...");
             }
 
