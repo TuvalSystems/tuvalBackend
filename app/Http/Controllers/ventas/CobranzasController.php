@@ -38,6 +38,7 @@ use App\Http\Controllers\Inventario\Bodega\DespachosController;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
@@ -60,7 +61,8 @@ class CobranzasController extends Controller
         protected readonly CollectionServiceInterface $collectionService,
         protected readonly CustomerPaymentApplicationServiceInterface $customer,
         protected readonly CollectionUnapplicationServiceInterface $unapplycation,
-        protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits
+        protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits,
+        protected readonly InvoiceCollectionServiceInterface $invoiceCollect
     ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1753,8 +1755,8 @@ class CobranzasController extends Controller
 
     public function estadocaja($fechaActual = null, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-
         $user = Auth::user();
+
 
         if (!$fechaActual)
             $fechaActual = date('Y-m-d');
@@ -2279,11 +2281,49 @@ class CobranzasController extends Controller
         }, 'laravel', 'actualizacionDocumentosAplicacion');
     }
 
-    public function listaHistoricaDepositos(Request $request){
-      return $this->handleApiAction(function() use($request){
-        $filters = $request->input('filters', []);
-        $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
-        return $this->successResponse('Datos obtenidos correctamente', $response,200);
-      }, 'laravel', 'listaHistoricaDepositos');
+    public function listaHistoricaDepositos(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $filters = $request->input('filters', []);
+            $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
+            return $this->successResponse('Datos obtenidos correctamente', $response, 200);
+        }, 'laravel', 'listaHistoricaDepositos');
+    }
+
+
+    /**
+     * nuevas funciones de cobros facturas
+     */
+
+
+    public function obtenerEstadoCajaUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'fecha'     => 'nullable|date',
+                'pvId'      => 'nullable|integer',
+                'pvCodigo'  => 'nullable|string'
+            ]);
+            $fecha = data_get($validate, 'fecha');
+            $pvId  = data_get($validate, 'pvId');
+            $pvCode = data_get($validate, 'pvCodigo');
+            $user = $request->user() ?? GpUsuario::find(179);
+            $caja = $this->invoiceCollect->getStatusBoxedUser($pvId, $pvCode, $fecha, $user);
+            return $this->successResponse('Datos obtenidos correctamente', $caja, 200);
+        }, 'laravel', 'obtenerEstadoCajaUsuario');
+    }
+
+
+    public function aperturarCajaUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'pvId' =>  'required|integer|exists:gp_punto_ventas,id',
+            ]);
+            $user = $request->user() ?? GpUsuario::find(179);
+            $pvId = data_get($validate, 'pvId');
+            $caja = $this->invoiceCollect->openCashBoxed($pvId, $user);
+            return $this->successResponse('Apertura de Caja Realizado con exito', $caja, 200);
+        }, 'laravel', 'abrirCajaUsuario');
     }
 }

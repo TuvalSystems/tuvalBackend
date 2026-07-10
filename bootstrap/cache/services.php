@@ -292,6 +292,7 @@
     'App\\Repositories\\Cobranzas\\Contracts\\CashBoxRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\Cobranzas\\Contracts\\CollectionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\Cobranzas\\Contracts\\WebInvoiceApplicationRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
+    'App\\Repositories\\Cobranzas\\CobrosFacturas\\Contracts\\InvoiceCollectionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\User\\Contracts\\UserRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Services\\User\\Contracts\\UserServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
     'App\\Services\\Admin\\Contracts\\ProfileServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',

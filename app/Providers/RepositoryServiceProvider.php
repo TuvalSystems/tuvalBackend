@@ -14,6 +14,8 @@ use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Repositories\Bodegas\TransferRepository;
 use App\Repositories\Cobranzas\CashClosureRepository;
+use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
+use App\Repositories\Cobranzas\CobrosFacturas\InvoiceCollectionRepository;
 use App\Repositories\Cobranzas\CollectionRepository;
 use App\Repositories\Cobranzas\Contracts\CashBoxRepositoryInterface;
 use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
@@ -43,7 +45,7 @@ class RepositoryServiceProvider extends ServiceProvider implements DeferrablePro
         CashBoxRepositoryInterface::class                   => CashClosureRepository::class,
         CollectionRepositoryInterface::class                => CollectionRepository::class,
         WebInvoiceApplicationRepositoryInterface::class     => WebInvoiceApplicationRepository::class,
-
+        InvoiceCollectionRepositoryInterface::class         => InvoiceCollectionRepository::class,
         //usuario
         UserRepositoryInterface::class                  => UserRepository::class,
     ];

@@ -219,6 +219,15 @@ Route::group(['prefix' => 'cobranzas'], function () {
     Route::get('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
     Route::get('lista-aplicaciones', [CobranzasController::class, 'listaCobrosAplicados']);
     Route::get('detalle-aplicaciones', [CobranzasController::class, 'detalleCobrosAplicados']);
+
+
+
+
+    //cobros facturas
+    Route::prefix('cobros-facturas')->group(function(){
+        Route::get('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
+        Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+    });
 });
 
 Route::prefix('gestion')->group(function () {

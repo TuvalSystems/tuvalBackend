@@ -42,6 +42,17 @@ class GpCierreCaja extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'caja_id',
+        'CAJA_CODIGO',
+        'fecha',
+        'estado',
+        'fecha_cierre',
+        'fecha_apertura',
+        'fecha_reapertura',
+        'datos',
+        'consulta'
+    ];
 
 
     public function caja()

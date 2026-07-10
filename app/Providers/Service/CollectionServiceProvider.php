@@ -2,6 +2,8 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
+use App\Services\Cobranzas\CobrosFacturas\InvoiceCollectionService;
 use App\Services\Cobranzas\CollectionService;
 use App\Services\Cobranzas\CollectionUnapplicationService;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
@@ -19,7 +21,11 @@ class CollectionServiceProvider extends ServiceProvider
         CollectionServiceInterface::class                   => CollectionService::class,
         CustomerPaymentApplicationServiceInterface::class   => CustomerPaymentApplicationService::class,
         CollectionUnapplicationServiceInterface::class      => CollectionUnapplicationService::class,
-        HistoricalDepositProcessorServiceInterface::class   => HistoricalDepositProcessorService::class
+        HistoricalDepositProcessorServiceInterface::class   => HistoricalDepositProcessorService::class,
+
+
+        //cobros facturas
+        InvoiceCollectionServiceInterface::class            => InvoiceCollectionService::class
 
     ];
 

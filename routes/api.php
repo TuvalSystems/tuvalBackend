@@ -525,6 +525,12 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('depositos-historicos')->group(function () {
                 Route::post('lista', [CobranzasController::class, 'listaHistoricaDepositos']);
             });
+
+            //apis de cobros de facturas
+            Route::prefix('cobros-facturas')->group(function () {
+                Route::post('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
+                Route::post('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+            });
         });
 
 
