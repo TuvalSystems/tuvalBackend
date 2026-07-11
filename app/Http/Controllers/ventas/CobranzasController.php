@@ -2336,7 +2336,7 @@ class CobranzasController extends Controller
             ]);
             $id = data_get($validate, 'id');
             $response = [];
-            return $this->buildFileResponse($response );
+            return $this->buildFileResponse($response);
         }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
     }
 }
