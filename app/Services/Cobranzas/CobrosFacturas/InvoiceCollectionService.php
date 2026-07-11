@@ -108,9 +108,9 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
     /** impresion de estado de cuenta cliente execel  */
 
-    public function generateClientAccountStatementPdf(int $clientId): array 
+    public function generateClientAccountStatementPdf(int $clientId): array
     {
-        $client = GpCliente::firstOrFail($clientId);
+        $client = GpCliente::find($clientId);
         if (!$client) {
             throw new DomainException('Cliente no encontrado');
         }
@@ -123,7 +123,8 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                     $det->fechaEmision,
                     $det->fechaVencimiento
                 );
-                $det->condicionPago = $days . ' DÍAS';
+
+                $det->condicionPago = $days . ($days === 1 ? ' DÍA' : ' DÍAS');
             }
         });
 
@@ -137,20 +138,22 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
     private function getCustomerStatusStatementDetail(string $ruc): Collection
     {
-        $resp = $this->api->getClientAccountStatement([
+        $response = $this->api->getClientAccountStatement([
             'ruc' => $ruc
         ]);
 
-        return collect(data_get($resp, 'data', []));
+        return collect(data_get($response, 'data', []))
+            ->map(fn(array $detail) => (object) $detail);
     }
 
 
     private function getCustomerStatusStatementSummary(string $ruc): Collection
     {
-        $resp = $this->api->getClientAccountStatementSummary([
+        $response = $this->api->getClientAccountStatementSummary([
             'ruc' => $ruc
         ]);
-        return collect(data_get($resp, 'data', []));
+        return collect(data_get($response, 'data', []));
+
     }
 
     private function dateDiffInDays(string $date1, string $date2): int

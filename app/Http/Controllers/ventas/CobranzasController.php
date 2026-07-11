@@ -2332,7 +2332,7 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request) {
             $validate  = $request->validate([
-                'id'    => 'required|exists:gp_clientes,id',
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
             ]);
             $id        = data_get($validate, 'id');
             $response  = $this->invoiceCollect->generateClientAccountStatementPdf($id);
