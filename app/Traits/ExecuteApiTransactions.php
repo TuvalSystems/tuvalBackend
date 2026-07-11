@@ -22,7 +22,7 @@ trait ExecuteApiTransactions
         }
     }
 
-    protected function handlePdfAction(\Closure $accion, string $canalLog, string $contextoLog): SymfonyResponse|JsonResponse
+    protected function handleDocumentAction(\Closure $accion, string $canalLog, string $contextoLog): SymfonyResponse|JsonResponse
     {
         try {
             return $accion();

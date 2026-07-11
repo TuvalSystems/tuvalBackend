@@ -184,7 +184,7 @@ class DevolucionesController extends Controller
         $data = $request->all();
         try {
             $response = $this->devolucionService->generatePdfOrderStorageDevolution($data);
-            return $this->buildPdfResponse($response);
+            return $this->buildFileResponse($response);
         } catch (\Throwable $e) {
             return $this->buildErrorResponse($e->getMessage(), 500);
         }

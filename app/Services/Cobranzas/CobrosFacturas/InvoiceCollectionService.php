@@ -3,6 +3,7 @@
 namespace App\Services\Cobranzas\CobrosFacturas;
 
 use App\Models\GpCierreCaja;
+use App\Models\GpCliente;
 use App\Models\GpUsuario;
 use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
@@ -98,5 +99,18 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             'fechaApertura' => $cashBoxClosure->fecha_apertura,
             'estado'        => $cashBoxClosure->estado
         ];
+    }
+
+
+
+    /** impresion de estado de cuenta cliente execel  */
+
+    public function generateClientAccountStatementPdf(int $clientId)
+    {
+        $client = GpCliente::firstOrFail($clientId);
+        if (!$client) {
+            throw new DomainException('Cliente no encontrado');
+        }
+        
     }
 }

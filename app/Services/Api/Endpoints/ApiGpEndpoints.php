@@ -51,6 +51,8 @@ class ApiGpEndpoints
     public const COBROS_CONSULTA_DOCUMENTOS_COBROS_APLICADOS = 'api/cobros/consulta-documentos-cobros-aplicados';
     public const COBROS_CONSULTA_APLICACIONES_PENDIENTES_POR_DOCUMENTO = 'api/cobros/consulta-aplicaciones-pendientes-por-documento';
     public const COBROS_CONSULTA_RECIBOS_CHEQUES = 'api/cobros/consulta-recibos-cheques';
+    public const COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE = 'api/cobros/consultar-estado-cuenta-cliente';
+    public const COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN = 'api/cobros/consultar-estado-cuenta-cliente-resumen';
 
     // ---
     // 📄 5. Endpoints de Transacciones ( Recibos, Facturación )

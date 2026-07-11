@@ -62,8 +62,18 @@ class   ApiBillingService extends ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_RECIBOS_CHEQUES, 'POST', $params, 'json');
     }
 
-     public function getPendingApplicationDocument(array $params)
+    public function getPendingApplicationDocument(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_APLICACIONES_PENDIENTES_POR_DOCUMENTO, 'POST', $params, 'json');
+    }
+
+    public function getClientAccountStatement(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE, 'GET', $params);
+    }
+
+    public function getClientAccountStatementResumen(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN, 'GET', $params);
     }
 }

@@ -510,7 +510,7 @@ Las plantillas PDF viven en `resources/views`. Documentos disponibles incluyen:
 - Devoluciones y órdenes de almacenamiento de devolución.
 - Órdenes de compra y recibos L.
 
-`JsonResponseTrait::buildPdfResponse` devuelve PDFs con headers robustos para descarga y lectura del nombre de archivo desde navegadores (`Content-Disposition`, `X-Filename`).
+`JsonResponseTrait::buildFileResponse` devuelve PDFs con headers robustos para descarga y lectura del nombre de archivo desde navegadores (`Content-Disposition`, `X-Filename`).
 
 ## 14. Desarrollo
 

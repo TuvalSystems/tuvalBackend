@@ -2197,7 +2197,7 @@ class CobranzasController extends Controller
 
     public function imprimirPdfConsultaCierreCaja(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate = $request->validate([
                 'fecha'     => 'required|string',
                 'caja_id'   => 'required|integer',
@@ -2206,13 +2206,13 @@ class CobranzasController extends Controller
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdfByUser($cajaId, $fecha);
-            return $this->buildPdfResponse($pdf, 200);
+            return $this->buildFileResponse($pdf, 200);
         }, 'laravel', 'imprimirPdfConsultaCierreCaja');
     }
 
     public function imprimirPdfCierreCaja(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate = $request->validate([
                 'fecha'     => 'required|string',
                 'caja_id'   => 'required|integer',
@@ -2221,7 +2221,7 @@ class CobranzasController extends Controller
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdf($cajaId, $fecha);
-            return $this->buildPdfResponse($pdf, 200);
+            return $this->buildFileResponse($pdf, 200);
         }, 'laravel', 'imprimirPdfCierreCaja');
     }
 
@@ -2325,5 +2325,18 @@ class CobranzasController extends Controller
             $caja = $this->invoiceCollect->openCashBoxed($pvId, $user);
             return $this->successResponse('Apertura de Caja Realizado con exito', $caja, 200);
         }, 'laravel', 'abrirCajaUsuario');
+    }
+
+
+    public function imprimirPdfEstadoCuentaCliente(Request $request) :Response
+    {
+        return $this->handleDocumentAction(function () use ($request) : Response{
+            $validate = $request->validate([
+                'id' => 'required|exists:gp_clientes,id',
+            ]);
+            $id = data_get($validate, 'id');
+            $response = [];
+            return $this->buildFileResponse($response );
+        }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
     }
 }
