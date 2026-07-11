@@ -72,7 +72,7 @@ class   ApiBillingService extends ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE, 'GET', $params);
     }
 
-    public function getClientAccountStatementResumen(array $params)
+    public function getClientAccountStatementSummary(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN, 'GET', $params);
     }

@@ -2328,15 +2328,24 @@ class CobranzasController extends Controller
     }
 
 
-    public function imprimirPdfEstadoCuentaCliente(Request $request) :Response
+    public function imprimirPdfEstadoCuentaCliente(Request $request): Response
     {
-        return $this->handleDocumentAction(function () use ($request) : Response{
-            $validate = $request->validate([
-                'id' => 'required|exists:gp_clientes,id',
+        return $this->handleApiAction(function () use ($request) {
+            $validate  = $request->validate([
+                'id'    => 'required|exists:gp_clientes,id',
             ]);
-            $id = data_get($validate, 'id');
-            $response = [];
-            return $this->buildFileResponse($response);
+            $id        = data_get($validate, 'id');
+            $response  = $this->invoiceCollect->generateClientAccountStatementPdf($id);
+            return $this->successResponse('Información Obtenida', $response, 200);
         }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
+
+        // return $this->handleDocumentAction(function () use ($request) : Response{
+        //     $validate = $request->validate([
+        //         'id' => 'required|exists:gp_clientes,id',
+        //     ]);
+        //     $id = data_get($validate, 'id');
+        //     $response = [];
+        //     return $this->buildFileResponse($response);
+        // }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
     }
 }

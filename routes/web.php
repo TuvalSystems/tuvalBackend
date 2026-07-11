@@ -227,6 +227,8 @@ Route::group(['prefix' => 'cobranzas'], function () {
     Route::prefix('cobros-facturas')->group(function(){
         Route::get('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
         Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+        Route::get('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
+
     });
 });
 

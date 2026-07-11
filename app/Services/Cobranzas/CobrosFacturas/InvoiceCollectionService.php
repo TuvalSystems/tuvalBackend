@@ -6,15 +6,18 @@ use App\Models\GpCierreCaja;
 use App\Models\GpCliente;
 use App\Models\GpUsuario;
 use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
+use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use Carbon\Carbon;
 use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 {
     public function __construct(
-        protected readonly InvoiceCollectionRepositoryInterface $invRep
+        protected readonly InvoiceCollectionRepositoryInterface $invRep,
+        protected readonly ApiBillingService $api
     ) {}
 
 
@@ -105,12 +108,61 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
     /** impresion de estado de cuenta cliente execel  */
 
-    public function generateClientAccountStatementPdf(int $clientId)
+    public function generateClientAccountStatementPdf(int $clientId): array 
     {
         $client = GpCliente::firstOrFail($clientId);
         if (!$client) {
             throw new DomainException('Cliente no encontrado');
         }
-        
+
+        $detail = $this->getCustomerStatusStatementDetail($client->CLI_RUC);
+        $summary = $this->getCustomerStatusStatementSummary($client->CLI_RUC);
+        $detail->each(function ($det) {
+            if (blank($det->condicionPago)) {
+                $days = $this->dateDiffInDays(
+                    $det->fechaEmision,
+                    $det->fechaVencimiento
+                );
+                $det->condicionPago = $days . ' DÍAS';
+            }
+        });
+
+
+        return [
+            'cliente' => $client,
+            'detalle' => $detail,
+            'resumen' => $summary,
+        ];
+    }
+
+    private function getCustomerStatusStatementDetail(string $ruc): Collection
+    {
+        $resp = $this->api->getClientAccountStatement([
+            'ruc' => $ruc
+        ]);
+
+        return collect(data_get($resp, 'data', []));
+    }
+
+
+    private function getCustomerStatusStatementSummary(string $ruc): Collection
+    {
+        $resp = $this->api->getClientAccountStatementSummary([
+            'ruc' => $ruc
+        ]);
+        return collect(data_get($resp, 'data', []));
+    }
+
+    private function dateDiffInDays(string $date1, string $date2): int
+    {
+        try {
+            $startDate  = Carbon::parse($date1)->startOfDay();
+            $endDate    = Carbon::parse($date2)->startOfDay();
+            return (int) $startDate->diffInDays($endDate, true);
+        } catch (\Throwable $e) {
+            throw new DomainException(
+                'No se pudo calcular la diferencia de días porque una de las fechas no es válida.'
+            );
+        }
     }
 }
