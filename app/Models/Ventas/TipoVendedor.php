@@ -37,5 +37,14 @@ class TipoVendedor extends Model
         'codigo',
         'descripcion',
         'estado',
+        'restriccion'
+    ];
+
+    protected $casts = [
+        'tipo_vendedor'     => 'integer',
+        'codigo'            => 'string',
+        'descripcion'       => 'string',
+        'restriccion'       => 'boolean',
+        'estado'            => 'boolean'
     ];
 }

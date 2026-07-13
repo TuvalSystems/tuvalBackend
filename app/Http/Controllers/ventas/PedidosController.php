@@ -18,6 +18,7 @@ use App\Models\Articulos\GpArticulo;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpUsuario;
+use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
@@ -42,7 +43,8 @@ class PedidosController extends Controller
 
         //prueba
         protected readonly ReInvoiceServiceInterface $reInvoice,
-        protected readonly OrderCreatorServiceInterface $orderCreator
+        protected readonly OrderCreatorServiceInterface $orderCreator,
+        protected readonly CommercialVisibilityService $commercial
     ) {}
 
 
@@ -181,6 +183,7 @@ class PedidosController extends Controller
     {
 
 
+        $user = $request->user() ?? GpUsuario::find(137);
 
         $data = $request->validate([
             'puntodeventa_id' => 'required',
@@ -193,6 +196,9 @@ class PedidosController extends Controller
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $data['puntodeventa_id'])
             ->leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_cotizacions.origen as cotizacion_origen');
+
+        //restriccion de visualizacion de pedidodos
+            $this->commercial->applyUserRestriction($pedidos, $user, 'gp_pedidos.user_id');
 
         if ($data['estado'] != 'todos') {
             $pedidos = $pedidos->where('gp_pedidos.estado', $data['estado']);
@@ -557,7 +563,7 @@ class PedidosController extends Controller
     public function generarOrdenDeDespacho(int $id)
     {
         return $this->handleApiAction(function () use ($id) {
-            DB::transaction(fn()=> $this->orderService->generateOrderDispatch($id));
+            DB::transaction(fn() => $this->orderService->generateOrderDispatch($id));
             return $this->buildSuccessResponse('Orden Generada', 200);
         }, 'laravel', 'generarOrdenDeDespacho');
     }

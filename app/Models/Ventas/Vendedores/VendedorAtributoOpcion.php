@@ -44,6 +44,7 @@ class VendedorAtributoOpcion extends Model
 
     protected $fillable = [
         'atributo_id',
+        'opcion_id',
         'codigo',
         'nombre',
         'estado',
