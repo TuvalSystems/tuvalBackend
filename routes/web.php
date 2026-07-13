@@ -96,6 +96,7 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
     Route::get('listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
     Route::get('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
+    Route::get('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
 });
 
 Route::prefix('bodegas')->group(function () {

@@ -13,8 +13,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('gp_relacion_usuario_punto_ventas', function (Blueprint $table) {
-            $table->boolean('base')->default(0)->after('USER_PTO_VTA_USUARIO');
+        Schema::table('tipo_vendedors', function (Blueprint $table) {
+            $table->boolean('restriccion')->default(0)->after('descripcion');
         });
     }
 
@@ -25,8 +25,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('gp_relacion_usuario_punto_ventas', function (Blueprint $table) {
-            $table->dropColumn('base');
+        Schema::table('tipo_vendedors', function (Blueprint $table) {
+            $table->dropColumn('restriccion');
         });
     }
 };

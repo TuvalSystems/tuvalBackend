@@ -4,6 +4,7 @@ namespace App\Models\Ventas\Vendedores;
 
 use App\Models\GpCliente;
 use App\Models\GpUsuario;
+use App\Models\Ventas\TipoVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -58,6 +59,8 @@ class GpVendedor extends Model
     use HasFactory;
     protected $fillable = [
         'VEND_ID',
+        'user_id',
+        'tipo_vendedor_id',
         'VEND_NOMBRES',
         'VEND_APELLIDOS',
         'VEND_ID_EMPLEADO',
@@ -90,6 +93,10 @@ class GpVendedor extends Model
     public function usuario()
     {
         return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
+
+    public function tipoVendedor(){
+        return $this->belongsTo(TipoVendedor::class, 'tipo_vendedor_id');
     }
 
     public function jerarquia()
