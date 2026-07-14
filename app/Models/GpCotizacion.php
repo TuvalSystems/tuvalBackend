@@ -210,7 +210,7 @@ class GpCotizacion extends Model implements HasMedia
         'requiere_aprobacion_comercial',
         'motivo_aprobacion_comercial',
         'aprobado_comercial',
-        'aprobacion_comercial_id',
+        'aprobador_comercial_id',
         'requiere_aprobacion_crediticia',
         'aprobado_crediticia',
         'impreso',
