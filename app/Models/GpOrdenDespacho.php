@@ -43,7 +43,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class GpOrdenDespacho extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         'pedido_id',
         'orden',
@@ -55,6 +55,10 @@ class GpOrdenDespacho extends Model
         'autorizacion_USERID',
         'autorizacion_comentario',
         'fecha_hora_liberacion'
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime:Y-m-d H:i:s'
     ];
 
 

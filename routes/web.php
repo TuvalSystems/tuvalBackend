@@ -262,6 +262,12 @@ Route::group(['prefix' => 'inventario-web'], function () {
 });
 
 
+Route::prefix('despachos')->group(function (){
+    Route::get('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
+
+});
+
+
 Route::get('/test-mail', function () {
     Mail::raw('¡Hola! Este es un correo de prueba enviado desde Laravel 9 tras la actualización.', function ($message) {
         // Reemplaza esto con tu correo real

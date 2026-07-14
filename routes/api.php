@@ -531,6 +531,11 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
                 Route::post('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
             });
+
+            Route::prefix('ordenes-despacho')->group(function () {
+                Route::post('lista', [DespachosController::class, 'listaConsultaOrdenesDespacho']);
+                Route::post('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
+            });
         });
 
 
