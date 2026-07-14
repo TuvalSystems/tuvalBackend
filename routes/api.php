@@ -525,6 +525,11 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('depositos-historicos')->group(function () {
                 Route::post('lista', [CobranzasController::class, 'listaHistoricaDepositos']);
             });
+
+            Route::prefix('ordenes-despacho')->group(function () {
+                Route::post('lista', [DespachosController::class, 'listaConsultaOrdenesDespacho']);
+                Route::post('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
+            });
         });
 
 

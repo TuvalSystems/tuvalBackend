@@ -2,6 +2,8 @@
 
 namespace App\Services\Inventario\Bodegas\Contracts;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 interface DispatchServiceInterface
 {
 
@@ -16,7 +18,9 @@ interface DispatchServiceInterface
     public function getAllPtoVta();
     public function getAllPtoVtaReserved();
 
+     public function fetchListDispatchOrdersConsult(array $filters) : LengthAwarePaginator;
     /** PROCESO DE CANCELACION DE ORDEN DE DESPACHO */
 
-    public function cancelDispatchIfEmptyPicking($orderId);
+    public function cancelDispatchIfEmptyPicking(int $orderId);
+     public function printOrderDispatchPdf(int $id) : array;
 }
