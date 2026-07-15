@@ -617,7 +617,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ->join('gp_usuarios', 'gp_reservas.user_ingreso_reserva_id', '=', 'gp_usuarios.id')
             ->leftJoin('gp_usuarios as gpu', 'gp_reservas.user_autorizacion_reserva_id', '=', 'gpu.id')
             ->join('gp_cotizacions', 'gp_reservas.cotizacion_id', '=', 'gp_cotizacions.id');
-        if ($gpUser->perfil_id !== 2) {
+        if (!in_array($gpUser->perfil_id, [1, 2, 28])) {
             $query->where('gp_reservas.user_ingreso_reserva_id', $gpUser->id);
         }
 
