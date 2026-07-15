@@ -912,4 +912,13 @@ class QuotationService implements QuotationServiceInterface
         $this->sendToSegmentAndRucToGp($cliente->CLI_RUC, $subsegmentoId);
         return $cliente;
     }
+
+    public function getDefaultPriceListByPos(string $pvCode) : ?string 
+    {
+        return GpPuntoVenta::where('PTO_VTA_ID', $pvCode)->value('lista_precios_defecto');
+    }
+
+
+    
+
 }
