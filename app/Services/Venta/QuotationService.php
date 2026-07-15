@@ -921,9 +921,9 @@ class QuotationService implements QuotationServiceInterface
             throw new DomainException('Datos no encontrados');
         }
         return [
-            'id' => $salesPoint->id,
-            'pvCodigo' => $salesPoint->PTO_VTA_ID,
-            'listaPrecio' => $salesPoint->lista_precios_defecto
+            'id'            => $salesPoint->id,
+            'pvCodigo'      => trim($salesPoint->PTO_VTA_ID),
+            'listaPrecio'   => trim($salesPoint->lista_precios_defecto)
         ];
       
     }
