@@ -1020,4 +1020,12 @@ class CotizacionesController extends Controller
             return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
         }
     }
+
+    public function obtenerListaPrecioDefectoPuntoVenta(Request $request){
+        return $this->handleApiAction(function() use($request){
+            $pvCodigo = $request->input('pvCodigo', null);
+            $response = $this->quotationService->getDefaultPriceListByPos($pvCodigo);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        },'laravel', 'obtenerListaPrecioDefectoPuntoVenta');
+    }
 }

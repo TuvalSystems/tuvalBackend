@@ -97,6 +97,8 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
     Route::get('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
     Route::get('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
+
+    Route::get('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -128,6 +130,7 @@ Route::prefix('bodegas')->group(function () {
 
 Route::prefix('consultas')->group(function () {
     Route::get('stock-transito', [ConsultasController::class, 'consultStockInTransit']);
+    Route::get('stock-transito-transferencia-venta', [ConsultasController::class, 'consultarStockTransitoTransferenciaVenta']);
     Route::get('buscararticulo-web', [ConsultasController::class, 'buscarArticuloWeb']);
     Route::get('reservados', [ConsultasController::class, 'reservados']);
     Route::get('reservasweb/{item?}', [ConsultasController::class, 'reservasweb']);
@@ -138,7 +141,6 @@ Route::prefix('consultas')->group(function () {
     Route::get('pendientes_despachar', [ConsultasController::class, 'pendientes_despachar']);
     Route::get('transferenciaspendientes', [ConsultasController::class, 'transferenciaspendientes']);
     Route::get('buscarcode/{artCode}', [PedidosController::class, 'buscarIteml']);
-    Route::get('stock-transito', [ConsultasController::class, 'consultStockInTransit']);
     Route::get('territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
     Route::get('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
     Route::get('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
