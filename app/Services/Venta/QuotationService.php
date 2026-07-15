@@ -32,6 +32,7 @@ use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Carbon\Carbon;
+use DomainException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -716,7 +717,7 @@ class QuotationService implements QuotationServiceInterface
 
 
     /** proceso para omitir reservas de cotizacion  */
-    public function validateExistsReserve(?int $quotationId = null) : ?int
+    public function validateExistsReserve(?int $quotationId = null): ?int
     {
         if (!$quotationId) {
             return null;
@@ -913,12 +914,17 @@ class QuotationService implements QuotationServiceInterface
         return $cliente;
     }
 
-    public function getDefaultPriceListByPos(string $pvCode) : ?string 
+    public function getDefaultPriceListByPos(string $pvCode): array
     {
-        return GpPuntoVenta::where('PTO_VTA_ID', $pvCode)->value('lista_precios_defecto');
+        $salesPoint = GpPuntoVenta::where('PTO_VTA_ID', $pvCode)->first();
+        if(!$salesPoint){
+            throw new DomainException('Datos no encontrados');
+        }
+        return [
+            'id' => $salesPoint->id,
+            'pvCodigo' => $salesPoint->PTO_VTA_ID,
+            'listaPrecio' => $salesPoint->lista_precios_defecto
+        ];
+      
     }
-
-
-    
-
 }

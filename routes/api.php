@@ -193,8 +193,18 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('volver-a-pedir-cotizacion-v2', [CotizacionesController::class, 'volverAPedirCotizacionV2']);
 
 
+            Route::get('imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
+            Route::get('imprimircotizacionimagenes/{id}', [CotizacionesController::class, 'imprimircotizacionimagenes']);
+            Route::get('imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
+            Route::post('guardarmensaje', [CotizacionesController::class, 'guardarmensaje']);
+            Route::post('guardarordendecompra', [CotizacionesController::class, 'guardarordendecompra']);
+
+
             /** proceso de actualizacion de registros de prospecto s */
-            Route::post('prospecto/actualizar', [CotizacionesController::class, 'actualizarCotizacionPropectoV2']);
+            Route::prefix('prospecto')->group(function () {
+                Route::post('actualizar', [CotizacionesController::class, 'actualizarCotizacionPropectoV2']);
+                Route::post('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
+            });
             Route::post('selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
             Route::post('llenarcotizacionprospecto', [CotizacionesController::class, 'llenarcotizacionprospecto']);
             Route::post('guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
@@ -205,13 +215,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             Route::post('recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
             Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
-
-
-            Route::get('imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
-            Route::get('imprimircotizacionimagenes/{id}', [CotizacionesController::class, 'imprimircotizacionimagenes']);
-            Route::get('imprimircotizacionprospecto/{id}', [CotizacionesController::class, 'imprimircotizacionprospecto']);
-            Route::post('guardarmensaje', [CotizacionesController::class, 'guardarmensaje']);
-            Route::post('guardarordendecompra', [CotizacionesController::class, 'guardarordendecompra']);
             Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
         });
 

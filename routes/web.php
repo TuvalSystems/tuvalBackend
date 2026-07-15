@@ -97,6 +97,8 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
     Route::get('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
     Route::get('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
+
+    Route::get('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
 });
 
 Route::prefix('bodegas')->group(function () {
