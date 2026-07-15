@@ -13,6 +13,7 @@ use App\Models\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
 use App\Traits\RegisterAudit;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -24,7 +25,8 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
     use RegisterAudit;
     public function __construct(
         protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
-        protected readonly QuotationRepositoryInterface $repository
+        protected readonly QuotationRepositoryInterface $repository,
+        protected readonly QuotationHistoryCreatorServiceInterface $history
     ) {}
 
     public function approveQuotation(array $data): array
@@ -376,13 +378,15 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),
         ];
         $quote->save();
+        $quote->refresh();
         $newQuote = [
-            'cotizacion_nueva' => Arr::only($quote->fresh()->toArray(), $camposModificados),
+            'cotizacion_nueva' => Arr::only($quote->toArray(), $camposModificados),
         ];
 
         $this->updateRegisterCopyApprovalComercialDestination($quote->id);
+        $this->history->createQuoteHistory($quote);
         $this->createHistoryRecord($user, $quote, 'APPROVAL_QUOTE', $oldQuote, $newQuote);
-        return $quote->fresh();
+        return $quote;
     }
 
     public function updateRegisterCopyApprovalComercialDestination(int $quoteId)
