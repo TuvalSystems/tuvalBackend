@@ -578,17 +578,17 @@ class DispatchService implements DispatchServiceInterface
 
         $pointOfSaleId = data_get($filters, 'pvCodigo');
 
-        $warehouse = GpRelacionPuntoVentaBodega::query()
-            ->where('PTO_VTA_BOD_PUNTO_VENTA', $pointOfSaleId)
-            ->value('PTO_VTA_BOD_BODEGA');
+        // $warehouse = GpRelacionPuntoVentaBodega::query()
+        //     ->where('PTO_VTA_BOD_PUNTO_VENTA', $pointOfSaleId)
+        //     ->value('PTO_VTA_BOD_BODEGA');
 
-        if (blank($warehouse)) {
-            throw ValidationException::withMessages([
-                'pvCodigo' => [
-                    'El punto de venta no tiene una bodega relacionada.',
-                ],
-            ]);
-        }
+        // if (blank($warehouse)) {
+        //     throw ValidationException::withMessages([
+        //         'pvCodigo' => [
+        //             'El punto de venta no tiene una bodega relacionada.',
+        //         ],
+        //     ]);
+        // }
 
         $sortField  = data_get($filters, 'sortField', 'fecha_hora_liberacion');
         $sortOrder  = data_get($filters, 'sortOrder', 'desc');
@@ -638,7 +638,7 @@ class DispatchService implements DispatchServiceInterface
                 'gpd.despacho',
             ])
             ->join('gp_pedidos as gpd', 'gpd.id', '=', 'god.pedido_id')
-            ->where('god.BOD_BODEGA', $warehouse);
+            ->where('gpd.PTO_VTA_ID', $pointOfSaleId);
 
         if ($status !== '') {
             $query->where('god.estado', $status);
