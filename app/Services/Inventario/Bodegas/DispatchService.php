@@ -576,29 +576,16 @@ class DispatchService implements DispatchServiceInterface
     public function fetchListDispatchOrdersConsult(array $filters): LengthAwarePaginator
     {
 
-        $pointOfSaleId = data_get($filters, 'pvCodigo');
-
-        // $warehouse = GpRelacionPuntoVentaBodega::query()
-        //     ->where('PTO_VTA_BOD_PUNTO_VENTA', $pointOfSaleId)
-        //     ->value('PTO_VTA_BOD_BODEGA');
-
-        // if (blank($warehouse)) {
-        //     throw ValidationException::withMessages([
-        //         'pvCodigo' => [
-        //             'El punto de venta no tiene una bodega relacionada.',
-        //         ],
-        //     ]);
-        // }
-
-        $sortField  = data_get($filters, 'sortField', 'fecha_hora_liberacion');
-        $sortOrder  = data_get($filters, 'sortOrder', 'desc');
-        $search     =  trim(data_get($filters, 'search', ''));
-        $perPage    = data_get($filters, 'perpage', 10);
-        $ruc        = trim(data_get($filters, 'ruc', ''));
-        $status     = trim(data_get($filters, 'estado', 'liberada'));
-        $sortOrder  = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
-        $startDate  = data_get($filters, 'fechaInicio');
-        $endDate    = data_get($filters, 'fechaFin');
+        $pointOfSaleId  = data_get($filters, 'pvCodigo');
+        $sortField      = data_get($filters, 'sortField', 'fecha_hora_liberacion');
+        $sortOrder      = data_get($filters, 'sortOrder', 'desc');
+        $search         =  trim(data_get($filters, 'search', ''));
+        $perPage        = data_get($filters, 'perpage', 10);
+        $ruc            = trim(data_get($filters, 'ruc', ''));
+        $status         = trim(data_get($filters, 'estado', 'liberada'));
+        $sortOrder      = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
+        $startDate      = data_get($filters, 'fechaInicio');
+        $endDate        = data_get($filters, 'fechaFin');
 
         $sortColumns = [
             'ordenCodigo'           => 'god.orden',
