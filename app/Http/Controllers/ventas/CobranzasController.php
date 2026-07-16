@@ -2340,9 +2340,9 @@ class CobranzasController extends Controller
         }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
     }
 
-    public function imprimirExcelEstadoCuentaCliente(Request $request) : Response
+    public function imprimirExcelEstadoCuentaCliente(Request $request): Response
     {
-       return $this->handleDocumentAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate  = $request->validate([
                 'id' => ['required', 'integer', 'exists:gp_clientes,id'],
             ]);
@@ -2352,6 +2352,18 @@ class CobranzasController extends Controller
         }, 'laravel', 'imprimirExcelEstadoCuentaCliente');
     }
 
-    
 
+
+    public function obtenerFacturasEstadoCuentaCliente(Request $request): JsonResponse
+    {
+
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id = data_get($validate, 'id');
+            $response = $this->invoiceCollect->getInvoiceCollectionsByClient($id);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'laravel', 'obtenerFacturasEstadoCuentaCliente');
+    }
 }

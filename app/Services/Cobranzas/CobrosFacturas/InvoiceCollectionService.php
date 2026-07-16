@@ -2,7 +2,10 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
+use App\Enums\Ventas\TaxRateEnum;
 use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
+use App\Models\Cobranzas\GpCobrosDeposito;
+use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCierreCaja;
 use App\Models\GpCliente;
 use App\Models\GpUsuario;
@@ -129,7 +132,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         $pdf->setPaper('a4', 'portrait');
         $pdf->loadHTML($html);
         $binary = $pdf->output();
-        $filename = 'ESTADO-CUENTA-CLIENTE' . Str::slug($client->CLI_RUC, '-') . '-' . '.pdf';
+        $filename = 'ESTADO-CUENTA-CLIENTE-' . Str::slug($client->CLI_RUC, '-') . '-' . '.pdf';
 
         return [
             'binary'        => $binary,
@@ -217,5 +220,62 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                 'No se pudo calcular la diferencia de días porque una de las fechas no es válida.'
             );
         }
+    }
+
+
+
+    /** funcion para obtener las facturas  */
+
+    public function getInvoiceCollectionsByClient(int $id)
+    {
+
+        $client = GpCliente::find($id);
+        if (!$client) {
+            throw new DomainException('Cliente no encontrado');
+        }
+        $detailAccount      = $this->getStatusStatementDetailApi($client->CLI_RUC);
+        $docsfilters        = $detailAccount->where('tipo', 'Facturas')->pluck('documento');
+        $docsNotFilter      = $detailAccount->pluck('documento');
+        $afterDocs          = GpCobrosRetenciones::whereIn('ret_factura', $docsfilters)->get()->keyBy('ret_factura');
+
+        $pendingDeposits    = GpCobrosDeposito::with('depositosFactura', function ($q) use ($docsNotFilter) {
+            $q->whereIn('id_factura', $docsNotFilter);
+        })->where('estado', 'iniciado')->get();
+
+        $detailAccount = $detailAccount
+            ->filter(fn($det) => (float) $det->saldoCliente > 0)
+            ->each(function ($det) {
+                $sub            = round(TaxRateEnum::IVA_12->calculateSubtotal($det->montoOriginal), 4);
+                $det->subtotal  = $sub;
+                $det->iva       = round($det->montoOriginal - $sub, 2);
+            })
+            ->values();
+
+
+
+        $invoiceRetention = $detailAccount->filter(function ($det) use ($afterDocs) {
+            $docDet = $afterDocs->get($det->documento);
+            return !$docDet && $det->tipo === 'Facturas';
+        })->values();
+
+        return [
+            'facturas'                  => $detailAccount,
+            'facturas_retencions'       => $invoiceRetention,
+            'retencionesGeneradas'      => $afterDocs,
+            'depositosPendientes'       => $pendingDeposits,
+        ];
+    }
+
+
+    private function getStatusStatementDetailApi(string $ruc): ?Collection
+    {
+
+        $response = $this->api->getDetailedAccountStatus([
+            'ruc'           =>  $ruc,
+            'idCompania'     => config('services.api_gp.company'),
+        ]);
+
+        return collect(data_get($response, 'data.detalle', []))
+            ->map(fn(array $detail) => (object) $detail);
     }
 }

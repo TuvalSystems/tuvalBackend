@@ -12,4 +12,6 @@ interface InvoiceCollectionServiceInterface
     public function openCashBoxed(int $pvId,  GpUsuario $user);
     public function generateClientAccountStatementPdf(int $clientId): array;
     public function generateClientAccountStatementExcel(int $clientId): array;
+
+    public function getInvoiceCollectionsByClient(int $id);
 }

@@ -232,7 +232,7 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
         Route::get('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
         Route::get('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
-
+        Route::get('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
     });
 });
 

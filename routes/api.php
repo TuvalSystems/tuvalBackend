@@ -533,6 +533,10 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('cobros-facturas')->group(function () {
                 Route::post('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
                 Route::post('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+
+                Route::post('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
+                Route::post('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
+
             });
 
             Route::prefix('ordenes-despacho')->group(function () {
