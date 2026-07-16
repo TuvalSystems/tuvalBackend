@@ -160,27 +160,27 @@
                         <table class="table2">
                             <tr>
                                 <td><b>Cliente:</b></td>
-                                <td>{{ $cliente['CLI_RAZON_SOCIAL'] }}</td>
+                                <td>{{ $cliente->CLI_RAZON_SOCIAL }}</td>
                             </tr>
                             <tr>
                                 <td><b>Dirección:</b></td>
-                                <td>{{ $cliente['CLI_DIRECCION'] }}</td>
+                                <td>{{ $cliente->CLI_DIRECCION }}</td>
                             </tr>
                             <tr>
                                 <td><b>E-mail:</b></td>
-                                <td>{{ $cliente['CLI_CORREO_ELECT_SRI'] }}</td>
+                                <td>{{ $cliente->CLI_CORREO_ELECT_SRI }}</td>
                             </tr>
                             <tr>
                                 <td><b>Identificación:</b></td>
-                                <td>{{ $cliente['CLI_RUC'] }}</td>
+                                <td>{{ $cliente->CLI_RUC }}</td>
                             </tr>
                             <tr>
                                 <td><b>Teléfono:</b></td>
-                                <td>{{ $cliente['CLI_TELEFONO_1'] }}</td>
+                                <td>{{ $cliente->CLI_TELEFONO_1 }}</td>
                             </tr>
                             <tr>
                                 <td><b>Ciudad:</b></td>
-                                <td>{{ $cliente['CLI_CIUDAD'] }}</td>
+                                <td>{{ $cliente->CLI_CIUDAD }}</td>
                             </tr>
                             <tr>
                                 <td><b>Fecha:</b></td>
@@ -205,12 +205,24 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-right">${{ number_format($resumen['actua'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias030'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias3160'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias6190'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias91Mas'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['total'],2,'.',',') }}</td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['actual'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias030'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias3160'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias6190'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias91Mas'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['total'], 2, '.', ',') }}
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -229,17 +241,27 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($detalle as $value)
+                    @foreach ($detalle as $value)
                     <tr>
-                        <td>{{ $value['tipo'] }}</td>
-                        <td>{{ $value['documento'] }}</td>
-                        <td>{{ $value['fechaEmision'] }}</td>
-                        <td>{{$value['fechaVencimiento'] }}</td>
-                        <td>{{ $value['condicionPago'] }}</td>
-                        <td class="text-right">${{ number_format($value['montoOriginal'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($value['abono'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($value['saldoPendiente'],2,'.',',') }}</td>
-                        <td>{{$value['observacion']}}</td>
+                        <td>{{ $value->tipo }}</td>
+                        <td>{{ $value->documento }}</td>
+                        <td>{{ $value->fechaEmision }}</td>
+                        <td>{{ $value->fechaVencimiento }}</td>
+                        <td>{{ $value->condicionPago }}</td>
+
+                        <td class="text-right">
+                            ${{ number_format($value->montoOriginal, 2, '.', ',') }}
+                        </td>
+
+                        <td class="text-right">
+                            ${{ number_format($value->abono, 2, '.', ',') }}
+                        </td>
+
+                        <td class="text-right">
+                            ${{ number_format($value->saldoPendiente, 2, '.', ',') }}
+                        </td>
+
+                        <td>{{ $value->observacion }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -257,12 +279,24 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-right">${{ number_format($resumen['actua'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias030'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias3160'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias6190'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['dias91Mas'],2,'.',',') }}</td>
-                        <td class="text-right">${{ number_format($resumen['total'],2,'.',',') }}</td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['actual'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias030'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias3160'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias6190'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['dias91Mas'], 2, '.', ',') }}
+                        </td>
+                        <td class="text-right">
+                            ${{ number_format($resumen['total'], 2, '.', ',') }}
+                        </td>
                     </tr>
                 </tbody>
             </table>

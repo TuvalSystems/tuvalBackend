@@ -2330,22 +2330,28 @@ class CobranzasController extends Controller
 
     public function imprimirPdfEstadoCuentaCliente(Request $request): Response
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate  = $request->validate([
                 'id' => ['required', 'integer', 'exists:gp_clientes,id'],
             ]);
             $id        = data_get($validate, 'id');
             $response  = $this->invoiceCollect->generateClientAccountStatementPdf($id);
-            return $this->successResponse('Información Obtenida', $response, 200);
+            return $this->buildFileResponse($response);
         }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
-
-        // return $this->handleDocumentAction(function () use ($request) : Response{
-        //     $validate = $request->validate([
-        //         'id' => 'required|exists:gp_clientes,id',
-        //     ]);
-        //     $id = data_get($validate, 'id');
-        //     $response = [];
-        //     return $this->buildFileResponse($response);
-        // }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
     }
+
+    public function imprimirExcelEstadoCuentaCliente(Request $request) : Response
+    {
+       return $this->handleDocumentAction(function () use ($request): Response {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id        = data_get($validate, 'id');
+            $response  = $this->invoiceCollect->generateClientAccountStatementExcel($id);
+            return $this->buildFileResponse($response);
+        }, 'laravel', 'imprimirExcelEstadoCuentaCliente');
+    }
+
+    
+
 }

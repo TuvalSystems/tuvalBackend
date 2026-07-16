@@ -231,6 +231,7 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
         Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
         Route::get('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
+        Route::get('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
 
     });
 });

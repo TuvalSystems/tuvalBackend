@@ -2,6 +2,7 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
+use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
 use App\Models\GpCierreCaja;
 use App\Models\GpCliente;
 use App\Models\GpUsuario;
@@ -12,6 +13,9 @@ use Carbon\Carbon;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Excel as MaatwebsiteExcel;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 {
@@ -106,7 +110,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
 
 
-    /** impresion de estado de cuenta cliente execel  */
+    /** impresion de estado de cuenta cliente excel  y pdf */
 
     public function generateClientAccountStatementPdf(int $clientId): array
     {
@@ -114,7 +118,54 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         if (!$client) {
             throw new DomainException('Cliente no encontrado');
         }
+        $accountStatement = $this->buildClientAccountStatementData($client);
+        $infoPdf = [
+            'cliente' => $client,
+            'detalle' => data_get($accountStatement, 'detail'),
+            'resumen' => data_get($accountStatement, 'summary'),
+        ];
+        $html   = view('pdf.cobranzas.cobros-facturas.estado-cuenta-cliente', $infoPdf)->render();
+        $pdf    = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+        $filename = 'ESTADO-CUENTA-CLIENTE' . Str::slug($client->CLI_RUC, '-') . '-' . '.pdf';
 
+        return [
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
+        ];
+    }
+
+    public function generateClientAccountStatementExcel(int $clientId): array
+    {
+        $client = GpCliente::find($clientId);
+        if (!$client) {
+            throw new DomainException('Cliente no encontrado');
+        }
+
+        $accountStatement = $this->buildClientAccountStatementData($client);
+        $detail = data_get($accountStatement, 'detail', collect());
+        $binary = Excel::raw(
+            new ClientAccountStatementDetailExport($detail),
+            MaatwebsiteExcel::XLSX
+        );
+        $fileName = 'ESTADO-CUENTA-CLIENTE-'
+            . Str::slug($client->CLI_RUC, '-')
+            . '.xlsx';
+
+        return [
+            'binary'        => $binary,
+            'filename'      => $fileName,
+            'content_type'  =>
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+    }
+
+
+    private  function buildClientAccountStatementData(GpCliente $client): array
+    {
         $detail = $this->getCustomerStatusStatementDetail($client->CLI_RUC);
         $summary = $this->getCustomerStatusStatementSummary($client->CLI_RUC);
         $detail->each(function ($det) {
@@ -127,14 +178,14 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                 $det->condicionPago = $days . ($days === 1 ? ' DÍA' : ' DÍAS');
             }
         });
-
-
         return [
-            'cliente' => $client,
-            'detalle' => $detail,
-            'resumen' => $summary,
+            'client' => $client,
+            'detail' => $detail,
+            'summary' => $summary,
         ];
     }
+
+
 
     private function getCustomerStatusStatementDetail(string $ruc): Collection
     {
@@ -153,7 +204,6 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             'ruc' => $ruc
         ]);
         return collect(data_get($response, 'data', []));
-
     }
 
     private function dateDiffInDays(string $date1, string $date2): int
