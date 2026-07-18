@@ -3,15 +3,19 @@
 namespace App\Repositories\Venta\Contracts;
 
 use App\Models\GpCotizacion;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 interface InventoryReservationRepositoryInterface
 {
-    // Define los métodos que debe implementar el repositorio
+    public function getDetailsForTransferReservation(GpCotizacion $quote): EloquentCollection;
 
-     public function getDetailsForTransferReservation(GpCotizacion $quote);
-      public function checkExistingReservationTransfer(GpCotizacion $quote);
-      public function getAllTransferReservedByWarehouses($warehouse);
-      public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination ,$quotation = null);
-       public function findCountPendingGuidesByOriginWarehouse($bodOrigin);
-      public function findGuidesPendingsByOriginWarehouse($bodOrigin, $destId);
+    public function checkExistingReservationTransfer(GpCotizacion $quote): bool;
+
+    public function getAllTransferReservedByWarehouses(?string $warehouse): EloquentCollection;
+
+    public function getAllTransferReservedByOriginAndDestination(string $waOrigin, string $waDestination, ?string $quotation = null): EloquentCollection;
+
+    public function findCountPendingGuidesByOriginWarehouse(?string $bodOrigin): EloquentCollection;
+
+    public function findGuidesPendingsByOriginWarehouse(string $bodOrigin, string $destId): EloquentCollection;
 }

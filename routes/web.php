@@ -96,6 +96,9 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
     Route::get('listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
     Route::get('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
+    Route::get('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
+
+    Route::get('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -247,6 +250,12 @@ Route::group(['prefix' => 'inventario-web'], function () {
         Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
         Route::get('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
     });
+});
+
+
+Route::prefix('despachos')->group(function (){
+    Route::get('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
+
 });
 
 

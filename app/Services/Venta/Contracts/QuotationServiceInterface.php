@@ -54,11 +54,11 @@ interface QuotationServiceInterface
     /** funcion para llenar la cotizacion  */
 
     /** funcion para obtener el stock del articulo en la cotizacion  */
-    public function getStockItemsForWarehouse(array $article, string $warehouse, ?int $cotizacionId = null) : array ;
+    public function getStockItemsForWarehouse(array $article, string $warehouse, ?int $cotizacionId = null): array;
 
 
     /** funcion para obtener el stock del articuo en la cotizacion v2  */
-     public function getStockItemsForWarehouseV2(array $articles, string $warehouse, ?int $quoteId = null) : array ;
+    public function getStockItemsForWarehouseV2(array $articles, string $warehouse, ?int $quoteId = null): array;
 
     /** funcion para obtener el margen del item l en cotizaciónes */
     public function getMarginItem(string $artArticulo);
@@ -74,4 +74,6 @@ interface QuotationServiceInterface
 
     public function checkClientWithSegmentExist(string $ruc);
     public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);
+
+    public function getDefaultPriceListByPos(string $pvCode): array;
 }

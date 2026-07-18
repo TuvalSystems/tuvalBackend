@@ -22,6 +22,8 @@ use App\Http\Controllers\FuncionesController;
 use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
+use App\Models\Ventas\Vendedores\VendedorAtributoValor;
+use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
@@ -30,6 +32,7 @@ use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -41,7 +44,8 @@ class CotizacionesController extends Controller
     public function __construct(
         protected readonly QuotationServiceInterface $quotationService,
         protected readonly ClientQueryServiceInterface $clientService,
-        protected readonly QuotationCreatorServiceInterface $quotationCreator
+        protected readonly QuotationCreatorServiceInterface $quotationCreator,
+        protected readonly CommercialVisibilityService $commercial
     ) {}
 
     public function obtenerListaTipoIdentificacion(): JsonResponse
@@ -310,6 +314,8 @@ class CotizacionesController extends Controller
 
     public function vercotizaciones(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
+        $user = $request->user() ?? GpUsuario::find(137);
+
         $data = $request->validate([
             'puntodeventa_id' => 'required',
             'estado' => '',
@@ -320,6 +326,9 @@ class CotizacionesController extends Controller
         $cotizaciones = GpCotizacion::with('reserva')->where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
             ->join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
+
+            $this->commercial->applyUserRestriction($cotizaciones, $user, 'gp_cotizacions.user_id');
+        
 
         if ($data['estado'] == 'pendientes') {
             $cotizaciones = $cotizaciones
@@ -385,6 +394,8 @@ class CotizacionesController extends Controller
             'cotizaciones' => $cotizaciones,
         ]);
     }
+
+
 
     public function guardardireccion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -957,17 +968,6 @@ class CotizacionesController extends Controller
             $datosL = $this->quotationService->getMarginItem($request->articulo);
             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
         }, 'laravel', 'obteneMargenItemlL');
-
-        try {
-            return $this->successResponse('Información obtenida correctamente', $datosL, 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
     }
 
 
@@ -1019,5 +1019,13 @@ class CotizacionesController extends Controller
         } catch (\Throwable $e) {
             return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
         }
+    }
+
+    public function obtenerListaPrecioDefectoPuntoVenta(Request $request){
+        return $this->handleApiAction(function() use($request){
+            $pvCodigo = $request->input('pvCodigo', null);
+            $response = $this->quotationService->getDefaultPriceListByPos($pvCodigo);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        },'laravel', 'obtenerListaPrecioDefectoPuntoVenta');
     }
 }

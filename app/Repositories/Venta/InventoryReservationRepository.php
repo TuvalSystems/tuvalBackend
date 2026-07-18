@@ -7,12 +7,12 @@ use App\Models\GpCotizacionDetalle;
 use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Models\Reservas\GpTrasladosReservas;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class InventoryReservationRepository implements InventoryReservationRepositoryInterface
 {
 
-    public function getDetailsForTransferReservation(GpCotizacion $quote): Collection
+    public function getDetailsForTransferReservation(GpCotizacion $quote): EloquentCollection
     {
         return GpCotizacionDetalle::query()->from('gp_cotizacion_detalles as cd')->where('cd.cotizacion_id', $quote->id)
             ->join('gp_cotizacions as c', 'c.id', '=', 'cd.cotizacion_id')
@@ -33,7 +33,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
     }
 
 
-    public function checkExistingReservationTransfer(GpCotizacion $quote)
+    public function checkExistingReservationTransfer(GpCotizacion $quote): bool
     {
         return GpCotizacionDetalle::query()->from('gp_cotizacion_detalles as cd')->where('cd.cotizacion_id', $quote->id)
             ->join('gp_cotizacion_detalle_stocks as cds', 'cds.detalle_id', '=', 'cd.id')
@@ -42,7 +42,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
             ->exists();
     }
 
-    public function getAllTransferReservedByWarehouses($warehouse)
+    public function getAllTransferReservedByWarehouses(?string $warehouse): EloquentCollection
     {
         return GpTrasladosReservas::query()->from('gp_traslados_reservas as tr')
             ->leftJoin('gp_bodegas as b', 'b.BOD_BODEGA', '=', 'tr.bodega_destino')
@@ -58,7 +58,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
             ])->get();
     }
 
-    public function getAllTransferReservedByOriginAndDestination($waOrigin, $waDestination, $quotation = null)
+    public function getAllTransferReservedByOriginAndDestination(string $waOrigin, string $waDestination, ?string $quotation = null): EloquentCollection
     {
         return GpTrasladosReservas::query()->from('gp_traslados_reservas as tr')
             ->join('gp_cotizacions as c', 'c.id', '=', 'tr.cotizacion_id')
@@ -84,7 +84,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
     }
 
 
-    public function findCountPendingGuidesByOriginWarehouse($bodOrigin)
+    public function findCountPendingGuidesByOriginWarehouse(?string $bodOrigin): EloquentCollection
     {
         return GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gpgr')
@@ -102,7 +102,7 @@ class InventoryReservationRepository implements InventoryReservationRepositoryIn
             ->keyBy('bodega_destino');
     }
 
-    public function findGuidesPendingsByOriginWarehouse($bodOrigin, $destId)
+    public function findGuidesPendingsByOriginWarehouse(string $bodOrigin, string $destId): EloquentCollection
     {
         return GpGuiaRemisionReserva::query()
             ->from('gp_guia_remision_reservas as gpgr')

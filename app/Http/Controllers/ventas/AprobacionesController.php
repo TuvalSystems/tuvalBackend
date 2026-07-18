@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Enums\devoluciones\DevolutionStatus;
-use App\Enums\Ventas\OrderStatus;
-use App\Models\GpPedido;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
 use App\Traits\JsonResponseTrait;
@@ -33,15 +31,16 @@ class AprobacionesController extends Controller
         protected readonly ApprovalQuotationServiceInterface $approvalQuote
 
     ) {}
-    public function estadodecuenta(Request $request): JsonResponse
+    public function estadoCuentaCliente(Request $request): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $detalle = $this->approvalService->accountStatusClient($data['CLI_RUC']);
-            return $this->successResponse('Información Obtenida Correctamente', $detalle, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al obtener la información: ' . $e->getMessage(), 500);
-        }
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id'                  => 'required|integer|exists:gp_pedidos,id',
+            ]);
+            $id = data_get($validate, 'id');
+            $respuesta = $this->approvalOrder->accountStatusClient($id);
+            return $this->successResponse('Información Obtenida Correctamente', $respuesta, 200);
+        }, 'laravel', 'estadoCuentaCliente');
     }
     public function listaCotizacionesPendientesPorAprobar(Request $request): JsonResponse
     {
@@ -91,82 +90,171 @@ class AprobacionesController extends Controller
     }
 
 
-
-    public function getSegmentoCliente(string $ruc)
+    public function verificarStockPedidoParaAprobacion(Request $request): JsonResponse
     {
-        $response = $this->apiGpService->fetchClientSegment([
-            'ruc' => $ruc,
-        ]);
-        $data = data_get($response, 'data', []);
-        return is_array($data) ? $data : (array) $data;
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'id' => 'required|integer|exists:gp_pedidos,id',
+            ]);
+            $id     = data_get($validate, 'id');
+            $alert  =  $this->approvalOrder->validateOrderStockForApproval($id);
+            if ($alert) {
+                return $this->buildExistResponse(false, $alert, 200);
+            }
+            return $this->buildExistResponse(true, 'La reserva cuenta con Stock Disponible', 200);
+        }, 'laravel', 'consultaVerificacionStockPedido');
     }
 
 
-    public function verpedidosporaprobarcrediticios(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
 
-        $data = $request->validate([
-            'puntodeventa_id' => 'required',
-        ]);
-        $pedidos = GpPedido::where('requiere_aprobacion_crediticia', 'yes')
-            ->where('aprobado_crediticio', 'no')
-            ->where(function ($q) {
-                $q->where('requiere_aprobacion_comercial', 'no')
-                    ->orWhere('requiere_aprobacion_comercial', 'yes')
-                    ->where('aprobado_comercial', 'yes');
-            })
-            // ->whereNotIn('estado', ['eliminado', 'anulada', 'rechazado', 'facturado', 'enviando', 'procesado'])
-            ->whereNotIn('estado', [
-                OrderStatus::ELIMINADO,
-                OrderStatus::ANULADA,
-                OrderStatus::RECHAZADO,
-                OrderStatus::FACTURADO,
-                OrderStatus::ENVIANDO,
-                OrderStatus::PROCESADO,
-                // Agrega los demás casos si existen en tu Enum
-            ])
-            ->orderBy('created_at', 'DESC')->get();
-
-        foreach ($pedidos as $key => $pedido) {
-            $res = $this->getSegmentoCliente($pedido->CLI_RUC);
-            $pedido->segmento = data_get($res, 'segmento', null);
-            $pedido->subsegmento = data_get($res, 'subsegmento', null);
-        }
-
-        return response([
-            'success' => true,
-            'pedidos' => $pedidos,
-        ]);
-    }
-
-    public function aprobarpedido(Request $request)
+    public function aprobacionComercialPedido(Request $request)
     {
         return $this->handleApiAction(function () use ($request) {
-            $gpuser     = $request->user();
-            $data       = $request->all();
-            $pedido     = DB::transaction(function () use ($data, $gpuser) {
-                return $this->approvalService->approveComercialOrder($data, $gpuser);
+            $validate = $request->validate([
+                'id'    => 'required|integer|exists:gp_pedidos,id',
+                'msg'   => 'nullable|string'
+            ]);
+            $id         = data_get($validate, 'id');
+            $msg        = data_get($validate, 'msg');
+            $user       = $request->user();
+            $pedido     = DB::transaction(function () use ($id, $user, $msg) {
+                return $this->approvalOrder->approveComercialOrder($id, $user, $msg);
             });
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
         }, 'laravel', 'aprobarpedido');
     }
 
 
-    public function rechazarpedidoporstock(Request $request)
+    public function rechazarAprobacionComercialPedido(Request $request)
     {
-        try {
-            $gpuser = $request->user();
-            $data   = $request->all();
-            $response = DB::transaction(function () use ($data, $gpuser) {
-                return $this->approvalService->denyApproveComercialOrderForInsufficientStock($data, $gpuser);
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id'   => 'required|integer|exists:gp_pedidos,id',
+                'msg'  => 'nullable|string'
+            ]);
+            $user       = $request->user();
+            $orderId    = data_get($validate, 'id');
+            $alert      = data_get($validate, 'msg');
+            $pedido     = DB::transaction(function () use ($orderId, $user, $alert) {
+                return $this->approvalOrder->rejectCommercialOrder($orderId,  $user, $alert,);
             });
-            $pedido = $response['pedido'];
-            $alert = $response['alert'];
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al rechazar el pedido: ' . $e->getMessage(), 500);
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
+        }, 'laravel', 'rechazarpedido');
+    }
+
+    public function rechazarAprobacionComercialPedidoStock(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id'    => 'required|integer|exists:gp_pedidos,id',
+                'msg'   => 'nullable|string'
+            ]);
+            $orderId    = data_get($validate, 'id');
+            $alert      = data_get($validate, 'msg');
+
+            $gpuser = $request->user();
+            $order = DB::transaction(function () use ($orderId, $alert, $gpuser) {
+                return $this->approvalOrder->rejectCommercialOrder($orderId,   $gpuser, $alert);
+            });
+
+            return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado por: {$alert}", 200);
+        }, 'laravel', 'rechazarpedidoporstock');
+    }
+
+
+
+
+
+    public function aprobarpedidocrediticio(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id'    => 'required|integer|exists:gp_pedidos,id',
+                'msg'   => 'nullable|string'
+            ]);
+            $orderId    = data_get($validate, 'id');
+            $mensaje    = data_get($validate, 'msg');
+            $gpuser     = $request->user();
+            $order      = DB::transaction(function () use ($orderId, $gpuser, $mensaje) {
+                return $this->approvalOrder->approveCreditOrder($orderId, $gpuser, $mensaje);
+            });
+            return $this->buildSuccessResponse("Pedido {$order->pedido} aprobado", 200);
+        }, 'laravel', 'aprobarpedidocrediticio');
+    }
+
+    public function rechazarAprobacionCrediticiaPedido(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id'    => 'required|integer|exists:gp_pedidos,id',
+                'msg'   => 'nullable|string'
+            ]);
+            $orderId    = data_get($validate, 'id');
+            $alert      = data_get($validate, 'msg');
+            $user       = $request->user();
+            $order     = DB::transaction(function () use ($orderId, $user, $alert) {
+                return $this->approvalOrder->rejectCreditOrder($orderId, $user, $alert);
+            });
+            return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado", 200);
+        }, 'laravel', 'rechazarPedidoCrediticio');
+    }
+
+    public function rechazarAprobacionCrediticiaPedidoStock(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id'    => 'required|integer|exists:gp_pedidos,id',
+                'msg'   => 'nullable|string'
+            ]);
+            $orderId    = data_get($validate, 'id');
+            $alert      = data_get($validate, 'msg');
+            $user       = $request->user();
+            $order = DB::transaction(function () use ($orderId, $user, $alert) {
+                return $this->approvalOrder->rejectCreditOrder($orderId,  $user, $alert);
+            });
+
+            return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado por: {$alert}", 200);
+        }, 'laravel', 'rechazarPedidoCrediticioPorStock');
+    }
+
+
+
+    public function aprobacionComercialCotizacion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $data = $request->all();
+            $user = $request->user();
+            $quote = DB::transaction(fn() => $this->approvalQuote->approveComercialQuote($data['id'], $user));
+            return $this->buildSuccessResponse("Cotización {$quote->cotizacion} aprobada", 200);
+        }, 'laravel', ' aprobacionComercialCotizacion');
+    }
+    public function rechazarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    {
+
+        $data = $request->all();
+        $user = $request->user();
+
+        if (GpCotizacion::where('id', $data['id'])->update(
+            [
+                'aprobado_comercial'    => 'no',
+                'user_rechazo_id'       => $user->id,
+                'estado'                => 'rechazado',
+                'fe_rechazo'            => now()->format('Y-m-d H:i:s'),
+            ]
+        )) {
+            return response([
+                'success' => true,
+                'message' => 'Cotización ' . $data['cotizacion'] . ' rechazada'
+            ]);
+        } else {
+            return response([
+                'error' => 'Hubo un error al guardar'
+            ], 409);
         }
     }
+
+
+
 
     public function aprobardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -221,99 +309,9 @@ class AprobacionesController extends Controller
         }
     }
 
-    public function consultaparaaprobarpedido(Request $request): JsonResponse
-    {
-        $data = $request->all();
-        return $this->approvalService->getOrderApprovalData($data);
-    }
 
 
 
-    public function aprobarpedidocrediticio(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $gpuser     = $request->user();
-            $data       = $request->all();
-            $pedido = DB::transaction(function () use ($data, $gpuser) {
-                return $this->approvalService->approveCreditOrder($data, $gpuser);
-            });
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} aprobado", 200);
-        }, 'laravel', 'aprobarpedidocrediticio');
-    }
-
-    public function rechazarpedidocrediticio(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $user = $request->user();
-            $data = $request->all();
-            $pedido = DB::transaction(function () use ($data, $user) {
-                return $this->approvalService->denyCreditApproval($data, $user);
-            });
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
-        }, 'laravel', 'rechazarPedidoCrediticio');
-    }
-
-    public function rechazarpedidocrediticioporstock(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $user = $request->user();
-            $data = $request->all();
-            $response = DB::transaction(function () use ($data, $user) {
-                return $this->approvalService->rejectCreditOrderForInsufficientStock($data, $user);
-            });
-            $pedido = data_get($response, 'pedido');
-            $alert  = data_get($response, 'alert');
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado por: {$alert}", 200);
-        }, 'laravel', 'rechazarPedidoCrediticioPorStock');
-    }
-
-
-
-    public function aprobacionComercialCotizacion(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $data = $request->all();
-            $user = $request->user();
-            $quote = DB::transaction(fn() => $this->approvalService->approveComercialQuote($data['id'], $user));
-            return $this->buildSuccessResponse("Cotización {$quote->cotizacion} aprobada", 200);
-        }, 'laravel', ' aprobacionComercialCotizacion');
-    }
-    public function rechazarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->all();
-        $user = $request->user();
-
-        if (GpCotizacion::where('id', $data['id'])->update(
-            [
-                'aprobado_comercial'    => 'no',
-                'user_rechazo_id'       => $user->id,
-                'estado'                => 'rechazado',
-                'fe_rechazo'            => now()->format('Y-m-d H:i:s'),
-            ]
-        )) {
-            return response([
-                'success' => true,
-                'message' => 'Cotización ' . $data['cotizacion'] . ' rechazada'
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 409);
-        }
-    }
-
-    public function rechazarpedido(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $user = $request->user();
-            $data = $request->all();
-            $pedido = DB::transaction(function () use ($data, $user) {
-                return $this->approvalService->denyApproveComercialOrder($data, $user);
-            });
-            return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
-        }, 'laravel', 'rechazarpedido');
-    }
 
 
     public function verdevolucionesporaprobar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -355,7 +353,7 @@ class AprobacionesController extends Controller
     {
         return $this->handleApiAction(function () use ($request) {
             $id = data_get($request->all(), 'id');
-            $quote = $this->approvalService->denyQuotationBeenWaiting($id, $request->user());
+            $quote = $this->approvalQuote->denyQuotationBeenWaiting($id, $request->user());
             return $this->successResponse('Cotización rechazada', $quote, 200);
         }, 'laravel', 'rechazarCotizacionEstadoEspera');
     }
@@ -364,8 +362,18 @@ class AprobacionesController extends Controller
     {
         return $this->handleApiAction(function () use ($request) {
             $id = data_get($request->all(), 'id');
-            $order = $this->approvalService->denyOrderBeenWaiting($id, $request->user());
+            $order = $this->approvalOrder->denyOrderBeenWaiting($id, $request->user());
             return $this->successResponse('Pedido rechazado', $order, 200);
         }, 'laravel', 'rechazarPedidoEstadoEspera');
+    }
+
+    /** lista de pedidos pendientes de aprobación crediticia */
+    public function listaPedidosPendientesAprobacionCrediticia(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $filters = $request->input('filters', []);
+            $lista = $this->approvalOrder->fetchOrdersPendingCreditApproval($filters);
+            return $this->successResponse('Lista Obtenida', $lista, 200);
+        }, 'laravel', 'listaPedidosPendientesAprobacionCrediticia');
     }
 }

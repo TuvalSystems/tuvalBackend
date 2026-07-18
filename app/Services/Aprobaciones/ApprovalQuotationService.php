@@ -13,14 +13,20 @@ use App\Models\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
+use App\Traits\RegisterAudit;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 {
-
+    use RegisterAudit;
     public function __construct(
         protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
-        protected readonly QuotationRepositoryInterface $repository
+        protected readonly QuotationRepositoryInterface $repository,
+        protected readonly QuotationHistoryCreatorServiceInterface $history
     ) {}
 
     public function approveQuotation(array $data): array
@@ -121,7 +127,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
     }
 
 
-    public function validateQuotationDetailToApprove($detalles, $ptoVenta, $dsctGlobalCliente): array
+    public function validateQuotationDetailToApprove(array $detalles, GpPuntoVenta $ptoVenta, float $dsctGlobalCliente): array
     {
         $detailMotivos  = [];
         $ids            = collect($detalles)->pluck('detalle_id')->filter();
@@ -214,7 +220,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
     }
 
 
-    public function getAllQuotesPendingApprovals($ptoVta, GpUsuario $user): Collection
+    public function getAllQuotesPendingApprovals(int $ptoVta, GpUsuario $user): Collection
     {
         $filteredQuotes = collect([]);
         $user->load(['vendedor.jerarquia.relaciones', 'vendedor.zonas']);
@@ -347,6 +353,79 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             $quote->segmento    = data_get($segmentData, 'segmento');
             $quote->subsegmento = data_get($segmentData, 'subsegmento');
             return $quote->makeHidden(['detallecotizacion', 'usuario']);
+        });
+    }
+
+
+    /** aprobacion comercial de cotizaciones */
+    public function approveComercialQuote(int $id, GpUsuario $user)
+    {
+        $gpUser = GpUsuario::find($user->id);
+        $quote = GpCotizacion::where('id', $id)->where('estado', 'espera')
+            ->lockForUpdate()->first();
+        if (!$quote) {
+            throw new \RuntimeException("Cotización no encontrada");
+        }
+
+        $quote->fill([
+            'aprobado_comercial'                => 'yes',
+            'aprobador_comercial_id'            => $gpUser->id,
+            'estado'                            => 'aprobado',
+            'fecha_hora_aprobacion_comercial'   => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
+        $camposModificados = array_keys($quote->getDirty());
+        $oldQuote = [
+            'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),
+        ];
+        $quote->save();
+        $quote->refresh();
+        $newQuote = [
+            'cotizacion_nueva' => Arr::only($quote->toArray(), $camposModificados),
+        ];
+
+        $this->updateRegisterCopyApprovalComercialDestination($quote->id);
+        $this->history->createQuoteHistory($quote);
+        $this->createHistoryRecord($user, $quote, 'APPROVAL_QUOTE', $oldQuote, $newQuote);
+        return $quote;
+    }
+
+    public function updateRegisterCopyApprovalComercialDestination(int $quoteId)
+    {
+        $rgCopy = GpRegistroCopia::where('cotizacion_destino', $quoteId)->where('tipo', 'volver_a_pedir')->first();
+        if (!$rgCopy) {
+            return;
+        }
+        $rgCopy->destino_aprobado = true;
+        $rgCopy->save();
+    }
+
+
+
+    public function denyQuotationBeenWaiting(int $id, GpUsuario $user)
+    {
+        return DB::transaction(function () use ($id, $user) {
+            $quote = GpCotizacion::where('id', $id)->lockForUpdate()->first();
+            if (!$quote) {
+                throw new \RuntimeException("No se encontro la cotización");
+            }
+
+            $quote->fill([
+                'aprobado_comercial'    => 'no',
+                'user_rechazo_id'       => $user->id,
+                'estado'                => 'rechazado',
+                'fe_rechazo'            => Carbon::now()->format('Y-m-d H:i:s'),
+            ]);
+            $camposModificados = array_keys($quote->getDirty());
+
+            $oldQuote = [
+                'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),
+            ];
+            $quote->save();
+            $newQuote = [
+                'cotizacion_nueva' => Arr::only($quote->fresh()->toArray(), $camposModificados),
+            ];
+            $this->createHistoryRecord($user, $quote, 'DENNY_QUOTE', $oldQuote, $newQuote);
+            return $quote->refresh();
         });
     }
 }

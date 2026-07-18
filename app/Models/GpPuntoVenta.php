@@ -87,6 +87,9 @@ class GpPuntoVenta extends Model
         'PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO',
         'PTO_VTA_DIA_VALIDEZ_COTIZACION',
         'PTO_VTA_DIAS_MAXIMO_PARA_ANULACION', // New column added
+        'pto_vta_max_dias_reserva',
+        'pto_vta_max_dias_autorizacion_reserva',
+        'lista_precios_defecto'
     ];
 
 

@@ -12,10 +12,10 @@ interface FunctionsServiceInterface
 
 
     public function getClientCheckAvailableQuota(String $ruc);
-    public function getClientDocumentExpired($ruc);
-    public function getClientDocumentWithoutSupport($ruc);
-      public function getListClientDocumentExpired($ruc);
-    public function getListClientDocumentWithoutSupport($ruc);
+    public function getClientDocumentExpired(string $ruc);
+    public function getClientDocumentWithoutSupport(string $ruc);
+    public function getListClientDocumentExpired(string $ruc);
+    public function getListClientDocumentWithoutSupport(string $ruc);
 
 
     public function getBodegas(string $warehouse, ?string $consulta = null);

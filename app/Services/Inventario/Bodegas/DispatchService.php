@@ -2,25 +2,35 @@
 
 namespace App\Services\Inventario\Bodegas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use Carbon\Carbon;
+use DomainException;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class DispatchService implements DispatchServiceInterface
 {
 
     public function __construct(
         protected readonly InvoiceServiceInterface $invoiceService,
-        protected readonly StockWarehouseServiceInterface $stockService
+        protected readonly StockWarehouseServiceInterface $stockService,
+        protected readonly ApiGpService $api,
+
     ) {}
 
     public function guiasDespachadas($ptoVtaId, $perpage, $search, $sortBy = null, $sortOrder = 'desc', $fecha_desde, $fecha_hasta, $clienteRuc)
@@ -484,7 +494,7 @@ class DispatchService implements DispatchServiceInterface
 
     /** funcion migrada de checkeliminar despacho */
 
-    public function cancelDispatchIfEmptyPicking($orderId)
+    public function cancelDispatchIfEmptyPicking(int $orderId)
     {
         $pedido = GpPedido::find($orderId);
         if (!$pedido) {
@@ -557,5 +567,190 @@ class DispatchService implements DispatchServiceInterface
     {
         $params = ['articulo' => $articulo, 'bodega' => $bodega, 'compartimento' => ''];
         return $this->stockService->fetchStockWarehouseCompartiment($params);
+    }
+
+
+
+    /** lista de consulta de ordenes de despacho  */
+
+    public function fetchListDispatchOrdersConsult(array $filters): LengthAwarePaginator
+    {
+
+        $pointOfSaleId  = data_get($filters, 'pvCodigo');
+        $sortField      = data_get($filters, 'sortField', 'fecha_hora_liberacion');
+        $sortOrder      = data_get($filters, 'sortOrder', 'desc');
+        $search         =  trim(data_get($filters, 'search', ''));
+        $perPage        = data_get($filters, 'perpage', 10);
+        $ruc            = trim(data_get($filters, 'ruc', ''));
+        $status         = trim(data_get($filters, 'estado', 'liberada'));
+        $sortOrder      = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
+        $startDate      = data_get($filters, 'fechaInicio');
+        $endDate        = data_get($filters, 'fechaFin');
+
+        $sortColumns = [
+            'ordenCodigo'           => 'god.orden',
+            'ruc'                   => 'gpd.CLI_RUC',
+            'estado'                => 'god.estado',
+            'razon_social'          => 'gpd.CLI_RAZON_SOCIAL',
+            'pedido'                => 'gpd.pedido',
+            'factura'               => 'gpd.factura',
+            'bodega'                => 'gpd.BOD_BODEGA',
+            'fecha_entrega'         => 'gpd.fecha_entrega',
+            'fecha_creacion_pedido' => 'gpd.created_at',
+            'fecha_creacion_orden'  => 'god.created_at',
+            'fecha_hora_liberacion' => 'god.fecha_hora_liberacion',
+        ];
+
+
+        $sortBy = $sortColumns[$sortField] ?? 'god.fecha_hora_liberacion';
+
+
+        $query = GpOrdenDespacho::query()
+            ->from('gp_orden_despachos as god')
+            ->select([
+                'god.id',
+                'god.orden as ordenCodigo',
+                'god.estado',
+                'god.created_at as fecha_creacion_orden',
+                'god.fecha_hora_liberacion',
+
+                'gpd.id as pedido_id',
+                'gpd.pedido',
+                'gpd.factura',
+                'gpd.CLI_RUC',
+                'gpd.CLI_RAZON_SOCIAL as razon_social',
+                'gpd.created_at as fecha_creacion_pedido',
+                'gpd.BOD_BODEGA as bodega',
+                'gpd.fecha_entrega',
+                'gpd.despacho',
+            ])
+            ->join('gp_pedidos as gpd', 'gpd.id', '=', 'god.pedido_id')
+            ->where('gpd.PTO_VTA_ID', $pointOfSaleId);
+
+        if ($status !== '') {
+            $query->where('god.estado', $status);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($query) use ($search) {
+                $query
+                    ->where('gpd.factura', 'like', "%{$search}%")
+                    ->orWhere('god.orden', 'like', "%{$search}%")
+                    ->orWhere('gpd.CLI_RUC', 'like', "%{$search}%")
+                    ->orWhere(
+                        'gpd.CLI_RAZON_SOCIAL',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere('gpd.pedido', 'like', "%{$search}%")
+                    ->orWhere('gpd.despacho', 'like', "%{$search}%");
+            });
+        }
+
+
+        if ($ruc !== '') {
+            $query->where('gpd.CLI_RUC', $ruc);
+        }
+
+        if (!empty($startDate) && !empty($endDate)) {
+            $query->whereBetween('gpd.created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay(),
+            ]);
+        } elseif (!empty($startDate)) {
+            $query->where(
+                'gpd.created_at',
+                '>=',
+                Carbon::parse($startDate)->startOfDay()
+            );
+        } elseif (!empty($endDate)) {
+            $query->where(
+                'gpd.created_at',
+                '<=',
+                Carbon::parse($endDate)->endOfDay()
+            );
+        }
+
+
+        return $query
+            ->orderBy($sortBy, $sortOrder)
+            ->orderByDesc('god.id')
+            ->paginate($perPage);
+    }
+
+
+    public function printOrderDispatchPdf(int $id): array
+    {
+
+        $ordDispatch = GpOrdenDespacho::with([
+            'pedido.detallepedido',
+            'pedido.gpcotizacion',
+            'pedido.usuario',
+            'pedido.direccionFacturacion',
+            'pedido.gpcliente'
+        ])->findOrFail($id);
+
+        $order = $ordDispatch->pedido;
+
+        if (!$order) {
+            throw new DomainException(
+                'La orden de despacho no tiene un pedido relacionado.'
+            );
+        }
+
+        if ($this->isOrderBlocked($order)) {
+            throw new DomainException(
+                'El pedido tiene aprobaciones pendientes o se encuentra eliminado. No se puede imprimir la orden de despacho.'
+            );
+        }
+        $pointOfSale = GpPuntoVenta::where('PTO_VTA_ID', $order->PTO_VTA_ID)->first();
+        $direction   = trim(($pointOfSale->PTO_VTA_DIRECCION_1 ?? '') . ' ' . ($pointOfSale->PTO_VTA_DIRECCION_2 ?? ''));
+        $warehouse   = (string)$order->BOD_BODEGA;
+        $ordDispatch->pedido->detallepedido->each(function ($item) use ($warehouse) {
+            $item->compartimiento = $this->getCompartment($item->ART_CODIGO, $warehouse);
+            $item->pesoCalculado  = (float)$item->ART_PESO * (float)$item->ART_CANTIDAD;
+        });
+        $kgTotal = $ordDispatch->pedido->detallepedido->sum('pesoCalculado');
+        $infoPdf = [
+            'despacho'      => $ordDispatch,
+            'direccion'     => $direction,
+
+            'pesoTotal'     => $kgTotal
+        ];
+
+        $html   = view('pdf.despachos.orden-despacho-pedido', $infoPdf)->render();
+        $pdf    = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+
+        $filename = 'ORDEN-DESPACHO-'
+            . Str::upper(Str::slug($ordDispatch->orden, '-'))
+            . '.pdf';
+
+        return [
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
+        ];
+    }
+
+    protected function isOrderBlocked(GpPedido $order): bool
+    {
+        $requiresCommercialApproval     = $order->requiere_aprobacion_comercial === 'yes' && $order->aprobado_comercial === 'no';
+        $requiresCreditApproval         = $order->requiere_aprobacion_crediticia === 'yes' && $order->aprobado_crediticio === 'no';
+        $isDelete                       = $order->estado === OrderStatus::ELIMINADO;
+        return $requiresCommercialApproval || $requiresCreditApproval || $isDelete;
+    }
+
+    protected function getCompartment(string $itemCode, string $warehouseCode): ?string
+    {
+
+        $response = $this->api->getStockByWarehouseAndCompartment([
+            'articulo'      => $itemCode,
+            'bodega'        => $warehouseCode,
+            'compartimento' => '',
+        ]);
+        return data_get($response, 'data.COMPARTIMIENTO', '');
     }
 }

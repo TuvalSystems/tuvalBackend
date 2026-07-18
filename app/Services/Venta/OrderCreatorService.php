@@ -6,8 +6,10 @@ use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoImagen;
 use App\Models\GpPuntoVenta;
+use App\Models\GpUsuario;
 use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
@@ -34,10 +36,14 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     ) {
         // Inyecta dependencias si es necesario
     }
-    public function createOrder(array $data, $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
+    public function createOrder(array $data, GpUsuario $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
     {
         $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
             $quotationId            = data_get($data, 'cotizacion_id');
+            if (!$quotationId) {
+                throw new \DomainException('La cotizacion es obligatoria para crear el pedido.');
+            }
+
             $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
             $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
             if ($direccionFacturacion) {
@@ -48,13 +54,26 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
             }
             $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
-            if ($quoteBlock && ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1)) {
-                $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
-                    ->where('estado', '!=', OrderStatus::ANULADA) // Importante: ignorar anulados
-                    ->first();
-                if ($pedidoExistente) {
-                    return $pedidoExistente;
-                }
+            if (!$quoteBlock) {
+                throw new \DomainException('La cotizacion no existe o no esta disponible.');
+            }
+
+            $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
+                ->whereNotIn('estado', [
+                    OrderStatus::ANULADA->value,
+                    OrderStatus::ELIMINADO->value,
+                    OrderStatus::RECHAZADO->value,
+                ])
+                ->oldest('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($pedidoExistente) {
+                Log::warning("Intento duplicado de creacion de pedido para cotizacion {$quotationId}. Se retorna pedido existente {$pedidoExistente->pedido}.");
+                return $pedidoExistente;
+            }
+
+            if ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1) {
                 Log::warning("Inconsistencia detectada: Cotización {$quotationId} estaba marcada como procesada pero sin pedido. Creando pedido ahora...");
             }
 
@@ -90,7 +109,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
 
 
-    protected function prepareOrderHeader(array $data, $user): GpPedido
+    protected function prepareOrderHeader(array $data, GpUsuario $user): GpPedido
     {
         $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
         $approvalCommercial             = $this->approval->approveOrder($data);
@@ -181,7 +200,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     }
 
 
-    protected function storeDetailProviders($providers, $detail, $newOrder)
+    protected function storeDetailProviders(array $providers, GpPedidoDetalle $detail, GpPedido $newOrder)
     {
         foreach ($providers as $provider) {
             $recibido = isset($provider['recibido']) ? $provider['recibido'] : 'no';
@@ -191,7 +210,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     }
 
 
-    protected function storeDetailStock($stock, $detail, $newOrder)
+    protected function storeDetailStock(array $stock, GpPedidoDetalle $detail, GpPedido $newOrder)
     {
         $requiereAprobacion = $newOrder->requiere_aprobacion_crediticia === 'yes' || $newOrder->requiere_aprobacion_comercial === 'yes';
         $quoteReservedId = $this->getReservedOriginQuote($newOrder->cotizacion_id);

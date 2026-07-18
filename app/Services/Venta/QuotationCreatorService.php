@@ -103,7 +103,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         return $requiereAprobacion;
     }
 
-    public function mantenerAprobacionSiSigueValida(GpCotizacion $cotizacion, &$requiereAprobacionComercial)
+    public function mantenerAprobacionSiSigueValida(GpCotizacion $cotizacion, array &$requiereAprobacionComercial)
     {
         $estabaAprobada = $cotizacion->requiere_aprobacion_comercial === 'yes' && $cotizacion->aprobado_comercial === 'yes';
 
@@ -137,7 +137,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
         }
     }
 
-    public function resetToPending(&$data)
+    public function resetToPending(array &$data)
     {
         // Si requiere aprobación, pasa a 'espera', si no, 'aprobado' (u otro status default)
         $req = $data['requiere'] ?? 'no';

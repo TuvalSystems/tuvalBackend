@@ -18,14 +18,12 @@ use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCobrosAplicacionFactura;
 use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpCronLog;
-use App\Models\GpDescuentoFormaPago;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
@@ -35,6 +33,7 @@ use App\Models\GpRelacionPuntoVentaBodega;
 use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -43,12 +42,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DateTime;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use stdClass;
+use Symfony\Component\HttpFoundation\Response as HttpFoundationResponse;
 
 class DespachosController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
         protected readonly OrderServiceInterface $orderService,
         protected readonly DispatchServiceInterface $dispatchService,
@@ -1133,6 +1133,27 @@ class DespachosController extends Controller
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);
         }
+    }
+
+    public function listaConsultaOrdenesDespacho(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $filters = $request->input('filters', []);
+            $lista = $this->dispatchService->fetchListDispatchOrdersConsult($filters);
+            return $this->successResponse('Información Obtenida Correctamente', $lista, 200);
+        }, 'laravel', 'obtenerListaConsultaOrdenesDespacho');
+    }
+
+    public function imprimirOrderDespachoPdf(Request $request): HttpFoundationResponse
+    {
+        return $this->handlePdfAction(function ()  use ($request): HttpFoundationResponse {
+            $validate = $request->validate([
+                'id' =>  'required|integer|exists:gp_orden_despachos,id'
+            ]);
+            $id     = data_get($validate, 'id');
+            $result = $this->dispatchService->printOrderDispatchPdf($id);
+            return $this->buildPdfResponse($result);
+        }, 'laravel', 'imprimirOrderDespachoPdf');
     }
 
 

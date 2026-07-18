@@ -283,6 +283,9 @@ class GpPedido extends Model implements HasMedia
     {
         return $this->belongsTo(GpClienteSucursal::class, 'sucursal_id');
     }
+    public function direccionFacturacion(){
+        return $this->belongsTo(GpClienteSucursal::class, 'sucursal_facturacion_id');
+    }
 
 
     public function detallepedido(): HasMany

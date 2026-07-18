@@ -146,7 +146,7 @@ class FunctionsService implements FunctionsServiceInterface
     }
 
 
-    public function getClientDocumentExpired($ruc)
+    public function getClientDocumentExpired(string $ruc)
     {
         $response = $this->apiBillingService->consultDocumentExpiredClient([
             'ruc' => $ruc,
@@ -155,7 +155,7 @@ class FunctionsService implements FunctionsServiceInterface
         return $response['data'] ?? [];
     }
 
-    public function getClientDocumentWithoutSupport($ruc)
+    public function getClientDocumentWithoutSupport(string $ruc)
     {
         $response = $this->apiBillingService->consultDocumentWithoutSupportClient([
             'ruc' => $ruc,
@@ -164,7 +164,7 @@ class FunctionsService implements FunctionsServiceInterface
         return data_get($response, 'data', []);
     }
 
-    public function getListClientDocumentExpired($ruc)
+    public function getListClientDocumentExpired(string $ruc)
     {
         $response = $this->apiBillingService->consultListDocumentExpiredClient([
             'ruc' => $ruc,
@@ -174,7 +174,7 @@ class FunctionsService implements FunctionsServiceInterface
 
     }
 
-    public function getListClientDocumentWithoutSupport($ruc)
+    public function getListClientDocumentWithoutSupport(string $ruc)
     {
         $response = $this->apiBillingService->consultListDocumentWithoutSupportClient([
             'ruc' => $ruc,

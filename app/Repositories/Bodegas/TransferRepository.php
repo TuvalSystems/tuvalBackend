@@ -104,7 +104,7 @@ class TransferRepository implements TransferRepositoryInterface
     }
 
 
-    public function findGuidesToWarehouseDestinoAndOrigin($bodOrigin, $destId)
+    public function findGuidesToWarehouseDestinoAndOrigin(string $bodOrigin, string $destId)
     {
         return GpGuiaRemision::query()
             ->join('gp_bodegas', 'gp_guia_remisions.bodega_destino', '=', 'gp_bodegas.BOD_BODEGA')

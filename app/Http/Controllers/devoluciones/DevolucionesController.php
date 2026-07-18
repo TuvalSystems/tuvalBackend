@@ -17,6 +17,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
+use App\Models\GpUsuario;
+use App\Services\Comercial\CommercialVisibilityService;
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 
@@ -26,42 +28,88 @@ class DevolucionesController extends Controller
     public function __construct(
         protected readonly  EntryServiceInterface $entryService,
         protected readonly  DevolucionServiceInterface $devolucionService,
+        protected readonly CommercialVisibilityService $commercial
     ) {}
 
 
-    public function pedidoscliente(int $cliente_id, string $puntodeventa_id)
+    public function pedidoscliente(Request $request, int $cliente_id, string $puntodeventa_id)
     {
-        $pedidos = GpPedido::with('direccionEntrega')->where('PTO_VTA_ID', $puntodeventa_id)
+        $user = $request->user() ?? GpUsuario::find(137);
+
+        $pedidosQuery = GpPedido::query()->with('direccionEntrega')
+            ->where('PTO_VTA_ID', $puntodeventa_id)
             ->where('cliente_id', $cliente_id)
             ->where(function ($query) {
                 $query->where('estado', OrderStatus::FACTURADO)
                     ->orWhere('estado', OrderStatus::ANULADA);
-            })
-            ->orderBy('created_at', 'desc')->limit(10000)->get();
+            });
 
-        $ordenesDespachoPedidos = GpOrdenDespacho::whereIn('pedido_id', $pedidos->pluck('id'))
-            ->where('estado', '!=', 'pendiente')
-            ->pluck('pedido_id')->toArray();
-
-        foreach ($pedidos as $pedido) {
-            $pedido->orden_despacho = in_array($pedido->id, $ordenesDespachoPedidos);
-        }
-
-        $devoluciones = GpDevoluciones::with(['cliente', 'cliente_volver_a_facturar', 'sucursal_volver_a_facturar',])
-            ->where('cliente_id', $cliente_id)
-            ->whereHas('pedido', function ($query) use ($puntodeventa_id) {
-                $query->where('PTO_VTA_ID', $puntodeventa_id);
-            })
-            ->orderBy('created_at', 'desc')
+        $this->commercial->applyUserRestriction(
+            $pedidosQuery,
+            $user,
+            'gp_pedidos.user_id'
+        );
+        $pedidos = $pedidosQuery
+            ->orderByDesc('gp_pedidos.created_at')
+            ->limit(10000)
             ->get();
 
-        $ordenesDespachoDevoluciones = GpOrdenDespacho::whereIn('pedido_id', $devoluciones->pluck('pedido_id'))
+        $ordenesDespachoPedidos = GpOrdenDespacho::query()
+            ->whereIn('pedido_id', $pedidos->pluck('id'))
             ->where('estado', '!=', 'pendiente')
             ->pluck('pedido_id')
-            ->toArray();
-        foreach ($devoluciones as $devolucion) {
-            $devolucion->orden_despacho = in_array($devolucion->pedido_id, $ordenesDespachoDevoluciones);
-        }
+            ->all();
+
+        $pedidos->each(function ($pedido) use ($ordenesDespachoPedidos) {
+            $pedido->orden_despacho = in_array(
+                $pedido->id,
+                $ordenesDespachoPedidos,
+                true
+            );
+        });
+
+        $devolucionesQuery = GpDevoluciones::query()
+            ->with([
+                'cliente',
+                'cliente_volver_a_facturar',
+                'sucursal_volver_a_facturar',
+            ])
+            ->where('gp_devoluciones.cliente_id', $cliente_id)
+            ->whereHas('pedido', function ($query) use ($puntodeventa_id) {
+                $query->where(
+                    'gp_pedidos.PTO_VTA_ID',
+                    $puntodeventa_id
+                );
+            });
+
+        $this->commercial->applyUserRestriction(
+            $devolucionesQuery,
+            $user,
+            'gp_devoluciones.user_id'
+        );
+        $devoluciones = $devolucionesQuery
+            ->orderByDesc('gp_devoluciones.created_at')
+            ->get();
+
+        $ordenesDespachoDevoluciones = GpOrdenDespacho::query()
+            ->whereIn(
+                'pedido_id',
+                $devoluciones->pluck('pedido_id')
+            )
+            ->where('estado', '!=', 'pendiente')
+            ->pluck('pedido_id')
+            ->all();
+
+        $devoluciones->each(
+            function ($devolucion) use ($ordenesDespachoDevoluciones) {
+                $devolucion->orden_despacho = in_array(
+                    $devolucion->pedido_id,
+                    $ordenesDespachoDevoluciones,
+                    true
+                );
+            }
+        );
+
 
         return response([
             'success' => true,

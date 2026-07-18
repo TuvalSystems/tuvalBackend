@@ -8,7 +8,7 @@ interface TransferRepositoryInterface
 
     public function getAllSalesTransfersByWarehouse(string $warehouse);
     public function findCountPendingGuidesByOriginWarehouse(string $bodOrigin);
-    public function findGuidesToWarehouseDestinoAndOrigin($bodOrigin, $destId);
+    public function findGuidesToWarehouseDestinoAndOrigin(string $bodOrigin, string $destId);
     public function getAllSalesTransfersByWarehouseOriginAndDestination(string $origin, string $destination, ?string $orderNumber = null);
     public function findGuidesPendingByOriginWarehouse(string $bodOrigin, string $bodDestino);
 }
