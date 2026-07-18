@@ -3,6 +3,7 @@
 namespace App\Services\Cobranzas\CobrosFacturas\Contracts;
 
 use App\Models\GpUsuario;
+use Illuminate\Support\Collection;
 
 interface InvoiceCollectionServiceInterface
 {
@@ -13,5 +14,7 @@ interface InvoiceCollectionServiceInterface
     public function generateClientAccountStatementPdf(int $clientId): array;
     public function generateClientAccountStatementExcel(int $clientId): array;
 
-    public function getInvoiceCollectionsByClient(int $id);
+    public function getInvoiceCollectionsByClient(int $id) : array ;
+    public function getUnappliedCollectionsByClient(int $id): ?Collection;
+    public function getBanks(): array;
 }

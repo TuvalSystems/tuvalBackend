@@ -227,12 +227,14 @@ Route::group(['prefix' => 'cobranzas'], function () {
 
 
     //cobros facturas
-    Route::prefix('cobros-facturas')->group(function(){
+    Route::prefix('cobros-facturas')->group(function () {
         Route::get('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
         Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
         Route::get('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
         Route::get('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
         Route::get('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
+        Route::get('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
+        Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
     });
 });
 
@@ -265,9 +267,8 @@ Route::group(['prefix' => 'inventario-web'], function () {
 });
 
 
-Route::prefix('despachos')->group(function (){
+Route::prefix('despachos')->group(function () {
     Route::get('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
-
 });
 
 

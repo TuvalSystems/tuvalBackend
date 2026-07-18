@@ -2,12 +2,15 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
+use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
-use App\Models\Cobranzas\GpCobrosDeposito;
+use App\Models\Cobranzas\GpCobrosDepositosFacturas;
 use App\Models\Cobranzas\GpCobrosRetenciones;
+use App\Models\GpCajaBancos;
 use App\Models\GpCierreCaja;
 use App\Models\GpCliente;
+use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
@@ -28,6 +31,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
     ) {}
 
 
+    /** funcion para verificar el estado de la caja basada en el usuario y punto de venta */
     public function getStatusBoxedUser(int $pvId, string $pvCode, ?string $date, GpUsuario $user): array
     {
         $currentDate = filled($date) ? Carbon::parse($date)->toDateString() : Carbon::now()->toDateString();
@@ -68,7 +72,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
     }
 
 
-
+    /** funcion para aperturar cajas  */
     public function openCashBoxed(int $pvId,  GpUsuario $user)
     {
         $now = Carbon::now();
@@ -188,8 +192,6 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         ];
     }
 
-
-
     private function getCustomerStatusStatementDetail(string $ruc): Collection
     {
         $response = $this->api->getClientAccountStatement([
@@ -199,7 +201,6 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         return collect(data_get($response, 'data', []))
             ->map(fn(array $detail) => (object) $detail);
     }
-
 
     private function getCustomerStatusStatementSummary(string $ruc): Collection
     {
@@ -224,9 +225,11 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
 
 
-    /** funcion para obtener las facturas  */
+    /** funcion para obtener las facturas y facturas retenciones 
+     * son sus respectivos valores y validaciones
+     */
 
-    public function getInvoiceCollectionsByClient(int $id)
+    public function getInvoiceCollectionsByClient(int $id): array
     {
 
         $client = GpCliente::find($id);
@@ -234,35 +237,57 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             throw new DomainException('Cliente no encontrado');
         }
         $detailAccount      = $this->getStatusStatementDetailApi($client->CLI_RUC);
-        $docsfilters        = $detailAccount->where('tipo', 'Facturas')->pluck('documento');
-        $docsNotFilter      = $detailAccount->pluck('documento');
-        $afterDocs          = GpCobrosRetenciones::whereIn('ret_factura', $docsfilters)->get()->keyBy('ret_factura');
+        $invoiceDocuments = $detailAccount
+            ->where('tipo', 'Facturas')
+            ->pluck('documento')
+            ->filter()
+            ->unique()
+            ->values();
 
-        $pendingDeposits    = GpCobrosDeposito::with('depositosFactura', function ($q) use ($docsNotFilter) {
-            $q->whereIn('id_factura', $docsNotFilter);
-        })->where('estado', 'iniciado')->get();
+        $allDocuments = $detailAccount
+            ->pluck('documento')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $generatedRetentions            = GpCobrosRetenciones::whereIn('ret_factura', $invoiceDocuments)->get()->keyBy('ret_factura');
+        $pendingDepositsByInvoice       = GpCobrosDepositosFacturas::whereIn('id_factura', $allDocuments)
+            ->whereHas('cobroDeposito', function ($query) {
+                $query->where('estado', 'iniciado');
+            })
+            ->selectRaw('id_factura, SUM(monto) AS monto_pendiente')
+            ->groupBy('id_factura')
+            ->pluck('monto_pendiente', 'id_factura');
 
         $detailAccount = $detailAccount
-            ->filter(fn($det) => (float) $det->saldoCliente > 0)
-            ->each(function ($det) {
-                $sub            = round(TaxRateEnum::IVA_12->calculateSubtotal($det->montoOriginal), 4);
-                $det->subtotal  = $sub;
-                $det->iva       = round($det->montoOriginal - $sub, 2);
+            ->map(function ($det) use ($pendingDepositsByInvoice) {
+                $pendingAmount = (float) $pendingDepositsByInvoice->get($det->documento, 0);
+
+                $total                  = round((float) $det->montoOriginal, 2);
+                $det->saldoCliente      = max(0, (float) $det->saldoCliente - $pendingAmount);
+                $det->saldoBaseCliente  = max(0, (float) $det->saldoBaseCliente - $pendingAmount);
+                $det->saldo             = $det->saldoCliente;
+                $sub                    = round(TaxRateEnum::IVA_12->calculateSubtotal($total), 4);
+                $det->subtotal          = $sub;
+                $det->iva               = round($total - $sub, 2);
+                $det->depositoPendiente = (float) round($pendingAmount, 2);
+                return $det;
             })
+            ->filter(fn($det) => (float) $det->saldoCliente > 0)
             ->values();
 
 
 
-        $invoiceRetention = $detailAccount->filter(function ($det) use ($afterDocs) {
-            $docDet = $afterDocs->get($det->documento);
-            return !$docDet && $det->tipo === 'Facturas';
+        $invoiceRetention = $detailAccount->filter(function ($det) use ($generatedRetentions) {
+            return $det->tipo === 'Facturas'
+                && !$generatedRetentions->has(
+                    $det->documento
+                );
         })->values();
 
         return [
             'facturas'                  => $detailAccount,
-            'facturas_retencions'       => $invoiceRetention,
-            'retencionesGeneradas'      => $afterDocs,
-            'depositosPendientes'       => $pendingDeposits,
+            'facturas_retenciones'       => $invoiceRetention,
         ];
     }
 
@@ -277,5 +302,51 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
         return collect(data_get($response, 'data.detalle', []))
             ->map(fn(array $detail) => (object) $detail);
+    }
+
+    /** funcion para listar los documentos pendientes de cobros 
+     *  despues eliminar a funcion que esta en CustomerPaymentApplicationService
+     *  - updatePendingApplicationDocumentBalances
+     */
+
+    public function getUnappliedCollectionsByClient(int $clientId): ?Collection
+    {
+        $client = GpCliente::find($clientId);
+        if (!$client) {
+            throw new DomainException('Cliente no encontrado');
+        }
+        return $this->fetchUnappliedCollectionsFromGp($client->CLI_RUC);
+    }
+
+    protected function fetchUnappliedCollectionsFromGp(string $ruc): Collection
+    {
+        return collect(data_get($this->api->getUnappliedCollections([
+            'ruc' => $ruc
+        ]), 'data', []));
+    }
+
+
+    /**
+     * funcion para obtener las listas de los bancos 
+     */
+
+    public function getBanks(): array
+    {
+        $banks = GpCajaBancos::query()
+            ->whereIn('CB_TIPO', [
+                'BANCO_TUVAL',
+                'BANCO_CLIENTE',
+                'TARJETA'
+            ])->where(function ($query) {
+                $query->where('CB_TIPO', '<>', 'BANCO_TUVAL')
+                    ->orWhere('estado', 'activo');
+            })->get()
+            ->groupBy('CB_TIPO');
+
+        return [
+            'bancos_tuval'      => $banks->get('BANCO_TUVAL', collect())->values(),
+            'bancos_clientes'   => $banks->get('BANCO_CLIENTE', collect())->values(),
+            'bancos_tarjetas'   => $banks->get('TARJETA', collect())->values(),
+        ];
     }
 }

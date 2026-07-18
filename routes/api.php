@@ -536,7 +536,9 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
                 Route::post('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
                 Route::post('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
-
+                Route::post('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
+                Route::post('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
+                Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
             });
 
             Route::prefix('ordenes-despacho')->group(function () {

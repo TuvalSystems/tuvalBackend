@@ -2229,7 +2229,7 @@ class CobranzasController extends Controller
 
     public function obtenerInformacionPagosFacturas(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->input('data', []);
             // $user       = GpUsuario::find(179);
             $user       = $request->user();
@@ -2260,9 +2260,9 @@ class CobranzasController extends Controller
         }, 'laravel', 'detaleCobrosAplicados');
     }
 
-    public function procesarDesaplicaciones(Request $request)
+    public function procesarDesaplicaciones(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $items = $request->input('payload', []);
             $user = $request->user();
             $data = $this->unapplycation->processUpdateUnapplicationItems($items, $user);
@@ -2271,9 +2271,9 @@ class CobranzasController extends Controller
         }, 'laravel', 'actualizarAplicaciones');
     }
 
-    public function actualizarListaDocumentosAplicacion(Request $request)
+    public function actualizarListaDocumentosAplicacion(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $clientId   = $request->input('clienteId');
             $documents  = $request->input('documentos', []);
             $response   = $this->customer->updatePendingApplicationDocumentBalances($clientId, $documents);
@@ -2281,9 +2281,9 @@ class CobranzasController extends Controller
         }, 'laravel', 'actualizacionDocumentosAplicacion');
     }
 
-    public function listaHistoricaDepositos(Request $request)
+    public function listaHistoricaDepositos(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $filters = $request->input('filters', []);
             $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
             return $this->successResponse('Datos obtenidos correctamente', $response, 200);
@@ -2356,7 +2356,6 @@ class CobranzasController extends Controller
 
     public function obtenerFacturasEstadoCuentaCliente(Request $request): JsonResponse
     {
-
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate  = $request->validate([
                 'id' => ['required', 'integer', 'exists:gp_clientes,id'],
@@ -2365,5 +2364,25 @@ class CobranzasController extends Controller
             $response = $this->invoiceCollect->getInvoiceCollectionsByClient($id);
             return $this->successResponse('Información Obtenida Correctamente', $response);
         }, 'laravel', 'obtenerFacturasEstadoCuentaCliente');
+    }
+
+    public function obtenerListaDeDocumentosPendientesAplicacion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id = data_get($validate, 'id');
+            $response = $this->invoiceCollect->getUnappliedCollectionsByClient($id);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'laravel', 'obtenerListaDeDocumentosPendientesAplicacion');
+    }
+
+    public function obtenerListaBancos(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $response = $this->invoiceCollect->getBanks();
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'laravel', 'obtenerListaBancos');
     }
 }
