@@ -62,7 +62,8 @@ class GpCobrosDepositosFacturas extends Model
 
     public function cobroPendienteWeb(): BelongsTo
     {
-        return $this->belongsTo(GpCobro::class, 'cobro_id', 'id');
+        return $this->belongsTo(GpCobro::class, 'cobro_id', 'id')
+            ->where('estado', '<>', 'rechazado');
         //->whereIn('estado', ['iniciado', 'revisado']);
     }
 
