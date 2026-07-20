@@ -1665,6 +1665,7 @@ class CobranzasController extends Controller
         ]);
     }
 
+    //api migrada a servicio
     public function consultaretencion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -2385,4 +2386,18 @@ class CobranzasController extends Controller
             return $this->successResponse('Información Obtenida Correctamente', $response);
         }, 'laravel', 'obtenerListaBancos');
     }
+
+    // public function consultarExistenciaRetencion(Request $request) : JsonResponse{
+    //     return $this->handleApiAction(function() use($request): JsonResponse{
+    //        $validate  = $request->validate([
+    //             'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+    //             'comprobante' => ['required', 'string']
+    //         ]);
+
+    //         $id = data_get($validate, 'id');
+    //         $documento = data_get($validate, 'comprobante');
+    //         $response = [];
+
+    //     },'laravel', 'consultarExistenciaRetencion');
+    // }
 }
