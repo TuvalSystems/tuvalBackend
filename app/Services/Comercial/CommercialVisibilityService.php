@@ -7,6 +7,7 @@ use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\Ventas\Vendedores\VendedorAtributoValor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class CommercialVisibilityService
 {
@@ -28,9 +29,10 @@ class CommercialVisibilityService
         $user->load('vendedor.tipoVendedor');
         $vendedor = $user->vendedor;
         if (!$vendedor) {
-            throw new \DomainException(
-                'El usuario no tiene un vendedor relacionado.'
-            );
+            Log::info('el Usuario no tiene perfil vendedor', [
+                'usuario' => $user
+            ]);
+            return null;
         }
 
         $hasRestriction = (bool) data_get(
