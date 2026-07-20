@@ -46,7 +46,7 @@ trait JsonResponseTrait
 
     /** para respuestas de JSon true o false de existencias de algo  */
 
-    protected function buildExistResponse(bool $exists, string $message, int $statusCode): JsonResponse
+    protected function buildExistResponse(bool $exists, string $message, int $statusCode = 200): JsonResponse
     {
         return response()->json(['exists' => $exists, 'message' => $message], $statusCode);
     }

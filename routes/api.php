@@ -539,6 +539,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
                 Route::post('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
                 Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
+                Route::post('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
             });
 
             Route::prefix('ordenes-despacho')->group(function () {

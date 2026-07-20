@@ -2387,17 +2387,20 @@ class CobranzasController extends Controller
         }, 'laravel', 'obtenerListaBancos');
     }
 
-    // public function consultarExistenciaRetencion(Request $request) : JsonResponse{
-    //     return $this->handleApiAction(function() use($request): JsonResponse{
-    //        $validate  = $request->validate([
-    //             'id' => ['required', 'integer', 'exists:gp_clientes,id'],
-    //             'comprobante' => ['required', 'string']
-    //         ]);
+    public function consultarExistenciaRetencion(Request $request) : JsonResponse{
+        return $this->handleApiAction(function() use($request): JsonResponse{
+           $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+                'comprobante' => ['required', 'string']
+            ]);
 
-    //         $id = data_get($validate, 'id');
-    //         $documento = data_get($validate, 'comprobante');
-    //         $response = [];
-
-    //     },'laravel', 'consultarExistenciaRetencion');
-    // }
+            $id = data_get($validate, 'id');
+            $documento = data_get($validate, 'comprobante');
+            $exist = $this->invoiceCollect->retentionReceiptExistsForClient($id, $documento);
+            if($exist){
+                return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
+        },'laravel', 'consultarExistenciaRetencion');
+    }
 }

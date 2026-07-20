@@ -17,4 +17,5 @@ interface InvoiceCollectionServiceInterface
     public function getInvoiceCollectionsByClient(int $id) : array ;
     public function getUnappliedCollectionsByClient(int $id): ?Collection;
     public function getBanks(): array;
+     public function retentionReceiptExistsForClient(int $clientId, string $receiptNumber): bool;
 }

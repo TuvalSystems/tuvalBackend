@@ -2,7 +2,6 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
-use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
 use App\Models\Cobranzas\GpCobrosDepositosFacturas;
@@ -10,13 +9,13 @@ use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCajaBancos;
 use App\Models\GpCierreCaja;
 use App\Models\GpCliente;
-use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use Carbon\Carbon;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -225,7 +224,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
 
 
-    /** funcion para obtener las facturas y facturas retenciones 
+    /** funcion para obtener las facturas y facturas retenciones
      * son sus respectivos valores y validaciones
      */
 
@@ -304,7 +303,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             ->map(fn(array $detail) => (object) $detail);
     }
 
-    /** funcion para listar los documentos pendientes de cobros 
+    /** funcion para listar los documentos pendientes de cobros
      *  despues eliminar a funcion que esta en CustomerPaymentApplicationService
      *  - updatePendingApplicationDocumentBalances
      */
@@ -327,7 +326,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
 
     /**
-     * funcion para obtener las listas de los bancos 
+     * funcion para obtener las listas de los bancos
      */
 
     public function getBanks(): array
@@ -348,5 +347,15 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             'bancos_clientes'   => $banks->get('BANCO_CLIENTE', collect())->values(),
             'bancos_tarjetas'   => $banks->get('TARJETA', collect())->values(),
         ];
+    }
+
+
+    public function retentionReceiptExistsForClient(int $clientId, string $receiptNumber): bool
+    {
+        return  GpCobrosRetenciones::query()
+            ->where('ret_comprobante', trim($receiptNumber))
+            ->whereHas('cobro',   fn(Builder $query) =>
+            $query->where('cliente_id', $clientId))
+            ->exists();
     }
 }
