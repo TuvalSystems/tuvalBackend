@@ -563,13 +563,11 @@ class CobranzasController extends Controller
                 'gp_clientes.CLI_RAZON_SOCIAL'
             ])->first();
 
-
+        $userCobro = GpUsuario::where('id', $cobro->user_id)->first();
         $mensaje = 'Depósito ' . $dato->comprobante . ' a la cuenta ' . $dato->CB_DESCRIPCION . ' del cliente ' . $dato->CLI_RAZON_SOCIAL . ' con RUC: ' . $dato->CLI_RUC . ' ha sido aprobado';
-
-        if ($user) {
-            $user->notify(new UserNotification('Depósito aprobado', $mensaje));
+        if ($userCobro) {
+            $userCobro->notify(new UserNotification('Depósito aprobado', $mensaje));
         }
-
         return response([
             'success' => true,
             'message' => 'Depósito enviado'
@@ -611,11 +609,10 @@ class CobranzasController extends Controller
         $cobro->user_aprobador_rechazo_id   = $user->id;
         $cobro->estado                      = 'rechazado';
         $cobro->save();
-
-        if ($user) {
-            $user->notify(new UserNotification('Depósito/Transferencia rechazado', $mensaje));
+        $userCobro = GpUsuario::where('id', $cobro->user_id)->first();
+        if ($userCobro) {
+            $userCobro->notify(new UserNotification('Depósito/Transferencia rechazado', $mensaje));
         }
-        // $this->enviarcobro($dato->cobro_id);
         return response([
             'success' => true,
             'message' => 'Depósito rechazado'
@@ -2289,6 +2286,7 @@ class CobranzasController extends Controller
             $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
             return $this->successResponse('Datos obtenidos correctamente', $response, 200);
         }, 'laravel', 'listaHistoricaDepositos');
+
     }
 
 
