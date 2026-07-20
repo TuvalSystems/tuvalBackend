@@ -30,9 +30,9 @@ class CommercialVisibilityService
         $vendedor = $user->vendedor;
         if (!$vendedor) {
             Log::info('el Usuario no tiene perfil vendedor', [
-             'usuario' => $user
+                'usuario' => $user
             ]);
-           return null;
+            return null;
         }
 
         $hasRestriction = (bool) data_get(
