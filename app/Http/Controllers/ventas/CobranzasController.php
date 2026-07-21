@@ -2388,8 +2388,8 @@ class CobranzasController extends Controller
     public function consultarExistenciaRetencion(Request $request) : JsonResponse{
         return $this->handleApiAction(function() use($request): JsonResponse{
            $validate  = $request->validate([
-                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
-                'comprobante' => ['required', 'string']
+                'id'            => ['required', 'integer', 'exists:gp_clientes,id'],
+                'comprobante'   => ['required', 'string']
             ]);
 
             $id = data_get($validate, 'id');
