@@ -1729,6 +1729,7 @@ class CobranzasController extends Controller
             //->where('gp_cobros.cliente_id',$data['cliente_id'])
             ->where('gp_cobros_depositos.banco', $data['banco'])
             ->where('gp_cobros_depositos.comprobante', $data['deposito'])
+            ->where('gp_cobros_depositos.estado', '!=', 'rechazado')
             ->select('gp_cobros.numero_recibo', 'gp_cobros_depositos.*')
             ->first();
 
