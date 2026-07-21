@@ -185,6 +185,8 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
         // validaciones para tipo L
         if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+            $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+
             //validacion de precio de item L
             $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
             $valor = round(data_get($detalle, 'ART_VALOR', 0), 4);
