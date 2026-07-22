@@ -6,10 +6,12 @@ use App\Models\aprobacion\GpReglaAprobacion;
 use App\Models\Articulos\GpArticulo;
 use App\Models\GpCliente;
 use App\Models\GpCotizacion;
+use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionDetalleProveedores;
 use App\Models\GpDatosItemsL;
 use App\Models\GpDescuentoFormaPago;
 use App\Models\GpPedido;
+use App\Models\GpPedidoDetalle;
 use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
@@ -233,5 +235,16 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
             return null;
         }
         return $logReserve?->cotizacion_origen_id;
+    }
+
+
+    /** actualizar el campo de validador L para cotizaciones */
+
+    public function updateStatusValidatorExistenteItemL(int $id)
+    {
+        GpCotizacionDetalle::where('cotizacion_id', $id)
+            ->where('ART_TIPO_COMPRA', 'L')->update([
+                'validador_l' => true
+            ]);
     }
 }

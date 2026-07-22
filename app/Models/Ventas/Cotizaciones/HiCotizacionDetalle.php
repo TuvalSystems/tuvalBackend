@@ -31,6 +31,7 @@ class HiCotizacionDetalle extends Model
         'ART_IVA',
         'ART_VALOR_ORIGINAL',
         'valor_original_l',
+        'validador_l',
         'ART_DESCUENTO',
         'ART_CANTIDAD',
         'ART_STOCK',
@@ -59,6 +60,7 @@ class HiCotizacionDetalle extends Model
         'ART_COSTO_PROMEDIO'   => 'decimal:2',
         'descuento'            => 'decimal:2',
         'descuento_original'   => 'decimal:2',
+        'validador_l'          => 'boolean'
     ];
 
     public function hiCotizacion()

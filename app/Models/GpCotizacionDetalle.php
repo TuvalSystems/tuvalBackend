@@ -77,6 +77,11 @@ use Illuminate\Database\Eloquent\Model;
 class GpCotizacionDetalle extends Model
 {
     use HasFactory;
+
+    protected $casts = [
+        'validador_l' => 'boolean',
+    ];
+
     protected $fillable = [
         'cotizacion_id',
         'ART_CODIGO',
@@ -101,8 +106,8 @@ class GpCotizacionDetalle extends Model
         'descuento_original',
         'modificador',
         'CHECK_ALTERNATIVO',
-        'valor_original_l'
-
+        'valor_original_l',
+        'validador_l'
     ];
 
 

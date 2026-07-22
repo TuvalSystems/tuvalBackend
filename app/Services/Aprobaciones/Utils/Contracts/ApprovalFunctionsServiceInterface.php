@@ -32,4 +32,5 @@ interface ApprovalFunctionsServiceInterface
 
 
     public function validateExistsReserve(int $quotationId);
+    public function updateStatusValidatorExistenteItemL(int $id);
 }
