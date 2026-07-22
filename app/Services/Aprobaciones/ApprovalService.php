@@ -34,7 +34,7 @@ class ApprovalService implements ApprovalServiceInterface
 
     /*
      *
-     * aprobacion comercial tanto de pedido como de cotizaciones
+     * aprobacion de reserva de cotizacion
      *
      */
 
@@ -152,6 +152,7 @@ class ApprovalService implements ApprovalServiceInterface
 
             // 3. Valor de Referencia
             $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
+            $validatorExistenceItemL = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', false);
 
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
@@ -190,7 +191,9 @@ class ApprovalService implements ApprovalServiceInterface
 
         // validaciones para tipo L
         if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-            $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+            if (!$validatorExistenceItemL) {
+                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+            }
             $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
             $valor          = round(data_get($detalle, 'ART_VALOR', 0), 4);
 
@@ -228,6 +231,7 @@ class ApprovalService implements ApprovalServiceInterface
 
 
 
+    /** aprobacion comercial de factura demanda */
 
     public function checkOutApprovalCommercialReservedOrder(array $data)
     {
@@ -323,6 +327,7 @@ class ApprovalService implements ApprovalServiceInterface
             $valorOriginalReal      = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
             $descOriginalReal       = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
             $descuentoOriginalReal  = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
+            $validatorExistenceItemL = $detOriginal ? $detOriginal->validador_l : data_get($detalle, 'validador_l', false);
 
 
             //validaciones del descuento en caso de que sea pedido
@@ -366,6 +371,9 @@ class ApprovalService implements ApprovalServiceInterface
 
             // validaciones para tipo L
             if ($detalle['ART_TIPO_COMPRA'] == 'L') {
+                if (! $validatorExistenceItemL) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+                }
                 $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
                 $valor          = round(data_get($detalle, 'ART_VALOR', 0), 4);
 
@@ -402,5 +410,4 @@ class ApprovalService implements ApprovalServiceInterface
 
         return $detailMotivos;
     }
-
 }

@@ -139,7 +139,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             $valorOriginalReal      = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
             $descOriginalReal       = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
             $descuentoOriginalReal  = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
-
+            $validateExistenceItemL  = $detOriginal ? $detOriginal->validador_l : data_get($detalle,'validador_l',false);
             // --- VALIDACIONES COMUNES ---
 
             // A. Validación de Descuento
@@ -188,7 +188,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
             // D. Validaciones Tipo L
             if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+                if(!$validateExistenceItemL){
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+                }
                 $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
                 $valor = round(data_get($detalle, 'ART_VALOR', 0), 4);
 

@@ -148,6 +148,8 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             // 3. Valor de Referencia
             $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
 
+            $refValidadorL = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', 0);
+
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
             }
@@ -185,7 +187,10 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
         // validaciones para tipo L
         if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-            $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+
+            if(!$refValidadorL){
+                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+            }
 
             //validacion de precio de item L
             $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
@@ -380,6 +385,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),
         ];
         $quote->save();
+        $this->approvalFuntions->updateStatusValidatorExistenteItemL($quote->id);
         $quote->refresh();
         $newQuote = [
             'cotizacion_nueva' => Arr::only($quote->toArray(), $camposModificados),

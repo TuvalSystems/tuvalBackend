@@ -103,7 +103,7 @@ class GpPedidoDetalle extends Model
 
     ];
 
-      protected $casts = [
+    protected $casts = [
         'ART_DECIMAL_CANTIDAD'      => 'integer',
         'CHECK_ALTERNATIVO'         => 'boolean',
         'ART_VALOR'                 => 'float',
@@ -125,6 +125,7 @@ class GpPedidoDetalle extends Model
         'trasladado'                => 'float',
         'devuelto'                  => 'float',
         'cancelado'                 => 'float',
+        'validador_l'               => 'boolean'
     ];
 
 
@@ -159,6 +160,7 @@ class GpPedidoDetalle extends Model
         'CHECK_ALTERNATIVO',
         'traslado',
         'valor_original_l',
+        'validador_l',
         'import_job'
 
     ];
@@ -200,16 +202,18 @@ class GpPedidoDetalle extends Model
 
     protected function getApprovalModificadorAttribute(): bool
     {
-       return round((float)$this->modificador, 2) !== 0.0;
+        return round((float)$this->modificador, 2) !== 0.0;
     }
 
 
 
-    public function detalleGuia (){
+    public function detalleGuia()
+    {
         return $this->hasMany(GpGuiaRemisionDetalle::class, 'detalle_id', 'id');
     }
 
-    public function detalleProveedores(){
+    public function detalleProveedores()
+    {
         return $this->hasMany(GpPedidoDetalleProveedores::class, 'detalle_id', 'id');
     }
 }
