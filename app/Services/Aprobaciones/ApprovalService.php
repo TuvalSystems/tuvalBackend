@@ -140,7 +140,7 @@ class ApprovalService implements ApprovalServiceInterface
             $detailId       = data_get($detalle, 'id');
             $type           = data_get($detalle, 'tipo', 'cotizacion');
             $detailOrigin   = $type == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
-
+            $artCode        = data_get($detalle, 'ART_CODIGO');
 
             // ---------------------------------------------------------
             // NORMALIZACIÓN DE VALORES (El secreto para no duplicar código)
@@ -192,7 +192,9 @@ class ApprovalService implements ApprovalServiceInterface
         // validaciones para tipo L
         if ($detalle['ART_TIPO_COMPRA'] == 'L') {
             if (!$validatorExistenceItemL) {
-                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                        "El ítem {$artCode} requiere aprobación por estar clasificado como ítem L."
+                    );
             }
             $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
             $valor          = round(data_get($detalle, 'ART_VALOR', 0), 4);
@@ -328,6 +330,7 @@ class ApprovalService implements ApprovalServiceInterface
             $descOriginalReal       = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
             $descuentoOriginalReal  = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
             $validatorExistenceItemL = $detOriginal ? $detOriginal->validador_l : data_get($detalle, 'validador_l', false);
+            $artCode        = data_get($detalle, 'ART_CODIGO');
 
 
             //validaciones del descuento en caso de que sea pedido
@@ -372,7 +375,9 @@ class ApprovalService implements ApprovalServiceInterface
             // validaciones para tipo L
             if ($detalle['ART_TIPO_COMPRA'] == 'L') {
                 if (! $validatorExistenceItemL) {
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                        "El ítem {$artCode} requiere aprobación por estar clasificado como ítem L."
+                    );
                 }
                 $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
                 $valor          = round(data_get($detalle, 'ART_VALOR', 0), 4);

@@ -139,7 +139,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             $type           = data_get($detalle, 'tipo', 'cotizacion');
             $detailOrigin   = $type == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
             $tipoCompra     = strtoupper(trim((string) data_get($detalle, 'ART_TIPO_COMPRA', '')));
-
+            $artCode        = data_get($detalle, 'ART_CODIGO');
             // ---------------------------------------------------------
             // NORMALIZACIÓN DE VALORES (El secreto para no duplicar código)
             // ---------------------------------------------------------
@@ -188,9 +188,10 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
             // validaciones para tipo L
             if ($tipoCompra == 'L') {
-
                 if (!$refValidadorL) {
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                        "El ítem {$artCode} requiere aprobación por estar clasificado como ítem L."
+                    );
                 }
 
                 //validacion de precio de item L
