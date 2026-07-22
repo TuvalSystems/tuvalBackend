@@ -148,7 +148,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             // 3. Valor de Referencia
             $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
 
-            $refValidadorL = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', 0);
+            $refValidadorL = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', false);
 
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
