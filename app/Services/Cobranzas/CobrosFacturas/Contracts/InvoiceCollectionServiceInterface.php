@@ -14,8 +14,10 @@ interface InvoiceCollectionServiceInterface
     public function generateClientAccountStatementPdf(int $clientId): array;
     public function generateClientAccountStatementExcel(int $clientId): array;
 
-    public function getInvoiceCollectionsByClient(int $id) : array ;
+    public function getInvoiceCollectionsByClient(int $id): array;
     public function getUnappliedCollectionsByClient(int $id): ?Collection;
     public function getBanks(): array;
-     public function retentionReceiptExistsForClient(int $clientId, string $receiptNumber): bool;
+    public function retentionReceiptExistsForClient(int $clientId, string $receiptNumber): bool;
+    public function depositReceiptExistsForClient(int $clientId, int $bankId, string $receiptNumber): bool;
+    public function checkReceiptExistsForClient(string $account, string $numCheck): bool;
 }

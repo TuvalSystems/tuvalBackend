@@ -236,8 +236,10 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
         Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
         Route::get('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
+        Route::get('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
+        Route::get('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
 
-        });
+    });
 });
 
 Route::prefix('gestion')->group(function () {

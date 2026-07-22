@@ -1662,7 +1662,7 @@ class CobranzasController extends Controller
         ]);
     }
 
-    //api migrada a servicio
+    //api migrada a servicio collectionInvoiceService
     public function consultaretencion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1690,7 +1690,7 @@ class CobranzasController extends Controller
             $response
         );
     }
-
+    // api migrada a servicio collectionInvoiceService
     public function consultacheque(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1719,7 +1719,7 @@ class CobranzasController extends Controller
             $response
         );
     }
-
+    // api migrada a servicio collectionInvoiceService
     public function consultadeposito(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -2287,7 +2287,6 @@ class CobranzasController extends Controller
             $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
             return $this->successResponse('Datos obtenidos correctamente', $response, 200);
         }, 'laravel', 'listaHistoricaDepositos');
-
     }
 
 
@@ -2386,20 +2385,61 @@ class CobranzasController extends Controller
         }, 'laravel', 'obtenerListaBancos');
     }
 
-    public function consultarExistenciaRetencion(Request $request) : JsonResponse{
-        return $this->handleApiAction(function() use($request): JsonResponse{
-           $validate  = $request->validate([
+    public function consultarExistenciaRetencion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
                 'id'            => ['required', 'integer', 'exists:gp_clientes,id'],
                 'comprobante'   => ['required', 'string']
             ]);
 
-            $id = data_get($validate, 'id');
-            $documento = data_get($validate, 'comprobante');
-            $exist = $this->invoiceCollect->retentionReceiptExistsForClient($id, $documento);
-            if($exist){
+            $id         = data_get($validate, 'id');
+            $documento  = data_get($validate, 'comprobante');
+            $exist      = $this->invoiceCollect->retentionReceiptExistsForClient($id, $documento);
+            if ($exist) {
                 return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
             }
             return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
-        },'laravel', 'consultarExistenciaRetencion');
+        }, 'laravel', 'consultarExistenciaRetencion');
+    }
+
+    public function consultarExistenciaDeposito(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'cliente_id'            => ['required', 'integer', 'exists:gp_clientes,id'],
+                'comprobante'   => ['required', 'string'],
+                'banco_id'      => ['required']
+            ]);
+
+            $id         = data_get($validate, 'cliente_id');
+            $documento  = data_get($validate, 'comprobante');
+            $bancoId    = data_get($validate, 'banco_id');
+            $exists     = $this->invoiceCollect->depositReceiptExistsForClient($id, $bancoId, $documento);
+            if ($exists) {
+                return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
+        }, 'laravel', 'consultarExistenciaDeposito');
+    }
+
+
+    public function consultarExistenciaCheque(Request $request){
+        return $this->handleApiAction(function() use($request){
+         $validate = $request->validate([
+                'cliente_id'   => ['required', 'integer', 'exists:gp_clientes,id'],
+                'cheque'       => ['required', 'string'],
+                'banco_id'     => ['required'],
+                'cuenta'       => ['required', 'string'],
+            ]);
+            $cuenta = data_get($validate, 'cuenta');
+            $cheque = data_get($validate, 'cheque');
+            $exist = $this->invoiceCollect->checkReceiptExistsForClient($cuenta, $cheque);
+            if($exist){
+                return $this->buildExistResponse(false, 'Cheque ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Cheque no existente, proceda', 200);
+
+        },'laravel', 'consultarExistenciaCheque');
     }
 }

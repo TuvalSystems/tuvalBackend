@@ -540,6 +540,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
                 Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
                 Route::post('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
+                Route::post('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
+                Route::post('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
             });
 
             Route::prefix('ordenes-despacho')->group(function () {

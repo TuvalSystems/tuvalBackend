@@ -4,6 +4,8 @@ namespace App\Services\Cobranzas\CobrosFacturas;
 
 use App\Enums\Ventas\TaxRateEnum;
 use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
+use App\Models\Cobranzas\GpCobrosCheques;
+use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\Cobranzas\GpCobrosDepositosFacturas;
 use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCajaBancos;
@@ -356,6 +358,23 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             ->where('ret_comprobante', trim($receiptNumber))
             ->whereHas('cobro',   fn(Builder $query) =>
             $query->where('cliente_id', $clientId))
+            ->exists();
+    }
+
+    public function depositReceiptExistsForClient(int $clientId, int $bankId, string $receiptNumber): bool
+    {
+        return GpCobrosDeposito::query()
+            ->where('comprobante', $receiptNumber)
+            ->where('banco_id', $bankId)
+            ->where('estado', '!=', 'rechazado')
+            ->exists();
+    }
+
+    public function checkReceiptExistsForClient(string $account, string $numCheck): bool
+    {
+        return GpCobrosCheques::query()
+            ->where('cuenta', $account)
+            ->where('cheque', $numCheck)
             ->exists();
     }
 }
