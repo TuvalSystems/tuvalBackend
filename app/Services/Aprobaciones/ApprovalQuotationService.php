@@ -138,7 +138,8 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             $detailId       = data_get($detalle, 'detalle_id');
             $type           = data_get($detalle, 'tipo', 'cotizacion');
             $detailOrigin   = $type == 'cotizacion' ? $dbDetailQuote->get($detailId) : $dbDetailOrder->get($detailId);
-
+            $tipoCompra     = strtoupper(trim((string) data_get($detalle, 'ART_TIPO_COMPRA', '')));
+            $artCode        = data_get($detalle, 'ART_CODIGO');
             // ---------------------------------------------------------
             // NORMALIZACIÓN DE VALORES (El secreto para no duplicar código)
             // ---------------------------------------------------------
@@ -148,12 +149,15 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             // 3. Valor de Referencia
             $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
 
+            $refValidadorL = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', false);
+            $refValidadorL = filter_var($refValidadorL, FILTER_VALIDATE_BOOLEAN);
+
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
             }
 
             // validacion de descripcion difernete a tipo L
-            if ($detalle['ART_TIPO_COMPRA'] != 'L') {
+            if ($tipoCompra != 'L') {
                 if ($detalle['ART_DESCRIPCION'] != $refDescripcion) {
                     $descNueva = substr($detalle['ART_DESCRIPCION'], 0, 20);
                     $descRef = substr($refDescripcion, 0, 20);
@@ -181,39 +185,44 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                         . "({$excesoPct}% sobre el valor original).");
                 }
             }
-        }
 
-        // validaciones para tipo L
-        if ($detalle['ART_TIPO_COMPRA'] == 'L') {
-            $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse('Se requiere aprobación por ser Item L');
-
-            //validacion de precio de item L
-            $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
-            $valor = round(data_get($detalle, 'ART_VALOR', 0), 4);
-
-            if ($valorOriginalL > $valor) {
-                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");
-            }
-
-            $porcentajeMargen = $this->approvalFuntions->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
-            if (!$porcentajeMargen) {
-                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
-            }
-            $margenConfigurado = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
-            foreach ($detalle['proveedores'] as $proveedor) {
-                if ((float)$proveedor['MARGEN'] < (float)$margenConfigurado) {
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
-                }
-            }
-
-            /** validacion del precio total del proveedor <= precio de $300 */
-            $providersDetail = data_get($detalle, 'proveedores', []);
-            foreach ($providersDetail as $provider) {
-                $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
-                if ($valorProvider < 300) {
+            // validaciones para tipo L
+            if ($tipoCompra == 'L') {
+                if (!$refValidadorL) {
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
-                        "El valor total del proveedor ({$valorProvider}) está por debajo del límite permitido de $300."
+                        "El ítem {$artCode} requiere aprobación por estar clasificado como ítem L."
                     );
+                }
+
+                //validacion de precio de item L
+                $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
+                $valor = round(data_get($detalle, 'ART_VALOR', 0), 4);
+
+                if ($valorOriginalL > $valor) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");
+                }
+
+                $porcentajeMargen = $this->approvalFuntions->getTypeArticleLQuotationOrOrder($detalle['ART_CODIGO']);
+                if (!$porcentajeMargen) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Porcentaje de margen no encontrado en la base de datos.");
+                } else {
+                    $margenConfigurado = $porcentajeMargen->DATOS_ITEMS_L_MARGEN;
+                    foreach ($detalle['proveedores'] as $proveedor) {
+                        if ((float)$proveedor['MARGEN'] < (float)$margenConfigurado) {
+                            $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Margen del producto L es menor al margen aprobado en la cotización.");
+                        }
+                    }
+                }
+
+                /** validacion del precio total del proveedor <= precio de $300 */
+                $providersDetail = data_get($detalle, 'proveedores', []);
+                foreach ($providersDetail as $provider) {
+                    $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
+                    if ($valorProvider < 300) {
+                        $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                            "El valor total del proveedor ({$valorProvider}) está por debajo del límite permitido de $300."
+                        );
+                    }
                 }
             }
         }
@@ -380,6 +389,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),
         ];
         $quote->save();
+        $this->approvalFuntions->updateStatusValidatorExistenteItemL($quote->id);
         $quote->refresh();
         $newQuote = [
             'cotizacion_nueva' => Arr::only($quote->toArray(), $camposModificados),

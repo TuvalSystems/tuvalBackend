@@ -360,6 +360,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'descuento_original'            => (float)data_get($articles, 'descuento_original'),
             'modificador'                   => (float)data_get($articles, 'modificador'),
             'valor_original_l'              => (float)data_get($articles, 'valor_original_l', 0),
+            'validador_l'                   => data_get($articles, 'validador_l', false),
         ]);
 
         return $qd;
@@ -596,6 +597,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'descuento_original'            => $detail->descuento_original,
             'modificador'                   => $detail->modificador,
             'valor_original_l'              => $detail->valor_original_l,
+            'validador_l'                   => $detail->validador_l
         ]);
         return $nHDetail;
     }

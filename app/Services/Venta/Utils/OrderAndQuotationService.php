@@ -77,6 +77,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $proveedores = GpCotizacionDetalleProveedores::where('cotizacion_id', $quotationId)->whereIn('detalle_id', $details->pluck('id'))->get()
             ->groupBy('detalle_id')->toArray();
         $details->each(function ($item) use ($proveedores, $copy, $warehouse, $quotationId) {
+            $item->validador_l =  0;
             $item->proveedores = $copy ? collect() : collect($proveedores[$item->id] ?? [])
                 ->map(fn($prov) => (object) $prov);
             $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'cotizacion');
@@ -96,6 +97,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     {
         $details = GpPedidoDetalle::where('pedido_id', $quotationId)->get();
         $details->each(function ($item) use ($warehouse, $quotationId, $copy) {
+            $item->validador_l = 0;
             $item->proveedores = collect();
             $item->stock = $this->getFormattedStocksQuotation($quotationId, $item->id, 'pedido');
         });
