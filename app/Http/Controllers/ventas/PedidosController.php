@@ -17,6 +17,7 @@ use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
 use App\Models\Articulos\GpArticulo;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
+use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
 use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -192,13 +193,14 @@ class PedidosController extends Controller
             'fecha_hasta' => '',
             'cliente' => '',
         ]);
+        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', data_get($data, 'puntodeventa_id'))->first();
 
         $pedidos = GpPedido::where('gp_pedidos.PTO_VTA_ID', $data['puntodeventa_id'])
             ->leftJoin('gp_cotizacions', 'gp_cotizacions.id', 'gp_pedidos.cotizacion_id')
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_cotizacions.origen as cotizacion_origen');
 
         //restriccion de visualizacion de pedidodos
-            $this->commercial->applyUserRestriction($pedidos, $user, 'gp_pedidos.user_id');
+        $this->commercial->applyLimitsVisibiliteList($pedidos, $user,$puntoVenta->id, 'pedidos', 'gp_pedidos.user_id');
 
         if ($data['estado'] != 'todos') {
             $pedidos = $pedidos->where('gp_pedidos.estado', $data['estado']);
