@@ -315,7 +315,6 @@ class CotizacionesController extends Controller
     public function vercotizaciones(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $user = $request->user() ?? GpUsuario::find(137);
-
         $data = $request->validate([
             'puntodeventa_id' => 'required',
             'estado' => '',
@@ -323,12 +322,13 @@ class CotizacionesController extends Controller
             'fecha_hasta' => '',
         ]);
 
+        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', data_get($data, 'puntodeventa_id'))->first();
+
         $cotizaciones = GpCotizacion::with('reserva')->where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
             ->join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
 
-            $this->commercial->applyUserRestriction($cotizaciones, $user, 'gp_cotizacions.user_id');
-        
+        $this->commercial->applyLimitsVisibiliteList($cotizaciones, $user,$puntoVenta->id, 'cotizaciones', 'gp_cotizacions.user_id');
 
         if ($data['estado'] == 'pendientes') {
             $cotizaciones = $cotizaciones
@@ -1021,11 +1021,12 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function obtenerListaPrecioDefectoPuntoVenta(Request $request){
-        return $this->handleApiAction(function() use($request){
+    public function obtenerListaPrecioDefectoPuntoVenta(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
             $pvCodigo = $request->input('pvCodigo', null);
             $response = $this->quotationService->getDefaultPriceListByPos($pvCodigo);
             return $this->successResponse('Información Obtenida Correctamente', $response);
-        },'laravel', 'obtenerListaPrecioDefectoPuntoVenta');
+        }, 'laravel', 'obtenerListaPrecioDefectoPuntoVenta');
     }
 }

@@ -17,6 +17,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
+use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
 use App\Services\Comercial\CommercialVisibilityService;
 use App\Traits\ExecuteApiTransactions;
@@ -43,12 +44,11 @@ class DevolucionesController extends Controller
                 $query->where('estado', OrderStatus::FACTURADO)
                     ->orWhere('estado', OrderStatus::ANULADA);
             });
+        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $puntodeventa_id)->first();
 
-        $this->commercial->applyUserRestriction(
-            $pedidosQuery,
-            $user,
-            'gp_pedidos.user_id'
-        );
+
+        $this->commercial->applyLimitsVisibiliteList($pedidosQuery, $user, $puntoVenta->id, 'pedidos', 'gp_pedidos.user_id');
+
         $pedidos = $pedidosQuery
             ->orderByDesc('gp_pedidos.created_at')
             ->limit(10000)
@@ -82,11 +82,8 @@ class DevolucionesController extends Controller
                 );
             });
 
-        $this->commercial->applyUserRestriction(
-            $devolucionesQuery,
-            $user,
-            'gp_devoluciones.user_id'
-        );
+        $this->commercial->applyLimitsVisibiliteList($devolucionesQuery, $user, $puntoVenta->id, 'devoluciones',  'gp_devoluciones.user_id');
+
         $devoluciones = $devolucionesQuery
             ->orderByDesc('gp_devoluciones.created_at')
             ->get();
