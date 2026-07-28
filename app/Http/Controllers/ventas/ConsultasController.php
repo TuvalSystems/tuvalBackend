@@ -205,7 +205,7 @@ class ConsultasController extends Controller
             $st = $this->inventoryService->getConsultStock($data);
             return $this->successResponse('Stock obtenido correctamente', $st, 200);
         } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)' , [
+            Log::error('Error al consultar Stock (getConsultStock)', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
@@ -237,14 +237,16 @@ class ConsultasController extends Controller
             $items = $this->inventoryService->getConsultItemTransito($data);
             return $this->successResponse('Transitos obtenidos correctamente', $items, 200);
         } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)' ,
+            Log::error(
+                'Error al consultar Stock (getConsultStock)',
                 [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'data' => $data
-                ]);
+                ]
+            );
             return $this->buildErrorResponse('Error al consultar Transito', 500);
         }
     }
@@ -260,14 +262,24 @@ class ConsultasController extends Controller
         }
     }
 
-    public function consultarStockTransitoTransferenciaVenta(){
-        return $this->handleApiAction(function() {
+    public function consultarStockTransitoTransferenciaVenta()
+    {
+        return $this->handleApiAction(function () {
             $items = $this->inventoryService->fetchStockInTransitTransfers();
             return $this->successResponse('Transito Obtenido Correctamente', $items);
-        },'laravel', 'consultarStockTransitoTransferenciaVenta');
+        }, 'laravel', 'consultarStockTransitoTransferenciaVenta');
     }
 
-    
+    /** unificacion de transito de reposiciones y transferencia de venta */
+    public function consultaTransitoConsolidado()
+    {
+        return $this->handleApiAction(function () {
+            $items = $this->inventoryService->fetchStockInTransitConsolidated();
+            return $this->successResponse('Transito Consolidado Obtenido');
+        }, 'laravel', 'consultarStockTransitoTransferenciaVenta');
+    }
+
+
 
 
 

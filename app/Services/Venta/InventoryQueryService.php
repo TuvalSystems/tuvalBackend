@@ -204,6 +204,13 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->get();
     }
 
+    public function fetchStockInTransitConsolidated(){
+        $reposition = $this->fetchStockInTransit();
+        $transfers = $this->fetchStockInTransitTransfers();
+
+        return $reposition->merge($transfers);
+    }
+
 
 
     public function listReservedInventory()
