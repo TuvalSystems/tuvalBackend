@@ -275,7 +275,7 @@ class ConsultasController extends Controller
     {
         return $this->handleApiAction(function () {
             $items = $this->inventoryService->fetchStockInTransitConsolidated();
-            return $this->successResponse('Transito Consolidado Obtenido');
+            return $this->successResponse('Transito Consolidado Obtenido', $items);
         }, 'laravel', 'consultarStockTransitoTransferenciaVenta');
     }
 
