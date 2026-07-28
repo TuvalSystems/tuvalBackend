@@ -170,16 +170,34 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function fetchStockInTransit()
     {
+
         return DB::table('gp_guia_remision_detalles as d')
-            ->join('gp_guia_remisions as g', 'g.id', '=', 'd.guia_remision_id')
+            ->join(
+                'gp_guia_remisions as g',
+                'g.id',
+                '=',
+                'd.guia_remision_id'
+            )
             ->where('g.tipo', 'reposicion')
             ->where('g.estado', 'enviada')
             ->select([
-                DB::raw('g.bodega_destino as bodega'),
-                DB::raw('d.GUI_REM_CODI_INTERNO as codigo'),
-                DB::raw('COALESCE(SUM(COALESCE(d.GUI_REM_CANTIDAD,0) - COALESCE(d.recibido,0)),0) as pendiente'),
+                'g.bodega_destino as bodega',
+                'd.GUI_REM_CODI_INTERNO as codigo',
+                DB::raw("'reposicion' AS tipo_movimiento"),
+                DB::raw(
+                    'COALESCE(
+                    SUM(
+                        COALESCE(d.GUI_REM_CANTIDAD, 0)
+                        - COALESCE(d.recibido, 0)
+                    ),
+                    0
+                ) AS pendiente'
+                ),
             ])
-            ->groupBy('g.bodega_destino', 'd.GUI_REM_CODI_INTERNO')
+            ->groupBy(
+                'g.bodega_destino',
+                'd.GUI_REM_CODI_INTERNO'
+            )
             ->having('pendiente', '>', 0)
             ->orderBy('bodega')
             ->orderBy('codigo')
@@ -189,20 +207,48 @@ class InventoryQueryService implements InventoryQueryServiceInterface
     public function fetchStockInTransitTransfers()
     {
         return DB::table('gp_guia_remision_detalles as d')
-            ->join('gp_guia_remisions as g', 'g.id', '=', 'd.guia_remision_id')
+            ->join(
+                'gp_guia_remisions as g',
+                'g.id',
+                '=',
+                'd.guia_remision_id'
+            )
             ->where('g.tipo', 'transferencia')
             ->where('g.estado', 'enviada')
             ->select([
-                DB::raw('g.bodega_destino as bodega'),
-                DB::raw('d.GUI_REM_CODI_INTERNO as codigo'),
-                DB::raw('COALESCE(SUM(COALESCE(d.GUI_REM_CANTIDAD,0) - COALESCE(d.recibido,0)),0) as pendiente'),
+                'g.bodega_destino as bodega',
+                'd.GUI_REM_CODI_INTERNO as codigo',
+                DB::raw("'transferencia' AS tipo_movimiento"),
+                DB::raw(
+                    'COALESCE(
+                    SUM(
+                        COALESCE(d.GUI_REM_CANTIDAD, 0)
+                        - COALESCE(d.recibido, 0)
+                    ),
+                    0
+                ) AS pendiente'
+                ),
             ])
-            ->groupBy('g.bodega_destino', 'd.GUI_REM_CODI_INTERNO')
+            ->groupBy(
+                'g.bodega_destino',
+                'd.GUI_REM_CODI_INTERNO'
+            )
             ->having('pendiente', '>', 0)
             ->orderBy('bodega')
             ->orderBy('codigo')
             ->get();
     }
+
+    public function fetchStockInTransitConsolidated()
+    {
+        $repositions = $this->fetchStockInTransit();
+        $transfers = $this->fetchStockInTransitTransfers();
+
+        return $repositions
+            ->concat($transfers)
+            ->values();
+    }
+
 
 
 
