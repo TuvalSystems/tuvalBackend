@@ -3,11 +3,13 @@
 namespace App\Services\Comercial;
 
 use App\Models\GpUsuario;
+use App\Models\Usuario\UsuarioVisibilidadLista;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\Ventas\Vendedores\VendedorAtributoValor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class CommercialVisibilityService
 {
@@ -87,6 +89,49 @@ class CommercialVisibilityService
             $query->whereIn($userColumn, $allowedUserIds);
         }
 
+        return $query;
+    }
+
+
+    public function applyLimitsVisibiliteList(Builder $query, GpUsuario $user, int $pvId, string $type, string $userColumn = 'user_id'): Builder
+    {
+        if (in_array($user->perfil_id, self::ADMIN_PROFILE_IDS, true)) {
+            return $query;
+        }
+
+        $visibilityColumn = match ($type) {
+            'cotizaciones'  => 'ver_cot',
+            'pedidos'       => 'ver_ped',
+            'devoluciones'  => 'ver_dev',
+            default        => throw new InvalidArgumentException(
+                "Tipo de lista no válido: {$type}"
+            ),
+        };
+
+        $configurations = UsuarioVisibilidadLista::query()
+            ->where('usr_pr_id', $user->id)
+            ->where('pv_id', $pvId)
+            ->where('estado', true)
+            ->get([
+                'usr_ver_id',
+                $visibilityColumn
+            ]);
+
+        if ($configurations->isEmpty()) {
+            return $query;
+        }
+
+        $limitsUsers =  $configurations
+            ->where($visibilityColumn, true)
+            ->pluck('usr_ver_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($limitsUsers !== null) {
+            $query->whereIn($userColumn, $limitsUsers);
+        }
         return $query;
     }
 }
