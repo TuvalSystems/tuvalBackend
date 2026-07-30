@@ -190,6 +190,11 @@ class StockWarehouseService implements StockWarehouseServiceInterface
     {
         if (empty($bodegas))
             return [];
+
+        $totalExpression = $excludeQuotationId
+            ? 'SUM(GREATEST(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) - st.cantidad_traslado, 0)) as total'
+            : 'SUM(GREATEST(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)), 0)) as total';
+
         return DB::table('gp_cotizacion_detalle_stocks as st')
             ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
@@ -203,7 +208,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
-                DB::raw('SUM(GREATEST(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) - st.cantidad_traslado, 0)) as total')
+                DB::raw($totalExpression)
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
