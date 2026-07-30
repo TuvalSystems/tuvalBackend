@@ -204,8 +204,8 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->select(
                 'st.STO_ART_BODEGA as bodega',
                 // 'c.cotizacion',
-                // DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0))) as total')
-                DB::raw('SUM(GREATEST(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) - IFNULL(st.cantidad_traslado, 0), 0)) as total')
+                DB::raw('SUM(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0))) as total')
+                // DB::raw('SUM(GREATEST(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) - IFNULL(st.cantidad_traslado, 0), 0)) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
