@@ -3,6 +3,7 @@
 namespace App\Services\Cobranzas\CobrosFacturas\Contracts;
 
 use App\Models\GpUsuario;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface InvoiceCollectionServiceInterface
@@ -20,4 +21,6 @@ interface InvoiceCollectionServiceInterface
     public function retentionReceiptExistsForClient(int $clientId, string $receiptNumber): bool;
     public function depositReceiptExistsForClient(int $clientId, int $bankId, string $receiptNumber): bool;
     public function checkReceiptExistsForClient(string $account, string $numCheck): bool;
+    public function fetchListCollection(array $filters): LengthAwarePaginator;
+    public function printCollectionPdf(int $collectId) : array;
 }

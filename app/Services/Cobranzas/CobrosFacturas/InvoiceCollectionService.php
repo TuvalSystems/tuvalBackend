@@ -4,6 +4,7 @@ namespace App\Services\Cobranzas\CobrosFacturas;
 
 use App\Enums\Ventas\TaxRateEnum;
 use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
+use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosCheques;
 use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\Cobranzas\GpCobrosDepositosFacturas;
@@ -18,6 +19,7 @@ use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInte
 use Carbon\Carbon;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -376,5 +378,58 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             ->where('cuenta', $account)
             ->where('cheque', $numCheck)
             ->exists();
+    }
+
+
+    public function fetchListCollection(array $filters): LengthAwarePaginator
+    {
+        $clientId = data_get($filters, 'cliente_id');
+        $search = data_get($filters, 'search', '');
+        $perpage = data_get($filters, 'perpage', 10);
+        $sortField = data_get($filters, 'sortField', 'created_at');
+        $sortOrder = strtolower(data_get($filters, 'sortOrder', 'desc')) === 'asc'
+            ? 'asc'
+            : 'desc';
+
+        $allowedSorts = [
+            'numero_recibo'     => 'gc.numero_recibo',
+            'fecha'             => 'gc.fecha'
+        ];
+
+
+        $orderColumn = data_get($allowedSorts, $sortField, 'gc.created_at');
+
+        $query = GpCobro::query()
+            ->select([
+                'gc.id',
+                'gc.numero_recibo',
+                'gc.user_id',
+                'gc.cliente_id',
+                'gc.caja_id',
+                'gc.fecha',
+                'gc.estado',
+                'gc.created_at'
+            ])
+            ->from('gp_cobros as gc')
+            ->where('gc.cliente_id', $clientId);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('gc.numero_recibo', 'like', "%{$search}%");
+            });
+        }
+
+        return $query
+            ->orderBy($orderColumn, $sortOrder)
+            ->paginate($perpage);
+    }
+
+
+
+    public function printCollectionPdf(int $collectId) : array
+    {
+        return [
+            'id' => $collectId
+        ];
     }
 }

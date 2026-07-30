@@ -1146,7 +1146,7 @@ class DespachosController extends Controller
 
     public function imprimirOrderDespachoPdf(Request $request): HttpFoundationResponse
     {
-        return $this->handlePdfAction(function ()  use ($request): HttpFoundationResponse {
+        return $this->handleDocumentAction(function ()  use ($request): HttpFoundationResponse {
             $validate = $request->validate([
                 'id' =>  'required|integer|exists:gp_orden_despachos,id'
             ]);

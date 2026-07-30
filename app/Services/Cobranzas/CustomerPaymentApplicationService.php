@@ -26,25 +26,55 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     {
 
         $cliente                            = GpCliente::find(data_get($payload, 'cliente_id'));
+        if (!$cliente) {
+            throw new \InvalidArgumentException('Cliente no encontrado para validar el cobro.');
+        }
+
         $fechaCobro = now();
         $desde                              = $fechaCobro->copy()->startOfDay()->toDateTimeString();
         $hasta                              = $fechaCobro->copy()->endOfDay()->toDateTimeString();
-        $payload['retenciones']             = $this->processRetenciones(data_get($payload, 'retenciones', []),  $desde, $hasta, $cliente);
-        $payload['ingreso_efectivo']        = $this->processIngresoEfectivo(data_get($payload, 'ingreso_efectivo', []), $desde, $hasta, $cliente);
-        $payload['ingreso_tarjeta']         = $this->processIngresoTarjeta(data_get($payload, 'ingreso_tarjeta', []), $desde, $hasta, $cliente);
-        $payload['ingreso_depositos']       = $this->processIngresoDeposito(data_get($payload, 'ingreso_depositos', []), $desde, $hasta, $cliente);
-        $payload['ingreso_aplicaciones']    = $this->processIngresoAplicaciones(data_get($payload, 'ingreso_aplicaciones', []), $desde, $hasta, $cliente);
-        $payload['ingreso_cheques']         = $this->processIngresoCheques(data_get($payload, 'ingreso_cheques', []), $desde, $hasta, $cliente);
+
+        $payload['retenciones']  = $this->processRetenciones($this->arrayValue(data_get($payload, 'retenciones', [])),  $desde, $hasta, $cliente);
+        $payload['efectivo']     = $this->processSinglePayment(data_get($payload, 'efectivo'), 'efectivo', $desde, $hasta, $cliente);
+        $payload['tarjeta']      = $this->processSinglePayment(data_get($payload, 'tarjeta'), 'tarjeta', $desde, $hasta, $cliente);
+        $payload['cheque']       = $this->processSinglePayment(data_get($payload, 'cheque'), 'cheque', $desde, $hasta, $cliente);
+        $payload['depositos']    = $this->processIngresoDeposito($this->arrayValue(data_get($payload, 'depositos', [])), $desde, $hasta, $cliente);
+        $payload['aplicaciones'] = $this->processIngresoAplicaciones($this->arrayValue(data_get($payload, 'aplicaciones', [])), $desde, $hasta, $cliente);
+
         $payload['hasGlobalExcess']         = $this->hasAnyExcess($payload);
         $this->storeFromValidationResult($payload, $user);
 
         return $this->cleanInternalHistory($payload);
     }
 
+    protected function arrayValue(mixed $value): array
+    {
+        return is_array($value) ? $value : [];
+    }
+
+    protected function processSinglePayment(
+        mixed $payment,
+        string $type,
+        string $desde,
+        string $hasta,
+        GpCliente $cliente
+    ): ?array {
+        if (!is_array($payment) || empty($payment)) {
+            return null;
+        }
+
+        return match ($type) {
+            'efectivo' => $this->processIngresoEfectivo($payment, $desde, $hasta, $cliente),
+            'tarjeta'  => $this->processIngresoTarjeta($payment, $desde, $hasta, $cliente),
+            'cheque'   => $this->processIngresoCheque($payment, $desde, $hasta, $cliente),
+            default    => $payment,
+        };
+    }
+
     protected function processRetenciones(array $retenciones, string $desde, string $hasta, GpCliente $cliente)
     {
         foreach ($retenciones as &$ret) {
-            $facturaOrigen          = trim(data_get($ret, 'ret_factura'));
+            $facturaOrigen          = $this->getInvoiceDocument($ret);
             $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
 
             if (!$this->isValidWebInvoiceNumber($factura)) {
@@ -53,11 +83,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             }
 
             $valorIngresado         = $this->money(data_get($ret, 'total', 0));
-            $saldoFactura           = $this->money(data_get($ret, 'ret_saldo_factura', 0));
+            $saldoFactura           = $this->getInvoiceBalanceForValidation($ret);
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('collectionAmount'));
+            $sumPayments            = $this->sumPaymentAmount($payments);
 
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
@@ -88,6 +118,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $sumPayments,
                 $sumPendingWeb,
                 $sumDev,
+                $this->getInvoiceCurrentBalanceForValidation($ret)
             );
 
             $ret = array_merge($ret, $validation, [
@@ -120,18 +151,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         foreach ($dataInvoices as &$ing) {
-            $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+            $facturaOrigen          = $this->getInvoiceDocument($ing);
             $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
             if (!$this->isValidWebInvoiceNumber($factura)) {
                 $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
                 continue;
             }
-            $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_efectivo', 0));
-            $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
+            $valorIngresado         = $this->getAppliedAmount($ing, ['aplicarMontoEfectivo']);
+            $saldoFactura           = $this->getInvoiceBalanceForValidation($ing);
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('valorCobro'));
+            $sumPayments            = $this->sumPaymentAmount($payments);
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -159,7 +190,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $saldoFactura,
                 $sumPayments,
                 $sumPendingWeb,
-                $sumDev
+                $sumDev,
+                $this->getInvoiceCurrentBalanceForValidation($ing)
             );
 
             $ing = array_merge($ing, $validation, [
@@ -193,18 +225,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         foreach ($dataInvoices as &$ing) {
-            $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+            $facturaOrigen          = $this->getInvoiceDocument($ing);
             $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
             if (!$this->isValidWebInvoiceNumber($factura)) {
                 $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
                 continue;
             }
-            $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_tarjeta', 0));
-            $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
+            $valorIngresado         = $this->getAppliedAmount($ing, ['aplicarMontoTarjeta']);
+            $saldoFactura           = $this->getInvoiceBalanceForValidation($ing);
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('valorCobro'));
+            $sumPayments            = $this->sumPaymentAmount($payments);
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -230,7 +262,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $saldoFactura,
                 $sumPayments,
                 $sumPendingWeb,
-                $sumDev
+                $sumDev,
+                $this->getInvoiceCurrentBalanceForValidation($ing)
             );
 
             $ing = array_merge($ing, $validation, [
@@ -266,19 +299,19 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             }
 
             foreach ($dataInvoices as &$ing) {
-                $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+                $facturaOrigen          = $this->getInvoiceDocument($ing);
                 $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
 
                 if (!$this->isValidWebInvoiceNumber($factura)) {
                     $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
                     continue;
                 }
-                $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_deposito', 0));
-                $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
+                $valorIngresado         = $this->getAppliedAmount($ing, ['aplicarMontoDeposito']);
+                $saldoFactura           = $this->getInvoiceBalanceForValidation($ing);
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->money($payments->sum('valorCobro'));
+                $sumPayments            = $this->sumPaymentAmount($payments);
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -306,6 +339,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     $sumPayments,
                     $sumPendingWeb,
                     $sumDev,
+                    $this->getInvoiceCurrentBalanceForValidation($ing)
                 );
 
                 $ing = array_merge($ing, $validation, [
@@ -336,14 +370,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function processIngresoAplicaciones(array $data, string $desde, string $hasta, GpCliente $cliente)
     {
         foreach ($data as  &$typeDeposits) {
-            $applyDoc = trim((string) data_get($typeDeposits, 'detalle.CN_DOCUMENTO', '')); //documento de cobro para aplicar
+            $applyDoc = $this->getApplicationDocument($typeDeposits); //documento de cobro para aplicar
             $dataInvoices   = data_get($typeDeposits, 'facturas', []);
 
 
             if (empty($dataInvoices)) {
                 continue;
             }
-            $totalAmountToApply         = $this->money(collect($dataInvoices)->sum('aplicar_monto_aplicacion'));
+            $totalAmountToApply         = $this->money(
+                collect($dataInvoices)->sum(
+                    fn($invoice) => $this->getAppliedAmount($invoice, ['aplicarMontoAplicacion'])
+                )
+            );
             $pendingApplicationDocument             = $this->getApplyDocumentsPendings($applyDoc, $cliente->CLI_RUC);
             $gpApplicationBalance       = $this->money(data_get($pendingApplicationDocument, 'saldoCliente', 0));
             if ($totalAmountToApply > $gpApplicationBalance) {
@@ -356,7 +394,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             }
 
             foreach ($dataInvoices as &$ing) {
-                $facturaOrigen          = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+                $facturaOrigen          = $this->getInvoiceDocument($ing);
                 $factura                = $this->normalizeInvoiceNumber($facturaOrigen);
 
                 if (!$this->isValidWebInvoiceNumber($factura)) {
@@ -364,12 +402,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     continue;
                 }
 
-                $valorIngresado         = $this->money(data_get($ing, 'aplicar_monto_aplicacion', 0));
-                $saldoFactura           = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
+                $valorIngresado         = $this->getAppliedAmount($ing, ['aplicarMontoAplicacion']);
+                $saldoFactura           = $this->getInvoiceBalanceForValidation($ing);
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->money($payments->sum('valorCobro'));
+                $sumPayments            = $this->sumPaymentAmount($payments);
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -413,6 +451,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     $sumPayments,
                     $sumPendingWeb,
                     $sumDev,
+                    $this->getInvoiceCurrentBalanceForValidation($ing)
                 );
                 if ($hasDoubleApply) {
                     $validation = $this->applyDoubleApplyValidation($validation, $applyDoc);
@@ -443,7 +482,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         return $data;
     }
 
-    protected function processIngresoCheques(array $data, string $desde, string $hasta, GpCliente $cliente)
+    protected function processIngresoCheque(array $data, string $desde, string $hasta, GpCliente $cliente)
     {
         $dataInvoices = data_get($data, 'facturas', []);
 
@@ -452,18 +491,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         }
 
         foreach ($dataInvoices as &$ing) {
-            $facturaOrigen      = trim(data_get($ing, 'ECD_DET_NUM_DOC', ''));
+            $facturaOrigen      = $this->getInvoiceDocument($ing);
             $factura            = $this->normalizeInvoiceNumber($facturaOrigen);
             if (!$this->isValidWebInvoiceNumber($factura)) {
                 $ing = $this->markSkippedInvoiceValidation($ing, $facturaOrigen, $factura);
                 continue;
             }
-            $valorIngresado     = $this->money(data_get($ing, 'aplicar_monto_cheque', 0));
-            $saldoFactura       = $this->money(data_get($ing, 'ECD_DET_MONTO_ORIGINAL', 0));
+            $valorIngresado     = $this->getAppliedAmount($ing, ['aplicarMontoCheque']);
+            $saldoFactura       = $this->getInvoiceBalanceForValidation($ing);
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->money($payments->sum('valorCobro'));
+            $sumPayments            = $this->sumPaymentAmount($payments);
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -492,12 +531,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $sumPayments,
                 $sumPendingWeb,
                 $sumDev,
+                $this->getInvoiceCurrentBalanceForValidation($ing)
             );
 
             $ing = array_merge($ing, $validation, [
                 'devoluciones_info' => $devsInfo,
                 '_validacion_historial' => $this->buildValidationHistory(
-                    tipoIngreso: 'cheques',
+                    tipoIngreso: 'cheque',
                     cliente: $cliente,
                     facturaOrigen: $facturaOrigen,
                     factura: $factura,
@@ -532,18 +572,98 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             ->all();
     }
 
+    protected function getInvoiceDocument(array $item): string
+    {
+        return trim((string) data_get($item, 'documento', ''));
+    }
+
+    protected function getApplicationDocument(array $item): string
+    {
+        return trim((string) data_get($item, 'documento', ''));
+    }
+
+    protected function getAppliedAmount(array $item, array $fields): float
+    {
+        foreach ($fields as $field) {
+            $value = data_get($item, $field);
+
+            if ($value !== null && trim((string) $value) !== '') {
+                return $this->money($value);
+            }
+        }
+
+        return 0.00;
+    }
+
+    protected function sumPaymentAmount(SupportCollection $payments): float
+    {
+        return $this->money(
+            $payments->sum(fn($payment) => $this->money(
+                data_get($payment, 'valorCobro', data_get($payment, 'collectionAmount', 0))
+            ))
+        );
+    }
+
+    protected function getInvoiceBalanceForValidation(array $item): float
+    {
+        return $this->money(
+            data_get($item, 'montoOriginal')
+            ?? data_get($item, 'saldoFactura')
+            ?? data_get($item, 'saldoCliente')
+            ?? 0
+        );
+    }
+
+    protected function getInvoiceOriginalAmount(array $item): float
+    {
+        return $this->money(
+            data_get($item, 'montoOriginal')
+            ?? data_get($item, 'saldoFactura')
+            ?? data_get($item, 'saldoCliente')
+            ?? 0
+        );
+    }
+
+    protected function getInvoiceCustomerBalance(array $item): float
+    {
+        return $this->money(
+            data_get($item, 'saldoCliente')
+            ?? data_get($item, 'saldoFactura')
+            ?? 0
+        );
+    }
+
+    protected function getInvoiceCurrentBalanceForValidation(array $item): ?float
+    {
+        $value = data_get($item, 'saldoCliente')
+            ?? data_get($item, 'saldoFactura');
+
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        return $this->money($value);
+    }
+
+    protected function getInvoiceDueDate(array $item): mixed
+    {
+        return data_get($item, 'fechaVencimiento');
+    }
+
     protected function buildInvoiceValidation(
         int|float|string|null $valorIngresado,
         int|float|string|null $montoOriginalFactura,
         int|float|string|null $sumPayments,
         int|float|string|null $sumPendingWeb,
-        int|float|string|null $sumDev
+        int|float|string|null $sumDev,
+        int|float|string|null $saldoActualFactura = null
     ): array {
         $valorIngresado       = $this->money($valorIngresado);
         $montoOriginalFactura = $this->money($montoOriginalFactura);
         $sumPayments          = $this->money($sumPayments);
         $sumPendingWeb        = $this->money($sumPendingWeb);
         $sumDev               = $this->money($sumDev);
+        $saldoActualFactura   = $saldoActualFactura === null ? null : $this->money($saldoActualFactura);
 
         $totalNoContabilizado = $this->money($sumPendingWeb + $sumDev);
 
@@ -553,9 +673,20 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
         $saldoBase = $montoOriginalFactura;
 
-        $saldoDisponible = $this->money(
+        $saldoDisponibleGp = $this->money(
             max($saldoBase - $totalApply, 0)
         );
+
+        $saldoDisponible = $saldoDisponibleGp;
+
+        if ($saldoActualFactura !== null) {
+            $saldoDisponibleDraft = $this->money(
+                max($saldoActualFactura - $totalNoContabilizado, 0)
+            );
+            $saldoDisponible = $this->money(
+                min($saldoDisponibleGp, $saldoDisponibleDraft)
+            );
+        }
 
         $priceRecommend = $this->money(
             min($valorIngresado, $saldoDisponible)
@@ -607,25 +738,25 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_efectivo.facturas', []))->contains($flag, true)) {
+        if (collect(data_get($payload, 'efectivo.facturas', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_tarjeta.facturas', []))->contains($flag, true)) {
+        if (collect(data_get($payload, 'tarjeta.facturas', []))->contains($flag, true)) {
             return true;
         }
 
-        if (collect(data_get($payload, 'ingreso_cheques.facturas', []))->contains($flag, true)) {
+        if (collect(data_get($payload, 'cheque.facturas', []))->contains($flag, true)) {
             return true;
         }
 
-        foreach (data_get($payload, 'ingreso_depositos', []) as $deposito) {
+        foreach ($this->arrayValue(data_get($payload, 'depositos', [])) as $deposito) {
             if (collect(data_get($deposito, 'facturas', []))->contains($flag, true)) {
                 return true;
             }
         }
 
-        foreach (data_get($payload, 'ingreso_aplicaciones', []) as $aplicacion) {
+        foreach ($this->arrayValue(data_get($payload, 'aplicaciones', [])) as $aplicacion) {
             if (collect(data_get($aplicacion, 'facturas', []))->contains($flag, true)) {
                 return true;
             }
@@ -748,9 +879,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     protected function isValidWebInvoiceNumber(?string $invoice): bool
     {
-        $invoice = $this->normalizeInvoiceNumber($invoice);
+        $invoice = strtoupper($this->normalizeInvoiceNumber($invoice));
 
-        return preg_match('/^\d{3}-\d{3}-\d{9}$/', $invoice) === 1;
+        if ($invoice === '') {
+            return false;
+        }
+
+        return preg_match('/^\d{3}-\d{3}-\d{6,9}$/', $invoice) === 1
+            || preg_match('/^\d{3}-\d{6,9}$/', $invoice) === 1
+            || preg_match('/^FAC-\d{3}-\d{3}-\d{6,9}$/', $invoice) === 1
+            || preg_match('/^FAC-\d{3}-\d{6,9}$/', $invoice) === 1;
     }
 
     protected function markSkippedInvoiceValidation(
@@ -834,10 +972,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 'tipo_ingreso'                 => $tipoIngreso,
 
                 'factura'                      => $facturaOrigen,
-                'fecha_vencimiento'            => data_get($item, 'ECD_DET_FECHA_VENCIMIENTO'),
+                'fecha_vencimiento'            => $this->getInvoiceDueDate($item),
 
-                'monto_original_factura'       => $this->money(data_get($item, 'ECD_DET_MONTO_ORIGINAL', 0)),
-                'saldo_cliente'                => $this->money(data_get($item, 'ECD_DET_SALDO_CLIENTE', 0)),
+                'monto_original_factura'       => $this->getInvoiceOriginalAmount($item),
+                'saldo_cliente'                => $this->getInvoiceCustomerBalance($item),
                 'valor_a_aplicar'              => $this->money($valorIngresado),
 
                 'sum_payments_gp'              => $this->money(data_get($validation, 'sumPayments', 0)),
@@ -879,7 +1017,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 'documento'         => data_get($payment, 'documentoCobro'),
                 'numero_recibo'     => $this->formatReceiptNumber(data_get($payment, 'numeroRecibo')),
                 'estado'            => null,
-                'monto'             => $this->money(data_get($payment, 'valorCobro', 0)),
+                'monto'             => $this->money(data_get($payment, 'valorCobro', data_get($payment, 'collectionAmount', 0))),
                 'fecha_documento'   => data_get($payment, 'documentoFecha'),
                 'fecha_aplicacion'  => data_get($payment, 'fechaAplicacion'),
             ];
@@ -1001,40 +1139,40 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     {
         $histories = [];
 
-        foreach (data_get($payload, 'retenciones', []) as $item) {
+        foreach ($this->arrayValue(data_get($payload, 'retenciones', [])) as $item) {
             if ($history = data_get($item, '_validacion_historial')) {
                 $histories[] = $history;
             }
         }
 
-        foreach (data_get($payload, 'ingreso_efectivo.facturas', []) as $item) {
+        foreach ($this->arrayValue(data_get($payload, 'efectivo.facturas', [])) as $item) {
             if ($history = data_get($item, '_validacion_historial')) {
                 $histories[] = $history;
             }
         }
 
-        foreach (data_get($payload, 'ingreso_tarjeta.facturas', []) as $item) {
+        foreach ($this->arrayValue(data_get($payload, 'tarjeta.facturas', [])) as $item) {
             if ($history = data_get($item, '_validacion_historial')) {
                 $histories[] = $history;
             }
         }
 
-        foreach (data_get($payload, 'ingreso_cheques.facturas', []) as $item) {
+        foreach ($this->arrayValue(data_get($payload, 'cheque.facturas', [])) as $item) {
             if ($history = data_get($item, '_validacion_historial')) {
                 $histories[] = $history;
             }
         }
 
-        foreach (data_get($payload, 'ingreso_depositos', []) as $deposito) {
-            foreach (data_get($deposito, 'facturas', []) as $item) {
+        foreach ($this->arrayValue(data_get($payload, 'depositos', [])) as $deposito) {
+            foreach ($this->arrayValue(data_get($deposito, 'facturas', [])) as $item) {
                 if ($history = data_get($item, '_validacion_historial')) {
                     $histories[] = $history;
                 }
             }
         }
 
-        foreach (data_get($payload, 'ingreso_aplicaciones', []) as $aplicacion) {
-            foreach (data_get($aplicacion, 'facturas', []) as $item) {
+        foreach ($this->arrayValue(data_get($payload, 'aplicaciones', [])) as $aplicacion) {
+            foreach ($this->arrayValue(data_get($aplicacion, 'facturas', [])) as $item) {
                 if ($history = data_get($item, '_validacion_historial')) {
                     $histories[] = $history;
                 }
@@ -1052,13 +1190,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             }
         }
 
-        foreach (['ingreso_efectivo', 'ingreso_tarjeta', 'ingreso_cheques'] as $key) {
+        foreach (['efectivo', 'tarjeta', 'cheque'] as $key) {
             foreach ($payload[$key]['facturas'] ?? [] as $index => $factura) {
                 unset($payload[$key]['facturas'][$index]['_validacion_historial']);
             }
         }
 
-        foreach (['ingreso_depositos', 'ingreso_aplicaciones'] as $key) {
+        foreach (['depositos', 'aplicaciones'] as $key) {
             foreach ($payload[$key] ?? [] as $indexGrupo => $grupo) {
                 foreach ($grupo['facturas'] ?? [] as $indexFactura => $factura) {
                     unset($payload[$key][$indexGrupo]['facturas'][$indexFactura]['_validacion_historial']);

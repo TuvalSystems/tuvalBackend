@@ -2230,8 +2230,7 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->input('data', []);
-            // $user       = GpUsuario::find(179);
-            $user       = $request->user();
+            $user       = $request->user() ?? GpUsuario::find(179);
             $info       = $this->customer->validateIdentifyPaymentInvoices($payload, $user);
             return $this->successResponse('Información de Pagos Obtenido!', $info, 200);
         }, 'laravel', 'obtenerInformacionPagosFacturas');
@@ -2424,9 +2423,10 @@ class CobranzasController extends Controller
     }
 
 
-    public function consultarExistenciaCheque(Request $request){
-        return $this->handleApiAction(function() use($request){
-         $validate = $request->validate([
+    public function consultarExistenciaCheque(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
                 'cliente_id'   => ['required', 'integer', 'exists:gp_clientes,id'],
                 'cheque'       => ['required', 'string'],
                 'banco_id'     => ['required'],
@@ -2435,11 +2435,41 @@ class CobranzasController extends Controller
             $cuenta = data_get($validate, 'cuenta');
             $cheque = data_get($validate, 'cheque');
             $exist = $this->invoiceCollect->checkReceiptExistsForClient($cuenta, $cheque);
-            if($exist){
+            if ($exist) {
                 return $this->buildExistResponse(false, 'Cheque ya ingresado con anterioridad', 200);
             }
             return $this->buildExistResponse(true, 'Cheque no existente, proceda', 200);
+        }, 'laravel', 'consultarExistenciaCheque');
+    }
 
-        },'laravel', 'consultarExistenciaCheque');
+
+
+    public function listaCobrosPorCliente(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $filtros    = $request->input('filters', []);
+            $lista      = $this->invoiceCollect->fetchListCollection($filtros);
+            return $this->successResponse('Información Obtenida Correctamente', $lista);
+        }, 'laravel', 'listaCobrosPorCliente');
+    }
+
+    public function imprirCobroPdf(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
+            ]);
+            $id         = data_get($validate, 'cobro_id');
+            $resultado  = $this->invoiceCollect->printCollectionPdf($id);
+            return $this->successResponse('Información Obtenida', $resultado);
+        }, 'laravel', 'imprirCobroPdf');
+    }
+
+    public function registrarCobroV1(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+
+            return $this->successResponse('Cobro Registrado exitosamente.!', []);
+        }, 'laravel', 'registrarCobro');
     }
 }

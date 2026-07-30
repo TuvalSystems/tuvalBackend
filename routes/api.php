@@ -515,7 +515,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('actualizar-aplicaciones-pendientes', [CobranzasController::class, 'actualizarListaDocumentosAplicacion']);
 
             //validacion de aplicacion de pagos a faturas
-            Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+            // Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
 
             //desaplicaciones
             Route::prefix('desaplicaciones')->group(function () {
@@ -542,6 +542,9 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
                 Route::post('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
                 Route::post('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
+                Route::post('validar-cobros', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+                Route::post('lista-cobros-registrados', [CobranzasController::class, 'listaCobrosPorCliente']);
+                Route::post('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
             });
 
             Route::prefix('ordenes-despacho')->group(function () {
@@ -573,7 +576,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 Route::group(['prefix' => 'consultas-externas'], function () {
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
-
 });
 
 // para la sincronizacion global de articulo 1 por registro

@@ -239,6 +239,9 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
         Route::get('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
         Route::get('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
+        Route::get('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
+
+
 
     });
 });
