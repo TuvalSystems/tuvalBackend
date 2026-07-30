@@ -191,10 +191,6 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         if (empty($bodegas))
             return [];
 
-        $totalExpression = $excludeQuotationId
-            ? 'SUM(GREATEST(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)) - st.cantidad_traslado, 0)) as total'
-            : 'SUM(GREATEST(st.seleccionado - ABS(IFNULL(st.cantidad_transito, 0)), 0)) as total';
-
         return DB::table('gp_cotizacion_detalle_stocks as st')
             ->join('gp_cotizacion_detalles as d', 'd.id', '=', 'st.detalle_id')
             ->join('gp_cotizacions as c', 'c.id', '=', 'd.cotizacion_id')
@@ -208,7 +204,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
-                DB::raw($totalExpression)
+                DB::raw('SUM(GREATEST(st.seleccionado - st.cantidad_traslado, 0)) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
@@ -218,7 +214,7 @@ class StockWarehouseService implements StockWarehouseServiceInterface
 
     public function getReservedStockByWarehousesToPendingTransfer($articulo, $bodegas, $excludeQuotationId = null)
     {
-        if (empty($bodegas) || empty($excludeQuotationId)) {
+        if (empty($bodegas)) {
             return [];
         }
         return DB::table('gp_cotizacion_detalle_stocks as st')
@@ -229,9 +225,12 @@ class StockWarehouseService implements StockWarehouseServiceInterface
             ->where('d.ART_CODIGO', '=', (string) $articulo)
             ->whereIn('st.STO_ART_BODEGA', $bodegas)
             ->where('st.cantidad_traslado', '>', 0)
+            ->when($excludeQuotationId, function ($query) use ($excludeQuotationId) {
+                $query->where('c.id', '!=', $excludeQuotationId);
+            })
             ->select(
                 'st.STO_ART_BODEGA as bodega',
-                DB::raw('SUM(IFNULL(st.cantidad_traslado, 0)) as total')
+                DB::raw('SUM(GREATEST(st.cantidad_traslado - ABS(st.cantidad_transito), 0)) as total')
             )
             ->groupBy('st.STO_ART_BODEGA')
             ->pluck('total', 'bodega')
