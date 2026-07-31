@@ -32,6 +32,8 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Excel as MaatwebsiteExcel;
 use Maatwebsite\Excel\Facades\Excel;
 
+use function Psl\Str\uppercase;
+
 class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 {
     public function __construct(
@@ -441,7 +443,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         $pdf->loadHTML($html);
         $binary = $pdf->output();
         $receiptNumber = data_get($infoPdf, 'cobro.numero_recibo', $collectionId);
-        $filename = 'COBRO-' . Str::slug((string) $receiptNumber, '-') . '.pdf';
+        $filename = 'COBRO-' . Str::upper(Str::slug((string) $receiptNumber, '-')) . '.pdf';
 
         return [
             'binary'        => $binary,
