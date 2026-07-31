@@ -2453,16 +2453,16 @@ class CobranzasController extends Controller
         }, 'laravel', 'listaCobrosPorCliente');
     }
 
-    public function imprirCobroPdf(Request $request)
+    public function imprirCobroPdf(Request $request): Response
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate = $request->validate([
                 'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
             ]);
             $cobroId         = data_get($validate, 'cobro_id');
             $usuario = $request->user() ?? GpUsuario::find(179);
             $resultado  = $this->invoiceCollect->printCollectionPdf($cobroId, $usuario);
-            return $this->successResponse('Información Obtenida', $resultado);
+            return $this->buildFileResponse($resultado);
         }, 'laravel', 'imprirCobroPdf');
     }
 

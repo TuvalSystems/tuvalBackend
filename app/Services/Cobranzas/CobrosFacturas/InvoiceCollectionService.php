@@ -434,7 +434,24 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
     public function printCollectionPdf(int $collectionId, GpUsuario $user): array
     {
+        $infoPdf = $this->buildCollectionPdfData($collectionId, $user);
+        $html = view('pdf.cobranzas.cobros-facturas.cobro', $infoPdf)->render();
+        $pdf = app('dompdf.wrapper');
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->loadHTML($html);
+        $binary = $pdf->output();
+        $receiptNumber = data_get($infoPdf, 'cobro.numero_recibo', $collectionId);
+        $filename = 'COBRO-' . Str::slug((string) $receiptNumber, '-') . '.pdf';
 
+        return [
+            'binary'        => $binary,
+            'filename'      => $filename,
+            'content_type'  => 'application/pdf',
+        ];
+    }
+
+    private function buildCollectionPdfData(int $collectionId, GpUsuario $user): array
+    {
         $collection = GpCobro::with([
             'puntoVenta:id,PTO_VTA_DESCRIPCION',
             'usuarioCobro:id,USERID,USERNAME',
@@ -451,15 +468,37 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                 'estado'
             ])->firstOrFail();
 
+        $retention = $this->getRetentionSummaryByCollection($collection->id);
+        $cash = $this->getCashSummaryByCollection($collectionId);
+        $deposits = $this->getDepositSummaryByCollection($collectionId);
+        $check = $this->getCheckSummaryByCollection($collectionId);
+        $card = $this->getCardSummaryByCollection($collectionId);
+        $applications = $this->getApplyBalanceSummayByCollection($collectionId);
+
+        $summaries = collect([
+            $retention,
+            $cash,
+            $deposits,
+            $check,
+            $card,
+            $applications,
+        ]);
+
+        $totalCollection = round($summaries->sum(fn($summary) => (float) data_get($summary, 'totalCobro', 0)), 2);
+        $totalApplied = round($summaries->sum(fn($summary) => (float) data_get($summary, 'totalAplicado', 0)), 2);
 
         return [
             'cobro'         => $collection,
-            'retencion'     => $this->getRetentionSummaryByCollection($collection->id),
-            'efectivo'      => $this->getCashSummaryByCollection($collectionId),
-            'depositos'     => $this->getDepositSummaryByCollection($collectionId),
-            'cheque'        => $this->getCheckSummaryByCollection($collectionId),
-            'tarjeta'       => $this->getCardSummaryByCollection($collectionId),
-            'aplicaciones'  => $this->getApplyBalanceSummayByCollection($collectionId)
+            'usuario'       => $collection->usuarioCobro ?? $user,
+            'retencion'     => $retention,
+            'efectivo'      => $cash,
+            'depositos'     => $deposits,
+            'cheque'        => $check,
+            'tarjeta'       => $card,
+            'aplicaciones'  => $applications,
+            'totalCobro'    => $totalCollection,
+            'totalAplicado' => $totalApplied,
+            'saldo'         => round($totalCollection - $totalApplied, 2),
         ];
     }
 
@@ -502,7 +541,14 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
     private function getCashSummaryByCollection(int $collectionId): array
     {
         $cashAmounts  = GpCobrosEfectivoMonto::where('cobro_id', $collectionId)
-            ->get();
+            ->get([
+                'id',
+                'cobro_id',
+                'monto',
+                'fecha',
+                'banco',
+                'comprobante',
+            ]);
 
         $cashInvoice = GpCobrosEfectivoFactura::query()
             ->where('cobro_id', $collectionId)
@@ -517,6 +563,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         $totalApply = round($cashInvoice->sum('monto'), 2);
 
         return [
+            'montos'        => $cashAmounts,
             'facturas'      => $cashInvoice,
             'totalAplicado' => $totalApply,
             'totalCobro'    => $totalCollection,
@@ -539,7 +586,10 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                 'id',
                 'cobro_id',
                 'banco_id',
+                'banco as banco_codigo',
+                'tipo',
                 'comprobante',
+                'fecha',
                 'monto'
             ]);
 
@@ -565,8 +615,11 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             'id',
             'cobro_id',
             'banco_id',
+            'banco as banco_codigo',
             'cuenta',
             'cheque',
+            'fecha_emision',
+            'fecha_vencimiento',
             'monto'
         ]);
 
@@ -590,15 +643,18 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
     private function getCardSummaryByCollection(int $collectionId): array
     {
-        $cardSummary = GpCobrosTarjetaMonto::where('cobro_id', $collectionId)
+        $cardSummary = GpCobrosTarjetaMonto::query()
+            ->leftJoin('gp_caja_bancos as gcb', 'gcb.CB_ID', '=', 'gp_cobros_tarjeta_montos.banco')
+            ->where('gp_cobros_tarjeta_montos.cobro_id', $collectionId)
             ->select([
-                'id',
-                'cobro_id',
-                'banco',
-                'comprobante',
-                'comentario',
-                'fecha',
-                'monto'
+                'gp_cobros_tarjeta_montos.id',
+                'gp_cobros_tarjeta_montos.cobro_id',
+                'gp_cobros_tarjeta_montos.banco',
+                'gcb.CB_DESCRIPCION as banco_descripcion',
+                'gp_cobros_tarjeta_montos.comprobante',
+                'gp_cobros_tarjeta_montos.comentario',
+                'gp_cobros_tarjeta_montos.fecha',
+                'gp_cobros_tarjeta_montos.monto'
             ])->first();
 
         $cardInvoices = GpCobrosTarjetaFactura::where('estado_aplicado', 1)
@@ -613,7 +669,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         return [
             'tarjeta'       => $cardSummary,
             'facturas'      => $cardInvoices,
-            'totalCobro'    => round($cardSummary?->monto, 2),
+            'totalCobro'    => round((float) ($cardSummary?->monto ?? 0), 2),
             'totalAplicado' => round($cardInvoices->sum('monto'), 2),
         ];
     }
@@ -640,7 +696,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         $applySummary->each(function ($apply) {
             $apply->setAttribute(
                 'totalAplicado',
-                round((float) $apply->facturasAplicadas->sum('monto'))
+                round((float) $apply->facturasAplicadas->sum('monto'), 2)
             );
         });
         return [
