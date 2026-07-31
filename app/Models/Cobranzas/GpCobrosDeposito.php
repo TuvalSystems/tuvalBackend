@@ -2,6 +2,7 @@
 
 namespace App\Models\Cobranzas;
 
+use App\Models\GpCajaBancos;
 use App\Models\GpUsuario;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -85,5 +86,16 @@ class GpCobrosDeposito extends Model
         return $this->belongsTo(GpUsuario::class, 'user_aprobador_rechazo_id', 'id');
     }
 
+    public function bancoDeposito()
+    {
+        return $this->belongsTo(GpCajaBancos::class, 'banco_id', 'id');
+    }
 
+
+    /**relacion para depositos - facturas cobranzas */
+
+    public function facturas()
+    {
+        return $this->hasMany(GpCobrosDepositosFacturas::class, 'deposito_id', 'id');
+    }
 }

@@ -2459,8 +2459,9 @@ class CobranzasController extends Controller
             $validate = $request->validate([
                 'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
             ]);
-            $id         = data_get($validate, 'cobro_id');
-            $resultado  = $this->invoiceCollect->printCollectionPdf($id);
+            $cobroId         = data_get($validate, 'cobro_id');
+            $usuario = $request->user() ?? GpUsuario::find(179);
+            $resultado  = $this->invoiceCollect->printCollectionPdf($cobroId, $usuario);
             return $this->successResponse('Información Obtenida', $resultado);
         }, 'laravel', 'imprirCobroPdf');
     }

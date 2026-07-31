@@ -38,7 +38,8 @@ class GpCobrosEfectivoMonto extends Model
     use HasFactory;
 
 
-    public function efectivoFactura (){
+    public function efectivoFactura()
+    {
         return $this->hasMany(GpCobrosEfectivoFactura::class, 'cobro_id', 'cobro_id');
     }
 }

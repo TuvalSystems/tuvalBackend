@@ -39,6 +39,15 @@ class GpCobrosAplicacionMonto extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'id',
+        'monto',
+        'cobro_id',
+        'tipo',
+        'comentario',
+        'codigo_ws',
+        'mensaje_ws',
+    ];
 
 
     public function facturasAplicadas()

@@ -6,12 +6,18 @@ use App\Enums\Ventas\TaxRateEnum;
 use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosCheques;
+use App\Models\Cobranzas\GpCobrosChequesFacturas;
 use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\Cobranzas\GpCobrosDepositosFacturas;
+use App\Models\Cobranzas\GpCobrosEfectivoFactura;
+use App\Models\Cobranzas\GpCobrosEfectivoMonto;
 use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCajaBancos;
 use App\Models\GpCierreCaja;
 use App\Models\GpCliente;
+use App\Models\GpCobrosAplicacionMonto;
+use App\Models\GpCobrosTarjetaFactura;
+use App\Models\GpCobrosTarjetaMonto;
 use App\Models\GpUsuario;
 use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
@@ -426,10 +432,221 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
 
 
 
-    public function printCollectionPdf(int $collectId) : array
+    public function printCollectionPdf(int $collectionId, GpUsuario $user): array
     {
+
+        $collection = GpCobro::with([
+            'puntoVenta:id,PTO_VTA_DESCRIPCION',
+            'usuarioCobro:id,USERID,USERNAME',
+            'cliente:id,CLI_RAZON_SOCIAL,CLI_DIRECCION,CLI_RUC,CLI_TELEFONO_1,CLI_CIUDAD'
+        ])->where('id', $collectionId)
+            ->select([
+                'id',
+                'numero_recibo',
+                'user_id',
+                'pv_id',
+                'cliente_id',
+                'caja_id',
+                'fecha',
+                'estado'
+            ])->firstOrFail();
+
+
         return [
-            'id' => $collectId
+            'cobro'         => $collection,
+            'retencion'     => $this->getRetentionSummaryByCollection($collection->id),
+            'efectivo'      => $this->getCashSummaryByCollection($collectionId),
+            'depositos'     => $this->getDepositSummaryByCollection($collectionId),
+            'cheque'        => $this->getCheckSummaryByCollection($collectionId),
+            'tarjeta'       => $this->getCardSummaryByCollection($collectionId),
+            'aplicaciones'  => $this->getApplyBalanceSummayByCollection($collectionId)
+        ];
+    }
+
+    private function getRetentionSummaryByCollection(int $collectionId): array
+    {
+        $retentions = GpCobrosRetenciones::query()
+            ->where('cobro_id', $collectionId)
+            ->where('estado_aplicado', 1)
+            ->get([
+                'id',
+                'ret_factura',
+                'ret_comprobante',
+                'ret_fecha_emision',
+                'ret_fecha_vencimiento',
+                'ret_iva',
+                'ret_porcentaje_iva',
+                'ret_renta',
+                'ret_porcentaje_renta',
+                'ret_iva_srv',
+                'ret_porcentaje_iva_srv',
+                'ret_renta_srv',
+                'ret_porcentaje_renta_srv',
+                'total',
+            ]);
+
+        $totalRetention = round(
+            $retentions->sum(
+                fn($retention) => (float) $retention->total
+            ),
+            2
+        );
+
+        return [
+            'retenciones'   => $retentions->values()->all(),
+            'totalAplicado' => $totalRetention,
+            'totalCobro'    => $totalRetention,
+        ];
+    }
+
+    private function getCashSummaryByCollection(int $collectionId): array
+    {
+        $cashAmounts  = GpCobrosEfectivoMonto::where('cobro_id', $collectionId)
+            ->get();
+
+        $cashInvoice = GpCobrosEfectivoFactura::query()
+            ->where('cobro_id', $collectionId)
+            ->where('estado_aplicado', 1)
+            ->get([
+                'id',
+                'id_factura',
+                'monto'
+            ]);
+
+        $totalCollection = round($cashAmounts->sum('monto'), 2);
+        $totalApply = round($cashInvoice->sum('monto'), 2);
+
+        return [
+            'facturas'      => $cashInvoice,
+            'totalAplicado' => $totalApply,
+            'totalCobro'    => $totalCollection,
+
+        ];
+    }
+
+    private function getDepositSummaryByCollection(int $collectionId): array
+    {
+        $deposits = GpCobrosDeposito::with([
+            'bancoDeposito:id,CB_DESCRIPCION',
+            'facturas' =>
+            function ($q) {
+                $q->select(['id', 'cobro_id', 'deposito_id', 'id_factura', 'monto'])
+                    ->where('estado_aplicado', 1);
+            }
+        ])
+            ->whereIn('estado', ['revisado', 'enviado'])
+            ->where('cobro_id', $collectionId)->get([
+                'id',
+                'cobro_id',
+                'banco_id',
+                'comprobante',
+                'monto'
+            ]);
+
+        $deposits->each(function ($deposit) {
+            $deposit->setAttribute(
+                'totalAplicado',
+                round((float) $deposit->facturas->sum('monto'), 2)
+            );
+        });
+
+        return [
+            'depositos'     => $deposits,
+            'totalCobro'    => round((float) $deposits->sum('monto'), 2),
+            'totalAplicado' => round((float) $deposits->sum('totalAplicado'), 2),
+        ];
+    }
+
+    private function getCheckSummaryByCollection(int $collectionId): array
+    {
+        $check = GpCobrosCheques::with([
+            'banco:id,CB_DESCRIPCION',
+        ])->where('cobro_id', $collectionId)->get([
+            'id',
+            'cobro_id',
+            'banco_id',
+            'cuenta',
+            'cheque',
+            'monto'
+        ]);
+
+        $checkInvoices = GpCobrosChequesFacturas::where('cobro_id', $collectionId)
+            ->where('estado_aplicado', 1)
+            ->get([
+                'id',
+                'id_factura',
+                'monto'
+            ]);
+
+
+        return [
+            'cheque'        => $check,
+            'facturas'      => $checkInvoices,
+            'totalCobro'    => round($check->sum('monto'), 2),
+            'totalAplicado' => round($checkInvoices->sum('monto'), 2)
+        ];
+    }
+
+
+    private function getCardSummaryByCollection(int $collectionId): array
+    {
+        $cardSummary = GpCobrosTarjetaMonto::where('cobro_id', $collectionId)
+            ->select([
+                'id',
+                'cobro_id',
+                'banco',
+                'comprobante',
+                'comentario',
+                'fecha',
+                'monto'
+            ])->first();
+
+        $cardInvoices = GpCobrosTarjetaFactura::where('estado_aplicado', 1)
+            ->where('cobro_id', $collectionId)->get([
+                'id',
+                'cobro_id',
+                'id_factura',
+                'estado_aplicado',
+                'monto'
+            ]);
+
+        return [
+            'tarjeta'       => $cardSummary,
+            'facturas'      => $cardInvoices,
+            'totalCobro'    => round($cardSummary?->monto, 2),
+            'totalAplicado' => round($cardInvoices->sum('monto'), 2),
+        ];
+    }
+
+
+
+    private function getApplyBalanceSummayByCollection(int $collectionId)
+    {
+        $applySummary = GpCobrosAplicacionMonto::with([
+            'facturasAplicadas' => function ($q) {
+                $q->select(['id', 'cobro_id', 'aplicacion_id', 'id_factura', 'monto', 'estado_aplicado'])
+                    ->where('estado_aplicado', 1);
+            }
+        ])
+            ->where('cobro_id', $collectionId)
+            ->get([
+                'id',
+                'cobro_id',
+                'cobro',
+                'tipo',
+                'monto'
+            ]);
+
+        $applySummary->each(function ($apply) {
+            $apply->setAttribute(
+                'totalAplicado',
+                round((float) $apply->facturasAplicadas->sum('monto'))
+            );
+        });
+        return [
+            'aplicaciones'  => $applySummary,
+            'totalCobro'    => round($applySummary->sum('monto'), 2),
+            'totalAplicado' => round($applySummary->sum('totalAplicado'), 2),
         ];
     }
 }

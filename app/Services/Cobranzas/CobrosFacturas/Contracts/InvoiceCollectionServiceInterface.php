@@ -22,5 +22,5 @@ interface InvoiceCollectionServiceInterface
     public function depositReceiptExistsForClient(int $clientId, int $bankId, string $receiptNumber): bool;
     public function checkReceiptExistsForClient(string $account, string $numCheck): bool;
     public function fetchListCollection(array $filters): LengthAwarePaginator;
-    public function printCollectionPdf(int $collectId) : array;
+    public function printCollectionPdf(int $collectionId, GpUsuario $user) : array;
 }

@@ -2,6 +2,9 @@
 
 namespace App\Models\Cobranzas;
 
+use App\Models\GpCliente;
+use App\Models\GpPuntoVenta;
+use App\Models\GpUsuario;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -74,5 +77,21 @@ class GpCobro extends Model
     public function cheques()
     {
         return $this->hasMany(GpCobrosCheques::class, 'cobro_id', 'id');
+    }
+
+
+    public function puntoVenta()
+    {
+        return $this->belongsTo(GpPuntoVenta::class, 'pv_id', 'id');
+    }
+
+
+    public function cliente()
+    {
+        return $this->belongsTo(GpCliente::class, 'cliente_id', 'id');
+    }
+
+    public function usuarioCobro(){
+        return $this->belongsTo(GpUsuario::class, 'user_id', 'id');
     }
 }
