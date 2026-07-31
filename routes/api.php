@@ -545,6 +545,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('validar-cobros', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
                 Route::post('lista-cobros-registrados', [CobranzasController::class, 'listaCobrosPorCliente']);
                 Route::post('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
+                Route::get('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
             });
 
             Route::prefix('ordenes-despacho')->group(function () {
