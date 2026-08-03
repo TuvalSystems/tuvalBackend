@@ -1444,9 +1444,9 @@ class OrderService implements OrderServiceInterface
 
     public function sendInvoicesToGp()
     {
-        Log::channel('cron_process')->info('sendInvoicesToGp - Iniciando proceso de envío de facturas a GP.');
+        Log::channel('laravel')->info('sendInvoicesToGp - Iniciando proceso de envío de facturas a GP.');
         if ($this->orderAndQuotationService->isWeekend() || !$this->orderAndQuotationService->isBussinessDay()) {
-            Log::channel('cron_process')->info('sendInvoicesToGp - No se enviarán facturas a GP porque es fin de semana o día no hábil.');
+            Log::channel('laravel')->info('sendInvoicesToGp - No se enviarán facturas a GP porque es fin de semana o día no hábil.');
             return;
         }
         GpPedido::where('estado', OrderStatus::ESPERA)
