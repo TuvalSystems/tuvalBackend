@@ -38,12 +38,12 @@ class Kernel extends ConsoleKernel
             ->runInBackground();
 
         $schedule->command('pedidos:enviar-facturas-mes-siguiente')
-            ->monthlyOn(1, self::MAINTENANCE_TIME)
-            ->when(fn() => now()->day <= 7)
+            ->dailyAt(self::MAINTENANCE_TIME)
             ->timezone(self::TIMEZONE)
+            ->when(fn() => now(self::TIMEZONE)->day <= 7)
             ->withoutOverlapping(10)
             ->runInBackground();
-
+            
         $schedule->command('pedidos:facturar-reservas')
             ->timezone(self::TIMEZONE)
             ->between('06:00', '22:00')
