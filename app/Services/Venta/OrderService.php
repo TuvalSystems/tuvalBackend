@@ -1444,25 +1444,39 @@ class OrderService implements OrderServiceInterface
 
     public function sendInvoicesToGp()
     {
-        if ($this->orderAndQuotationService->isWeekend() || $this->orderAndQuotationService->isBussinessDay()) {
-            Log::info('sendInvoicesToGp - No se enviarán facturas a GP porque es fin de semana o día no hábil.');
+        $lock = Cache::lock('pedidos:send-invoices-gp', 600);
+        if (!$lock->get()) {
+            Log::channel('cron_process')->info('sendInvoicesToGp - Proceso omitido porque ya hay una ejecucion activa.');
             return;
         }
-        GpPedido::where('estado', OrderStatus::ESPERA)
-            ->where('factura_siguiente_mes', 0)
-            ->chunk(100, function ($orders) {
-                foreach ($orders as $ord) {
-                    $this->invoiceService->checkSendInvoice($ord);
-                }
-            });
-        $ordersL = GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)->get();
-        foreach ($ordersL as $ord) {
-            if ($this->valdidateOrdersProviders($ord)) {
-                $ord->estado = OrderStatus::ESPERA;
-                $ord->save();
-                $this->invoiceService->generateDisptachOrder($ord);
-                $this->invoiceService->sendInvoiceGp($ord);
+
+        try {
+            Log::channel('cron_process')->info('sendInvoicesToGp - Iniciando proceso de envío de facturas a GP.');
+            if ($this->orderAndQuotationService->isWeekend() || !$this->orderAndQuotationService->isBussinessDay()) {
+                Log::channel('cron_process')->info('sendInvoicesToGp - No se enviarán facturas a GP porque es fin de semana o día no hábil.');
+                return;
             }
+
+            GpPedido::where('estado', OrderStatus::ESPERA)
+                ->where('factura_siguiente_mes', 0)
+                ->chunk(100, function ($orders) {
+                    foreach ($orders as $ord) {
+                        $this->invoiceService->checkSendInvoice($ord);
+                    }
+                });
+
+            $ordersL = GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)
+                ->where('factura_siguiente_mes', 0)->get();
+            foreach ($ordersL as $ord) {
+                if ($this->valdidateOrdersProviders($ord)) {
+                    $ord->estado = OrderStatus::ESPERA;
+                    $ord->save();
+                    $this->invoiceService->generateDisptachOrder($ord);
+                    $this->invoiceService->sendInvoiceGp($ord);
+                }
+            }
+        } finally {
+            optional($lock)->release();
         }
     }
 

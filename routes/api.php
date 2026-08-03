@@ -275,7 +275,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('facturarexistente', [PedidosController::class, 'facturarexistente']);
             Route::post('guardarmensaje', [PedidosController::class, 'guardarmensaje']);
             Route::post('guardarordendecompra', [PedidosController::class, 'guardarordendecompra']);
-            Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
+            // Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
             Route::post('cancelarpedido', [PedidosController::class, 'cancelarpedido']);
             Route::get('imprimirpedido/{id}', [PedidosController::class, 'imprimirpedido']);
         });
