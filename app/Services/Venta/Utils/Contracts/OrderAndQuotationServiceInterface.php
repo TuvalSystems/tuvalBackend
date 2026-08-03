@@ -42,4 +42,9 @@ interface OrderAndQuotationServiceInterface
 
     public function validateActiveSucursal(int $sucursalId, string $contexto = 'sucursal');
     public function recalculateQuotation(int $quotationId);
+
+
+
+    public function isWeekend(): bool;
+    public function isBussinessDay();
 }

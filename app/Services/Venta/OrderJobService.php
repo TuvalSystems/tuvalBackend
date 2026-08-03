@@ -8,6 +8,7 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +24,8 @@ class OrderJobService
         protected readonly ApiBillingService $apiBilling,
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly OrderServiceInterface $orderService,
-        protected readonly OrderRepositoryInterface $orderRepository
+        protected readonly OrderRepositoryInterface $orderRepository,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService
     ) {}
 
 
@@ -39,7 +41,7 @@ class OrderJobService
             return ['abortado' => true, 'razon' => 'Ya ejecutado este mes'];
         }
 
-        if ($this->isWeekend() || !$this->isBussinessDay()) {
+        if ($this->orderAndQuotationService->isWeekend() || !$this->orderAndQuotationService->isBussinessDay()) {
             Log::channel('cron_process')->info("⏳ Día no hábil. Se reintentará mañana automáticamente.");
             return ['abortado' => true, 'razon' => 'Día no habil, proceso se reintentara el día de mañana'];
         }
@@ -54,26 +56,7 @@ class OrderJobService
         return $resultados;
     }
 
-    public function isWeekend(): bool
-    {
-        return Carbon::now()->isWeekend();
-    }
 
-    public function isBussinessDay()
-    {
-        $params = [
-            'idCompany' => env('ID_COMPANIA'),
-            'fecha'     => Carbon::now()->format('Y-m-d'),
-        ];
-
-        $resp = $this->apiBilling->validateBusinessDate($params);
-        log::channel('cron_process')->warning('Respuesta del WS ConsultaDiaFeriado', ['response' => $resp]);
-        $data = data_get($resp, 'data', []);
-        if (data_get($data, 'codigo') == 0) {
-            return false;
-        }
-        return true;
-    }
 
 
 

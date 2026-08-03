@@ -1444,11 +1444,17 @@ class OrderService implements OrderServiceInterface
 
     public function sendInvoicesToGp()
     {
-        GpPedido::where('estado', OrderStatus::ESPERA)->chunk(100, function ($orders) {
-            foreach ($orders as $ord) {
-                $this->invoiceService->checkSendInvoice($ord);
-            }
-        });
+        if ($this->orderAndQuotationService->isWeekend() || $this->orderAndQuotationService->isBussinessDay()) {
+            Log::info('sendInvoicesToGp - No se enviarán facturas a GP porque es fin de semana o día no hábil.');
+            return;
+        }
+        GpPedido::where('estado', OrderStatus::ESPERA)
+            ->where('factura_siguiente_mes', 0)
+            ->chunk(100, function ($orders) {
+                foreach ($orders as $ord) {
+                    $this->invoiceService->checkSendInvoice($ord);
+                }
+            });
         $ordersL = GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)->get();
         foreach ($ordersL as $ord) {
             if ($this->valdidateOrdersProviders($ord)) {
@@ -1514,7 +1520,4 @@ class OrderService implements OrderServiceInterface
         $this->invoiceService->checkTraslado($pedido);
         return $pedido;
     }
-
-
-
 }
