@@ -1457,7 +1457,7 @@ class OrderService implements OrderServiceInterface
                 }
             });
         $ordersL = GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)
-         ->where('factura_siguiente_mes', 0)->get();
+            ->where('factura_siguiente_mes', 0)->get();
         foreach ($ordersL as $ord) {
             if ($this->valdidateOrdersProviders($ord)) {
                 $ord->estado = OrderStatus::ESPERA;
