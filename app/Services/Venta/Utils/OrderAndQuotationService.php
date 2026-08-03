@@ -15,11 +15,14 @@ use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpPedidoImagen;
+use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -29,7 +32,9 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
     public function __construct(
         protected readonly ApiGpService $apiGpService,
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly StockWarehouseServiceInterface $stockWarehouseService
+        protected readonly StockWarehouseServiceInterface $stockWarehouseService,
+        protected readonly ApiBillingService $apiBilling,
+
     ) {}
 
 
@@ -465,7 +470,7 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         foreach ($qtds as $item) {
             $valorUnitario          = (float) $item->ART_VALOR;
             $cantidad               = (float) $item->ART_CANTIDAD;
-            $descuentoUnitario      = (float) (($item->ART_VALOR * $item->descuento)/100);
+            $descuentoUnitario      = (float) (($item->ART_VALOR * $item->descuento) / 100);
             $lineNet                = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
             $lineaDiscount          = $descuentoUnitario * $cantidad;
             $lineaSubtotal          = $lineNet + $lineaDiscount;
@@ -487,5 +492,33 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $qt->total                      = round($netSubtotal + $totalIva, 2);
         $qt->save();
         return $qt;
+    }
+
+
+
+
+    /** proceso para verificacion de limite de dias y fechas para enviar a facturar en facturar
+     * siguiente mes y cron que se ejecuta cada 5 minutos
+     */
+
+    public function isWeekend(): bool
+    {
+        return Carbon::now()->isWeekend();
+    }
+
+    public function isBussinessDay()
+    {
+        $params = [
+            'idCompany' => env('ID_COMPANIA'),
+            'fecha'     => Carbon::now()->format('Y-m-d'),
+        ];
+
+        $resp = $this->apiBilling->validateBusinessDate($params);
+        Log::channel('cron_process')->warning('Respuesta del WS ConsultaDiaFeriado', ['response' => $resp]);
+        $data = data_get($resp, 'data', []);
+        if (data_get($data, 'codigo') == 0) {
+            return false;
+        }
+        return true;
     }
 }
