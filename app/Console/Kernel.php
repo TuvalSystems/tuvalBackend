@@ -43,7 +43,13 @@ class Kernel extends ConsoleKernel
             ->when(fn() => now(self::TIMEZONE)->day <= 7)
             ->withoutOverlapping(10)
             ->runInBackground();
-            
+
+        $schedule->command('pedidos:enviar-facturas-gp')
+            ->timezone(self::TIMEZONE)
+            ->everyMinute()
+            ->withoutOverlapping(10)
+            ->runInBackground();
+
         $schedule->command('pedidos:facturar-reservas')
             ->timezone(self::TIMEZONE)
             ->between('06:00', '22:00')
