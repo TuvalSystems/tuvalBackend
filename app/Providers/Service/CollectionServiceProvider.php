@@ -2,6 +2,8 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Cobranzas\CobrosFacturas\CollectionRegistrationService;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\InvoiceCollectionService;
 use App\Services\Cobranzas\CollectionService;
@@ -25,8 +27,8 @@ class CollectionServiceProvider extends ServiceProvider
 
 
         //cobros facturas
-        InvoiceCollectionServiceInterface::class            => InvoiceCollectionService::class
-
+        InvoiceCollectionServiceInterface::class            => InvoiceCollectionService::class,
+        CollectionRegistrationServiceInterface::class       => CollectionRegistrationService::class
     ];
 
     public function provides()

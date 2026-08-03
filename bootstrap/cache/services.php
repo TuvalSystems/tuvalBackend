@@ -311,6 +311,7 @@
     'App\\Services\\Builders\\Bodega\\Contracts\\DeliveryNoteSalesTransferBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\SalesTransferParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\DispatchOrderParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
+    'App\\Services\\Builders\\Cobranzas\\CobrosFacturas\\Contracts\\CollectionRegistrationBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
   ),
   'when' => 
   array (

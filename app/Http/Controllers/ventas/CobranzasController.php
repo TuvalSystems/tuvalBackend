@@ -35,9 +35,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
 use App\Http\Controllers\Inventario\Bodega\DespachosController;
+use App\Http\Requests\Cobranzas\CobrosFacturas\RegisterCollectionRequest;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
@@ -62,7 +64,8 @@ class CobranzasController extends Controller
         protected readonly CustomerPaymentApplicationServiceInterface $customer,
         protected readonly CollectionUnapplicationServiceInterface $unapplycation,
         protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits,
-        protected readonly InvoiceCollectionServiceInterface $invoiceCollect
+        protected readonly InvoiceCollectionServiceInterface $invoiceCollect,
+        protected readonly CollectionRegistrationServiceInterface $collectionRegistrationService
     ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -2466,11 +2469,13 @@ class CobranzasController extends Controller
         }, 'laravel', 'imprirCobroPdf');
     }
 
-    public function registrarCobroV1(Request $request): JsonResponse
+    public function registrarCobroV1(RegisterCollectionRequest $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-
-            return $this->successResponse('Cobro Registrado exitosamente.!', []);
+            $validate = $request->validated();
+            $user = $request->user() ?? GpUsuario::find(179);
+            $response = $this->collectionRegistrationService->registerCollection($validate, $user);
+            return $this->successResponse('Cobro Registrado exitosamente.!', $response, 200);
         }, 'laravel', 'registrarCobro');
     }
 }
