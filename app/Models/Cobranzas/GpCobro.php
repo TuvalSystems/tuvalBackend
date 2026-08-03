@@ -69,6 +69,10 @@ class GpCobro extends Model
     ];
 
     protected $casts = [
+        'pv_id'                     => 'integer',
+        'user_id'                   => 'integer',
+        'cliente_id'                => 'integer',
+        'caja_id'                   => 'integer',
         'fecha'                     => 'datetime:Y-m-d H:i:s',
         'fecha_aprobacion_rechazo'  => 'datetime:Y-m-d H:i:s',
     ];

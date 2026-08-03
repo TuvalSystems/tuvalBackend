@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Builders\Cobranzas\CobrosFacturas;
 
 use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
@@ -12,22 +13,21 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
 {
 
 
-    public function createCollection(array $collectionData, GpUsuario $userBoxed, GpCaja $boxed) : GpCobro
+    public function createHeaderCollection(array $collectionData, int $userBoxedId, GpCaja $boxed): GpCobro
     {
         $collection = new GpCobro();
         $collection->fill([
-            'user_id'       => $userBoxed->id,
+            'user_id'       => $userBoxedId,
             'pv_id'         => data_get($collectionData, 'pv_id'),
             'cliente_id'    => data_get($collectionData, 'cliente_id'),
             'caja_id'       => $boxed->id,
             'caja'          => $boxed->cajaCodigo,
-            'fecha'         => Carbon::now()->toDateString(),
+            'fecha'         => Carbon::now()->toDateTimeString(),
             'estado'        => CollectionStatusEnum::INICIADO->value,
             'pedido'        => data_get($collectionData, 'pedido'),
             'referencia'    => data_get($collectionData, 'referencia'),
         ]);
         $collection->save();
-        return $collection;
-
+        return $collection->refresh();
     }
 }

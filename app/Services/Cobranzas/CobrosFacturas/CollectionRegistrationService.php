@@ -40,12 +40,14 @@ class CollectionRegistrationService implements CollectionRegistrationServiceInte
         }
 
 
+        $headerCollection = $this->collectBuilder->createHeaderCollection($collectionData, $userBoxed->user_id, $boxed);
 
 
         return [
-            'data' => $collectionData, // Puedes incluir los datos del cobro registrado
-            'usuario' => $user,
-            'caja' => $boxed,
+            'data'      => $collectionData, // Puedes incluir los datos del cobro registrado
+            'usuario'   => $user,
+            'caja'      => $boxed,
+            'cobro'     => $headerCollection,
         ];
     }
 }
