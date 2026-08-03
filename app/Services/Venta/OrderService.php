@@ -1445,7 +1445,7 @@ class OrderService implements OrderServiceInterface
     public function sendInvoicesToGp()
     {
         Log::info('sendInvoicesToGp - Iniciando proceso de envío de facturas a GP.');
-        if ($this->orderAndQuotationService->isWeekend() || $this->orderAndQuotationService->isBussinessDay()) {
+        if ($this->orderAndQuotationService->isWeekend() || !$this->orderAndQuotationService->isBussinessDay()) {
             Log::info('sendInvoicesToGp - No se enviarán facturas a GP porque es fin de semana o día no hábil.');
             return;
         }
