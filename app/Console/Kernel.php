@@ -61,6 +61,7 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('pedidos:facturar-enviando')
             ->timezone(self::TIMEZONE)
+              ->between('06:00', '24:00')
             // ->everyTwoHours()
             ->everyMinute()
             ->withoutOverlapping(20)
