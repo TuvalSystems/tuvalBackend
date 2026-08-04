@@ -97,6 +97,8 @@ class GpCobrosRetenciones extends Model
         'ret_renta',
         'ret_porcentaje_renta',
         'ret_iva_srv',
+        'ret_porcentaje_iva_srv',
+        'ret_renta_srv',
         'ret_porcentaje_renta_srv',
         'ret_emision',
         'ret_caducidad',
