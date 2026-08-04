@@ -1459,6 +1459,7 @@ class OrderService implements OrderServiceInterface
 
             GpPedido::where('estado', OrderStatus::ESPERA)
                 ->where('factura_siguiente_mes', 0)
+                ->whereHas('detallepedido')
                 ->chunk(100, function ($orders) {
                     foreach ($orders as $ord) {
                         $this->invoiceService->checkSendInvoice($ord);
@@ -1466,7 +1467,9 @@ class OrderService implements OrderServiceInterface
                 });
 
             $ordersL = GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)
-                ->where('factura_siguiente_mes', 0)->get();
+                ->where('factura_siguiente_mes', 0)
+                ->whereHas('detallepedido')
+                ->get();
             foreach ($ordersL as $ord) {
                 if ($this->valdidateOrdersProviders($ord)) {
                     $ord->estado = OrderStatus::ESPERA;
