@@ -27,6 +27,7 @@ use App\Services\Builders\Bodega\Contracts\SalesTransferParamsBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
+use Illuminate\Support\Facades\Cache;
 
 class InvoiceService implements InvoiceServiceInterface
 {
@@ -50,6 +51,27 @@ class InvoiceService implements InvoiceServiceInterface
      */
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
+    {
+        $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 300);
+        if (!$lock->get()) {
+            Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya tiene un proceso de facturacion activo.");
+            return;
+        }
+
+        try {
+            $pedido->refresh();
+            if (filled($pedido->factura) && $pedido->estado === OrderStatus::FACTURADO) {
+                Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya se encuentra facturado.");
+                return;
+            }
+
+            $this->processCheckSendInvoice($pedido, $trasladado, $checkDemanda);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
+    protected function processCheckSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
         if ($this->shouldSkipProcessing($pedido)) {
             return;

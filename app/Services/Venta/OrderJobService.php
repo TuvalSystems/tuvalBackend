@@ -92,12 +92,6 @@ class OrderJobService
                     continue;
                 }
 
-                $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
-                if (!$lock->get()) {
-                    // Otro proceso ya está facturando → no lo cuentes como error
-                    Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
-                    continue;
-                }
                 try {
                     try {
 
@@ -132,8 +126,6 @@ class OrderJobService
                         'error'         => $e->getMessage(),
                         'trace'         => $e->getTraceAsString(),
                     ]);
-                } finally {
-                    optional($lock)->release();
                 }
             }
         });
