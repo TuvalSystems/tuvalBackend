@@ -48,4 +48,8 @@ interface OrderRepositoryInterface
     public function fetchPendingOrders(int $ptoVta): Builder;
 
     public function queryOrdersInSendingStatus() ;
+
+    public function queryOrdersPendingInvoiceProcessing();
+
+    public function queryPurchaseOrdersPendingInvoiceProcessing();
 }

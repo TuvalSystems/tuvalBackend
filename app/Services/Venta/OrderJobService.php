@@ -92,12 +92,6 @@ class OrderJobService
                     continue;
                 }
 
-                $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
-                if (!$lock->get()) {
-                    // Otro proceso ya está facturando → no lo cuentes como error
-                    Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
-                    continue;
-                }
                 try {
                     try {
 
@@ -132,8 +126,6 @@ class OrderJobService
                         'error'         => $e->getMessage(),
                         'trace'         => $e->getTraceAsString(),
                     ]);
-                } finally {
-                    optional($lock)->release();
                 }
             }
         });
@@ -238,11 +230,15 @@ class OrderJobService
 
     public function processPendingInvoices()
     {
-        $orders = $this->orderRepository->queryOrdersInSendingStatus();
-        if ($orders->isEmpty()) {
+        $orders = $this->orderRepository->queryOrdersPendingInvoiceProcessing();
+        $ordersL = $this->orderRepository->queryPurchaseOrdersPendingInvoiceProcessing();
+        if ($orders->isEmpty() && $ordersL->isEmpty()) {
             return;
         }
-        Log::channel('cron_process')->info("Pedidos en estado 'enviando' encontrados: " . $orders->count());
+        Log::channel('cron_process')->info("Pedidos pendientes de facturacion encontrados", [
+            'espera_enviando' => $orders->count(),
+            'orden_de_compra' => $ordersL->count(),
+        ]);
         foreach ($orders as $order) {
             try {
                 if($order->factura !== null && $order->factura !== ''){
@@ -252,12 +248,26 @@ class OrderJobService
                     continue;
 
                 }
-                Log::channel('cron_process')->info("Procesando pedido {$order->pedido} en estado 'enviando'...");
-                $this->invoiceService->checkSendInvoice($order, true);
+                Log::channel('cron_process')->info("Procesando pedido {$order->pedido} en estado '{$order->estado->value}'...");
+                $trasladado = $order->estado === OrderStatus::ENVIANDO;
+                $this->invoiceService->checkSendInvoice($order, $trasladado);
 
             } catch (\Throwable $e) {
                Log::channel('cron_process')->error("Error procesando pedido {$order->pedido}: " . $e->getMessage());
                continue;
+            }
+        }
+        foreach ($ordersL as $order) {
+            try {
+                if ($this->orderService->valdidateOrdersProviders($order)) {
+                    $order->estado = OrderStatus::ESPERA;
+                    $order->save();
+                    $this->invoiceService->generateDisptachOrder($order);
+                    $this->invoiceService->sendInvoiceGp($order);
+                }
+            } catch (\Throwable $e) {
+                Log::channel('cron_process')->error("Error procesando pedido {$order->pedido} en orden_de_compra: " . $e->getMessage());
+                continue;
             }
         }
         Log::channel('cron_process')->info("Proceso de facturas pendientes finalizado.");

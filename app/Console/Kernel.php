@@ -44,11 +44,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(10)
             ->runInBackground();
 
-        $schedule->command('pedidos:enviar-facturas-gp')
-            ->timezone(self::TIMEZONE)
-            ->everyMinute()
-            ->withoutOverlapping(10)
-            ->runInBackground();
+        // Deshabilitado para evitar carreras con pedidos:facturar-enviando.
+        // El procesamiento de espera/enviando queda centralizado en ese comando.
+        // $schedule->command('pedidos:enviar-facturas-gp')
+        //     ->timezone(self::TIMEZONE)
+        //     ->everyMinute()
+        //     ->withoutOverlapping(10)
+        //     ->runInBackground();
 
         $schedule->command('pedidos:facturar-reservas')
             ->timezone(self::TIMEZONE)
@@ -59,7 +61,9 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('pedidos:facturar-enviando')
             ->timezone(self::TIMEZONE)
-            ->everyTwoHours()
+              ->between('06:00', '24:00')
+            // ->everyTwoHours()
+            ->everyMinute()
             ->withoutOverlapping(20)
             ->runInBackground();
     }
