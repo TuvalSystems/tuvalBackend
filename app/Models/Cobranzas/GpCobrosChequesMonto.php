@@ -32,4 +32,12 @@ use Illuminate\Database\Eloquent\Model;
 class GpCobrosChequesMonto extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'cobro_id',
+        'monto',
+        'saldo',
+        'codigo_ws',
+        'mensaje_ws',
+    ];
 }

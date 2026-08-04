@@ -54,6 +54,7 @@ class GpCobrosDeposito extends Model
 
     protected $fillable = [
         'cobro_id',
+        'banco_id',
         'estado',
         'tipo',
         'banco',

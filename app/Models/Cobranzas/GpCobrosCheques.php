@@ -41,6 +41,18 @@ class GpCobrosCheques extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'cobro_id',
+        'banco_id',
+        'banco',
+        'cuenta',
+        'cheque',
+        'monto',
+        'comentario',
+        'fecha_emision',
+        'fecha_vencimiento',
+    ];
+
 
     public function chequesFacturas()
     {

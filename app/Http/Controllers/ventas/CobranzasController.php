@@ -2473,7 +2473,7 @@ class CobranzasController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validated();
-            $user = $request->user() ?? GpUsuario::find(179);
+            $user = $request->user() ?? GpUsuario::find(61);
             $response = $this->collectionRegistrationService->registerCollection($validate, $user);
             return $this->successResponse('Cobro Registrado exitosamente.!', $response, 200);
         }, 'laravel', 'registrarCobro');

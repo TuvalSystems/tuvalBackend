@@ -37,6 +37,16 @@ class GpCobrosEfectivoMonto extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'cobro_id',
+        'monto',
+        'fecha',
+        'banco',
+        'comprobante',
+        'codigo_ws',
+        'mensaje_ws',
+    ];
+
 
     public function efectivoFactura()
     {

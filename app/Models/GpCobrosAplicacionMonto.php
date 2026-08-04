@@ -42,6 +42,7 @@ class GpCobrosAplicacionMonto extends Model
     protected $fillable = [
         'id',
         'monto',
+        'cobro',
         'cobro_id',
         'tipo',
         'comentario',
