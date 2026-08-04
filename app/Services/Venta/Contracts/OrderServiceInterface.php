@@ -65,7 +65,6 @@ interface OrderServiceInterface
 
     public function hasDeliveryNoteAjusted($id): bool;
 
-    public function sendInvoicesToGp();
 
     public function valdidateOrdersProviders(GpPedido $order);
 

@@ -152,33 +152,7 @@ class PedidosController extends Controller
         }, 'laravel', 'facturarPedidoTest');
     }
 
-
-    public function corregirenviando(): void
-    {
-        $enviando = GpPedido::where('estado', OrderStatus::ENVIANDO)
-            ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())->get();
-
-        foreach ($enviando as $pedido) {
-            $this->invoiceService->respuestaFacturaVenta($pedido);
-        }
-    }
-
-    public function sendfacturasgp()
-    {
-        try {
-            $this->orderService->sendInvoicesToGp();
-            return $this->buildSuccessResponse("Proceso de facturas ejecutado", 200);
-        } catch (\Throwable $e) {
-            Log::error('Error critico en sendInvoicesToGp', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
+    
 
     public function verpedidos(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
