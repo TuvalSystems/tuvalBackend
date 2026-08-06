@@ -16,7 +16,7 @@ interface CollectionRegistrationBuilderInterface
     public function createCollectionCashHeader(array $data, int $collectionId): void;
     public function createCollectionCashDetail(array $data, int $collectionId): void;
     //depositos
-    public function createCollectionDepositHeader(array $data, int $collectionId, string $bankDescription) : GpCobrosDeposito;
+    public function createCollectionDepositHeader(array $data, int $collectionId, string $bankDescription): GpCobrosDeposito;
     public function createCollectionDepositDetail(array $data, int $collectionId, int $depositId): void;
 
     // cheque
@@ -25,17 +25,33 @@ interface CollectionRegistrationBuilderInterface
     public function createCollectionCheckDetail(array $data, int $collectionId): void;
 
     //tarjeta
-    public function createCollectionCardsHeader(array $data, int $collectionId, string $bankDescription) : void;
-    public function createCollectionCardsInvoice(array $data, int $collectionId) :void ;
+    public function createCollectionCardsHeader(array $data, int $collectionId, string $bankDescription): void;
+    public function createCollectionCardsInvoice(array $data, int $collectionId): void;
 
     //aplicaciones
-    public function createCollectionApplicationHeader(array $data, int $collectionId) : GpCobrosAplicacionMonto;
-    public function createCollectionApplicationDetail(array $data, int $collectionId, int $applicationId) : void;
+    public function createCollectionApplicationHeader(array $data, int $collectionId): GpCobrosAplicacionMonto;
+    public function createCollectionApplicationDetail(array $data, int $collectionId, int $applicationId): void;
 
 
     //payloads para enviar a gp
     // efectivo
-    public function payloadCollectionHeader(GpCobro $collect, string $receiptNumber,  string $ruc, string $boxedCode,  float $cashPaymentAmount, float $unappliedAmount): array;
+    public function payloadCollectionHeader(
+        GpCobro $collect,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $cashPaymentAmount,
+        float $unappliedAmount
+    ): array;
     public function payloadCollectionDetailInvoices(string $receiptNumber, string $ruc, string $numberInvoice, float $applyAmount, ?string $obs): array;
 
+
+    public function payloadCollectionDepositHeader(
+        GpCobro $collection,
+        GpCobrosDeposito $deposit,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $unappliedAmount,
+    ): array;
 }

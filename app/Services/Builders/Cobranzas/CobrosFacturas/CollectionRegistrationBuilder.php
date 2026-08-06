@@ -248,25 +248,25 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
 
 
     public function payloadCollectionHeader(
-        GpCobro $collect,
+        GpCobro $collection,
         string $receiptNumber,
         string $ruc,
         string $boxedCode,
         float $cashPaymentAmount,
-        float $unappliedAmount
+        float $unappliedAmount,
     ): array {
         return [
             'numeroRecibo'          => $receiptNumber, //$collect->numero_recibo .'-' .CollectTypeEnum::EFECTIVO_E->value,
             'ruc'                   => $ruc,
-            'fechaCobro'            => $collect->fecha,
+            'fechaCobro'            => Carbon::parse($collection->fecha)->format('Y-m-d H:i:s'),
             'tipoCobro'             => CollectTypeEnum::EFECTIVO->value,
-            'observacion'           => $collect->referencia,
-            'solicitudDescuento'    => $collect->pedido, //no se llena pero la pongo por cualquier motivo
+            'observacion'           => $collection->referencia,
+            'solicitudDescuento'    => $collection->pedido, //no se llena pero la pongo por cualquier motivo
             'idVendedor'            => $boxedCode,
-            'montoCobro'            => $cashPaymentAmount,
-            'saldoPendiente'        => $unappliedAmount,
+            'montoCobro'            => (float) $cashPaymentAmount,
+            'saldoPendiente'        => (float) $unappliedAmount,
             'bancoTuval'            => $boxedCode,
-            'fechaDeposito'         => $collect->fecha,
+            'fechaDeposito'         => $collection->fecha,
             'numeroPapeleta'        => '',
         ];
     }
@@ -285,6 +285,32 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'factura'       => $numberInvoice,
             'monto'         => $applyAmount,
             'observacion'   => $obs
+        ];
+    }
+
+
+    // payload para envio de deposito a gp
+    public function payloadCollectionDepositHeader(
+        GpCobro $collection,
+        GpCobrosDeposito $deposit,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $unappliedAmount,
+    ): array {
+        return [
+            'numeroRecibo'          => $receiptNumber,
+            'ruc'                   => $ruc,
+            'fechaCobro'            => Carbon::parse($collection->fecha)->format('Y-m-d H:i:s'),
+            'tipoCobro'             => $deposit->tipo,
+            'observacion'           => $collection->referencia,
+            'solicitudDescuento'    => $collection->pedido, //no se llena pero la pongo por cualquier motivo
+            'idVendedor'            => $boxedCode,
+            'montoCobro'            => (float) $deposit->monto,
+            'saldoPendiente'        => (float) $unappliedAmount,
+            'bancoTuval'            => $deposit->banco,
+            'fechaDeposito'         => $deposit->fecha . ' 00:00:00',
+            'numeroPapeleta'        => $deposit->comprobante,
         ];
     }
 }

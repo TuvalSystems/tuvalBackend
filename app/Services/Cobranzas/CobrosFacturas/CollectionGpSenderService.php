@@ -36,7 +36,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
         return [
             // 'efectivo' => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
-            'depositos' => $this->sendDepositCollectionToGp($userCollection, $collection, $customer),
+            'depositos' => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
         ];
         // throw new \LogicException('CollectionGpSenderService::sendCollectionToGp esta pendiente de implementar.');
     }
@@ -70,7 +70,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $customer->CLI_RUC,
             $cashBox->CAJA_CODIGO,
             $cashPayment->monto,
-            $unappliedAmount
+            $unappliedAmount,
         );
 
         $invoiceDatailPayload = $appliedInvoices
@@ -133,12 +133,51 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         GpUsuario $userCollection,
         GpCobro $collection,
         GpCliente $customer,
+        GpCaja $cashBox
     ) {
 
         $depositAmount = GpCobrosDeposito::with('facturas')->where('cobro_id', $collection->id)
             ->where('monto', '>', 0)
             ->where('enviado_gp', false)
             ->where('estado', 'revisado')->get();
+        $alldeposits = [];
+        foreach ($depositAmount as $deposit) {
+            $appliedInvoices    = $deposit->facturas;
+            $appliedAmount      = (float) round($appliedInvoices->sum('monto'), 2);
+            $unappliedAmount    = (float) round($deposit->monto - $appliedAmount, 2);
+            $receiptNumber      = $this->formatReceiptNumber(
+                $collection->numero_recibo,
+                CollectTypeEnum::DEPOSITO->value
+            );
+
+            $headerPayloadDeposit = $this->collectBuilder->payloadCollectionDepositHeader(
+                $collection,
+                $deposit,
+                $receiptNumber,
+                $customer->CLI_RUC,
+                $cashBox->CAJA_CODIGO,
+                $unappliedAmount
+            );
+            $invoiceDatailPayload = $appliedInvoices
+                ->map(function (GpCobrosDepositosFacturas $invoice) use ($receiptNumber, $customer) {
+                    return $this->collectBuilder->payloadCollectionDetailInvoices(
+                        $receiptNumber,
+                        $customer->CLI_RUC,
+                        $invoice->id_factura,
+                        $invoice->monto,
+                        $invoice->observacion
+                    );
+                })
+                ->values()
+                ->all();
+            $depPayload = [
+                'cabecera' =>  $headerPayloadDeposit,
+                'facturas' =>  $invoiceDatailPayload,
+            ];
+            $alldeposits[] = $depPayload;
+        }
+
+        return $alldeposits;
     }
 
 

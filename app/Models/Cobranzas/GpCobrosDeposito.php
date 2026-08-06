@@ -63,6 +63,7 @@ class GpCobrosDeposito extends Model
         'monto',
         'codigo_ws',
         'mensaje_ws',
+        'enviado_gp',
         'fecha_aprobacion_rechazo',
         'user_aprobador_rechazo_id',
     ];
@@ -71,6 +72,7 @@ class GpCobrosDeposito extends Model
         'updated_at'                    => 'datetime:Y-m-d H:i:s',
         'fecha'                         => 'datetime:Y-m-d H:i:s',
         'fecha_aprobacion_rechazo'      => 'datetime:Y-m-d H:i:s',
+        'enviado_gp'                    => 'boolean'
     ];
 
     protected function serializeDate(DateTimeInterface $date)

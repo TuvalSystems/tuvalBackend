@@ -13,9 +13,16 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('gp_cobros_efectivo_montos', function (Blueprint $table) {
+        // Schema::table('gp_cobros_efectivo_montos', function (Blueprint $table) {
+        //     $table->boolean('enviado_gp')->default(0)->after('mensaje_ws');
+        // });
+
+         Schema::table('gp_cobros_depositos', function (Blueprint $table) {
             $table->boolean('enviado_gp')->default(0)->after('mensaje_ws');
         });
+
+
+
     }
 
     /**
@@ -25,7 +32,11 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('gp_cobros_efectivo_montos', function (Blueprint $table) {
+        // Schema::table('gp_cobros_efectivo_montos', function (Blueprint $table) {
+        //     $table->dropColumn(['enviado_gp']);
+        // });
+
+        Schema::table('gp_cobros_depositos', function (Blueprint $table) {
             $table->dropColumn(['enviado_gp']);
         });
     }
