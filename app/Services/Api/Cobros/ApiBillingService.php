@@ -76,4 +76,22 @@ class   ApiBillingService extends ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN, 'GET', $params);
     }
+
+
+
+    /**
+     *
+     *  funciones para el registro de metodos de pago en sqlServer
+     *
+     * */
+
+    public function registerCashCollectionInGp(array $params)
+    {
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_EFECTIVO,
+            'POST',
+            $params,
+            'json'
+        );
+    }
 }

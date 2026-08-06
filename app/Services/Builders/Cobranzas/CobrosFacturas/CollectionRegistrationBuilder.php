@@ -3,6 +3,7 @@
 namespace App\Services\Builders\Cobranzas\CobrosFacturas;
 
 use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
+use App\Enums\Cobranzas\CobrosFacturas\CollectTypeEnum;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosCheques;
 use App\Models\Cobranzas\GpCobrosChequesFacturas;
@@ -19,7 +20,6 @@ use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
 use App\Services\Builders\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationBuilderInterface;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInterface
 {
@@ -183,10 +183,10 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
 
 
     //tarjetas
-    public function createCollectionCardsHeader(array $data, int $collectionId, string $bankDescription) : void
+    public function createCollectionCardsHeader(array $data, int $collectionId, string $bankDescription): void
     {
-         $cardHeader = new GpCobrosTarjetaMonto();
-         $cardHeader->fill([
+        $cardHeader = new GpCobrosTarjetaMonto();
+        $cardHeader->fill([
             'cobro_id'      => $collectionId,
             'banco_id'      => data_get($data, 'banco_id'),
             'banco'         => $bankDescription,
@@ -194,12 +194,12 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'fecha'         => data_get($data, 'fechaTarjeta'),
             'comprobante'   => data_get($data, 'comprobante'),
             'comentario'    => data_get($data, 'comentario'),
-         ]);
-         $cardHeader->save();
+        ]);
+        $cardHeader->save();
     }
 
 
-    public function createCollectionCardsInvoice(array $data, int $collectionId) :void
+    public function createCollectionCardsInvoice(array $data, int $collectionId): void
     {
         $cardInvoice = new GpCobrosTarjetaFactura();
         $cardInvoice->fill([
@@ -213,7 +213,7 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
 
     //aplicaciones
 
-    public function createCollectionApplicationHeader(array $data, int $collectionId) : GpCobrosAplicacionMonto
+    public function createCollectionApplicationHeader(array $data, int $collectionId): GpCobrosAplicacionMonto
     {
         $apply = new GpCobrosAplicacionMonto();
         $apply->fill([
@@ -228,7 +228,7 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
     }
 
 
-    public function createCollectionApplicationDetail(array $data, int $collectionId, int $applicationId) : void
+    public function createCollectionApplicationDetail(array $data, int $collectionId, int $applicationId): void
     {
         $applyDetail = new GpCobrosAplicacionFactura();
         $applyDetail->fill([
@@ -239,5 +239,52 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'observacion'       => data_get($data, 'observacionAplicacion', ''),
         ]);
         $applyDetail->save();
+    }
+
+
+
+
+    /** funciones para envio de metodos de cobros a gp */
+
+
+    public function payloadCollectionHeader(
+        GpCobro $collect,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $cashPaymentAmount,
+        float $unappliedAmount
+    ): array {
+        return [
+            'numeroRecibo'          => $receiptNumber, //$collect->numero_recibo .'-' .CollectTypeEnum::EFECTIVO_E->value,
+            'ruc'                   => $ruc,
+            'fechaCobro'            => $collect->fecha,
+            'tipoCobro'             => CollectTypeEnum::EFECTIVO->value,
+            'observacion'           => $collect->referencia,
+            'solicitudDescuento'    => $collect->pedido, //no se llena pero la pongo por cualquier motivo
+            'idVendedor'            => $boxedCode,
+            'montoCobro'            => $cashPaymentAmount,
+            'saldoPendiente'        => $unappliedAmount,
+            'bancoTuval'            => $boxedCode,
+            'fechaDeposito'         => $collect->fecha,
+            'numeroPapeleta'        => '',
+        ];
+    }
+
+    //puede ser general para los metodos de pago que lo implementen
+    public function payloadCollectionDetailInvoices(
+        string $receiptNumber,
+        string $ruc,
+        string $numberInvoice,
+        float $applyAmount,
+        ?string $obs
+    ): array {
+        return [
+            'recibo'        => $receiptNumber,
+            'idcliente'     => $ruc,
+            'factura'       => $numberInvoice,
+            'monto'         => $applyAmount,
+            'observacion'   => $obs
+        ];
     }
 }

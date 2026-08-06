@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $comprobante
  * @property string|null $codigo_ws
  * @property string|null $mensaje_ws
+ * @property bool $enviado_gp
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto newModelQuery()
@@ -31,7 +32,6 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto whereMensajeWs($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto whereMonto($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto whereUpdatedAt($value)
- * @mixin \Eloquent
  */
 class GpCobrosEfectivoMonto extends Model
 {
@@ -45,6 +45,12 @@ class GpCobrosEfectivoMonto extends Model
         'comprobante',
         'codigo_ws',
         'mensaje_ws',
+        'enviado_gp',
+    ];
+
+    protected $casts = [
+        'cobro_id'      => 'integer',
+        'enviado_gp'    => 'boolean',
     ];
 
 

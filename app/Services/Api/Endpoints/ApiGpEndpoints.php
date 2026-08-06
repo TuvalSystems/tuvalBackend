@@ -54,6 +54,11 @@ class ApiGpEndpoints
     public const COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE = 'api/cobros/consultar-estado-cuenta-cliente';
     public const COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN = 'api/cobros/consultar-estado-cuenta-cliente-resumen';
 
+    // apis para el registro de metodos de pago
+    public const COBROS_FACTURAS_REGISTRAR_EFECTIVO  ="api/cobranzas/cobros-facturas/registrar-efectivo";
+
+
+
     // ---
     // 📄 5. Endpoints de Transacciones ( Recibos, Facturación )
     // ---

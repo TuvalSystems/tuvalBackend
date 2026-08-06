@@ -32,4 +32,10 @@ interface CollectionRegistrationBuilderInterface
     public function createCollectionApplicationHeader(array $data, int $collectionId) : GpCobrosAplicacionMonto;
     public function createCollectionApplicationDetail(array $data, int $collectionId, int $applicationId) : void;
 
+
+    //payloads para enviar a gp
+    // efectivo
+    public function payloadCollectionHeader(GpCobro $collect, string $receiptNumber,  string $ruc, string $boxedCode,  float $cashPaymentAmount, float $unappliedAmount): array;
+    public function payloadCollectionDetailInvoices(string $receiptNumber, string $ruc, string $numberInvoice, float $applyAmount, ?string $obs): array;
+
 }

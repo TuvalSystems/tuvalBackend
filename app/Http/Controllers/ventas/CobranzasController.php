@@ -39,6 +39,7 @@ use App\Http\Requests\Cobranzas\CobrosFacturas\RegisterCollectionRequest;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
@@ -59,13 +60,19 @@ class CobranzasController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
+    private const GP_COBRO_SUCCESS_MESSAGES = [
+        'Registro de cobro guardado correctamente.',
+        'El número de recibo de cobro enviado ya existe para esta empresa.',
+    ];
+
     public function __construct(
         protected readonly CollectionServiceInterface $collectionService,
         protected readonly CustomerPaymentApplicationServiceInterface $customer,
         protected readonly CollectionUnapplicationServiceInterface $unapplycation,
         protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits,
         protected readonly InvoiceCollectionServiceInterface $invoiceCollect,
-        protected readonly CollectionRegistrationServiceInterface $collectionRegistrationService
+        protected readonly CollectionRegistrationServiceInterface $collectionRegistrationService,
+        protected readonly CollectionGpSenderServiceInterface $sendCollectionService,
     ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -649,11 +656,7 @@ class CobranzasController extends Controller
         $estadoDeCuenta = '';
         $efectivo = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)
             ->where('monto', '>', 0)
-            ->where(function ($q) {
-                $q->where('mensaje_ws', '=', null)
-                    ->orWhere('mensaje_ws', '!=', 'Registro de cobro guardado correctamente.')
-                    ->where('mensaje_ws', '!=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-            })
+            ->where('enviado_gp', false)
             ->first();
 
         if ($efectivo) {
@@ -700,9 +703,10 @@ class CobranzasController extends Controller
 
                 $efectivo->codigo_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Codigo'];
                 $efectivo->mensaje_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
+                $efectivo->enviado_gp = in_array($efectivo->mensaje_ws, self::GP_COBRO_SUCCESS_MESSAGES, true);
                 $efectivo->save();
                 $mensaje = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
+                if (!$efectivo->enviado_gp) {
                     $alerta .= '<p>Efectivo de ' . $cobro->numero_recibo . ': ' . $mensaje . '.</p>';
                 }
             }
@@ -889,7 +893,7 @@ class CobranzasController extends Controller
             }
         }
 
-        $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)
+       $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)
             ->where('monto', '>', 0)
             ->where('estado', 'revisado')
             ->where(function ($q) {
@@ -1278,7 +1282,7 @@ class CobranzasController extends Controller
 
             $efectivos = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)->get();
             foreach ($efectivos as $efectivo) {
-                if ($efectivo->mensaje_ws != 'Registro de cobro guardado correctamente.' && $efectivo->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
+                if (!$efectivo->enviado_gp) {
                     $enviado = false;
                 }
             }
@@ -2474,8 +2478,25 @@ class CobranzasController extends Controller
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validated();
             $user = $request->user() ?? GpUsuario::find(179);
-            $response = $this->collectionRegistrationService->registerCollection($validate, $user);
-            return $this->successResponse('Cobro Registrado exitosamente.!', $response, 200);
+            $cobro = $this->collectionRegistrationService->registerCollection($validate, $user);
+            $mensaje = "Cobro {$cobro->numero_recibo} creado exitosamente.!";
+            return $this->buildSuccessResponse($mensaje,  200);
         }, 'laravel', 'registrarCobro');
+    }
+
+
+
+
+    /** api para enviar un cobro en especifico a procesar */
+    public function enviarCobroGp(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
+            ]);
+            $cobroId         = data_get($validate, 'cobro_id');
+            $data = $this->sendCollectionService->sendCollectionToGp($cobroId);
+            return $this->successResponse('Cobro Registrado', $data);
+        }, 'laravel', 'enviarCobroGp');
     }
 }

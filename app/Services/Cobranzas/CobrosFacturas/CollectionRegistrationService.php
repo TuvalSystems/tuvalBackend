@@ -2,6 +2,7 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
+use App\Jobs\Cobranzas\CobrosFacturas\SendCollectionToGpJob;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\GpCaja;
 use App\Models\GpCajaBancos;
@@ -49,34 +50,29 @@ class CollectionRegistrationService implements CollectionRegistrationServiceInte
             $headerCollection = $this->collectBuilder->createHeaderCollection($collectionData, $userBoxed->user_id, $boxed);
 
             // Crear detalles de retención
-            // $this->createCollectionRetentionDetail(data_get($collectionData, 'retenciones'), $headerCollection->id);
+            $this->createCollectionRetentionDetail(data_get($collectionData, 'retenciones'), $headerCollection->id);
 
             // Crear detalles de efectivo
             $this->createCollectionCashDetail(data_get($collectionData, 'efectivo'),  $headerCollection->id);
 
             // Crear detalles de depósitos
-            // $this->createCollectionDepositDetail(data_get($collectionData, 'depositos'),  $headerCollection->id);
+            $this->createCollectionDepositDetail(data_get($collectionData, 'depositos'),  $headerCollection->id);
 
             //crear detalle de cheque
-            // $this->createCollectionCheckDetail(data_get($collectionData, 'cheque'),  $headerCollection->id, $clientId);
+            $this->createCollectionCheckDetail(data_get($collectionData, 'cheque'),  $headerCollection->id, $clientId);
 
             //crear detalle de tarjetas
-            // $this->createCollectionCardsDetail(data_get($collectionData, 'tarjeta'),  $headerCollection->id);
+            $this->createCollectionCardsDetail(data_get($collectionData, 'tarjeta'),  $headerCollection->id);
 
             //crear detalle de aplicaciones
-            // $this->createCollectionApplicationsDetail(data_get($collectionData, 'aplicaciones'),  $headerCollection->id);
-          
+            $this->createCollectionApplicationsDetail(data_get($collectionData, 'aplicaciones'),  $headerCollection->id);
+
             return $headerCollection;
         });
 
-        
-
+        // SendCollectionToGpJob::dispatch($collectionRegister->id);
 
         return $collectionRegister;
-
-
-
-        // return $collectionRegister;
     }
 
     private function createCollectionRetentionDetail(?array $retentionData, int $collectionId): void

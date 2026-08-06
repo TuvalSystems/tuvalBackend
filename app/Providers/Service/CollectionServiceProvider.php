@@ -2,7 +2,9 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Cobranzas\CobrosFacturas\CollectionGpSenderService;
 use App\Services\Cobranzas\CobrosFacturas\CollectionRegistrationService;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\InvoiceCollectionService;
@@ -28,7 +30,8 @@ class CollectionServiceProvider extends ServiceProvider
 
         //cobros facturas
         InvoiceCollectionServiceInterface::class            => InvoiceCollectionService::class,
-        CollectionRegistrationServiceInterface::class       => CollectionRegistrationService::class
+        CollectionRegistrationServiceInterface::class       => CollectionRegistrationService::class,
+        CollectionGpSenderServiceInterface::class           => CollectionGpSenderService::class,
     ];
 
     public function provides()
