@@ -51,6 +51,13 @@ class GpCobrosTarjetaMonto extends Model
         'comentario',
         'codigo_ws',
         'mensaje_ws',
+        'enviado_gp',
+    ];
+
+    protected $casts = [
+        'cobro_id'      => 'integer',
+        'monto'         => 'float',
+        'enviado_gp'    => 'boolean',
     ];
 
     public function cobroEfectivoFactura(){

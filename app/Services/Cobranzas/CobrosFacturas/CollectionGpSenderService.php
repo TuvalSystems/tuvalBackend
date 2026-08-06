@@ -10,6 +10,8 @@ use App\Models\Cobranzas\GpCobrosEfectivoFactura;
 use App\Models\Cobranzas\GpCobrosEfectivoMonto;
 use App\Models\GpCaja;
 use App\Models\GpCliente;
+use App\Models\GpCobrosTarjetaFactura;
+use App\Models\GpCobrosTarjetaMonto;
 use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Api\Cobros\ApiBillingService;
@@ -35,8 +37,9 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $userCollection = GpUsuario::find($collection->user_id);
 
         return [
-            // 'efectivo' => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
+            'efectivo' => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
             'depositos' => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
+            'tarjeta'   => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
         ];
         // throw new \LogicException('CollectionGpSenderService::sendCollectionToGp esta pendiente de implementar.');
     }
@@ -91,15 +94,15 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
         $cashPayment->update([
-            'codigo_ws'     => $this->extractResponseCode($response, $sent),
+            'codigo_ws'     => $this->extractResponseStatus($response, $sent),
             'mensaje_ws'    => $this->limitForColumn($message, 300),
             'enviado_gp'    => $sent,
         ]);
 
         if (!$sent) {
             $userCollection->notify((new UserNotification(
-                'Error al ingresar un cobro de efectivo',
-                $message . " al enviar el efectivo de  {$collection->numero_recibo}"
+                'Error al ingresar cobro efectivo',
+                $this->formatCollectionNotificationMessage($collection, 'efectivo', $message)
             )));
 
             return [
@@ -109,8 +112,8 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         }
 
         $userCollection->notify((new UserNotification(
-            'Registro de Efectivo',
-            $message
+            'Registro de cobro efectivo',
+            $this->formatCollectionNotificationMessage($collection, 'efectivo', $message)
         )));
 
         return [
@@ -119,13 +122,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         ];
     }
 
-    private function sendCashCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
-    {
-        return $this->api->registerCashCollectionInGp([
-            'cabecera'  => $headerPayload,
-            'detalle'   => $invoiceDatailPayload
-        ]);
-    }
+
 
 
     /** enviar  deposito a sqlServer*/
@@ -140,6 +137,10 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             ->where('monto', '>', 0)
             ->where('enviado_gp', false)
             ->where('estado', 'revisado')->get();
+
+        if ($depositAmount->isEmpty()) {
+            return null;
+        }
         $alldeposits = [];
         foreach ($depositAmount as $deposit) {
             $appliedInvoices    = $deposit->facturas;
@@ -170,14 +171,115 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 })
                 ->values()
                 ->all();
-            $depPayload = [
-                'cabecera' =>  $headerPayloadDeposit,
-                'facturas' =>  $invoiceDatailPayload,
+            $response   = $this->sendCashCollectionToApi($headerPayloadDeposit, $invoiceDatailPayload);
+            $message    = $this->extractResponseMessage($response);
+            $sent       = $this->isSuccessfulGpResponse($response, $message);
+            $deposit->update([
+                'codigo_ws'     => $this->extractResponseStatus($response, $sent),
+                'mensaje_ws'    => $this->limitForColumn($message, 300),
+                'enviado_gp'    => $sent,
+            ]);
+            if (!$sent) {
+                $userCollection->notify((new UserNotification(
+                    'Error al ingresar cobro deposito',
+                    $this->formatCollectionNotificationMessage($collection, 'deposito', $message)
+                )));
+
+                $alldeposits[] = [
+                    'enviado_gp' => false,
+                    'mensaje' => $message,
+                ];
+
+                continue;
+            }
+
+            $userCollection->notify((new UserNotification(
+                'Registro de cobro deposito',
+                $this->formatCollectionNotificationMessage($collection, 'deposito', $message)
+            )));
+
+            $alldeposits[] = [
+                'enviado_gp' => $sent,
+                'mensaje' => $message,
             ];
-            $alldeposits[] = $depPayload;
         }
 
         return $alldeposits;
+    }
+
+    /** enviar tarjeta a sqlServer */
+    private function sendCardCollectionToGp(
+        GpUsuario $userCollection,
+        GpCobro $collection,
+        GpCliente $customer,
+        GpCaja $cashBox
+    ) {
+        $cardAmount = GpCobrosTarjetaMonto::where('cobro_id', $collection->id)
+            ->where('monto', '>', 0)
+            ->where('enviado_gp', false)
+            ->first();
+        if (!$cardAmount) {
+            return null;
+        }
+        $appliedInvoices        = GpCobrosTarjetaFactura::where('cobro_id', $collection->id)->get();
+        $appliedAmount          = (float) round($appliedInvoices->sum('monto'), 2);
+        $unappliedAmount        = (float) round($cardAmount->monto - $appliedAmount, 2);
+        $receiptNumber          = $this->formatReceiptNumber(
+            $collection->numero_recibo,
+            CollectTypeEnum::TARJETA->value
+        );
+        $headerPayload  = $this->collectBuilder->payloadCollectionCardHeader(
+            $collection,
+            $cardAmount,
+            $receiptNumber,
+            $customer->CLI_RUC,
+            $cashBox->CAJA_CODIGO,
+            $unappliedAmount,
+        );
+        $invoiceDatailPayload = $appliedInvoices
+            ->map(function (GpCobrosTarjetaFactura $invoice) use ($receiptNumber, $customer) {
+                return $this->collectBuilder->payloadCollectionDetailInvoices(
+                    $receiptNumber,
+                    $customer->CLI_RUC,
+                    $invoice->id_factura,
+                    $invoice->monto,
+                    $invoice->observacion
+                );
+            })
+            ->values()
+            ->all();
+
+        $response   = $this->sendCashCollectionToApi($headerPayload, $invoiceDatailPayload);
+        $message    = $this->extractResponseMessage($response);
+        $sent       = $this->isSuccessfulGpResponse($response, $message);
+
+        $cardAmount->update([
+            'codigo_ws'     => $this->extractResponseStatus($response, $sent),
+            'mensaje_ws'    => $this->limitForColumn($message, 300),
+            'enviado_gp'    => $sent,
+        ]);
+
+        if (!$sent) {
+            $userCollection->notify((new UserNotification(
+                'Error al ingresar cobro tarjeta',
+                $this->formatCollectionNotificationMessage($collection, 'tarjeta', $message)
+            )));
+
+            return [
+                'enviado_gp' => false,
+                'mensaje' => $message,
+            ];
+        }
+
+        $userCollection->notify((new UserNotification(
+            'Registro de cobro tarjeta',
+            $this->formatCollectionNotificationMessage($collection, 'tarjeta', $message)
+        )));
+
+        return [
+            'enviado_gp'    => true,
+            'mensaje'       => $message,
+        ];
     }
 
 
@@ -185,11 +287,13 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
 
 
-
-
-
-
-
+    private function sendCashCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
+    {
+        return $this->api->registerCashCollectionInGp([
+            'cabecera'  => $headerPayload,
+            'detalle'   => $invoiceDatailPayload
+        ]);
+    }
 
 
     private function formatReceiptNumber(string $receiptNumber, string $type)
@@ -217,32 +321,47 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         return (string) $message;
     }
 
-    private function extractResponseCode(mixed $response, bool $sent): string
+    private function formatCollectionNotificationMessage(GpCobro $collection, string $type, string $message): string
     {
-        $code = data_get($response, 'codigo')
-            ?? data_get($response, 'code')
-            ?? data_get($response, 'status')
-            ?? ($sent ? '1' : '0');
+        return "Numero de cobro: {$collection->numero_recibo}. Tipo: {$type}. Mensaje GP: {$message}";
+    }
 
-        if (is_bool($code)) {
-            $code = $code ? '1' : '0';
+    private function extractResponseStatus(mixed $response, bool $sent): string
+    {
+        $success = data_get($response, 'success');
+
+        if (is_bool($success)) {
+            return $this->limitForColumn($success ? 'success' : 'failed', 20);
         }
 
-        return $this->limitForColumn((string) $code, 20);
+        $status = data_get($response, 'status');
+
+        if ($status !== null && $status !== '') {
+            return $this->limitForColumn((string) $status, 20);
+        }
+
+        return $this->limitForColumn($sent ? 'success' : 'failed', 20);
     }
 
     private function isSuccessfulGpResponse(mixed $response, string $message): bool
     {
-        if (in_array($message, self::SUCCESS_MESSAGES, true)) {
-            return true;
-        }
-
         $success = data_get($response, 'success');
-        if ($success !== null) {
-            return $success === true;
+        if (is_bool($success)) {
+            return $success;
         }
 
-        return data_get($response, 'status') === true;
+        $status = data_get($response, 'status');
+        if (is_bool($status)) {
+            return $status;
+        }
+
+        if (is_string($status)) {
+            return in_array(strtolower(trim($status)), ['success', 'ok', 'true'], true);
+        }
+
+        $message = preg_replace('/^C.digo\s+\d+\s*:\s*/iu', '', $message) ?? $message;
+
+        return in_array($message, self::SUCCESS_MESSAGES, true);
     }
 
     private function limitForColumn(string $value, int $length): string

@@ -67,7 +67,7 @@ class GpCobrosDeposito extends Model
         'fecha_aprobacion_rechazo',
         'user_aprobador_rechazo_id',
     ];
-    protected $cast = [
+    protected $casts = [
         'created_at'                    => 'datetime:Y-m-d H:i:s',
         'updated_at'                    => 'datetime:Y-m-d H:i:s',
         'fecha'                         => 'datetime:Y-m-d H:i:s',

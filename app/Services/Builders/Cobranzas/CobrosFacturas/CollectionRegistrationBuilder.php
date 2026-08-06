@@ -313,4 +313,29 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'numeroPapeleta'        => $deposit->comprobante,
         ];
     }
+
+    //payload para envio de tarjeta
+    public function payloadCollectionCardHeader(
+        GpCobro $collection,
+        GpCobrosTarjetaMonto $card,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $unappliedAmount,
+    ): array {
+        return [
+            'numeroRecibo'          => $receiptNumber,
+            'ruc'                   => $ruc,
+            'fechaCobro'            => Carbon::parse($collection->fecha)->format('Y-m-d H:i:s'),
+            'tipoCobro'             => CollectTypeEnum::TARJETA->value,
+            'observacion'           => $card->comentario,
+            'solicitudDescuento'    => $collection->pedido, //no se llena pero la pongo por cualquier motivo
+            'idVendedor'            => $boxedCode,
+            'montoCobro'            => (float) $card->monto,
+            'saldoPendiente'        => (float) $unappliedAmount,
+            'bancoTuval'            => $card->banco,
+            'fechaDeposito'         => Carbon::parse($collection->fecha)->format('Y-m-d H:i:s'),
+            'numeroPapeleta'        => $card->comprobante,
+        ];
+    }
 }

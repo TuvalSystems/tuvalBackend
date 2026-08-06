@@ -6,6 +6,7 @@ use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\GpCaja;
 use App\Models\GpCobrosAplicacionMonto;
+use App\Models\GpCobrosTarjetaMonto;
 
 interface CollectionRegistrationBuilderInterface
 {
@@ -49,6 +50,15 @@ interface CollectionRegistrationBuilderInterface
     public function payloadCollectionDepositHeader(
         GpCobro $collection,
         GpCobrosDeposito $deposit,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $unappliedAmount,
+    ): array;
+
+    public function payloadCollectionCardHeader(
+        GpCobro $collection,
+        GpCobrosTarjetaMonto $card,
         string $receiptNumber,
         string $ruc,
         string $boxedCode,
