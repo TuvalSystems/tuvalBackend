@@ -4,6 +4,7 @@ namespace App\Services\Builders\Cobranzas\CobrosFacturas\Contracts;
 
 use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosDeposito;
+use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCaja;
 use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaMonto;
@@ -44,7 +45,7 @@ interface CollectionRegistrationBuilderInterface
         float $cashPaymentAmount,
         float $unappliedAmount
     ): array;
-    public function payloadCollectionDetailInvoices(string $receiptNumber, string $ruc, string $numberInvoice, float $applyAmount, ?string $obs): array;
+    public function payloadCollectionDetailInvoices(string $receiptNumber, string $ruc, string $numberInvoice, float $applyAmount, ?string $obs = ''): array;
 
 
     public function payloadCollectionDepositHeader(
@@ -64,4 +65,15 @@ interface CollectionRegistrationBuilderInterface
         string $boxedCode,
         float $unappliedAmount,
     ): array;
+
+       public function payloadCollectionRetentionHeader(
+        GpCobro $collection,
+        GpCobrosRetenciones $retention,
+        string $receiptNumber,
+        string $typeCollection,
+        string $ruc,
+        string $boxedCode,
+        float $amount,
+        float $porcentilAmount
+    ) : array;
 }

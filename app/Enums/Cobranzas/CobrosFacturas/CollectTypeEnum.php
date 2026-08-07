@@ -12,6 +12,12 @@ enum CollectTypeEnum : string
     case RETENCION_V = 'RV';
     case RETENCION_F = 'RF';
 
+    case RETENTION_IVA = 'I';
+    case RETENTION_REN = 'R';
+    case RETENTION_ISRV = 'ISRV';
+    case RETENTION_RSRV = 'RSRV';
+
+
     //cheque
     case CHEQUE = 'CHE';
 

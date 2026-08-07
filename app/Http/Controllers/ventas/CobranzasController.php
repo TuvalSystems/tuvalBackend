@@ -893,7 +893,7 @@ class CobranzasController extends Controller
             }
         }
 
-       $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)
+        $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)
             ->where('monto', '>', 0)
             ->where('estado', 'revisado')
             ->where(function ($q) {
@@ -1272,6 +1272,28 @@ class CobranzasController extends Controller
             $enviado = true;
             $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro->id)->get();
             foreach ($retenciones as $retencion) {
+                if (
+                    ($retencion->ret_iva <= 0 || $retencion->enviado_iva_gp)
+                    && ($retencion->ret_renta <= 0 || $retencion->enviado_renta_gp)
+                    && ($retencion->ret_iva_srv <= 0 || $retencion->enviado_iva_srv_gp)
+                    && ($retencion->ret_renta_srv <= 0 || $retencion->enviado_renta_srv_gp)
+                ) {
+                    continue;
+                }
+
+                if ($retencion->ret_iva > 0 && !$retencion->enviado_iva_gp) {
+                    $enviado = false;
+                }
+                if ($retencion->ret_renta > 0 && !$retencion->enviado_renta_gp) {
+                    $enviado = false;
+                }
+                if ($retencion->ret_iva_srv > 0 && !$retencion->enviado_iva_srv_gp) {
+                    $enviado = false;
+                }
+                if ($retencion->ret_renta_srv > 0 && !$retencion->enviado_renta_srv_gp) {
+                    $enviado = false;
+                }
+
                 if ($retencion->ret_porcentaje_iva > 0 && $retencion->mensaje_ws_iva != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_iva != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
                     $enviado = false;
                 }
@@ -2479,7 +2501,7 @@ class CobranzasController extends Controller
             $validate = $request->validated();
             $user = $request->user() ?? GpUsuario::find(179);
             $cobro = $this->collectionRegistrationService->registerCollection($validate, $user);
-            $mensaje = "Cobro {$cobro->numero_recibo} creado exitosamente.!";
+            $mensaje = "Cobro {$cobro->numero_recibo} enviado a procesar.!";
             return $this->buildSuccessResponse($mensaje,  200);
         }, 'laravel', 'registrarCobro');
     }

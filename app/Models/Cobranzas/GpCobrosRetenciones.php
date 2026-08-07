@@ -40,6 +40,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $mensaje_ws_iva_srv
  * @property string|null $codigo_ws_renta_srv
  * @property string|null $mensaje_ws_renta_srv
+ * @property bool $enviado_iva_gp
+ * @property bool $enviado_renta_gp
+ * @property bool $enviado_iva_srv_gp
+ * @property bool $enviado_renta_srv_gp
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones newModelQuery()
@@ -56,6 +60,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereMensajeWsIvaSrv($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereMensajeWsRenta($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereMensajeWsRentaSrv($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereEnviadoIvaGp($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereEnviadoRentaGp($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereEnviadoIvaSrvGp($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereEnviadoRentaSrvGp($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereRetAutorizacion($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereRetCaducidad($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereRetComprobante($value)
@@ -76,7 +84,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereRetSubtotalFactura($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereRetTotalFactura($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereTotal($value)
- * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereUpdatedAt($value)
+ *  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosRetenciones whereUpdatedAt($value)
  * @mixin \Eloquent
  */
 class GpCobrosRetenciones extends Model
@@ -112,7 +120,11 @@ class GpCobrosRetenciones extends Model
         'codigo_ws_iva_srv',
         'mensaje_ws_iva_srv',
         'codigo_ws_renta_srv',
-        'mensaje_ws_renta_srv'
+        'mensaje_ws_renta_srv',
+        'enviado_iva_gp',
+        'enviado_renta_gp',
+        'enviado_iva_srv_gp',
+        'enviado_renta_srv_gp',
     ];
 
     protected $casts = [
@@ -129,7 +141,11 @@ class GpCobrosRetenciones extends Model
         'ret_porcentaje_iva_srv'    => 'float',
         'ret_renta_srv'             => 'float',
         'ret_porcentaje_renta_srv'  => 'float',
-        'total'                     => 'float'
+        'total'                     => 'float',
+        'enviado_iva_gp'            => 'boolean',
+        'enviado_renta_gp'          => 'boolean',
+        'enviado_iva_srv_gp'        => 'boolean',
+        'enviado_renta_srv_gp'      => 'boolean',
     ];
 
 

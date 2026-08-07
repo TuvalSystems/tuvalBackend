@@ -277,13 +277,13 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
         string $ruc,
         string $numberInvoice,
         float $applyAmount,
-        ?string $obs
+        ?string $obs = ''
     ): array {
         return [
             'recibo'        => $receiptNumber,
             'idcliente'     => $ruc,
             'factura'       => $numberInvoice,
-            'monto'         => $applyAmount,
+            'monto'         => (float) $applyAmount,
             'observacion'   => $obs
         ];
     }
@@ -336,6 +336,34 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'bancoTuval'            => $card->banco,
             'fechaDeposito'         => Carbon::parse($collection->fecha)->format('Y-m-d H:i:s'),
             'numeroPapeleta'        => $card->comprobante,
+        ];
+    }
+
+
+    //payñpadára envio de retenciones
+
+    public function payloadCollectionRetentionHeader(
+        GpCobro $collection,
+        GpCobrosRetenciones $retention,
+        string $receiptNumber,
+        string $typeCollection,
+        string $ruc,
+        string $boxedCode,
+        float $amount,
+        float $porcentilAmount
+    ) : array {
+        return [
+            'numeroRecibo'          => $receiptNumber,
+            'ruc'                   => $ruc,
+            'fechaCobro'            => $retention->ret_emision,
+            'fechaCaducidad'        => $retention->ret_fecha_vencimiento,
+            'tipoCobro'             => $typeCollection,
+            'observacion'           => $collection->referencia,
+            'idVendedor'            => $boxedCode,
+            'montoCobro'            => (float)$amount,
+            'numeroRetencion'       => $retention->ret_comprobante,
+            'numeroAutorizacion'    => $retention->ret_autorizacion,
+            'porcentajeRetencion'   => $porcentilAmount
         ];
     }
 }

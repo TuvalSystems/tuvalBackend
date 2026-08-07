@@ -8,9 +8,9 @@ use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\Cobranzas\GpCobrosDepositosFacturas;
 use App\Models\Cobranzas\GpCobrosEfectivoFactura;
 use App\Models\Cobranzas\GpCobrosEfectivoMonto;
+use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCaja;
 use App\Models\GpCliente;
-use App\Models\GpCobrosAplicacionFactura;
 use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
@@ -43,6 +43,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             'depositos'     => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
             'tarjeta'       => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
             'aplicaciones'  => $this->sendApplicationCollectionToGp($userCollection, $collection, $customer),
+            'retencion'     => $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box),
         ];
         // throw new \LogicException('CollectionGpSenderService::sendCollectionToGp esta pendiente de implementar.');
     }
@@ -97,14 +98,13 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
         $cashPayment->update([
-            'codigo_ws'     => $this->extractResponseStatus($response, $sent),
             'mensaje_ws'    => $this->limitForColumn($message, 300),
             'enviado_gp'    => $sent,
         ]);
 
         if (!$sent) {
             $userCollection->notify((new UserNotification(
-                'Error al ingresar cobro efectivo',
+                'Cobro efectivo no enviado a GP',
                 $this->formatCollectionNotificationMessage($collection, 'efectivo', $message)
             )));
 
@@ -115,7 +115,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         }
 
         $userCollection->notify((new UserNotification(
-            'Registro de cobro efectivo',
+            'Cobro efectivo enviado a GP',
             $this->formatCollectionNotificationMessage($collection, 'efectivo', $message)
         )));
 
@@ -178,13 +178,12 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $message    = $this->extractResponseMessage($response);
             $sent       = $this->isSuccessfulGpResponse($response, $message);
             $deposit->update([
-                'codigo_ws'     => $this->extractResponseStatus($response, $sent),
                 'mensaje_ws'    => $this->limitForColumn($message, 300),
                 'enviado_gp'    => $sent,
             ]);
             if (!$sent) {
                 $userCollection->notify((new UserNotification(
-                    'Error al ingresar cobro deposito',
+                    'Deposito no enviado a GP',
                     $this->formatCollectionNotificationMessage($collection, 'deposito', $message)
                 )));
 
@@ -197,7 +196,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             }
 
             $userCollection->notify((new UserNotification(
-                'Registro de cobro deposito',
+                'Deposito enviado a GP',
                 $this->formatCollectionNotificationMessage($collection, 'deposito', $message)
             )));
 
@@ -257,14 +256,13 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
         $cardAmount->update([
-            'codigo_ws'     => $this->extractResponseStatus($response, $sent),
             'mensaje_ws'    => $this->limitForColumn($message, 300),
             'enviado_gp'    => $sent,
         ]);
 
         if (!$sent) {
             $userCollection->notify((new UserNotification(
-                'Error al ingresar cobro tarjeta',
+                'Cobro con tarjeta no enviado a GP',
                 $this->formatCollectionNotificationMessage($collection, 'tarjeta', $message)
             )));
 
@@ -275,7 +273,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         }
 
         $userCollection->notify((new UserNotification(
-            'Registro de cobro tarjeta',
+            'Cobro con tarjeta enviado a GP',
             $this->formatCollectionNotificationMessage($collection, 'tarjeta', $message)
         )));
 
@@ -292,7 +290,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     private function sendApplicationCollectionToGp(
         GpUsuario $userCollection,
         GpCobro $collection,
-        GpCliente $customer
+        GpCliente $customer,
     ) {
         $applicationAmount = GpCobrosAplicacionMonto::with('facturasAplicadas')->where('cobro_id', $collection->id)
             ->where('monto', '>', 0)
@@ -320,7 +318,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 ]);
 
                 $userCollection->notify((new UserNotification(
-                    'Error al ingresar aplicacion de cobro',
+                    'Aplicacion de cobro no enviada a GP',
                     $this->formatCollectionNotificationMessage($collection, 'aplicacion', $message)
                 )));
 
@@ -351,7 +349,6 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
                 $invoiceResults[] = [
                     'factura'    => $invoice->id_factura,
-                    'codigo_ws'  => $this->extractResponseStatus($response, $sent),
                     'enviado_gp' => $sent,
                     'mensaje'    => $message,
                 ];
@@ -368,7 +365,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
             if (!$applicationSent) {
                 $userCollection->notify((new UserNotification(
-                    'Error al ingresar aplicacion de cobro',
+                    'Aplicacion de cobro no enviada a GP',
                     $this->formatCollectionNotificationMessage($collection, 'aplicacion', $message)
                 )));
 
@@ -384,7 +381,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             }
 
             $userCollection->notify((new UserNotification(
-                'Registro de aplicacion de cobro',
+                'Aplicacion de cobro enviada a GP',
                 $this->formatCollectionNotificationMessage($collection, 'aplicacion', $message)
             )));
 
@@ -400,11 +397,172 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         return $sentApplications;
     }
 
+
+    /** envio de retenciones a sqlServer */
+    private function sendRetentionCollectionToGp(
+        GpUsuario $userCollection,
+        GpCobro $collection,
+        GpCliente $customer,
+        GpCaja $cashBox
+    ) {
+        $retentions = GpCobrosRetenciones::where('cobro_id', $collection->id)->get();
+        $retentionTypes = $this->retentionPayloadDefinitions();
+        $sentRetentions = [];
+
+        foreach ($retentions as $retention) {
+            foreach ($retentionTypes as $retentionType) {
+                $amount = (float) $retention->{$retentionType['amount_field']};
+
+                if ($amount <= 0 || $retention->{$retentionType['sent_field']}) {
+                    continue;
+                }
+
+                $payload = $this->buildRetentionPayload(
+                    $collection,
+                    $retention,
+                    $customer,
+                    $cashBox,
+                    $retentionType,
+                    $amount
+                );
+
+                $response = $this->sendRetencionCollectionToGp($payload['cabecera'], $payload['detalle']);
+                $message = $this->extractResponseMessage($response);
+                $sent = $this->isSuccessfulGpResponse($response, $message);
+
+                $retention->update([
+                    $retentionType['message_field'] => $this->limitForColumn($message, 300),
+                    $retentionType['sent_field']    => $sent,
+                ]);
+
+                if (!$sent) {
+                    $userCollection->notify((new UserNotification(
+                        'Retencion ' . $retentionType['label'] . ' no enviada a GP',
+                        $this->formatRetentionNotificationMessage($collection, $retention, $retentionType['label'], $message)
+                    )));
+
+                    $sentRetentions[] = [
+                        'id'         => $retention->id,
+                        'tipo'       => $retentionType['key'],
+                        'factura'    => $retention->ret_factura,
+                        'enviado_gp' => false,
+                        'mensaje'    => $message,
+                    ];
+
+                    continue;
+                }
+
+                $userCollection->notify((new UserNotification(
+                    'Retencion ' . $retentionType['label'] . ' enviada a GP',
+                    $this->formatRetentionNotificationMessage($collection, $retention, $retentionType['label'], $message)
+                )));
+
+                $sentRetentions[] = [
+                    'id'         => $retention->id,
+                    'tipo'       => $retentionType['key'],
+                    'factura'    => $retention->ret_factura,
+                    'enviado_gp' => true,
+                    'mensaje'    => $message,
+                ];
+            }
+        }
+
+        return empty($sentRetentions) ? null : $sentRetentions;
+    }
+
+    private function buildRetentionPayload(
+        GpCobro $collection,
+        GpCobrosRetenciones $retention,
+        GpCliente $customer,
+        GpCaja $cashBox,
+        array $retentionType,
+        float $amount
+    ): array {
+        $receiptNumber = $this->formatReceiptNumberRetention(
+            $collection->numero_recibo,
+            $retentionType['receipt_type'],
+            $retention->id
+        );
+
+        return [
+            'cabecera' => $this->collectBuilder->payloadCollectionRetentionHeader(
+                $collection,
+                $retention,
+                $receiptNumber,
+                $retentionType['collection_type'],
+                $customer->CLI_RUC,
+                $cashBox->CAJA_CODIGO,
+                $amount,
+                (float) $retention->{$retentionType['percentage_field']}
+            ),
+            'detalle'   => $this->collectBuilder->payloadCollectionDetailInvoices(
+                $receiptNumber,
+                $customer->CLI_RUC,
+                $retention->ret_factura,
+                $amount
+            ),
+        ];
+    }
+
+    private function retentionPayloadDefinitions(): array
+    {
+        return [
+            [
+                'key'              => 'iva',
+                'label'            => 'IVA',
+                'amount_field'     => 'ret_iva',
+                'percentage_field' => 'ret_porcentaje_iva',
+                'message_field'    => 'mensaje_ws_iva',
+                'sent_field'       => 'enviado_iva_gp',
+                'receipt_type'     => CollectTypeEnum::RETENTION_IVA->value,
+                'collection_type'  => CollectTypeEnum::RETENCION_V->value,
+            ],
+            [
+                'key'              => 'renta',
+                'label'            => 'RENTA',
+                'amount_field'     => 'ret_renta',
+                'percentage_field' => 'ret_porcentaje_renta',
+                'message_field'    => 'mensaje_ws_renta',
+                'sent_field'       => 'enviado_renta_gp',
+                'receipt_type'     => CollectTypeEnum::RETENTION_REN->value,
+                'collection_type'  => CollectTypeEnum::RETENCION_F->value,
+            ],
+            [
+                'key'              => 'iva_srv',
+                'label'            => 'IVA SRV',
+                'amount_field'     => 'ret_iva_srv',
+                'percentage_field' => 'ret_porcentaje_iva_srv',
+                'message_field'    => 'mensaje_ws_iva_srv',
+                'sent_field'       => 'enviado_iva_srv_gp',
+                'receipt_type'     => CollectTypeEnum::RETENTION_ISRV->value,
+                'collection_type'  => CollectTypeEnum::RETENCION_V->value,
+            ],
+            [
+                'key'              => 'renta_srv',
+                'label'            => 'RENTA SRV',
+                'amount_field'     => 'ret_renta_srv',
+                'percentage_field' => 'ret_porcentaje_renta_srv',
+                'message_field'    => 'mensaje_ws_renta_srv',
+                'sent_field'       => 'enviado_renta_srv_gp',
+                'receipt_type'     => CollectTypeEnum::RETENTION_RSRV->value,
+                'collection_type'  => CollectTypeEnum::RETENCION_F->value,
+            ],
+        ];
+    }
+
     private function sendCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
     {
         return $this->api->registerCashCollectionInGp([
             'cabecera'  => $headerPayload,
             'detalle'   => $invoiceDatailPayload
+        ]);
+    }
+
+    private function sendRetencionCollectionToGp(array $header, array $detail)
+    {
+        return $this->api->registerRetentionCollectionInGp([
+            'cabecera'  => $header,
+            'detalle'   => $detail
         ]);
     }
 
@@ -417,6 +575,14 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     private function formatReceiptNumber(string $receiptNumber, string $type)
     {
         return  sprintf('%s-%s', $receiptNumber, $type);
+    }
+
+    private function formatReceiptNumberRetention(
+        string $receiptNumber,
+        string $type,
+        int $id
+    ): string {
+        return sprintf('%s-%s-%d', $receiptNumber, $type, $id);
     }
 
     private function extractResponseMessage(mixed $response): string
@@ -444,6 +610,15 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         return "Numero de cobro: {$collection->numero_recibo}. Tipo: {$type}. Mensaje GP: {$message}";
     }
 
+    private function formatRetentionNotificationMessage(
+        GpCobro $collection,
+        GpCobrosRetenciones $retention,
+        string $type,
+        string $message
+    ): string {
+        return "Numero de cobro: {$collection->numero_recibo}. Tipo: retencion {$type}. Factura: {$retention->ret_factura}. Comprobante: {$retention->ret_comprobante}. Mensaje GP: {$message}";
+    }
+
     private function formatApplicationResultMessage(array $invoiceResults): string
     {
         $messages = [];
@@ -465,22 +640,6 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         return implode(' | ', array_unique($messages));
     }
 
-    private function extractResponseStatus(mixed $response, bool $sent): string
-    {
-        $success = data_get($response, 'success');
-
-        if (is_bool($success)) {
-            return $this->limitForColumn($success ? 'success' : 'failed', 20);
-        }
-
-        $status = data_get($response, 'status');
-
-        if ($status !== null && $status !== '') {
-            return $this->limitForColumn((string) $status, 20);
-        }
-
-        return $this->limitForColumn($sent ? 'success' : 'failed', 20);
-    }
 
     private function isSuccessfulGpResponse(mixed $response, string $message): bool
     {

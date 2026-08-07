@@ -104,4 +104,14 @@ class   ApiBillingService extends ApiGpService
             'json'
         );
     }
+
+    public function registerRetentionCollectionInGp(array $params)
+    {
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_RETENCION,
+            'POST',
+            $params,
+            'json'
+        );
+    }
 }
