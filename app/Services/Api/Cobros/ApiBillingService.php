@@ -94,4 +94,14 @@ class   ApiBillingService extends ApiGpService
             'json'
         );
     }
+
+    public function registerApplicationCollectionInGp(array $params)
+    {
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_APLICACION,
+            'POST',
+            $params,
+            'json'
+        );
+    }
 }

@@ -48,6 +48,13 @@ class GpCobrosAplicacionMonto extends Model
         'comentario',
         'codigo_ws',
         'mensaje_ws',
+        'enviado_gp'
+    ];
+
+    protected $casts = [
+        'enviado_gp'    => 'boolean',
+        'cobro_id'      => 'integer',
+
     ];
 
 

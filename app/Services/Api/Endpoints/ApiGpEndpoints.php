@@ -56,6 +56,7 @@ class ApiGpEndpoints
 
     // apis para el registro de metodos de pago
     public const COBROS_FACTURAS_REGISTRAR_EFECTIVO  ="api/cobranzas/cobros-facturas/registrar-efectivo";
+    public const COBROS_FACTURAS_REGISTRAR_APLICACION = 'api/cobranzas/cobros-facturas/registrar-aplicacion';
 
 
 

@@ -1145,7 +1145,7 @@ class CobranzasController extends Controller
             //            print_r($parameters);
             //            die();
             $estadoDeCuenta = $webservice->cobranzas('AplicaCobroAnticipo', $parameters);
-            Log::info('GpCobrosAplicacionMonto: ' . json_encode($estadoDeCuenta));
+            // Log::info('GpCobrosAplicacionMonto: ' . json_encode($estadoDeCuenta));
 
             if (isset($estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Mensaje'])) {
 

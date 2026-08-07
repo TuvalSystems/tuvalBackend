@@ -10,6 +10,8 @@ use App\Models\Cobranzas\GpCobrosEfectivoFactura;
 use App\Models\Cobranzas\GpCobrosEfectivoMonto;
 use App\Models\GpCaja;
 use App\Models\GpCliente;
+use App\Models\GpCobrosAplicacionFactura;
+use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
 use App\Models\GpUsuario;
@@ -37,9 +39,10 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $userCollection = GpUsuario::find($collection->user_id);
 
         return [
-            'efectivo' => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
-            'depositos' => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
-            'tarjeta'   => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
+            'efectivo'      => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
+            'depositos'     => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
+            'tarjeta'       => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
+            'aplicaciones'  => $this->sendApplicationCollectionToGp($userCollection, $collection, $customer),
         ];
         // throw new \LogicException('CollectionGpSenderService::sendCollectionToGp esta pendiente de implementar.');
     }
@@ -89,7 +92,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             ->values()
             ->all();
 
-        $response   = $this->sendCashCollectionToApi($headerPayload, $invoiceDatailPayload);
+        $response   = $this->sendCollectionToApi($headerPayload, $invoiceDatailPayload);
         $message    = $this->extractResponseMessage($response);
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
@@ -171,7 +174,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 })
                 ->values()
                 ->all();
-            $response   = $this->sendCashCollectionToApi($headerPayloadDeposit, $invoiceDatailPayload);
+            $response   = $this->sendCollectionToApi($headerPayloadDeposit, $invoiceDatailPayload);
             $message    = $this->extractResponseMessage($response);
             $sent       = $this->isSuccessfulGpResponse($response, $message);
             $deposit->update([
@@ -249,7 +252,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             ->values()
             ->all();
 
-        $response   = $this->sendCashCollectionToApi($headerPayload, $invoiceDatailPayload);
+        $response   = $this->sendCollectionToApi($headerPayload, $invoiceDatailPayload);
         $message    = $this->extractResponseMessage($response);
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
@@ -283,11 +286,121 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     }
 
 
+    /**
+     *  Envio de aplicaciones a sqlServer
+     */
+    private function sendApplicationCollectionToGp(
+        GpUsuario $userCollection,
+        GpCobro $collection,
+        GpCliente $customer
+    ) {
+        $applicationAmount = GpCobrosAplicacionMonto::with('facturasAplicadas')->where('cobro_id', $collection->id)
+            ->where('monto', '>', 0)
+            ->where('enviado_gp', false)
+            ->get();
+        if ($applicationAmount->isEmpty()) {
+            return null;
+        }
 
+        $sentApplications = [];
 
+        foreach ($applicationAmount as $application) {
+            $appliedInvoices = $application->facturasAplicadas;
+            $receiptNumber = trim((string) $application->cobro);
 
+            if ($receiptNumber === '' || $appliedInvoices->isEmpty()) {
+                $message = $receiptNumber === ''
+                    ? 'La aplicacion no tiene numero de cobro para enviar a GP.'
+                    : 'La aplicacion no tiene facturas aplicadas para enviar a GP.';
 
-    private function sendCashCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
+                $application->update([
+                    'codigo_ws'  => $this->limitForColumn('failed', 20),
+                    'mensaje_ws' => $this->limitForColumn($message, 300),
+                    'enviado_gp' => false,
+                ]);
+
+                $userCollection->notify((new UserNotification(
+                    'Error al ingresar aplicacion de cobro',
+                    $this->formatCollectionNotificationMessage($collection, 'aplicacion', $message)
+                )));
+
+                $sentApplications[] = [
+                    'id'         => $application->id,
+                    'cobro'      => $receiptNumber,
+                    'enviado_gp' => false,
+                    'mensaje'    => $message,
+                ];
+
+                continue;
+            }
+
+            $invoiceResults = [];
+
+            foreach ($appliedInvoices as $invoice) {
+                $payload = $this->collectBuilder->payloadCollectionDetailInvoices(
+                    $receiptNumber,
+                    $customer->CLI_RUC,
+                    $invoice->id_factura,
+                    $invoice->monto,
+                    $invoice->observacion
+                );
+
+                $response = $this->sendApplicationCollectionToApi($payload);
+                $message = $this->extractResponseMessage($response);
+                $sent = $this->isSuccessfulGpResponse($response, $message);
+
+                $invoiceResults[] = [
+                    'factura'    => $invoice->id_factura,
+                    'codigo_ws'  => $this->extractResponseStatus($response, $sent),
+                    'enviado_gp' => $sent,
+                    'mensaje'    => $message,
+                ];
+            }
+
+            $applicationSent = !in_array(false, array_column($invoiceResults, 'enviado_gp'), true);
+            $message = $this->formatApplicationResultMessage($invoiceResults);
+
+            $application->update([
+                'codigo_ws'  => $this->limitForColumn($applicationSent ? 'success' : 'failed', 20),
+                'mensaje_ws' => $this->limitForColumn($message, 300),
+                'enviado_gp' => $applicationSent,
+            ]);
+
+            if (!$applicationSent) {
+                $userCollection->notify((new UserNotification(
+                    'Error al ingresar aplicacion de cobro',
+                    $this->formatCollectionNotificationMessage($collection, 'aplicacion', $message)
+                )));
+
+                $sentApplications[] = [
+                    'id'         => $application->id,
+                    'cobro'      => $receiptNumber,
+                    'enviado_gp' => false,
+                    'mensaje'    => $message,
+                    'facturas'   => $invoiceResults,
+                ];
+
+                continue;
+            }
+
+            $userCollection->notify((new UserNotification(
+                'Registro de aplicacion de cobro',
+                $this->formatCollectionNotificationMessage($collection, 'aplicacion', $message)
+            )));
+
+            $sentApplications[] = [
+                'id'         => $application->id,
+                'cobro'      => $receiptNumber,
+                'enviado_gp' => true,
+                'mensaje'    => $message,
+                'facturas'   => $invoiceResults,
+            ];
+        }
+
+        return $sentApplications;
+    }
+
+    private function sendCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
     {
         return $this->api->registerCashCollectionInGp([
             'cabecera'  => $headerPayload,
@@ -295,6 +408,11 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         ]);
     }
 
+
+    private function sendApplicationCollectionToApi(array $applicationPayload)
+    {
+        return $this->api->registerApplicationCollectionInGp($applicationPayload);
+    }
 
     private function formatReceiptNumber(string $receiptNumber, string $type)
     {
@@ -324,6 +442,27 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     private function formatCollectionNotificationMessage(GpCobro $collection, string $type, string $message): string
     {
         return "Numero de cobro: {$collection->numero_recibo}. Tipo: {$type}. Mensaje GP: {$message}";
+    }
+
+    private function formatApplicationResultMessage(array $invoiceResults): string
+    {
+        $messages = [];
+
+        foreach ($invoiceResults as $result) {
+            if (!$result['enviado_gp']) {
+                $messages[] = "Factura {$result['factura']}: {$result['mensaje']}";
+            }
+        }
+
+        if (!empty($messages)) {
+            return implode(' | ', $messages);
+        }
+
+        foreach ($invoiceResults as $result) {
+            $messages[] = $result['mensaje'];
+        }
+
+        return implode(' | ', array_unique($messages));
     }
 
     private function extractResponseStatus(mixed $response, bool $sent): string
