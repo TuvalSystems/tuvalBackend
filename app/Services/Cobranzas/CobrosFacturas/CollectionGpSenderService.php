@@ -19,6 +19,7 @@ use App\Notifications\User\UserNotification;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Builders\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationBuilderInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
+use Illuminate\Support\Facades\Cache;
 
 class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 {
@@ -33,18 +34,30 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     ) {}
     public function sendCollectionToGp(int $collectionId): array
     {
-        $collection     = GpCobro::find($collectionId);
-        $customer       = GpCliente::find($collection->cliente_id);
-        $box            = GpCaja::find($collection->caja_id);
-        $userCollection = GpUsuario::find($collection->user_id);
+        $lock = Cache::lock("cobro:{$collectionId}:envio-gp", 900);
 
-        return [
-            'efectivo'      => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
-            'depositos'     => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
-            'tarjeta'       => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
-            'aplicaciones'  => $this->sendApplicationCollectionToGp($userCollection, $collection, $customer),
-            'retencion'     => $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box),
-        ];
+        if (! $lock->get()) {
+            return [
+                'en_proceso' => true,
+                'mensaje' => 'El cobro ya esta siendo enviado a GP.',
+            ];
+        }
+        try {
+            $collection     = GpCobro::find($collectionId);
+            $customer       = GpCliente::find($collection->cliente_id);
+            $box            = GpCaja::find($collection->caja_id);
+            $userCollection = GpUsuario::find($collection->user_id);
+
+            return [
+                'efectivo'      => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
+                'depositos'     => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
+                'tarjeta'       => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
+                'aplicaciones'  => $this->sendApplicationCollectionToGp($userCollection, $collection, $customer),
+                'retencion'     => $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box),
+            ];
+        } finally {
+            $lock->release();
+        }
         // throw new \LogicException('CollectionGpSenderService::sendCollectionToGp esta pendiente de implementar.');
     }
 

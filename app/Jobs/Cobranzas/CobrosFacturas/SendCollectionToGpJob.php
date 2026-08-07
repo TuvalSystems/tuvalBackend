@@ -2,6 +2,9 @@
 
 namespace App\Jobs\Cobranzas\CobrosFacturas;
 
+use App\Enums\Admin\Sync\StatusSync;
+use App\Models\Admin\SyncLog;
+use App\Models\Cobranzas\GpCobro;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Cache\Repository;
@@ -11,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 class SendCollectionToGpJob implements ShouldQueue, ShouldBeUnique
 {
@@ -54,5 +58,33 @@ class SendCollectionToGpJob implements ShouldQueue, ShouldBeUnique
     public function handle(CollectionGpSenderServiceInterface $sender): void
     {
         $sender->sendCollectionToGp($this->collectionId);
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $collection = GpCobro::query()
+            ->select(['id', 'numero_recibo', 'cliente_id', 'user_id', 'estado'])
+            ->find($this->collectionId);
+
+        $payloadLog = [
+            'collection_id' => $this->collectionId,
+            'numero_recibo' => $collection?->numero_recibo,
+            'cliente_id'    => $collection?->cliente_id,
+            'user_id'       => $collection?->user_id,
+            'estado'        => $collection?->estado,
+            'queue'         => 'sync-now',
+        ];
+
+        SyncLog::logErrorSync(
+            'SendCollectionToGpJob',
+            'enviar_cobro_gp',
+            'sendCollectionToGp',
+            $exception->getMessage(),
+            $collection?->numero_recibo,
+            $this->collectionId,
+            json_encode($payloadLog, JSON_UNESCAPED_UNICODE),
+            $this->attempts(),
+            StatusSync::FAILED
+        );
     }
 }
