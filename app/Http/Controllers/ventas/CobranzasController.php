@@ -1175,7 +1175,7 @@ class CobranzasController extends Controller
         $dispatch = app(DispatchServiceInterface::class);
         $logistics = app(LogisticsOperationsServiceInterface::class);
         $despachos = new DespachosController($order, $dispatch, $logistics);
-        $despachos->checkfacturasdespachos($cobro->id);
+        // $despachos->checkfacturasdespachos($cobro->id);
 
         return response([
             'success' => true,
