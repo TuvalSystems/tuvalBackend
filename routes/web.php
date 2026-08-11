@@ -242,10 +242,6 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
         Route::get('enviar-cobro', [CobranzasController::class, 'enviarCobroGp']);
 
-
-
-
-
     });
 });
 

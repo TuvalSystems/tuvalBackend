@@ -2,6 +2,7 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
+use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Exports\Cobranzas\CobrosFacturas\ClientAccountStatementDetailExport;
 use App\Models\Cobranzas\GpCobro;
@@ -418,6 +419,15 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                 'gc.estado',
                 'gc.created_at'
             ])
+            ->selectRaw(
+                'EXISTS (
+                    SELECT 1
+                    FROM gp_cobros_depositos AS gcd
+                    WHERE gcd.cobro_id = gc.id
+                        AND gcd.estado = ?
+                ) AS deposito_pendiente',
+                [CollectionStatusEnum::INICIADO->value]
+            )
             ->from('gp_cobros as gc')
             ->where('gc.cliente_id', $clientId);
 
@@ -427,9 +437,17 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
             });
         }
 
-        return $query
+        $collections = $query
             ->orderBy($orderColumn, $sortOrder)
             ->paginate($perpage);
+
+        $collections->getCollection()->transform(function (GpCobro $collection) {
+            $collection->deposito_pendiente = (bool) $collection->deposito_pendiente;
+
+            return $collection;
+        });
+
+        return $collections;
     }
 
 

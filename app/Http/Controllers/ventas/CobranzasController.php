@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
 use App\Http\Controllers\Inventario\Bodega\DespachosController;
 use App\Http\Requests\Cobranzas\CobrosFacturas\RegisterCollectionRequest;
+use App\Jobs\Cobranzas\CobrosFacturas\SendCollectionToGpJob;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
@@ -284,6 +285,8 @@ class CobranzasController extends Controller
         return Excel::download($export, 'estado_de_cuenta_' . $ruc . '.xlsx'); //simon
     }
 
+
+    //despues eliminar est api
     public function registrarcobro(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
@@ -500,7 +503,7 @@ class CobranzasController extends Controller
             }
         }
 
-        $this->enviarcobro($cobro->id);
+        // $this->enviarcobro($cobro->id);
 
         return response([
             'success' => true,
@@ -553,7 +556,8 @@ class CobranzasController extends Controller
         $deposito->estado = 'revisado';
         $deposito->save();
 
-        $this->enviarcobro($deposito->cobro_id);
+        // $this->enviarcobro($deposito->cobro_id);
+        SendCollectionToGpJob::dispatch($deposito->cobro_id);
 
         $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
         $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
@@ -631,20 +635,22 @@ class CobranzasController extends Controller
 
     public function enviarcobros()
     {
-        $cobros = GpCobro::whereNotIn('estado', ['enviado', 'no_enviado', 'rechazado'])->get();
+        return $this->buildErrorResponse('Api ya no funcional', 404);
+        // $cobros = GpCobro::whereNotIn('estado', ['enviado', 'no_enviado', 'rechazado'])->get();
 
-        foreach ($cobros as $cobro) {
-            $this->enviarcobro($cobro->id);
-        }
+        // foreach ($cobros as $cobro) {
+        //     $this->enviarcobro($cobro->id);
+        // }
 
-        $this->checkcobrosenviados();
+        // $this->checkcobrosenviados();
 
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = 'enviarcobros';
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
+        // $cronLog = new GpCronLog();
+        // $cronLog->metodo = 'enviarcobros';
+        // $cronLog->fecha = date('Y-m-d H:i:s');
+        // $cronLog->save();
     }
 
+    // despues eliminar esta api
     public function enviarcobro($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         set_time_limit(300);

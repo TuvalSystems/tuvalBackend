@@ -70,7 +70,7 @@ class CollectionRegistrationService implements CollectionRegistrationServiceInte
             return $headerCollection;
         });
 
-        // SendCollectionToGpJob::dispatch($collectionRegister->id);
+         SendCollectionToGpJob::dispatch($collectionRegister->id);
 
         return $collectionRegister;
     }

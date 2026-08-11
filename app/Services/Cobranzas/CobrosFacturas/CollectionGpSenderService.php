@@ -2,7 +2,9 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
+use App\Constants\Cobranzas\CobrosFacturas\CollectionConstants;
 use App\Enums\Cobranzas\CobrosFacturas\CollectTypeEnum;
+use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosCheques;
 use App\Models\Cobranzas\GpCobrosChequesFacturas;
@@ -14,14 +16,19 @@ use App\Models\Cobranzas\GpCobrosEfectivoMonto;
 use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCaja;
 use App\Models\GpCliente;
+use App\Models\GpCobrosAplicacionFactura;
 use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
+use App\Models\GpOrdenDespacho;
+use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Builders\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationBuilderInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Cache;
 
 class CollectionGpSenderService implements CollectionGpSenderServiceInterface
@@ -51,13 +58,29 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $box            = GpCaja::find($collection->caja_id);
             $userCollection = GpUsuario::find($collection->user_id);
 
+            $cash           = $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box);
+            $deposit        = $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box);
+            $applications   = $this->sendApplicationCollectionToGp($userCollection, $collection, $customer);
+            $cards          = $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box);
+            $retention      = $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box);
+            $check          = $this->sendCheckCollectionToGp($userCollection, $collection, $customer, $box);
+            $collectionSent = $this->updateCollectionStatusIfFullySentToGp($collection->id);
+
+            if ($collectionSent) {
+                $this->checkValidateDispatchInvoice($collectionId);
+            }
+
+            $collection->refresh();
+
             return [
-                'efectivo'      => $this->sendCashCollectionToGp($userCollection, $collection, $customer, $box),
-                'depositos'     => $this->sendDepositCollectionToGp($userCollection, $collection, $customer, $box),
-                'tarjeta'       => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
-                'aplicaciones'  => $this->sendApplicationCollectionToGp($userCollection, $collection, $customer),
-                'retencion'     => $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box),
-                'cheque'        => $this->sendCheckCollectionToGp($userCollection, $collection, $customer, $box)
+                'efectivo'          => $cash,
+                'deposito'          => $deposit,
+                'aplicaciones'      => $applications,
+                'tarjetas'          => $cards,
+                'retencion'         => $retention,
+                'cheque'            => $check,
+                'cobro_enviado_gp'  => $collectionSent,
+                'estado_cobro'      => $collection->estado,
             ];
         } finally {
             $lock->release();
@@ -197,6 +220,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $deposit->update([
                 'mensaje_ws'    => $this->limitForColumn($message, 300),
                 'enviado_gp'    => $sent,
+                'estado'        => $sent ? CollectionStatusEnum::ENVIADO->value : $deposit->estado,
             ]);
             if (!$sent) {
                 $userCollection->notify((new UserNotification(
@@ -219,6 +243,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
             $alldeposits[] = [
                 'enviado_gp' => $sent,
+                'estado'     => CollectionStatusEnum::ENVIADO->value,
                 'mensaje' => $message,
             ];
         }
@@ -622,7 +647,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $message    = $this->extractResponseMessage($response);
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
-       $checkAmount->update([
+        $checkAmount->update([
             'mensaje_ws'    => $this->limitForColumn($message, 300),
             'enviado_gp'    => $sent,
         ]);
@@ -650,6 +675,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         ];
     }
 
+    // envio de metodos de pago a sqlServer efectivo, tarjeta, deposito
     private function sendCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
     {
         return $this->api->registerCashCollectionInGp([
@@ -657,7 +683,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             'detalle'   => $invoiceDatailPayload
         ]);
     }
-
+    // envio de retencion de sqlServer
     private function sendRetencionCollectionToGp(array $header, array $detail)
     {
         return $this->api->registerRetentionCollectionInGp([
@@ -666,6 +692,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         ]);
     }
 
+    //envio de cheque a sqlServer
     private function sendCheckCollectionToApi(array $header, array $check, array $detail)
     {
         return $this->api->registerCheckCollectionInGp([
@@ -675,7 +702,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         ]);
     }
 
-
+    // envio de aplicaciones a sqlServer
     private function sendApplicationCollectionToApi(array $applicationPayload)
     {
         return $this->api->registerApplicationCollectionInGp($applicationPayload);
@@ -774,5 +801,345 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     private function limitForColumn(string $value, int $length): string
     {
         return mb_substr($value, 0, $length);
+    }
+
+
+
+    /**
+     *  function de verificacion para actualizar el estado del cobro a enviado
+     */
+
+    private function updateCollectionStatusIfFullySentToGp(int $collectionId): bool
+    {
+        $collection = GpCobro::query()->find($collectionId);
+
+        if (!$collection) {
+            return false;
+        }
+
+        if ($collection->estado === CollectionStatusEnum::ENVIADO->value) {
+            return true;
+        }
+
+        if (in_array($collection->estado, [
+            CollectionStatusEnum::NO_ENVIADO->value,
+            CollectionStatusEnum::RECHAZADO->value,
+        ], true)) {
+            return false;
+        }
+
+        if ($this->hasPendingGpSendItems($collectionId)) {
+            return false;
+        }
+
+        $collection->update([
+            'estado' => CollectionStatusEnum::ENVIADO->value,
+        ]);
+
+        return true;
+    }
+
+    private function hasPendingGpSendItems(int $collectionId): bool
+    {
+        foreach ($this->regularPaymentAmountModels() as $paymentAmountModel) {
+            if ($paymentAmountModel::query()
+                ->where('cobro_id', $collectionId)
+                ->where('monto', '>', 0)
+                ->where('enviado_gp', false)
+                ->exists()
+            ) {
+                return true;
+            }
+        }
+
+        return $this->hasPendingDepositGpSendItems($collectionId)
+            || $this->hasPendingRetentionGpSendItems($collectionId);
+    }
+
+    private function regularPaymentAmountModels(): array
+    {
+        return [
+            GpCobrosEfectivoMonto::class,
+            GpCobrosTarjetaMonto::class,
+            GpCobrosAplicacionMonto::class,
+            GpCobrosChequesMonto::class,
+        ];
+    }
+
+    private function hasPendingDepositGpSendItems(int $collectionId): bool
+    {
+        return GpCobrosDeposito::query()
+            ->where('cobro_id', $collectionId)
+            ->where('monto', '>', 0)
+            ->where(function ($query) {
+                $query->where('estado', '!=', CollectionStatusEnum::ENVIADO->value)
+                    ->orWhere('enviado_gp', false);
+            })
+            ->exists();
+    }
+
+    private function hasPendingRetentionGpSendItems(int $collectionId): bool
+    {
+        $retentionTypes = $this->retentionPayloadDefinitions();
+
+        return GpCobrosRetenciones::query()
+            ->where('cobro_id', $collectionId)
+            ->where(function ($query) use ($retentionTypes) {
+                foreach ($retentionTypes as $retentionType) {
+                    $query->orWhere(function ($query) use ($retentionType) {
+                        $query->where($retentionType['amount_field'], '>', 0)
+                            ->where($retentionType['sent_field'], false);
+                    });
+                }
+            })
+            ->exists();
+    }
+
+
+
+    /** funcion para verificar si libera o no ordenes de despacho */
+    private function checkValidateDispatchInvoice(int $collectionId): void
+    {
+        $collection = GpCobro::query()
+            ->select(['id', 'estado'])
+            ->find($collectionId);
+
+        if (!$collection || $collection->estado !== CollectionStatusEnum::ENVIADO->value) {
+            return;
+        }
+
+        $currentCollectionPayments = $this->getAppliedInvoicePaymentRows($collectionId);
+        $invoices = $currentCollectionPayments
+            ->pluck('factura')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($invoices->isEmpty()) {
+            return;
+        }
+
+        $orders = $this->getOrdersByInvoices($invoices)
+            ->keyBy(fn(GpPedido $order) => $this->normalizeInvoice($order->factura));
+
+        $paymentsByInvoice = $this->getAppliedInvoicePaymentRows(null, $invoices)
+            ->groupBy('factura')
+            ->map(fn(SupportCollection $payments) => round((float) $payments->sum('monto'), 2));
+
+        foreach ($invoices as $invoice) {
+            $order = $orders->get($invoice);
+
+            if (!$order) {
+                continue;
+            }
+
+            $orderTotal = round((float) $order->total, 2);
+            $appliedAmount = round((float) ($paymentsByInvoice->get($invoice) ?? 0), 2);
+            $retentionTolerance = round($orderTotal * CollectionConstants::RETENTION_TOLERANCE, 2);
+            $pendingAmount = round($orderTotal - $appliedAmount, 2);
+
+            if ($pendingAmount <= $retentionTolerance) {
+                $this->releaseDispatchForOrder($order->id);
+            }
+        }
+    }
+
+    private function getAppliedInvoicePaymentRows(?int $collectionId = null, ?SupportCollection $invoices = null): SupportCollection
+    {
+        return collect()
+            ->concat($this->getApplicationInvoicePayments($collectionId, $invoices))
+            ->concat($this->getCheckInvoicePayments($collectionId, $invoices))
+            ->concat($this->getDepositInvoicePayments($collectionId, $invoices))
+            ->concat($this->getCashInvoicePayments($collectionId, $invoices))
+            ->concat($this->getCardInvoicePayments($collectionId, $invoices))
+            ->concat($this->getRetentionInvoicePayments($collectionId, $invoices))
+            ->filter(fn(array $payment) => $payment['factura'] !== null && $payment['monto'] > 0)
+            ->values();
+    }
+
+    private function getApplicationInvoicePayments(?int $collectionId, ?SupportCollection $invoices): SupportCollection
+    {
+        $query = GpCobrosAplicacionFactura::query()
+            ->where('estado_aplicado', true)
+            ->whereHas('aplicacionMonto', function ($query) {
+                $query->where('enviado_gp', true);
+            });
+
+        $this->applyCollectionFilter($query, $collectionId);
+        $this->applyInvoiceFilter($query, 'id_factura', $invoices);
+
+        return $this->mapInvoicePaymentRows($query->get(), 'id_factura', 'aplicacion');
+    }
+
+    private function getCheckInvoicePayments(?int $collectionId, ?SupportCollection $invoices): SupportCollection
+    {
+        $query = GpCobrosChequesFacturas::query()
+            ->where('estado_aplicado', true)
+            ->whereExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('gp_cobros_cheques_montos as monto')
+                    ->whereColumn('monto.cobro_id', 'gp_cobros_cheques_facturas.cobro_id')
+                    ->where('monto.enviado_gp', true)
+                    ->where('monto.monto', '>', 0);
+            });
+
+        $this->applyCollectionFilter($query, $collectionId);
+        $this->applyInvoiceFilter($query, 'id_factura', $invoices);
+
+        return $this->mapInvoicePaymentRows($query->get(), 'id_factura', 'cheque');
+    }
+
+    private function getDepositInvoicePayments(?int $collectionId, ?SupportCollection $invoices): SupportCollection
+    {
+        $query = GpCobrosDepositosFacturas::query()
+            ->where('estado_aplicado', true)
+            ->whereHas('cobroDeposito', function ($query) {
+                $query->where('estado', CollectionStatusEnum::ENVIADO->value)
+                    ->where('enviado_gp', true);
+            });
+
+        $this->applyCollectionFilter($query, $collectionId);
+        $this->applyInvoiceFilter($query, 'id_factura', $invoices);
+
+        return $this->mapInvoicePaymentRows($query->get(), 'id_factura', 'deposito');
+    }
+
+    private function getCashInvoicePayments(?int $collectionId, ?SupportCollection $invoices): SupportCollection
+    {
+        $query = GpCobrosEfectivoFactura::query()
+            ->where('estado_aplicado', true)
+            ->whereExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('gp_cobros_efectivo_montos as monto')
+                    ->whereColumn('monto.cobro_id', 'gp_cobros_efectivo_facturas.cobro_id')
+                    ->where('monto.enviado_gp', true)
+                    ->where('monto.monto', '>', 0);
+            });
+
+        $this->applyCollectionFilter($query, $collectionId);
+        $this->applyInvoiceFilter($query, 'id_factura', $invoices);
+
+        return $this->mapInvoicePaymentRows($query->get(), 'id_factura', 'efectivo');
+    }
+
+    private function getCardInvoicePayments(?int $collectionId, ?SupportCollection $invoices): SupportCollection
+    {
+        $query = GpCobrosTarjetaFactura::query()
+            ->where('estado_aplicado', true)
+            ->whereExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('gp_cobros_tarjeta_montos as monto')
+                    ->whereColumn('monto.cobro_id', 'gp_cobros_tarjeta_facturas.cobro_id')
+                    ->where('monto.enviado_gp', true)
+                    ->where('monto.monto', '>', 0);
+            });
+
+        $this->applyCollectionFilter($query, $collectionId);
+        $this->applyInvoiceFilter($query, 'id_factura', $invoices);
+
+        return $this->mapInvoicePaymentRows($query->get(), 'id_factura', 'tarjeta');
+    }
+
+    private function getRetentionInvoicePayments(?int $collectionId, ?SupportCollection $invoices): SupportCollection
+    {
+        $query = GpCobrosRetenciones::query()
+            ->where('estado_aplicado', true);
+
+        $this->applyCollectionFilter($query, $collectionId);
+        $this->applyInvoiceFilter($query, 'ret_factura', $invoices);
+
+        return $query->get()
+            ->flatMap(function (GpCobrosRetenciones $retention) {
+                return collect($this->retentionPayloadDefinitions())
+                    ->map(function (array $retentionType) use ($retention) {
+                        $amount = (float) $retention->{$retentionType['amount_field']};
+
+                        if ($amount <= 0 || !$retention->{$retentionType['sent_field']}) {
+                            return null;
+                        }
+
+                        return [
+                            'factura'   => $this->normalizeInvoice($retention->ret_factura),
+                            'monto'     => $amount,
+                            'tipo'      => 'retencion_' . $retentionType['key'],
+                            'cobro_id'  => $retention->cobro_id,
+                            'origen_id' => $retention->id,
+                        ];
+                    })
+                    ->filter();
+            })
+            ->values();
+    }
+
+    private function mapInvoicePaymentRows(Collection $rows, string $invoiceField, string $type): SupportCollection
+    {
+        return $rows
+            ->map(function ($row) use ($invoiceField, $type) {
+                return [
+                    'factura'   => $this->normalizeInvoice($row->{$invoiceField}),
+                    'monto'     => (float) $row->monto,
+                    'tipo'      => $type,
+                    'cobro_id'  => $row->cobro_id,
+                    'origen_id' => $row->id,
+                ];
+            })
+            ->values();
+    }
+
+    private function applyCollectionFilter($query, ?int $collectionId): void
+    {
+        if ($collectionId !== null) {
+            $query->where('cobro_id', $collectionId);
+        }
+    }
+
+    private function applyInvoiceFilter($query, string $column, ?SupportCollection $invoices): void
+    {
+        if ($invoices === null || $invoices->isEmpty()) {
+            return;
+        }
+
+        $query->where(function ($query) use ($column, $invoices) {
+            foreach ($invoices as $invoice) {
+                $query->orWhere($column, 'LIKE', $invoice . '%');
+            }
+        });
+    }
+
+    private function normalizeInvoice(mixed $invoice): ?string
+    {
+        $invoice = trim((string) $invoice);
+
+        if ($invoice === '') {
+            return null;
+        }
+
+        return substr($invoice, 0, 17);
+    }
+
+    private function getOrdersByInvoices(SupportCollection $invoices): Collection
+    {
+        return GpPedido::query()
+            ->whereIn('factura', $invoices)
+            ->get();
+    }
+
+    private function releaseDispatchForOrder(int $orderId): void
+    {
+        $dispatchOrder = GpOrdenDespacho::query()
+            ->where('pedido_id', $orderId)
+            ->where('estado', 'pendiente')
+            ->first();
+
+        if (!$dispatchOrder) {
+            return;
+        }
+
+        if (!$dispatchOrder->fecha_hora_liberacion) {
+            $dispatchOrder->fecha_hora_liberacion = now()->format('Y-m-d H:i:s');
+        }
+
+        $dispatchOrder->estado = 'liberada';
+        $dispatchOrder->save();
     }
 }
