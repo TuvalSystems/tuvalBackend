@@ -20,7 +20,8 @@ enum CollectTypeEnum : string
 
     //cheque
     case CHEQUE = 'CHE';
-
+    CASE CHEQUE_TIPO = 'CH';
+    case CHEQUE_ORIGEN_CUENTA = 'P';
     //deposito
     case DEPOSITO = 'D';
 

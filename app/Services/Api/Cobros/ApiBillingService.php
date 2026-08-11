@@ -114,4 +114,13 @@ class   ApiBillingService extends ApiGpService
             'json'
         );
     }
+
+    public function registerCheckCollectionInGp(array $params){
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_CHEQUE,
+            'POST',
+            $params,
+            'json'
+        );
+    }
 }

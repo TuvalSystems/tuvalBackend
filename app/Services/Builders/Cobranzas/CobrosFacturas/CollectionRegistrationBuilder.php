@@ -351,7 +351,7 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
         string $boxedCode,
         float $amount,
         float $porcentilAmount
-    ) : array {
+    ): array {
         return [
             'numeroRecibo'          => $receiptNumber,
             'ruc'                   => $ruc,
@@ -364,6 +364,48 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'numeroRetencion'       => $retention->ret_comprobante,
             'numeroAutorizacion'    => $retention->ret_autorizacion,
             'porcentajeRetencion'   => $porcentilAmount
+        ];
+    }
+
+
+    public function paylaodCollectionCheckHeader(
+        GpCobro $collection,
+        GpCobrosChequesMonto $check,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $unappliedAmount
+
+    ): array {
+        return [
+            'numeroRecibo'         => $receiptNumber,
+            'ruc'                  => $ruc,
+            'fechaCobro'           => Carbon::parse($collection->fecha)->format('Y-m-d H:i:s'),
+            'tipoCobro'            => CollectTypeEnum::CHEQUE_TIPO->value,
+            'observacion'          => $collection->referencia,
+            'solicitudDescuento'   => $collection->pedido,
+            'idVendedor'           => $boxedCode,
+            'montoCobro'           => (float) $check->monto,
+            'saldoPendiente'       => (float) round($unappliedAmount, 2),
+        ];
+    }
+
+
+    public function payloadCheckCollection(
+        GpCobrosCheques $check,
+        string $receiptNumber,
+        string $ruc,
+    ): array {
+        return [
+            'recibo'                => $receiptNumber,
+            'idcliente'             => $ruc,
+            'bancocliente'          => $check->banco,
+            'cuenta'                => $check->cuenta,
+            'vencimiento'           => $check->fecha_vencimiento,
+            'cheque'                => $check->cheque,
+            'monto'                 => (float) $check->monto,
+            'origen'                => CollectTypeEnum::CHEQUE_ORIGEN_CUENTA->value,
+            'observacion'           => $check->comentario
         ];
     }
 }

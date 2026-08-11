@@ -3,6 +3,8 @@
 namespace App\Services\Builders\Cobranzas\CobrosFacturas\Contracts;
 
 use App\Models\Cobranzas\GpCobro;
+use App\Models\Cobranzas\GpCobrosCheques;
+use App\Models\Cobranzas\GpCobrosChequesMonto;
 use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCaja;
@@ -76,4 +78,20 @@ interface CollectionRegistrationBuilderInterface
         float $amount,
         float $porcentilAmount
     ) : array;
+
+    public function paylaodCollectionCheckHeader(
+        GpCobro $collection,
+        GpCobrosChequesMonto $check,
+        string $receiptNumber,
+        string $ruc,
+        string $boxedCode,
+        float $unappliedAmount
+
+    ): array;
+
+    public function payloadCheckCollection(
+        GpCobrosCheques $check,
+        string $receiptNumber,
+        string $ruc,
+    ): array;
 }

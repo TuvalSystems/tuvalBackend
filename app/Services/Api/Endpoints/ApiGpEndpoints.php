@@ -55,9 +55,10 @@ class ApiGpEndpoints
     public const COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN = 'api/cobros/consultar-estado-cuenta-cliente-resumen';
 
     // apis para el registro de metodos de pago
-    public const COBROS_FACTURAS_REGISTRAR_EFECTIVO  ="api/cobranzas/cobros-facturas/registrar-efectivo";
-    public const COBROS_FACTURAS_REGISTRAR_APLICACION = 'api/cobranzas/cobros-facturas/registrar-aplicacion';
-    public const COBROS_FACTURAS_REGISTRAR_RETENCION = 'api/cobranzas/cobros-facturas/registrar-retencion';
+    public const COBROS_FACTURAS_REGISTRAR_EFECTIVO     ="api/cobranzas/cobros-facturas/registrar-efectivo";
+    public const COBROS_FACTURAS_REGISTRAR_APLICACION   = 'api/cobranzas/cobros-facturas/registrar-aplicacion';
+    public const COBROS_FACTURAS_REGISTRAR_RETENCION    = 'api/cobranzas/cobros-facturas/registrar-retencion';
+    public const COBROS_FACTURAS_REGISTRAR_CHEQUE       = 'api/cobranzas/cobros-facturas/registrar-cheque';
 
 
 

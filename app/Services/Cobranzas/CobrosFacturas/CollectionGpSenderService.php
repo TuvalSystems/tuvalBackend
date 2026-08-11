@@ -4,6 +4,9 @@ namespace App\Services\Cobranzas\CobrosFacturas;
 
 use App\Enums\Cobranzas\CobrosFacturas\CollectTypeEnum;
 use App\Models\Cobranzas\GpCobro;
+use App\Models\Cobranzas\GpCobrosCheques;
+use App\Models\Cobranzas\GpCobrosChequesFacturas;
+use App\Models\Cobranzas\GpCobrosChequesMonto;
 use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\Cobranzas\GpCobrosDepositosFacturas;
 use App\Models\Cobranzas\GpCobrosEfectivoFactura;
@@ -54,6 +57,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 'tarjeta'       => $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box),
                 'aplicaciones'  => $this->sendApplicationCollectionToGp($userCollection, $collection, $customer),
                 'retencion'     => $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box),
+                'cheque'        => $this->sendCheckCollectionToGp($userCollection, $collection, $customer, $box)
             ];
         } finally {
             $lock->release();
@@ -483,6 +487,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         return empty($sentRetentions) ? null : $sentRetentions;
     }
 
+
     private function buildRetentionPayload(
         GpCobro $collection,
         GpCobrosRetenciones $retention,
@@ -563,6 +568,88 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         ];
     }
 
+
+
+    /** envio de cheque a sqlServer */
+    private function sendCheckCollectionToGp(
+        GpUsuario $userCollection,
+        GpCobro $collection,
+        GpCliente $customer,
+        GpCaja $cashBox
+    ) {
+
+        $checkAmount = GpCobrosChequesMonto::where('cobro_id', $collection->id)
+            ->where('enviado_gp', 0)
+            ->where('monto', '>', 0)->first();
+        if (!$checkAmount) {
+            return null;
+        }
+
+        $checkHeader        = GpCobrosCheques::where('cobro_id', $collection->id)->first();
+        $checksInvoices     = GpCobrosChequesFacturas::where('cobro_id', $collection->id)->get();
+        $appliedInvoices    = (float) round($checksInvoices->sum('monto'), 2);
+        $receiptNumber      = $this->formatReceiptNumber(
+            $collection->numero_recibo,
+            CollectTypeEnum::CHEQUE->value
+        );
+        $unappliedAmount = (float) max(0, $checkHeader->monto - $appliedInvoices);
+
+        $payloadHeader = $this->collectBuilder->paylaodCollectionCheckHeader(
+            $collection,
+            $checkAmount,
+            $receiptNumber,
+            $customer->CLI_RUC,
+            $cashBox->CAJA_CODIGO,
+            $unappliedAmount
+        );
+        $payloadCheck = $this->collectBuilder->payloadCheckCollection(
+            $checkHeader,
+            $receiptNumber,
+            $customer->CLI_RUC
+        );
+        $invoiceDetailPayload = $checksInvoices
+            ->map(function (GpCobrosChequesFacturas $invoice) use ($receiptNumber, $customer) {
+                return $this->collectBuilder->payloadCollectionDetailInvoices(
+                    $receiptNumber,
+                    $customer->CLI_RUC,
+                    $invoice->id_factura,
+                    $invoice->monto,
+                    $invoice->observacion
+                );
+            });
+
+        $response   = $this->sendCheckCollectionToApi($payloadHeader, [$payloadCheck], $invoiceDetailPayload);
+        $message    = $this->extractResponseMessage($response);
+        $sent       = $this->isSuccessfulGpResponse($response, $message);
+
+       $checkAmount->update([
+            'mensaje_ws'    => $this->limitForColumn($message, 300),
+            'enviado_gp'    => $sent,
+        ]);
+
+        if (!$sent) {
+            $userCollection->notify((new UserNotification(
+                'Cobro con cheque no enviado a GP',
+                $this->formatCollectionNotificationMessage($collection, 'cheque', $message)
+            )));
+
+            return [
+                'enviado_gp'    => false,
+                'mensaje'       => $message,
+            ];
+        }
+
+        $userCollection->notify((new UserNotification(
+            'Cobro con cheque enviado a GP',
+            $this->formatCollectionNotificationMessage($collection, 'cheque', $message)
+        )));
+
+        return [
+            'enviado_gp'    => true,
+            'mensaje'       => $message,
+        ];
+    }
+
     private function sendCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
     {
         return $this->api->registerCashCollectionInGp([
@@ -576,6 +663,15 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         return $this->api->registerRetentionCollectionInGp([
             'cabecera'  => $header,
             'detalle'   => $detail
+        ]);
+    }
+
+    private function sendCheckCollectionToApi(array $header, array $check, array $detail)
+    {
+        return $this->api->registerCheckCollectionInGp([
+            'cabecera' => $header,
+            'cheques'  => $check,
+            'detalle' => $detail
         ]);
     }
 
