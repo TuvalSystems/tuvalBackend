@@ -79,16 +79,17 @@ class InvoiceService implements InvoiceServiceInterface
 
         $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
         $waitingForStock    = $this->processPurchaseOrders($pedido);
-        if ($waitingForStock) {
-            Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
-            return;
-        }
-
         try {
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
         } catch (\Exception $e) {
             Log::error("Factura creada {$pedido->factura} pero falló limpieza de stock: " . $e->getMessage());
         }
+        if ($waitingForStock) {
+            Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
+            return;
+        }
+
+
         if ($checkDemanda && $this->checkInvoiceOnDemand($pedido)) {
             return;
         }
