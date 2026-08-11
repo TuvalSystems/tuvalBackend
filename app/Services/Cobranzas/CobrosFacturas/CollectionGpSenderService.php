@@ -602,7 +602,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $cashBox->CAJA_CODIGO,
             $unappliedAmount
         );
-        $payloadCheck = $this->collectBuilder->payloadCheckCollection(
+        $payloadCheck[] = $this->collectBuilder->payloadCheckCollection(
             $checkHeader,
             $receiptNumber,
             $customer->CLI_RUC
@@ -616,9 +616,9 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                     $invoice->monto,
                     $invoice->observacion
                 );
-            });
+            })->values()->all();
 
-        $response   = $this->sendCheckCollectionToApi($payloadHeader, [$payloadCheck], $invoiceDetailPayload);
+        $response   = $this->sendCheckCollectionToApi($payloadHeader, $payloadCheck, $invoiceDetailPayload);
         $message    = $this->extractResponseMessage($response);
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
