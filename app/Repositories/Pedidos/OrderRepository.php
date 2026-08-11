@@ -245,4 +245,25 @@ class OrderRepository implements OrderRepositoryInterface
         return GpPedido::where('estado', OrderStatus::ENVIANDO)
             ->orderBy('id')->get();
     }
+
+    public function queryOrdersPendingInvoiceProcessing()
+    {
+        return GpPedido::whereIn('estado', [
+            OrderStatus::ESPERA,
+            OrderStatus::ENVIANDO,
+        ])
+            ->where('factura_siguiente_mes', 0)
+            ->whereHas('detallepedido')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function queryPurchaseOrdersPendingInvoiceProcessing()
+    {
+        return GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)
+            ->where('factura_siguiente_mes', 0)
+            ->whereHas('detallepedido')
+            ->orderBy('id')
+            ->get();
+    }
 }

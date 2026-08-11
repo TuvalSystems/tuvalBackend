@@ -41,7 +41,6 @@ use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -661,12 +660,6 @@ class OrderService implements OrderServiceInterface
                     continue;
                 }
 
-                $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
-                if (!$lock->get()) {
-                    // Otro proceso ya está facturando → no lo cuentes como error
-                    Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
-                    continue;
-                }
                 try {
                     try {
 
@@ -704,8 +697,6 @@ class OrderService implements OrderServiceInterface
                         'trace' => $e->getTraceAsString(),
 
                     ]);
-                } finally {
-                    optional($lock)->release();
                 }
             }
         });
@@ -1442,23 +1433,7 @@ class OrderService implements OrderServiceInterface
 
     /** funciones de sendfacturas gp  */
 
-    public function sendInvoicesToGp()
-    {
-        GpPedido::where('estado', OrderStatus::ESPERA)->chunk(100, function ($orders) {
-            foreach ($orders as $ord) {
-                $this->invoiceService->checkSendInvoice($ord);
-            }
-        });
-        $ordersL = GpPedido::where('estado', OrderStatus::ORDEN_DE_COMPRA)->get();
-        foreach ($ordersL as $ord) {
-            if ($this->valdidateOrdersProviders($ord)) {
-                $ord->estado = OrderStatus::ESPERA;
-                $ord->save();
-                $this->invoiceService->generateDisptachOrder($ord);
-                $this->invoiceService->sendInvoiceGp($ord);
-            }
-        }
-    }
+   
 
     public function valdidateOrdersProviders(GpPedido $order)
     {
@@ -1514,7 +1489,4 @@ class OrderService implements OrderServiceInterface
         $this->invoiceService->checkTraslado($pedido);
         return $pedido;
     }
-
-
-
 }

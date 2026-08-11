@@ -8,6 +8,7 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +24,8 @@ class OrderJobService
         protected readonly ApiBillingService $apiBilling,
         protected readonly InvoiceServiceInterface $invoiceService,
         protected readonly OrderServiceInterface $orderService,
-        protected readonly OrderRepositoryInterface $orderRepository
+        protected readonly OrderRepositoryInterface $orderRepository,
+        protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService
     ) {}
 
 
@@ -39,7 +41,7 @@ class OrderJobService
             return ['abortado' => true, 'razon' => 'Ya ejecutado este mes'];
         }
 
-        if ($this->isWeekend() || !$this->isBussinessDay()) {
+        if ($this->orderAndQuotationService->isWeekend() || !$this->orderAndQuotationService->isBussinessDay()) {
             Log::channel('cron_process')->info("⏳ Día no hábil. Se reintentará mañana automáticamente.");
             return ['abortado' => true, 'razon' => 'Día no habil, proceso se reintentara el día de mañana'];
         }
@@ -54,26 +56,7 @@ class OrderJobService
         return $resultados;
     }
 
-    public function isWeekend(): bool
-    {
-        return Carbon::now()->isWeekend();
-    }
 
-    public function isBussinessDay()
-    {
-        $params = [
-            'idCompany' => env('ID_COMPANIA'),
-            'fecha'     => Carbon::now()->format('Y-m-d'),
-        ];
-
-        $resp = $this->apiBilling->validateBusinessDate($params);
-        log::channel('cron_process')->warning('Respuesta del WS ConsultaDiaFeriado', ['response' => $resp]);
-        $data = data_get($resp, 'data', []);
-        if (data_get($data, 'codigo') == 0) {
-            return false;
-        }
-        return true;
-    }
 
 
 
@@ -109,12 +92,6 @@ class OrderJobService
                     continue;
                 }
 
-                $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 60);
-                if (!$lock->get()) {
-                    // Otro proceso ya está facturando → no lo cuentes como error
-                    Log::channel('cron_process')->info("🔒 Lock activo, omito pedido {$pedido->pedido}");
-                    continue;
-                }
                 try {
                     try {
 
@@ -149,8 +126,6 @@ class OrderJobService
                         'error'         => $e->getMessage(),
                         'trace'         => $e->getTraceAsString(),
                     ]);
-                } finally {
-                    optional($lock)->release();
                 }
             }
         });
@@ -255,11 +230,15 @@ class OrderJobService
 
     public function processPendingInvoices()
     {
-        $orders = $this->orderRepository->queryOrdersInSendingStatus();
-        if ($orders->isEmpty()) {
+        $orders = $this->orderRepository->queryOrdersPendingInvoiceProcessing();
+        $ordersL = $this->orderRepository->queryPurchaseOrdersPendingInvoiceProcessing();
+        if ($orders->isEmpty() && $ordersL->isEmpty()) {
             return;
         }
-        Log::channel('cron_process')->info("Pedidos en estado 'enviando' encontrados: " . $orders->count());
+        Log::channel('cron_process')->info("Pedidos pendientes de facturacion encontrados", [
+            'espera_enviando' => $orders->count(),
+            'orden_de_compra' => $ordersL->count(),
+        ]);
         foreach ($orders as $order) {
             try {
                 if($order->factura !== null && $order->factura !== ''){
@@ -269,12 +248,26 @@ class OrderJobService
                     continue;
 
                 }
-                Log::channel('cron_process')->info("Procesando pedido {$order->pedido} en estado 'enviando'...");
-                $this->invoiceService->checkSendInvoice($order, true);
+                Log::channel('cron_process')->info("Procesando pedido {$order->pedido} en estado '{$order->estado->value}'...");
+                $trasladado = $order->estado === OrderStatus::ENVIANDO;
+                $this->invoiceService->checkSendInvoice($order, $trasladado);
 
             } catch (\Throwable $e) {
                Log::channel('cron_process')->error("Error procesando pedido {$order->pedido}: " . $e->getMessage());
                continue;
+            }
+        }
+        foreach ($ordersL as $order) {
+            try {
+                if ($this->orderService->valdidateOrdersProviders($order)) {
+                    $order->estado = OrderStatus::ESPERA;
+                    $order->save();
+                    $this->invoiceService->generateDisptachOrder($order);
+                    $this->invoiceService->sendInvoiceGp($order);
+                }
+            } catch (\Throwable $e) {
+                Log::channel('cron_process')->error("Error procesando pedido {$order->pedido} en orden_de_compra: " . $e->getMessage());
+                continue;
             }
         }
         Log::channel('cron_process')->info("Proceso de facturas pendientes finalizado.");

@@ -27,6 +27,7 @@ use App\Services\Builders\Bodega\Contracts\SalesTransferParamsBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
+use Illuminate\Support\Facades\Cache;
 
 class InvoiceService implements InvoiceServiceInterface
 {
@@ -51,16 +52,44 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
+        $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 300);
+        if (!$lock->get()) {
+            Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya tiene un proceso de facturacion activo.");
+            return;
+        }
+
+        try {
+            $pedido->refresh();
+            if (filled($pedido->factura) && $pedido->estado === OrderStatus::FACTURADO) {
+                Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya se encuentra facturado.");
+                return;
+            }
+
+            $this->processCheckSendInvoice($pedido, $trasladado, $checkDemanda);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
+    protected function processCheckSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
+    {
         if ($this->shouldSkipProcessing($pedido)) {
             return;
         }
 
         $this->shouldSkipDueToTransferStatus($pedido, $trasladado);
         $waitingForStock    = $this->processPurchaseOrders($pedido);
+        try {
+            $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
+        } catch (\Exception $e) {
+            Log::error("Factura creada {$pedido->factura} pero falló limpieza de stock: " . $e->getMessage());
+        }
         if ($waitingForStock) {
             Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
             return;
         }
+
+
         if ($checkDemanda && $this->checkInvoiceOnDemand($pedido)) {
             return;
         }
@@ -573,16 +602,10 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->fecha_hora_factura = now();
         Log::info("Pedido {$pedido->pedido} facturado. numero de factura: {$pedido->factura}. Estado del pedido {$pedido->estado->value}");
         $pedido->save();
-        try {
-            $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
-        } catch (\Exception $e) {
-            Log::error("Factura creada {$pedido->factura} pero falló limpieza de stock: " . $e->getMessage());
-            // No lanzamos la excepción para que el estado FACTURADO se mantenga
-        }
     }
 
     /** proceso de limpieza de stock de cotizacion de reserva  */
-    protected function cleanStockReservedQuotation($quoteId, $orderId, $warehouse)
+    protected function cleanStockReservedQuotation(int $quoteId, int $orderId, $warehouse)
     {
         $order = GpPedido::find($orderId);
         if (!$order || $order->estado == OrderStatus::ESPERA) {

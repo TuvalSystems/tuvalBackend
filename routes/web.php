@@ -81,8 +81,7 @@ Route::prefix('pedidos')->group(function () {
     Route::get('validar-despachos-pedidos', [PedidosController::class, 'validacionExistenciaGuiasEnPedidos']);
     Route::get('imprimirpedidoxml/{id}', [PedidosController::class, 'imprimirpedidoxml']);
     Route::get('crear-traslado/{pedido}', [PedidosController::class, 'crearTrasladoPedidos']);
-    Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
-    Route::get('corregirenviando', [PedidosController::class, 'corregirenviando']);
+    // Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
     Route::get('recalcularpedido/{id}', [PedidosController::class, 'recalcularpedido']);
 });
 
