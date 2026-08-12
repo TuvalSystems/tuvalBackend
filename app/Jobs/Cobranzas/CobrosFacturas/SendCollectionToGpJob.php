@@ -28,7 +28,7 @@ class SendCollectionToGpJob implements ShouldQueue, ShouldBeUnique
     public function __construct(public int $collectionId)
     {
         $this->afterCommit = true;
-        $this->onQueue('sync-now');
+        $this->onQueue('sync-high');
     }
 
     public function uniqueId(): string
@@ -72,7 +72,7 @@ class SendCollectionToGpJob implements ShouldQueue, ShouldBeUnique
             'cliente_id'    => $collection?->cliente_id,
             'user_id'       => $collection?->user_id,
             'estado'        => $collection?->estado,
-            'queue'         => 'sync-now',
+            'queue'         => 'sync-high',
         ];
 
         SyncLog::logErrorSync(
