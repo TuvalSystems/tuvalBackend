@@ -19,3 +19,4 @@ Broadcast::channel('App.Models.GpUsuario.{id}', function ($user, $id) {
 Broadcast::routes();
 Broadcast::channel('approvals-reservations', fn($user) => true);
 Broadcast::channel('refresh-authorized-reservations', fn($user) => true);
+Broadcast::channel('refresh-list-collection', fn($user) => true);

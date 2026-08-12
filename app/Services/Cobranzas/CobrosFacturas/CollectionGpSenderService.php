@@ -5,6 +5,7 @@ namespace App\Services\Cobranzas\CobrosFacturas;
 use App\Constants\Cobranzas\CobrosFacturas\CollectionConstants;
 use App\Enums\Cobranzas\CobrosFacturas\CollectTypeEnum;
 use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
+use App\Events\Cobranzas\CobrosFacturas\RefreshListCollectionEvent;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosCheques;
 use App\Models\Cobranzas\GpCobrosChequesFacturas;
@@ -72,6 +73,8 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
             $collection->refresh();
 
+            //evento para refrescar la lista de cobros
+            event(new RefreshListCollectionEvent('refresh', $collection->id, $userCollection->USERID));
             return [
                 'efectivo'          => $cash,
                 'deposito'          => $deposit,
