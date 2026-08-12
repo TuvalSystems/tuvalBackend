@@ -163,6 +163,8 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     {
         $usedItemLExcluded = [];
 
+        $this->validateStockTotalsForOrderItems($order, $items);
+
         foreach ($items  as $key => $item) {
             $artCodigo          = trim((string) data_get($item, 'ART_CODIGO'));
             $isTypeL            = trim((string) data_get($item, 'ART_TIPO_COMPRA')) === 'L';
@@ -238,6 +240,75 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             $newStock = $this->builder->formPayloadOrderDetailStock($item, $newOrder->id, $detail->id, $stockValidado, $reservado);
             $newStock->save();
         }
+    }
+
+    protected function validateStockTotalsForOrderItems(GpPedido $order, array $items): void
+    {
+        $stockPairs = $this->stockPairsFromOrderItems($items);
+
+        if (empty($stockPairs)) {
+            return;
+        }
+
+        $this->stockService->lockStockWarehousePairs($stockPairs);
+
+        $quoteReservedId = $this->getReservedOriginQuote($order->cotizacion_id);
+        $stocksResult = $this->stockService->fetchStockBatchWarehouses($stockPairs);
+        $stockMap = collect($this->stockService->transformStockResponse($stocksResult))
+            ->keyBy(fn($stock) => data_get($stock, 'STO_ART_ARTICULO') . '|' . data_get($stock, 'STO_ART_BODEGA'));
+
+        $groups = collect($items)
+            ->filter(fn($item) => !in_array(data_get($item, 'ART_TIPO_COMPRA'), ['L', 'SERV'], true))
+            ->flatMap(function ($item) {
+                return collect(data_get($item, 'stock', []))
+                    ->filter(fn($stock) => (float) data_get($stock, 'seleccionado', 0) > 0)
+                    ->map(fn($stock) => [
+                        'articulo'     => trim((string) data_get($item, 'ART_CODIGO')),
+                        'bodega'       => trim((string) data_get($stock, 'STO_ART_BODEGA')),
+                        'seleccionado' => (float) data_get($stock, 'seleccionado', 0),
+                        'decimales'    => (int) data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
+                    ]);
+            })
+            ->groupBy(fn($item) => $item['articulo'] . '|' . $item['bodega']);
+
+        foreach ($groups as $group) {
+            $first = $group->first();
+            $articulo = $first['articulo'];
+            $bodega = $first['bodega'];
+            $decimales = $first['decimales'];
+            $stockBase = (float) data_get($stockMap->get($articulo . '|' . $bodega), 'STO_ART_STOCK_DISPONIBLE', 0);
+            $stockBase = $decimales === 0 ? (int) $stockBase : round($stockBase, $decimales);
+            $reservas = $this->stockService->getReservedStockByWarehouses($articulo, [$bodega], $order->id, true, $quoteReservedId);
+            $disponible = max(0, $stockBase - (float) data_get($reservas, $bodega, 0));
+            $disponible = $decimales === 0 ? (int) $disponible : round($disponible, $decimales);
+            $requerido = $group->sum('seleccionado');
+
+            if ($disponible < $requerido) {
+                throw new \DomainException(
+                    "El stock disponible del articulo {$articulo} en la bodega {$bodega} es insuficiente. " .
+                        "Disponible: {$disponible}, requerido: {$requerido}."
+                );
+            }
+        }
+    }
+
+    protected function stockPairsFromOrderItems(array $items): array
+    {
+        return collect($items)
+            ->filter(fn($item) => !in_array(data_get($item, 'ART_TIPO_COMPRA'), ['L', 'SERV'], true))
+            ->flatMap(function ($item) {
+                return collect(data_get($item, 'stock', []))
+                    ->filter(fn($stock) => (float) data_get($stock, 'seleccionado', 0) > 0)
+                    ->map(fn($stock) => [
+                        'articulo' => trim((string) data_get($item, 'ART_CODIGO')),
+                        'bodega'   => trim((string) data_get($stock, 'STO_ART_BODEGA')),
+                    ]);
+            })
+            ->filter(fn($stock) => $stock['articulo'] !== '' && $stock['bodega'] !== '')
+            ->unique(fn($stock) => $stock['articulo'] . '|' . $stock['bodega'])
+            ->sortBy(fn($stock) => $stock['articulo'] . '|' . $stock['bodega'])
+            ->values()
+            ->all();
     }
 
     protected function getReservedOriginQuote(?int $quoteId): ?int

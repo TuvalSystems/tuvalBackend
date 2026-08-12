@@ -186,6 +186,70 @@ class StockWarehouseService implements StockWarehouseServiceInterface
         return $out;
     }
 
+    public function lockStockWarehousePairs(array $stockPairs): void
+    {
+        $pairs = $this->normalizeStockWarehousePairs($stockPairs);
+
+        if (empty($pairs)) {
+            return;
+        }
+
+        if (DB::connection()->transactionLevel() === 0) {
+            throw new \RuntimeException('El bloqueo de stock debe ejecutarse dentro de una transaccion.');
+        }
+
+        $now = now();
+        $rows = array_map(static fn($pair) => [
+            'ART_CODIGO'      => $pair['articulo'],
+            'STO_ART_BODEGA'  => $pair['bodega'],
+            'created_at'      => $now,
+            'updated_at'      => $now,
+        ], $pairs);
+
+        DB::table('gp_stock_warehouse_locks')->insertOrIgnore($rows);
+
+        foreach ($pairs as $pair) {
+            DB::table('gp_stock_warehouse_locks')
+                ->where('ART_CODIGO', $pair['articulo'])
+                ->where('STO_ART_BODEGA', $pair['bodega'])
+                ->lockForUpdate()
+                ->first();
+        }
+    }
+
+    protected function normalizeStockWarehousePairs(array $stockPairs): array
+    {
+        return collect($stockPairs)
+            ->map(function ($item) {
+                $articulo = trim((string) (
+                    data_get($item, 'articulo')
+                    ?? data_get($item, 'ART_CODIGO')
+                    ?? data_get($item, 'STO_ART_ARTICULO')
+                    ?? ''
+                ));
+
+                $bodega = trim((string) (
+                    data_get($item, 'bodega')
+                    ?? data_get($item, 'STO_ART_BODEGA')
+                    ?? ''
+                ));
+
+                if ($articulo === '' || $bodega === '') {
+                    return null;
+                }
+
+                return [
+                    'articulo' => $articulo,
+                    'bodega'   => $bodega,
+                ];
+            })
+            ->filter()
+            ->unique(fn($pair) => $pair['articulo'] . '|' . $pair['bodega'])
+            ->sortBy(fn($pair) => $pair['articulo'] . '|' . $pair['bodega'])
+            ->values()
+            ->all();
+    }
+
     public function getReservedStockByWarehousesPendingUse($articulo, $bodegas, $excludeQuotationId = null)
     {
         if (empty($bodegas))

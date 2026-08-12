@@ -523,6 +523,9 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             return;
         }
         $flatDetails    = $this->stockFormatterForUpdateApproval($detalles);
+        $this->stockService->lockStockWarehousePairs(
+            array_filter($flatDetails, fn($detail) => (float) data_get($detail, 'seleccionado', 0) > 0)
+        );
         $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
         $stocksResult   = $this->getStockWarehouseAsyncAndFormatter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
@@ -548,12 +551,41 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         if ($allFormattedStock->isEmpty()) {
             return;
         }
+
+        $this->assertFormattedStockCoversSelection($allFormattedStock);
+
         foreach ($allFormattedStock as $stock) {
-            if (isset($stock['stock_id']) && ($st = GpPedidoDetalleStock::find($stock['stock_id']))) {
+            if (isset($stock['stock_id']) && ($st = GpPedidoDetalleStock::whereKey($stock['stock_id'])->lockForUpdate()->first())) {
                 $st->STO_ART_STOCK_DISPONIBLE   = $stock['STO_ART_STOCK_DISPONIBLE'];
                 $st->reservado                  = $stock['seleccionado'];
                 $st->save();
             }
+        }
+    }
+
+    protected function assertFormattedStockCoversSelection(SupportCollection $allFormattedStock): void
+    {
+        $alert = '';
+        $groupStock = $allFormattedStock
+            ->unique('stock_id')
+            ->groupBy(fn($item) => $item['STO_ART_ARTICULO'] . '|' . $item['STO_ART_BODEGA']);
+
+        foreach ($groupStock as $group) {
+            $firstItemStock = $group->first();
+            $art = data_get($firstItemStock, 'STO_ART_ARTICULO', '');
+            $bodega = data_get($firstItemStock, 'STO_ART_BODEGA', '');
+            $disponibleReal = (float) data_get($firstItemStock, 'STO_ART_STOCK_DISPONIBLE', 0);
+            $totalRequerido = $group->sum('seleccionado');
+
+            if ($disponibleReal < $totalRequerido) {
+                $alert .= "El articulo <b>{$art}</b> en bodega <b>{$bodega}</b> tiene stock insuficiente.<br>" .
+                    "Stock Disponible: <b>{$disponibleReal}</b> <br>" .
+                    "Cantidad Requerida (Suma filas): <b>{$totalRequerido}</b><br><hr>";
+            }
+        }
+
+        if ($alert !== '') {
+            throw new \DomainException($alert);
         }
     }
 

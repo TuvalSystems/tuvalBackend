@@ -323,6 +323,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         $quoteId        = $reserva->cotizacion_id;
         $detalles       = $this->getDetailReserveWithStock($quoteId);
         $flatDetails    = $this->stockFormatterForUpdateApproval($detalles);
+        $this->stockService->lockStockWarehousePairs(
+            array_filter($flatDetails, fn($detail) => (float) data_get($detail, 'seleccionado', 0) > 0)
+        );
         $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
         $stocksResult   = $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
@@ -978,6 +981,9 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
         // proceso de verificacion de stock antes de crear el pedido de factura demanda
         $detalles       = $this->getDetailReserveWithStock($quoteId);
         $flatDetails    = $this->stockFormatterForUpdateApproval($detalles);
+        $this->stockService->lockStockWarehousePairs(
+            array_filter($flatDetails, fn($detail) => (float) data_get($detail, 'seleccionado', 0) > 0)
+        );
         $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
         $stocksResult   = $this->getStockWarehouseAsyncAndFormantter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
