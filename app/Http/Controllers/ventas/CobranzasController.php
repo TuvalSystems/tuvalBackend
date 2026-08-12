@@ -557,7 +557,6 @@ class CobranzasController extends Controller
         $deposito->save();
 
         // $this->enviarcobro($deposito->cobro_id);
-        SendCollectionToGpJob::dispatch($deposito->cobro_id);
 
         $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
         $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
@@ -582,6 +581,10 @@ class CobranzasController extends Controller
         if ($userCobro) {
             $userCobro->notify(new UserNotification('Depósito aprobado', $mensaje));
         }
+        // $deposito->refresh();
+        // SendCollectionToGpJob::dispatch($cobro->id);
+        $this->sendCollectionService->sendCollectionToGp($cobro->id);
+
         return response([
             'success' => true,
             'message' => 'Depósito enviado'
