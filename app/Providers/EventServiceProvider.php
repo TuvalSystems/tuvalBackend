@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Cobranzas\GpCobro;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpCotizacion;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
+use App\Observers\Cobranzas\CobrosFacturas\GpCobrosObserver;
 use App\Observers\Devoluciones\GpDevolucionesObserver;
 use App\Observers\Ventas\GpCotizacionObserver;
 use App\Observers\Ventas\GpOrdenDespachoObserver;
@@ -38,5 +40,6 @@ class EventServiceProvider extends ServiceProvider
         GpCotizacion::observe(GpCotizacionObserver::class);
         GpDevoluciones::observe(GpDevolucionesObserver::class);
         GpOrdenDespacho::observe(GpOrdenDespachoObserver::class);
+        GpCobro::observe(GpCobrosObserver::class);
     }
 }

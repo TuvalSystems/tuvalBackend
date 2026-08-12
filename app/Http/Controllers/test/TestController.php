@@ -58,6 +58,6 @@ class TestController extends Controller
 
     public function enviarNotificacion(){
         $users = GpUsuario::whereIn('perfil_id',[1,2])->where('status',1)->get();
-        Notification::send($users, new UserNotification('Sistema', 'Notificación de prueba de Sistemas!'));
+        Notification::send($users, new UserNotification('Sistemas', 'Notificación para la verificación de toast, llegue correctamente al usuario con perfiles administrador y desarrollador!'));
     }
 }

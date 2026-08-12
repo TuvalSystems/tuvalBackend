@@ -317,7 +317,7 @@ class ReservasController extends Controller
 
     public function generarPdfPickingReserva(Request $request)
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validated = $request->validate([
                 'origen' => ['required', 'string', 'min:1'],
                 'destino' => ['required', 'string', 'min:1'],
@@ -327,7 +327,7 @@ class ReservasController extends Controller
                 // 'items.*.seleccionado' => ['required', 'numeric', 'min:0.001'],
             ]);
             $data = $this->reserveService->generatePickingPdf($validated);
-            return $this->buildPdfResponse($data);
+            return $this->buildFileResponse($data);
         }, 'reservas_log', 'generarPdfPickingReserva');
     }
 
@@ -414,7 +414,7 @@ class ReservasController extends Controller
         ]);
         try {
             $data = $this->reserveService->printOrderStorageReceivedTranfered($validated);
-            return $this->buildPdfResponse($data);
+            return $this->buildFileResponse($data);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), [], 500);
         }

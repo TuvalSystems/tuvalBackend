@@ -28,6 +28,8 @@ use App\Services\Builders\Bodega\DeliveryNoteDispatchParamsBuilder;
 use App\Services\Builders\Bodega\DeliveryNoteSalesTransferBuilder;
 use App\Services\Builders\Bodega\DispatchOrderParamsBuilder;
 use App\Services\Builders\Bodega\SalesTransferParamsBuilder;
+use App\Services\Builders\Cobranzas\CobrosFacturas\CollectionRegistrationBuilder;
+use App\Services\Builders\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationBuilderInterface;
 
 class BodegaBuilderServiceProvider extends ServiceProvider implements DeferrableProvider
 {
@@ -44,14 +46,18 @@ class BodegaBuilderServiceProvider extends ServiceProvider implements Deferrable
         DevolucionParamsBuilderInterface::class              => DevolucionParamsBuilder::class,
 
         // Venta
-        QuotationBuilderInterface::class                     => QuotationBuilder::class,
-        OrderBuilderInterface::class                         => OrderBuilder::class,
-        ReservedBuilderInterface::class                      => ReservedBuilder::class,
-        ClientBuilderInterface::class                        => ClientBuilder::class,
-        PurchaseOrderBuilderInterface::class                 => PurchaseOrderBuilder::class,
-        DeliveryNoteSalesTransferBuilderInterface::class     => DeliveryNoteSalesTransferBuilder::class,
-        SalesTransferParamsBuilderInterface::class          => SalesTransferParamsBuilder::class,
-        DispatchOrderParamsBuilderInterface::class          => DispatchOrderParamsBuilder::class
+        QuotationBuilderInterface::class                        => QuotationBuilder::class,
+        OrderBuilderInterface::class                            => OrderBuilder::class,
+        ReservedBuilderInterface::class                         => ReservedBuilder::class,
+        ClientBuilderInterface::class                           => ClientBuilder::class,
+        PurchaseOrderBuilderInterface::class                    => PurchaseOrderBuilder::class,
+        DeliveryNoteSalesTransferBuilderInterface::class        => DeliveryNoteSalesTransferBuilder::class,
+        SalesTransferParamsBuilderInterface::class              => SalesTransferParamsBuilder::class,
+        DispatchOrderParamsBuilderInterface::class              => DispatchOrderParamsBuilder::class,
+
+
+        //cobranzas
+        CollectionRegistrationBuilderInterface::class           => CollectionRegistrationBuilder::class,
     ];
 
     /**

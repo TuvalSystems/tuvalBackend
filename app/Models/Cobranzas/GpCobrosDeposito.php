@@ -2,6 +2,7 @@
 
 namespace App\Models\Cobranzas;
 
+use App\Models\GpCajaBancos;
 use App\Models\GpUsuario;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -53,6 +54,7 @@ class GpCobrosDeposito extends Model
 
     protected $fillable = [
         'cobro_id',
+        'banco_id',
         'estado',
         'tipo',
         'banco',
@@ -61,14 +63,16 @@ class GpCobrosDeposito extends Model
         'monto',
         'codigo_ws',
         'mensaje_ws',
+        'enviado_gp',
         'fecha_aprobacion_rechazo',
         'user_aprobador_rechazo_id',
     ];
-    protected $cast = [
+    protected $casts = [
         'created_at'                    => 'datetime:Y-m-d H:i:s',
         'updated_at'                    => 'datetime:Y-m-d H:i:s',
         'fecha'                         => 'datetime:Y-m-d H:i:s',
         'fecha_aprobacion_rechazo'      => 'datetime:Y-m-d H:i:s',
+        'enviado_gp'                    => 'boolean'
     ];
 
     protected function serializeDate(DateTimeInterface $date)
@@ -85,5 +89,16 @@ class GpCobrosDeposito extends Model
         return $this->belongsTo(GpUsuario::class, 'user_aprobador_rechazo_id', 'id');
     }
 
+    public function bancoDeposito()
+    {
+        return $this->belongsTo(GpCajaBancos::class, 'banco_id', 'id');
+    }
 
+
+    /**relacion para depositos - facturas cobranzas */
+
+    public function facturas()
+    {
+        return $this->hasMany(GpCobrosDepositosFacturas::class, 'deposito_id', 'id');
+    }
 }

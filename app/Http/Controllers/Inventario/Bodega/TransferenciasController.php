@@ -87,7 +87,7 @@ class TransferenciasController extends Controller
 
     public function imprimirPickingTransferenciaVenta(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validated = $request->validate([
                 'origen'                => ['required', 'string', 'min:1'],
                 'destino'               => ['required', 'string', 'min:1'],
@@ -97,7 +97,7 @@ class TransferenciasController extends Controller
                 // 'items.*.seleccionado'  => ['required', 'numeric', 'min:0.001'],
             ]);
             $data = $this->transferService->printPickingSalesTransfers($validated);
-            return $this->buildPdfResponse($data);
+            return $this->buildFileResponse($data);
         }, 'guia_ventas', 'imprimirPickingTransferenciaVenta');
     }
 

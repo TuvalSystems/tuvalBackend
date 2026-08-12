@@ -40,6 +40,26 @@ class GpCobrosTarjetaMonto extends Model
 {
     use HasFactory;
 
+
+    protected $fillable = [
+        'cobro_id',
+        'banco_id',
+        'monto',
+        'fecha',
+        'banco',
+        'comprobante',
+        'comentario',
+        'codigo_ws',
+        'mensaje_ws',
+        'enviado_gp',
+    ];
+
+    protected $casts = [
+        'cobro_id'      => 'integer',
+        'monto'         => 'float',
+        'enviado_gp'    => 'boolean',
+    ];
+
     public function cobroEfectivoFactura(){
         return $this->hasMany(GpCobrosEfectivoFactura::class, 'cobro_id', 'cobro_id');
     }

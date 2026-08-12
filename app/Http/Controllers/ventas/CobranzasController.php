@@ -35,9 +35,14 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
 use App\Http\Controllers\Inventario\Bodega\DespachosController;
+use App\Http\Requests\Cobranzas\CobrosFacturas\RegisterCollectionRequest;
+use App\Jobs\Cobranzas\CobrosFacturas\SendCollectionToGpJob;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
@@ -56,11 +61,19 @@ class CobranzasController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
+    private const GP_COBRO_SUCCESS_MESSAGES = [
+        'Registro de cobro guardado correctamente.',
+        'El número de recibo de cobro enviado ya existe para esta empresa.',
+    ];
+
     public function __construct(
         protected readonly CollectionServiceInterface $collectionService,
         protected readonly CustomerPaymentApplicationServiceInterface $customer,
         protected readonly CollectionUnapplicationServiceInterface $unapplycation,
-        protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits
+        protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits,
+        protected readonly InvoiceCollectionServiceInterface $invoiceCollect,
+        protected readonly CollectionRegistrationServiceInterface $collectionRegistrationService,
+        protected readonly CollectionGpSenderServiceInterface $sendCollectionService,
     ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -272,6 +285,8 @@ class CobranzasController extends Controller
         return Excel::download($export, 'estado_de_cuenta_' . $ruc . '.xlsx'); //simon
     }
 
+
+    //despues eliminar est api
     public function registrarcobro(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
 
@@ -488,7 +503,7 @@ class CobranzasController extends Controller
             }
         }
 
-        $this->enviarcobro($cobro->id);
+        // $this->enviarcobro($cobro->id);
 
         return response([
             'success' => true,
@@ -541,7 +556,8 @@ class CobranzasController extends Controller
         $deposito->estado = 'revisado';
         $deposito->save();
 
-        $this->enviarcobro($deposito->cobro_id);
+        // $this->enviarcobro($deposito->cobro_id);
+        SendCollectionToGpJob::dispatch($deposito->cobro_id);
 
         $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
         $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
@@ -619,20 +635,22 @@ class CobranzasController extends Controller
 
     public function enviarcobros()
     {
-        $cobros = GpCobro::whereNotIn('estado', ['enviado', 'no_enviado', 'rechazado'])->get();
+        return $this->buildErrorResponse('Api ya no funcional', 404);
+        // $cobros = GpCobro::whereNotIn('estado', ['enviado', 'no_enviado', 'rechazado'])->get();
 
-        foreach ($cobros as $cobro) {
-            $this->enviarcobro($cobro->id);
-        }
+        // foreach ($cobros as $cobro) {
+        //     $this->enviarcobro($cobro->id);
+        // }
 
-        $this->checkcobrosenviados();
+        // $this->checkcobrosenviados();
 
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = 'enviarcobros';
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
+        // $cronLog = new GpCronLog();
+        // $cronLog->metodo = 'enviarcobros';
+        // $cronLog->fecha = date('Y-m-d H:i:s');
+        // $cronLog->save();
     }
 
+    // despues eliminar esta api
     public function enviarcobro($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         set_time_limit(300);
@@ -644,11 +662,7 @@ class CobranzasController extends Controller
         $estadoDeCuenta = '';
         $efectivo = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)
             ->where('monto', '>', 0)
-            ->where(function ($q) {
-                $q->where('mensaje_ws', '=', null)
-                    ->orWhere('mensaje_ws', '!=', 'Registro de cobro guardado correctamente.')
-                    ->where('mensaje_ws', '!=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-            })
+            ->where('enviado_gp', false)
             ->first();
 
         if ($efectivo) {
@@ -695,9 +709,10 @@ class CobranzasController extends Controller
 
                 $efectivo->codigo_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Codigo'];
                 $efectivo->mensaje_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
+                $efectivo->enviado_gp = in_array($efectivo->mensaje_ws, self::GP_COBRO_SUCCESS_MESSAGES, true);
                 $efectivo->save();
                 $mensaje = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
+                if (!$efectivo->enviado_gp) {
                     $alerta .= '<p>Efectivo de ' . $cobro->numero_recibo . ': ' . $mensaje . '.</p>';
                 }
             }
@@ -1136,7 +1151,7 @@ class CobranzasController extends Controller
             //            print_r($parameters);
             //            die();
             $estadoDeCuenta = $webservice->cobranzas('AplicaCobroAnticipo', $parameters);
-            Log::info('GpCobrosAplicacionMonto: ' . json_encode($estadoDeCuenta));
+            // Log::info('GpCobrosAplicacionMonto: ' . json_encode($estadoDeCuenta));
 
             if (isset($estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Mensaje'])) {
 
@@ -1160,7 +1175,7 @@ class CobranzasController extends Controller
         $dispatch = app(DispatchServiceInterface::class);
         $logistics = app(LogisticsOperationsServiceInterface::class);
         $despachos = new DespachosController($order, $dispatch, $logistics);
-        $despachos->checkfacturasdespachos($cobro->id);
+        // $despachos->checkfacturasdespachos($cobro->id);
 
         return response([
             'success' => true,
@@ -1263,6 +1278,28 @@ class CobranzasController extends Controller
             $enviado = true;
             $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro->id)->get();
             foreach ($retenciones as $retencion) {
+                if (
+                    ($retencion->ret_iva <= 0 || $retencion->enviado_iva_gp)
+                    && ($retencion->ret_renta <= 0 || $retencion->enviado_renta_gp)
+                    && ($retencion->ret_iva_srv <= 0 || $retencion->enviado_iva_srv_gp)
+                    && ($retencion->ret_renta_srv <= 0 || $retencion->enviado_renta_srv_gp)
+                ) {
+                    continue;
+                }
+
+                if ($retencion->ret_iva > 0 && !$retencion->enviado_iva_gp) {
+                    $enviado = false;
+                }
+                if ($retencion->ret_renta > 0 && !$retencion->enviado_renta_gp) {
+                    $enviado = false;
+                }
+                if ($retencion->ret_iva_srv > 0 && !$retencion->enviado_iva_srv_gp) {
+                    $enviado = false;
+                }
+                if ($retencion->ret_renta_srv > 0 && !$retencion->enviado_renta_srv_gp) {
+                    $enviado = false;
+                }
+
                 if ($retencion->ret_porcentaje_iva > 0 && $retencion->mensaje_ws_iva != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_iva != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
                     $enviado = false;
                 }
@@ -1273,7 +1310,7 @@ class CobranzasController extends Controller
 
             $efectivos = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)->get();
             foreach ($efectivos as $efectivo) {
-                if ($efectivo->mensaje_ws != 'Registro de cobro guardado correctamente.' && $efectivo->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
+                if (!$efectivo->enviado_gp) {
                     $enviado = false;
                 }
             }
@@ -1660,6 +1697,7 @@ class CobranzasController extends Controller
         ]);
     }
 
+    //api migrada a servicio collectionInvoiceService
     public function consultaretencion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1687,7 +1725,7 @@ class CobranzasController extends Controller
             $response
         );
     }
-
+    // api migrada a servicio collectionInvoiceService
     public function consultacheque(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1716,7 +1754,7 @@ class CobranzasController extends Controller
             $response
         );
     }
-
+    // api migrada a servicio collectionInvoiceService
     public function consultadeposito(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1751,8 +1789,8 @@ class CobranzasController extends Controller
 
     public function estadocaja($fechaActual = null, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-
         $user = Auth::user();
+
 
         if (!$fechaActual)
             $fechaActual = date('Y-m-d');
@@ -2193,7 +2231,7 @@ class CobranzasController extends Controller
 
     public function imprimirPdfConsultaCierreCaja(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate = $request->validate([
                 'fecha'     => 'required|string',
                 'caja_id'   => 'required|integer',
@@ -2202,13 +2240,13 @@ class CobranzasController extends Controller
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdfByUser($cajaId, $fecha);
-            return $this->buildPdfResponse($pdf, 200);
+            return $this->buildFileResponse($pdf, 200);
         }, 'laravel', 'imprimirPdfConsultaCierreCaja');
     }
 
     public function imprimirPdfCierreCaja(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate = $request->validate([
                 'fecha'     => 'required|string',
                 'caja_id'   => 'required|integer',
@@ -2217,7 +2255,7 @@ class CobranzasController extends Controller
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdf($cajaId, $fecha);
-            return $this->buildPdfResponse($pdf, 200);
+            return $this->buildFileResponse($pdf, 200);
         }, 'laravel', 'imprimirPdfCierreCaja');
     }
 
@@ -2225,10 +2263,9 @@ class CobranzasController extends Controller
 
     public function obtenerInformacionPagosFacturas(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->input('data', []);
-            // $user       = GpUsuario::find(179);
-            $user       = $request->user();
+            $user       = $request->user() ?? GpUsuario::find(179);
             $info       = $this->customer->validateIdentifyPaymentInvoices($payload, $user);
             return $this->successResponse('Información de Pagos Obtenido!', $info, 200);
         }, 'laravel', 'obtenerInformacionPagosFacturas');
@@ -2256,9 +2293,9 @@ class CobranzasController extends Controller
         }, 'laravel', 'detaleCobrosAplicados');
     }
 
-    public function procesarDesaplicaciones(Request $request)
+    public function procesarDesaplicaciones(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $items = $request->input('payload', []);
             $user = $request->user();
             $data = $this->unapplycation->processUpdateUnapplicationItems($items, $user);
@@ -2267,9 +2304,9 @@ class CobranzasController extends Controller
         }, 'laravel', 'actualizarAplicaciones');
     }
 
-    public function actualizarListaDocumentosAplicacion(Request $request)
+    public function actualizarListaDocumentosAplicacion(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $clientId   = $request->input('clienteId');
             $documents  = $request->input('documentos', []);
             $response   = $this->customer->updatePendingApplicationDocumentBalances($clientId, $documents);
@@ -2277,12 +2314,217 @@ class CobranzasController extends Controller
         }, 'laravel', 'actualizacionDocumentosAplicacion');
     }
 
-    public function listaHistoricaDepositos(Request $request)
+    public function listaHistoricaDepositos(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $filters = $request->input('filters', []);
             $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
             return $this->successResponse('Datos obtenidos correctamente', $response, 200);
         }, 'laravel', 'listaHistoricaDepositos');
+    }
+
+
+    /**
+     * nuevas funciones de cobros facturas
+     */
+
+
+    public function obtenerEstadoCajaUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'fecha'     => 'nullable|date',
+                'pvId'      => 'nullable|integer',
+                'pvCodigo'  => 'nullable|string'
+            ]);
+            $fecha = data_get($validate, 'fecha');
+            $pvId  = data_get($validate, 'pvId');
+            $pvCode = data_get($validate, 'pvCodigo');
+            $user = $request->user() ?? GpUsuario::find(179);
+            $caja = $this->invoiceCollect->getStatusBoxedUser($pvId, $pvCode, $fecha, $user);
+            return $this->successResponse('Datos obtenidos correctamente', $caja, 200);
+        }, 'laravel', 'obtenerEstadoCajaUsuario');
+    }
+
+
+    public function aperturarCajaUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'pvId' =>  'required|integer|exists:gp_punto_ventas,id',
+            ]);
+            $user = $request->user() ?? GpUsuario::find(179);
+            $pvId = data_get($validate, 'pvId');
+            $caja = $this->invoiceCollect->openCashBoxed($pvId, $user);
+            return $this->successResponse('Apertura de Caja Realizado con exito', $caja, 200);
+        }, 'laravel', 'abrirCajaUsuario');
+    }
+
+
+    public function imprimirPdfEstadoCuentaCliente(Request $request): Response
+    {
+        return $this->handleDocumentAction(function () use ($request): Response {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id        = data_get($validate, 'id');
+            $response  = $this->invoiceCollect->generateClientAccountStatementPdf($id);
+            return $this->buildFileResponse($response);
+        }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
+    }
+
+    public function imprimirExcelEstadoCuentaCliente(Request $request): Response
+    {
+        return $this->handleDocumentAction(function () use ($request): Response {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id        = data_get($validate, 'id');
+            $response  = $this->invoiceCollect->generateClientAccountStatementExcel($id);
+            return $this->buildFileResponse($response);
+        }, 'laravel', 'imprimirExcelEstadoCuentaCliente');
+    }
+
+
+
+    public function obtenerFacturasEstadoCuentaCliente(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id = data_get($validate, 'id');
+            $response = $this->invoiceCollect->getInvoiceCollectionsByClient($id);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'laravel', 'obtenerFacturasEstadoCuentaCliente');
+    }
+
+    public function obtenerListaDeDocumentosPendientesAplicacion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id = data_get($validate, 'id');
+            $response = $this->invoiceCollect->getUnappliedCollectionsByClient($id);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'laravel', 'obtenerListaDeDocumentosPendientesAplicacion');
+    }
+
+    public function obtenerListaBancos(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $response = $this->invoiceCollect->getBanks();
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'laravel', 'obtenerListaBancos');
+    }
+
+    public function consultarExistenciaRetencion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id'            => ['required', 'integer', 'exists:gp_clientes,id'],
+                'comprobante'   => ['required', 'string']
+            ]);
+
+            $id         = data_get($validate, 'id');
+            $documento  = data_get($validate, 'comprobante');
+            $exist      = $this->invoiceCollect->retentionReceiptExistsForClient($id, $documento);
+            if ($exist) {
+                return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
+        }, 'laravel', 'consultarExistenciaRetencion');
+    }
+
+    public function consultarExistenciaDeposito(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'cliente_id'            => ['required', 'integer', 'exists:gp_clientes,id'],
+                'comprobante'   => ['required', 'string'],
+                'banco_id'      => ['required']
+            ]);
+
+            $id         = data_get($validate, 'cliente_id');
+            $documento  = data_get($validate, 'comprobante');
+            $bancoId    = data_get($validate, 'banco_id');
+            $exists     = $this->invoiceCollect->depositReceiptExistsForClient($id, $bancoId, $documento);
+            if ($exists) {
+                return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
+        }, 'laravel', 'consultarExistenciaDeposito');
+    }
+
+
+    public function consultarExistenciaCheque(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'cliente_id'   => ['required', 'integer', 'exists:gp_clientes,id'],
+                'cheque'       => ['required', 'string'],
+                'banco_id'     => ['required'],
+                'cuenta'       => ['required', 'string'],
+            ]);
+            $cuenta = data_get($validate, 'cuenta');
+            $cheque = data_get($validate, 'cheque');
+            $exist = $this->invoiceCollect->checkReceiptExistsForClient($cuenta, $cheque);
+            if ($exist) {
+                return $this->buildExistResponse(false, 'Cheque ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Cheque no existente, proceda', 200);
+        }, 'laravel', 'consultarExistenciaCheque');
+    }
+
+
+
+    public function listaCobrosPorCliente(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $filtros    = $request->input('filters', []);
+            $lista      = $this->invoiceCollect->fetchListCollection($filtros);
+            return $this->successResponse('Información Obtenida Correctamente', $lista);
+        }, 'laravel', 'listaCobrosPorCliente');
+    }
+
+    public function imprirCobroPdf(Request $request): Response
+    {
+        return $this->handleDocumentAction(function () use ($request): Response {
+            $validate = $request->validate([
+                'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
+            ]);
+            $cobroId         = data_get($validate, 'cobro_id');
+            $usuario = $request->user() ?? GpUsuario::find(179);
+            $resultado  = $this->invoiceCollect->printCollectionPdf($cobroId, $usuario);
+            return $this->buildFileResponse($resultado);
+        }, 'laravel', 'imprirCobroPdf');
+    }
+
+    public function registrarCobroV1(RegisterCollectionRequest $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validated();
+            $user = $request->user() ?? GpUsuario::find(179);
+            $cobro = $this->collectionRegistrationService->registerCollection($validate, $user);
+            $mensaje = "Cobro {$cobro->numero_recibo} enviado a procesar.!";
+            return $this->buildSuccessResponse($mensaje,  200);
+        }, 'laravel', 'registrarCobro');
+    }
+
+
+
+
+    /** api para enviar un cobro en especifico a procesar */
+    public function enviarCobroGp(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
+            ]);
+            $cobroId         = data_get($validate, 'cobro_id');
+            $data = $this->sendCollectionService->sendCollectionToGp($cobroId);
+            return $this->successResponse('Cobro Registrado', $data);
+        }, 'laravel', 'enviarCobroGp');
     }
 }

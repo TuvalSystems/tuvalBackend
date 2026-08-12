@@ -62,8 +62,65 @@ class   ApiBillingService extends ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_RECIBOS_CHEQUES, 'POST', $params, 'json');
     }
 
-     public function getPendingApplicationDocument(array $params)
+    public function getPendingApplicationDocument(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_APLICACIONES_PENDIENTES_POR_DOCUMENTO, 'POST', $params, 'json');
+    }
+
+    public function getClientAccountStatement(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE, 'GET', $params);
+    }
+
+    public function getClientAccountStatementSummary(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN, 'GET', $params);
+    }
+
+
+
+    /**
+     *
+     *  funciones para el registro de metodos de pago en sqlServer
+     *
+     * */
+
+    public function registerCashCollectionInGp(array $params)
+    {
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_EFECTIVO,
+            'POST',
+            $params,
+            'json'
+        );
+    }
+
+    public function registerApplicationCollectionInGp(array $params)
+    {
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_APLICACION,
+            'POST',
+            $params,
+            'json'
+        );
+    }
+
+    public function registerRetentionCollectionInGp(array $params)
+    {
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_RETENCION,
+            'POST',
+            $params,
+            'json'
+        );
+    }
+
+    public function registerCheckCollectionInGp(array $params){
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_CHEQUE,
+            'POST',
+            $params,
+            'json'
+        );
     }
 }

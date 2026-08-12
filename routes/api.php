@@ -515,7 +515,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('actualizar-aplicaciones-pendientes', [CobranzasController::class, 'actualizarListaDocumentosAplicacion']);
 
             //validacion de aplicacion de pagos a faturas
-            Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+            // Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
 
             //desaplicaciones
             Route::prefix('desaplicaciones')->group(function () {
@@ -527,6 +527,25 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             Route::prefix('depositos-historicos')->group(function () {
                 Route::post('lista', [CobranzasController::class, 'listaHistoricaDepositos']);
+            });
+
+            //apis de cobros de facturas
+            Route::prefix('cobros-facturas')->group(function () {
+                Route::post('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
+                Route::post('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+
+                Route::post('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
+                Route::post('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
+                Route::post('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
+                Route::post('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
+                Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
+                Route::post('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
+                Route::post('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
+                Route::post('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
+                Route::post('validar-cobros', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+                Route::post('lista-cobros-registrados', [CobranzasController::class, 'listaCobrosPorCliente']);
+                Route::post('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
+                Route::post('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
             });
 
             Route::prefix('ordenes-despacho')->group(function () {
@@ -558,7 +577,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 Route::group(['prefix' => 'consultas-externas'], function () {
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
-
 });
 
 // para la sincronizacion global de articulo 1 por registro

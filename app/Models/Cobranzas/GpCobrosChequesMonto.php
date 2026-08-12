@@ -27,9 +27,22 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosChequesMonto whereMonto($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosChequesMonto whereSaldo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosChequesMonto whereUpdatedAt($value)
- * @mixin \Eloquent
  */
 class GpCobrosChequesMonto extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'cobro_id',
+        'monto',
+        'saldo',
+        'codigo_ws',
+        'mensaje_ws',
+        'enviado_gp'
+    ];
+
+    protected $casts = [
+        'cobro_id'      => 'integer',
+        'enviado_gp'    => 'boolean'
+    ];
 }

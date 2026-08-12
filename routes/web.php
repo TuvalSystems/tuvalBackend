@@ -222,6 +222,27 @@ Route::group(['prefix' => 'cobranzas'], function () {
     Route::get('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
     Route::get('lista-aplicaciones', [CobranzasController::class, 'listaCobrosAplicados']);
     Route::get('detalle-aplicaciones', [CobranzasController::class, 'detalleCobrosAplicados']);
+
+
+
+
+    //cobros facturas
+    Route::prefix('cobros-facturas')->group(function () {
+        Route::get('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
+        Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+        Route::get('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
+        Route::get('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
+        Route::get('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
+        Route::get('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
+        Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
+        Route::get('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
+        Route::get('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
+        Route::get('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
+        Route::get('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
+        Route::get('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
+        Route::get('enviar-cobro', [CobranzasController::class, 'enviarCobroGp']);
+
+    });
 });
 
 Route::prefix('gestion')->group(function () {
@@ -253,9 +274,8 @@ Route::group(['prefix' => 'inventario-web'], function () {
 });
 
 
-Route::prefix('despachos')->group(function (){
+Route::prefix('despachos')->group(function () {
     Route::get('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
-
 });
 
 
