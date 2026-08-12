@@ -266,7 +266,7 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'montoCobro'            => (float) $cashPaymentAmount,
             'saldoPendiente'        => (float) $unappliedAmount,
             'bancoTuval'            => $boxedCode,
-            'fechaDeposito'         => $collection->fecha,
+            'fechaDeposito'         => Carbon::parse($collection->fecha)->format('Y-m-d H:i:s'),
             'numeroPapeleta'        => '',
         ];
     }
@@ -309,7 +309,7 @@ class CollectionRegistrationBuilder implements CollectionRegistrationBuilderInte
             'montoCobro'            => (float) $deposit->monto,
             'saldoPendiente'        => (float) $unappliedAmount,
             'bancoTuval'            => $deposit->banco,
-            'fechaDeposito'         => $deposit->fecha . ' 00:00:00',
+            'fechaDeposito'         => Carbon::parse($deposit->fecha)->format('Y-m-d H:i:s'),
             'numeroPapeleta'        => $deposit->comprobante,
         ];
     }
