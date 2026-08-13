@@ -6,22 +6,10 @@ use App\Enums\Ventas\OrderStatus;
 use App\Events\Bodegas\Dashboard\DispatchPendings;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\WebserviceController;
-use App\Models\Cobranzas\GpCobro;
-use App\Models\Cobranzas\GpCobrosCheques;
-use App\Models\Cobranzas\GpCobrosChequesFacturas;
-use App\Models\Cobranzas\GpCobrosChequesMonto;
-use App\Models\Cobranzas\GpCobrosDeposito;
-use App\Models\Cobranzas\GpCobrosDepositosFacturas;
-use App\Models\Cobranzas\GpCobrosEfectivoFactura;
-use App\Models\Cobranzas\GpCobrosEfectivoMonto;
-use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\devoluciones\GpDevolucionesDetalle;
 use App\Models\GpClienteSucursal;
-use App\Models\GpCobrosAplicacionFactura;
-use App\Models\GpCobrosTarjetaFactura;
-use App\Models\GpCobrosTarjetaMonto;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpCronLog;
 use App\Models\GpOrdenDespacho;
@@ -55,198 +43,7 @@ class DespachosController extends Controller
         protected readonly LogisticsOperationsServiceInterface $logisticsOperationsService
     ) {}
 
-    public function checkfacturasdespachos($cobro_id)
-    {
 
-        $facturas = array();
-
-
-        $fac_aplicacion = GpCobrosAplicacionFactura::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach ($fac_aplicacion as $fac) {
-            $facturas[$fac['id_factura']] = $fac['id_factura'];
-        }
-
-        $fac_cheques = GpCobrosChequesFacturas::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach ($fac_cheques as $fac) {
-            $facturas[$fac['id_factura']] = $fac['id_factura'];
-        }
-
-        $fac_depositos = GpCobrosDepositosFacturas::join('gp_cobros_depositos', 'gp_cobros_depositos.id', 'gp_cobros_depositos_facturas.deposito_id')
-            ->where('gp_cobros_depositos.estado', 'enviado')
-            ->where('gp_cobros_depositos.cobro_id', $cobro_id)
-            ->get()->toArray();
-        foreach ($fac_depositos as $fac) {
-            $facturas[$fac['id_factura']] = $fac['id_factura'];
-        }
-
-        $fac_efectivo = GpCobrosEfectivoFactura::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach ($fac_efectivo as $fac) {
-            $facturas[$fac['id_factura']] = $fac['id_factura'];
-        }
-
-        $fac_retenciones = GpCobrosRetenciones::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach ($fac_retenciones as $fac) {
-            $facturas[$fac['ret_factura']] = $fac['ret_factura'];
-        }
-
-        $fac_tarjetas = GpCobrosTarjetaFactura::where('cobro_id', $cobro_id)->get()->toArray();
-        foreach ($fac_tarjetas as $fac) {
-            $facturas[$fac['id_factura']] = $fac['id_factura'];
-        }
-
-        foreach ($facturas as $fac) {
-            $fac = substr($fac, 0, 17);
-
-            $pedido = GpPedido::where('factura', $fac)->get()->first();
-            if ($pedido)
-                $pedido = $pedido->toArray();
-            else {
-                continue;
-            }
-
-            $pedido['total_anterior'] = $pedido['total'];
-
-            $retencion = $pedido['total'] * env('COLCHON_RETENCION');
-
-            foreach ($fac_aplicacion as $apl) {
-                $pedido['total'] -= $apl['monto'];
-            }
-
-            foreach ($fac_cheques as $che) {
-                $cheque = GpCobrosCheques::where('cobro_id', $che['cobro_id'])->get()->first()->toArray();
-                if ($cheque['fecha_vencimiento'] <= $che['ECD_DET_FECHA_VENCIMIENTO']) {
-                    $pedido['total'] -= $che['monto'];
-                }
-            }
-
-            foreach ($fac_depositos as $dep) {
-                $pedido['total'] -= $dep['monto'];
-            }
-
-            foreach ($fac_efectivo as $efe) {
-                $pedido['total'] -= $efe['monto'];
-            }
-
-            foreach ($fac_tarjetas as $tar) {
-                $pedido['total'] -= $tar['monto'];
-            }
-
-            foreach ($fac_retenciones as $ret) {
-                $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv'] + $ret['ret_renta_srv'];
-            }
-
-            if ($pedido['total'] <= $retencion) {
-                $this->liberardespacho($pedido['id']);
-            } else {
-                $this->checksumacobros($pedido);
-            }
-        }
-
-        if (!count($facturas)) {
-            $this->checkpagopedido($cobro_id);
-        }
-    }
-
-    public function checkpagopedido($cobro_id)
-    {
-
-        $cobro = GpCobro::where('id', $cobro_id)->first();
-        $pedido = GpPedido::where('pedido', $cobro->pedido)->first();
-
-        if ($pedido) {
-            $pedido = $pedido->toArray();
-            $retencion = $pedido['total'] * env('COLCHON_RETENCION');
-
-            $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro_id)->get()->toArray();
-            foreach ($retenciones as $ret) {
-                $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv'] + $ret['ret_renta_srv'];
-            }
-
-            $efectivo = GpCobrosEfectivoMonto::where('cobro_id', $cobro_id)->get()->toArray();
-            foreach ($efectivo as $efe) {
-                $pedido['total'] -= $efe['monto'];
-            }
-            $cheque = GpCobrosChequesMonto::where('cobro_id', $cobro_id)->get()->toArray();
-            foreach ($cheque as $che) {
-                $pedido['total'] -= $che['monto'];
-            }
-            $deposito = GpCobrosDeposito::where('cobro_id', $cobro_id)->get()->toArray();
-            foreach ($deposito as $dep) {
-                $pedido['total'] -= $dep['monto'];
-            }
-            $tarjeta = GpCobrosTarjetaMonto::where('cobro_id', $cobro_id)->get()->toArray();
-            foreach ($tarjeta as $tar) {
-                $pedido['total'] -= $tar['monto'];
-            }
-            if ($pedido['total'] <= $retencion) {
-                $this->liberardespacho($pedido['id']);
-            }
-        }
-    }
-
-    public function checksumacobros($pedido)
-    {
-
-        $pedido['total'] = $pedido['total_anterior'];
-        $retencion = $pedido['total'] * env('COLCHON_RETENCION');
-
-        $fac_retenciones = GpCobrosRetenciones::where('ret_factura', $pedido['factura'])->get()->toArray();
-        foreach ($fac_retenciones as $ret) {
-            $pedido['total'] -= $ret['ret_iva'] + $ret['ret_renta'] + $ret['ret_iva_srv'] + $ret['ret_renta_srv'];
-        }
-
-        $fac_aplicacion = GpCobrosAplicacionFactura::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
-        foreach ($fac_aplicacion as $fac) {
-            $pedido['total'] -= $fac['monto'];
-        }
-
-        $fac_cheques = GpCobrosChequesFacturas::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
-        foreach ($fac_cheques as $fac) {
-            $pedido['total'] -= $fac['monto'];
-        }
-
-        $fac_depositos = GpCobrosDepositosFacturas::join('gp_cobros_depositos', 'gp_cobros_depositos.id', 'gp_cobros_depositos_facturas.deposito_id')
-            ->where('gp_cobros_depositos.estado', 'enviado')
-            ->where('id_factura', 'LIKE', $pedido['factura'] . '%')
-            ->get()->toArray();
-        foreach ($fac_depositos as $fac) {
-            $pedido['total'] -= $fac['monto'];
-        }
-
-        $fac_efectivo = GpCobrosEfectivoFactura::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
-        foreach ($fac_efectivo as $fac) {
-            $pedido['total'] -= $fac['monto'];
-        }
-
-        $fac_tarjetas = GpCobrosTarjetaFactura::where('id_factura', 'LIKE', $pedido['factura'] . '%')->get()->toArray();
-        foreach ($fac_tarjetas as $fac) {
-            $pedido['total'] -= $fac['monto'];
-        }
-
-        $pedido['total'] = number_format($pedido['total'], 2, '.', '');
-
-        if ($pedido['total'] <= $retencion) {
-            $this->liberardespacho($pedido['id']);
-        }
-    }
-
-    public function liberardespacho($pedido_id)
-    {
-
-
-
-        $ordenDespacho = GpOrdenDespacho::where('pedido_id', $pedido_id)
-            ->where('estado', 'pendiente')
-            ->get()->first();
-
-        if ($ordenDespacho) {
-            if (!$ordenDespacho->fecha_hora_liberacion) {
-                $ordenDespacho->fecha_hora_liberacion = date('Y-m-d H:i:s');
-            }
-            $ordenDespacho->estado = 'liberada';
-            $ordenDespacho->save();
-        }
-    }
 
     public function rechazarordendespacho($id): Response|Application|ResponseFactory
     {
@@ -945,14 +742,14 @@ class DespachosController extends Controller
 
 
 
-    public function imprimirordendespacho($id): Response
+    public function imprimirordendespacho(int $id): Response
     {
         $pedido = $this->detalleordendespacho($id);
         $pdf = Pdf::loadView('ordendespachoPDF', $pedido);
         return $pdf->stream('orden-despacho-' . $pedido['pedido'] . '.pdf');
     }
 
-    public function verordendespacho($id)
+    public function verordendespacho(int $id)
     {
         $pedido = $this->detalleordendespacho($id);
         return response([
@@ -962,7 +759,7 @@ class DespachosController extends Controller
     }
 
 
-    public function detalleordendespacho($id)
+    public function detalleordendespacho(int $id) : array
     {
         $orden_despacho = GpOrdenDespacho::where('id', $id)->first();
 
@@ -979,7 +776,7 @@ class DespachosController extends Controller
     }
 
 
-    public function obtenetListadoPuntoVenta()
+    public function obtenetListadoPuntoVenta() : JsonResponse
     {
         try {
             $items = $this->dispatchService->getAllPtoVta();
@@ -994,7 +791,7 @@ class DespachosController extends Controller
         }
     }
 
-    public function indexPuntosVentaReservaLimits()
+    public function indexPuntosVentaReservaLimits() : JsonResponse
     {
         try {
             $items = $this->dispatchService->getAllPtoVtaReserved();
@@ -1011,7 +808,7 @@ class DespachosController extends Controller
 
 
 
-    public function getDispatchedGuides(Request $request, $puntodeventa_id)
+    public function getDispatchedGuides(Request $request, $puntodeventa_id) : JsonResponse
     {
 
         $perPage = $request->input('perPage', 10);
@@ -1028,7 +825,7 @@ class DespachosController extends Controller
         ]);
     }
 
-    public function getDispatchedTransfers(Request $request, $puntodeventa_id)
+    public function getDispatchedTransfers(Request $request, $puntodeventa_id) : JsonResponse
     {
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
@@ -1044,7 +841,7 @@ class DespachosController extends Controller
         ]);
     }
 
-    public function getReceivedTransfers(Request $request, $puntodeventa_id)
+    public function getReceivedTransfers(Request $request, $puntodeventa_id) : JsonResponse
     {
 
         $perPage = $request->input('perPage', 10);
@@ -1061,7 +858,7 @@ class DespachosController extends Controller
         ]);
     }
 
-    public function getDispatchedRepositions(Request $request, $puntodeventa_id)
+    public function getDispatchedRepositions(Request $request,  $puntodeventa_id) : JsonResponse
     {
 
         $perPage = $request->input('perPage', 10);
@@ -1079,7 +876,7 @@ class DespachosController extends Controller
         ]);
     }
 
-    public function getReceivedRepositions(Request $request, $puntodeventa_id)
+    public function getReceivedRepositions(Request $request,  $puntodeventa_id) : JsonResponse
     {
 
         $perPage = $request->input('perPage', 10);
@@ -1097,7 +894,7 @@ class DespachosController extends Controller
     }
 
 
-    public function listaGuiaReservasEnviadas(Request $request)
+    public function listaGuiaReservasEnviadas(Request $request) : JsonResponse
     {
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
@@ -1116,7 +913,7 @@ class DespachosController extends Controller
         }
     }
 
-    public function listaGuiaReservasRecibidas(Request $request)
+    public function listaGuiaReservasRecibidas(Request $request) : JsonResponse
     {
         $perPage = $request->input('perPage', 10);
         $search = $request->input('search', null);
@@ -1135,7 +932,7 @@ class DespachosController extends Controller
         }
     }
 
-    public function listaConsultaOrdenesDespacho(Request $request)
+    public function listaConsultaOrdenesDespacho(Request $request) : JsonResponse
     {
         return $this->handleApiAction(function () use ($request) {
             $filters = $request->input('filters', []);
@@ -1152,12 +949,12 @@ class DespachosController extends Controller
             ]);
             $id     = data_get($validate, 'id');
             $result = $this->dispatchService->printOrderDispatchPdf($id);
-            return $this->buildPdfResponse($result);
+            return $this->buildFileResponse($result);
         }, 'laravel', 'imprimirOrderDespachoPdf');
     }
 
 
-    public function cancelarOrdenDespacho($id)
+    public function cancelarOrdenDespacho(int $id)
     {
 
         return $this->dispatchService->cancelDispatchIfEmptyPicking($id);
