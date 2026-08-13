@@ -279,90 +279,7 @@ class CobranzasController extends Controller
                 }
             }
         }
-        //abort(404);
     }
-
-    public function checkcobrosenviados()
-    {
-
-        $cobros = GpCobro::where('estado', '!=', 'enviado')->get();
-
-        foreach ($cobros as $cobro) {
-            $enviado = true;
-            $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro->id)->get();
-            foreach ($retenciones as $retencion) {
-                if (
-                    ($retencion->ret_iva <= 0 || $retencion->enviado_iva_gp)
-                    && ($retencion->ret_renta <= 0 || $retencion->enviado_renta_gp)
-                    && ($retencion->ret_iva_srv <= 0 || $retencion->enviado_iva_srv_gp)
-                    && ($retencion->ret_renta_srv <= 0 || $retencion->enviado_renta_srv_gp)
-                ) {
-                    continue;
-                }
-
-                if ($retencion->ret_iva > 0 && !$retencion->enviado_iva_gp) {
-                    $enviado = false;
-                }
-                if ($retencion->ret_renta > 0 && !$retencion->enviado_renta_gp) {
-                    $enviado = false;
-                }
-                if ($retencion->ret_iva_srv > 0 && !$retencion->enviado_iva_srv_gp) {
-                    $enviado = false;
-                }
-                if ($retencion->ret_renta_srv > 0 && !$retencion->enviado_renta_srv_gp) {
-                    $enviado = false;
-                }
-
-                if ($retencion->ret_porcentaje_iva > 0 && $retencion->mensaje_ws_iva != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_iva != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-                if ($retencion->ret_porcentaje_renta != 0 && $retencion->mensaje_ws_renta != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_renta != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $efectivos = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($efectivos as $efectivo) {
-                if (!$efectivo->enviado_gp) {
-                    $enviado = false;
-                }
-            }
-
-            $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)->get();
-            foreach ($depositos as $deposito) {
-                if ($deposito->mensaje_ws != 'Registro de cobro guardado correctamente.' && $deposito->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $cheques = GpCobrosChequesMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($cheques as $cheque) {
-                if ($cheque->mensaje_ws != 'Registro de cobro guardado correctamente.' && $cheque->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $tarjetas = GpCobrosTarjetaMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($tarjetas as $tarjeta) {
-                if ($tarjeta->mensaje_ws != 'Registro de cobro guardado correctamente.' && $tarjeta->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $aplicaciones = GpCobrosAplicacionMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($aplicaciones as $aplicacion) {
-                if ($aplicacion->mensaje_ws != 'Registro de cobro guardado correctamente.' && $aplicacion->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            if ($enviado) {
-                $cobro->estado = 'enviado';
-                $cobro->save();
-            }
-        }
-    }
-
 
 
     public function detallecobro($cobro)
@@ -461,19 +378,7 @@ class CobranzasController extends Controller
         return $cobro;
     }
 
-    public function imprimircobro($id): \Illuminate\Http\Response
-    {
 
-        $cobro = GpCobro::where('id', $id)->get()->first()->toArray();
-
-        $cobro = $this->detallecobro($cobro);
-        //        echo '<pre>';
-        //        print_r($cobro);
-        //        die();
-        //return view('cobranzaPDF', $cobro);
-        $pdf = PDF::loadView('cobranzaPDF', $cobro);
-        return $pdf->stream('cobro-' . $cobro['numero_recibo'] . '.pdf');
-    }
 
     public function getcajausuario($puntodeventa, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
