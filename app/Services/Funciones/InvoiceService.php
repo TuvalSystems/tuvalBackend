@@ -506,7 +506,8 @@ class InvoiceService implements InvoiceServiceInterface
             'userIdCreator'                => $pedido->USERID,
             'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
             'userApprovalId'               => $userApprovalId,
-            'pedidoId'                     => $pedido->id
+            'pedidoId'                     => $pedido->id,
+            'proyecto'                     => $pedido->proyecto
         ];
     }
 

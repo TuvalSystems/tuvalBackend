@@ -76,4 +76,6 @@ interface QuotationServiceInterface
     public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);
 
     public function getDefaultPriceListByPos(string $pvCode): array;
+
+    public function getistProyectSellectToGp() : array;
 }

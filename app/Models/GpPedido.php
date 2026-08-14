@@ -108,6 +108,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property-read int|null $media_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GpPedidoDetalleStock> $pedidostock
  * @property-read int|null $pedidostock_count
+ * @property int|null $proyecto
  * @property-read \App\Models\GpUsuario|null $usuario
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedido newQuery()
@@ -265,7 +266,8 @@ class GpPedido extends Model implements HasMedia
         'modificador_global',
         'fecha_hora_aprobacion_comercial',
         'fecha_hora_aprobacion_crediticia',
-        'import_job'
+        'import_job',
+        'proyecto'
     ];
 
 

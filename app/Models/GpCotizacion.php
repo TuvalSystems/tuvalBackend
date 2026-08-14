@@ -234,6 +234,7 @@ class GpCotizacion extends Model implements HasMedia
         'nota_operaciones',
         'modificador_global',
         'fecha_hora_aprobacion_comercial',
+        'proyecto'
     ];
 
     /**

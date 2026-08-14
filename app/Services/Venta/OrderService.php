@@ -278,6 +278,7 @@ class OrderService implements OrderServiceInterface
         $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data['id'], 'pedido');
         $pedido                 = GpPedido::find($data['id']);
         $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($pedido);
+        $projectString          = $this->orderAndQuotationService->getDescriptionProjectSeller($orderHeader->proyecto);
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -294,7 +295,8 @@ class OrderService implements OrderServiceInterface
             'has_guide_dispatched'  => $hasGuideDispatched,
             'nivelPrecio'           => $nivelPrecio,
             'imagenesOperaciones'   => $imagenesOperaciones,
-            'documentosPdf'         => $documentosPdf
+            'documentosPdf'         => $documentosPdf,
+            'proyecto'              => $projectString
         ];
     }
 
@@ -1433,7 +1435,7 @@ class OrderService implements OrderServiceInterface
 
     /** funciones de sendfacturas gp  */
 
-   
+
 
     public function valdidateOrdersProviders(GpPedido $order)
     {

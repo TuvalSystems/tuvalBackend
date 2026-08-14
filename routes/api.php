@@ -216,6 +216,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
             Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
             Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
+
+            Route::get('obtener-lista-proyectos',[CotizacionesController::class, 'obtenerListaProyectosVenta']);
         });
 
         Route::group(['prefix' => 'reservas'], function () {

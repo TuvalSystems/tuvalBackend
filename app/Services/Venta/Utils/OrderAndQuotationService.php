@@ -521,4 +521,18 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         }
         return true;
     }
+
+
+
+
+    public function getDescriptionProjectSeller(?int $code): ?string
+    {
+        if (empty($code)) {
+            return null;
+        }
+        $response = $this->apiGpService->getRegisterProyectSeller([
+            'coMotproven' => $code
+        ]);
+        return data_get($response, 'data.txDescor', null);
+    }
 }

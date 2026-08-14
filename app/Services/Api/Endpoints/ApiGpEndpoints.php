@@ -125,7 +125,8 @@ class ApiGpEndpoints
     // ---
     public const COTIZACIONES_GUARDAR_RECORDATORIO = 'api/cotizaciones/guardar-cotizacion-recordatorio';
     public const COTIZACIONES_LISTA_ITEMS_ALTERNATIVOS = 'api/cotizaciones/lista-items-alternativos';
-
+    public const COTIZACIONES_LISTA_PROYECTOS_VENTA = 'api/cotizaciones/lista-proyectos-venta';
+    public const COTIZACION_OBTENER_REGISTRO_PROYECTO_VENTA = 'api/cotizaciones/proyecto-venta';
 
 
     // ---

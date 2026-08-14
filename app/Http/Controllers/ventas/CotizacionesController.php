@@ -328,7 +328,7 @@ class CotizacionesController extends Controller
             ->join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
             ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
 
-        $this->commercial->applyLimitsVisibiliteList($cotizaciones, $user,$puntoVenta->id, 'cotizaciones', 'gp_cotizacions.user_id');
+        $this->commercial->applyLimitsVisibiliteList($cotizaciones, $user, $puntoVenta->id, 'cotizaciones', 'gp_cotizacions.user_id');
 
         if ($data['estado'] == 'pendientes') {
             $cotizaciones = $cotizaciones
@@ -1028,5 +1028,14 @@ class CotizacionesController extends Controller
             $response = $this->quotationService->getDefaultPriceListByPos($pvCodigo);
             return $this->successResponse('Información Obtenida Correctamente', $response);
         }, 'laravel', 'obtenerListaPrecioDefectoPuntoVenta');
+    }
+
+
+    public function obtenerListaProyectosVenta()
+    {
+        return $this->handleApiAction(function () {
+            $data = $this->quotationService->getistProyectSellectToGp();
+            return $this->successResponse('Información Obtenida Correctamente', $data, 200);
+        }, 'laravel', 'obtenerListaProyectosVenta');
     }
 }

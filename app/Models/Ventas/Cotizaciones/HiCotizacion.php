@@ -81,6 +81,7 @@ class HiCotizacion extends Model
         'pedido_generado_at',
         'user_rechazo_id',
         'fe_rechazo',
+        'proyecto'
     ];
 
     protected $casts = [

@@ -502,8 +502,10 @@ class QuotationService implements QuotationServiceInterface
             'detalle'           => $detalle,
             'segmento'          => $segmento,
             'nivelPrecio'       => $nivelPrecio,
+            'proyecto'          => $this->orderAndQuotationService->getDescriptionProjectSeller($quote->proyecto)
         ];
     }
+
 
 
     protected function getPorcentilChangeDiscount(GpUsuario $user, GpCotizacion $quote)
@@ -917,7 +919,7 @@ class QuotationService implements QuotationServiceInterface
     public function getDefaultPriceListByPos(string $pvCode): array
     {
         $salesPoint = GpPuntoVenta::where('PTO_VTA_ID', $pvCode)->first();
-        if(!$salesPoint){
+        if (!$salesPoint) {
             throw new DomainException('Datos no encontrados');
         }
         return [
@@ -925,6 +927,22 @@ class QuotationService implements QuotationServiceInterface
             'pvCodigo'      => trim($salesPoint->PTO_VTA_ID),
             'listaPrecio'   => trim($salesPoint->lista_precios_defecto)
         ];
-      
+    }
+
+
+    public function getistProyectSellectToGp(): array
+    {
+        $resp = $this->apiGpService->getListProyectsSellers();
+        $success = data_get($resp, 'success', false);
+        if (!$success) {
+            throw new DomainException(
+                data_get(
+                    $resp,
+                    'message',
+                    'Opps!, Ocurrio un Error al consultar la lista de proyectos'
+                )
+            );
+        }
+        return data_get($resp, 'data', []);
     }
 }

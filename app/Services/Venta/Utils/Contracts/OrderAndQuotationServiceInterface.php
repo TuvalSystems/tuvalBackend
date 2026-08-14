@@ -47,4 +47,6 @@ interface OrderAndQuotationServiceInterface
 
     public function isWeekend(): bool;
     public function isBussinessDay();
+
+      public function getDescriptionProjectSeller(?int $code) : ?string;
 }

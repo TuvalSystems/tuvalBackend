@@ -328,6 +328,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'origen'                            => data_get($data, 'origen', 'cotizacion'),
             'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
             'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
+            'proyecto'                          => data_get($data, 'proyecto', null)
 
         ]);
     }
@@ -562,6 +563,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'pedido_generado_at'                => $quote->pedido_generado_at,
             'user_rechazo_id'                   => $quote->user_rechazo_id,
             'fe_rechazo'                        => $quote->fe_rechazo,
+            'proyecto'                          => $quote->proyecto
         ]);
         return $hi;
     }
