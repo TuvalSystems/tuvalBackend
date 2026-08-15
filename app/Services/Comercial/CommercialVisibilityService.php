@@ -6,7 +6,8 @@ use App\Models\GpUsuario;
 use App\Models\Usuario\UsuarioVisibilidadLista;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\Ventas\Vendedores\VendedorAtributoValor;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -79,10 +80,10 @@ class CommercialVisibilityService
 
 
     public function applyUserRestriction(
-        Builder $query,
+        EloquentBuilder|QueryBuilder $query,
         GpUsuario $user,
         string $userColumn = 'user_id'
-    ): Builder {
+    ): EloquentBuilder|QueryBuilder {
         $allowedUserIds = $this->getAllowedUserIds($user);
 
         if ($allowedUserIds !== null) {
@@ -93,16 +94,16 @@ class CommercialVisibilityService
     }
 
 
-    public function applyLimitsVisibiliteList(Builder $query, GpUsuario $user, int $pvId, string $type, string $userColumn = 'user_id'): Builder
+    public function applyLimitsVisibiliteList(EloquentBuilder|QueryBuilder $query, GpUsuario $user, int $pvId, string $type, string $userColumn = 'user_id'): EloquentBuilder|QueryBuilder
     {
         if (in_array($user->perfil_id, self::ADMIN_PROFILE_IDS, true)) {
             return $query;
         }
 
         $visibilityColumn = match ($type) {
-            'cotizaciones'  => 'ver_cot',
-            'pedidos'       => 'ver_ped',
-            'devoluciones'  => 'ver_dev',
+            'cotizaciones'      => 'ver_cot',
+            'pedidos'           => 'ver_ped',
+            'devoluciones'      => 'ver_dev',
             default        => throw new InvalidArgumentException(
                 "Tipo de lista no válido: {$type}"
             ),

@@ -98,6 +98,9 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
 
     Route::get('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
+    Route::get('lista-facturas-historicas', [CotizacionesController::class, 'obtenerFacturasHistoricasCotizacion']);
+
+
 });
 
 Route::prefix('bodegas')->group(function () {

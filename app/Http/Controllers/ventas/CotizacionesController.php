@@ -22,17 +22,16 @@ use App\Http\Controllers\FuncionesController;
 use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
-use App\Models\Ventas\Vendedores\VendedorAtributoValor;
 use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -45,7 +44,8 @@ class CotizacionesController extends Controller
         protected readonly QuotationServiceInterface $quotationService,
         protected readonly ClientQueryServiceInterface $clientService,
         protected readonly QuotationCreatorServiceInterface $quotationCreator,
-        protected readonly CommercialVisibilityService $commercial
+        protected readonly CommercialVisibilityService $commercial,
+        protected readonly InvoiceHistoryServiceInterface $invoiceHistory
     ) {}
 
     public function obtenerListaTipoIdentificacion(): JsonResponse
@@ -959,7 +959,7 @@ class CotizacionesController extends Controller
 
 
 
-    public function obteneMargenItemlL(Request $request)
+    public function obteneMargenItemlL(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
@@ -983,7 +983,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function obtenerListaSubSegmentos(Request $request)
+    public function obtenerListaSubSegmentos(Request $request): JsonResponse
     {
         try {
             $coAtrPadre = $request->get('segmento', null);
@@ -994,7 +994,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function validarSegmentoCliente(Request $request)
+    public function validarSegmentoCliente(Request $request): JsonResponse
     {
         $ruc = $request->get('ruc', null);
         try {
@@ -1008,7 +1008,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function actualizarSegmentoCliente(Request $request)
+    public function actualizarSegmentoCliente(Request $request): JsonResponse
     {
         $ruc = $request->get('ruc', null);
         $segmento = $request->get('segmento', null);
@@ -1021,9 +1021,9 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function obtenerListaPrecioDefectoPuntoVenta(Request $request)
+    public function obtenerListaPrecioDefectoPuntoVenta(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $pvCodigo = $request->input('pvCodigo', null);
             $response = $this->quotationService->getDefaultPriceListByPos($pvCodigo);
             return $this->successResponse('Información Obtenida Correctamente', $response);
@@ -1031,11 +1031,32 @@ class CotizacionesController extends Controller
     }
 
 
-    public function obtenerListaProyectosVenta()
+    public function obtenerListaProyectosVenta(): JsonResponse
     {
-        return $this->handleApiAction(function () {
+        return $this->handleApiAction(function (): JsonResponse {
             $data = $this->quotationService->getistProyectSellectToGp();
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
         }, 'laravel', 'obtenerListaProyectosVenta');
+    }
+
+
+    public function obtenerFacturasHistoricasCotizacion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'cliente_id'    => 'required|exists:gp_clientes,id',
+                'filters'       => 'required|array',
+                'pvId'          => 'required|integer',
+                'pvCode'        => 'required|string',
+
+            ]);
+            $filters    = data_get($validate, 'filters', []);
+            $clientId   = data_get($validate, 'cliente_id');
+            $pvId       = data_get($validate,'pvId');
+            $pvCode     = data_get($validate,  'pvCode');
+            $user = $request->user() ?? GpUsuario::find(179);
+            $data = $this->invoiceHistory->fetchInvoiceHistory($user, $clientId, $pvId, $pvCode, $filters);
+            return $this->successResponse('Lista Obtenida Correctamente', $data);
+        }, 'laravel', 'obtenerFacturasHistoricasCotizacion');
     }
 }

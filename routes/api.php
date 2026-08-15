@@ -217,7 +217,11 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
             Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
 
-            Route::get('obtener-lista-proyectos',[CotizacionesController::class, 'obtenerListaProyectosVenta']);
+            Route::get('obtener-lista-proyectos', [CotizacionesController::class, 'obtenerListaProyectosVenta']);
+
+
+            /** lista de historio de facturas */
+            Route::post('lista-facturas-historicas', [CotizacionesController::class, 'obtenerFacturasHistoricasCotizacion']);
         });
 
         Route::group(['prefix' => 'reservas'], function () {
