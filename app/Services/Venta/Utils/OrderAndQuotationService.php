@@ -533,6 +533,6 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
         $response = $this->apiGpService->getRegisterProyectSeller([
             'coMotproven' => $code
         ]);
-        return data_get($response, 'data.txDescor', null);
+        return data_get($response, 'data.txDeslar', null);
     }
 }
