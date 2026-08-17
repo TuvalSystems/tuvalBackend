@@ -66,12 +66,12 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $retention      = $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box);
             $check          = $this->sendCheckCollectionToGp($userCollection, $collection, $customer, $box);
             $paymentResults = [
-                'efectivo'      => $cash,
-                'deposito'      => $deposit,
-                'aplicaciones'  => $applications,
-                'tarjetas'      => $cards,
-                'retencion'     => $retention,
-                'cheque'        => $check,
+                'Efectivo'      => $cash,
+                'Deposito'      => $deposit,
+                'Aplicaciones'  => $applications,
+                'Tarjetas'      => $cards,
+                'Retencion'     => $retention,
+                'Cheque'        => $check,
             ];
 
             $this->updateCollectionGpAlert($collection, $paymentResults);
