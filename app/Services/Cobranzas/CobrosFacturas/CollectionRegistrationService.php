@@ -2,6 +2,7 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas;
 
+use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
 use App\Jobs\Cobranzas\CobrosFacturas\SendCollectionToGpJob;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\GpCaja;
@@ -70,7 +71,7 @@ class CollectionRegistrationService implements CollectionRegistrationServiceInte
             return $headerCollection;
         });
 
-         SendCollectionToGpJob::dispatch($collectionRegister->id);
+        SendCollectionToGpJob::dispatch($collectionRegister->id);
 
         return $collectionRegister;
     }
@@ -284,7 +285,7 @@ class CollectionRegistrationService implements CollectionRegistrationServiceInte
 
         return $this->hasPositiveAmount($paymentData, $amountKey)
             || collect(data_get($paymentData, 'facturas', []))
-                ->contains(fn($invoice) => $this->hasInvoiceDetailData($invoice, $invoiceAmountKey));
+            ->contains(fn($invoice) => $this->hasInvoiceDetailData($invoice, $invoiceAmountKey));
     }
 
     private function hasRetentionData(array $retentionData): bool
@@ -342,5 +343,23 @@ class CollectionRegistrationService implements CollectionRegistrationServiceInte
                 throw new \InvalidArgumentException("El monto {$amountKey} de {$label} no puede ser negativo.");
             }
         }
+    }
+
+
+
+
+
+    public function reSendCollectionPendings(): void
+    {
+        GpCobro::query()
+            ->whereIn('estado', [
+                CollectionStatusEnum::INICIADO->value,
+                CollectionStatusEnum::REVISADO->value,
+            ])
+            ->chunkById(100, function ($collections) {
+                foreach ($collections as $collect) {
+                    SendCollectionToGpJob::dispatch($collect->id);
+                }
+            });
     }
 }

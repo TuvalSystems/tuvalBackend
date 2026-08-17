@@ -190,10 +190,7 @@ class CobranzasController extends Controller
         ]);
     }
 
-    public function enviarcobros()
-    {
-        return $this->buildErrorResponse('Api ya no funcional', 404);
-    }
+
 
     // despues eliminar esta api
 
@@ -1444,5 +1441,14 @@ class CobranzasController extends Controller
             $data = $this->sendCollectionService->sendCollectionToGp($cobroId);
             return $this->successResponse('Cobro Registrado', $data);
         }, 'laravel', 'enviarCobroGp');
+    }
+
+    /** api para enviar lote de cobros al job en estado iniciado o recibido  */
+    public function enviarCobrosLote(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $this->collectionRegistrationService->reSendCollectionPendings();
+            return $this->buildSuccessResponse("Cobros enviados a procesar", 200);
+        }, 'laravel', 'enviarCobrosLote');
     }
 }

@@ -39,7 +39,7 @@ Route::get('/', function () {
     abort(404);
 });
 
-Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarcobros']);
+Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarCobrosLote']);
 Route::get('/cotizaciones/checkvalidezcotizaciones', [CotizacionesController::class, 'checkvalidezcotizaciones']);
 Route::get('/cobranzas/consultacobrosanulados', [CobranzasController::class, 'consultacobrosanulados']);
 Route::get('/facturarsiguientemescron', [PedidosController::class, 'facturarsiguientemescron']);

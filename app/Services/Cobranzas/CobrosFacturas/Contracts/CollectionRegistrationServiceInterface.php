@@ -9,4 +9,5 @@ interface CollectionRegistrationServiceInterface
 {
     // Define los métodos
     public function registerCollection(array $collectionData, GpUsuario $user): GpCobro;
+    public function reSendCollectionPendings(): void;
 }

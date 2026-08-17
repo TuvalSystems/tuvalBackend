@@ -65,6 +65,16 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $cards          = $this->sendCardCollectionToGp($userCollection, $collection, $customer, $box);
             $retention      = $this->sendRetentionCollectionToGp($userCollection, $collection, $customer, $box);
             $check          = $this->sendCheckCollectionToGp($userCollection, $collection, $customer, $box);
+            $paymentResults = [
+                'efectivo'      => $cash,
+                'deposito'      => $deposit,
+                'aplicaciones'  => $applications,
+                'tarjetas'      => $cards,
+                'retencion'     => $retention,
+                'cheque'        => $check,
+            ];
+
+            $this->updateCollectionGpAlert($collection, $paymentResults);
             $collectionSent = $this->updateCollectionStatusIfFullySentToGp($collection->id);
 
             if ($collectionSent) {
@@ -84,6 +94,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 'cheque'            => $check,
                 'cobro_enviado_gp'  => $collectionSent,
                 'estado_cobro'      => $collection->estado,
+                'alerta'            => $collection->alerta,
             ];
         } finally {
             $lock->release();
@@ -722,6 +733,91 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         int $id
     ): string {
         return sprintf('%s-%s-%d', $receiptNumber, $type, $id);
+    }
+
+    private function updateCollectionGpAlert(GpCobro $collection, array $paymentResults): void
+    {
+        $messages = [];
+
+        foreach ($paymentResults as $paymentType => $result) {
+            $messages = array_merge(
+                $messages,
+                $this->collectFailedGpAlertMessages($paymentType, $result)
+            );
+        }
+
+        $messages = array_values(array_unique($messages));
+
+        $collection->update([
+            'alerta' => empty($messages)
+                ? null
+                : $this->limitForColumn(implode(' | ', $messages), 1000),
+        ]);
+    }
+
+    private function collectFailedGpAlertMessages(string $paymentType, mixed $result): array
+    {
+        if (!is_array($result)) {
+            return [];
+        }
+
+        if (array_key_exists('enviado_gp', $result)) {
+            if (!$this->isFailedGpResult($result['enviado_gp'])) {
+                return [];
+            }
+
+            $message = trim((string) data_get($result, 'mensaje', 'Error sin mensaje de GP'));
+
+            if ($message === '') {
+                $message = 'Error sin mensaje de GP';
+            }
+
+            return [
+                $this->formatPaymentAlertMessage($paymentType, $result, $message),
+            ];
+        }
+
+        $messages = [];
+
+        foreach ($result as $item) {
+            $messages = array_merge(
+                $messages,
+                $this->collectFailedGpAlertMessages($paymentType, $item)
+            );
+        }
+
+        return $messages;
+    }
+
+    private function isFailedGpResult(mixed $sent): bool
+    {
+        if (is_bool($sent)) {
+            return !$sent;
+        }
+
+        return in_array($sent, [0, '0'], true);
+    }
+
+    private function formatPaymentAlertMessage(string $paymentType, array $result, string $message): string
+    {
+        $label = $paymentType;
+        $subtype = trim((string) data_get($result, 'tipo', ''));
+        $collectionNumber = trim((string) data_get($result, 'cobro', ''));
+        $invoice = trim((string) data_get($result, 'factura', ''));
+
+        if ($subtype !== '') {
+            $label .= " {$subtype}";
+        }
+
+        if ($collectionNumber !== '') {
+            $label .= " {$collectionNumber}";
+        }
+
+        if ($invoice !== '') {
+            $label .= " factura {$invoice}";
+        }
+
+        return "{$label}: {$message}";
     }
 
     private function extractResponseMessage(mixed $response): string
