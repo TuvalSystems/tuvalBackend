@@ -417,6 +417,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                 'gc.caja_id',
                 'gc.fecha',
                 'gc.estado',
+                'gc.alerta',
                 'gc.created_at'
             ])
             ->selectRaw(
