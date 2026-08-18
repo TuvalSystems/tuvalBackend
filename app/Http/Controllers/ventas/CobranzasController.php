@@ -37,6 +37,7 @@ use App\Http\Requests\Cobranzas\CobrosFacturas\RegisterCollectionRequest;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
+use App\Services\Cobranzas\CierreCajas\Contracts\CashRegisterClosureServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
@@ -64,6 +65,7 @@ class CobranzasController extends Controller
         protected readonly InvoiceCollectionServiceInterface $invoiceCollect,
         protected readonly CollectionRegistrationServiceInterface $collectionRegistrationService,
         protected readonly CollectionGpSenderServiceInterface $sendCollectionService,
+        protected readonly CashRegisterClosureServiceInterface $cashClosureService
     ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1450,5 +1452,26 @@ class CobranzasController extends Controller
             $this->collectionRegistrationService->reSendCollectionPendings();
             return $this->buildSuccessResponse("Cobros enviados a procesar", 200);
         }, 'laravel', 'enviarCobrosLote');
+    }
+
+
+    /** funciones para cierre de caja */
+    public function cerrarCajaV1(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'pvId'      => ['required', 'integer', 'exists:gp_punto_ventas,id'],
+                'pvCodigo'  => ['required', 'string'],
+                'caja_id'   => ['required', 'integer', 'exists:gp_cajas,id'],
+            ]);
+
+            $pvId = data_get($validate, 'pvId');
+            $pvCode = data_get($validate, 'pvCodigo');
+            $boxId = data_get($validate, 'caja_id');
+            $user = $request->user() ?? GpUsuario::find(179);
+            $response = $this->cashClosureService->cashCloseBox($boxId, $pvId, $pvCode, $user);
+
+            return $this->successResponse("Información Obtenida Correctamente", $response);
+        }, 'laravel', 'cerrarCajaV1');
     }
 }

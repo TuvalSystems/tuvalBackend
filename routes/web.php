@@ -246,6 +246,12 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('enviar-cobro', [CobranzasController::class, 'enviarCobroGp']);
 
     });
+
+
+    Route::prefix('cierre-cajas')->group(function() {
+        Route::get('cerrar', [CobranzasController::class, 'cerrarCajaV1']);
+
+    });
 });
 
 Route::prefix('gestion')->group(function () {

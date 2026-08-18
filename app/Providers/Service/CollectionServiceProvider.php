@@ -2,6 +2,8 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Cobranzas\CierreCajas\CashRegisterClosureService;
+use App\Services\Cobranzas\CierreCajas\Contracts\CashRegisterClosureServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\CollectionGpSenderService;
 use App\Services\Cobranzas\CobrosFacturas\CollectionRegistrationService;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
@@ -32,6 +34,7 @@ class CollectionServiceProvider extends ServiceProvider
         InvoiceCollectionServiceInterface::class            => InvoiceCollectionService::class,
         CollectionRegistrationServiceInterface::class       => CollectionRegistrationService::class,
         CollectionGpSenderServiceInterface::class           => CollectionGpSenderService::class,
+        CashRegisterClosureServiceInterface::class          => CashRegisterClosureService::class
     ];
 
     public function provides()
