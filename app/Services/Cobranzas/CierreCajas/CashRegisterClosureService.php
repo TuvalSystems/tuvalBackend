@@ -31,16 +31,24 @@ class CashRegisterClosureService implements CashRegisterClosureServiceInterface
             throw new DomainException('El usuario no tiene habilitada esta caja en el punto de venta seleccionado.');
         }
 
-        $clousureBox = GpCierreCaja::where('caja_id', $boxId)
-            ->where('fecha', $dateNow)->where('estado', 'abierto')->first();
-
-        $previousBox = GpCierreCaja::where('caja_id', $boxId)
+        $openBox = GpCierreCaja::where('caja_id', $boxId)
             ->where('estado', 'abierto')
             ->orderBy('fecha', 'desc')
             ->first();
 
+        if (!$openBox) {
+            throw new DomainException(
+                'La caja no tiene ningún cierre abierto.'
+            );
+        }
+        $openBox->update([
+            'estado'        => 'cerrado',
+            'fecha_cierre'  => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
+
         return [
-            'usuario_caja' => $userBox
+            'usuario_caja' => $userBox,
+            'cierre_caja'   => $openBox
         ];
     }
 }
