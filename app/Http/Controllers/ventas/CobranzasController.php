@@ -1465,13 +1465,33 @@ class CobranzasController extends Controller
                 'caja_id'   => ['required', 'integer', 'exists:gp_cajas,id'],
             ]);
 
-            $pvId = data_get($validate, 'pvId');
+            $pvId   = data_get($validate, 'pvId');
             $pvCode = data_get($validate, 'pvCodigo');
-            $boxId = data_get($validate, 'caja_id');
-            $user = $request->user() ?? GpUsuario::find(179);
-            $response = $this->cashClosureService->cashCloseBox($boxId, $pvId, $pvCode, $user);
-
-            return $this->successResponse("Información Obtenida Correctamente", $response);
+            $boxId  = data_get($validate, 'caja_id');
+            $user   = $request->user() ?? GpUsuario::find(179);
+            $this->cashClosureService->cashCloseBox($boxId, $pvId, $pvCode, $user);
+            return $this->buildSuccessResponse("Caja Cerrada exitosamente", 200);
         }, 'laravel', 'cerrarCajaV1');
+    }
+
+
+    public function resumenCerrarCaja(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'pvId'      => ['required', 'integer', 'exists:gp_punto_ventas,id'],
+                'pvCodigo'  => ['required', 'string'],
+                'caja_id'   => ['required', 'integer', 'exists:gp_cajas,id'],
+                'fecha'     => ['required', 'string']
+            ]);
+
+            $pvId   = data_get($validate, 'pvId');
+            $pvCode = data_get($validate, 'pvCodigo');
+            $boxId  = data_get($validate, 'caja_id');
+            $fecha  = data_get($validate, 'fecha');
+            $user   = $request->user() ?? GpUsuario::find(179);
+            $response =  $this->cashClosureService->getCashBoxClosureSummary($boxId, $pvId, $pvCode, $fecha, $user);
+            return $this->successResponse("Resumen de cierre de caja obtenido exitosamente", $response, 200);
+        }, 'laravel', 'resumenCerrarCaja');
     }
 }

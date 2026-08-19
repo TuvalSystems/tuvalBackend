@@ -250,6 +250,7 @@ Route::group(['prefix' => 'cobranzas'], function () {
 
     Route::prefix('cierre-cajas')->group(function() {
         Route::get('cerrar', [CobranzasController::class, 'cerrarCajaV1']);
+        Route::get('resumen', [CobranzasController::class, 'resumenCerrarCaja']);
 
     });
 });

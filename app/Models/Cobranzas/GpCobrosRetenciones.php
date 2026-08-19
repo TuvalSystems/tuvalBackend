@@ -92,6 +92,7 @@ class GpCobrosRetenciones extends Model
     use HasFactory;
 
     protected $fillable = [
+        'id',
         'cobro_id',
         'ret_factura',
         'ret_fecha_emision',

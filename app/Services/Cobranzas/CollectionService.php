@@ -9,6 +9,7 @@ use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
 use App\Repositories\User\Contracts\UserRepositoryInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class CollectionService implements CollectionServiceInterface
 {
@@ -102,9 +103,9 @@ class CollectionService implements CollectionServiceInterface
         $retenciones    = $this->collectRepository->getRetencionsByBox($boxId, $date);
         $tarjeta        = $this->collectRepository->getCardPaymentsByBox($boxId, $date);
         return [
-            'usuario'                   => $userBox,
-            'fecha'                     => $date,
             'caja_usuario'              => data_get($userBox, 'CAJ_USER_CAJA', 'N/A'),
+            'fecha'                     => $date,
+            'usuario'                   => $userBox,
             'aplicacion_saldos'         => $applyBalanced,
             'aplicacion_saldos_total'   => round($applyBalanced->unique('id')->sum('monto'), 2),
             'depositos'                 => $depositos,
@@ -122,7 +123,7 @@ class CollectionService implements CollectionServiceInterface
         ];
     }
 
-    protected function getOperatorContext(GpUsuario $user, int $boxId)
+    public function getOperatorContext(GpUsuario $user, int $boxId)
     {
         $userBox = $this->userRepository->findUserBoxAssigment($user->id, $boxId);
         $caja           = $userBox->cajasAsignadas->first();
@@ -152,7 +153,7 @@ class CollectionService implements CollectionServiceInterface
         $pdf->loadHTML($html);
         $binary = $pdf->output();
 
-        $filename = 'consulta-de-caja-usuario-' . Str::slug($caja, '-') . '.pdf';
+        $filename = Str::upper('consulta-de-caja-usuario-' . Str::slug($caja, '-') . '.pdf');
 
         return [
             'binary'        => $binary,
@@ -166,11 +167,11 @@ class CollectionService implements CollectionServiceInterface
 
         $boxOwner = $this->userRepository->findAssignmentByBox($boxId);
         if (!$boxOwner) {
-            throw new \RuntimeException("Caja no encontrada o no tiene un usuario asignado.");
+            throw new RuntimeException("Caja no encontrada o no tiene un usuario asignado.");
         }
         $resumen =  $this->cashCloseRepository->isBoxClosed($boxId, $date, $boxOwner->id);
         if (!$resumen) {
-            throw new \RuntimeException("La caja no se encuentra cerrada");
+            throw new RuntimeException("La caja no se encuentra cerrada o no fue creada");
         }
         if ($resumen) {
             $cierre = $this->cashCloseRepository->getBoxClosureSummary($boxId, $date, $boxOwner->id);
@@ -182,7 +183,7 @@ class CollectionService implements CollectionServiceInterface
             $pdf->loadHTML($html);
             $binary = $pdf->output();
 
-            $filename = 'cierre-de-caja-' . Str::slug($userBox, '-')  . '.pdf';
+            $filename = Str::upper('cierre-de-caja-' . Str::slug($userBox, '-')  . '.pdf');
 
             return [
                 'binary'        => $binary,

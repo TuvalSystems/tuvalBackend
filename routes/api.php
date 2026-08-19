@@ -558,6 +558,11 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('lista', [DespachosController::class, 'listaConsultaOrdenesDespacho']);
                 Route::post('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
             });
+
+            Route::prefix('cierre-cajas')->group(function () {
+                Route::post('cerrar', [CobranzasController::class, 'cerrarCajaV1']);
+                Route::post('resumen', [CobranzasController::class, 'resumenCerrarCaja']);
+            });
         });
 
 
