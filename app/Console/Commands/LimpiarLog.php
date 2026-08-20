@@ -28,7 +28,7 @@ class LimpiarLog extends Command
             'despachos.log',
             'guia_ventas.log',
             'invoice.log',
-            'cobranzas.og'
+            'cobranzas.log'
         ];
 
         // Detectamos grupo del directorio storage para alinear los archivos
