@@ -3,9 +3,11 @@
 namespace App\Services\Cobranzas\CobrosFacturas;
 
 use App\Constants\Cobranzas\CobrosFacturas\CollectionConstants;
+use App\Enums\Admin\Sync\StatusSync;
 use App\Enums\Cobranzas\CobrosFacturas\CollectTypeEnum;
 use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
 use App\Events\Cobranzas\CobrosFacturas\RefreshListCollectionEvent;
+use App\Models\Admin\SyncLog;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosCheques;
 use App\Models\Cobranzas\GpCobrosChequesFacturas;
@@ -31,6 +33,7 @@ use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInt
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 {
@@ -38,6 +41,9 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         'Registro de cobro guardado correctamente.',
         'El número de recibo de cobro enviado ya existe para esta empresa.',
     ];
+
+    private const SYNC_LOG_MODULE = 'CollectionGpSenderService';
+    private const SYNC_LOG_ACTION_PREFIX = 'enviar';
 
     public function __construct(
         protected readonly CollectionRegistrationBuilderInterface $collectBuilder,
@@ -99,7 +105,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         } finally {
             $lock->release();
         }
-        // throw new \LogicException('CollectionGpSenderService::sendCollectionToGp esta pendiente de implementar.');
+
     }
 
 
@@ -147,7 +153,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             ->values()
             ->all();
 
-        $response   = $this->sendCollectionToApi($headerPayload, $invoiceDatailPayload);
+        $response   = $this->sendCollectionToApi($collection, 'efectivo', $headerPayload, $invoiceDatailPayload, $cashPayment->id);
         $message    = $this->extractResponseMessage($response);
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
@@ -228,7 +234,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 })
                 ->values()
                 ->all();
-            $response   = $this->sendCollectionToApi($headerPayloadDeposit, $invoiceDatailPayload);
+            $response   = $this->sendCollectionToApi($collection, 'deposito', $headerPayloadDeposit, $invoiceDatailPayload, $deposit->id);
             $message    = $this->extractResponseMessage($response);
             $sent       = $this->isSuccessfulGpResponse($response, $message);
             $deposit->update([
@@ -307,7 +313,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             ->values()
             ->all();
 
-        $response   = $this->sendCollectionToApi($headerPayload, $invoiceDatailPayload);
+        $response   = $this->sendCollectionToApi($collection, 'tarjeta', $headerPayload, $invoiceDatailPayload, $cardAmount->id);
         $message    = $this->extractResponseMessage($response);
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
@@ -399,7 +405,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                     $invoice->observacion
                 );
 
-                $response = $this->sendApplicationCollectionToApi($payload);
+                $response = $this->sendApplicationCollectionToApi($collection, 'aplicacion', $payload, $application->id);
                 $message = $this->extractResponseMessage($response);
                 $sent = $this->isSuccessfulGpResponse($response, $message);
 
@@ -482,7 +488,13 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                     $amount
                 );
 
-                $response = $this->sendRetencionCollectionToGp($payload['cabecera'], $payload['detalle']);
+                $response = $this->sendRetencionCollectionToGp(
+                    $collection,
+                    'retencion_' . $retentionType['key'],
+                    $payload['cabecera'],
+                    $payload['detalle'],
+                    $retention->id
+                );
                 $message = $this->extractResponseMessage($response);
                 $sent = $this->isSuccessfulGpResponse($response, $message);
 
@@ -657,7 +669,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 );
             })->values()->all();
 
-        $response   = $this->sendCheckCollectionToApi($payloadHeader, $payloadCheck, $invoiceDetailPayload);
+        $response   = $this->sendCheckCollectionToApi($collection, 'cheque', $payloadHeader, $payloadCheck, $invoiceDetailPayload, $checkAmount->id);
         $message    = $this->extractResponseMessage($response);
         $sent       = $this->isSuccessfulGpResponse($response, $message);
 
@@ -690,36 +702,180 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     }
 
     // envio de metodos de pago a sqlServer efectivo, tarjeta, deposito
-    private function sendCollectionToApi(array $headerPayload, array $invoiceDatailPayload)
+    private function sendCollectionToApi(
+        GpCobro $collection,
+        string $paymentMethod,
+        array $headerPayload,
+        array $invoiceDatailPayload,
+        ?int $paymentRecordId = null
+    )
     {
-        return $this->api->registerCashCollectionInGp([
+        $payload = [
             'cabecera'  => $headerPayload,
             'detalle'   => $invoiceDatailPayload
-        ]);
+        ];
+
+        return $this->sendGpApiRequest(
+            $collection,
+            $paymentMethod,
+            'registerCashCollectionInGp',
+            $payload,
+            fn(array $payload) => $this->api->registerCashCollectionInGp($payload),
+            $paymentRecordId
+        );
     }
     // envio de retencion de sqlServer
-    private function sendRetencionCollectionToGp(array $header, array $detail)
+    private function sendRetencionCollectionToGp(
+        GpCobro $collection,
+        string $paymentMethod,
+        array $header,
+        array $detail,
+        ?int $paymentRecordId = null
+    )
     {
-        return $this->api->registerRetentionCollectionInGp([
+        $payload = [
             'cabecera'  => $header,
             'detalle'   => $detail
-        ]);
+        ];
+
+        return $this->sendGpApiRequest(
+            $collection,
+            $paymentMethod,
+            'registerRetentionCollectionInGp',
+            $payload,
+            fn(array $payload) => $this->api->registerRetentionCollectionInGp($payload),
+            $paymentRecordId
+        );
     }
 
     //envio de cheque a sqlServer
-    private function sendCheckCollectionToApi(array $header, array $check, array $detail)
+    private function sendCheckCollectionToApi(
+        GpCobro $collection,
+        string $paymentMethod,
+        array $header,
+        array $check,
+        array $detail,
+        ?int $paymentRecordId = null
+    )
     {
-        return $this->api->registerCheckCollectionInGp([
+        $payload = [
             'cabecera' => $header,
             'cheques'  => $check,
             'detalle' => $detail
-        ]);
+        ];
+
+        return $this->sendGpApiRequest(
+            $collection,
+            $paymentMethod,
+            'registerCheckCollectionInGp',
+            $payload,
+            fn(array $payload) => $this->api->registerCheckCollectionInGp($payload),
+            $paymentRecordId
+        );
     }
 
     // envio de aplicaciones a sqlServer
-    private function sendApplicationCollectionToApi(array $applicationPayload)
+    private function sendApplicationCollectionToApi(
+        GpCobro $collection,
+        string $paymentMethod,
+        array $applicationPayload,
+        ?int $paymentRecordId = null
+    )
     {
-        return $this->api->registerApplicationCollectionInGp($applicationPayload);
+        return $this->sendGpApiRequest(
+            $collection,
+            $paymentMethod,
+            'registerApplicationCollectionInGp',
+            $applicationPayload,
+            fn(array $payload) => $this->api->registerApplicationCollectionInGp($payload),
+            $paymentRecordId
+        );
+    }
+
+    private function sendGpApiRequest(
+        GpCobro $collection,
+        string $paymentMethod,
+        string $apiMethod,
+        array $payload,
+        callable $callback,
+        ?int $paymentRecordId = null
+    ) {
+        try {
+            $response = $callback($payload);
+            $message = $this->extractResponseMessage($response);
+            $sent = $this->isSuccessfulGpResponse($response, $message);
+
+            $this->logGpApiRequest(
+                $collection,
+                $paymentMethod,
+                $apiMethod,
+                $payload,
+                $response,
+                $message,
+                $sent,
+                $paymentRecordId
+            );
+
+            return $response;
+        } catch (Throwable $exception) {
+            $this->logGpApiRequest(
+                $collection,
+                $paymentMethod,
+                $apiMethod,
+                $payload,
+                [
+                    'exception' => get_class($exception),
+                    'message'   => $exception->getMessage(),
+                    'code'      => $exception->getCode(),
+                ],
+                $exception->getMessage(),
+                false,
+                $paymentRecordId
+            );
+
+            throw $exception;
+        }
+    }
+
+    private function logGpApiRequest(
+        GpCobro $collection,
+        string $paymentMethod,
+        string $apiMethod,
+        array $requestPayload,
+        mixed $response,
+        string $message,
+        bool $sent,
+        ?int $paymentRecordId = null
+    ): void {
+        try {
+            SyncLog::create([
+                'module'      => self::SYNC_LOG_MODULE,
+                'action'      => self::SYNC_LOG_ACTION_PREFIX . '_' . $paymentMethod . '_gp',
+                'method'      => $apiMethod,
+                'message'     => $message !== '' ? $message : 'Respuesta sin mensaje de GP',
+                'external_id' => $this->extractLogExternalId($requestPayload),
+                'local_id'    => $collection->id,
+                'payload'     => [
+                    'collection_id'      => $collection->id,
+                    'numero_recibo'      => $collection->numero_recibo,
+                    'payment_method'     => $paymentMethod,
+                    'payment_record_id'  => $paymentRecordId,
+                    'request'            => $requestPayload,
+                    'response'           => $response,
+                ],
+                'attempts'    => 0,
+                'status'      => $sent ? StatusSync::SUCCESS : StatusSync::FAILED,
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    private function extractLogExternalId(array $payload): ?string
+    {
+        return data_get($payload, 'cabecera.numeroRecibo')
+            ?? data_get($payload, 'numeroRecibo')
+            ?? data_get($payload, 'recibo');
     }
 
     private function formatReceiptNumber(string $receiptNumber, string $type)
