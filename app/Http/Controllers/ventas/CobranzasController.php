@@ -1160,7 +1160,7 @@ class CobranzasController extends Controller
         $dispatch = app(DispatchServiceInterface::class);
         $logistics = app(LogisticsOperationsServiceInterface::class);
         $despachos = new DespachosController($order, $dispatch, $logistics);
-
+        $cobro->refresh();
         if ($cobro->estado === 'enviado') {
             $despachos->checkfacturasdespachos($cobro->id);
         }
