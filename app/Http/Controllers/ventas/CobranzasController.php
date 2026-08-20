@@ -1110,7 +1110,7 @@ class CobranzasController extends Controller
             $user = $request->user();
             $response = $this->collectionService->listPointSalesByUSer($user);
             return $this->successResponse('Lista Obtenida', $response, 200);
-        }, 'laravel', 'listaPvCajasUsuario');
+        }, 'cobranzas', 'listaPvCajasUsuario');
     }
 
 
@@ -1124,7 +1124,7 @@ class CobranzasController extends Controller
             $user = $request->user();
             $response = $this->collectionService->listBoxesByPointSales($pvId, $user);
             return $this->successResponse('Lista Obtenida', $response, 200);
-        }, 'laravel', 'listarCajasDisponiblesPorUsuario');
+        }, 'cobranzas', 'listarCajasDisponiblesPorUsuario');
     }
 
 
@@ -1141,7 +1141,7 @@ class CobranzasController extends Controller
             $cajaId = data_get($validate, 'caja_id');
             $response = $this->collectionService->getBoxClosureByDate($cajaId, $fecha);
             return $this->successResponse('Consulta realizada', $response, 200);
-        }, 'laravel', 'consultarCierreCajaUsuario');
+        }, 'cobranzas', 'consultarCierreCajaUsuario');
     }
 
 
@@ -1158,7 +1158,7 @@ class CobranzasController extends Controller
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdfByUser($cajaId, $fecha);
             return $this->buildFileResponse($pdf, 200);
-        }, 'laravel', 'imprimirPdfConsultaCierreCaja');
+        }, 'cobranzas', 'imprimirPdfConsultaCierreCaja');
     }
 
     public function imprimirPdfCierreCaja(Request $request): Response
@@ -1173,7 +1173,7 @@ class CobranzasController extends Controller
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdf($cajaId, $fecha);
             return $this->buildFileResponse($pdf, 200);
-        }, 'laravel', 'imprimirPdfCierreCaja');
+        }, 'cobranzas', 'imprimirPdfCierreCaja');
     }
 
     /** funciones para la validacion de pagos de facturas  */
@@ -1185,7 +1185,7 @@ class CobranzasController extends Controller
             $user       = $request->user() ?? GpUsuario::find(179);
             $info       = $this->customer->validateIdentifyPaymentInvoices($payload, $user);
             return $this->successResponse('Información de Pagos Obtenido!', $info, 200);
-        }, 'laravel', 'obtenerInformacionPagosFacturas');
+        }, 'cobranzas', 'obtenerInformacionPagosFacturas');
     }
 
     /** function para listar los cobros que pueden ser desaplicados  */
@@ -1196,7 +1196,7 @@ class CobranzasController extends Controller
             $filters  = $request->input('filters', []);
             $lista     = $this->unapplycation->fetchAppliedCollections($filters);
             return $this->successResponse('Lista obtenida', $lista, 200);
-        }, 'laravel', 'listaCobrosPorDesaplicar');
+        }, 'cobranzas', 'listaCobrosPorDesaplicar');
     }
 
     public function detalleCobrosAplicados(Request $request): JsonResponse
@@ -1207,7 +1207,7 @@ class CobranzasController extends Controller
             $user = $request->user();
             $data = $this->unapplycation->getAllDetailCollection($ruc, $factura, $user);
             return $this->successResponse('Obtenido con Éxito', $data, 200);
-        }, 'laravel', 'detaleCobrosAplicados');
+        }, 'cobranzas', 'detaleCobrosAplicados');
     }
 
     public function procesarDesaplicaciones(Request $request): JsonResponse
@@ -1218,7 +1218,7 @@ class CobranzasController extends Controller
             $data = $this->unapplycation->processUpdateUnapplicationItems($items, $user);
             $mensaje = $data['updated'] > 0 ? 'Aplicaciones desaplicadas correctamente.' : 'No se desaplicó ningún registro.';
             return $this->buildSuccessResponse($mensaje,  200);
-        }, 'laravel', 'actualizarAplicaciones');
+        }, 'cobranzas', 'actualizarAplicaciones');
     }
 
     public function actualizarListaDocumentosAplicacion(Request $request): JsonResponse
@@ -1228,7 +1228,7 @@ class CobranzasController extends Controller
             $documents  = $request->input('documentos', []);
             $response   = $this->customer->updatePendingApplicationDocumentBalances($clientId, $documents);
             return $this->successResponse('Lista actualizada correctamente', $response, 200);
-        }, 'laravel', 'actualizacionDocumentosAplicacion');
+        }, 'cobranzas', 'actualizacionDocumentosAplicacion');
     }
 
     public function listaHistoricaDepositos(Request $request): JsonResponse
@@ -1237,7 +1237,7 @@ class CobranzasController extends Controller
             $filters = $request->input('filters', []);
             $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
             return $this->successResponse('Datos obtenidos correctamente', $response, 200);
-        }, 'laravel', 'listaHistoricaDepositos');
+        }, 'cobranzas', 'listaHistoricaDepositos');
     }
 
 
@@ -1260,7 +1260,7 @@ class CobranzasController extends Controller
             $user = $request->user() ?? GpUsuario::find(179);
             $caja = $this->invoiceCollect->getStatusBoxedUser($pvId, $pvCode, $fecha, $user);
             return $this->successResponse('Datos obtenidos correctamente', $caja, 200);
-        }, 'laravel', 'obtenerEstadoCajaUsuario');
+        }, 'cobranzas', 'obtenerEstadoCajaUsuario');
     }
 
 
@@ -1274,7 +1274,7 @@ class CobranzasController extends Controller
             $pvId = data_get($validate, 'pvId');
             $caja = $this->invoiceCollect->openCashBoxed($pvId, $user);
             return $this->successResponse('Apertura de Caja Realizado con exito', $caja, 200);
-        }, 'laravel', 'abrirCajaUsuario');
+        }, 'cobranzas', 'abrirCajaUsuario');
     }
 
 
@@ -1287,7 +1287,7 @@ class CobranzasController extends Controller
             $id        = data_get($validate, 'id');
             $response  = $this->invoiceCollect->generateClientAccountStatementPdf($id);
             return $this->buildFileResponse($response);
-        }, 'laravel', 'imprimirPdfEstadoCuentaCliente');
+        }, 'cobranzas', 'imprimirPdfEstadoCuentaCliente');
     }
 
     public function imprimirExcelEstadoCuentaCliente(Request $request): Response
@@ -1299,7 +1299,7 @@ class CobranzasController extends Controller
             $id        = data_get($validate, 'id');
             $response  = $this->invoiceCollect->generateClientAccountStatementExcel($id);
             return $this->buildFileResponse($response);
-        }, 'laravel', 'imprimirExcelEstadoCuentaCliente');
+        }, 'cobranzas', 'imprimirExcelEstadoCuentaCliente');
     }
 
 
@@ -1313,7 +1313,7 @@ class CobranzasController extends Controller
             $id = data_get($validate, 'id');
             $response = $this->invoiceCollect->getInvoiceCollectionsByClient($id);
             return $this->successResponse('Información Obtenida Correctamente', $response);
-        }, 'laravel', 'obtenerFacturasEstadoCuentaCliente');
+        }, 'cobranzas', 'obtenerFacturasEstadoCuentaCliente');
     }
 
     public function obtenerListaDeDocumentosPendientesAplicacion(Request $request): JsonResponse
@@ -1325,7 +1325,7 @@ class CobranzasController extends Controller
             $id = data_get($validate, 'id');
             $response = $this->invoiceCollect->getUnappliedCollectionsByClient($id);
             return $this->successResponse('Información Obtenida Correctamente', $response);
-        }, 'laravel', 'obtenerListaDeDocumentosPendientesAplicacion');
+        }, 'cobranzas', 'obtenerListaDeDocumentosPendientesAplicacion');
     }
 
     public function obtenerListaBancos(): JsonResponse
@@ -1333,7 +1333,7 @@ class CobranzasController extends Controller
         return $this->handleApiAction(function (): JsonResponse {
             $response = $this->invoiceCollect->getBanks();
             return $this->successResponse('Información Obtenida Correctamente', $response);
-        }, 'laravel', 'obtenerListaBancos');
+        }, 'cobranzas', 'obtenerListaBancos');
     }
 
     public function consultarExistenciaRetencion(Request $request): JsonResponse
@@ -1351,7 +1351,7 @@ class CobranzasController extends Controller
                 return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
             }
             return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
-        }, 'laravel', 'consultarExistenciaRetencion');
+        }, 'cobranzas', 'consultarExistenciaRetencion');
     }
 
     public function consultarExistenciaDeposito(Request $request): JsonResponse
@@ -1371,7 +1371,7 @@ class CobranzasController extends Controller
                 return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
             }
             return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
-        }, 'laravel', 'consultarExistenciaDeposito');
+        }, 'cobranzas', 'consultarExistenciaDeposito');
     }
 
 
@@ -1391,7 +1391,7 @@ class CobranzasController extends Controller
                 return $this->buildExistResponse(false, 'Cheque ya ingresado con anterioridad', 200);
             }
             return $this->buildExistResponse(true, 'Cheque no existente, proceda', 200);
-        }, 'laravel', 'consultarExistenciaCheque');
+        }, 'cobranzas', 'consultarExistenciaCheque');
     }
 
 
@@ -1402,7 +1402,7 @@ class CobranzasController extends Controller
             $filtros    = $request->input('filters', []);
             $lista      = $this->invoiceCollect->fetchListCollection($filtros);
             return $this->successResponse('Información Obtenida Correctamente', $lista);
-        }, 'laravel', 'listaCobrosPorCliente');
+        }, 'cobranzas', 'listaCobrosPorCliente');
     }
 
     public function imprirCobroPdf(Request $request): Response
@@ -1415,7 +1415,7 @@ class CobranzasController extends Controller
             $usuario = $request->user() ?? GpUsuario::find(179);
             $resultado  = $this->invoiceCollect->printCollectionPdf($cobroId, $usuario);
             return $this->buildFileResponse($resultado);
-        }, 'laravel', 'imprirCobroPdf');
+        }, 'cobranzas', 'imprirCobroPdf');
     }
 
     public function registrarCobroV1(RegisterCollectionRequest $request): JsonResponse
@@ -1426,7 +1426,7 @@ class CobranzasController extends Controller
             $cobro = $this->collectionRegistrationService->registerCollection($validate, $user);
             $mensaje = "Cobro {$cobro->numero_recibo} enviado a procesar.!";
             return $this->buildSuccessResponse($mensaje,  200);
-        }, 'laravel', 'registrarCobro');
+        }, 'cobranzas', 'registrarCobro');
     }
 
 
@@ -1442,7 +1442,7 @@ class CobranzasController extends Controller
             $cobroId         = data_get($validate, 'cobro_id');
             $data = $this->sendCollectionService->sendCollectionToGp($cobroId);
             return $this->successResponse('Cobro Registrado', $data);
-        }, 'laravel', 'enviarCobroGp');
+        }, 'cobranzas', 'enviarCobroGp');
     }
 
     /** api para enviar lote de cobros al job en estado iniciado o recibido  */
@@ -1451,7 +1451,7 @@ class CobranzasController extends Controller
         return $this->handleApiAction(function (): JsonResponse {
             $this->collectionRegistrationService->reSendCollectionPendings();
             return $this->buildSuccessResponse("Cobros enviados a procesar", 200);
-        }, 'laravel', 'enviarCobrosLote');
+        }, 'cobranzas', 'enviarCobrosLote');
     }
 
 
@@ -1471,7 +1471,7 @@ class CobranzasController extends Controller
             $user   = $request->user() ?? GpUsuario::find(179);
             $this->cashClosureService->cashCloseBox($boxId, $pvId, $pvCode, $user);
             return $this->buildSuccessResponse("Caja Cerrada exitosamente", 200);
-        }, 'laravel', 'cerrarCajaV1');
+        }, 'cobranzas', 'cerrarCajaV1');
     }
 
 
@@ -1492,6 +1492,6 @@ class CobranzasController extends Controller
             $user   = $request->user() ?? GpUsuario::find(179);
             $response =  $this->cashClosureService->getCashBoxClosureSummary($boxId, $pvId, $pvCode, $fecha, $user);
             return $this->successResponse("Resumen de cierre de caja obtenido exitosamente", $response, 200);
-        }, 'laravel', 'resumenCerrarCaja');
+        }, 'cobranzas', 'resumenCerrarCaja');
     }
 }

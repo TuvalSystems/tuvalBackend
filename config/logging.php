@@ -128,6 +128,11 @@ return [
             'path' => storage_path('logs/apiservice.log'),
             // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
+        'cobranzas' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/cobranzas.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
         'devolucion' => [
             'driver' => 'single',
             'path' => storage_path('logs/devolucion.log'),

@@ -55,12 +55,12 @@ trait ExecuteApiTransactions
             $codigo = ($e->getCode() === '40001') ? 409 : 500;
             $mensaje = ($codigo === 409) ? 'Recurso ocupado, reintente.' : 'Error de integridad en base de datos.';
 
-            Log::channel($canalLog)->error("Error de Base de Datos en $contextoLog : ", [
+            $this->logException($canalLog, "Error de Base de Datos en $contextoLog : ", [
                 'message' => $e->getMessage(),
                 'sql'     => $e->getSql()
             ]);
         } else {
-            Log::channel($canalLog)->error("Error General en $contextoLog : ", [
+            $this->logException($canalLog, "Error General en $contextoLog : ", [
                 'message' => $e->getMessage(),
                 'linea'   => $e->getLine(),
                 'file'    => $e->getFile()
@@ -69,5 +69,23 @@ trait ExecuteApiTransactions
         }
 
         return $this->buildErrorResponse($mensaje, $codigo);
+    }
+
+    private function logException(string $canalLog, string $message, array $context): void
+    {
+        try {
+            $channels = config('logging.channels', []);
+
+            if (array_key_exists($canalLog, $channels)) {
+                Log::channel($canalLog)->error($message, $context);
+                return;
+            }
+
+            Log::error($message, array_merge($context, [
+                'requested_log_channel' => $canalLog,
+            ]));
+        } catch (\Throwable) {
+            // El logging no debe reemplazar la respuesta HTTP del error original.
+        }
     }
 }
