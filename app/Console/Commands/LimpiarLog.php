@@ -29,6 +29,7 @@ class LimpiarLog extends Command
             'guia_ventas.log',
             'invoice.log',
             'pedido.log',
+            'cotizacion.log',
             'cobranzas.log'
         ];
 

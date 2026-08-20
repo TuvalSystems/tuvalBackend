@@ -40,6 +40,8 @@ class CotizacionesController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
+    private const LOG_CHANNEL = 'cotizacion';
+
     public function __construct(
         protected readonly QuotationServiceInterface $quotationService,
         protected readonly ClientQueryServiceInterface $clientService,
@@ -52,19 +54,18 @@ class CotizacionesController extends Controller
     {
         return $this->handleApiAction(function (): JsonResponse {
             return $this->successResponse('Lista Obtenida', $this->clientService->getListTypeDni());
-        }, 'laravel', 'obtenerListaTipoIdentificacion');
+        }, self::LOG_CHANNEL, 'obtenerListaTipoIdentificacion');
     }
 
 
     public function store(ValidateStoreQuotationRequest $request): JsonResponse
     {
-
-        try {
-            $user = $request->user();
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $user                   = $request->user();
             $imagenesExistentes     = $request->input('imagenes_existentes', []);
             $imagenesNuevas         = $request->file('imagenes_nuevas', []);
-            $pdfsNuevos            = $request->file('pdfs_nuevos', []);
-            $pdfsExistentes        = $request->input('pdfs_existentes', []);
+            $pdfsNuevos             = $request->file('pdfs_nuevos', []);
+            $pdfsExistentes         = $request->input('pdfs_existentes', []);
             $cotizacion = $this->quotationCreator->createOrUpdate(
                 $request->validated(),
                 $user,
@@ -75,16 +76,7 @@ class CotizacionesController extends Controller
             );
             $msg = "Cotización {$cotizacion->cotizacion} guardada correctamente";
             return $this->buildSuccessResponse($msg, 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
-        } catch (\Throwable $e) {
-            Log::error('Error in CotizacionesController@store', [
-                'error' => $e->getMessage(),
-                'linea' => $e->getLine(),
-                'file'  => $e->getFile(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'CotizacionesController@store');
     }
     public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -443,7 +435,7 @@ class CotizacionesController extends Controller
         ];
 
         $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion', $parameters);
-        Log::info('Nueva Direccion', $nuevaDireccion);
+        Log::channel(self::LOG_CHANNEL)->info('Nueva Direccion', $nuevaDireccion);
         if (!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])) {
 
             return response([
@@ -509,23 +501,18 @@ class CotizacionesController extends Controller
             $user = $request->user();
             $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
             return $this->successResponse('Cliente Guardado Correctamente', $cliente, 200);
-        }, 'laravel', 'guardarcliente');
+        }, self::LOG_CHANNEL, 'guardarcliente');
     }
 
 
     public function guardarNuevaDireccionSucursal(Request $request)
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $data = data_get($request->all(), 'form', []);
             $user = $request->user();
             $sucursal = $this->clientService->storeNewAddressClient($data, $user);
             return $this->successResponse('Información Obtenida Correctamente', $sucursal, 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
-        } catch (\Throwable $e) {
-
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'guardarNuevaDireccionSucursal');
     }
 
     public function detallecotizacion(Request $request)
@@ -534,7 +521,7 @@ class CotizacionesController extends Controller
             $data = $request->all();
             $quote = $this->quotationService->detailQuotation($data, $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $quote, 200);
-        }, 'laravel', 'detallecotizacion');
+        }, self::LOG_CHANNEL, 'detallecotizacion');
     }
 
 
@@ -543,22 +530,13 @@ class CotizacionesController extends Controller
 
     public function recuperarCotizacionV2(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $request->validate([
                 'id' => 'required|exists:gp_cotizacions,id',
             ]);
             $cotizacion = $this->quotationService->restoreQuotationV2($request->input('id'));
             return $this->successResponse('Información Obtenida Correctamente', $cotizacion, 200);
-        } catch (ModelNotFoundException $e) {
-            return $this->buildErrorResponse("La cotización no existe.", 404);
-        } catch (\Throwable $th) {
-            Log::error('Error in recuperarCotizacionV2 (Recuperar cotización V2)', [
-                'error' => $th->getMessage(),
-                'linea' => $th->getLine(),
-                'file' => $th->getFile(),
-            ]);
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'recuperarCotizacionV2');
     }
 
 
@@ -595,7 +573,7 @@ class CotizacionesController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->buildErrorResponse("La cotización no existe.", 404);
         } catch (\Throwable $th) {
-            Log::error('Error in volverAPedirCotizacionV2 (Volver a pedir cotización V2)', [
+            Log::channel(self::LOG_CHANNEL)->error('Error in volverAPedirCotizacionV2 (Volver a pedir cotización V2)', [
                 'error' => $th->getMessage(),
                 'linea' => $th->getLine(),
                 'file' => $th->getFile(),
@@ -610,7 +588,7 @@ class CotizacionesController extends Controller
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $quote = $this->quotationService->updateQuoteClientData($request->input('id'), $request->input('cliente_id'));
             return $this->successResponse('Cotización actualizada', $quote,  200);
-        }, 'laravel', 'actualizarCotizacionPropectoV2');
+        }, self::LOG_CHANNEL, 'actualizarCotizacionPropectoV2');
     }
 
     public function limpiarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -843,7 +821,7 @@ class CotizacionesController extends Controller
         return $this->handleApiAction(function () {
             $lista = $this->quotationService->getNonSalesReasons();
             return $this->successResponse('Lista Obtenida', $lista, 200);
-        }, 'laravel', 'getlistNonSaleReasons');
+        }, self::LOG_CHANNEL, 'getlistNonSaleReasons');
     }
 
 
@@ -924,7 +902,7 @@ class CotizacionesController extends Controller
             $response = $this->quotationService->getStockItemsForWarehouse($articulo, $bodega, $cotizacionId);
             return $this->successResponse('Stock obtenido correctamente', $response, 200);
         } catch (\Throwable $e) {
-            Log::error(
+            Log::channel(self::LOG_CHANNEL)->error(
                 'Error al obtener stock',
                 [
                     'error' => $e->getMessage(),
@@ -954,7 +932,7 @@ class CotizacionesController extends Controller
             $cotizacionId = $cotizacionId !== null ? (int) $cotizacionId : null;
             $response = $this->quotationService->getStockItemsForWarehouseV2($items, $bodega, $cotizacionId);
             return $this->successResponse('Lote obtenido correctamente', $response, 200);
-        }, 'laravel', 'obtenerStockItemsLote');
+        }, self::LOG_CHANNEL, 'obtenerStockItemsLote');
     }
 
 
@@ -967,7 +945,7 @@ class CotizacionesController extends Controller
             ]);
             $datosL = $this->quotationService->getMarginItem($request->articulo);
             return $this->successResponse('Información obtenida correctamente', $datosL, 200);
-        }, 'laravel', 'obteneMargenItemlL');
+        }, self::LOG_CHANNEL, 'obteneMargenItemlL');
     }
 
 
@@ -1027,7 +1005,7 @@ class CotizacionesController extends Controller
             $pvCodigo = $request->input('pvCodigo', null);
             $response = $this->quotationService->getDefaultPriceListByPos($pvCodigo);
             return $this->successResponse('Información Obtenida Correctamente', $response);
-        }, 'laravel', 'obtenerListaPrecioDefectoPuntoVenta');
+        }, self::LOG_CHANNEL, 'obtenerListaPrecioDefectoPuntoVenta');
     }
 
 
@@ -1036,7 +1014,7 @@ class CotizacionesController extends Controller
         return $this->handleApiAction(function (): JsonResponse {
             $data = $this->quotationService->getistProyectSellectToGp();
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
-        }, 'laravel', 'obtenerListaProyectosVenta');
+        }, self::LOG_CHANNEL, 'obtenerListaProyectosVenta');
     }
 
 
@@ -1052,11 +1030,11 @@ class CotizacionesController extends Controller
             ]);
             $filters    = data_get($validate, 'filters', []);
             $clientId   = data_get($validate, 'cliente_id');
-            $pvId       = data_get($validate,'pvId');
+            $pvId       = data_get($validate, 'pvId');
             $pvCode     = data_get($validate,  'pvCode');
             $user = $request->user() ?? GpUsuario::find(179);
             $data = $this->invoiceHistory->fetchInvoiceHistory($user, $clientId, $pvId, $pvCode, $filters);
             return $this->successResponse('Lista Obtenida Correctamente', $data);
-        }, 'laravel', 'obtenerFacturasHistoricasCotizacion');
+        }, self::LOG_CHANNEL, 'obtenerFacturasHistoricasCotizacion');
     }
 }
