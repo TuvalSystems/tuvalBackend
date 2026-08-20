@@ -36,6 +36,8 @@ class PedidosController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
+    private const LOG_CHANNEL = 'pedido';
+
     public function __construct(
         protected readonly ApiGpService $apiGp,
         protected readonly OrderServiceInterface $orderService,
@@ -83,7 +85,7 @@ class PedidosController extends Controller
                 if (in_array($mysqlCode, [1213, 1205]) && $attempt < $maxRetries) {
                     $attempt++;
                     usleep(200000);
-                    Log::warning('Deadlock/lock wait guardarpedido, reintentando...', [
+                    Log::channel(self::LOG_CHANNEL)->warning('Deadlock/lock wait guardarpedido, reintentando...', [
                         'attempt' => $attempt,
                         'mysqlCode' => $mysqlCode,
                         'msg' => $e->getMessage(),
@@ -94,7 +96,7 @@ class PedidosController extends Controller
                 }
 
                 // si no es 1213/1205 o ya superó los reintentos, lo tratamos como error real
-                Log::error('Error in storeOrderV2 (guardar pedido)', [
+                Log::channel(self::LOG_CHANNEL)->error('Error in storeOrderV2 (guardar pedido)', [
                     'error'     => $e->getMessage(),
                     'line'      => $e->getLine(),
                     'file'      => $e->getFile(),
@@ -106,7 +108,7 @@ class PedidosController extends Controller
                 return $this->buildErrorResponse($e->getMessage(), 422);
             } catch (\Throwable $e) {
                 // cualquier otra excepción que no sea de SQL
-                Log::error('Error in storeOrderV2 (guardar pedido)', [
+                Log::channel(self::LOG_CHANNEL)->error('Error in storeOrderV2 (guardar pedido)', [
                     'error'     => $e->getMessage(),
                     'line'      => $e->getLine(),
                     'file'      => $e->getFile(),
@@ -130,7 +132,7 @@ class PedidosController extends Controller
             $order = DB::transaction(function () use ($data) {
                 return $this->orderService->generateInvoiceOrder($data['id']);
             });
-            Log::info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
+            Log::channel(self::LOG_CHANNEL)->info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
             return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
         } catch (HttpException $e) {
             return $this->buildErrorResponse(
@@ -149,7 +151,7 @@ class PedidosController extends Controller
                 ->first();
             $order = $this->orderService->generateInvoiceOrder($pedido->id);
             return $this->successResponse('Pedido Facturado', $order, 200);
-        }, 'laravel', 'facturarPedidoTest');
+        }, self::LOG_CHANNEL, 'facturarPedidoTest');
     }
 
     
@@ -238,7 +240,7 @@ class PedidosController extends Controller
             $user   = $request->user();
             $detail = $this->orderService->getOrderDetailStatement($id, $user);
             return $this->successResponse('Detalle Obtenido', $detail, 200);
-        }, 'laravel', 'obtenerDetallePedido');
+        }, self::LOG_CHANNEL, 'obtenerDetallePedido');
     }
 
 
@@ -254,7 +256,7 @@ class PedidosController extends Controller
                 $e->getStatusCode()
             );
         } catch (\Throwable $e) {
-            Log::error('Error en checkExistence', ['exception' => $e]);
+            Log::channel(self::LOG_CHANNEL)->error('Error en checkExistence', ['exception' => $e]);
 
             return $this->buildErrorResponse($e->getMessage(), 500);
         }
@@ -282,7 +284,7 @@ class PedidosController extends Controller
                 $e->getStatusCode()
             );
         } catch (\Throwable $e) {
-            Log::error('Error in facturarexistente', [
+            Log::channel(self::LOG_CHANNEL)->error('Error in facturarexistente', [
                 'error' => $e->getMessage(),
                 'data' => $pedidoId,
                 'file' => $e->getFile(),
@@ -316,7 +318,7 @@ class PedidosController extends Controller
             $user = $request->user() ?? GpUsuario::find(179);
             $response = $this->orderService->loadOrderForCopy($request->get('id'),  $user);
             return $this->successResponse('Pedido copiado correctamente', $response, 200);
-        }, 'laravel', 'volverAPedirPedido');
+        }, self::LOG_CHANNEL, 'volverAPedirPedido');
     }
 
 
@@ -333,7 +335,7 @@ class PedidosController extends Controller
             $user = $request->user();
             $response = $this->orderService->copyQuoteOrOrder($request->input('rowId'), $request->input('sucursal_id'), $request->input('cliente_id'), $request->input('tipo'), $user);
             return $this->successResponse('Pedido/Cotización copiado correctamente', $response, 200);
-        }, 'laravel', 'copiarCotizacionPedido');
+        }, self::LOG_CHANNEL, 'copiarCotizacionPedido');
     }
 
 
@@ -395,7 +397,7 @@ class PedidosController extends Controller
             $pdf = PDF::loadView('pedidoridesinImagenPDF', $pedido);
             return $pdf->stream('ride-' . $pedido['pedido'] . '.pdf');
         } catch (\Throwable $e) {
-            Log::error('Error en imprimirpedidoridesinimagen', [
+            Log::channel(self::LOG_CHANNEL)->error('Error en imprimirpedidoridesinimagen', [
                 $e->getMessage()
             ]);
             return $this->buildErrorResponse($e->getMessage(), 404);
@@ -417,7 +419,7 @@ class PedidosController extends Controller
                 ->header('Content-Type', 'application/xml')
                 ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
         } catch (\Throwable $th) {
-            Log::error('Error en imprimirpedidoxml', [
+            Log::channel(self::LOG_CHANNEL)->error('Error en imprimirpedidoxml', [
                 'error' => $th->getMessage(),
                 'linea' => $th->getLine(),
                 'pedido_id' => $id,
@@ -431,7 +433,7 @@ class PedidosController extends Controller
             $order = $this->orderService->verifyOrderDispatchOrItemLRecived($id);
             return $this->successResponse('Información Obtenida Correctamente', $order, 200);
         } catch (\Throwable $th) {
-            Log::error('Error al obtener el despacho en proceso: ', [
+            Log::channel(self::LOG_CHANNEL)->error('Error al obtener el despacho en proceso: ', [
                 'error' => $th->getMessage(),
                 'pedido_id' => $id,
                 'linea' => $th->getLine()
@@ -541,7 +543,7 @@ class PedidosController extends Controller
         return $this->handleApiAction(function () use ($id) {
             DB::transaction(fn() => $this->orderService->generateOrderDispatch($id));
             return $this->buildSuccessResponse('Orden Generada', 200);
-        }, 'laravel', 'generarOrdenDeDespacho');
+        }, self::LOG_CHANNEL, 'generarOrdenDeDespacho');
     }
 
 
@@ -602,7 +604,7 @@ class PedidosController extends Controller
             $data = $this->orderService->syncPurchaseOrderAndNoteByOrder($id, $newOrd, $newNote);
             return $this->successResponse('Datos actualizados Correctamente', $data, 200);
         } catch (\Throwable $e) {
-            Log::error('Error al actualizar los datos del pedido: ', [
+            Log::channel(self::LOG_CHANNEL)->error('Error al actualizar los datos del pedido: ', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -625,7 +627,7 @@ class PedidosController extends Controller
             $data = $this->orderService->updateOrderReservationDate($id, $newDate);
             return $this->successResponse('Fecha de reserva actualizada Correctamente', $data, 200);
         } catch (\Throwable $e) {
-            Log::error('Error al actualizar la fecha de reserva del pedido: ', [
+            Log::channel(self::LOG_CHANNEL)->error('Error al actualizar la fecha de reserva del pedido: ', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -695,6 +697,6 @@ class PedidosController extends Controller
         return $this->handleApiAction(function () use ($pedido) {
             $pedido = $this->orderService->createTransferVtaOrders($pedido);
             return $this->successResponse('Traslado creado correctamente', $pedido, 200);
-        }, 'laravel', 'crearTrasladoPedidos');
+        }, self::LOG_CHANNEL, 'crearTrasladoPedidos');
     }
 }

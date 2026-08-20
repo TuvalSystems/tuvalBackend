@@ -155,6 +155,11 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/invoice.log')
         ],
+        'pedido' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/pedido.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
           'despachos' => [
             'driver' => 'single',
             'path' => storage_path('logs/despachos.log'),
