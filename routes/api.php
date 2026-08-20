@@ -208,7 +208,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
             Route::post('llenarcotizacionprospecto', [CotizacionesController::class, 'llenarcotizacionprospecto']);
             Route::post('guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
-            Route::post('limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
+            // Route::post('limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
             Route::post('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
             Route::post('selectarticulo', [CotizacionesController::class, 'selectarticulo']);
 

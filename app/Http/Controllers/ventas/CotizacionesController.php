@@ -87,16 +87,12 @@ class CotizacionesController extends Controller
             'sucursal_id' => '',
             'articulo' => []
         ]);
-
         $user = GpUsuario::where('id', $user->id)->first();
-
         if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
         }
-
         if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV-L')
             $data['articulo']['ART_TIPO_COMPRA'] = 'L';
-
         $articulo = new GpTempCart;
         $articulo->sucursal_id = $data['sucursal_id'];
         $articulo->cliente_id = $data['cliente_id'];
@@ -106,7 +102,6 @@ class CotizacionesController extends Controller
         $articulo->ART_CODIGO = $data['articulo']['ART_CODIGO'];
         $articulo->ART_DESCRIPCION = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION']));
         $articulo->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION_ORIGINAL']));
-        // $articulo->CHECK_ALTERNATIVO = $data['articulo']['CHECK_ALTERNATIVO'] ?? 0; // no va pero igual va comentado por si acaso
         $articulo->ART_CODIGO_TRES_LETRAS = $data['articulo']['ART_CODIGO_TRES_LETRAS'];
         $articulo->ART_DECIMAL_CANTIDAD = $data['articulo']['ART_DECIMAL_CANTIDAD'];
         $articulo->ART_PLAN_UMEDIDA = $data['articulo']['ART_PLAN_UMEDIDA'];
@@ -136,9 +131,7 @@ class CotizacionesController extends Controller
         }
         $articulo->orden = $orden->orden + 1;
         $articulo->save();
-
         $array_stock = array();
-
         foreach ($data['articulo']['stock'] as $stockbodega) {
             $stock = new GpTempCartStock;
             $stock->id_tempcart = $articulo->id;
@@ -146,25 +139,18 @@ class CotizacionesController extends Controller
             $stock->STO_ART_STOCK_DISPONIBLE = $stockbodega['STO_ART_STOCK_DISPONIBLE'];
             $stock->seleccionado = 0;
             $stock->save();
-
             $array_stock[] = $stock;
         }
-
         $articulo->proveedores = array();
-
         $articulo->stock = $array_stock;
-
         $imagenes = array();
         for ($i = 1; $i <= 3; $i++) {
             $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-
             if (File::exists($file)) {
                 $imagenes[] = env('APP_URL') . '/' . $file;
             }
         }
-
         $articulo->imagenes = $imagenes;
-
         return response([
             'success' => true,
             'articulo' => $articulo,
@@ -180,15 +166,11 @@ class CotizacionesController extends Controller
 
             'articulo' => []
         ]);
-
         $user = $request->user();
-
         if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
             $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
         }
-
         $data['articulo']['timestamp'] = time();
-
         return response([
             'success' => true,
             'articulo' => $data['articulo'],
@@ -215,11 +197,8 @@ class CotizacionesController extends Controller
         $prospecto->CLI_DIRECCION = trim($data['prospecto']['CLI_DIRECCION']);
         $prospecto->CLI_TELEFONO_1 = trim($data['prospecto']['CLI_TELEFONO_1']);
         $prospecto->save();
-
         $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-
         $cotizacion = new GpCotizacion;
-
         $cotizacion->user_id = $user->id;
         $cotizacion->sucursal_id = $data['sucursal_id'];
         $cotizacion->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
@@ -407,7 +386,6 @@ class CotizacionesController extends Controller
         if (!isset($dir[1])) {
             $dir[1] = '';
         }
-
         $parameters = array(
             'CLI_DIR_RUC' => $data['CLI_SUC_RUC'],
             'CLI_DIR_CONTACTO' => $data['CLI_SUC_CONTACTO'],
@@ -433,28 +411,19 @@ class CotizacionesController extends Controller
         $parameters = [
             'Direccion_Cliente' => array($parameters)
         ];
-
         $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion', $parameters);
         Log::channel(self::LOG_CHANNEL)->info('Nueva Direccion', $nuevaDireccion);
         if (!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])) {
-
             return response([
                 'error' => 'Hubo un error al guardar'
             ], 409);
         }
-
-        //        echo '<pre>';
-        //        print_r($nuevaDireccion);
-
         $CLI_SUC_ID_DIRECCION = explode('-', $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']);
-
         if (!isset($CLI_SUC_ID_DIRECCION[1])) {
             return response([
                 'error' => $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']
             ], 409);
         }
-
-
         $direccion = new GpClienteSucursal;
         $direccion->CLI_SUC_RUC = $data['CLI_SUC_RUC'];
         $direccion->CLI_SUC_DESCRIPCION = $data['CLI_SUC_DESCRIPCION'];
@@ -473,11 +442,9 @@ class CotizacionesController extends Controller
 
 
         if ($direccion->save()) {
-
             $cliente = GpCliente::where('CLI_RUC', $data['CLI_SUC_RUC'])->get()->first();
             $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
             $cliente->vendedor = $vendedor;
-
             $sucursales = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
             $cliente->sucursales = $sucursales;
             $cliente->sucursalesfacturacion = $sucursales;
@@ -504,7 +471,6 @@ class CotizacionesController extends Controller
         }, self::LOG_CHANNEL, 'guardarcliente');
     }
 
-
     public function guardarNuevaDireccionSucursal(Request $request)
     {
         return $this->handleApiAction(function () use ($request) {
@@ -524,10 +490,7 @@ class CotizacionesController extends Controller
         }, self::LOG_CHANNEL, 'detallecotizacion');
     }
 
-
-
     /** proceso de recuperar cotizacion optimizado para el nuevo front  */
-
     public function recuperarCotizacionV2(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request) {
@@ -544,9 +507,7 @@ class CotizacionesController extends Controller
     {
         $data = $request->all();
         $cliente = GpProspecto::where('id', $data['prospecto_id'])->first();
-
         $tipo = 'prospecto';
-
         $existente = GpCliente::where('CLI_RUC', $cliente->CLI_RUC)->first();
         if ($existente) {
             $tipo = 'cliente';
@@ -582,63 +543,21 @@ class CotizacionesController extends Controller
         }, self::LOG_CHANNEL, 'actualizarCotizacionPropectoV2');
     }
 
-    public function limpiarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->validate([
-            'cliente_id' => '',
-            'puntodeventa_id' => '',
-            'sucursal_id' => '',
-        ]);
-
-        $user = $request->user();
-
-        GpTempCart::where('sucursal_id', $data['sucursal_id'])
-            ->where('puntodeventa_id', $data['puntodeventa_id'])
-            ->where('cliente_id', $data['cliente_id'])
-            ->where('user_id', $user->id)
-            ->delete();
-
-        return response([
-            'success' => true,
-        ]);
-    }
-
-
-    /*
-
-     * ELIMINA LAS COTIZACIONES EXPIRADAS SEGÚN LOS DIAS POR PUNTO DE VENTA
-     *
-     *
-     */
-
+    /** ELIMINA LAS COTIZACIONES EXPIRADAS SEGÚN LOS DIAS POR PUNTO DE VENTA*/
     public function checkvalidezcotizaciones()
     {
-
         ini_set('max_execution_time', -1);
         set_time_limit(-1);
         ini_set('memory_limit', '-1');
-
-        //DB::statement("OPTIMIZE TABLE gp_temp_carts;");
-
         $puntosdeventa = GpPuntoVenta::get();
-
         foreach ($puntosdeventa as $puntodeventa) {
-
-
             $cotizaciones = GpCotizacion::where('PTO_VTA_ID', $puntodeventa->PTO_VTA_ID)
                 ->where('estado', '!=', 'caducado')
                 ->where('estado', '!=', 'procesado')
-                //->where('impreso', 'yes')
                 ->orderBy('created_at')
                 ->get();
 
             if (count($cotizaciones)) {
-
-                //                echo '<pre>';
-                //                print_r($cotizaciones);
-                //                die();
-
                 foreach ($cotizaciones as $cotizacion) {
                     $validez_real = $puntodeventa->PTO_VTA_DIA_VALIDEZ_COTIZACION;
                     for ($i = 1; $i <= $validez_real; $i++) {
@@ -659,12 +578,7 @@ class CotizacionesController extends Controller
                         $cotizacion->estado = 'caducado';
                         $cotizacion->save();
                     }
-                    //                    echo '<pre>';
-                    //
-                    //                    echo $expira.'<br>';
-                    //                    echo $cotizacion->created_at.'<br>';
-                    //                    print_r($cotizacion);
-                    //                    die();
+
                 }
             }
         }
@@ -674,7 +588,7 @@ class CotizacionesController extends Controller
         $cronLog->save();
     }
 
-    public function imprimircotizacion($id)
+    public function imprimircotizacion(int $id)
     {
         try {
             $cotizacion = $this->quotationService->printQuotationPdf($id, false);
@@ -687,7 +601,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function imprimircotizacionimagenes($id)
+    public function imprimircotizacionimagenes(int $id)
     {
         try {
             $cotizacion = $this->quotationService->printQuotationPdf($id, true);
@@ -700,7 +614,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function imprimircotizacionprospecto($id): \Illuminate\Http\Response|string
+    public function imprimircotizacionprospecto(int $id): \Illuminate\Http\Response|string
     {
         $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
 
@@ -730,8 +644,7 @@ class CotizacionesController extends Controller
         if ($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0) {
             $cotizacion['validez'] = '0 días';
         } else {
-            //            $horas = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] * 24;
-            //            $cotizacion['validez'] = $horas.' horas';
+
             $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
         }
 
@@ -837,25 +750,15 @@ class CotizacionesController extends Controller
         }
     }
 
-
     /** lista de items alterantivos traidos del apigp -cotizaciones sql server */
-
     public function getItemsAlternatives(Request $request)
     {
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $item = data_get($request, 'item', '');
             $lista = $this->quotationService->getItemsAlternatives($item);
             return $this->successResponse('Datos Obtenidos Correctamente', $lista, 200);
-        } catch (HttpException $th) {
-            return $this->buildErrorResponse(
-                $th->getMessage(),
-                $th->getStatusCode()
-            );
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'getItemsAlternatives');
     }
-
 
     /**
      * API PARA LISTAR LAS NOVEDADES DE LAS COTIZACIONES
@@ -863,48 +766,26 @@ class CotizacionesController extends Controller
      */
     public function consultQuotationsNews(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $resumen = $this->quotationService->consultQuotationsNews($request->all());
             return $this->successResponse('Datos Obtenidos Correctamente', $resumen, 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'consultQuotationsNews');
     }
 
-    /**
-     *  para obtener el stock del articulo en tiempo real por item y no por cotización
-     */
-
+    /***  para obtener el stock del articulo en tiempo real por item y no por cotización  */
     public function obtenerStockItemPorBodega(Request $request)
     {
-        $request->validate([
-            'articulo' => 'required',
-            'bodega' => 'required',
-        ]);
-        $articulo = $request->get('articulo', null);
-        $bodega = $request->get('bodega', null);
-        $cotizacionId = $request->get('cotizacion_id', null);
-        try {
-            $response = $this->quotationService->getStockItemsForWarehouse($articulo, $bodega, $cotizacionId);
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate([
+                'articulo'  => 'required',
+                'bodega'    => 'required',
+            ]);
+            $articulo       = $request->get('articulo', null);
+            $bodega         = $request->get('bodega', null);
+            $cotizacionId   = $request->get('cotizacion_id', null);
+            $response       = $this->quotationService->getStockItemsForWarehouse($articulo, $bodega, $cotizacionId);
             return $this->successResponse('Stock obtenido correctamente', $response, 200);
-        } catch (\Throwable $e) {
-            Log::channel(self::LOG_CHANNEL)->error(
-                'Error al obtener stock',
-                [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'data' => $articulo
-                ]
-            );
-            return $this->buildErrorResponse('Error al obtener stock', 500);
-        }
+        }, self::LOG_CHANNEL, 'obtenerStockItemPorBodega');
     }
 
     public function obtenerStockItemsLote(Request $request)
@@ -926,8 +807,6 @@ class CotizacionesController extends Controller
         }, self::LOG_CHANNEL, 'obtenerStockItemsLote');
     }
 
-
-
     public function obteneMargenItemlL(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
@@ -942,52 +821,44 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    public function obtenerListaSegmentos()
+    public function obtenerListaSegmentos(): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function (): JsonResponse {
             $resp = $this->quotationService->getAllSegments();
             return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'obtenerListaSegmentos');
     }
 
     public function obtenerListaSubSegmentos(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $coAtrPadre = $request->get('segmento', null);
-            $resp = $this->quotationService->getSubSegmentBySegment($coAtrPadre);
+            $resp       = $this->quotationService->getSubSegmentBySegment($coAtrPadre);
             return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'obtenerListaSubSegmentos');
     }
 
     public function validarSegmentoCliente(Request $request): JsonResponse
     {
-        $ruc = $request->get('ruc', null);
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $ruc = $request->get('ruc', null);
             $hasSegment = $this->quotationService->checkClientWithSegmentExist($ruc);
             if ($hasSegment['success'] === true) {
                 return $this->buildExistResponse(true, 'Segmento encontrado', 200);
             }
             return $this->buildExistResponse(false, 'Segmento no encontrado', 202);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'validarSegmentoCliente');
     }
 
     public function actualizarSegmentoCliente(Request $request): JsonResponse
     {
-        $ruc = $request->get('ruc', null);
-        $segmento = $request->get('segmento', null);
-        $subsegmento = $request->get('subsegmento', null);
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $ruc            = $request->get('ruc', null);
+            $segmento       = $request->get('segmento', null);
+            $subsegmento    = $request->get('subsegmento', null);
             $this->quotationService->updateClientWithSegment($ruc, $segmento, $subsegmento);
             return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse('Error al actualizar el segmento del cliente :' . $e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'actualizarSegmentoCliente');
     }
 
     public function obtenerListaPrecioDefectoPuntoVenta(Request $request): JsonResponse
