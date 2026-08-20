@@ -563,23 +563,14 @@ class CotizacionesController extends Controller
 
     public function volverAPedirCotizacionV2(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $request->validate([
                 'id' => 'required|exists:gp_cotizacions,id',
             ]);
             $user = $request->user();
             $info = $this->quotationService->loadQuotationForCopy($request->input('id'), $user);
             return $this->successResponse('Información Obtenida Correctamente', $info, 200);
-        } catch (ModelNotFoundException $e) {
-            return $this->buildErrorResponse("La cotización no existe.", 404);
-        } catch (\Throwable $th) {
-            Log::channel(self::LOG_CHANNEL)->error('Error in volverAPedirCotizacionV2 (Volver a pedir cotización V2)', [
-                'error' => $th->getMessage(),
-                'linea' => $th->getLine(),
-                'file' => $th->getFile(),
-            ]);
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'volverAPedirCotizacionV2');
     }
 
 
