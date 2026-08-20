@@ -43,6 +43,11 @@ trait ExecuteApiTransactions
 
         if ($e instanceof RuntimeException) {
             $codigo = 409;
+            $this->logException($canalLog, "Conflicto de Negocio en $contextoLog : ", [
+                'message' => $e->getMessage(),
+                'linea'   => $e->getLine(),
+                'file'    => $e->getFile()
+            ], 'warning');
         } elseif ($e instanceof HttpException) {
             $codigo = $e->getStatusCode();
         } elseif ($e instanceof ModelNotFoundException) {
@@ -71,17 +76,17 @@ trait ExecuteApiTransactions
         return $this->buildErrorResponse($mensaje, $codigo);
     }
 
-    private function logException(string $canalLog, string $message, array $context): void
+    private function logException(string $canalLog, string $message, array $context, string $level = 'error'): void
     {
         try {
             $channels = config('logging.channels', []);
 
             if (array_key_exists($canalLog, $channels)) {
-                Log::channel($canalLog)->error($message, $context);
+                Log::channel($canalLog)->log($level, $message, $context);
                 return;
             }
 
-            Log::error($message, array_merge($context, [
+            Log::log($level, $message, array_merge($context, [
                 'requested_log_channel' => $canalLog,
             ]));
         } catch (\Throwable) {
