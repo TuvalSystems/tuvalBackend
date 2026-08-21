@@ -168,7 +168,14 @@
                             </tr>
                             <tr>
                                 <td><b>E-mail:</b></td>
-                                <td>{{ $cliente->CLI_CORREO_ELECT_SRI }}</td>
+                                <td>
+                                    @php
+                                        $correosSri = array_filter(array_map('trim', explode(';', $cliente->CLI_CORREO_ELECT_SRI ?? '')));
+                                    @endphp
+                                    @foreach ($correosSri as $correoSri)
+                                        {{ $correoSri }}@if (!$loop->last)<br>@endif
+                                    @endforeach
+                                </td>
                             </tr>
                             <tr>
                                 <td><b>Identificación:</b></td>
