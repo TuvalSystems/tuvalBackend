@@ -337,7 +337,6 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
         ]), 'data', []));
     }
 
-
     /**
      * funcion para obtener las listas de los bancos
      */
@@ -701,7 +700,7 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
     {
         $applySummary = GpCobrosAplicacionMonto::with([
             'facturasAplicadas' => function ($q) {
-                $q->select(['id', 'cobro', 'cobro_id', 'aplicacion_id', 'id_factura', 'monto', 'estado_aplicado'])
+                $q->select(['id', 'cobro_id', 'aplicacion_id', 'id_factura', 'monto', 'estado_aplicado'])
                     ->where('estado_aplicado', 1);
             }
         ])
@@ -720,18 +719,42 @@ class InvoiceCollectionService implements InvoiceCollectionServiceInterface
                 round((float) $apply->facturasAplicadas->sum('monto'), 2)
             );
         });
-        $groupSummary = $applySummary->groupBy('cobro')->map(function ($items, $collecKey) {
-            return [
-                'cobro'                 => $collecKey,
-                'monto'                 => round($items->sum('monto'), 2),
-                'totalAplicado'         => round($items->sum('totalAplicado'), 2),
-                'facturasAplicadas'     => $items->values(),
-            ];
-        })->values();
+
         return [
-            'aplicaciones'  =>  $groupSummary,
+            'aplicaciones'  =>  $this->groupApplyBalanceSummaryByCollectionDocument($applySummary),
             'totalCobro'    => round($applySummary->sum('monto'), 2),
             'totalAplicado' => round($applySummary->sum('totalAplicado'), 2),
         ];
+    }
+
+    private function groupApplyBalanceSummaryByCollectionDocument(Collection $applySummary): Collection
+    {
+        return $applySummary
+            ->groupBy(fn($apply) => trim((string) data_get($apply, 'cobro', '')))
+            ->map(function (Collection $items, string $collectionDocument) {
+                $invoices = $this->groupAppliedInvoicesForPdf($items);
+
+                return [
+                    'cobro'                 => $collectionDocument,
+                    'monto'                 => round($items->sum('monto'), 2),
+                    'totalAplicado'         => round($invoices->sum('monto'), 2),
+                    'facturasAplicadas'     => $invoices,
+                ];
+            })
+            ->values();
+    }
+
+    private function groupAppliedInvoicesForPdf(Collection $applications): Collection
+    {
+        return $applications
+            ->flatMap(fn($application) => data_get($application, 'facturasAplicadas', collect()))
+            ->groupBy(fn($invoice) => trim((string) data_get($invoice, 'id_factura', '')))
+            ->map(function (Collection $invoiceItems, string $invoiceDocument) {
+                return [
+                    'id_factura' => $invoiceDocument,
+                    'monto'      => round($invoiceItems->sum('monto'), 2),
+                ];
+            })
+            ->values();
     }
 }
