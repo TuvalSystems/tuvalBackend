@@ -39,8 +39,10 @@ class FunctionsService implements FunctionsServiceInterface
             $provider->ingresado ? $existentes = true : $pendientes = true;
 
             $orderDetails = $this->orderRepository->getPurchaseOrdersBySupplier($provider->id);
-
-            $margin = ($provider->COSTO_UNITARIO / (1 - ($provider->MARGEN / 100))) / (1 - $item->descuento / 100);
+            $unitPrice = data_get($provider, 'COSTO_UNITARIO', 0);
+            $marginPrecentage = data_get($provider, 'MARGEN', 0);
+            $discountPrecentage = data_get($item, 'descuento', 0);
+            $margin = ($unitPrice / (1 - ($marginPrecentage / 100))) / (1 - $discountPrecentage / 100);
             $provider->margen = number_format($margin, 4, '.', '');
 
             if ($item->ART_DECIMAL_CANTIDAD == 0) {
