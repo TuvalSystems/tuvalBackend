@@ -22,9 +22,7 @@ class FunctionsService implements FunctionsServiceInterface
         protected readonly ApiGpService $apiGpService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
         protected readonly ApiBillingService $apiBillingService,
-    ) {
-
-    }
+    ) {}
 
     public function getItemProviders($pedidoId, $item, $pendientes = false, $existentes = false): array
     {
@@ -39,10 +37,23 @@ class FunctionsService implements FunctionsServiceInterface
             $provider->ingresado ? $existentes = true : $pendientes = true;
 
             $orderDetails = $this->orderRepository->getPurchaseOrdersBySupplier($provider->id);
-            $unitPrice = data_get($provider, 'COSTO_UNITARIO', 0);
-            $marginPrecentage = data_get($provider, 'MARGEN', 0);
-            $discountPrecentage = data_get($item, 'descuento', 0);
-            $margin = ($unitPrice / (1 - ($marginPrecentage / 100))) / (1 - $discountPrecentage / 100);
+            $unitPrice = (float) (data_get($provider, 'COSTO_UNITARIO') ?? 0);
+            $marginPercentage = (float) (data_get($provider, 'MARGEN') ?? 0);
+            $discountPercentage = (float) (data_get($item, 'descuento') ?? 0);
+
+            $marginDenominator = 1 - ($marginPercentage / 100);
+            $discountDenominator = 1 - ($discountPercentage / 100);
+
+            $margin = 0;
+
+            if (
+                $unitPrice > 0 &&
+                $marginDenominator > 0 &&
+                $discountDenominator > 0
+            ) {
+                $margin = ($unitPrice / $marginDenominator) / $discountDenominator;
+            }
+
             $provider->margen = number_format($margin, 4, '.', '');
 
             if ($item->ART_DECIMAL_CANTIDAD == 0) {
@@ -173,7 +184,6 @@ class FunctionsService implements FunctionsServiceInterface
             'idCompania' => config('services.api_gp.company'),
         ]);
         return data_get($response, 'data', []);
-
     }
 
     public function getListClientDocumentWithoutSupport(string $ruc)
@@ -183,7 +193,6 @@ class FunctionsService implements FunctionsServiceInterface
             'idCompania' => config('services.api_gp.company'),
         ]);
         return data_get($response, 'data', []);
-
     }
 
 
