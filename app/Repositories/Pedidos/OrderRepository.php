@@ -253,6 +253,7 @@ class OrderRepository implements OrderRepositoryInterface
             OrderStatus::ENVIANDO,
         ])
             ->where('factura_siguiente_mes', 0)
+            ->where('origen', '!=','reserva')
             ->whereHas('detallepedido')
             ->orderBy('id')
             ->get();
