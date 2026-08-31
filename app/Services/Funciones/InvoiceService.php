@@ -82,7 +82,7 @@ class InvoiceService implements InvoiceServiceInterface
         try {
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
         } catch (\Exception $e) {
-            Log::error("Factura creada {$pedido->factura} pero falló limpieza de stock: " . $e->getMessage());
+            Log::channel('invoice')->info("Factura creada {$pedido->factura} pero falló limpieza de stock: " . $e->getMessage());
         }
         if ($waitingForStock) {
             Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
