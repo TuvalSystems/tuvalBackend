@@ -609,7 +609,11 @@ class InvoiceService implements InvoiceServiceInterface
     protected function cleanStockReservedQuotation(int $quoteId, int $orderId, $warehouse)
     {
         $order = GpPedido::find($orderId);
-        if (!$order || $order->estado == OrderStatus::ESPERA) {
+        Log::channel('invoice')->info(
+            "Iniciando limpieza de stock reservado para cotización {$quoteId} y pedido {$orderId}.",
+            ['estado_pedido' => $order?->estado->value ?? 'no encontrado']
+        );
+        if (!$order) {
             return;
         }
         $cotResLog = GpCotizacionReservaLog::where('cotizacion_destino_id', $quoteId)->first();
