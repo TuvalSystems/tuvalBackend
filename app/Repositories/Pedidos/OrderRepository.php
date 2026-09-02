@@ -90,15 +90,15 @@ class OrderRepository implements OrderRepositoryInterface
     {
 
         return GpGuiaRemision::join('gp_guia_remision_detalles', 'gp_guia_remisions.id', '=', 'gp_guia_remision_detalles.guia_remision_id')
-        ->where('gp_guia_remision_detalles.detalle_id', $transfer->id) // Relación directa: Detalle Guía -> Detalle Traslado
-        ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $transfer->ART_CODIGO)
-        ->where('gp_guia_remisions.estado', '!=', 'eliminada')
-        ->select(
-            'gp_guia_remisions.*',
-            'gp_guia_remision_detalles.GUI_REM_CANTIDAD',
-            'gp_guia_remision_detalles.recibido'
-        )
-        ->get();
+            ->where('gp_guia_remision_detalles.detalle_id', $transfer->id) // Relación directa: Detalle Guía -> Detalle Traslado
+            ->where('gp_guia_remision_detalles.GUI_REM_CODI_INTERNO', $transfer->ART_CODIGO)
+            ->where('gp_guia_remisions.estado', '!=', 'eliminada')
+            ->select(
+                'gp_guia_remisions.*',
+                'gp_guia_remision_detalles.GUI_REM_CANTIDAD',
+                'gp_guia_remision_detalles.recibido'
+            )
+            ->get();
     }
 
 
@@ -253,7 +253,7 @@ class OrderRepository implements OrderRepositoryInterface
             OrderStatus::ENVIANDO,
         ])
             ->where('factura_siguiente_mes', 0)
-            ->where('origen', '!=','reserva')
+            ->where('origen', '!=', 'reserva')
             ->whereHas('detallepedido')
             ->orderBy('id')
             ->get();
