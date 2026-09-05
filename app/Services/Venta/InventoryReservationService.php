@@ -1619,12 +1619,27 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
     public function normalizeStockDataForReservation(EloquentCollection $detailStock): Collection
     {
         return $detailStock->flatMap(function ($item) {
+            if ($item->stock->isEmpty()) {
+                return [[
+                    'cotizacion_id'             => data_get($item, 'cotizacion_id'),
+                    'detalle_id'                => data_get($item, 'id'),
+                    'stock_id'                  => null,
+                    'articulo'                  => data_get($item, 'ART_CODIGO'),
+                    'art_descripcion'           => data_get($item, 'ART_DESCRIPCION'),
+                    'bodega'                    => null,
+                    'STO_ART_STOCK_DISPONIBLE'  => 0,
+                    'seleccionado'              => 0,
+                    'ART_DECIMAL_CANTIDAD'      => data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
+                ]];
+            }
+
             return $item->stock->map(function ($sto) use ($item) {
                 return [
                     'cotizacion_id'             => data_get($item, 'cotizacion_id'),
                     'detalle_id'                => data_get($item, 'id'),
                     'stock_id'                  => data_get($sto, 'id'),
                     'articulo'                  => data_get($item, 'ART_CODIGO'),
+                    'art_descripcion'           => data_get($item, 'ART_DESCRIPCION'),
                     'bodega'                    => data_get($sto, 'STO_ART_BODEGA'),
                     'STO_ART_STOCK_DISPONIBLE'  => data_get($sto, 'STO_ART_STOCK_DISPONIBLE', 0),
                     'seleccionado'              => data_get($sto, 'seleccionado', 0),
@@ -1632,19 +1647,65 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 ];
             });
         })
-            ->keyBy('stock_id');
+            ->values();
     }
 
     public function validateStockAgainstSelection(Collection $normalize): ?string
     {
-        $selectedStock = $normalize->filter(fn($item) => data_get($item, 'seleccionado', 0) > 0);
-
-        if ($selectedStock->isEmpty()) {
+        if ($normalize->isEmpty()) {
             throw new \DomainException("No se ha seleccionado cantidades para esta cotización");
         }
 
-        //esto me consolida y agrupa los articulos por un key de articulo_bodega para considerar tambien items repetidos
-        $totalDemanda = $selectedStock->groupBy(fn($item) => "{$item['articulo']}_{$item['bodega']}")
+        $itemsWithoutSelection = $normalize
+            ->groupBy('detalle_id')
+            ->filter(fn($group) => $group->sum(fn($item) => (float) data_get($item, 'seleccionado', 0)) <= 0)
+            ->map(function ($group) {
+                $firstItem = $group->first();
+                $articulo = data_get($firstItem, 'articulo');
+
+                return trim("{$articulo}");
+            })
+            ->values();
+
+        if ($itemsWithoutSelection->isNotEmpty()) {
+            $lista = $itemsWithoutSelection->implode(', ');
+            throw new \DomainException("Debe seleccionar al menos una cantidad para estos artículos: {$lista}");
+        }
+
+        $stockRows = $normalize
+            ->filter(fn($item) => data_get($item, 'stock_id') !== null && trim((string) data_get($item, 'bodega', '')) !== '');
+
+        $stockRequests = $stockRows
+            ->map(fn($item) => [
+                'articulo' => $item['articulo'],
+                'bodega'   => $item['bodega'],
+            ])
+            ->unique(fn($item) => "{$item['articulo']}_{$item['bodega']}")
+            ->values()
+            ->all();
+
+        $stockResults           = $this->stockService->fetchStock($stockRequests);
+        $currentStocksLookup    = $this->stockService->transformStockReservationResponse($stockResults);
+        $stockRowsByPair        = $stockRows->keyBy(fn($item) => "{$item['articulo']}_{$item['bodega']}");
+
+        $currentStocksLookup = $currentStocksLookup->map(function ($currentStockData, $key) use ($stockRowsByPair) {
+            $item = $stockRowsByPair->get($key);
+            if (!$item) {
+                return $currentStockData;
+            }
+
+            $this->stockService->applyReservedQtyToAvailableStock($currentStockData, [
+                'ART_CODIGO'            => data_get($item, 'articulo'),
+                'ART_DECIMAL_CANTIDAD'  => data_get($item, 'ART_DECIMAL_CANTIDAD', 0),
+            ], null, null);
+
+            return $currentStockData;
+        });
+
+        // Consolida la demanda por articulo_bodega para no superar el stock real de cada bodega.
+        $totalDemanda = $stockRows
+            ->filter(fn($item) => (float) data_get($item, 'seleccionado', 0) > 0)
+            ->groupBy(fn($item) => "{$item['articulo']}_{$item['bodega']}")
             ->map(function ($group) {
                 return [
                     'articulo'              => $group->first()['articulo'],
@@ -1654,16 +1715,6 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
                 ];
             });
 
-        $stockRequests = $totalDemanda->map(fn($item) => [
-            'articulo' => $item['articulo'],
-            'bodega' => $item['bodega'],
-        ])->values()->all();
-
-
-        $stockResults           = $this->stockService->fetchStock($stockRequests);
-        $currentStocksLookup    = $this->stockService->transformStockReservationResponse($stockResults);
-
-
         $articulosOverStock = [];
 
         //validar articulo_bodega acumulado contra el stock disponible
@@ -1671,15 +1722,10 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             $articulo       = data_get($demanda, 'articulo');
             $bodega         = data_get($demanda, 'bodega');
             $totalRequerido = data_get($demanda, 'total_a_reservar', 0);
-            $decimals       = data_get($demanda, 'ART_DECIMAL_CANTIDAD', 0);
-
-            $currentStockData = data_get($currentStocksLookup, $key);
-            $this->stockService->applyReservedQtyToAvailableStock($currentStockData, [
-                'ART_CODIGO'            => $articulo,
-                'ART_DECIMAL_CANTIDAD'  => $decimals,
-            ], null, null);
+            $currentStockData = $currentStocksLookup->get($key);
 
             $stockDisponibleReal = data_get($currentStockData, 'STO_ART_STOCK_DISPONIBLE', 0);
+
             if ($totalRequerido > $stockDisponibleReal) {
                 $articulosOverStock["{$articulo} ({$bodega})"] = "Disponible: $stockDisponibleReal, Requerido Total: $totalRequerido";
             }
@@ -1687,7 +1733,8 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
 
         //actualizacion de stock disponible visual para el usuario en todas las filas
-        foreach ($selectedStock as $stockId => $item) {
+        foreach ($stockRows as $item) {
+            $stockId = data_get($item, 'stock_id');
             $key = "{$item['articulo']}_{$item['bodega']}";
             $realStock = data_get($currentStocksLookup, "{$key}.STO_ART_STOCK_DISPONIBLE", 0);
             $this->updateDisponibleStockReserved($stockId, $realStock);
