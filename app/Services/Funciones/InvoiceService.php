@@ -34,6 +34,7 @@ class InvoiceService implements InvoiceServiceInterface
     use JsonResponseTrait;
     const STATUS_PENDING = 'pendiente';
     const STATUS_RELEASED = 'liberada';
+    private const ORDER_INVOICE_LOCK_SECONDS = 300;
 
     // Implementa todos los metodos de facturacion de pedidos, devoluciones, aprobaciones, etc
 
@@ -50,9 +51,23 @@ class InvoiceService implements InvoiceServiceInterface
      *  y que no se me cuelguen los metodos
      */
 
+    public function executeWithOrderInvoiceLock(int $orderId, callable $callback, ?string $busyMessage = null)
+    {
+        $lock = Cache::lock($this->orderInvoiceLockKey($orderId), self::ORDER_INVOICE_LOCK_SECONDS);
+        if (!$lock->get()) {
+            throw new \RuntimeException($busyMessage ?? 'El pedido ya tiene un proceso de facturacion activo.');
+        }
+
+        try {
+            return $callback();
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 300);
+        $lock = Cache::lock($this->orderInvoiceLockKey($pedido->id), self::ORDER_INVOICE_LOCK_SECONDS);
         if (!$lock->get()) {
             Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya tiene un proceso de facturacion activo.");
             return;
@@ -69,6 +84,11 @@ class InvoiceService implements InvoiceServiceInterface
         } finally {
             optional($lock)->release();
         }
+    }
+
+    private function orderInvoiceLockKey(int $orderId): string
+    {
+        return "pedido:{$orderId}:facturacion";
     }
 
     protected function processCheckSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)

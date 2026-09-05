@@ -262,8 +262,7 @@ class OrderJobService
                 if ($this->orderService->valdidateOrdersProviders($order)) {
                     $order->estado = OrderStatus::ESPERA;
                     $order->save();
-                    $this->invoiceService->generateDisptachOrder($order);
-                    $this->invoiceService->sendInvoiceGp($order);
+                    $this->invoiceService->checkSendInvoice($order, true);
                 }
             } catch (\Throwable $e) {
                 Log::channel('cron_process')->error("Error procesando pedido {$order->pedido} en orden_de_compra: " . $e->getMessage());

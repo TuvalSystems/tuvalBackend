@@ -7,7 +7,6 @@ use App\Models\GpPedido;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use App\Models\GpOrdenDespacho;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
@@ -15,7 +14,6 @@ use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
 use App\Models\Articulos\GpArticulo;
-use App\Models\traslados\GpTrasladosVentas;
 use App\Models\devoluciones\GpDevoluciones;
 use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
@@ -125,23 +123,14 @@ class PedidosController extends Controller
 
     public function facturarpedido(Request $request)
     {
-        $data = $request->validate([
-            'id' => 'required',
-        ]);
-        try {
-            $order = DB::transaction(function () use ($data) {
-                return $this->orderService->generateInvoiceOrder($data['id']);
-            });
+        return $this->handleApiAction(function () use ($request) {
+            $data = $request->validate([
+                'id' => 'required',
+            ]);
+            $order = $this->orderService->generateInvoiceOrder($data['id']);
             Log::channel(self::LOG_CHANNEL)->info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
             return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'facturarpedido');
     }
 
     public function facturarpedidoTest(string $codPedido)
@@ -154,7 +143,7 @@ class PedidosController extends Controller
         }, self::LOG_CHANNEL, 'facturarPedidoTest');
     }
 
-    
+
 
     public function verpedidos(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -176,7 +165,7 @@ class PedidosController extends Controller
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_cotizacions.origen as cotizacion_origen');
 
         //restriccion de visualizacion de pedidodos
-        $this->commercial->applyLimitsVisibiliteList($pedidos, $user,$puntoVenta->id, 'pedidos', 'gp_pedidos.user_id');
+        $this->commercial->applyLimitsVisibiliteList($pedidos, $user, $puntoVenta->id, 'pedidos', 'gp_pedidos.user_id');
 
         if ($data['estado'] != 'todos') {
             $pedidos = $pedidos->where('gp_pedidos.estado', $data['estado']);
@@ -491,36 +480,17 @@ class PedidosController extends Controller
     }
 
 
-    function cancelarpedido(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    function cancelarpedido(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $user = $request->user();
-
-        $pedido = GpPedido::where('id', $data['id'])->get()->first();
-
-        if ($pedido->estado === OrderStatus::FACTURADO) {
-            return response([
-                'success' => true,
-                'message' => 'Pedido ' . $pedido->pedido . ' ya está facturado y no se puede eliminar',
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id' => 'required|integer|exists:gp_pedidos,id',
             ]);
-        }
-
-        $pedido->estado = OrderStatus::ELIMINADO;
-        $pedido->USERID_cancelado = $user->USERID;
-        $pedido->fecha_hora_cancelado = date('Y-m-d H:i:s');
-        $pedido->save();
-
-        GpTrasladosVentas::where('pedido_id', $pedido->id)->update(
-            [
-                'cantidad' => 0
-            ]
-        );
-        GpOrdenDespacho::where('pedido_id', $pedido->id)->update(['estado' => 'cancelada']);
-
-        return response([
-            'success' => true,
-            'message' => 'Pedido ' . $pedido->pedido . ' eliminado',
-        ]);
+            $id = data_get($validate, 'id');
+            $user = $request->user();
+            $this->orderService->cancelOrder($id, $user);
+            return $this->buildSuccessResponse('Pedido eliminado correctamente', 200);
+        }, self::LOG_CHANNEL, 'cancelarpedido');
     }
 
 

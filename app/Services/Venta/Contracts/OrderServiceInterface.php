@@ -69,4 +69,7 @@ interface OrderServiceInterface
     public function valdidateOrdersProviders(GpPedido $order);
 
      public function createTransferVtaOrders(string $orderNumber);
+
+
+     public function cancelOrder(int $orderId, GpUsuario $user) : void;
 }

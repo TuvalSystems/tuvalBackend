@@ -23,6 +23,7 @@ use App\Models\GpCotizacion;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoImagen;
 use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
@@ -212,7 +213,7 @@ class OrderService implements OrderServiceInterface
         return $pedido;
     }
 
-    public function getInvoiceDocumentInfo($pedido)
+    public function getInvoiceDocumentInfo(array $pedido)
     {
         if (!$pedido['factura']) {
             throw new \Exception('El pedido no tiene factura');
@@ -358,7 +359,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    protected function getPurchaseOrdersWithReceipts($orderNumber)
+    protected function getPurchaseOrdersWithReceipts(string $orderNumber)
     {
         return $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
             ->map(function ($orden) {
@@ -498,16 +499,24 @@ class OrderService implements OrderServiceInterface
     public function generateInvoiceOrder(int $orderId)
     {
 
-        $order = $this->getOrderOrFail($orderId);
-        if (!empty($order->factura) || $order->factura != '' || $order->factura != null) {
-            throw new  \RuntimeException('El pedido ya fue facturado');
-        }
-        if ($order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value) {
-            $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
-            $order->save();
-        }
-        $this->recalculateAndSendInvoice($order);
-        return $order->refresh();
+        return $this->invoiceService->executeWithOrderInvoiceLock(
+            $orderId,
+            function () use ($orderId) {
+                return DB::transaction(function () use ($orderId) {
+                    $order = $this->getOrderOrFail($orderId, true);
+                    if (filled($order->factura)) {
+                        throw new  \RuntimeException('El pedido ya fue facturado');
+                    }
+                    if ($order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value) {
+                        $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
+                        $order->save();
+                    }
+                    $this->recalculateAndSendInvoice($order);
+                    return $order->refresh();
+                });
+            },
+            'El pedido ya tiene un proceso de facturacion o cancelacion activo.'
+        );
     }
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
@@ -529,13 +538,19 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function getOrderOrFail(int $orderId)
+    public function getOrderOrFail(int $orderId, bool $forUpdate = false)
     {
-        $order = GpPedido::where('id', $orderId)->whereNotIn('estado', [
+        $query = GpPedido::where('id', $orderId)->whereNotIn('estado', [
             OrderStatus::RECHAZADO,
             OrderStatus::ANULADA,
             OrderStatus::ELIMINADO
-        ])->first();
+        ]);
+
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        $order = $query->first();
         if (!$order) {
             throw new  \RuntimeException('Pedido no encontrado o no cumple las condiciones para facturarse');
         }
@@ -1479,7 +1494,7 @@ class OrderService implements OrderServiceInterface
 
 
 
-    public function apiGpValidateStatusReceptionItemL($params)
+    public function apiGpValidateStatusReceptionItemL(array $params)
     {
         $resp = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
         return data_get($resp, 'data', []);
@@ -1490,5 +1505,45 @@ class OrderService implements OrderServiceInterface
         $pedido = GpPedido::where('pedido', $orderNumber)->first();
         $this->invoiceService->checkTraslado($pedido);
         return $pedido;
+    }
+
+
+
+    /** cancelacion de pedido  */
+    public function cancelOrder(int $orderId, GpUsuario $user): void
+    {
+        $this->invoiceService->executeWithOrderInvoiceLock(
+            $orderId,
+            function () use ($orderId, $user) {
+                DB::transaction(function () use ($orderId, $user) {
+                    $order = GpPedido::whereKey($orderId)->lockForUpdate()->first();
+                    if (!$order) {
+                        throw new \RuntimeException("El pedido con ID {$orderId} no existe.");
+                    }
+
+                    if (filled($order->factura) || $order->estado === OrderStatus::FACTURADO) {
+                        throw new \RuntimeException("No se puede cancelar un pedido que ya ha sido facturado.");
+                    }
+
+                    if ($order->estado === OrderStatus::ENVIANDO) {
+                        throw new \RuntimeException("No se puede cancelar el pedido porque se encuentra en proceso de facturacion.");
+                    }
+
+                    $order->update([
+                        'estado'                => OrderStatus::ELIMINADO,
+                        'USERID_cancelado'      => $user->USERID,
+                        'fecha_hora_cancelado'  => Carbon::now()->format('Y-m-d H:i:s'),
+                    ]);
+
+                    GpTrasladosVentas::where('pedido_id', $order->id)->update(
+                        ['cantidad' => 0]
+                    );
+
+                    GpOrdenDespacho::where('pedido_id', $order->id)
+                        ->update(['estado' => 'cancelada']);
+                });
+            },
+            'No se puede cancelar el pedido porque tiene un proceso de facturacion activo.'
+        );
     }
 }
