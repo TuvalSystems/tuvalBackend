@@ -1669,7 +1669,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
 
         if ($itemsWithoutSelection->isNotEmpty()) {
             $lista = $itemsWithoutSelection->implode(', ');
-            throw new \DomainException("Debe seleccionar al menos una cantidad para estos artículos: {$lista}");
+            throw new \DomainException("Debe seleccionar al menos una cantidad en las bodegas de los siguientes items: {$lista}");
         }
 
         $stockRows = $normalize
