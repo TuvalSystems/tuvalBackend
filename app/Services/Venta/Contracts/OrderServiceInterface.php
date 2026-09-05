@@ -71,5 +71,5 @@ interface OrderServiceInterface
      public function createTransferVtaOrders(string $orderNumber);
 
 
-     public function cancelOrder(int $orderId, GpUsuario $user) : void;
+     public function cancelOrder(int $orderId, GpUsuario $user) : GpPedido;
 }

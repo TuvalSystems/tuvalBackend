@@ -488,8 +488,8 @@ class PedidosController extends Controller
             ]);
             $id = data_get($validate, 'id');
             $user = $request->user();
-            $this->orderService->cancelOrder($id, $user);
-            return $this->buildSuccessResponse('Pedido eliminado correctamente', 200);
+            $pedido =  $this->orderService->cancelOrder($id, $user);
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} eliminado correctamente", 200);
         }, self::LOG_CHANNEL, 'cancelarpedido');
     }
 

@@ -1510,12 +1510,12 @@ class OrderService implements OrderServiceInterface
 
 
     /** cancelacion de pedido  */
-    public function cancelOrder(int $orderId, GpUsuario $user): void
+    public function cancelOrder(int $orderId, GpUsuario $user): GpPedido
     {
-        $this->invoiceService->executeWithOrderInvoiceLock(
+      return $this->invoiceService->executeWithOrderInvoiceLock(
             $orderId,
             function () use ($orderId, $user) {
-                DB::transaction(function () use ($orderId, $user) {
+                return   DB::transaction(function () use ($orderId, $user) {
                     $order = GpPedido::whereKey($orderId)->lockForUpdate()->first();
                     if (!$order) {
                         throw new \RuntimeException("El pedido con ID {$orderId} no existe.");
@@ -1541,6 +1541,7 @@ class OrderService implements OrderServiceInterface
 
                     GpOrdenDespacho::where('pedido_id', $order->id)
                         ->update(['estado' => 'cancelada']);
+                    return $order;
                 });
             },
             'No se puede cancelar el pedido porque tiene un proceso de facturacion activo.'
