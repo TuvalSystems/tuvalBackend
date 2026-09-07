@@ -22,5 +22,8 @@ interface DispatchServiceInterface
     /** PROCESO DE CANCELACION DE ORDEN DE DESPACHO */
 
     public function cancelDispatchIfEmptyPicking(int $orderId);
-     public function printOrderDispatchPdf(int $id) : array;
+    public function printOrderDispatchPdf(int $id) : array;
+
+
+    public function checkCompletedDispatch();
 }

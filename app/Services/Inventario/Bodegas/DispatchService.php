@@ -5,9 +5,11 @@ namespace App\Services\Inventario\Bodegas;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\devoluciones\GpDevolucionesDetalle;
+use App\Models\GpCronLog;
 use App\Models\GpOrdenDespacho;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
+use App\Models\GpPedidoDetalleStock;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\Reservas\GpGuiaRemisionReserva;
@@ -20,6 +22,7 @@ use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -752,5 +755,98 @@ class DispatchService implements DispatchServiceInterface
             'compartimento' => '',
         ]);
         return data_get($response, 'data.COMPARTIMIENTO', '');
+    }
+
+
+    public function checkCompletedDispatch()
+    {
+        $ordenes = GpOrdenDespacho::with([
+            'pedido' => function ($q) {
+                $q->where('estado', OrderStatus::FACTURADO)->with('detallepedido');
+            },
+
+        ])->where('estado', 'liberada')->get();
+        foreach ($ordenes as $orden) {
+            $pedido = $orden->pedido;
+            if (!$pedido) {
+                continue;
+            }
+            $listo = true;
+
+            foreach ($pedido->detallepedido as $item) {
+                if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
+                    $listo = false;
+                    break;
+                }
+            }
+
+            if ($listo) {
+                $ordenActualizada = GpOrdenDespacho::whereKey($orden->id)
+                    ->where('estado', 'liberada')
+                    ->update(['estado' => 'despachada']);
+
+                if (!$ordenActualizada) {
+                    Log::warning('Orden de despacho omitida al verificar despachos completos porque ya no esta liberada', [
+                        'orden_id' => $orden->id,
+                        'pedido_id' => $pedido->id,
+                    ]);
+                    continue;
+                }
+
+                $pedido->despachado = 1;
+                $pedido->despacho_en_proceso = 0;
+                $pedido->save();
+            }
+        }
+
+        $pedidos = GpPedido::leftJoin('gp_pedido_detalles', 'gp_pedido_detalles.pedido_id', 'gp_pedidos.id')
+            ->leftJoin('gp_guia_remisions', 'gp_guia_remisions.pedido', 'gp_pedidos.pedido')
+            ->leftJoin('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')
+            ->where(function ($query) {
+                $query->whereNull('gp_pedidos.despachado');
+                $query->orWhere('gp_pedidos.despachado', 0);
+            })
+            //->where('gp_pedido_detalles.ART_TIPO_COMPRA', '!=', 'SERV')
+            ->where('gp_pedido_detalles.reservado', '>', 0)
+            ->where('gp_guia_remisions.tipo', 'despacho')
+            ->where('gp_guia_remisions.estado', 'enviada')
+            ->where('gp_orden_despachos.estado', 'despachada')
+            ->whereNotExists(function ($query) {
+                $query->selectRaw(1)
+                    ->from('gp_orden_despachos as ordenes_canceladas')
+                    ->whereColumn('ordenes_canceladas.pedido_id', 'gp_pedidos.id')
+                    ->where('ordenes_canceladas.estado', 'cancelada');
+            })
+            ->select('gp_pedidos.*')
+            ->distinct()
+            ->get();
+
+        foreach ($pedidos as $pedido) {
+            $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
+            foreach ($detalle as $item) {
+                $item->reservado = 0;
+                $item->trasladado = $item->ART_CANTIDAD - $item->devuelto;
+                $item->save();
+
+                $stock = GpPedidoDetalleStock::where('detalle_id', $item->id)
+                    ->where('STO_ART_BODEGA', $pedido->BOD_BODEGA)
+                    ->first();
+
+                if ($stock) {
+                    if (!$stock->reservado)
+                        $stock->reservado = 0;
+
+                    $stock->reservado = 0;
+                    $stock->save();
+                }
+            }
+            $pedido->despachado = 1;
+            $pedido->save();
+        }
+
+        $cronLog = new GpCronLog();
+        $cronLog->metodo = 'checkdespachadoscompletos';
+        $cronLog->fecha = date('Y-m-d H:i:s');
+        $cronLog->save();
     }
 }
