@@ -480,8 +480,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
         Route::group(['prefix' => 'cobranzas'], function () {
             Route::post('documentosvencidoscliente', [CobranzasController::class, 'documentosvencidoscliente']);
-            Route::post('estadodecuentacliente', [CobranzasController::class, 'estadodecuentacliente']);
-            Route::post('estadodecuentaclientetuval', [CobranzasController::class, 'estadodecuentaclientetuval']);
             Route::post('registrarcobro', [CobranzasController::class, 'registrarcobro']);
             Route::post('cobrosregistrados', [CobranzasController::class, 'cobrosregistrados']);
             Route::post('depositosporaprobar', [CobranzasController::class, 'depositosporaprobar']);
