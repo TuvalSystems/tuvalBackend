@@ -56,7 +56,7 @@ class DevolucionesController extends Controller
 
         $ordenesDespachoPedidos = GpOrdenDespacho::query()
             ->whereIn('pedido_id', $pedidos->pluck('id'))
-            ->where('estado', '!=', 'pendiente')
+            ->whereIn('estado', ['liberada', 'despachada'])
             ->pluck('pedido_id')
             ->all();
 
@@ -93,7 +93,7 @@ class DevolucionesController extends Controller
                 'pedido_id',
                 $devoluciones->pluck('pedido_id')
             )
-            ->where('estado', '!=', 'pendiente')
+            ->whereIn('estado', ['liberada', 'despachada'])
             ->pluck('pedido_id')
             ->all();
 

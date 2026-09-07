@@ -94,14 +94,52 @@ class LogisticsOperationsService implements LogisticsOperationsServiceInterface
             ->whereRaw('COALESCE(trasladado,0) + COALESCE(devuelto,0) < COALESCE(ART_CANTIDAD,0)')
             ->exists();
         if (!$hasPending) {
+            $hasCanceledDispatchOrder = GpOrdenDespacho::query()
+                ->where('pedido_id', $pedido->id)
+                ->where('estado', 'cancelada')
+                ->exists();
+
+            if ($hasCanceledDispatchOrder) {
+                Log::warning('Pedido listo no fue marcado como despachado porque tiene una orden de despacho cancelada', [
+                    'guia_id' => $guia->id,
+                    'pedido_id' => $pedido->id,
+                    'pedido' => $pedido->pedido,
+                ]);
+
+                return $pedido->refresh();
+            }
+
+            $updatedDispatchOrders = GpOrdenDespacho::query()
+                ->where('pedido_id', $pedido->id)
+                ->where('estado', 'liberada')
+                ->update(['estado' => 'despachada']);
+
+            if (!$updatedDispatchOrders) {
+                $alreadyDispatched = GpOrdenDespacho::query()
+                    ->where('pedido_id', $pedido->id)
+                    ->where('estado', 'despachada')
+                    ->exists();
+
+                if (!$alreadyDispatched) {
+                    Log::warning('Pedido listo no fue marcado como despachado porque no tiene orden de despacho liberada o despachada', [
+                        'guia_id' => $guia->id,
+                        'pedido_id' => $pedido->id,
+                        'pedido' => $pedido->pedido,
+                        'estados_ordenes' => GpOrdenDespacho::query()
+                            ->where('pedido_id', $pedido->id)
+                            ->pluck('estado')
+                            ->values()
+                            ->all(),
+                    ]);
+
+                    return $pedido->refresh();
+                }
+            }
+
             $pedido->fill([
                 'despachado' => 1,
                 'despacho_en_proceso' => 0
             ])->save();
-            GpOrdenDespacho::query()
-                ->where('pedido_id', $pedido->id)
-                ->where('estado', '!=','cancelada')
-                ->update(['estado' => 'despachada']);
         }
         return $pedido->refresh();
     }

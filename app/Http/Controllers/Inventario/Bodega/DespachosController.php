@@ -625,35 +625,7 @@ class DespachosController extends Controller
 
     public function checkdespacho(GpGuiaRemision $guia)
     {
-        $pedido = GpPedido::where('pedido', $guia->pedido)->first();
-        $listo = true;
-
-        $detallepedido = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
-
-        foreach ($detallepedido as $item) {
-            // if ($item->ART_TIPO_COMPRA != 'SERV') {
-            if (($item->trasladado + $item->devuelto) < $item->ART_CANTIDAD) {
-                $listo = false;
-            }
-            // }
-            // if ($item->ART_TIPO_COMPRA = 'SERV') {
-            //     if ($item->trasladado < $item->ART_CANTIDAD) {
-            //         $listo = false;
-            //     }
-            // }
-
-        }
-
-        if ($listo) {
-            $pedido->despachado = 1;
-            $pedido->despacho_en_proceso = 0;
-            $pedido->save();
-
-            $orden = GpOrdenDespacho::where('pedido_id', $pedido->id)->where('estado', '!=', 'cancelada')->first();
-            $orden->estado = 'despachada';
-            $orden->save();
-        }
-        return $pedido;
+        return $this->logisticsOperationsService->updateOrderDispatchStatus($guia);
     }
 
     public function checkdespachadoscompletos()
@@ -679,10 +651,21 @@ class DespachosController extends Controller
             }
 
             if ($listo) {
+                $ordenActualizada = GpOrdenDespacho::whereKey($orden->id)
+                    ->where('estado', 'liberada')
+                    ->update(['estado' => 'despachada']);
+
+                if (!$ordenActualizada) {
+                    Log::warning('Orden de despacho omitida al verificar despachos completos porque ya no esta liberada', [
+                        'orden_id' => $orden->id,
+                        'pedido_id' => $pedido->id,
+                    ]);
+                    continue;
+                }
+
                 $pedido->despachado = 1;
+                $pedido->despacho_en_proceso = 0;
                 $pedido->save();
-                $orden->estado = 'despachada';
-                $orden->save();
             }
         }
 
@@ -698,6 +681,12 @@ class DespachosController extends Controller
             ->where('gp_guia_remisions.tipo', 'despacho')
             ->where('gp_guia_remisions.estado', 'enviada')
             ->where('gp_orden_despachos.estado', 'despachada')
+            ->whereNotExists(function ($query) {
+                $query->selectRaw(1)
+                    ->from('gp_orden_despachos as ordenes_canceladas')
+                    ->whereColumn('ordenes_canceladas.pedido_id', 'gp_pedidos.id')
+                    ->where('ordenes_canceladas.estado', 'cancelada');
+            })
             ->select('gp_pedidos.*')
             ->distinct()
             ->get();

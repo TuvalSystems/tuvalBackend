@@ -329,7 +329,7 @@ class AprobacionesController extends Controller
 
             $devolucion->orden_despacho = false;
             $orden_despacho = GpOrdenDespacho::where('pedido_id', $devolucion->pedido_id)
-                ->where('estado', '!=', 'pendiente')
+                ->whereIn('estado', ['liberada', 'despachada'])
                 ->first();
             if ($orden_despacho)
                 $devolucion->orden_despacho = true;
