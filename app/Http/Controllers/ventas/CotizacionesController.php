@@ -290,6 +290,7 @@ class CotizacionesController extends Controller
             'estado' => '',
             'fecha_desde' => '',
             'fecha_hasta' => '',
+            'cotizacion_filtro' => ''
         ]);
 
         $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', data_get($data, 'puntodeventa_id'))->first();
@@ -332,6 +333,9 @@ class CotizacionesController extends Controller
         if (isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != '') {
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
             $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '<=', $data['fecha_hasta'] . ' 23:59:59');
+        }
+        if (isset($data['cotizacion_filtro']) && $data['cotizacion_filtro'] != '') {
+            $cotizaciones = $cotizaciones->where('gp_cotizacions.cotizacion', 'like', '%' . $data['cotizacion_filtro'] . '%');
         }
         $cotizaciones = $cotizaciones->orderBy('created_at', 'desc')->limit(1500)->get();
 
