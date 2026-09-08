@@ -333,7 +333,8 @@ class DevolucionService implements DevolucionServiceInterface
             if ($pedidoConsulta->despachado === false || $pedidoConsulta->despachado === null) {
                 $existItemGuia = GpGuiaRemisionDetalle::where('detalle_id', $item['id'])->exists();
                 if ($existItemGuia) {
-                    return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+                    return (float) data_get($item, 'despachado', 0) > 0 &&
+                        data_get($item, 'despacho', false) === true;
                 }
                 return $this->hasTransferredItemInRelatedOrders($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
             }
@@ -342,9 +343,9 @@ class DevolucionService implements DevolucionServiceInterface
                 return $this->hasTransferredItemInRelatedOrders($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
             }
         }
-
         //retorna en el proceso normal
-        return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+        return  (float) data_get($item, 'despachado', 0) > 0 &&
+            data_get($item, 'despacho', false) === true;
     }
 
     public function hasTransferredItemInRelatedOrders(string $originInvoice, string $artCode): bool
