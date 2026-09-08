@@ -3,6 +3,7 @@
 namespace App\Services\Cobranzas\CierreCajas;
 
 use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
+use App\Events\Cobranzas\CierreCaja\CollectionInvoiceUpdatedEvent;
 use App\Models\Cobranzas\GpCobro;
 use App\Models\Cobranzas\GpCobrosCheques;
 use App\Models\Cobranzas\GpCobrosDeposito;
@@ -66,7 +67,7 @@ class CashRegisterClosureService implements CashRegisterClosureServiceInterface
                 'datos'         => json_encode($closeBox),
                 'consulta'      => json_encode($consultBox)
             ]);
-
+            event(new CollectionInvoiceUpdatedEvent('refresh', $boxId, $user->USERID));
             return $openBox;
         });
     }
