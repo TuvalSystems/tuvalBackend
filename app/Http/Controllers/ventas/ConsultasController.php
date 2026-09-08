@@ -270,6 +270,14 @@ class ConsultasController extends Controller
         }, 'laravel', 'consultarStockTransitoTransferenciaVenta');
     }
 
+    public function consultarStockTransitoReservas()
+    {
+        return $this->handleApiAction(function () {
+            $items = $this->inventoryService->fetchStockTransitReservations();
+            return $this->successResponse('Transito de Reservas Obtenido Correctamente', $items);
+        }, 'laravel', 'consultarStockTransitoReservas');
+    }
+
     /** unificacion de transito de reposiciones y transferencia de venta */
     public function consultaTransitoConsolidado()
     {

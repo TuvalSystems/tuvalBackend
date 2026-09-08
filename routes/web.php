@@ -133,6 +133,7 @@ Route::prefix('bodegas')->group(function () {
 Route::prefix('consultas')->group(function () {
     Route::get('stock-transito', [ConsultasController::class, 'consultStockInTransit']);
     Route::get('stock-transito-transferencia-venta', [ConsultasController::class, 'consultarStockTransitoTransferenciaVenta']);
+    Route::get('stock-transito-transferencia-reservas', [ConsultasController::class, 'consultarStockTransitoReservas']);
     Route::get('stock-transito-consolidado', [ConsultasController::class, 'consultaTransitoConsolidado']);
     Route::get('buscararticulo-web', [ConsultasController::class, 'buscarArticuloWeb']);
     Route::get('reservados', [ConsultasController::class, 'reservados']);

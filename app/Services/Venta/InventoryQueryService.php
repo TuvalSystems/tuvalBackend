@@ -239,13 +239,51 @@ class InventoryQueryService implements InventoryQueryServiceInterface
             ->get();
     }
 
+    public function fetchStockTransitReservations()
+    {
+        return DB::table('gp_guia_remision_reserva_detalles  as d')
+            ->join(
+                'gp_guia_remision_reservas as g',
+                'g.id',
+                '=',
+                'd.guia_id'
+            )
+            ->where('g.estado', 'enviada')
+            ->select(
+                [
+                    'g.bodega_destino as bodega',
+                    'd.art_code as codigo',
+                    DB::raw("'reserva' AS tipo_movimiento"),
+                    DB::raw(
+                        'COALESCE(
+                    SUM(
+                        COALESCE(d.cantidad, 0)
+                        - COALESCE(d.recibido, 0)
+                    ),
+                    0
+                ) AS pendiente'
+                    )
+                ]
+            )
+            ->groupBy(
+                'g.bodega_destino',
+                'd.art_code'
+            )
+            ->having('pendiente', '>', 0)
+            ->orderBy('bodega')
+            ->orderBy('codigo')
+            ->get();
+    }
+
     public function fetchStockInTransitConsolidated()
     {
         $repositions = $this->fetchStockInTransit();
         $transfers = $this->fetchStockInTransitTransfers();
+        $reservations = $this->fetchStockTransitReservations();
 
         return $repositions
             ->concat($transfers)
+            ->concat($reservations)
             ->values();
     }
 
