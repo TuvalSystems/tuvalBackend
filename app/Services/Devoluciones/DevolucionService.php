@@ -317,7 +317,7 @@ class DevolucionService implements DevolucionServiceInterface
     {
         foreach ($details as $item) {
             $dispatched = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
-            $detail = $this->devolucionBuilder->formPayloadDevolutionDetail($returnId, $item, $dispatched);
+            $detail     = $this->devolucionBuilder->formPayloadDevolutionDetail($returnId, $item, $dispatched);
             $detail->save();
         }
     }
