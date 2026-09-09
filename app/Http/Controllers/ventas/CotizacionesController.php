@@ -722,9 +722,9 @@ class CotizacionesController extends Controller
     }
 
 
-    public function ListaMotivosNoVenta()
+    public function ListaMotivosNoVenta() : JsonResponse
     {
-        return $this->handleApiAction(function () {
+        return $this->handleApiAction(function () : JsonResponse {
             $lista = $this->quotationService->getNonSalesReasons();
             return $this->successResponse('Lista Obtenida', $lista);
         }, self::LOG_CHANNEL, 'getlistNonSaleReasons');
