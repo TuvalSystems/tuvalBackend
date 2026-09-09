@@ -71,6 +71,7 @@ class QuotationService implements QuotationServiceInterface
             'cotizacion_venta_motivo_id'    => $data['motivo_id'],
             'observacion'                   => $data['observacion'],
             'recordar'                      => $data['recordar'],
+            'fecha_registro_recordatorio'   => Carbon::now()->format('Y-m-d H:i:s'),
             'user_ing_recordatorio'         => $user->USERID,
 
         ]);
@@ -84,7 +85,6 @@ class QuotationService implements QuotationServiceInterface
     public function sendStoreReminderGp(GpCotizacion $quote): void
     {
         $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($quote);
-
         $this->apiGpService->storeQuoteReminderGp($params);
     }
 

@@ -47,9 +47,9 @@ class QuotationBuilder implements QuotationBuilderInterface
             'coCotRec'          => $quote->recordar,
             'feCotRec'          => $quote->fecha_recordatorio,
             'txObsMot'          => $quote->observacion,
-            'feIng'             => date('Y-m-d'),
+            'feIng'             => Carbon::parse($quote->fecha_registro_recordatorio)->format('Y-m-d'),
             'txUsrIng'          => $quote->user_ing_recordatorio,
-            'feUltmod'          => date('Y-m-d'),
+            'feUltmod'          => Carbon::parse($quote->fecha_registro_recordatorio)->format('Y-m-d'),
             'txUsrMod'          => $quote->user_ing_recordatorio,
             'ndCotTot'          => $quote->total,
         ];
