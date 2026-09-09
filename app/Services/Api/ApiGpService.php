@@ -197,4 +197,12 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_ORDERS_DETAIL, 'POST', $params, 'json');
     }
+
+
+    public function updateAllQuoteStatusSql(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_QUOTE_STATUS, 'POST', $params, 'json');
+    }
+
+
 }

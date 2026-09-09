@@ -3,7 +3,9 @@
 namespace App\Providers\Service;
 
 use App\Services\Imports\Contracts\OrdersImportInterface;
+use App\Services\Imports\Contracts\QuoteImportsInterface;
 use App\Services\Imports\OrdersImport;
+use App\Services\Imports\QuoteImports;
 use App\Services\Venta\ClientQueryService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
@@ -50,6 +52,7 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 
         //importacion y actualizaciones en batch
         OrdersImportInterface::class                    => OrdersImport::class,
+        QuoteImportsInterface::class                    => QuoteImports::class,
         QuoteDraftServiceInterface::class               => QuoteDraftService::class,
 
 

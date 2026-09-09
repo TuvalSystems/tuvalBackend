@@ -147,6 +147,7 @@ class ApiGpEndpoints
 
     public const UPDATE_BATCH_UPDATE_ORDERS = 'api/update-headers';
     public const UPDATE_BATCH_UPDATE_ORDERS_DETAIL = 'api/update-details';
+    public const UPDATE_BATCH_UPDATE_QUOTE_STATUS = 'api/update-quotes-status';
 
 
 
