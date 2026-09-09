@@ -731,11 +731,12 @@ class CotizacionesController extends Controller
     }
 
 
-    public function registrarOActualizarRecordatorioNoVenta(Request $request)
+    public function registrarOActualizarRecordatorioNoVenta(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request) {
             $data = $request->all();
-            return $this->quotationService->updateNonSaleAndReminderData($data, $request->user());
+            $this->quotationService->updateNonSaleAndReminderData($data, $request->user());
+            return $this->buildSuccessResponse('Recordatorio guardado correctamente');
         }, self::LOG_CHANNEL, 'updateNonSaleAndReminderData');
     }
 

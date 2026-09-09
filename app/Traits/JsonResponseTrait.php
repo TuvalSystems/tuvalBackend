@@ -38,9 +38,9 @@ trait JsonResponseTrait
         return response()->json(['success' => false, 'error' => $message, 'errors' => []], $statusCode);
     }
 
-    protected function buildSuccessResponse(string $message, int $statusCode): JsonResponse
+    protected function buildSuccessResponse(string $message, ?int $code = 200 ): JsonResponse
     {
-        return response()->json(['success' => true, 'message' => $message], $statusCode);
+        return response()->json(['success' => true, 'message' => $message], $code);
     }
 
 
