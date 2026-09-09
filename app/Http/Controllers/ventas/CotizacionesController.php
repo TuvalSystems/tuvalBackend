@@ -618,14 +618,14 @@ class CotizacionesController extends Controller
 
     public function imprimircotizacionprospecto(int $id): \Illuminate\Http\Response|string
     {
-        $cotizacion = GpCotizacion::where('id', $id)->first()->toarray();
+        $cotizacionModel = GpCotizacion::where('id', $id)->first();
+        $cotizacion = $cotizacionModel->toarray();
 
-
-        GpCotizacion::where('id', $id)->update(['impreso' => 'yes']);
-
-        GpCotizacion::where('id', $id)
-            ->whereNull('fecha_impreso')
-            ->update(['fecha_impreso' => date('Y-m-d H:i:s')]);
+        $cotizacionModel->impreso = 'yes';
+        if (is_null($cotizacionModel->fecha_impreso)) {
+            $cotizacionModel->fecha_impreso = date('Y-m-d H:i:s');
+        }
+        $cotizacionModel->save();
 
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $cotizacion['id'])->get()->toarray();
         $peso = 0;

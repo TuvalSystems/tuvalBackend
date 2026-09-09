@@ -234,23 +234,23 @@ class AprobacionesController extends Controller
         $data = $request->all();
         $user = $request->user();
 
-        if (GpCotizacion::where('id', $data['id'])->update(
-            [
-                'aprobado_comercial'    => 'no',
-                'user_rechazo_id'       => $user->id,
-                'estado'                => 'rechazado',
-                'fe_rechazo'            => now()->format('Y-m-d H:i:s'),
-            ]
-        )) {
-            return response([
-                'success' => true,
-                'message' => 'Cotización ' . $data['cotizacion'] . ' rechazada'
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 409);
+        $quote = GpCotizacion::find($data['id']);
+        if ($quote) {
+            $quote->aprobado_comercial = 'no';
+            $quote->user_rechazo_id = $user->id;
+            $quote->estado = 'rechazado';
+            $quote->fe_rechazo = now()->format('Y-m-d H:i:s');
+            if ($quote->save()) {
+                return response([
+                    'success' => true,
+                    'message' => 'Cotización ' . $data['cotizacion'] . ' rechazada'
+                ]);
+            }
         }
+
+        return response([
+            'error' => 'Hubo un error al guardar'
+        ], 409);
     }
 
 

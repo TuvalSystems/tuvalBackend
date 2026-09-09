@@ -69,17 +69,14 @@ class QuotationService implements QuotationServiceInterface
 
     public function updateNonSaleAndReminderData(array $data, GpUsuario $user): void
     {
-        GpCotizacion::where('id', $data['cotizacion_id'])->update([
-            'fecha_recordatorio'            => $data['fecha_recordatorio'],
-            'cotizacion_venta_motivo_id'    => $data['motivo_id'],
-            'observacion'                   => $data['observacion'],
-            'recordar'                      => $data['recordar'],
-            'fecha_registro_recordatorio'   => Carbon::now()->format('Y-m-d H:i:s'),
-            'user_ing_recordatorio'         => $user->USERID,
-
-        ]);
-        $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
-        $this->sendStoreReminderGp($sendQuote);
+        $quote = GpCotizacion::findOrFail($data['cotizacion_id']);
+        $quote->fecha_recordatorio = $data['fecha_recordatorio'];
+        $quote->cotizacion_venta_motivo_id = $data['motivo_id'];
+        $quote->observacion = $data['observacion'];
+        $quote->recordar = $data['recordar'];
+        $quote->fecha_registro_recordatorio = Carbon::now()->format('Y-m-d H:i:s');
+        $quote->user_ing_recordatorio = $user->USERID;
+        $quote->save();
     }
 
 

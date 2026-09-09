@@ -84,11 +84,9 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             $this->syncImages($pedido, $existingImages, $newImages);
             $this->syncPdfs($pedido, $pfdsExistings, $pfdsNew);
             if ($pedido->exists && $pedido->cotizacion_id) {
-                // Actualizamos directamente a través de la relación del pedido
-                $pedido->gpcotizacion()->update([
-                    'estado' => 'procesado',
-                    'facturado' => 1
-                ]);
+                $quoteBlock->estado = 'procesado';
+                $quoteBlock->facturado = 1;
+                $quoteBlock->save();
             }
 
             return $pedido;

@@ -735,8 +735,11 @@ class InvoiceService implements InvoiceServiceInterface
             $reserva->estado = 'procesado';
             $reserva->save();
 
-            GpCotizacion::where('id', $reserva->cotizacion_id) // O la columna ID real
-                ->update(['estado' => 'procesado']);
+            $quote = GpCotizacion::find($reserva->cotizacion_id);
+            if ($quote) {
+                $quote->estado = 'procesado';
+                $quote->save();
+            }
         }
     }
 }

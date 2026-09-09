@@ -920,13 +920,14 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             return false;
         }
 
-        $affected = GpCotizacion::query()
-            ->whereKey($reserve->cotizacion_id)
+        $quote = GpCotizacion::whereKey($reserve->cotizacion_id)
             ->where('estado', '!=', 'procesado')
-            ->update([
-                'estado' => 'procesado',
-                'updated_at' => now(),
-            ]);
+            ->first();
+
+        if ($quote) {
+            $quote->estado = 'procesado';
+            $quote->save();
+        }
 
         // Idempotente para la reserva
         if ($reserve->estado !== 'procesado') {
@@ -936,7 +937,7 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             ]);
         }
 
-        return $affected > 0;
+        return $quote !== null;
     }
 
     protected function cloneMediaFromReservedQuote(GpCotizacion $parentQuote, GpCotizacion $newQuote): void
