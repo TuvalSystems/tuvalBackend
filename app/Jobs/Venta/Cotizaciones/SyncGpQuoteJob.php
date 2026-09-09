@@ -75,7 +75,7 @@ class SyncGpQuoteJob implements ShouldQueue
         ];
         SyncLog::logErrorSync(
             'SyncGpQuoteJob',
-            'update_batch_quotes_status',
+            'actualizacion_masiva_cotizaciones',
             'updateSqlServerQuotesFromPayload',
             $exception->getMessage(),
             $payloadLog,
