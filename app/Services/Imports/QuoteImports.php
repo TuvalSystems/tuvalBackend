@@ -6,6 +6,7 @@ use App\Models\GpCotizacion;
 use App\Services\Api\ApiGpService;
 use App\Services\Imports\Contracts\QuoteImportsInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class QuoteImports implements QuoteImportsInterface
 {
@@ -52,15 +53,23 @@ class QuoteImports implements QuoteImportsInterface
         $response = $this->updateQuoteStatus($quotesPayload);
         $success = data_get($response, 'success', false);
         if (!$success) {
-            GpCotizacion::whereIn('id', $quoteIds)
-                ->update(['import_job' => self::ERROR]);
+            if (!$this->shouldRetryIndividually($response)) {
+                GpCotizacion::whereIn('id', $quoteIds)
+                    ->update(['import_job' => self::ERROR]);
 
-            return [
-                'success' => false,
-                'processed_count' => 0,
-                'error_count' => count($quoteIds),
-                'response' => $response,
-            ];
+                $failedRecords = $this->failedRecordsFromQuotes($quotes, $response);
+                $this->logFailedQuoteUpdates($failedRecords, $response);
+
+                return [
+                    'success' => false,
+                    'processed_count' => 0,
+                    'error_count' => count($quoteIds),
+                    'failed_records' => $failedRecords,
+                    'response' => $response,
+                ];
+            }
+
+            return $this->updateQuotesIndividually($quotes, $response);
         }
 
         [$processedIds, $errorIds] = $this->resolveBatchResultIds($quotes, $response);
@@ -83,6 +92,82 @@ class QuoteImports implements QuoteImportsInterface
         ];
     }
 
+    protected function updateQuotesIndividually(Collection $quotes, array $batchResponse): array
+    {
+        $processedIds = [];
+        $errorIds = [];
+        $failedRecords = [];
+
+        foreach ($quotes as $quote) {
+            $id = data_get($quote, 'id');
+
+            if (!$id) {
+                continue;
+            }
+
+            $response = $this->updateQuoteStatus($this->payloadQuotes(collect([$quote])));
+            $success = data_get($response, 'success', false);
+
+            if ($success) {
+                [$itemProcessedIds, $itemErrorIds] = $this->resolveBatchResultIds(collect([$quote]), $response);
+
+                if (!empty($itemProcessedIds) && empty($itemErrorIds)) {
+                    $processedIds[] = $id;
+                    continue;
+                }
+            }
+
+            $errorIds[] = $id;
+            $failedRecords[] = [
+                'id' => $id,
+                'cotizacion' => data_get($quote, 'cotizacion'),
+                'estado' => data_get($quote, 'estado'),
+                'message' => data_get($response, 'message', 'No se pudo actualizar la cotización en SQL Server.'),
+            ];
+        }
+
+        if (!empty($processedIds)) {
+            GpCotizacion::whereIn('id', $processedIds)
+                ->update(['import_job' => self::PROCESSED]);
+        }
+
+        if (!empty($errorIds)) {
+            GpCotizacion::whereIn('id', $errorIds)
+                ->update(['import_job' => self::ERROR]);
+        }
+
+        $this->logFailedQuoteUpdates($failedRecords, $batchResponse);
+
+        return [
+            'success' => empty($errorIds),
+            'processed_count' => count($processedIds),
+            'error_count' => count($errorIds),
+            'failed_records' => $failedRecords,
+            'response' => $batchResponse,
+        ];
+    }
+
+    protected function shouldRetryIndividually(array $response): bool
+    {
+        $message = mb_strtolower((string) data_get($response, 'message', ''));
+
+        return str_contains($message, 'falló en la posición')
+            || str_contains($message, 'fallo en la posicion')
+            || str_contains($message, 'filas afectadas: 0');
+    }
+
+    protected function failedRecordsFromQuotes(Collection $quotes, array $response): array
+    {
+        return $quotes->map(function ($quote) use ($response) {
+            return [
+                'id' => data_get($quote, 'id'),
+                'cotizacion' => data_get($quote, 'cotizacion'),
+                'estado' => data_get($quote, 'estado'),
+                'message' => data_get($response, 'message', 'No se pudo actualizar la cotización en SQL Server.'),
+            ];
+        })->values()->toArray();
+    }
+
 
     protected function payloadQuotes(Collection $quotes): array
     {
@@ -97,7 +182,15 @@ class QuoteImports implements QuoteImportsInterface
 
     protected function updateQuoteStatus(array $payload): array
     {
-        $response = $this->api->updateAllQuoteStatusSql($payload);
+        try {
+            $response = $this->api->updateAllQuoteStatusSql($payload);
+        } catch (\Throwable $exception) {
+            return [
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'exception' => get_class($exception),
+            ];
+        }
 
         return is_array($response) ? $response : [
             'success' => false,
@@ -153,5 +246,19 @@ class QuoteImports implements QuoteImportsInterface
         }
 
         return !empty($result);
+    }
+
+    protected function logFailedQuoteUpdates(array $failedRecords, array $batchResponse): void
+    {
+        if (empty($failedRecords)) {
+            return;
+        }
+
+        Log::warning('cotizaciones_no_actualizadas_sql_server', [
+            'error_count' => count($failedRecords),
+            'records' => $failedRecords,
+            'batch_message' => data_get($batchResponse, 'message'),
+            'batch_status' => data_get($batchResponse, 'status'),
+        ]);
     }
 }
