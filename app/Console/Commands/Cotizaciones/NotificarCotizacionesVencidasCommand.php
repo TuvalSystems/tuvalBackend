@@ -94,9 +94,14 @@ class NotificarCotizacionesVencidasCommand extends Command
                 foreach ($cotizaciones as $cot) {
                     $dateRegister = Carbon::parse($cot->fecha_registro_recordatorio)->format('Y-m-d');
                     $title = 'Cotización No Vendida';
-                    $msg = 'La cotización ' . $cot->cotizacion . ' de la' . $cot->PTO_VTA_DESCRIPCION . ' no ha sido vendida y tiene un recordatorio ingresado el '
+                    $msg = 'La cotización ' . $cot->cotizacion . ' de la ' . $cot->PTO_VTA_DESCRIPCION . ' no ha sido vendida y tiene un recordatorio ingresado el '
                         . $dateRegister . ' programado para hoy.';
-                    NotifyUnsoldQuotesJob::dispatch($title, $msg, $cot->user_id);
+                        $data = [
+                            'id'            => $cot->id,
+                            'cotizacion'    => $cot->cotizacion,
+                            'pv_id'         => $cot->PTO_VTA_ID,
+                        ];
+                    NotifyUnsoldQuotesJob::dispatch($title, $msg, $data, $cot->user_id);
                 }
             }
             $bar->advance();

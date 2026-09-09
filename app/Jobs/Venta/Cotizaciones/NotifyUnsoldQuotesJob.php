@@ -3,7 +3,7 @@
 namespace App\Jobs\Venta\Cotizaciones;
 
 use App\Models\GpUsuario;
-use App\Notifications\User\UserNotification;
+use App\Notifications\Venta\Cotizaciones\UserReasonNoSalesNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,7 +14,7 @@ class NotifyUnsoldQuotesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public string $title, public string $msg, public int $userId)
+    public function __construct(public string $title, public string $msg, public array $data , public int $userId)
     {
           $this->onQueue('notifications');
     }
@@ -23,7 +23,7 @@ class NotifyUnsoldQuotesJob implements ShouldQueue
     {
         $user = GpUsuario::find($this->userId);
         $user->notify(
-            (new UserNotification($this->title, $this->msg))->onQueue('notifications')
+            (new UserReasonNoSalesNotification($this->title, $this->msg, $this->data))->onQueue('notifications')
         );
     }
 }

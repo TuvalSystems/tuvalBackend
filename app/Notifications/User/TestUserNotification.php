@@ -31,9 +31,9 @@ class TestUserNotification extends Notification
     private function payload(): array
     {
         return [
-            'title' => $this->title,
-            'message' => $this->message,
-            'data' => $this->data,
+            'title'     => $this->title,
+            'message'   => $this->message,
+            'data'      => $this->data,
         ];
     }
 }
