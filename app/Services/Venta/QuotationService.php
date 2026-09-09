@@ -59,12 +59,15 @@ class QuotationService implements QuotationServiceInterface
      */
     public function getNonSalesReasons(): Collection
     {
-        return GpCotizacionVentaMotivo::where('estado', 1)->orderBy('id')->get();
+        return GpCotizacionVentaMotivo::select(['id', 'descripcion', 'estado'])
+            ->where('estado', 1)
+            ->orderBy('id')
+            ->get();
     }
 
 
 
-    public function updateNonSaleAndReminderData(array $data, GpUsuario $user) : void
+    public function updateNonSaleAndReminderData(array $data, GpUsuario $user): void
     {
         GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio'            => $data['fecha_recordatorio'],

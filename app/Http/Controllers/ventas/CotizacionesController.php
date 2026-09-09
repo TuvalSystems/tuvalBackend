@@ -722,11 +722,11 @@ class CotizacionesController extends Controller
     }
 
 
-    public function getlistNonSaleReasons()
+    public function ListaMotivosNoVenta()
     {
         return $this->handleApiAction(function () {
             $lista = $this->quotationService->getNonSalesReasons();
-            return $this->successResponse('Lista Obtenida', $lista, 200);
+            return $this->successResponse('Lista Obtenida', $lista);
         }, self::LOG_CHANNEL, 'getlistNonSaleReasons');
     }
 

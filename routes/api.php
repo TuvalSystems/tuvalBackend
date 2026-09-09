@@ -160,7 +160,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
             Route::get('lista-tipo-identificaciones', [CotizacionesController::class, 'obtenerListaTipoIdentificacion']);
-            Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
+            Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'ListaMotivosNoVenta']);
             Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'registrarOActualizarRecordatorioNoVenta']);
 
             Route::post('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
