@@ -359,6 +359,7 @@ class UserService implements UserServiceInterface
                 'id'            => $n->id,
                 'title'         => data_get($n->data, 'title', 'Notificación'),
                 'message'       => data_get($n->data, 'message', ''),
+                'data'          => data_get($n->data, 'data'),
                 'read_at'       => $n->read_at,
                 'time'          => $n->created_at->diffForHumans(),
                 'created_at'    => $n->created_at->toDateTimeString()
