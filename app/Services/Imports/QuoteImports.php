@@ -21,6 +21,7 @@ class QuoteImports implements QuoteImportsInterface
         return GpCotizacion::query()
             ->select(['id', 'cotizacion', 'estado'])
             ->where('import_job', 0)
+            ->whereNotNull('cotizacion_venta_motivo_id')
             ->whereBetween('created_at', [$start, $end])
             ->orderBy('id');
     }
