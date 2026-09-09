@@ -64,7 +64,7 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    public function updateNonSaleAndReminderData(array $data, GpUsuario $user)
+    public function updateNonSaleAndReminderData(array $data, GpUsuario $user) : void
     {
         GpCotizacion::where('id', $data['cotizacion_id'])->update([
             'fecha_recordatorio'            => $data['fecha_recordatorio'],
@@ -76,9 +76,7 @@ class QuotationService implements QuotationServiceInterface
 
         ]);
         $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
-        // $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($sendQuote);
         $this->sendStoreReminderGp($sendQuote);
-        return null;
     }
 
 

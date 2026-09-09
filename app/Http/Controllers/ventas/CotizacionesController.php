@@ -581,7 +581,6 @@ class CotizacionesController extends Controller
                         $cotizacion->estado = 'caducado';
                         $cotizacion->save();
                     }
-
                 }
             }
         }
@@ -732,10 +731,12 @@ class CotizacionesController extends Controller
     }
 
 
-    public function updateNonSaleAndReminderData(Request $request)
+    public function registrarOActualizarRecordatorioNoVenta(Request $request)
     {
-        $data = $request->all();
-        return $this->quotationService->updateNonSaleAndReminderData($data, $request->user());
+        return $this->handleApiAction(function () use ($request) {
+            $data = $request->all();
+            return $this->quotationService->updateNonSaleAndReminderData($data, $request->user());
+        }, self::LOG_CHANNEL, 'updateNonSaleAndReminderData');
     }
 
 

@@ -161,7 +161,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             Route::get('lista-tipo-identificaciones', [CotizacionesController::class, 'obtenerListaTipoIdentificacion']);
             Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'getlistNonSaleReasons']);
-            Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'updateNonSaleAndReminderData']);
+            Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'registrarOActualizarRecordatorioNoVenta']);
 
             Route::post('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
             Route::post('articulo-stock-por-bodega', [CotizacionesController::class, 'obtenerStockItemPorBodega']);
