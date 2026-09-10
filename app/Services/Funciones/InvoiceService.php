@@ -21,7 +21,7 @@ use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Models\Reservas\GpCotizacionReservaDetalleLog;
 use App\Models\Reservas\GpReserva;
 use App\Repositories\Pedidos\OrderRepository;
-use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
+use App\Services\Api\Transacciones\ApiGpProcessInvoiceVta;
 use App\Services\Builders\Bodega\Contracts\DispatchOrderParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\SalesTransferParamsBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -41,7 +41,7 @@ class InvoiceService implements InvoiceServiceInterface
     public function __construct(
         protected readonly PurchaseOrderServiceInterface $purchaseOrderService,
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice,
+        protected readonly ApiGpProcessInvoiceVta $apiGpProcessInvoice,
         protected readonly OrderRepository $orderRepository,
         protected readonly SalesTransferParamsBuilderInterface $salesTransfer,
         protected readonly DispatchOrderParamsBuilderInterface $dispatchBuilder

@@ -687,4 +687,17 @@ class PedidosController extends Controller
             return $this->successResponse('Información Obtenida Correctamente', $lista, 200);
         }, self::LOG_CHANNEL, 'obtenerPedidosGuiasPorTipoDespacho');
     }
+
+    public function cancelarPedidoEstadoEnviando(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id' => 'required|integer|exists:gp_pedidos,id',
+            ]);
+            $id = data_get($validate, 'id');
+            $user = $request->user() ?? GpUsuario::find(179);
+            $pedido = $this->orderService->cancelOrderStatusSending($id, $user);
+            return $this->buildSuccessResponse("Pedido {$pedido->pedido} cancelado!");
+        }, self::LOG_CHANNEL, 'cancelarPedidoEstadoEnviando');
+    }
 }

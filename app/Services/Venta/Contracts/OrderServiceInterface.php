@@ -72,4 +72,5 @@ interface OrderServiceInterface
 
 
      public function cancelOrder(int $orderId, GpUsuario $user) : GpPedido;
+      public function cancelOrderStatusSending(int $id, GpUsuario $user): GpPedido;
 }

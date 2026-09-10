@@ -83,6 +83,7 @@ Route::prefix('pedidos')->group(function () {
     Route::get('crear-traslado/{pedido}', [PedidosController::class, 'crearTrasladoPedidos']);
     // Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
     Route::get('recalcularpedido/{id}', [PedidosController::class, 'recalcularpedido']);
+    Route::get('cancelar-enviando', [PedidosController::class, 'cancelarPedidoEstadoEnviando']);
 });
 
 
@@ -99,8 +100,6 @@ Route::prefix('cotizaciones')->group(function () {
 
     Route::get('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
     Route::get('lista-facturas-historicas', [CotizacionesController::class, 'obtenerFacturasHistoricasCotizacion']);
-
-
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -245,14 +244,12 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
         Route::get('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
         Route::get('enviar-cobro', [CobranzasController::class, 'enviarCobroGp']);
-
     });
 
 
-    Route::prefix('cierre-cajas')->group(function() {
+    Route::prefix('cierre-cajas')->group(function () {
         Route::get('cerrar', [CobranzasController::class, 'cerrarCajaV1']);
         Route::get('resumen', [CobranzasController::class, 'resumenCerrarCaja']);
-
     });
 });
 

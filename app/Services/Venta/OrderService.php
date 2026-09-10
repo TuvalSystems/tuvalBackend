@@ -33,6 +33,7 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
+use App\Services\Api\Transacciones\ApiGpProcessInvoiceVta;
 use App\Services\Api\Transacciones\ApiGpReceivedItemL;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
@@ -64,6 +65,7 @@ class OrderService implements OrderServiceInterface
         protected readonly ApiGpReceivedItemL $apiGpReceiptService,
         protected readonly ClientQueryServiceInterface $clientService,
         protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
+        protected readonly ApiGpProcessInvoiceVta $apiGpProcessInvoice,
 
     ) {}
 
@@ -1569,5 +1571,77 @@ class OrderService implements OrderServiceInterface
             },
             'No se puede cancelar el pedido porque tiene un proceso de facturacion activo.'
         );
+    }
+
+    /** cancelar pedido en estado enviando sin respetar el cache de facturacion */
+
+    public function cancelOrderStatusSending(int $id, GpUsuario $user): GpPedido
+    {
+        $order = GpPedido::find($id);
+
+        if (!$order) {
+            throw new \RuntimeException("El pedido con ID {$id} no existe.");
+        }
+
+        $this->ensureOrderCanBeCanceledFromSending($order);
+
+        $existInvoice   = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($order));
+        $success        = data_get($existInvoice, 'success', false);
+        $invoiceNumber  = trim((string) data_get($existInvoice, 'data.numeroDocGenerado', ''));
+
+        if ($success === true && filled($invoiceNumber)) {
+            $order->update([
+                'factura'            => $invoiceNumber,
+                'estado'             => OrderStatus::FACTURADO,
+                'fecha_factura'      => now()->toDateString(),
+                'fecha_hora_factura' => now(),
+                'FAC_VTA_MENSAJE'    => data_get($existInvoice, 'data.mensaje', data_get($existInvoice, 'message')),
+            ]);
+            throw new \RuntimeException("Este pedido ya tiene una factura generada.");
+        }
+
+        return DB::transaction(function () use ($id, $user) {
+            $order = GpPedido::whereKey($id)->lockForUpdate()->first();
+
+            if (!$order) {
+                throw new \RuntimeException("El pedido con ID {$id} no existe.");
+            }
+
+            $this->ensureOrderCanBeCanceledFromSending($order);
+
+            $order->update([
+                'estado'                => OrderStatus::ELIMINADO,
+                'USERID_cancelado'      => $user->USERID,
+                'fecha_hora_cancelado'  => Carbon::now()->format('Y-m-d H:i:s'),
+            ]);
+
+            GpTrasladosVentas::where('pedido_id', $order->id)->update(
+                ['cantidad' => 0]
+            );
+
+            GpOrdenDespacho::where('pedido_id', $order->id)
+                ->update(['estado' => 'cancelada']);
+
+            return $order;
+        });
+    }
+
+    protected function ensureOrderCanBeCanceledFromSending(GpPedido $order): void
+    {
+        if (filled($order->factura) || $order->estado === OrderStatus::FACTURADO) {
+            throw new \RuntimeException("No se puede cancelar un pedido que ya ha sido facturado.");
+        }
+
+        if ($order->estado !== OrderStatus::ENVIANDO) {
+            throw new \RuntimeException("Solo se puede cancelar por este proceso un pedido en estado enviando.");
+        }
+    }
+
+    protected function formatParamsInvoiceValidate(GpPedido $order): array
+    {
+        return [
+            'documentoOrigen'   => $order->pedido,
+            'tipoDocumento'     => 3
+        ];
     }
 }
