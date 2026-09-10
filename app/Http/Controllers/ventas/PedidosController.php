@@ -236,22 +236,13 @@ class PedidosController extends Controller
     }
 
 
-    public function consultarexistente(Request $request)
+    public function consultarexistente(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $data = $request->all();
             $pedido = $this->orderService->checkExistence($data);
             return $this->successResponse('Existencia Obtenida Correctamente', $pedido, 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $e) {
-            Log::channel(self::LOG_CHANNEL)->error('Error en checkExistence', ['exception' => $e]);
-
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, self::LOG_CHANNEL, 'consultarexistente');
     }
 
     public function facturarexistente(Request $request)

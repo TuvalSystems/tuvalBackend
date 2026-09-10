@@ -50,7 +50,7 @@ interface OrderServiceInterface
 
     /*** proceso de facturar existente  */
 
-    public function checkExistence($data);
+    public function checkExistence(array $data): array;
     public function generateInvoiceFromExistingOrder($data, $detalle, $user);
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote);

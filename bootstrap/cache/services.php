@@ -280,6 +280,7 @@
     'App\\Services\\Venta\\Contracts\\QuotationCreatorServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Contracts\\OrderCreatorServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Imports\\Contracts\\OrdersImportInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
+    'App\\Services\\Imports\\Contracts\\QuoteImportsInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Contracts\\QuoteDraftServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Cotizaciones\\Contracts\\QuotationHistoryCreatorServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Pedidos\\Contracts\\InvoiceHistoryServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
