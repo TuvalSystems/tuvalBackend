@@ -694,6 +694,6 @@ class PedidosController extends Controller
             );
 
             return $this->successResponse('Información Obtenida Correctamente', $lista, 200);
-        }, 'laravel', 'obtenerPedidosGuiasPorTipoDespacho');
+        }, self::LOG_CHANNEL, 'obtenerPedidosGuiasPorTipoDespacho');
     }
 }
