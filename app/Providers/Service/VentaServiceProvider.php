@@ -30,6 +30,8 @@ use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
 use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Services\Venta\Pedidos\InvoiceHistoryService;
+use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
+use App\Services\Venta\Pedidos\OrderGuideService;
 use App\Services\Venta\QuotationCreatorService;
 use App\Services\Venta\QuoteDraftService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -60,7 +62,9 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
         QuotationHistoryCreatorServiceInterface::class => QuotationHistoryCreatorService::class,
 
         // historico de pedidos
-        InvoiceHistoryServiceInterface::class => InvoiceHistoryService::class
+        InvoiceHistoryServiceInterface::class => InvoiceHistoryService::class,
+        //sp de pedidos 
+        OrderGuideServiceInterface::class   => OrderGuideService::class,
     ];
 
 
