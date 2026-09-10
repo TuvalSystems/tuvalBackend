@@ -24,6 +24,7 @@ use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use DomainException;
 use Illuminate\Database\QueryException;
@@ -45,7 +46,9 @@ class PedidosController extends Controller
         //prueba
         protected readonly ReInvoiceServiceInterface $reInvoice,
         protected readonly OrderCreatorServiceInterface $orderCreator,
-        protected readonly CommercialVisibilityService $commercial
+        protected readonly CommercialVisibilityService $commercial,
+
+        protected readonly OrderGuideServiceInterface $orderGuideService
     ) {}
 
 
@@ -152,7 +155,7 @@ class PedidosController extends Controller
         }, 'laravel', 'facturarPedidoTest');
     }
 
-    
+
 
     public function verpedidos(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -174,7 +177,7 @@ class PedidosController extends Controller
             ->select('gp_pedidos.*', 'gp_cotizacions.cotizacion', 'gp_cotizacions.origen as cotizacion_origen');
 
         //restriccion de visualizacion de pedidodos
-        $this->commercial->applyLimitsVisibiliteList($pedidos, $user,$puntoVenta->id, 'pedidos', 'gp_pedidos.user_id');
+        $this->commercial->applyLimitsVisibiliteList($pedidos, $user, $puntoVenta->id, 'pedidos', 'gp_pedidos.user_id');
 
         if ($data['estado'] != 'todos') {
             $pedidos = $pedidos->where('gp_pedidos.estado', $data['estado']);
@@ -696,5 +699,29 @@ class PedidosController extends Controller
             $pedido = $this->orderService->createTransferVtaOrders($pedido);
             return $this->successResponse('Traslado creado correctamente', $pedido, 200);
         }, 'laravel', 'crearTrasladoPedidos');
+    }
+
+
+    public function obtenerPedidosGuiasPorTipoDespacho(Request $request, ?int $periodo = null, ?string $pvCodigo = null, ?string $despacho = null): JsonResponse
+    {
+        return $this->handleApiAction(function ()  use ($request, $periodo, $pvCodigo, $despacho): JsonResponse {
+            $validated = validator([
+                'periodo' => $periodo ?? $request->query('periodo'),
+                'pvCodigo' => $pvCodigo ?? $request->query('pvCodigo'),
+                'despacho' => $despacho ?? $request->query('despacho'),
+            ], [
+                'periodo' => ['required', 'integer'],
+                'pvCodigo' => ['required', 'string'],
+                'despacho' => ['nullable', 'string'],
+            ])->validate();
+
+            $lista = $this->orderGuideService->getOrdersWithGuidesByPeriod(
+                $validated['periodo'],
+                $validated['pvCodigo'],
+                $validated['despacho'] ?? null
+            );
+
+            return $this->successResponse('Información Obtenida Correctamente', $lista, 200);
+        }, 'laravel', 'obtenerPedidosGuiasPorTipoDespacho');
     }
 }

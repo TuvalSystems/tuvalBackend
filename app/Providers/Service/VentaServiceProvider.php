@@ -26,6 +26,8 @@ use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInte
 use App\Services\Venta\Cotizaciones\QuotationHistoryCreatorService;
 use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
+use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
+use App\Services\Venta\Pedidos\OrderGuideService;
 use App\Services\Venta\QuotationCreatorService;
 use App\Services\Venta\QuoteDraftService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -52,7 +54,10 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 
 
         //historico de cotizaciones
-        QuotationHistoryCreatorServiceInterface::class => QuotationHistoryCreatorService::class
+        QuotationHistoryCreatorServiceInterface::class => QuotationHistoryCreatorService::class,
+
+        //sp de pedidos 
+        OrderGuideServiceInterface::class   => OrderGuideService::class
     ];
 
 

@@ -557,8 +557,10 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
 Route::group(['prefix' => 'consultas-externas'], function () {
+    // dd('hola');
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
 
+    Route::get('pedidos-guias/{periodo?}/{pvCodigo?}/{despacho?}', [PedidosController::class, 'obtenerPedidosGuiasPorTipoDespacho']);
 });
 
 // para la sincronizacion global de articulo 1 por registro
