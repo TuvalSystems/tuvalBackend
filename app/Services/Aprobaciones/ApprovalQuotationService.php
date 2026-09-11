@@ -159,9 +159,9 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             // validacion de descripcion difernete a tipo L
             if ($tipoCompra != 'L') {
                 if ($detalle['ART_DESCRIPCION'] != $refDescripcion) {
-                    $descNueva = substr($detalle['ART_DESCRIPCION'], 0, 20);
-                    $descRef = substr($refDescripcion, 0, 20);
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva...' vs Original: '$descRef...'");
+                    $descNueva = $detalle['ART_DESCRIPCION'];
+                    $descRef = $refDescripcion;
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva' vs Original: '$descRef'");
                 }
                 $price    = round((float)$detalle['ART_VALOR'], 4);
                 $priceOrigin = round((float)$refValor, 4);
