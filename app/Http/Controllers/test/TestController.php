@@ -44,8 +44,6 @@ class TestController extends Controller
         }
     }
 
-
-
     public function generarOrdenCompraPedido(string $pedido)
     {
         return $this->handleApiAction(function () use ($pedido) {
