@@ -9,6 +9,8 @@ use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
 
 
 class AuthController extends Controller
@@ -33,7 +35,9 @@ class AuthController extends Controller
             ]);
             $userName = $this->clean($validated, 'username');
             $password = data_get($validated, 'password');
+            abort_unless($request->hasSession(), 419, 'Inicialice la sesión CSRF desde un origen autorizado.');
             $data = $this->userService->authenticateUserWeb($userName, $password);
+            $request->session()->regenerate();
             return $this->successResponse('Login Exitoso', $data, 200);
         }, 'laravel', 'login');
     }
@@ -50,9 +54,9 @@ class AuthController extends Controller
             return response(['success' => false, 'message' => 'Not authenticated'], 401);
         }
 
-        if ($token = $user->currentAccessToken()) {
-            $token->delete();
-        }
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response(['success' => true]);
     }
@@ -63,6 +67,33 @@ class AuthController extends Controller
 
 
 
+
+    public function session(Request $request): JsonResponse
+    {
+        return $this->successResponse('Sesión activa',
+            $this->userService->getWebSessionContext($request->user()));
+    }
+
+    public function migrateSession(Request $request): JsonResponse
+    {
+        abort_unless($request->hasSession(), 419);
+
+        $user = $request->user();
+        $token = $user?->currentAccessToken();
+        abort_unless(
+            $request->bearerToken()
+            && $token instanceof PersonalAccessToken
+            && $token->can('web'),
+            403
+        );
+
+        $data = $this->userService->getWebSessionContext($user);
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+        $token->delete();
+
+        return $this->successResponse('Sesión migrada', $data);
+    }
 
     public function obtenerBodegasPorPuntoDeVentaUsuario(Request $request)
     {

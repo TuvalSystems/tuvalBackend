@@ -43,7 +43,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            \App\Http\Middleware\EnsureWebRequestsAreStateful::class,
             'throttle:400,1',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
@@ -68,6 +68,8 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'imprimir' => CheckTokenAndAddToHeaderMiddleware::class,
         'must.change.password' => \App\Http\Middleware\MustChangePasswordMiddleware::class,
+        'web.session' => \App\Http\Middleware\EnsureWebSession::class,
+        'mobile.token' => \App\Http\Middleware\RequireMobileToken::class,
         'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
         'ability'   => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
     ];

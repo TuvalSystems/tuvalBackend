@@ -41,14 +41,17 @@ use App\Http\Controllers\ventas\ReservasController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/session/migrate', [AuthController::class, 'migrateSession'])
+    ->middleware(['auth:sanctum', 'abilities:web']);
 
 
-Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
+Route::middleware(['auth:sanctum', 'web.session'])->group(function () {
+    Route::get('/session', [AuthController::class, 'session']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
 
-    Route::get('logout', [AuthController::class, 'logout']);
+    Route::post('logout', [AuthController::class, 'logout']);
     Route::post('usuario/change-password', [UserController::class, 'actualizarContrasena']);
 
     /*

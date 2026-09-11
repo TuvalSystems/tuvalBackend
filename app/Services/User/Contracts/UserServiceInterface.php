@@ -13,6 +13,8 @@ interface UserServiceInterface
     public function updateMobileAppAccess(int $id);
      public function updateAdminCollectionAccess(int $id);
 
+    public function getWebSessionContext(GpUsuario $user): array;
+
      public function authenticateUserWeb(string $userName, string $password) : array;
      public function authenticateUserMobile(string $userName, string $password): array;
     // cambio de contraseña

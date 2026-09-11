@@ -30,7 +30,7 @@ Route::get('/app/latest', [AppController::class, 'latest']);
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
+Route::middleware(['auth:sanctum', 'mobile.token', 'abilities:mobile'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------

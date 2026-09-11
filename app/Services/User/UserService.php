@@ -10,6 +10,7 @@ use App\Models\GpCondicionPago;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpRelacionUsuarioPuntoVenta;
@@ -102,9 +103,15 @@ class UserService implements UserServiceInterface
             ->first();
 
         $this->isValidUserWeb($user, $password);
+        $context = $this->getWebSessionContext($user);
+        Auth::guard("web")->login($user);
+        return $context;
+    }
+
+    public function getWebSessionContext(GpUsuario $user): array
+    {
         return [
             'user'                  => $this->formatuserData($user),
-            'token'                 => $this->generateAuthToken($user, 'web'),
             'menu'                  => $this->menu->getFullMenuLayout($user->perfil_id)['arbol'],
             'home'                  => $this->menu->getFullMenuLayout($user->perfil_id)['home'],
             'puntosdeventa'         => $this->getUserSalesPoints($user->id),
@@ -118,7 +125,7 @@ class UserService implements UserServiceInterface
 
 
 
-    protected function isValidUserWeb(GpUsuario $user, string $password): void
+    protected function isValidUserWeb(?GpUsuario $user, string $password): void
     {
         if (!$user) {
             throw new \RuntimeException('Opps! Verifique las credenciales o el perfil asignado');
