@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Log;
 
 class PurchaseOrderService implements PurchaseOrderServiceInterface
 {
-    public function __construct(protected readonly MswService $mswService, protected readonly PurchaseOrderBuilderInterface $purchaseBuilder) {}
+    public function __construct(
+        protected readonly MswService $mswService,
+        protected readonly PurchaseOrderBuilderInterface $purchaseBuilder) {}
 
     public function getViewPurchaseOrder()
     {
