@@ -114,8 +114,8 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             return;
         }
         // 2. Extraer motivos para comparar
-        $motivoNuevo = $requiereAprobacionComercial['motivo'] ?? '';
-        $motivoGuardado = $cotizacion->motivo_aprobacion_comercial ?? '';
+        $motivoNuevo = $this->sanitizeString($requiereAprobacionComercial['motivo'] ?? '');
+        $motivoGuardado = $this->sanitizeString($cotizacion->motivo_aprobacion_comercial ?? '');
 
         // 3. Comparación Estricta
         // Si la nueva validación dice que NO requiere aprobación, genial (aunque raro si antes requería).
@@ -152,16 +152,12 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
     public function sanitizeString(string $text): string
     {
-        if (empty($text))
-            return '';
-
-        $limpio = iconv('UTF-8', 'UTF-8//IGNORE', $text);
-
-        if (!$limpio) {
-            $encoding = mb_detect_encoding($text, mb_detect_order(), true);
-            $limpio = mb_convert_encoding($text, 'UTF-8', $encoding ?: 'ISO-8859-1');
+        if ($text === '' || mb_check_encoding($text, 'UTF-8')) {
+            return $text;
         }
-        return $limpio;
+
+        // Convertir texto legado sin descartar caracteres con //IGNORE.
+        return mb_convert_encoding($text, 'UTF-8', 'Windows-1252');
     }
 
     /** proceso de creacion de detalle de cotizacion */
