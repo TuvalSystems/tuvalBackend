@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $comprobante
  * @property string|null $codigo_ws
  * @property string|null $mensaje_ws
+ * @property bool $enviado_gp
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto newModelQuery()
@@ -31,14 +32,30 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto whereMensajeWs($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto whereMonto($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpCobrosEfectivoMonto whereUpdatedAt($value)
- * @mixin \Eloquent
  */
 class GpCobrosEfectivoMonto extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'cobro_id',
+        'monto',
+        'fecha',
+        'banco',
+        'comprobante',
+        'codigo_ws',
+        'mensaje_ws',
+        'enviado_gp',
+    ];
 
-    public function efectivoFactura (){
+    protected $casts = [
+        'cobro_id'      => 'integer',
+        'enviado_gp'    => 'boolean',
+    ];
+
+
+    public function efectivoFactura()
+    {
         return $this->hasMany(GpCobrosEfectivoFactura::class, 'cobro_id', 'cobro_id');
     }
 }

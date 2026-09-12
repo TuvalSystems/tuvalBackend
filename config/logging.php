@@ -128,6 +128,11 @@ return [
             'path' => storage_path('logs/apiservice.log'),
             // 'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
+        'cobranzas' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/cobranzas.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
         'devolucion' => [
             'driver' => 'single',
             'path' => storage_path('logs/devolucion.log'),
@@ -149,6 +154,16 @@ return [
         'invoice' => [
             'driver' => 'single',
             'path' => storage_path('logs/invoice.log')
+        ],
+        'pedido' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/pedido.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
+        'cotizacion' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/cotizacion.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
         ],
           'despachos' => [
             'driver' => 'single',

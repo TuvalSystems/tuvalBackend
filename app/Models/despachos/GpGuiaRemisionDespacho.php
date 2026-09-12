@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $codigo
  * @property string|null $pedido
  * @property string|null $hash_interno UUID para trazabilidad con la API de bodega
+ * @property string|null $lote_despacho_id UUID del evento de despacho parcial
+ * @property int|null $secuencia_despacho Secuencia del despacho parcial por guia/pedido/tipo
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\despachos\GpGuiaRemision $guiaRemision
@@ -29,6 +31,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho whereIdMovimiento($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho wherePedido($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho whereLoteDespachoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho whereSecuenciaDespacho($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho whereTipoMovimiento($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionDespacho whereUpdatedAt($value)
@@ -45,7 +49,9 @@ class GpGuiaRemisionDespacho extends Model
         'tipo',
         'codigo',
         'pedido',
-        'hash_interno'
+        'hash_interno',
+        'lote_despacho_id',
+        'secuencia_despacho'
     ];
 
 

@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Log;
 
 class PurchaseOrderService implements PurchaseOrderServiceInterface
 {
-    public function __construct(protected readonly MswService $mswService, protected readonly PurchaseOrderBuilderInterface $purchaseBuilder) {}
+    public function __construct(
+        protected readonly MswService $mswService,
+        protected readonly PurchaseOrderBuilderInterface $purchaseBuilder) {}
 
     public function getViewPurchaseOrder()
     {
@@ -157,7 +159,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
             $pedido->estado = OrderStatus::ORDEN_DE_COMPRA;
             $pedido->save();
         }
-        
+
         return $pedido->refresh();
     }
 
@@ -296,7 +298,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 
     /**
      * Summary of generarOrdenCompra
-     * @param mixed $orden
+     * @param mixed $order
      * @return void
      */
 

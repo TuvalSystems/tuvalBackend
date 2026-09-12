@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterface
 {
@@ -280,6 +281,12 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
 
     public function dispatchGuideTransferShipment(int $guiaId, GpUsuario $user): array
     {
+        $dispatchLock = Cache::lock("dispatch_guide_shipment_{$guiaId}", 300);
+        if (!$dispatchLock->get()) {
+            throw new \RuntimeException('Esta guia ya tiene un despacho en proceso. Por favor, espere un momento.');
+        }
+
+        try {
         $guia = GpGuiaRemision::findOrFail($guiaId);
         if ($guia->estado == DeliveryNoteStatus::ENVIADA->value) {
             throw new \RuntimeException("La guia de despacho ya fue enviada por otro usuario");
@@ -334,11 +341,16 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             ];
         }
 
+        $transaction = TransactionType::DSP;
+        $typeMov     = $transaction->value;
+        $type        = $transaction->type();
+
         foreach ($groups as $order => $grupo) {
-            $hashInterno = (string)$this->common->generateDeterministicUuidDispatch($guia->id, $order, $grupo['items'],  $articulos); //definimos el hasInterno para manejarlo en el proceso de guia de despacho
+            $movement    = $this->prepareDispatchMovement($guia, $order, $grupo['items'], $typeMov, $type);
+            $hashInterno = (string) $movement->hash_interno;
             $params      = $this->builder->buildParameterHeaderAndDetailDispatchShipment($guia, $grupo['pedido'], $grupo['pedido_nuevo'], $grupo['ws_items'], $user, $hashInterno);
 
-            $this->sendItemsDeliveryNoteDispatchToGp($guia, $order, $params, $grupo['items'], $hashInterno);
+            $this->sendItemsDeliveryNoteDispatchToGp($guia, $order, $params, $grupo['items'], $movement, $typeMov, $type);
         }
 
         $guia->update(['estado' => DeliveryNoteStatus::ENVIADA->value]);
@@ -349,6 +361,9 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
             'services'  => $tocoServ,
             'pedido'    => $pedido
         ];
+        } finally {
+            $dispatchLock->release();
+        }
     }
 
 
@@ -412,12 +427,97 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         return $groups;
     }
 
-
-    protected function sendItemsDeliveryNoteDispatchToGp(GpGuiaRemision $guia, string $pedido, array $params, array $groupItems, string $hashInterno): void
+    protected function prepareDispatchMovement(GpGuiaRemision $guia, string $pedido, array $items, string $typeMov, string $type): GpGuiaRemisionDespacho
     {
-        $transaction    = TransactionType::DSP;
-        $typeMov        = $transaction->value;
-        $type           = $transaction->type();
+        return DB::transaction(function () use ($guia, $pedido, $items, $typeMov, $type) {
+            GpGuiaRemision::whereKey($guia->id)->lockForUpdate()->first();
+
+            $pending = GpGuiaRemisionDespacho::where([
+                ['guia_remision_id',    $guia->id],
+                ['pedido',              $pedido],
+                ['tipo_movimiento',     $typeMov],
+                ['tipo',                $type],
+            ])
+                ->where(function ($query) {
+                    $query->whereNull('codigo')->orWhere('codigo', '');
+                })
+                ->lockForUpdate()
+                ->orderBy('id')
+                ->first();
+
+            if ($pending) {
+                return $this->ensureDispatchMovementIdentity($pending, $guia, $pedido, $items, $typeMov, $type);
+            }
+
+            $sequence = $this->nextDispatchSequence($guia->id, $pedido, $typeMov, $type);
+            $batchId  = (string) Str::uuid();
+            $hash     = $this->common->generateDeterministicUuidDispatch($guia->id, $pedido, $items, $batchId, $sequence);
+
+            return GpGuiaRemisionDespacho::create([
+                'guia_remision_id'  => $guia->id,
+                'pedido'            => $pedido,
+                'codigo'            => '',
+                'hash_interno'      => $hash,
+                'tipo_movimiento'   => $typeMov,
+                'tipo'              => $type,
+                'lote_despacho_id' => $batchId,
+                'secuencia_despacho' => $sequence,
+            ]);
+        });
+    }
+
+    protected function ensureDispatchMovementIdentity(
+        GpGuiaRemisionDespacho $movement,
+        GpGuiaRemision $guia,
+        string $pedido,
+        array $items,
+        string $typeMov,
+        string $type
+    ): GpGuiaRemisionDespacho {
+        $changed = false;
+
+        if (blank($movement->lote_despacho_id)) {
+            $movement->lote_despacho_id = (string) Str::uuid();
+            $changed = true;
+        }
+
+        if (blank($movement->secuencia_despacho)) {
+            $movement->secuencia_despacho = $this->nextDispatchSequence($guia->id, $pedido, $typeMov, $type);
+            $changed = true;
+        }
+
+        if (blank($movement->hash_interno)) {
+            $movement->hash_interno = $this->common->generateDeterministicUuidDispatch(
+                $guia->id,
+                $pedido,
+                $items,
+                (string) $movement->lote_despacho_id,
+                (int) $movement->secuencia_despacho
+            );
+            $changed = true;
+        }
+
+        if ($changed) {
+            $movement->save();
+        }
+
+        return $movement->refresh();
+    }
+
+    protected function nextDispatchSequence(int $guiaId, string $pedido, string $typeMov, string $type): int
+    {
+        return ((int) GpGuiaRemisionDespacho::where([
+            ['guia_remision_id',    $guiaId],
+            ['pedido',              $pedido],
+            ['tipo_movimiento',     $typeMov],
+            ['tipo',                $type],
+        ])->max('secuencia_despacho')) + 1;
+    }
+
+
+    protected function sendItemsDeliveryNoteDispatchToGp(GpGuiaRemision $guia, string $pedido, array $params, array $groupItems, GpGuiaRemisionDespacho $movement, string $typeMov, string $type): void
+    {
+        $hashInterno    = (string) $movement->hash_interno;
         $cabecera       = data_get($params, 'cabecera', []);
         $payloadHeader  = $this->builder->buildDeliveryNoteValidateDispatchShipment($cabecera, $typeMov, $type);
         $lock           = Cache::lock("dispatch_adjustment_{$hashInterno}", 300);
@@ -447,7 +547,7 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 }
             }
 
-            $this->registerDispatchAdjustmentResult($guia, $pedido, $data, $groupItems, $hashInterno, $typeMov, $type);
+            $this->registerDispatchAdjustmentResult($guia, $pedido, $data, $groupItems, $hashInterno, $typeMov, $type, $movement);
         } finally {
             $lock->release();
         }
@@ -484,20 +584,25 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         array $groupItems,
         string $hashInterno,
         string $typeMov,
-        string $type
+        string $type,
+        GpGuiaRemisionDespacho $movement
     ): void {
         if (blank(data_get($data, 'docGp'))) {
             throw new \RuntimeException('No se ha generado el documento de ajuste de guia en Gp.');
         }
 
-        DB::transaction(function () use ($guia, $pedido, $data, $groupItems, $hashInterno, $typeMov, $type) {
-            $existing = GpGuiaRemisionDespacho::where([
-                ['guia_remision_id',    $guia->id],
-                ['pedido',              $pedido],
-                ['hash_interno',        trim((string) $hashInterno)],
-                ['tipo_movimiento',     $typeMov],
-                ['tipo',                $type],
-            ])->lockForUpdate()->first();
+        DB::transaction(function () use ($guia, $pedido, $data, $groupItems, $hashInterno, $typeMov, $type, $movement) {
+            $existing = GpGuiaRemisionDespacho::whereKey($movement->id)->lockForUpdate()->first();
+
+            if (!$existing) {
+                $existing = GpGuiaRemisionDespacho::where([
+                    ['guia_remision_id',    $guia->id],
+                    ['pedido',              $pedido],
+                    ['hash_interno',        trim((string) $hashInterno)],
+                    ['tipo_movimiento',     $typeMov],
+                    ['tipo',                $type],
+                ])->lockForUpdate()->first();
+            }
 
             if ($existing && filled($existing->codigo)) {
                 return;
@@ -510,7 +615,16 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
                 $existing->codigo           = data_get($data, 'docGp', '');
                 $existing->save();
             } else {
-                $this->createDocumentDispatchTrfv($guia, $data, $pedido, $typeMov, $type, $hashInterno);
+                $this->createDocumentDispatchTrfv(
+                    $guia,
+                    $data,
+                    $pedido,
+                    $typeMov,
+                    $type,
+                    $hashInterno,
+                    $movement->lote_despacho_id,
+                    $movement->secuencia_despacho
+                );
             }
 
             $guia->update(['rebajado' => 1]);
@@ -564,7 +678,16 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         return $dt->refresh();
     }
 
-    public function createDocumentDispatchTrfv(GpGuiaRemision $guia, array $responseApi, string $documento, string $typeMov, string $type, string $hashInterno): GpGuiaRemisionDespacho
+    public function createDocumentDispatchTrfv(
+        GpGuiaRemision $guia,
+        array $responseApi,
+        string $documento,
+        string $typeMov,
+        string $type,
+        string $hashInterno,
+        ?string $dispatchBatchId = null,
+        ?int $dispatchSequence = null
+    ): GpGuiaRemisionDespacho
     {
         $dispatchTrfv = new GpGuiaRemisionDespacho();
         $dispatchTrfv->guia_remision_id     = $guia->id;
@@ -574,6 +697,8 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $dispatchTrfv->hash_interno         = $hashInterno;
         $dispatchTrfv->tipo_movimiento      = $typeMov;
         $dispatchTrfv->tipo                 = $type;
+        $dispatchTrfv->lote_despacho_id     = $dispatchBatchId;
+        $dispatchTrfv->secuencia_despacho   = $dispatchSequence;
         $dispatchTrfv->save();
         return $dispatchTrfv;
     }

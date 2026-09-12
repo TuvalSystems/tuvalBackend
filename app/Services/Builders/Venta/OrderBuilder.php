@@ -204,6 +204,7 @@ class OrderBuilder implements OrderBuilderInterface
             'origen'                            => data_get($extras, 'origen'),
             'modificador_global'                => data_get($data, 'modificador_global', 0),
             'fe_facturacion_reserva'            =>  data_get($extras, 'facturacion_reserva'),
+            'proyecto'                          => data_get($data, 'proyecto', null),
         ]);
         return $od;
     }

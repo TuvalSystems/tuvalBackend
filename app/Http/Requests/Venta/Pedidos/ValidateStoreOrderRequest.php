@@ -131,7 +131,7 @@ class ValidateStoreOrderRequest extends FormRequest
             'descuento_articulo'        => ['nullable', 'numeric'],
             'descuento_original'        => ['nullable', 'numeric'],
             // --- VALIDACIÓN DE ITEMS -    --
-             'items'                         => ['required', 'array', 'min:1'],
+            'items'                         => ['required', 'array', 'min:1'],
 
             'items.*.id'                    => ['nullable', 'integer'],
             'items.*.detalle_id'            => ['nullable', 'integer'],
@@ -196,6 +196,7 @@ class ValidateStoreOrderRequest extends FormRequest
             'pdfs_nuevos.*'              => ['file', 'mimetypes:application/pdf,application/x-google-chrome-pdf,application/octet-stream', 'max:10120'],
             'pdfs_existentes'            => ['nullable', 'array'],
             'pdfs_existentes.*'          => ['string'],
+            'proyecto'                   => ['nullable', 'integer']
         ];
     }
 

@@ -22,6 +22,7 @@ class Kernel extends ConsoleKernel
         $this->scheduleSynchronizations($schedule);
         $this->scheduleCleanUpTasks($schedule);
         $this->scheduleDevolutions($schedule);
+        $this->scheduleDispatches($schedule);
     }
 
 
@@ -61,7 +62,7 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('pedidos:facturar-enviando')
             ->timezone(self::TIMEZONE)
-              ->between('06:00', '24:00')
+            ->between('06:00', '24:00')
             // ->everyTwoHours()
             ->everyMinute()
             ->withoutOverlapping(20)
@@ -147,6 +148,17 @@ class Kernel extends ConsoleKernel
             ->dailyAt('18:00')
             ->timezone(self::TIMEZONE)
             ->withoutOverlapping(60)
+            ->runInBackground();
+    }
+
+
+    private function scheduleDispatches(Schedule $schedule)
+    {
+        $schedule->command('despachos:check-completed')
+            ->timezone(self::TIMEZONE)
+            ->between('06:00', '24:00')
+            ->everyMinute()
+            ->withoutOverlapping(20)
             ->runInBackground();
     }
 

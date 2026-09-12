@@ -12,8 +12,6 @@ use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 class ReservasController extends Controller
@@ -26,7 +24,7 @@ class ReservasController extends Controller
     ) {}
 
 
-    public function validarGeneracionReservaCotizacion($id): JsonResponse
+    public function validarGeneracionReservaCotizacion(int $id): JsonResponse
     {
         return $this->handleApiAction(function () use ($id): JsonResponse {
             $existeReserva = $this->reserveService->hasAnyReserveState($id);
@@ -87,7 +85,8 @@ class ReservasController extends Controller
 
     public function obtenerListaReservasPendientes(Request $request): JsonResponse
     {
-        try {
+
+        return $this->handleApiAction(function () use ($request) {
             $perPage        = $request->input('perPage', 10);
             $search         = $request->input('search', null);
             $sortBy         = $request->input('sortBy', null);
@@ -95,51 +94,58 @@ class ReservasController extends Controller
             $tipoReserva    = $request->input('tipoReserva', null);
             $ptoVtaId       = $request->input('ptovta', null);
             $clienteRuc     = $request->input('cliente', null);
-            return $this->successResponse('Reservas pendientes obtenidos correctamente', $this->reserveService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc), 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+            $respuesta = $this->reserveService->fetchListReservedPending($perPage, $search, $sortBy, $sortOrder, $tipoReserva, $ptoVtaId, $clienteRuc);
+            return $this->successResponse(
+                'Reservas pendientes obtenidos correctamente',
+                $respuesta,
+                200
+            );
+        }, 'reservas_log',  'obtenerListaReservasPendientes');
     }
 
 
-    public function obtenerCotizacionConDetalle($id): JsonResponse
+    public function obtenerCotizacionConDetalle(int $id): JsonResponse
     {
         return $this->handleApiAction(function () use ($id): JsonResponse {
-            return $this->successResponse('Detalle obtenido correctamente', $this->reserveService->getQuotationWithDetails($id), 200);
+            return $this->successResponse(
+                'Detalle obtenido correctamente',
+                $this->reserveService->getQuotationWithDetails($id),
+                200
+            );
         }, 'reservas_log',  'obtenerCotizacionConDetalle');
     }
 
-    public function obtenerCotizacionDetalleConStock($id): JsonResponse
+    public function obtenerCotizacionDetalleConStock(int $id): JsonResponse
     {
         return $this->handleApiAction(function () use ($id): JsonResponse {
-            return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetailsAndStock($id), 200);
+            return $this->successResponse(
+                'Cotizacion obtenida correctamente',
+                $this->reserveService->getQuotationWithDetailsAndStock($id),
+                200
+            );
         }, 'reservas_log',  'obtenerCotizacionDetalleConStock');
     }
 
-    public function obtenerCotizacionConDetalleYStockActivo($id): JsonResponse
+    public function obtenerCotizacionConDetalleYStockActivo(int $id): JsonResponse
     {
-        try {
-            return $this->successResponse('Cotizacion obtenida correctamente', $this->reserveService->getQuotationWithDetailsAndActiveStockById($id), 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        return $this->handleApiAction(function () use ($id): JsonResponse {
+            $data = $this->reserveService->getQuotationWithDetailsAndActiveStockById($id);
+            return $this->successResponse('Cotizacion obtenida correctamente', $data, 200);
+        }, 'reservas_log', 'obtenerCotizacionConDetalleYStockActivo');
     }
 
     public function consultarReservaAprobarRechazar(Request $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $request->validate([
                 'id' => 'required|integer|exists:gp_reservas,id',
             ]);
-
             $alert = $this->aprovalReservation->checkValidateApprovalReservation($request->id);
             if ($alert) {
                 return $this->buildExistResponse(false, $alert, 200);
             }
             return $this->buildExistResponse(true, 'La reserva cuenta con Stock Disponible', 200);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        }, 'reservas_log', 'consultarReservaAprobarRechazar');
     }
 
 
@@ -175,7 +181,7 @@ class ReservasController extends Controller
 
     public function obtenerListaCotizacionesAprobadas(Request $request)
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $perPage        = $request->input('perPage', 10);
             $search         = $request->input('search', null);
             $sortBy         = $request->input('sortBy', null);
@@ -186,10 +192,12 @@ class ReservasController extends Controller
             $ptoVtaId       = $request->input('ptovta', null);
             $clienteRuc     = $request->input('cliente', null);
             $user           = $request->user();
-            return $this->successResponse('Cotizaciones obtenidas correctamente', $this->reserveService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, $user), 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+            return $this->successResponse(
+                'Cotizaciones obtenidas correctamente',
+                $this->reserveService->fetchListApprovedQuotation($perPage, $search, $sortBy, $sortOrder, $fecha_desde, $fecha_hasta, $estado, $ptoVtaId, $clienteRuc, $user),
+                200
+            );
+        }, 'reservas_log', 'obtenerListaCotizacionesAprobadas');
     }
 
 
@@ -227,13 +235,15 @@ class ReservasController extends Controller
     }
 
 
-    public function recalcularCotizacionReserva($id)
+    public function recalcularCotizacionReserva(int $id)
     {
-        try {
-            return $this->successResponse('Cotizacion recalcular correctamente', $this->orderAndQuotation->recalculateQuotation($id), 200);
-        } catch (\Throwable $th) {
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        return $this->handleApiAction(function () use ($id) {
+            return $this->successResponse(
+                'Cotizacion recalcular correctamente',
+                $this->orderAndQuotation->recalculateQuotation($id),
+                200
+            );
+        }, 'reservas_log', 'recalcularCotizacionReserva');
     }
 
 
@@ -241,7 +251,7 @@ class ReservasController extends Controller
      *  Funcion para obtener la lista de transferencias por reserva pero son el contador por bodega y peso por cotización
      *
      */
-    public function TransferenciasPorReservaDashboard($ptovtaId): JsonResponse
+    public function TransferenciasPorReservaDashboard(string $ptovtaId): JsonResponse
     {
         return $this->handleApiAction(function () use ($ptovtaId): JsonResponse {
             $data   = $this->reserveService->fetchReservedTransferSummaries($ptovtaId);
@@ -261,21 +271,13 @@ class ReservasController extends Controller
 
     public function ListaTransferenciasReservaPorBodega(Request $request)
     {
-        try {
-            $ptoVtaOrigen = $request->input('origen', null);
-            $ptoVtaDestino = $request->input('destino', null);
-            $quotation = $request->input('cotizacion', null);
-            $data = $this->reserveService->fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation);
+        return $this->handleApiAction(function () use ($request) {
+            $ptoVtaOrigen   = $request->input('origen', null);
+            $ptoVtaDestino  = $request->input('destino', null);
+            $quotation      = $request->input('cotizacion', null);
+            $data           = $this->reserveService->fetchReservedTransfersByDestinationWarehouses($ptoVtaOrigen, $ptoVtaDestino, $quotation);
             return $this->successResponse('Lista transferencias obtenidas correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion transferenciasReservaPorBodega -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'ListaTransferenciasReservaPorBodega');
     }
 
 
@@ -296,7 +298,7 @@ class ReservasController extends Controller
 
     public function cancelacionPickingItemTraslados(Request $request)
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $item = $request->input('row', null);
             $affected = $this->reserveService->cancelPickingOneItemSelected($item);
             if ($affected === 0) {
@@ -304,20 +306,12 @@ class ReservasController extends Controller
                 return $this->buildSuccessResponse('No hubo cambios en el picking.', 200);
             }
             return $this->buildSuccessResponse('Picking actualizado correctamente', 200);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion cancelacionPickingItemTraslados -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'cancelacionPickingItemTraslados');
     }
 
-    public function generarPdfPickingReserva(Request $request)
+    public function generarPdfPickingReserva(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validated = $request->validate([
                 'origen' => ['required', 'string', 'min:1'],
                 'destino' => ['required', 'string', 'min:1'],
@@ -327,25 +321,17 @@ class ReservasController extends Controller
                 // 'items.*.seleccionado' => ['required', 'numeric', 'min:0.001'],
             ]);
             $data = $this->reserveService->generatePickingPdf($validated);
-            return $this->buildPdfResponse($data);
+            return $this->buildFileResponse($data);
         }, 'reservas_log', 'generarPdfPickingReserva');
     }
 
 
     public function listaVehiculosTransporte(): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function (): JsonResponse {
             $data = $this->reserveService->fetchVehicles();
             return $this->successResponse('Datos obtenidos correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            log::channel('reservas_log')->error('Error en la funcion listaTransportesYVehiculos -ReservasController: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'listaVehiculosTransporte');
     }
 
 
@@ -355,22 +341,12 @@ class ReservasController extends Controller
     /** listado de guias de remision pendientes para realizar el Ej:TRA000 */
     public function listaGuiaRemisionReservasPendientes(Request $request): JsonResponse
     {
-        $ptoVtaOrigen = $request->input('origen', null);
-        $ptoVtaDestino = $request->input('destino', null);
-        try {
-            $response = $this->reserveService->fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $ptoVtaOrigen   = $request->input('origen', null);
+            $ptoVtaDestino  = $request->input('destino', null);
+            $response       = $this->reserveService->fetchPendingReservationdeliveryNotes($ptoVtaOrigen, $ptoVtaDestino);
             return $this->successResponse('Datos obtenidos correctamente', $response, 200);
-        } catch (RuntimeException $r) {
-            return $this->buildErrorResponse($r->getMessage(), 409);
-        } catch (\Throwable $e) {
-            Log::channel('reservas_log')->error('Error en la funcion listaGuiaRemisionReservasPendientes: ', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'linea' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'reservas_log', 'listaGuiaRemisionReservasPendientes');
     }
 
 
@@ -378,45 +354,39 @@ class ReservasController extends Controller
 
     /*** proceso de recibir traslados de reservas */
 
-    public function listaTransferenciasReservasPorRecibir(Request $request)
+    public function listaTransferenciasReservasPorRecibir(Request $request): JsonResponse
     {
-        $ptoVta = $request->input('ptovta', null);
-        $perpage = $request->input('perpage', 10);
-        $search = $request->input('search', "");
-        $sortBy = $request->filled('sortBy') ? $request->input('sortBy') : 'fecha_salida';
-        $sortOrder = $request->filled('sortOrder') ? $request->input('sortOrder') : 'desc';
-        try {
-            $data = $this->reserveService->paginateTransfersToReceive($ptoVta, $perpage, $search, $sortBy, $sortOrder);
+        return $this->handleApiAction(function () use ($request) {
+            $ptoVta     = $request->input('ptovta', null);
+            $perpage    = $request->input('perpage', 10);
+            $search     = $request->input('search', "");
+            $sortBy     = $request->filled('sortBy') ? $request->input('sortBy') : 'fecha_salida';
+            $sortOrder  = $request->filled('sortOrder') ? $request->input('sortOrder') : 'desc';
+            $data       = $this->reserveService->paginateTransfersToReceive($ptoVta, $perpage, $search, $sortBy, $sortOrder);
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+        }, 'reservas_log', 'listaTransferenciasReservasPorRecibir');
     }
 
 
-    public function detalleTransferenciaReservasPorRecibir(Request $request)
+    public function detalleTransferenciaReservasPorRecibir(Request $request): JsonResponse
     {
-        $id = $request->input('id', null);
-        try {
-            $data = $this->reserveService->getTransferToReceiveDetails($id);
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $id     = $request->input('id', null);
+            $data   = $this->reserveService->getTransferToReceiveDetails($id);
             return $this->successResponse('Información Obtenida Correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+        }, 'reservas_log', 'detalleTransferenciaReservasPorRecibir');
     }
 
     /** proceso de detalle Imprimir Orden de almacenamiento de recibir una gua de reserva */
 
-    public function imprimirOrdAlmacenamiento(Request $request)
+    public function imprimirOrdAlmacenamiento(Request $request): Response
     {
-        $validated = $request->validate([
-            'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
-        ]);
-        try {
+        return $this->handleDocumentAction(function () use ($request): Response {
+            $validated = $request->validate([
+                'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
+            ]);
             $data = $this->reserveService->printOrderStorageReceivedTranfered($validated);
-            return $this->buildPdfResponse($data);
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+            return $this->buildFileResponse($data);
+        }, 'reservas_log', 'detalleTransferenciaReservasPorRecibir');
     }
 }

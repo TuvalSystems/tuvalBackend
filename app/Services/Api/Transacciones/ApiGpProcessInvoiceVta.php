@@ -6,7 +6,7 @@ namespace App\Services\Api\Transacciones;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Endpoints\ApiGpEndpoints;
 
-class ApiGpProcessInviceVta extends ApiGpService
+class ApiGpProcessInvoiceVta extends ApiGpService
 {
 
     public function storeDocumentInvoiceVta(array $params)

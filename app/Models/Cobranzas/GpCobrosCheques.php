@@ -2,6 +2,7 @@
 
 namespace App\Models\Cobranzas;
 
+use App\Models\GpCajaBancos;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -40,8 +41,26 @@ class GpCobrosCheques extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'cobro_id',
+        'banco_id',
+        'banco',
+        'cuenta',
+        'cheque',
+        'monto',
+        'comentario',
+        'fecha_emision',
+        'fecha_vencimiento',
+    ];
 
-    public function chequesFacturas(){
+
+    public function chequesFacturas()
+    {
         return $this->hasMany(GpCobrosChequesFacturas::class, 'cobro_id', 'cobro_id');
+    }
+
+    public function banco()
+    {
+        return $this->belongsTo(GpCajaBancos::class, 'banco_id', 'id');
     }
 }

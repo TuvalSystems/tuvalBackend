@@ -39,7 +39,7 @@ Route::get('/', function () {
     abort(404);
 });
 
-Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarcobros']);
+Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarCobrosLote']);
 Route::get('/cotizaciones/checkvalidezcotizaciones', [CotizacionesController::class, 'checkvalidezcotizaciones']);
 Route::get('/cobranzas/consultacobrosanulados', [CobranzasController::class, 'consultacobrosanulados']);
 Route::get('/facturarsiguientemescron', [PedidosController::class, 'facturarsiguientemescron']);
@@ -83,6 +83,7 @@ Route::prefix('pedidos')->group(function () {
     Route::get('crear-traslado/{pedido}', [PedidosController::class, 'crearTrasladoPedidos']);
     // Route::get('sendfacturasgp', [PedidosController::class, 'sendfacturasgp']);
     Route::get('recalcularpedido/{id}', [PedidosController::class, 'recalcularpedido']);
+    Route::get('cancelar-enviando', [PedidosController::class, 'cancelarPedidoEstadoEnviando']);
 });
 
 
@@ -98,6 +99,7 @@ Route::prefix('cotizaciones')->group(function () {
     Route::get('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
 
     Route::get('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
+    Route::get('lista-facturas-historicas', [CotizacionesController::class, 'obtenerFacturasHistoricasCotizacion']);
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -130,6 +132,7 @@ Route::prefix('bodegas')->group(function () {
 Route::prefix('consultas')->group(function () {
     Route::get('stock-transito', [ConsultasController::class, 'consultStockInTransit']);
     Route::get('stock-transito-transferencia-venta', [ConsultasController::class, 'consultarStockTransitoTransferenciaVenta']);
+    Route::get('stock-transito-transferencia-reservas', [ConsultasController::class, 'consultarStockTransitoReservas']);
     Route::get('stock-transito-consolidado', [ConsultasController::class, 'consultaTransitoConsolidado']);
     Route::get('buscararticulo-web', [ConsultasController::class, 'buscarArticuloWeb']);
     Route::get('reservados', [ConsultasController::class, 'reservados']);
@@ -222,6 +225,32 @@ Route::group(['prefix' => 'cobranzas'], function () {
     Route::get('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
     Route::get('lista-aplicaciones', [CobranzasController::class, 'listaCobrosAplicados']);
     Route::get('detalle-aplicaciones', [CobranzasController::class, 'detalleCobrosAplicados']);
+
+
+
+
+    //cobros facturas
+    Route::prefix('cobros-facturas')->group(function () {
+        Route::get('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
+        Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+        Route::get('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
+        Route::get('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
+        Route::get('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
+        Route::get('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
+        Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
+        Route::get('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
+        Route::get('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
+        Route::get('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
+        Route::get('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
+        Route::get('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
+        Route::get('enviar-cobro', [CobranzasController::class, 'enviarCobroGp']);
+    });
+
+
+    Route::prefix('cierre-cajas')->group(function () {
+        Route::get('cerrar', [CobranzasController::class, 'cerrarCajaV1']);
+        Route::get('resumen', [CobranzasController::class, 'resumenCerrarCaja']);
+    });
 });
 
 Route::prefix('gestion')->group(function () {
@@ -253,9 +282,8 @@ Route::group(['prefix' => 'inventario-web'], function () {
 });
 
 
-Route::prefix('despachos')->group(function (){
+Route::prefix('despachos')->group(function () {
     Route::get('imprimir-pdf', [DespachosController::class, 'imprimirOrderDespachoPdf']);
-
 });
 
 

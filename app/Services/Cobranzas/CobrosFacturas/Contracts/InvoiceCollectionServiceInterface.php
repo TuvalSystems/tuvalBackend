@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Services\Cobranzas\CobrosFacturas\Contracts;
+
+use App\Models\GpUsuario;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+
+interface InvoiceCollectionServiceInterface
+{
+    // Define los métodos
+
+    public function getStatusBoxedUser(int $pvId, string $pvCode, ?string $date, GpUsuario $user): array;
+    public function openCashBoxed(int $pvId,  GpUsuario $user);
+    public function generateClientAccountStatementPdf(int $clientId): array;
+    public function generateClientAccountStatementExcel(int $clientId): array;
+
+    public function getInvoiceCollectionsByClient(int $id): array;
+    public function getUnappliedCollectionsByClient(int $id): ?Collection;
+    public function getBanks(): array;
+    public function retentionReceiptExistsForClient(int $clientId, string $receiptNumber): bool;
+    public function depositReceiptExistsForClient(int $clientId, int $bankId, string $receiptNumber): bool;
+    public function checkReceiptExistsForClient(string $account, string $numCheck): bool;
+    public function fetchListCollection(array $filters): LengthAwarePaginator;
+    public function printCollectionPdf(int $collectionId, GpUsuario $user) : array;
+}

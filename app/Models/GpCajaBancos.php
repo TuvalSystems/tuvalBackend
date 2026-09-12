@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Cobranzas\GpCobrosDeposito;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -30,4 +31,17 @@ use Illuminate\Database\Eloquent\Model;
 class GpCajaBancos extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'CB_ID',
+        'CB_DESCRIPCION',
+        'CB_TIPO',
+        'estado'
+    ];
+
+
+    public function deposito()
+    {
+        return $this->hasMany(GpCobrosDeposito::class, 'banco_id', 'id');
+    }
 }

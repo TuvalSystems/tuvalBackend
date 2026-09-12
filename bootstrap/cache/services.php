@@ -280,8 +280,10 @@
     'App\\Services\\Venta\\Contracts\\QuotationCreatorServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Contracts\\OrderCreatorServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Imports\\Contracts\\OrdersImportInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
+    'App\\Services\\Imports\\Contracts\\QuoteImportsInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Contracts\\QuoteDraftServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Cotizaciones\\Contracts\\QuotationHistoryCreatorServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
+    'App\\Services\\Venta\\Pedidos\\Contracts\\InvoiceHistoryServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Pedidos\\Contracts\\OrderGuideServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Repositories\\Devoluciones\\Contracts\\DevolucionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\Pedidos\\Contracts\\OrderRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
@@ -293,6 +295,7 @@
     'App\\Repositories\\Cobranzas\\Contracts\\CashBoxRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\Cobranzas\\Contracts\\CollectionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\Cobranzas\\Contracts\\WebInvoiceApplicationRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
+    'App\\Repositories\\Cobranzas\\CobrosFacturas\\Contracts\\InvoiceCollectionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\User\\Contracts\\UserRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Services\\User\\Contracts\\UserServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
     'App\\Services\\Admin\\Contracts\\ProfileServiceInterface' => 'App\\Providers\\Service\\UserServiceProvider',
@@ -311,6 +314,7 @@
     'App\\Services\\Builders\\Bodega\\Contracts\\DeliveryNoteSalesTransferBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\SalesTransferParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
     'App\\Services\\Builders\\Bodega\\Contracts\\DispatchOrderParamsBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
+    'App\\Services\\Builders\\Cobranzas\\CobrosFacturas\\Contracts\\CollectionRegistrationBuilderInterface' => 'App\\Providers\\Service\\Builder\\BodegaBuilderServiceProvider',
   ),
   'when' => 
   array (

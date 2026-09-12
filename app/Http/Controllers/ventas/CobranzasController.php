@@ -12,7 +12,6 @@ use App\Models\GpCobrosAplicacionFactura;
 use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
-use App\Models\GpCronLog;
 use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaCaja;
 use App\Models\GpUsuario;
@@ -34,21 +33,21 @@ use App\Models\GpCajaBancos;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Exports\EstadodecuentaExport;
-use App\Http\Controllers\Inventario\Bodega\DespachosController;
+use App\Http\Requests\Cobranzas\CobrosFacturas\RegisterCollectionRequest;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
 use App\Notifications\User\UserNotification;
+use App\Services\Cobranzas\CierreCajas\Contracts\CashRegisterClosureServiceInterface;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
 use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
 use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorServiceInterface;
-use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -56,11 +55,17 @@ class CobranzasController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
+
+
     public function __construct(
         protected readonly CollectionServiceInterface $collectionService,
         protected readonly CustomerPaymentApplicationServiceInterface $customer,
         protected readonly CollectionUnapplicationServiceInterface $unapplycation,
-        protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits
+        protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits,
+        protected readonly InvoiceCollectionServiceInterface $invoiceCollect,
+        protected readonly CollectionRegistrationServiceInterface $collectionRegistrationService,
+        protected readonly CollectionGpSenderServiceInterface $sendCollectionService,
+        protected readonly CashRegisterClosureServiceInterface $cashClosureService
     ) {}
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -76,440 +81,8 @@ class CobranzasController extends Controller
         ]);
     }
 
-    public function estadodecuentacliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'CLI_RUC' => 'required',
-            'id' => 'required',
-        ]);
+   
 
-        $webservices = new WebserviceController();
-
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $data['CLI_RUC'],
-        );
-
-        $estadodecuenta = $webservices->cobranzas('ConsultaDetalleEstadoCuenta', $parameters);
-        $estadodecuenta = $estadodecuenta['ConsultaDetalleEstadoCuentaResult']['ESTADO_DE_CUENTA_DETALLADO'][0];
-        if (!isset($estadodecuenta['LISTA_CABECERA_ESTADO_CUENTA']['CABECERA_ESTADO_CUENTA'][0]['LISTA_DETALLE_ESTADO_CUENTA']['DETALLE_ESTADO_CUENTA'])) {
-            $facturas = array();
-        } else {
-            $facturas = $estadodecuenta['LISTA_CABECERA_ESTADO_CUENTA']['CABECERA_ESTADO_CUENTA'][0]['LISTA_DETALLE_ESTADO_CUENTA']['DETALLE_ESTADO_CUENTA'];
-        }
-
-        $facturas_retenciones = array();
-        foreach ($facturas as $key => &$factura) {
-            $factura['ECD_DET_SALDO'] = $factura['ECD_DET_SALDO_CLIENTE'];
-            $total = number_format($factura['ECD_DET_MONTO_ORIGINAL'], 2, '.', '');
-            $subtotal =  round(TaxRateEnum::IVA_12->calculateSubtotal($total), 4);
-            $iva = number_format($total - $subtotal, 2, '.', '');
-            $factura['ECD_DET_SUBTOTAL'] = $subtotal;
-            $factura['ECD_DET_IVA'] = $iva;
-            $factura['ECD_DET_FECHA_EMISION'] = substr($factura['ECD_DET_FECHA_EMISION']['date'], 0, 10);
-            $factura['ECD_DET_FECHA_VENCIMIENTO'] = substr($factura['ECD_DET_FECHA_VENCIMIENTO']['date'], 0, 10);
-            $factura['aplicar_todo_efectivo'] = false;
-            $factura['aplicar_monto_efectivo'] = 0;
-            $factura['observacion_efectivo'] = "";
-
-            $anterior = GpCobrosRetenciones::where('ret_factura', $factura['ECD_DET_NUM_DOC'])->first();
-
-            if ($factura['ECD_DET_SALDO_CLIENTE'] == 0) {
-                unset($facturas[$key]);
-            } elseif ($factura['ECD_DET_TIPO_DOC'] == 'Facturas' && !$anterior) {
-                $facturas_retenciones[] = $factura;
-            }
-
-            $depositos_pendientes = GpCobrosDeposito::join('gp_cobros_depositos_facturas', 'gp_cobros_depositos_facturas.deposito_id', 'gp_cobros_depositos.id')
-                ->where('gp_cobros_depositos_facturas.id_factura', $factura['ECD_DET_NUM_DOC'])
-                ->where('gp_cobros_depositos.estado', 'iniciado')
-                ->select('gp_cobros_depositos_facturas.monto')
-                ->get();
-
-            foreach ($depositos_pendientes as $pendiente) {
-                $factura['ECD_DET_SALDO_CLIENTE'] -= $pendiente->monto;
-                $factura['ECD_DET_SALDO_BASE_CLIENTE'] -= $pendiente->monto;
-                $factura['ECD_DET_SALDO'] -= $pendiente->monto;
-            }
-        }
-
-        //REVISAR INTERNAMENTE SI YA ESTÄ GUARDADO EL COBRO
-
-        $facturas = array_values($facturas);
-
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $data['CLI_RUC'],
-        );
-
-        $cobros_sin_aplicar = $webservices->cobranzas('ConsultaCobrosSinAplicar', $parameters);
-        $cobros_sin_aplicar = $cobros_sin_aplicar['ConsultaCobrosSinAplicarResult']['CONSULTA_COBROS_NO_APLICADOS'];
-
-        $bancos_tuval = GpCajaBancos::where('CB_TIPO', 'BANCO_TUVAL')->where('estado', 'activo')->get();
-        $bancos_cliente = GpCajaBancos::where('CB_TIPO', 'BANCO_CLIENTE')->get();
-        $bancos_tarjetas = GpCajaBancos::where('CB_TIPO', 'TARJETA')->get();
-
-        $pedidos = GpPedido::leftJoin('gp_cobros', 'gp_cobros.pedido', 'gp_pedidos.pedido')
-            ->where('gp_pedidos.cliente_id', $data['id'])
-            ->where('gp_pedidos.estado', OrderStatus::ESPERA)
-            ->whereNull('gp_cobros.pedido')
-            ->select('gp_pedidos.*')
-            ->get();
-
-        foreach ($pedidos as $key => $pedido) {
-            if ($pedido->requiere_aprobacion_comercial == 'yes' && $pedido->aprobado_comercial == 'no')
-                unset($pedidos[$key]);
-
-            if ($pedido->requiere_aprobacion_crediticia == 'yes' && $pedido->aprobado_crediticio == 'no')
-                unset($pedidos[$key]);
-        }
-
-        return response([
-            'success' => true,
-            'facturas' => $facturas,
-            'facturas_retenciones' => $facturas_retenciones,
-            'bancos_tuval' => $bancos_tuval,
-            'bancos_cliente' => $bancos_cliente,
-            'bancos_tarjetas' => $bancos_tarjetas,
-            'cobros_sin_aplicar' => $cobros_sin_aplicar,
-            'pedidos_por_cobrar' => $pedidos,
-        ]);
-    }
-
-    public function estadodecuentaclientetuval($ruc)
-    {
-        //        $data = $request->validate([
-        //            'CLI_RUC' => 'required',
-        //        ]);
-
-        $webservices = new WebserviceController();
-        $funciones = new FuncionesController();
-
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $ruc,
-        );
-
-        $cliente = GpCliente::where('CLI_RUC', $ruc)->first()->toArray();
-        $detalle = $webservices->cobranzas('ConsultaDetalleEstadoCuentaTuval', $parameters);
-        $resumen = $webservices->cobranzas('ConsultaResumenEstadoCuentaTuval', $parameters);
-
-        foreach ($detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL'] as $key => $value) {
-            if ($value['Condicion_Pago'] == '') {
-                $fecha_inicio = substr($value['Fecha_Emision']['date'], 0, 10);
-                $fecha_fin = substr($value['Fecha_Vencimiento']['date'], 0, 10);
-                $detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL'][$key]['Condicion_Pago'] = $funciones->dateDiffInDays($fecha_inicio, $fecha_fin) . ' DÍAS';
-            }
-        }
-
-        $data = [
-            'cliente' => $cliente,
-            'detalle' => $detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL'],
-            'resumen' => $resumen['ConsultaResumenEstadoCuentaTuvalResult']['RESUMEN_ESTADO_CUENTA_TUVAL'][0],
-        ];
-        //        echo '<pre>';
-        //        print_r($data);
-        //        die();
-        //return view('estadodecuentaclientePDF', $data);
-        $pdf = PDF::loadView('estadodecuentaclientePDF', $data);
-        return $pdf->stream('estadodecuentacliente-' . $cliente['CLI_RUC'] . '-' . date('Y-m-d') . '.pdf');
-    }
-
-    public function estadodecuentaclientetuvalexcel($ruc)
-    {
-
-        $webservices = new WebserviceController();
-        $funciones = new FuncionesController();
-
-        $parameters = array(
-            'IDCompania' => env('ID_COMPANIA'),
-            'Ruc' => $ruc,
-        );
-
-        $cliente = GpCliente::where('CLI_RUC', $ruc)->first()->toArray();
-        $detalle = $webservices->cobranzas('ConsultaDetalleEstadoCuentaTuval', $parameters);
-        $resumen = $webservices->cobranzas('ConsultaResumenEstadoCuentaTuval', $parameters);
-
-        foreach ($detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL'] as $key => $value) {
-            if ($value['Condicion_Pago'] == '') {
-                $fecha_inicio = substr($value['Fecha_Emision']['date'], 0, 10);
-                $fecha_fin = substr($value['Fecha_Vencimiento']['date'], 0, 10);
-                $detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL'][$key]['Condicion_Pago'] = $funciones->dateDiffInDays($fecha_inicio, $fecha_fin) . ' DÍAS';
-            }
-        }
-
-        $resumen = array(
-            0 => [
-                'tipo' => 'Tipo Doc',
-                'numero' => 'Nro Doc',
-                'fecha_doc' => 'Fecha doc',
-                'fecha_venc' => 'Fecha Venc',
-                'condicion_pago' => 'Cond Pago',
-                'monto_original' => 'Valor Doc',
-                'abono' => 'Abono',
-                'saldo_pendiente' => 'Saldo Pend',
-                'observacion' => '',
-            ]
-        );
-        foreach ($detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL'] as $key => $dat) {
-            $resumen[$key + 1]['tipo'] = $dat['Tipo'];
-            $resumen[$key + 1]['numero'] = $dat['Documento'];
-            $resumen[$key + 1]['fecha_doc'] = substr($dat['Fecha_Emision']['date'], 0, 10);
-            $resumen[$key + 1]['fecha_venc'] = substr($dat['Fecha_Vencimiento']['date'], 0, 10);
-            $resumen[$key + 1]['condicion_pago'] = $dat['Condicion_Pago'];
-            $resumen[$key + 1]['monto_original'] = number_format($dat['Monto_Original'], 2, '.', '');
-            $resumen[$key + 1]['abono'] = number_format($dat['Abono'], 2, '.', '');
-            $resumen[$key + 1]['saldo_pendiente'] = number_format($dat['Saldo_Pendiente'], 2, '.', '');
-            $resumen[$key + 1]['observacion'] = $dat['Observacion'];
-        }
-
-        //        echo '<pre>';
-        //        print_r($detalle['ConsultaDetalleEstadoCuentaTuvalResult']['ESTADO_CUENTA_TUVAL']);
-        //        die();
-
-        $export = new EstadodecuentaExport($resumen);
-
-        return Excel::download($export, 'estado_de_cuenta_' . $ruc . '.xlsx'); //simon
-    }
-
-    public function registrarcobro(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-
-        $data = $request->all();
-        $user = Auth::user();
-        $cajas = GpCaja::get()->keyBy('CAJA_CODIGO');
-        $bancos = GpCajaBancos::get()->keyBy('CB_ID');
-        $caja = GpRelacionUsuarioCaja::join('gp_cajas', 'gp_cajas.CAJA_CODIGO', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
-            ->join('gp_relacion_punto_venta_cajas', 'gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_CAJA', 'gp_relacion_usuario_cajas.CAJ_USER_CAJA')
-            ->where('CAJ_USER_USUARIO', $user->USERID)
-            ->where('gp_relacion_punto_venta_cajas.PTO_VTA_CAJA_PUNTO_VENTA', $data['puntodeventa'])
-            ->select('gp_relacion_usuario_cajas.*')
-            ->first();
-
-        $cobro = new GpCobro();
-
-        $ultimoPedido = GpCobro::orderBy('id', 'DESC')->first();
-
-        if (!$ultimoPedido) {
-            $ultimoPedido = new \stdClass();
-            $ultimoPedido->id = 0;
-        }
-        $pvId = GpPuntoVenta::where('PTO_VTA_ID', $data['puntodeventa'])->first();
-        $cobro->numero_recibo = 'RC-' . str_pad($ultimoPedido->id + 1, 8, "0", STR_PAD_LEFT);
-        $cobro->user_id     = $user->id;
-        $cobro->pv_id       = $pvId->id;
-        $cobro->cliente_id  = $data['cliente_id'];
-        $cobro->caja        = $caja->CAJ_USER_CAJA;
-        $cobro->caja_id     = $cajas[$caja->CAJ_USER_CAJA]->id;
-        $cobro->fecha       = date('Y-m-d H:i:s');
-        $cobro->estado      = 'iniciado';
-        $cobro->referencia  = $data['referencia'];
-        if (!isset($data['pago_a_padido']))
-            $data['pago_a_padido'] = null;
-        $cobro->pedido = $data['pago_a_padido'];
-        $cobro->save();
-
-        if (isset($data['retenciones']) && count($data['retenciones']) > 0) {
-            foreach ($data['retenciones'] as $key => $retencion) {
-
-                $save_retencion = new GpCobrosRetenciones;
-                $save_retencion->cobro_id = $cobro->id;
-                $save_retencion->ret_factura = $retencion['ret_factura'];
-                $save_retencion->ret_fecha_emision = $retencion['ret_fecha_emision'];
-                $save_retencion->ret_fecha_vencimiento = $retencion['ret_fecha_vencimiento'];
-                $save_retencion->ret_subtotal_factura = $retencion['ret_subtotal_factura'];
-                $save_retencion->ret_iva_factura = $retencion['ret_iva_factura'];
-                $save_retencion->ret_total_factura = $retencion['ret_original_factura'];
-                $save_retencion->ret_saldo_factura = $retencion['ret_saldo_factura'];
-                $save_retencion->ret_iva = $retencion['ret_iva'];
-                $save_retencion->ret_porcentaje_iva = $retencion['ret_porcentaje_iva'];
-                $save_retencion->ret_renta = $retencion['ret_renta'];
-                $save_retencion->ret_porcentaje_renta = $retencion['ret_porcentaje_renta'];
-
-                $save_retencion->ret_iva_srv = $retencion['ret_iva_srv'];
-                $save_retencion->ret_porcentaje_iva_srv = $retencion['ret_porcentaje_iva_srv'];
-                $save_retencion->ret_renta_srv = $retencion['ret_renta_srv'];
-                $save_retencion->ret_porcentaje_renta_srv = $retencion['ret_porcentaje_renta_srv'];
-
-                $save_retencion->ret_emision = $retencion['ret_emision'];
-                $save_retencion->ret_caducidad = $retencion['ret_caducidad'];
-                $save_retencion->ret_comprobante = $retencion['ret_comprobante'];
-                $save_retencion->ret_autorizacion = $retencion['ret_autorizacion'];
-                $save_retencion->total = $retencion['total'];
-                $save_retencion->save();
-            }
-        }
-        if (isset($data['ingreso_efectivo']['monto_original']) && $data['ingreso_efectivo']['monto_original'] > 0) {
-            $save_efectivo_monto = new GpCobrosEfectivoMonto;
-            $save_efectivo_monto->cobro_id = $cobro->id;
-            $save_efectivo_monto->monto = $data['ingreso_efectivo']['monto'];
-            $save_efectivo_monto->save();
-
-            foreach ($data['ingreso_efectivo']['facturas'] as $key => $factura) {
-                $save_efectivo = new GpCobrosEfectivoFactura;
-                $save_efectivo->cobro_id = $cobro->id;
-                $save_efectivo->id_factura = $factura['ECD_DET_NUM_DOC'];
-                $save_efectivo->monto = $factura['aplicar_monto_efectivo'];
-                $save_efectivo->observacion = $factura['observacion_efectivo'];
-                $save_efectivo->save();
-            }
-        }
-
-        if (isset($data['ingreso_depositos']) && count($data['ingreso_depositos']) > 0) {
-            foreach ($data['ingreso_depositos'] as $deposito) {
-                $save_deposito = new GpCobrosDeposito;
-                $save_deposito->cobro_id = $cobro->id;
-                $save_deposito->estado = 'iniciado';
-                $save_deposito->tipo = $deposito['tipo'];
-                $save_deposito->banco_id = $bancos[$deposito['banco']]->id;
-                $save_deposito->banco = $deposito['banco'];
-                $save_deposito->comprobante = $deposito['dep_comprobante'];
-                $save_deposito->fecha = $deposito['dep_fecha'];
-                $save_deposito->monto = $deposito['monto'];
-                $save_deposito->save();
-
-                foreach ($deposito['facturas'] as $factura) {
-                    if (!isset($factura['observacion_deposito']))
-                        $factura['observacion_deposito'] = null;
-                    $save_factura = new GpCobrosDepositosFacturas;
-                    $save_factura->cobro_id = $cobro->id;
-                    $save_factura->deposito_id = $save_deposito->id;
-                    $save_factura->id_factura = $factura['ECD_DET_NUM_DOC'];
-                    $save_factura->monto = $factura['aplicar_monto_deposito'];
-                    $save_factura->observacion = $factura['observacion_deposito'];
-                    $save_factura->save();
-                }
-            }
-        }
-
-        if (isset($data['ingreso_cheques']['monto_original']) && $data['ingreso_cheques']['monto_original'] > 0) {
-            $save_cheques_monto = new GpCobrosChequesMonto();
-            $save_cheques_monto->cobro_id = $cobro->id;
-            $save_cheques_monto->monto = $data['ingreso_cheques']['monto_original'];
-            $save_cheques_monto->saldo = $data['ingreso_cheques']['monto_no_aplicado'];
-            $save_cheques_monto->save();
-
-            foreach ($data['ingreso_cheques']['cheques'] as $key => $cheque) {
-                $numeroOriginal =  data_get($cheque, 'cheque');
-                $cliente_id     = data_get($data, 'cliente_id');
-                $cantidadExistente = GpCobro::where('cliente_id', $cliente_id)
-                    ->whereHas('cheques', function ($q) use ($numeroOriginal) {
-                        $q->where('cheque', $numeroOriginal)
-                            ->orWhere('cheque', 'like', '%' . $numeroOriginal);
-                    })->count();
-
-                if ($cantidadExistente > 0) {
-                    $largoDinamico = strlen($numeroOriginal) + $cantidadExistente;
-                    $chequeFinal = str_pad($numeroOriginal, $largoDinamico, "0", STR_PAD_LEFT);
-                    while (GpCobro::where('cliente_id', $cliente_id)
-                        ->whereHas('cheques', function ($q) use ($chequeFinal) {
-                            $q->where('cheque', $chequeFinal);
-                        })->exists()
-                    ) {
-                        $chequeFinal = "0" . $chequeFinal;
-                    }
-                } else {
-                    $chequeFinal = $numeroOriginal;
-                }
-
-                $save_cheque = new GpCobrosCheques();
-                $save_cheque->cobro_id = $cobro->id;
-                $save_cheque->banco_id = $bancos[$cheque['banco_id']]->id;
-                $save_cheque->banco = $cheque['banco_id'];
-                $save_cheque->cuenta = $cheque['cuenta'];
-                $save_cheque->cheque = $chequeFinal;
-                $save_cheque->monto = $cheque['monto'];
-                $save_cheque->fecha_emision = $cheque['fecha_emision'];
-                $save_cheque->fecha_vencimiento = $cheque['fecha_vencimiento'];
-                $save_cheque->comentario = $cheque['comentario'];
-                $save_cheque->save();
-            }
-
-            foreach ($data['ingreso_cheques']['facturas'] as $key => $factura) {
-
-                if (!isset($factura['observacion_efectivo']))
-                    $factura['observacion_efectivo'] = null;
-
-                $save_factura = new GpCobrosChequesFacturas();
-                $save_factura->cobro_id = $cobro->id;
-                $save_factura->id_factura = $factura['ECD_DET_NUM_DOC'];
-                $save_factura->monto = $factura['aplicar_monto_cheque'];
-                $save_factura->observacion = $factura['observacion_efectivo'];
-                $save_factura->ECD_DET_FECHA_VENCIMIENTO = $factura['ECD_DET_FECHA_VENCIMIENTO'];
-                $save_factura->save();
-            }
-        }
-
-        if (isset($data['ingreso_tarjeta']['monto_original']) && $data['ingreso_tarjeta']['monto_original'] > 0) {
-            $save_tarjeta_monto = new GpCobrosTarjetaMonto();
-            $save_tarjeta_monto->cobro_id = $cobro->id;
-            $save_tarjeta_monto->monto = $data['ingreso_tarjeta']['monto'];
-            $save_tarjeta_monto->fecha = $data['ingreso_tarjeta']['fecha'];
-            $save_tarjeta_monto->banco = $data['ingreso_tarjeta']['banco_id'];
-            $save_tarjeta_monto->comprobante = $data['ingreso_tarjeta']['comprobante'];
-            $save_tarjeta_monto->comentario = $data['ingreso_tarjeta']['comentario'];
-            $save_tarjeta_monto->save();
-
-            foreach ($data['ingreso_tarjeta']['facturas'] as $key => $factura) {
-
-                if (!isset($factura['observacion_tarjeta']))
-                    $factura['observacion_tarjeta'] = null;
-
-                $save_tarjeta = new GpCobrosTarjetaFactura();
-                $save_tarjeta->cobro_id = $cobro->id;
-                $save_tarjeta->id_factura = $factura['ECD_DET_NUM_DOC'];
-                $save_tarjeta->monto = $factura['aplicar_monto_tarjeta'];
-                $save_tarjeta->observacion = $factura['observacion_tarjeta'];
-                $save_tarjeta->save();
-            }
-        }
-
-        if (isset($data['ingreso_aplicaciones']) && count($data['ingreso_aplicaciones']) > 0) {
-            foreach ($data['ingreso_aplicaciones'] as $aplicacion) {
-                $save_aplicacion = new GpCobrosAplicacionMonto();
-                $save_aplicacion->cobro_id = $cobro->id;
-                $save_aplicacion->monto = $aplicacion['monto'];
-                $save_aplicacion->cobro = $aplicacion['detalle']['CN_DOCUMENTO'];
-                $save_aplicacion->tipo = $aplicacion['detalle']['CN_TIPO'];
-                $save_aplicacion->comentario = $aplicacion['comentario'];
-                $save_aplicacion->save();
-
-                foreach ($aplicacion['facturas'] as $factura) {
-                    if (!isset($factura['observacion_aplicacion']))
-                        $factura['observacion_aplicacion'] = null;
-                    $save_factura = new GpCobrosAplicacionFactura();
-                    $save_factura->cobro_id = $cobro->id;
-                    $save_factura->aplicacion_id = $save_aplicacion->id;
-                    $save_factura->id_factura = $factura['ECD_DET_NUM_DOC'];
-                    $save_factura->monto = $factura['aplicar_monto_aplicacion'];
-                    $save_factura->observacion = $factura['observacion_aplicacion'];
-                    $save_factura->save();
-                }
-            }
-        }
-
-        $this->enviarcobro($cobro->id);
-
-        return response([
-            'success' => true,
-            'message' => 'Cobro ' . $cobro->numero_recibo . ' correctamente guardado'
-        ]);
-    }
-    public function cobrosregistrados(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'id' => 'required',
-        ]);
-
-        $cobros = GpCobro::where('cliente_id', $data['id'])
-            ->orderBy('fecha', 'DESC')
-            ->get();
-
-        return response([
-            'success' => true,
-            'cobros_registrados' => $cobros
-        ]);
-    }
 
     public function depositosporaprobar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -541,7 +114,7 @@ class CobranzasController extends Controller
         $deposito->estado = 'revisado';
         $deposito->save();
 
-        $this->enviarcobro($deposito->cobro_id);
+        // $this->enviarcobro($deposito->cobro_id);
 
         $cobro = GpCobro::where('id', $deposito->cobro_id)->first();
         $cobro->fecha_aprobacion_rechazo = Carbon::now()->format('Y-m-d H:i:s');
@@ -566,6 +139,10 @@ class CobranzasController extends Controller
         if ($userCobro) {
             $userCobro->notify(new UserNotification('Depósito aprobado', $mensaje));
         }
+        // $deposito->refresh();
+        // SendCollectionToGpJob::dispatch($cobro->id);
+        $this->sendCollectionService->sendCollectionToGp($cobro->id);
+
         return response([
             'success' => true,
             'message' => 'Depósito enviado'
@@ -617,561 +194,10 @@ class CobranzasController extends Controller
         ]);
     }
 
-    public function enviarcobros()
-    {
-        $cobros = GpCobro::whereNotIn('estado', ['enviado', 'no_enviado', 'rechazado'])->get();
 
-        foreach ($cobros as $cobro) {
-            $this->enviarcobro($cobro->id);
-        }
 
-        $this->checkcobrosenviados();
+    // despues eliminar esta api
 
-        $cronLog = new GpCronLog();
-        $cronLog->metodo = 'enviarcobros';
-        $cronLog->fecha = date('Y-m-d H:i:s');
-        $cronLog->save();
-    }
-
-    public function enviarcobro($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        set_time_limit(300);
-        ini_set('memory_limit', '256M');
-        $webservice = new WebserviceController;
-        $cobro = GpCobro::where('id', $id)->first();
-        $cliente = GpCliente::where('id', $cobro->cliente_id)->first();
-        $alerta = '';
-        $estadoDeCuenta = '';
-        $efectivo = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)
-            ->where('monto', '>', 0)
-            ->where(function ($q) {
-                $q->where('mensaje_ws', '=', null)
-                    ->orWhere('mensaje_ws', '!=', 'Registro de cobro guardado correctamente.')
-                    ->where('mensaje_ws', '!=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-            })
-            ->first();
-
-        if ($efectivo) {
-            $efectivo_facturas = GpCobrosEfectivoFactura::where('cobro_id', $cobro->id)->get();
-            $envio_facturas_efe = array();
-            $monto_deposito = 0;
-            foreach ($efectivo_facturas as $fac) {
-                $envio_facturas_efe[] = array(
-                    'Numero_Recibo' => $cobro->numero_recibo . '-EFE',
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Numero_Factura' => $fac->id_factura,
-                    'Monto_Aplicado' => $fac->monto,
-                    'Observacion' => $fac->observacion,
-                );
-                $monto_deposito += $fac->monto;
-            }
-            $monto_deposito = number_format($monto_deposito, 2, '.', '');
-            $Cabecera_Cobro_Regular = array(
-                array(
-                    'Numero_Recibo' => $cobro->numero_recibo . '-EFE',
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Fecha_Cobro' => $cobro->fecha, //str_replace(' ', 'T',$cobro->fecha),//.'.8116407+02:00',
-                    'Tipo_Cobro' => 'EF',
-                    'Observacion' => $cobro->referencia,
-                    'Solicitud_Descuento' => $cobro->pedido,
-                    'Id_vendedor' => $cobro->caja,
-                    'Monto_Cobro' => $efectivo->monto,
-                    'Saldo_Pendiente' => number_format($efectivo->monto - $monto_deposito, 2, '.', ''),
-                    'Banco_Tuval' => $cobro->caja,
-                    'Fecha_Deposito_Trf' => $cobro->fecha, //$efectivo->fecha.'T00:00:00',
-                    'Numero_Papeleta' => '', //$efectivo->comprobante
-                )
-            );
-
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Cabecera' => $Cabecera_Cobro_Regular,
-                'Facturas' => $envio_facturas_efe
-            );
-
-            $estadoDeCuenta = $webservice->cobranzas('CreaCobroRegular', $parameters);
-            Log::info('estadoDeCuenta: ' . json_encode($estadoDeCuenta));
-            if (isset($estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'])) {
-
-                $efectivo->codigo_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Codigo'];
-                $efectivo->mensaje_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                $efectivo->save();
-                $mensaje = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $alerta .= '<p>Efectivo de ' . $cobro->numero_recibo . ': ' . $mensaje . '.</p>';
-                }
-            }
-        }
-
-        $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro->id)->get();
-        foreach ($retenciones as $retencion) {
-            if ($retencion->ret_iva > 0 && $retencion->mensaje_ws_iva != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_iva != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                $Cabecera_Cobro_Retencion_iva = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'I' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Fecha_Cobro' => $retencion->ret_emision,
-                        'Fecha_Caducidad' => $retencion->ret_caducidad,
-                        'Tipo_Cobro' => 'RV',
-                        'Observacion' => $cobro->referencia,
-                        'Id_vendedor' => $cobro->caja,
-                        'Monto_Cobro' => $retencion->ret_iva,
-                        'Numero_Retencion' => $retencion->ret_comprobante,
-                        'Numero_Autorizacion' => $retencion->ret_autorizacion,
-                        'Porcentaje_Retencion' => $retencion->ret_porcentaje_iva
-                    )
-                );
-                $Facturas_Cobros_iva = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'I' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Numero_Factura' => $retencion->ret_factura,
-                        'Monto_Aplicado' => $retencion->ret_iva,
-                        'Observacion' => '',
-                    )
-                );
-
-                $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Cabecera' => $Cabecera_Cobro_Retencion_iva,
-                    'Facturas' => $Facturas_Cobros_iva
-                );
-
-                $estadoDeCuenta = $webservice->cobranzas('CreaCobroRetencion', $parameters);
-                if (isset($estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'])) {
-
-                    $retencion->codigo_ws_iva = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Codigo'];
-                    $retencion->mensaje_ws_iva = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-                    $retencion->save();
-
-                    $mensaje = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-                    if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                        $alerta .= '<p>Retención IVA factura ' . $retencion->ret_factura . ': ' . $mensaje . '.</p>';
-                    }
-                }
-            }
-            if ($retencion->ret_renta > 0 && $retencion->mensaje_ws_renta != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_renta != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                $Cabecera_Cobro_Retencion_renta = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'R' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Fecha_Cobro' => $retencion->ret_emision,
-                        'Fecha_Caducidad' => $retencion->ret_caducidad,
-                        'Tipo_Cobro' => 'RF',
-                        'Observacion' => $cobro->referencia,
-                        'Id_vendedor' => $cobro->caja,
-                        'Monto_Cobro' => $retencion->ret_renta,
-                        'Numero_Retencion' => $retencion->ret_comprobante,
-                        'Numero_Autorizacion' => $retencion->ret_autorizacion,
-                        'Porcentaje_Retencion' => $retencion->ret_porcentaje_renta
-                    )
-                );
-                $Facturas_Cobros_renta = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'R' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Numero_Factura' => $retencion->ret_factura,
-                        'Monto_Aplicado' => $retencion->ret_renta,
-                        'Observacion' => '',
-                    )
-                );
-                $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Cabecera' => $Cabecera_Cobro_Retencion_renta,
-                    'Facturas' => $Facturas_Cobros_renta
-                );
-
-                $estadoDeCuenta = $webservice->cobranzas('CreaCobroRetencion', $parameters);
-                if (isset($estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'])) {
-                    $retencion->codigo_ws_renta = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Codigo'];
-                    $retencion->mensaje_ws_renta = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-
-                    $retencion->save();
-                    $mensaje = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-                    if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                        $alerta .= '<p>Retención RENTA factura ' . $retencion->ret_factura . ': ' . $mensaje . '.</p>';
-                    }
-                }
-            }
-
-            if ($retencion->ret_iva_srv > 0 && $retencion->mensaje_ws_iva_srv != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_iva_srv != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                $Cabecera_Cobro_Retencion_iva_srv = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'ISRV' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Fecha_Cobro' => $retencion->ret_emision,
-                        'Fecha_Caducidad' => $retencion->ret_caducidad,
-                        'Tipo_Cobro' => 'RV',
-                        'Observacion' => $cobro->referencia,
-                        'Id_vendedor' => $cobro->caja,
-                        'Monto_Cobro' => $retencion->ret_iva_srv,
-                        'Numero_Retencion' => $retencion->ret_comprobante,
-                        'Numero_Autorizacion' => $retencion->ret_autorizacion,
-                        'Porcentaje_Retencion' => $retencion->ret_porcentaje_iva_srv
-                    )
-                );
-                $Facturas_Cobros_iva_srv = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'ISRV' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Numero_Factura' => $retencion->ret_factura,
-                        'Monto_Aplicado' => $retencion->ret_iva_srv,
-                        'Observacion' => '',
-                    )
-                );
-
-                $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Cabecera' => $Cabecera_Cobro_Retencion_iva_srv,
-                    'Facturas' => $Facturas_Cobros_iva_srv
-                );
-
-                $estadoDeCuenta = $webservice->cobranzas('CreaCobroRetencion', $parameters);
-                if (isset($estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'])) {
-
-                    $retencion->codigo_ws_iva_srv = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Codigo'];
-                    $retencion->mensaje_ws_iva_srv = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-                    $retencion->save();
-
-                    $mensaje = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-                    if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                        $alerta .= '<p>Retención IVA SRV factura ' . $retencion->ret_factura . ': ' . $mensaje . '.</p>';
-                    }
-                }
-            }
-            if ($retencion->ret_renta_srv > 0 && $retencion->mensaje_ws_renta_srv != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_renta_srv != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                $Cabecera_Cobro_Retencion_renta_srv = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'RSRV' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Fecha_Cobro' => $retencion->ret_emision,
-                        'Fecha_Caducidad' => $retencion->ret_caducidad,
-                        'Tipo_Cobro' => 'RF',
-                        'Observacion' => $cobro->referencia,
-                        'Id_vendedor' => $cobro->caja,
-                        'Monto_Cobro' => $retencion->ret_renta_srv,
-                        'Numero_Retencion' => $retencion->ret_comprobante,
-                        'Numero_Autorizacion' => $retencion->ret_autorizacion,
-                        'Porcentaje_Retencion' => $retencion->ret_porcentaje_renta_srv
-                    )
-                );
-                $Facturas_Cobros_renta_srv = array(
-                    array(
-                        'Numero_Recibo' => $cobro->numero_recibo . 'RSRV' . $retencion->id,
-                        'Id_Cliente' => $cliente->CLI_RUC,
-                        'Numero_Factura' => $retencion->ret_factura,
-                        'Monto_Aplicado' => $retencion->ret_renta_srv,
-                        'Observacion' => '',
-                    )
-                );
-                $parameters = array(
-                    'IDCompania' => env('ID_COMPANIA'),
-                    'Cabecera' => $Cabecera_Cobro_Retencion_renta_srv,
-                    'Facturas' => $Facturas_Cobros_renta_srv
-                );
-
-                $estadoDeCuenta = $webservice->cobranzas('CreaCobroRetencion', $parameters);
-                if (isset($estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'])) {
-                    $retencion->codigo_ws_renta_srv = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Codigo'];
-                    $retencion->mensaje_ws_renta_srv = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-
-                    $retencion->save();
-                    $mensaje = $estadoDeCuenta['CreaCobroRetencionResult']['Retorno'][0]['Mensaje'];
-                    if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                        $alerta .= '<p>Retención RENTA SRV factura ' . $retencion->ret_factura . ': ' . $mensaje . '.</p>';
-                    }
-                }
-            }
-        }
-
-        $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)
-            ->where('monto', '>', 0)
-            ->where('estado', 'revisado')
-            ->where(function ($q) {
-                $q->where('mensaje_ws', '=', null)
-                    ->orWhere('mensaje_ws', '!=', 'Registro de cobro guardado correctamente.')
-                    ->where('mensaje_ws', '!=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-            })
-            ->get();
-
-        foreach ($depositos as $key => $dep) {
-
-            $depositos_facturas = GpCobrosDepositosFacturas::where('cobro_id', $cobro->id)->where('deposito_id', $dep->id)->get();
-            $envio_facturas_dep = array();
-            $monto_deposito = 0;
-            foreach ($depositos_facturas as $fac) {
-                $envio_facturas_dep[] = array(
-                    'Numero_Recibo' => $cobro->numero_recibo . 'D' . $dep->id,
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Numero_Factura' => $fac->id_factura,
-                    'Monto_Aplicado' => $fac->monto,
-                    'Observacion' => $fac->observacion,
-                );
-                $monto_deposito += $fac->monto;
-            }
-            $monto_deposito = number_format($monto_deposito, 2, '.', '');
-            $Cabecera_Cobro_Regular = array(
-                array(
-                    'Numero_Recibo' => $cobro->numero_recibo . 'D' . $dep->id,
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Fecha_Cobro' => $cobro->fecha,
-                    'Tipo_Cobro' => $dep->tipo,
-                    'Observacion' => $cobro->referencia,
-                    'Solicitud_Descuento' => $cobro->pedido,
-                    'Id_vendedor' => $cobro->caja,
-                    'Monto_Cobro' => $dep->monto,
-                    'Saldo_Pendiente' => number_format($dep->monto - $monto_deposito, 2, '.', ''),
-                    'Banco_Tuval' => $dep->banco,
-                    'Fecha_Deposito_Trf' => $dep->fecha . ' 00:00:00',
-                    'Numero_Papeleta' => $dep->comprobante
-                )
-            );
-
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Cabecera' => $Cabecera_Cobro_Regular,
-                'Facturas' => $envio_facturas_dep
-            );
-
-            $estadoDeCuenta = $webservice->cobranzas('CreaCobroRegular', $parameters);
-            Log::info('depositos_facturas:' . json_encode($estadoDeCuenta));
-
-            if (isset($estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'])) {
-
-                $dep->codigo_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Codigo'];
-                $dep->mensaje_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                $mensaje = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                if ($mensaje == 'Registro de cobro guardado correctamente.' || $mensaje == 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $dep->estado = 'enviado';
-                }
-                $dep->save();
-
-                if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $alerta .= '<p>Depositos de ' . $cobro->numero_recibo . ': ' . $mensaje . '.</p>';
-                }
-            }
-        }
-
-        $depositos_alerta = GpCobrosDeposito::where('cobro_id', $cobro->id)
-            ->where('monto', '>', 0)
-            ->where('estado', 'iniciado')
-            ->get()->first();
-
-        if ($depositos_alerta) {
-            $alerta .= '<p>Existen depósitos pendientes de aprobación</p>';
-        }
-
-        $cheques = GpCobrosChequesMonto::where('cobro_id', $cobro->id)
-
-            ->where(function ($q) {
-                $q->where('mensaje_ws', '=', null)
-                    ->orWhere('mensaje_ws', '!=', 'Registro de cobro guardado correctamente.')
-                    ->where('mensaje_ws', '!=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-            })
-            ->first();
-
-        if ($cheques) {
-            $cheques_facturas = GpCobrosChequesFacturas::where('cobro_id', $cobro->id)->get();
-            $envio_che_facturas = array();
-            $monto_aplicado = 0;
-            foreach ($cheques_facturas as $fac) {
-                $envio_che_facturas[] = array(
-                    'Numero_Recibo' => $cobro->numero_recibo . '-CHE',
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Numero_Factura' => $fac->id_factura,
-                    'Monto_Aplicado' => $fac->monto,
-                    'Observacion' => $fac->observacion,
-                );
-                $monto_aplicado += $fac->monto;
-            }
-            $monto_aplicado = number_format($monto_aplicado, 2, '.', '');
-
-            $cobrosCheques = GpCobrosCheques::where('cobro_id', $cobro->id)->get();
-            $envio_che_cheques = array();
-            $monto_cheques = 0;
-            foreach ($cobrosCheques as $che) {
-                $envio_che_cheques[] = array(
-                    'Numero_Recibo' => $cobro->numero_recibo . '-CHE',
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Banco_Cliente' => $che->banco,
-                    'Numero_Cuenta' => $che->cuenta,
-                    'Fecha_Vencimiento' => $che->fecha_vencimiento,
-                    'Numero_Cheque' => $che->cheque,
-                    'Monto_Cheque' => $che->monto,
-                    'Origen_Cuenta' => 'P',
-                    'Observacion' => $che->comentario,
-                );
-                $monto_cheques += $che->monto;
-            }
-
-            $Cabecera_Cobro_Cheques = array(
-                array(
-                    'Numero_Recibo' => $cobro->numero_recibo . '-CHE',
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Fecha_Cobro' => $cobro->fecha, //str_replace(' ', 'T',$cobro->fecha),//.'.8116407+02:00',
-                    'Observacion' => $cobro->referencia,
-                    'Solicitud_Descuento' => $cobro->pedido,
-                    'Id_vendedor' => $cobro->caja,
-                    'Monto_Cobro' => $cheques->monto,
-                    'Saldo_Pendiente' => number_format($monto_cheques - $monto_aplicado, 2, '.', ''),
-                )
-            );
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Cabecera' => $Cabecera_Cobro_Cheques,
-                'Cheques' => $envio_che_cheques,
-                'Facturas' => $envio_che_facturas
-            );
-            //            echo '<pre>';
-            //            print_r($parameters);
-            //            die();
-            $estadoDeCuenta = $webservice->cobranzas('CreaCobroCheques', $parameters);
-            Log::info('GpCobrosCheques: ' . json_encode($estadoDeCuenta));
-
-            if (isset($estadoDeCuenta['CreaCobroChequesResult']['Retorno'][0]['Mensaje'])) {
-
-                $cheques->codigo_ws = $estadoDeCuenta['CreaCobroChequesResult']['Retorno'][0]['Codigo'];
-                $cheques->mensaje_ws = $estadoDeCuenta['CreaCobroChequesResult']['Retorno'][0]['Mensaje'];
-                $cheques->save();
-                $mensaje = $estadoDeCuenta['CreaCobroChequesResult']['Retorno'][0]['Mensaje'];
-                if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $alerta .= '<p>Cheques de ' . $cobro->numero_recibo . ': ' . $mensaje . '.</p>';
-                }
-            }
-        }
-
-        $tarjeta = GpCobrosTarjetaMonto::where('cobro_id', $cobro->id)
-            ->where('monto', '>', 0)
-            ->where(function ($q) {
-                $q->where('mensaje_ws', '=', null)
-                    ->orWhere('mensaje_ws', '!=', 'Registro de cobro guardado correctamente.')
-                    ->where('mensaje_ws', '!=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-            })
-            ->first();
-
-        if ($tarjeta) {
-            $tarjeta_facturas = GpCobrosTarjetaFactura::where('cobro_id', $cobro->id)->get();
-            $envio_facturas_tar = array();
-            $monto_tarjeta = 0;
-            foreach ($tarjeta_facturas as $fac) {
-                $envio_facturas_tar[] = array(
-                    'Numero_Recibo' => $cobro->numero_recibo . '-TC',
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Numero_Factura' => $fac->id_factura,
-                    'Monto_Aplicado' => $fac->monto,
-                    'Observacion' => $fac->observacion,
-                );
-                $monto_tarjeta += $fac->monto;
-            }
-            $monto_tarjeta = number_format($monto_tarjeta, 2, '.', '');
-            $Cabecera_Cobro_Regular = array(
-                array(
-                    'Numero_Recibo' => $cobro->numero_recibo . '-TC',
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Fecha_Cobro' => $cobro->fecha, //str_replace(' ', 'T',$cobro->fecha),//.'.8116407+02:00',
-                    'Tipo_Cobro' => 'TC',
-                    'Observacion' => $tarjeta->comentario,
-                    'Solicitud_Descuento' => $cobro->pedido,
-                    'Id_vendedor' => $cobro->caja,
-                    'Monto_Cobro' => $tarjeta->monto,
-                    'Saldo_Pendiente' => number_format($tarjeta->monto - $monto_tarjeta, 2, '.', ''),
-                    'Banco_Tuval' => $tarjeta->banco,
-                    'Fecha_Deposito_Trf' => $cobro->fecha, //$efectivo->fecha.'T00:00:00',
-                    'Numero_Papeleta' => $tarjeta->comprobante, //$efectivo->comprobante
-                )
-            );
-
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Cabecera' => $Cabecera_Cobro_Regular,
-                'Facturas' => $envio_facturas_tar
-            );
-
-            $estadoDeCuenta = $webservice->cobranzas('CreaCobroRegular', $parameters);
-            Log::info('GpCobrosTarjetaMonto: ' . json_encode($estadoDeCuenta));
-
-            if (isset($estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'])) {
-
-                $tarjeta->codigo_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Codigo'];
-                $tarjeta->mensaje_ws = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                $tarjeta->save();
-                $mensaje = $estadoDeCuenta['CreaCobroRegularResult']['Retorno'][0]['Mensaje'];
-                if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $alerta .= '<p>Efectivo de ' . $cobro->numero_recibo . ': ' . $mensaje . '.</p>';
-                }
-            }
-        }
-
-        $aplicaciones = GpCobrosAplicacionMonto::where('cobro_id', $cobro->id)
-            ->where('monto', '>', 0)
-            ->where(function ($q) {
-                $q->where('mensaje_ws', '=', null)
-                    ->orWhere('mensaje_ws', '!=', 'Registro de cobro guardado correctamente.')
-                    ->where('mensaje_ws', '!=', 'El número de recibo de cobro enviado ya existe para esta empresa.');
-            })
-            ->get();
-
-        foreach ($aplicaciones as $key => $apl) {
-
-            $aplicaciones_facturas = GpCobrosAplicacionFactura::where('cobro_id', $cobro->id)->where('aplicacion_id', $apl->id)->get();
-            $envio_facturas_apl = array();
-
-            foreach ($aplicaciones_facturas as $fac) {
-                $envio_facturas_apl[] = array(
-                    'Numero_Recibo' => $apl->cobro,
-                    'Id_Cliente' => $cliente->CLI_RUC,
-                    'Numero_Factura' => $fac->id_factura,
-                    'Monto_Aplicado' => $fac->monto,
-                    'Observacion' => $fac->observacion,
-                );
-            }
-
-            $parameters = array(
-                'IDCompania' => env('ID_COMPANIA'),
-                'Ruc' => $cliente->CLI_RUC,
-                'Cobro' => $apl->cobro,
-                'Facturas' => $envio_facturas_apl
-            );
-            //            echo '<pre>';
-            //            print_r($parameters);
-            //            die();
-            $estadoDeCuenta = $webservice->cobranzas('AplicaCobroAnticipo', $parameters);
-            Log::info('GpCobrosAplicacionMonto: ' . json_encode($estadoDeCuenta));
-
-            if (isset($estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Mensaje'])) {
-
-                $apl->codigo_ws = $estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Codigo'];
-                $apl->mensaje_ws = $estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Mensaje'];
-                $apl->save();
-                $mensaje = $estadoDeCuenta['AplicaCobroAnticipoResult']['Retorno'][0]['Mensaje'];
-
-                if ($mensaje != 'Registro de cobro guardado correctamente.' && $mensaje != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $alerta .= '<p>APlicaciones de saldos de ' . $cobro->numero_recibo . ': ' . $mensaje . '.</p>';
-                }
-            }
-        }
-
-        $cobro->alerta = ($alerta);
-        $cobro->save();
-
-        $this->checkcobrosenviados();
-
-        $order = app(OrderServiceInterface::class);
-        $dispatch = app(DispatchServiceInterface::class);
-        $logistics = app(LogisticsOperationsServiceInterface::class);
-        $despachos = new DespachosController($order, $dispatch, $logistics);
-        $cobro->refresh();
-        if ($cobro->estado === 'enviado') {
-            $despachos->checkfacturasdespachos($cobro->id);
-        }
-
-        return response([
-            'success' => true,
-            'cobro' => $cobro,
-            'alerta' => $alerta,
-            'estadoDeCuenta' => $estadoDeCuenta,
-        ]);
-    }
 
     public function consultacobrosanulados()
     {
@@ -1254,68 +280,7 @@ class CobranzasController extends Controller
                 }
             }
         }
-        //abort(404);
     }
-
-    public function checkcobrosenviados()
-    {
-
-        $cobros = GpCobro::where('estado', '!=', 'enviado')->get();
-
-        foreach ($cobros as $cobro) {
-            $enviado = true;
-            $retenciones = GpCobrosRetenciones::where('cobro_id', $cobro->id)->get();
-            foreach ($retenciones as $retencion) {
-                if ($retencion->ret_porcentaje_iva > 0 && $retencion->mensaje_ws_iva != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_iva != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-                if ($retencion->ret_porcentaje_renta != 0 && $retencion->mensaje_ws_renta != 'Registro de cobro guardado correctamente.' && $retencion->mensaje_ws_renta != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $efectivos = GpCobrosEfectivoMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($efectivos as $efectivo) {
-                if ($efectivo->mensaje_ws != 'Registro de cobro guardado correctamente.' && $efectivo->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $depositos = GpCobrosDeposito::where('cobro_id', $cobro->id)->get();
-            foreach ($depositos as $deposito) {
-                if ($deposito->mensaje_ws != 'Registro de cobro guardado correctamente.' && $deposito->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $cheques = GpCobrosChequesMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($cheques as $cheque) {
-                if ($cheque->mensaje_ws != 'Registro de cobro guardado correctamente.' && $cheque->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $tarjetas = GpCobrosTarjetaMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($tarjetas as $tarjeta) {
-                if ($tarjeta->mensaje_ws != 'Registro de cobro guardado correctamente.' && $tarjeta->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            $aplicaciones = GpCobrosAplicacionMonto::where('cobro_id', $cobro->id)->get();
-            foreach ($aplicaciones as $aplicacion) {
-                if ($aplicacion->mensaje_ws != 'Registro de cobro guardado correctamente.' && $aplicacion->mensaje_ws != 'El número de recibo de cobro enviado ya existe para esta empresa.') {
-                    $enviado = false;
-                }
-            }
-
-            if ($enviado) {
-                $cobro->estado = 'enviado';
-                $cobro->save();
-            }
-        }
-    }
-
 
 
     public function detallecobro($cobro)
@@ -1414,19 +379,7 @@ class CobranzasController extends Controller
         return $cobro;
     }
 
-    public function imprimircobro($id): \Illuminate\Http\Response
-    {
 
-        $cobro = GpCobro::where('id', $id)->get()->first()->toArray();
-
-        $cobro = $this->detallecobro($cobro);
-        //        echo '<pre>';
-        //        print_r($cobro);
-        //        die();
-        //return view('cobranzaPDF', $cobro);
-        $pdf = PDF::loadView('cobranzaPDF', $cobro);
-        return $pdf->stream('cobro-' . $cobro['numero_recibo'] . '.pdf');
-    }
 
     public function getcajausuario($puntodeventa, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
@@ -1663,6 +616,7 @@ class CobranzasController extends Controller
         ]);
     }
 
+    //api migrada a servicio collectionInvoiceService
     public function consultaretencion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1690,7 +644,7 @@ class CobranzasController extends Controller
             $response
         );
     }
-
+    // api migrada a servicio collectionInvoiceService
     public function consultacheque(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1719,7 +673,7 @@ class CobranzasController extends Controller
             $response
         );
     }
-
+    // api migrada a servicio collectionInvoiceService
     public function consultadeposito(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
@@ -1754,8 +708,8 @@ class CobranzasController extends Controller
 
     public function estadocaja($fechaActual = null, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-
         $user = Auth::user();
+
 
         if (!$fechaActual)
             $fechaActual = date('Y-m-d');
@@ -2158,7 +1112,7 @@ class CobranzasController extends Controller
             $user = $request->user();
             $response = $this->collectionService->listPointSalesByUSer($user);
             return $this->successResponse('Lista Obtenida', $response, 200);
-        }, 'laravel', 'listaPvCajasUsuario');
+        }, 'cobranzas', 'listaPvCajasUsuario');
     }
 
 
@@ -2172,7 +1126,7 @@ class CobranzasController extends Controller
             $user = $request->user();
             $response = $this->collectionService->listBoxesByPointSales($pvId, $user);
             return $this->successResponse('Lista Obtenida', $response, 200);
-        }, 'laravel', 'listarCajasDisponiblesPorUsuario');
+        }, 'cobranzas', 'listarCajasDisponiblesPorUsuario');
     }
 
 
@@ -2189,14 +1143,14 @@ class CobranzasController extends Controller
             $cajaId = data_get($validate, 'caja_id');
             $response = $this->collectionService->getBoxClosureByDate($cajaId, $fecha);
             return $this->successResponse('Consulta realizada', $response, 200);
-        }, 'laravel', 'consultarCierreCajaUsuario');
+        }, 'cobranzas', 'consultarCierreCajaUsuario');
     }
 
 
 
     public function imprimirPdfConsultaCierreCaja(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate = $request->validate([
                 'fecha'     => 'required|string',
                 'caja_id'   => 'required|integer',
@@ -2205,13 +1159,13 @@ class CobranzasController extends Controller
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdfByUser($cajaId, $fecha);
-            return $this->buildPdfResponse($pdf, 200);
-        }, 'laravel', 'imprimirPdfConsultaCierreCaja');
+            return $this->buildFileResponse($pdf, 200);
+        }, 'cobranzas', 'imprimirPdfConsultaCierreCaja');
     }
 
     public function imprimirPdfCierreCaja(Request $request): Response
     {
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
             $validate = $request->validate([
                 'fecha'     => 'required|string',
                 'caja_id'   => 'required|integer',
@@ -2220,21 +1174,20 @@ class CobranzasController extends Controller
             $fecha  = data_get($validate, 'fecha');
             $cajaId = data_get($validate, 'caja_id');
             $pdf = $this->collectionService->generateCashClosurePdf($cajaId, $fecha);
-            return $this->buildPdfResponse($pdf, 200);
-        }, 'laravel', 'imprimirPdfCierreCaja');
+            return $this->buildFileResponse($pdf, 200);
+        }, 'cobranzas', 'imprimirPdfCierreCaja');
     }
 
     /** funciones para la validacion de pagos de facturas  */
 
     public function obtenerInformacionPagosFacturas(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $payload    = $request->input('data', []);
-            // $user       = GpUsuario::find(179);
-            $user       = $request->user();
+            $user       = $request->user() ?? GpUsuario::find(179);
             $info       = $this->customer->validateIdentifyPaymentInvoices($payload, $user);
             return $this->successResponse('Información de Pagos Obtenido!', $info, 200);
-        }, 'laravel', 'obtenerInformacionPagosFacturas');
+        }, 'cobranzas', 'obtenerInformacionPagosFacturas');
     }
 
     /** function para listar los cobros que pueden ser desaplicados  */
@@ -2245,7 +1198,7 @@ class CobranzasController extends Controller
             $filters  = $request->input('filters', []);
             $lista     = $this->unapplycation->fetchAppliedCollections($filters);
             return $this->successResponse('Lista obtenida', $lista, 200);
-        }, 'laravel', 'listaCobrosPorDesaplicar');
+        }, 'cobranzas', 'listaCobrosPorDesaplicar');
     }
 
     public function detalleCobrosAplicados(Request $request): JsonResponse
@@ -2256,36 +1209,291 @@ class CobranzasController extends Controller
             $user = $request->user();
             $data = $this->unapplycation->getAllDetailCollection($ruc, $factura, $user);
             return $this->successResponse('Obtenido con Éxito', $data, 200);
-        }, 'laravel', 'detaleCobrosAplicados');
+        }, 'cobranzas', 'detaleCobrosAplicados');
     }
 
-    public function procesarDesaplicaciones(Request $request)
+    public function procesarDesaplicaciones(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $items = $request->input('payload', []);
             $user = $request->user();
             $data = $this->unapplycation->processUpdateUnapplicationItems($items, $user);
             $mensaje = $data['updated'] > 0 ? 'Aplicaciones desaplicadas correctamente.' : 'No se desaplicó ningún registro.';
             return $this->buildSuccessResponse($mensaje,  200);
-        }, 'laravel', 'actualizarAplicaciones');
+        }, 'cobranzas', 'actualizarAplicaciones');
     }
 
-    public function actualizarListaDocumentosAplicacion(Request $request)
+    public function actualizarListaDocumentosAplicacion(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $clientId   = $request->input('clienteId');
             $documents  = $request->input('documentos', []);
             $response   = $this->customer->updatePendingApplicationDocumentBalances($clientId, $documents);
             return $this->successResponse('Lista actualizada correctamente', $response, 200);
-        }, 'laravel', 'actualizacionDocumentosAplicacion');
+        }, 'cobranzas', 'actualizacionDocumentosAplicacion');
     }
 
-    public function listaHistoricaDepositos(Request $request)
+    public function listaHistoricaDepositos(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $filters = $request->input('filters', []);
             $response = $this->historyDeposits->fetchListHistoricalDeposits($filters);
             return $this->successResponse('Datos obtenidos correctamente', $response, 200);
-        }, 'laravel', 'listaHistoricaDepositos');
+        }, 'cobranzas', 'listaHistoricaDepositos');
+    }
+
+
+    /**
+     * nuevas funciones de cobros facturas
+     */
+
+
+    public function obtenerEstadoCajaUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'fecha'     => 'nullable|date',
+                'pvId'      => 'nullable|integer',
+                'pvCodigo'  => 'nullable|string'
+            ]);
+            $fecha = data_get($validate, 'fecha');
+            $pvId  = data_get($validate, 'pvId');
+            $pvCode = data_get($validate, 'pvCodigo');
+            $user = $request->user() ?? GpUsuario::find(179);
+            $caja = $this->invoiceCollect->getStatusBoxedUser($pvId, $pvCode, $fecha, $user);
+            return $this->successResponse('Datos obtenidos correctamente', $caja, 200);
+        }, 'cobranzas', 'obtenerEstadoCajaUsuario');
+    }
+
+
+    public function aperturarCajaUsuario(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'pvId' =>  'required|integer|exists:gp_punto_ventas,id',
+            ]);
+            $user = $request->user() ?? GpUsuario::find(179);
+            $pvId = data_get($validate, 'pvId');
+            $caja = $this->invoiceCollect->openCashBoxed($pvId, $user);
+            return $this->successResponse('Apertura de Caja Realizado con exito', $caja, 200);
+        }, 'cobranzas', 'abrirCajaUsuario');
+    }
+
+
+    public function imprimirPdfEstadoCuentaCliente(Request $request): Response
+    {
+        return $this->handleDocumentAction(function () use ($request): Response {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id        = data_get($validate, 'id');
+            $response  = $this->invoiceCollect->generateClientAccountStatementPdf($id);
+            return $this->buildFileResponse($response);
+        }, 'cobranzas', 'imprimirPdfEstadoCuentaCliente');
+    }
+
+    public function imprimirExcelEstadoCuentaCliente(Request $request): Response
+    {
+        return $this->handleDocumentAction(function () use ($request): Response {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id        = data_get($validate, 'id');
+            $response  = $this->invoiceCollect->generateClientAccountStatementExcel($id);
+            return $this->buildFileResponse($response);
+        }, 'cobranzas', 'imprimirExcelEstadoCuentaCliente');
+    }
+
+
+
+    public function obtenerFacturasEstadoCuentaCliente(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id = data_get($validate, 'id');
+            $response = $this->invoiceCollect->getInvoiceCollectionsByClient($id);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'cobranzas', 'obtenerFacturasEstadoCuentaCliente');
+    }
+
+    public function obtenerListaDeDocumentosPendientesAplicacion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_clientes,id'],
+            ]);
+            $id = data_get($validate, 'id');
+            $response = $this->invoiceCollect->getUnappliedCollectionsByClient($id);
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'cobranzas', 'obtenerListaDeDocumentosPendientesAplicacion');
+    }
+
+    public function obtenerListaBancos(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $response = $this->invoiceCollect->getBanks();
+            return $this->successResponse('Información Obtenida Correctamente', $response);
+        }, 'cobranzas', 'obtenerListaBancos');
+    }
+
+    public function consultarExistenciaRetencion(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate  = $request->validate([
+                'id'            => ['required', 'integer', 'exists:gp_clientes,id'],
+                'comprobante'   => ['required', 'string']
+            ]);
+
+            $id         = data_get($validate, 'id');
+            $documento  = data_get($validate, 'comprobante');
+            $exist      = $this->invoiceCollect->retentionReceiptExistsForClient($id, $documento);
+            if ($exist) {
+                return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
+        }, 'cobranzas', 'consultarExistenciaRetencion');
+    }
+
+    public function consultarExistenciaDeposito(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'cliente_id'            => ['required', 'integer', 'exists:gp_clientes,id'],
+                'comprobante'   => ['required', 'string'],
+                'banco_id'      => ['required']
+            ]);
+
+            $id         = data_get($validate, 'cliente_id');
+            $documento  = data_get($validate, 'comprobante');
+            $bancoId    = data_get($validate, 'banco_id');
+            $exists     = $this->invoiceCollect->depositReceiptExistsForClient($id, $bancoId, $documento);
+            if ($exists) {
+                return $this->buildExistResponse(false, 'Comprobante ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Documento no existente, proceda', 200);
+        }, 'cobranzas', 'consultarExistenciaDeposito');
+    }
+
+
+    public function consultarExistenciaCheque(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'cliente_id'   => ['required', 'integer', 'exists:gp_clientes,id'],
+                'cheque'       => ['required', 'string'],
+                'banco_id'     => ['required'],
+                'cuenta'       => ['required', 'string'],
+            ]);
+            $cuenta = data_get($validate, 'cuenta');
+            $cheque = data_get($validate, 'cheque');
+            $exist = $this->invoiceCollect->checkReceiptExistsForClient($cuenta, $cheque);
+            if ($exist) {
+                return $this->buildExistResponse(false, 'Cheque ya ingresado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(true, 'Cheque no existente, proceda', 200);
+        }, 'cobranzas', 'consultarExistenciaCheque');
+    }
+
+
+
+    public function listaCobrosPorCliente(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $filtros    = $request->input('filters', []);
+            $lista      = $this->invoiceCollect->fetchListCollection($filtros);
+            return $this->successResponse('Información Obtenida Correctamente', $lista);
+        }, 'cobranzas', 'listaCobrosPorCliente');
+    }
+
+    public function imprirCobroPdf(Request $request): Response
+    {
+        return $this->handleDocumentAction(function () use ($request): Response {
+            $validate = $request->validate([
+                'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
+            ]);
+            $cobroId         = data_get($validate, 'cobro_id');
+            $usuario = $request->user() ?? GpUsuario::find(179);
+            $resultado  = $this->invoiceCollect->printCollectionPdf($cobroId, $usuario);
+            return $this->buildFileResponse($resultado);
+        }, 'cobranzas', 'imprirCobroPdf');
+    }
+
+    public function registrarCobroV1(RegisterCollectionRequest $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validated();
+            $user = $request->user() ?? GpUsuario::find(179);
+            $cobro = $this->collectionRegistrationService->registerCollection($validate, $user);
+            $mensaje = "Cobro {$cobro->numero_recibo} enviado a procesar.!";
+            return $this->buildSuccessResponse($mensaje,  200);
+        }, 'cobranzas', 'registrarCobro');
+    }
+
+
+
+
+    /** api para enviar un cobro en especifico a procesar */
+    public function enviarCobroGp(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'cobro_id'   => ['required', 'integer', 'exists:gp_cobros,id'],
+            ]);
+            $cobroId         = data_get($validate, 'cobro_id');
+            $data = $this->sendCollectionService->sendCollectionToGp($cobroId);
+            return $this->successResponse('Cobro Registrado', $data);
+        }, 'cobranzas', 'enviarCobroGp');
+    }
+
+    /** api para enviar lote de cobros al job en estado iniciado o recibido  */
+    public function enviarCobrosLote(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $this->collectionRegistrationService->reSendCollectionPendings();
+            return $this->buildSuccessResponse("Cobros enviados a procesar", 200);
+        }, 'cobranzas', 'enviarCobrosLote');
+    }
+
+
+    /** funciones para cierre de caja */
+    public function cerrarCajaV1(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'pvId'      => ['required', 'integer', 'exists:gp_punto_ventas,id'],
+                'pvCodigo'  => ['required', 'string'],
+                'caja_id'   => ['required', 'integer', 'exists:gp_cajas,id'],
+            ]);
+
+            $pvId   = data_get($validate, 'pvId');
+            $pvCode = data_get($validate, 'pvCodigo');
+            $boxId  = data_get($validate, 'caja_id');
+            $user   = $request->user() ?? GpUsuario::find(179);
+            $this->cashClosureService->cashCloseBox($boxId, $pvId, $pvCode, $user);
+            return $this->buildSuccessResponse("Caja Cerrada exitosamente", 200);
+        }, 'cobranzas', 'cerrarCajaV1');
+    }
+
+
+    public function resumenCerrarCaja(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'pvId'      => ['required', 'integer', 'exists:gp_punto_ventas,id'],
+                'pvCodigo'  => ['required', 'string'],
+                'caja_id'   => ['required', 'integer', 'exists:gp_cajas,id'],
+                'fecha'     => ['required', 'string']
+            ]);
+
+            $pvId   = data_get($validate, 'pvId');
+            $pvCode = data_get($validate, 'pvCodigo');
+            $boxId  = data_get($validate, 'caja_id');
+            $fecha  = data_get($validate, 'fecha');
+            $user   = $request->user() ?? GpUsuario::find(179);
+            $response =  $this->cashClosureService->getCashBoxClosureSummary($boxId, $pvId, $pvCode, $fecha, $user);
+            return $this->successResponse("Resumen de cierre de caja obtenido exitosamente", $response, 200);
+        }, 'cobranzas', 'resumenCerrarCaja');
     }
 }

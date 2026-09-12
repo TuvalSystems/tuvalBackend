@@ -19,8 +19,9 @@ class MustChangePasswordMiddleware
     public function handle(Request $request, Closure $next)
     {
         if (auth()->check() && auth()->user()->must_change_password) {
-            $this->buildErrorResponse('Debe cambiar su contraseña', 403);
+            return $this->buildErrorResponse('Debe cambiar su contraseña', 403);
         }
-          return $next($request);
+
+        return $next($request);
     }
 }

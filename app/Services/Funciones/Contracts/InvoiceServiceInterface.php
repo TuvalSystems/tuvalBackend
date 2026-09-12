@@ -8,6 +8,8 @@ interface InvoiceServiceInterface
 {
     // Define los métodos que debe implementar el servicio
 
+    public function executeWithOrderInvoiceLock(int $orderId, callable $callback, ?string $busyMessage = null);
+
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true);
 
     public function generateDisptachOrder(GpPedido $pedido);

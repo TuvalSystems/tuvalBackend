@@ -21,7 +21,7 @@ use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Models\Reservas\GpCotizacionReservaDetalleLog;
 use App\Models\Reservas\GpReserva;
 use App\Repositories\Pedidos\OrderRepository;
-use App\Services\Api\Transacciones\ApiGpProcessInviceVta;
+use App\Services\Api\Transacciones\ApiGpProcessInvoiceVta;
 use App\Services\Builders\Bodega\Contracts\DispatchOrderParamsBuilderInterface;
 use App\Services\Builders\Bodega\Contracts\SalesTransferParamsBuilderInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -34,13 +34,14 @@ class InvoiceService implements InvoiceServiceInterface
     use JsonResponseTrait;
     const STATUS_PENDING = 'pendiente';
     const STATUS_RELEASED = 'liberada';
+    private const ORDER_INVOICE_LOCK_SECONDS = 300;
 
     // Implementa todos los metodos de facturacion de pedidos, devoluciones, aprobaciones, etc
 
     public function __construct(
         protected readonly PurchaseOrderServiceInterface $purchaseOrderService,
         protected readonly FunctionsServiceInterface $functionService,
-        protected readonly ApiGpProcessInviceVta $apiGpProcessInvoice,
+        protected readonly ApiGpProcessInvoiceVta $apiGpProcessInvoice,
         protected readonly OrderRepository $orderRepository,
         protected readonly SalesTransferParamsBuilderInterface $salesTransfer,
         protected readonly DispatchOrderParamsBuilderInterface $dispatchBuilder
@@ -50,9 +51,23 @@ class InvoiceService implements InvoiceServiceInterface
      *  y que no se me cuelguen los metodos
      */
 
+    public function executeWithOrderInvoiceLock(int $orderId, callable $callback, ?string $busyMessage = null)
+    {
+        $lock = Cache::lock($this->orderInvoiceLockKey($orderId), self::ORDER_INVOICE_LOCK_SECONDS);
+        if (!$lock->get()) {
+            throw new \RuntimeException($busyMessage ?? 'El pedido ya tiene un proceso de facturacion activo.');
+        }
+
+        try {
+            return $callback();
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        $lock = Cache::lock("pedido:{$pedido->id}:facturacion", 300);
+        $lock = Cache::lock($this->orderInvoiceLockKey($pedido->id), self::ORDER_INVOICE_LOCK_SECONDS);
         if (!$lock->get()) {
             Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya tiene un proceso de facturacion activo.");
             return;
@@ -71,6 +86,11 @@ class InvoiceService implements InvoiceServiceInterface
         }
     }
 
+    private function orderInvoiceLockKey(int $orderId): string
+    {
+        return "pedido:{$orderId}:facturacion";
+    }
+
     protected function processCheckSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
         if ($this->shouldSkipProcessing($pedido)) {
@@ -82,7 +102,7 @@ class InvoiceService implements InvoiceServiceInterface
         try {
             $this->cleanStockReservedQuotation($pedido->cotizacion_id, $pedido->id, $pedido->BOD_BODEGA);
         } catch (\Exception $e) {
-            Log::error("Factura creada {$pedido->factura} pero falló limpieza de stock: " . $e->getMessage());
+            Log::channel('invoice')->info("Factura creada {$pedido->factura} pero falló limpieza de stock: " . $e->getMessage());
         }
         if ($waitingForStock) {
             Log::channel('invoice')->info("Pedido #{$pedido->pedido} detenido: Esperando Stock o Traslado.");
@@ -311,14 +331,14 @@ class InvoiceService implements InvoiceServiceInterface
             $this->checkOrderHaveItemTransferPending($pedido) ||
             $this->isStatusWaitingForStock($pedido)
         ) {
-            Log::warning("Pedido {$pedido->pedido} pausado por dependencias logísticas (OC/Traslado/Estado).");
+            Log::channel('invoice')->warning("Pedido {$pedido->pedido} pausado por dependencias logísticas (OC/Traslado/Estado).");
             return;
         }
 
         // cuando el pedido esta en estado espera realiza otras validaciones adicionales
         if ($pedido->estado === OrderStatus::ESPERA) {
             if (!$this->orderReadyToShip($pedido)) {
-                Log::warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
+                Log::channel('invoice')->warning("Pedido {$pedido->pedido} no está listo para facturación (estado: 'espera o traslado o orden_de_compra').");
                 return;
             }
 
@@ -342,7 +362,7 @@ class InvoiceService implements InvoiceServiceInterface
                 }
                 return;
             }
-            Log::info("Pedido {$pedido->pedido} cumple condiciones para cambiar a 'enviando'.");
+            Log::channel('invoice')->info("Pedido {$pedido->pedido} cumple condiciones para cambiar a 'enviando'.");
             $pedido->estado = OrderStatus::ENVIANDO;
             $pedido->save();
         }
@@ -351,7 +371,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         // 🚫 Validación final antes de facturar
         if (!$this->checkFinalInvoiceValidation($pedido)) {
-            Log::info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual: {$pedido->estado->value}");
+            Log::channel('invoice')->info("Pedido {$pedido->pedido} no cumple condiciones para facturar. Estado actual: {$pedido->estado->value}");
             return;
         }
 
@@ -365,12 +385,12 @@ class InvoiceService implements InvoiceServiceInterface
         $sucursalFacturacion    = $sucursales->get($pedido->sucursal_facturacion_id);
 
         if (!$sucursalEnvio || !$sucursalFacturacion) {
-            Log::error("Pedido {$pedido->pedido}: Falta información de sucursal de envío o facturación.");
+            Log::channel('invoice')->error("Pedido {$pedido->pedido}: Falta información de sucursal de envío o facturación.");
             throw new \Exception("Datos de sucursal incompletos.");
         }
         $docId      = GpRelacionPuntoVentaIdVenta::where('PTO_VTA_ID_PUNTO_VENTA', $pedido->PTO_VTA_ID)->where('PTO_VTA_ID_FACTURA_NC', 'LIKE', 'FAC%')->first();
         if (!$docId) {
-            Log::warning("Pedido {$pedido->pedido} no tiene docId.");
+            Log::channel('invoice')->warning("Pedido {$pedido->pedido} no tiene docId.");
             throw new \Exception("No se encontró configuración de documento para el punto de venta {$pedido->PTO_VTA_ID}.");
         }
         $factVtaDireccionEnvio = ($pedido->despacho == 'Retiro en bodega') ?
@@ -506,7 +526,8 @@ class InvoiceService implements InvoiceServiceInterface
             'userIdCreator'                => $pedido->USERID,
             'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
             'userApprovalId'               => $userApprovalId,
-            'pedidoId'                     => $pedido->id
+            'pedidoId'                     => $pedido->id,
+            'proyecto'                     => $pedido->proyecto
         ];
     }
 
@@ -566,7 +587,7 @@ class InvoiceService implements InvoiceServiceInterface
         $missingCredit      = $pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio === 'no';
 
         if ($isInvalidStatus || $hasInvoice || $missingCommercial || $missingCredit) {
-            Log::warning("Validación fallida facturación pedido {$pedido->pedido}", [
+            Log::channel('invoice')->warning("Validación fallida facturación pedido {$pedido->pedido}", [
                 'status'            => $pedido->estado->value,
                 'invoice'           => $hasInvoice,
                 'invoice_value'     => $pedido->factura,
@@ -600,7 +621,7 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->estado             = OrderStatus::FACTURADO;
         $pedido->fecha_factura      = now()->toDateString();
         $pedido->fecha_hora_factura = now();
-        Log::info("Pedido {$pedido->pedido} facturado. numero de factura: {$pedido->factura}. Estado del pedido {$pedido->estado->value}");
+        Log::channel('invoice')->info("Pedido {$pedido->pedido} facturado. numero de factura: {$pedido->factura}. Estado del pedido {$pedido->estado->value}");
         $pedido->save();
     }
 
@@ -608,6 +629,10 @@ class InvoiceService implements InvoiceServiceInterface
     protected function cleanStockReservedQuotation(int $quoteId, int $orderId, $warehouse)
     {
         $order = GpPedido::find($orderId);
+        Log::channel('invoice')->info(
+            "Iniciando limpieza de stock reservado para cotización {$quoteId} y pedido {$orderId}.",
+            ['estado_pedido' => $order?->estado->value ?? 'no encontrado']
+        );
         if (!$order) {
             return;
         }
@@ -710,8 +735,11 @@ class InvoiceService implements InvoiceServiceInterface
             $reserva->estado = 'procesado';
             $reserva->save();
 
-            GpCotizacion::where('id', $reserva->cotizacion_id) // O la columna ID real
-                ->update(['estado' => 'procesado']);
+            $quote = GpCotizacion::find($reserva->cotizacion_id);
+            if ($quote) {
+                $quote->estado = 'procesado';
+                $quote->save();
+            }
         }
     }
 }

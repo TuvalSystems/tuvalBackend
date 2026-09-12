@@ -274,7 +274,7 @@ class GuiasderemisionController extends Controller
                 'id' => 'required|integer|exists:gp_guia_remision_reservas,id',
             ]);
             $data = $this->reservedDeliveryNoteService->generatePdfReservedDeliveryNote($validated);
-            return $this->buildPdfResponse($data);
+            return $this->buildFileResponse($data);
         } catch (ValidationException $ve) {
             return $this->validationErrorResponse($ve->errors(), 'validation error', 422);
         } catch (\Throwable $e) {
@@ -372,12 +372,12 @@ class GuiasderemisionController extends Controller
     }
 
     public function generarPdfGuiaRemisionVenta(Request $request): Response{
-        return $this->handlePdfAction(function () use ($request): Response {
+        return $this->handleDocumentAction(function () use ($request): Response {
              $validated = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remisions,id',
             ]);
             $data = $this->salesTransfer->generatePdfDeliveryNotesSalesTransfer($validated);
-            return $this->buildPdfResponse($data);
+            return $this->buildFileResponse($data);
         }, 'guia_ventas', 'generarPdfGUiaRemisionVenta');
     }
 

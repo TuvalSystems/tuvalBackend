@@ -10,7 +10,7 @@ interface QuotationServiceInterface
 
     public function getNonSalesReasons();
 
-    public function updateNonSaleAndReminderData(array $data, GpUsuario $user);
+    public function updateNonSaleAndReminderData(array $data, GpUsuario $user) :void;
     public function getQuotationsWithReminderToday();
 
     /**
@@ -76,4 +76,6 @@ interface QuotationServiceInterface
     public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);
 
     public function getDefaultPriceListByPos(string $pvCode): array;
+
+    public function getistProyectSellectToGp() : array;
 }

@@ -59,32 +59,30 @@ class QuotationService implements QuotationServiceInterface
      */
     public function getNonSalesReasons(): Collection
     {
-        return GpCotizacionVentaMotivo::where('estado', 1)->orderBy('id')->get();
+        return GpCotizacionVentaMotivo::select(['id', 'descripcion', 'estado'])
+            ->where('estado', 1)
+            ->orderBy('id')
+            ->get();
     }
 
 
 
-    public function updateNonSaleAndReminderData(array $data, GpUsuario $user)
+    public function updateNonSaleAndReminderData(array $data, GpUsuario $user): void
     {
-        GpCotizacion::where('id', $data['cotizacion_id'])->update([
-            'fecha_recordatorio'            => $data['fecha_recordatorio'],
-            'cotizacion_venta_motivo_id'    => $data['motivo_id'],
-            'observacion'                   => $data['observacion'],
-            'recordar'                      => $data['recordar'],
-            'user_ing_recordatorio'         => $user->USERID,
-
-        ]);
-        $sendQuote = GpCotizacion::with(['usuario', 'usuariorecordatorio', 'motivosNoVenta'])->find($data['cotizacion_id']);
-        // $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($sendQuote);
-        $this->sendStoreReminderGp($sendQuote);
-        return null;
+        $quote = GpCotizacion::findOrFail($data['cotizacion_id']);
+        $quote->fecha_recordatorio = $data['fecha_recordatorio'];
+        $quote->cotizacion_venta_motivo_id = $data['motivo_id'];
+        $quote->observacion = $data['observacion'];
+        $quote->recordar = $data['recordar'];
+        $quote->fecha_registro_recordatorio = Carbon::now()->format('Y-m-d H:i:s');
+        $quote->user_ing_recordatorio = $user->USERID;
+        $quote->save();
     }
 
 
     public function sendStoreReminderGp(GpCotizacion $quote): void
     {
         $params = $this->quotationBuilder->formPayloadSendStoreReminderGp($quote);
-
         $this->apiGpService->storeQuoteReminderGp($params);
     }
 
@@ -502,8 +500,10 @@ class QuotationService implements QuotationServiceInterface
             'detalle'           => $detalle,
             'segmento'          => $segmento,
             'nivelPrecio'       => $nivelPrecio,
+            'proyecto'          => $this->orderAndQuotationService->getDescriptionProjectSeller($quote->proyecto)
         ];
     }
+
 
 
     protected function getPorcentilChangeDiscount(GpUsuario $user, GpCotizacion $quote)
@@ -917,7 +917,7 @@ class QuotationService implements QuotationServiceInterface
     public function getDefaultPriceListByPos(string $pvCode): array
     {
         $salesPoint = GpPuntoVenta::where('PTO_VTA_ID', $pvCode)->first();
-        if(!$salesPoint){
+        if (!$salesPoint) {
             throw new DomainException('Datos no encontrados');
         }
         return [
@@ -925,6 +925,22 @@ class QuotationService implements QuotationServiceInterface
             'pvCodigo'      => trim($salesPoint->PTO_VTA_ID),
             'listaPrecio'   => trim($salesPoint->lista_precios_defecto)
         ];
-      
+    }
+
+
+    public function getistProyectSellectToGp(): array
+    {
+        $resp = $this->apiGpService->getListProyectsSellers();
+        $success = data_get($resp, 'success', false);
+        if (!$success) {
+            throw new DomainException(
+                data_get(
+                    $resp,
+                    'message',
+                    'Opps!, Ocurrio un Error al consultar la lista de proyectos'
+                )
+            );
+        }
+        return data_get($resp, 'data', []);
     }
 }

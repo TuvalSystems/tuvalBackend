@@ -3,7 +3,9 @@
 namespace App\Providers\Service;
 
 use App\Services\Imports\Contracts\OrdersImportInterface;
+use App\Services\Imports\Contracts\QuoteImportsInterface;
 use App\Services\Imports\OrdersImport;
+use App\Services\Imports\QuoteImports;
 use App\Services\Venta\ClientQueryService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
@@ -26,6 +28,8 @@ use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInte
 use App\Services\Venta\Cotizaciones\QuotationHistoryCreatorService;
 use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
+use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
+use App\Services\Venta\Pedidos\InvoiceHistoryService;
 use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
 use App\Services\Venta\Pedidos\OrderGuideService;
 use App\Services\Venta\QuotationCreatorService;
@@ -50,14 +54,17 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 
         //importacion y actualizaciones en batch
         OrdersImportInterface::class                    => OrdersImport::class,
+        QuoteImportsInterface::class                    => QuoteImports::class,
         QuoteDraftServiceInterface::class               => QuoteDraftService::class,
 
 
         //historico de cotizaciones
         QuotationHistoryCreatorServiceInterface::class => QuotationHistoryCreatorService::class,
 
+        // historico de pedidos
+        InvoiceHistoryServiceInterface::class => InvoiceHistoryService::class,
         //sp de pedidos 
-        OrderGuideServiceInterface::class   => OrderGuideService::class
+        OrderGuideServiceInterface::class   => OrderGuideService::class,
     ];
 
 

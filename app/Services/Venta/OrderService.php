@@ -23,6 +23,7 @@ use App\Models\GpCotizacion;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Models\GpDescuentoFormaPago;
+use App\Models\GpOrdenDespacho;
 use App\Models\GpPedidoImagen;
 use App\Models\GpUsuario;
 use App\Models\ordendecompra\GpOrdenDeCompra;
@@ -32,6 +33,7 @@ use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 use App\Services\Api\ApiSalesService;
+use App\Services\Api\Transacciones\ApiGpProcessInvoiceVta;
 use App\Services\Api\Transacciones\ApiGpReceivedItemL;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
@@ -63,6 +65,7 @@ class OrderService implements OrderServiceInterface
         protected readonly ApiGpReceivedItemL $apiGpReceiptService,
         protected readonly ClientQueryServiceInterface $clientService,
         protected readonly ApprovalFunctionsServiceInterface $approvalFuntions,
+        protected readonly ApiGpProcessInvoiceVta $apiGpProcessInvoice,
 
     ) {}
 
@@ -212,7 +215,7 @@ class OrderService implements OrderServiceInterface
         return $pedido;
     }
 
-    public function getInvoiceDocumentInfo($pedido)
+    public function getInvoiceDocumentInfo(array $pedido)
     {
         if (!$pedido['factura']) {
             throw new \Exception('El pedido no tiene factura');
@@ -278,6 +281,7 @@ class OrderService implements OrderServiceInterface
         $imagenesOperaciones    = $this->orderAndQuotationService->getAllImagensOperations($data['id'], 'pedido');
         $pedido                 = GpPedido::find($data['id']);
         $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($pedido);
+        $projectString          = $this->orderAndQuotationService->getDescriptionProjectSeller($orderHeader->proyecto);
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -294,7 +298,8 @@ class OrderService implements OrderServiceInterface
             'has_guide_dispatched'  => $hasGuideDispatched,
             'nivelPrecio'           => $nivelPrecio,
             'imagenesOperaciones'   => $imagenesOperaciones,
-            'documentosPdf'         => $documentosPdf
+            'documentosPdf'         => $documentosPdf,
+            'proyecto'              => $projectString
         ];
     }
 
@@ -356,7 +361,7 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    protected function getPurchaseOrdersWithReceipts($orderNumber)
+    protected function getPurchaseOrdersWithReceipts(string $orderNumber)
     {
         return $this->orderRepository->getPurchaseOrdersByOrderNumber($orderNumber)
             ->map(function ($orden) {
@@ -496,16 +501,24 @@ class OrderService implements OrderServiceInterface
     public function generateInvoiceOrder(int $orderId)
     {
 
-        $order = $this->getOrderOrFail($orderId);
-        if (!empty($order->factura) || $order->factura != '' || $order->factura != null) {
-            throw new  \RuntimeException('El pedido ya fue facturado');
-        }
-        if ($order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value) {
-            $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
-            $order->save();
-        }
-        $this->recalculateAndSendInvoice($order);
-        return $order->refresh();
+        return $this->invoiceService->executeWithOrderInvoiceLock(
+            $orderId,
+            function () use ($orderId) {
+                return DB::transaction(function () use ($orderId) {
+                    $order = $this->getOrderOrFail($orderId, true);
+                    if (filled($order->factura)) {
+                        throw new  \RuntimeException('El pedido ya fue facturado');
+                    }
+                    if ($order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value) {
+                        $order->fe_facturacion_reserva = Carbon::now()->format('Y-m-d');
+                        $order->save();
+                    }
+                    $this->recalculateAndSendInvoice($order);
+                    return $order->refresh();
+                });
+            },
+            'El pedido ya tiene un proceso de facturacion o cancelacion activo.'
+        );
     }
 
     public function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
@@ -527,13 +540,19 @@ class OrderService implements OrderServiceInterface
     }
 
 
-    public function getOrderOrFail(int $orderId)
+    public function getOrderOrFail(int $orderId, bool $forUpdate = false)
     {
-        $order = GpPedido::where('id', $orderId)->whereNotIn('estado', [
+        $query = GpPedido::where('id', $orderId)->whereNotIn('estado', [
             OrderStatus::RECHAZADO,
             OrderStatus::ANULADA,
             OrderStatus::ELIMINADO
-        ])->first();
+        ]);
+
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        $order = $query->first();
         if (!$order) {
             throw new  \RuntimeException('Pedido no encontrado o no cumple las condiciones para facturarse');
         }
@@ -920,90 +939,113 @@ class OrderService implements OrderServiceInterface
      *
      */
 
-    public function checkExistence($data)
+    public function checkExistence(array $data): array
     {
+        $orderId = (int) data_get($data, 'id');
+        if ($orderId <= 0) {
+            throw new \RuntimeException('Debe indicar un pedido valido para consultar existencias.');
+        }
 
-        $subtotal = 0.0;
-        $totalDiscount = 0.0;
-        $netSubtotal = 0.0;
-        $totalIva = 0.0;
-        $orderId = data_get($data, 'id');
+        return $this->invoiceService->executeWithOrderInvoiceLock(
+            $orderId,
+            function () use ($orderId, $data) {
+                return DB::transaction(function () use ($orderId, $data) {
 
-
-        $detailOrder = $this->orderRepository->getAllDetailsOrderById($orderId);
-        $stocks = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
-        $impVtaByCodigo = GpArticulo::query()
-            ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
-            ->pluck('ART_IMP_VTA', 'ART_CODIGO');
-
-        $processed = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks, &$subtotal, &$totalDiscount, &$netSubtotal, &$totalIva) {
-            $stock = $stocks->get($item->id);
-            $cantidad = 0;
-
-            if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
-                $cantidad = $stock->seleccionado;
-            }
-            if ($item->ART_TIPO_COMPRA == 'SERV') {
-                $cantidad = $item->ART_CANTIDAD;
-            }
-            $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
-
-            $validProviders = [];
-            if ($providers['proveedores']->isNotEmpty()) {
-                $cantidad = 0;
-                foreach ($providers['proveedores'] as $prov) {
-                    $diff = $prov->ingresado - $prov->ejecutado;
-                    if ($prov->ingresado > 0) {
-                        $cantidad += $diff;
-                        $validProviders[] = $prov;
+                    $subtotal       = 0.0;
+                    $totalDiscount  = 0.0;
+                    $netSubtotal    = 0.0;
+                    $totalIva       = 0.0;
+                    $order = GpPedido::whereKey($orderId)->lockForUpdate()->first();
+                    if (!$order) {
+                        throw new \RuntimeException("El pedido con ID {$orderId} no existe.");
                     }
-                }
-            }
 
-            if ($cantidad <= 0) {
-                return null;
-            }
+                    if (filled($order->factura) || $order->estado === OrderStatus::FACTURADO) {
+                        throw new \RuntimeException("No se puede consultar existencias de un pedido que ya ha sido facturado.");
+                    }
+
+                    if ($order->estado === OrderStatus::ENVIANDO) {
+                        throw new \RuntimeException("No se puede consultar existencias porque el pedido se encuentra en proceso de facturacion.");
+                    }
+
+                    $detailOrder    = $this->orderRepository->getAllDetailsOrderById($orderId);
+                    $stocks         = $this->orderRepository->getStockOrderDetailForCheckExistence($data['BOD_BODEGA'], $detailOrder->pluck('id'));
+                    $impVtaByCodigo = GpArticulo::query()
+                        ->whereIn('ART_CODIGO', $detailOrder->pluck('ART_CODIGO'))
+                        ->pluck('ART_IMP_VTA', 'ART_CODIGO');
+
+                    $processed = $detailOrder->map(function ($item) use ($data, $impVtaByCodigo, $stocks, &$subtotal, &$totalDiscount, &$netSubtotal, &$totalIva) {
+                        $stock = $stocks->get($item->id);
+                        $cantidad = 0;
+
+                        if ($stock && $item->ART_TIPO_COMPRA != 'L' && $item->ART_TIPO_COMPRA != 'SERV') {
+                            $cantidad = $stock->seleccionado;
+                        }
+                        if ($item->ART_TIPO_COMPRA == 'SERV') {
+                            $cantidad = $item->ART_CANTIDAD;
+                        }
+                        $providers = $this->functionsService->getItemProviders($data['id'], $item, false);
+
+                        $validProviders = [];
+                        if ($providers['proveedores']->isNotEmpty()) {
+                            $cantidad = 0;
+                            foreach ($providers['proveedores'] as $prov) {
+                                $diff = $prov->ingresado - $prov->ejecutado;
+                                if ($prov->ingresado > 0) {
+                                    $cantidad += $diff;
+                                    $validProviders[] = $prov;
+                                }
+                            }
+                        }
+
+                        if ($cantidad <= 0) {
+                            return null;
+                        }
 
 
-            $item->stocks = $stock;
-            $item->proveedores = $validProviders;
+                        $item->stocks = $stock;
+                        $item->proveedores = $validProviders;
 
-            //CALCULOS
-            $valorUnitario = (float) $item->ART_VALOR;
-            $item->ART_CANTIDAD = (float) $cantidad;
-            $descuentoUnitario = (float) $item->ART_DESCUENTO;
+                        //CALCULOS
+                        $valorUnitario = (float) $item->ART_VALOR;
+                        $item->ART_CANTIDAD = (float) $cantidad;
+                        $descuentoUnitario = (float) $item->ART_DESCUENTO;
 
-            $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
-            $lineaDiscount = $descuentoUnitario * $cantidad;
-            $lineaSubtotal = $lineNet + $lineaDiscount;
+                        $lineNet = round((($valorUnitario - $descuentoUnitario) * $cantidad) + 0.000001, 2);
+                        $lineaDiscount = $descuentoUnitario * $cantidad;
+                        $lineaSubtotal = $lineNet + $lineaDiscount;
 
-            $impuestoPorcentaje = (float) $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
-            $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
+                        $impuestoPorcentaje = (float) $impVtaByCodigo[$item->ART_CODIGO] ?? 0;
+                        $lineaIva = $lineNet * ($impuestoPorcentaje / 100);
 
-            // calculos monetarios
-            $subtotal += $lineaSubtotal;
-            $totalDiscount += $lineaDiscount;
-            $netSubtotal += $lineNet;
-            $totalIva += $lineaIva;
+                        // calculos monetarios
+                        $subtotal += $lineaSubtotal;
+                        $totalDiscount += $lineaDiscount;
+                        $netSubtotal += $lineNet;
+                        $totalIva += $lineaIva;
 
-            $item->subtotal = $lineaSubtotal;
-            $item->ART_IMP_VTA = $impuestoPorcentaje;
-            $item->ART_IVA = $lineaIva;
-            return $item;
-        })
-            ->filter()
-            ->values();
-        $data['subtotal'] = round($subtotal, 2);
-        $data['descuento'] = round($totalDiscount, 2);
-        $data['subtotalmenosdescuento'] = round($netSubtotal, 2);
-        $data['iva'] = round($totalIva, 2);
-        $data['total'] = round($netSubtotal + $totalIva, 2);
+                        $item->subtotal = $lineaSubtotal;
+                        $item->ART_IMP_VTA = $impuestoPorcentaje;
+                        $item->ART_IVA = $lineaIva;
+                        return $item;
+                    })
+                        ->filter()
+                        ->values();
+                    $data['subtotal'] = round($subtotal, 2);
+                    $data['descuento'] = round($totalDiscount, 2);
+                    $data['subtotalmenosdescuento'] = round($netSubtotal, 2);
+                    $data['iva'] = round($totalIva, 2);
+                    $data['total'] = round($netSubtotal + $totalIva, 2);
 
 
-        $facturarExistente = [];
-        $facturarExistente['pedido'] = $data;
-        $facturarExistente['detalle'] = $processed;
-        return $facturarExistente;
+                    $facturarExistente = [];
+                    $facturarExistente['pedido'] = $data;
+                    $facturarExistente['detalle'] = $processed;
+                    return $facturarExistente;
+                });
+            },
+            'No se puede consultar existencias porque el pedido tiene un proceso de facturacion activo.'
+        );
     }
 
 
@@ -1433,7 +1475,7 @@ class OrderService implements OrderServiceInterface
 
     /** funciones de sendfacturas gp  */
 
-   
+
 
     public function valdidateOrdersProviders(GpPedido $order)
     {
@@ -1477,7 +1519,7 @@ class OrderService implements OrderServiceInterface
 
 
 
-    public function apiGpValidateStatusReceptionItemL($params)
+    public function apiGpValidateStatusReceptionItemL(array $params)
     {
         $resp = $this->apiGpReceiptService->callValidateReceivedItemLApi($params);
         return data_get($resp, 'data', []);
@@ -1488,5 +1530,118 @@ class OrderService implements OrderServiceInterface
         $pedido = GpPedido::where('pedido', $orderNumber)->first();
         $this->invoiceService->checkTraslado($pedido);
         return $pedido;
+    }
+
+
+
+    /** cancelacion de pedido  */
+    public function cancelOrder(int $orderId, GpUsuario $user): GpPedido
+    {
+        return $this->invoiceService->executeWithOrderInvoiceLock(
+            $orderId,
+            function () use ($orderId, $user) {
+                return   DB::transaction(function () use ($orderId, $user) {
+                    $order = GpPedido::whereKey($orderId)->lockForUpdate()->first();
+                    if (!$order) {
+                        throw new \RuntimeException("El pedido con ID {$orderId} no existe.");
+                    }
+
+                    if (filled($order->factura) || $order->estado === OrderStatus::FACTURADO) {
+                        throw new \RuntimeException("No se puede cancelar un pedido que ya ha sido facturado.");
+                    }
+
+                    if ($order->estado === OrderStatus::ENVIANDO) {
+                        throw new \RuntimeException("No se puede cancelar el pedido porque se encuentra en proceso de facturacion.");
+                    }
+
+                    $order->update([
+                        'estado'                => OrderStatus::ELIMINADO,
+                        'USERID_cancelado'      => $user->USERID,
+                        'fecha_hora_cancelado'  => Carbon::now()->format('Y-m-d H:i:s'),
+                    ]);
+
+                    GpTrasladosVentas::where('pedido_id', $order->id)->update(
+                        ['cantidad' => 0]
+                    );
+
+                    GpOrdenDespacho::where('pedido_id', $order->id)
+                        ->update(['estado' => 'cancelada']);
+                    return $order;
+                });
+            },
+            'No se puede cancelar el pedido porque tiene un proceso de facturacion activo.'
+        );
+    }
+
+    /** cancelar pedido en estado enviando sin respetar el cache de facturacion */
+
+    public function cancelOrderStatusSending(int $id, GpUsuario $user): GpPedido
+    {
+        $order = GpPedido::find($id);
+
+        if (!$order) {
+            throw new \RuntimeException("El pedido con ID {$id} no existe.");
+        }
+
+        $this->ensureOrderCanBeCanceledFromSending($order);
+
+        $existInvoice   = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($order));
+        $success        = data_get($existInvoice, 'success', false);
+        $invoiceNumber  = trim((string) data_get($existInvoice, 'data.numeroDocGenerado', ''));
+
+        if ($success === true && filled($invoiceNumber)) {
+            $order->update([
+                'factura'            => $invoiceNumber,
+                'estado'             => OrderStatus::FACTURADO,
+                'fecha_factura'      => now()->toDateString(),
+                'fecha_hora_factura' => now(),
+                'FAC_VTA_MENSAJE'    => data_get($existInvoice, 'data.mensaje', data_get($existInvoice, 'message')),
+            ]);
+            throw new \RuntimeException("Este pedido ya tiene una factura generada.");
+        }
+
+        return DB::transaction(function () use ($id, $user) {
+            $order = GpPedido::whereKey($id)->lockForUpdate()->first();
+
+            if (!$order) {
+                throw new \RuntimeException("El pedido con ID {$id} no existe.");
+            }
+
+            $this->ensureOrderCanBeCanceledFromSending($order);
+
+            $order->update([
+                'estado'                => OrderStatus::ELIMINADO,
+                'USERID_cancelado'      => $user->USERID,
+                'fecha_hora_cancelado'  => Carbon::now()->format('Y-m-d H:i:s'),
+            ]);
+
+            GpTrasladosVentas::where('pedido_id', $order->id)->update(
+                ['cantidad' => 0]
+            );
+
+            GpOrdenDespacho::where('pedido_id', $order->id)
+                ->update(['estado' => 'cancelada']);
+
+            return $order;
+        });
+    }
+
+    protected function ensureOrderCanBeCanceledFromSending(GpPedido $order): void
+    {
+        if (filled($order->factura) || $order->estado === OrderStatus::FACTURADO) {
+            throw new \RuntimeException("No se puede cancelar un pedido que ya ha sido facturado.");
+        }
+
+        if ($order->estado !== OrderStatus::ENVIANDO) {
+            throw new \RuntimeException("Solo se puede cancelar por este proceso un pedido en estado enviando.");
+        }
+    }
+
+    protected function formatParamsInvoiceValidate(GpPedido $order): array
+    {
+        return [
+            'documentoOrigen'   => $order->pedido,
+            'tipoDocumento'     => 3
+        ];
     }
 }

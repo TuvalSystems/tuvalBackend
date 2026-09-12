@@ -13,4 +13,5 @@ interface CollectionServiceInterface
     public function getBoxClosureByDate(int $boxId,  string $date);
     public function generateCashClosurePdfByUser(int $boxId, string $date);
     public function generateCashClosurePdf(int $boxId, string $date);
+    public function getOperatorContext(GpUsuario $user, int $boxId);
 }

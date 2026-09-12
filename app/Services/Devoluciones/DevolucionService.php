@@ -248,6 +248,7 @@ class DevolucionService implements DevolucionServiceInterface
         if ($devolucion['volver_a_facturar'] === true) {
             $pedidoIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
                 ->where('estado', '!=', OrderStatus::ANULADA)
+                ->where('id', '<', data_get($pedido, 'id'))
                 ->orderByDesc('id')
                 ->first();
             if (!$pedidoIds) {
@@ -289,12 +290,11 @@ class DevolucionService implements DevolucionServiceInterface
     protected function hasDetailDispatched(array $detallepedido): bool
     {
         return collect($detallepedido)
-            ->contains(function ($item) {
-                return !empty($item['despachado'])
-                    && (float) $item['despachado'] > 0
-                    && isset($item['despacho'])
-                    && $item['despacho'] === true;
-            });
+            ->contains(
+                fn($item) =>
+                (float) data_get($item, 'despachado', 0) > 0 &&
+                    data_get($item, 'despacho', false) === true
+            );
     }
 
     protected function getCheckoutPaymentInvoiceGp(array $pedido, array $devolucion, string $status): bool
@@ -317,7 +317,7 @@ class DevolucionService implements DevolucionServiceInterface
     {
         foreach ($details as $item) {
             $dispatched = $this->isDevolucionItemDispatchedInGuia($pedido, $item);
-            $detail = $this->devolucionBuilder->formPayloadDevolutionDetail($returnId, $item, $dispatched);
+            $detail     = $this->devolucionBuilder->formPayloadDevolutionDetail($returnId, $item, $dispatched);
             $detail->save();
         }
     }
@@ -333,29 +333,34 @@ class DevolucionService implements DevolucionServiceInterface
             if ($pedidoConsulta->despachado === false || $pedidoConsulta->despachado === null) {
                 $existItemGuia = GpGuiaRemisionDetalle::where('detalle_id', $item['id'])->exists();
                 if ($existItemGuia) {
-                    return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+                    return (float) data_get($item, 'despachado', 0) > 0 &&
+                        data_get($item, 'despacho', false) === true;
                 }
-                return $this->hasItemTrasladadoPedidoRelacionados($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
+                return $this->hasTransferredItemInRelatedOrders($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
             }
             //verifica que el pedido tenga factura origen y que este despachado
             if ($pedidoConsulta->despachado === true || $pedidoConsulta->despachado === 1) {
-                return $this->hasItemTrasladadoPedidoRelacionados($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
+                return $this->hasTransferredItemInRelatedOrders($pedidoConsulta->factura_origen, $item['ART_CODIGO']);
             }
         }
-
         //retorna en el proceso normal
-        return isset($item['despachado']) && (float) $item['despachado'] > 0 && $item['despacho'] === true;
+        return  (float) data_get($item, 'despachado', 0) > 0 &&
+            data_get($item, 'despacho', false) === true;
     }
 
-    public function hasItemTrasladadoPedidoRelacionados(string $facturaOrigen, string $artCodigo): bool
+    public function hasTransferredItemInRelatedOrders(string $originInvoice, string $artCode): bool
     {
-        $pedidoOrigenIds = GpPedido::where('factura', $facturaOrigen)->pluck('id');
-        $cotizacionesOrigen = GpPedido::whereIn('id', $pedidoOrigenIds)->pluck('cotizacion_id');
-        $pedidosRelacionados = GpPedido::whereIn('cotizacion_id', $cotizacionesOrigen)->pluck('id');
-
-        return GpPedidoDetalle::whereIn('pedido_id', $pedidosRelacionados)
-            ->where('ART_CODIGO', $artCodigo)
+        return GpPedidoDetalle::where('ART_CODIGO', $artCode)
             ->where('trasladado', '>', 0)
+            ->whereHas('pedido', function ($query) use ($originInvoice) {
+                $query
+                    ->whereIn(
+                        'cotizacion_id',
+                        GpPedido::query()
+                            ->select('cotizacion_id')
+                            ->where('factura', $originInvoice)
+                    );
+            })
             ->exists();
     }
 

@@ -30,12 +30,12 @@ return [
         'region'    => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
     'api_gp' => [
-        'url'       => env('API_GP_URL'),
-        'timeout'   => env('API_GP_TIMEOUT', default: 30),
+        'url'           => env('API_GP_URL'),
+        'timeout'       => env('API_GP_TIMEOUT', default: 30),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
-        'retry_delay' => (int) env('LOCAL_API_RETRY_DELAY', 100),
-        'company'   => env('ID_COMPANIA'),
-        'endpoints' => [
+        'retry_delay'   => (int) env('LOCAL_API_RETRY_DELAY', 100),
+        'company'       => env('ID_COMPANIA'),
+        'endpoints'     => [
 
         ],
     ],

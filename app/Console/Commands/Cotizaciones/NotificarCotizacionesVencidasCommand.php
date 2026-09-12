@@ -92,9 +92,19 @@ class NotificarCotizacionesVencidasCommand extends Command
                 $cotizaciones = data_get($value['cotizaciones'], []);
                 Mail::to($email)->send(new RecordatorioCotizacionNoVentaMail($cotizaciones, $PtoVentaDescripcion));
                 foreach ($cotizaciones as $cot) {
+                    $pvId = GpPuntoVenta::where('PTO_VTA_ID', $cot->PTO_VTA_ID)->value('id');
+                    $dateRegister = Carbon::parse($cot->fecha_registro_recordatorio)->format('Y-m-d');
                     $title = 'Cotización No Vendida';
-                    $msg = 'La cotización ' . $cot->cotizacion . ' no ha sido vendida y tiene un recordatorio programado para hoy.';
-                    NotifyUnsoldQuotesJob::dispatch($title, $msg, $cot->user_id);
+                    $msg = 'La cotización ' . $cot->cotizacion . ' de la ' . $cot->PTO_VTA_DESCRIPCION . ' no ha sido vendida y tiene un recordatorio ingresado el '
+                        . $dateRegister . ' programado para hoy.';
+                        $data = [
+                            'id'            => $cot->id,
+                            'cotizacion'    => $cot->cotizacion,
+                            'pvId'          => $pvId,
+                            'pvCodigo'      => $cot->PTO_VTA_ID,
+                            'estado'        => $cot->estado
+                        ];
+                    NotifyUnsoldQuotesJob::dispatch($title, $msg, $data, $cot->user_id);
                 }
             }
             $bar->advance();

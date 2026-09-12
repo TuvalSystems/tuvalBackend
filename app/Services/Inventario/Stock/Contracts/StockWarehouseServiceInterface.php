@@ -11,6 +11,7 @@ interface StockWarehouseServiceInterface
      */
     public function computeAvailableStockForArticle(array $stockResults, array $articulo, ?int $quotationId = null);
     public function getReservedStockByWarehouses(string $articulo, array  $bodegas, ?int $pedidoId = null,  bool $forUpdate = false, ?int $quotationId = null);
+    public function lockStockWarehousePairs(array $stockPairs): void;
 
     /**
      * Esta funcion especifica para consulta stock y consulta otros stock

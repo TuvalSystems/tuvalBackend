@@ -50,7 +50,7 @@ interface OrderServiceInterface
 
     /*** proceso de facturar existente  */
 
-    public function checkExistence($data);
+    public function checkExistence(array $data): array;
     public function generateInvoiceFromExistingOrder($data, $detalle, $user);
 
     public function syncPurchaseOrderAndNoteByOrder(int $id, ?string $newOrd, ?string $newNote);
@@ -69,4 +69,8 @@ interface OrderServiceInterface
     public function valdidateOrdersProviders(GpPedido $order);
 
      public function createTransferVtaOrders(string $orderNumber);
+
+
+     public function cancelOrder(int $orderId, GpUsuario $user) : GpPedido;
+      public function cancelOrderStatusSending(int $id, GpUsuario $user): GpPedido;
 }

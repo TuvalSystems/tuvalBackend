@@ -195,6 +195,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'pdfs_nuevos.*'              => ['file', 'mimetypes:application/pdf,application/x-google-chrome-pdf,application/octet-stream', 'max:10120'],
             'pdfs_existentes'            => ['nullable', 'array'],
             'pdfs_existentes.*'          => ['string'],
+            'proyecto'                   => ['nullable', 'integer']
         ];
     }
 

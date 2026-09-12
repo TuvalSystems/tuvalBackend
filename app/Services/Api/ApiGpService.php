@@ -65,6 +65,24 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::COTIZACIONES_LISTA_ITEMS_ALTERNATIVOS, 'GET', $params);
     }
 
+    public function getListProyectsSellers(array $params = []){
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COTIZACIONES_LISTA_PROYECTOS_VENTA,
+            'GET',
+            $params
+        );
+    }
+
+    public function getRegisterProyectSeller(array $params = [])
+    {
+        return $this->httpClient->makeRequest(
+            ApiGpEndpoints::COTIZACION_OBTENER_REGISTRO_PROYECTO_VENTA,
+            'POST',
+            $params,
+            'json'
+        );
+    }
+
 
 
     /** getStockWarehouse Asyncrono aplicando llamadas en paralelismo  */
@@ -179,4 +197,12 @@ class ApiGpService
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_ORDERS_DETAIL, 'POST', $params, 'json');
     }
+
+
+    public function updateAllQuoteStatusSql(array $params = [])
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::UPDATE_BATCH_UPDATE_QUOTE_STATUS, 'POST', $params, 'json');
+    }
+
+
 }

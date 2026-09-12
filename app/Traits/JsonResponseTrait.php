@@ -38,56 +38,106 @@ trait JsonResponseTrait
         return response()->json(['success' => false, 'error' => $message, 'errors' => []], $statusCode);
     }
 
-    protected function buildSuccessResponse(string $message, int $statusCode): JsonResponse
+    protected function buildSuccessResponse(string $message, ?int $code = 200 ): JsonResponse
     {
-        return response()->json(['success' => true, 'message' => $message], $statusCode);
+        return response()->json(['success' => true, 'message' => $message], $code);
     }
 
 
     /** para respuestas de JSon true o false de existencias de algo  */
 
-    protected function buildExistResponse(bool $exists, string $message, int $statusCode): JsonResponse
+    protected function buildExistResponse(bool $exists, string $message, int $statusCode = 200): JsonResponse
     {
         return response()->json(['exists' => $exists, 'message' => $message], $statusCode);
     }
 
-
-    protected function buildPdfResponse(array $result, $status = 200): Response|ResponseFactory
+    protected function buildFileResponse(array $result, $status = 200): Response|ResponseFactory
     {
         $binary = (string) ($result['binary'] ?? '');
-        $filenameIn = (string) ($result['filename'] ?? ('document-' . now()->format('Ymd-His') . '.pdf'));
-        $contentType = (string) ($result['content_type'] ?? 'application/pdf');
 
-        // Normaliza extensión
-        $filenameIn = Str::finish(Str::replaceLast('.pdf', '', $filenameIn), '.pdf');
+        $filenameIn = (string) (
+            $result['filename']
+            ?? ('document-' . now()->format('Ymd-His') . '.bin')
+        );
 
-        // Fallback ASCII seguro (por si el filename tiene tildes/emoji)
-        $asciiBase = Str::ascii(pathinfo($filenameIn, PATHINFO_FILENAME));
-        $asciiBase = preg_replace('/[^\w.-]+/u', '-', $asciiBase) ?: 'document';
-        $filenameAsc = $asciiBase . '.pdf';
+        $contentType = (string) (
+            $result['content_type']
+            ?? 'application/octet-stream'
+        );
 
-        // Disposición robusta (adjunto) con filename y filename*
+        /*
+     * Obtiene la extensión del nombre recibido.
+     * Si no existe, intenta determinarla por el Content-Type.
+     */
+        $extension = strtolower(
+            pathinfo($filenameIn, PATHINFO_EXTENSION)
+        );
+
+        if ($extension === '') {
+            $extension = match ($contentType) {
+                'application/pdf' => 'pdf',
+
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                => 'xlsx',
+
+                'application/vnd.ms-excel'
+                => 'xls',
+
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                => 'docx',
+
+                'application/msword'
+                => 'doc',
+
+                'text/csv'
+                => 'csv',
+
+                'application/zip'
+                => 'zip',
+
+                'text/plain'
+                => 'txt',
+
+                default => 'bin',
+            };
+
+            $filenameIn .= '.' . $extension;
+        }
+
+        /*
+     * Nombre ASCII seguro para navegadores que no soporten
+     * correctamente nombres UTF-8.
+     */
+        $baseName = pathinfo($filenameIn, PATHINFO_FILENAME);
+
+        $asciiBase = Str::ascii($baseName);
+
+        $asciiBase = preg_replace(
+            '/[^\w.-]+/u',
+            '-',
+            $asciiBase
+        ) ?: 'document';
+
+        $filenameAsc = $asciiBase . '.' . $extension;
+
         $disposition = HeaderUtils::makeDisposition(
             HeaderUtils::DISPOSITION_ATTACHMENT,
-            $filenameIn,     // nombre preferido (UTF-8)
-            $filenameAsc     // fallback ASCII
+            $filenameIn,
+            $filenameAsc
         );
 
         return response($binary, $status, [
-            'Content-Type' => $contentType,                  // application/pdf
-            'Content-Disposition' => $disposition,                  // incluye filename y filename*
-            'Content-Length' => strlen($binary),               // byte length
+            'Content-Type' => $contentType,
+            'Content-Disposition' => $disposition,
+            'Content-Length' => strlen($binary),
             'Content-Transfer-Encoding' => 'binary',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'no-cache',
-
-            // 👇 Permite que Axios/Fetch lean Content-Disposition en el navegador
             'Access-Control-Expose-Headers' => 'Content-Disposition, X-Filename',
-
-            // 👇 Header alterno por si quieres leer nombre sin parsear Content-Disposition
             'X-Filename' => $filenameIn,
         ]);
     }
+
 
 
     /** para respuestas estandar para errores de validaciones */
@@ -110,6 +160,5 @@ trait JsonResponseTrait
             'message' => $message,
             'errors' => $errors,
         ], $code);
-
     }
 }

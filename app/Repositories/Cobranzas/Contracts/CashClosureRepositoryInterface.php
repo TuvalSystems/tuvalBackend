@@ -3,6 +3,7 @@
 namespace App\Repositories\Cobranzas\Contracts;
 
 use App\Models\GpCierreCaja;
+use App\Models\GpUsuario;
 
 interface CashClosureRepositoryInterface
 {

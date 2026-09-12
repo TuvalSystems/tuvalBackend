@@ -51,6 +51,16 @@ class ApiGpEndpoints
     public const COBROS_CONSULTA_DOCUMENTOS_COBROS_APLICADOS = 'api/cobros/consulta-documentos-cobros-aplicados';
     public const COBROS_CONSULTA_APLICACIONES_PENDIENTES_POR_DOCUMENTO = 'api/cobros/consulta-aplicaciones-pendientes-por-documento';
     public const COBROS_CONSULTA_RECIBOS_CHEQUES = 'api/cobros/consulta-recibos-cheques';
+    public const COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE = 'api/cobros/consultar-estado-cuenta-cliente';
+    public const COBROS_CONSULTA_ESTADO_CUENTA_CLIENTE_RESUMEN = 'api/cobros/consultar-estado-cuenta-cliente-resumen';
+
+    // apis para el registro de metodos de pago
+    public const COBROS_FACTURAS_REGISTRAR_EFECTIVO     ="api/cobranzas/cobros-facturas/registrar-efectivo";
+    public const COBROS_FACTURAS_REGISTRAR_APLICACION   = 'api/cobranzas/cobros-facturas/registrar-aplicacion';
+    public const COBROS_FACTURAS_REGISTRAR_RETENCION    = 'api/cobranzas/cobros-facturas/registrar-retencion';
+    public const COBROS_FACTURAS_REGISTRAR_CHEQUE       = 'api/cobranzas/cobros-facturas/registrar-cheque';
+
+
 
     // ---
     // 📄 5. Endpoints de Transacciones ( Recibos, Facturación )
@@ -115,7 +125,8 @@ class ApiGpEndpoints
     // ---
     public const COTIZACIONES_GUARDAR_RECORDATORIO = 'api/cotizaciones/guardar-cotizacion-recordatorio';
     public const COTIZACIONES_LISTA_ITEMS_ALTERNATIVOS = 'api/cotizaciones/lista-items-alternativos';
-
+    public const COTIZACIONES_LISTA_PROYECTOS_VENTA = 'api/cotizaciones/lista-proyectos-venta';
+    public const COTIZACION_OBTENER_REGISTRO_PROYECTO_VENTA = 'api/cotizaciones/proyecto-venta';
 
 
     // ---
@@ -136,6 +147,7 @@ class ApiGpEndpoints
 
     public const UPDATE_BATCH_UPDATE_ORDERS = 'api/update-headers';
     public const UPDATE_BATCH_UPDATE_ORDERS_DETAIL = 'api/update-details';
+    public const UPDATE_BATCH_UPDATE_QUOTE_STATUS = 'api/update-quotes-status';
 
 
 

@@ -226,6 +226,7 @@ class GpCotizacion extends Model implements HasMedia
         'fecha_entrega',
         'facturado',
         'user_ing_recordatorio',
+        'fecha_registro_recordatorio', //registra la fecha en que se registro el recordatorio
         'origen',
         'pedido_reserva_id',
         'pedido_generado_at',
@@ -234,6 +235,8 @@ class GpCotizacion extends Model implements HasMedia
         'nota_operaciones',
         'modificador_global',
         'fecha_hora_aprobacion_comercial',
+        'proyecto',
+        'import_job'
     ];
 
     /**

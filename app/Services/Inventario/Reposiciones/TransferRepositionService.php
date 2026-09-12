@@ -185,6 +185,17 @@ class TransferRepositionService implements TransferRepositionServiceInterface
     {
         $articleCodes = array_column($transferDetails, 'item');
 
+        $this->stockWarehouseService->lockStockWarehousePairs(
+            collect($transferDetails)
+                ->filter(fn($detail) => (float) data_get($detail, 'cantidad', 0) > 0)
+                ->map(fn($detail) => [
+                    'articulo' => data_get($detail, 'item'),
+                    'bodega'   => $transferHeader->Bodega_Origen,
+                ])
+                ->values()
+                ->all()
+        );
+
         // 1. Precargar artículos
         $articles = GpArticulo::whereIn('ART_CODIGO', $articleCodes)
             ->get()
