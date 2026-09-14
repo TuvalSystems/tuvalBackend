@@ -49,6 +49,7 @@ class InvoiceHistoryService implements InvoiceHistoryServiceInterface
                 'vhi.descuento',
                 'vhi.subtotal',
                 'vhi.user_id',
+                'vhi.precio',
                 'vhi.id_pv as pv_id',
                 'vhi.pedido_id'
             ]);
