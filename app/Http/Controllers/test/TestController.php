@@ -8,9 +8,11 @@ use App\Models\GpUsuario;
 use App\Notifications\User\TestUserNotification;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
+use App\Services\Whatsapp\Contracts\WhatsappServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
@@ -19,7 +21,8 @@ class TestController extends Controller
     use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
         protected readonly PurchaseOrderServiceInterface $purchase,
-        protected readonly InvoiceServiceInterface $invoice
+        protected readonly InvoiceServiceInterface $invoice,
+        protected readonly WhatsappServiceInterface $whatsappServiceInterface
     ) {}
 
 
@@ -71,5 +74,29 @@ class TestController extends Controller
             'Notificación para la verificación de toast, llegue correctamente al usuario con perfiles administrador y desarrollador!',
             $data
         ));
+    }
+
+
+
+    public function enviarNotificacionWhatsapp(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $telefono = data_get($request, 'telefono');
+            $nombre = data_get($request, 'nombre');
+            $pedido = data_get($request, 'pedido');
+            $bodega = data_get($request, 'bodega');
+            $media = $request->validate([
+                'imagen_url' => ['nullable', 'string', 'url'],
+                'pdf_url' => ['nullable', 'string', 'url'],
+                'pdf_nombre' => ['nullable', 'string', 'max:255'],
+            ]);
+            $notify = $this->whatsappServiceInterface->sendOrderReadyNotification(
+                $telefono, $nombre, $pedido, $bodega,
+                $media['imagen_url'] ?? null,
+                $media['pdf_url'] ?? null,
+                $media['pdf_nombre'] ?? null
+            );
+            return $this->successResponse('Notificación enviada correctamente', $notify);
+        }, 'invoice', 'enviarNotificacionWhatsapp');
     }
 }

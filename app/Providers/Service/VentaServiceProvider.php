@@ -35,6 +35,8 @@ use App\Services\Venta\Pedidos\OrderGuideService;
 use App\Services\Venta\QuotationCreatorService;
 use App\Services\Venta\QuoteDraftService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use App\Services\Whatsapp\Contracts\WhatsappServiceInterface;
+use App\Services\Whatsapp\WhatsappService;
 
 class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 {
@@ -63,8 +65,9 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 
         // historico de pedidos
         InvoiceHistoryServiceInterface::class => InvoiceHistoryService::class,
-        //sp de pedidos 
+        //sp de pedidos
         OrderGuideServiceInterface::class   => OrderGuideService::class,
+        WhatsappServiceInterface::class     => WhatsappService::class
     ];
 
 

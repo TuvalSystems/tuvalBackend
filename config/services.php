@@ -35,19 +35,14 @@ return [
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay'   => (int) env('LOCAL_API_RETRY_DELAY', 100),
         'company'       => env('ID_COMPANIA'),
-        'endpoints'     => [
-
-        ],
+        'endpoints'     => [],
     ],
     'api_sales' => [
         'url'       => env('API_SALES_URL'),
         'timeout'   => env('API_GP_TIMEOUT',  30),
         'retry_attempts' => (int) env('LOCAL_API_RETRY_ATTEMPTS', 3),
         'retry_delay'   => (int) env('LOCAL_API_RETRY_DELAY', 100),
-        'endpoints'     => [
-
-
-        ],
+        'endpoints'     => [],
     ],
     'api_seedbilling' => [
         'url_cancel'    => env('API_SEED_BILLING_CANCEL_URL'),
@@ -56,8 +51,17 @@ return [
         'token'         => env('API_SEED_BILLING_TOKEN'),
         'idSuscriptor'  => env('API_SEED_BILLING_ID_SUSCRIPTOR'),
         'retry_delay'   => (int) env('LOCAL_API_RETRY_DELAY', 100),
-        'endpoints'     => [
-        ]
-    ]
+        'endpoints'     => []
+    ],
+    'whatsapp' => [
+        'token' => env('WHATSAPP_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'api_version' => env('WHATSAPP_API_VERSION', 'v25.0'),
+        'order_ready_type' => env('WHATSAPP_ORDER_READY_TYPE', 'template'),
+        'order_ready_template' => env('WHATSAPP_ORDER_READY_TEMPLATE', 'pedido_listo_retiro'),
+        'order_ready_language' => env('WHATSAPP_ORDER_READY_LANGUAGE', 'es'),
+        'order_ready_image_url' => env('WHATSAPP_ORDER_READY_IMAGE_URL', 'https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.jpg'),
+        'order_ready_pdf_url' => env('WHATSAPP_ORDER_READY_PDF_URL', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+    ],
 
 ];

@@ -10,4 +10,6 @@ Route::get('generar-orden-compra-pedido/{pedido}', [TestController::class, 'gene
 Route::get('obtener-menu', [SectionsController::class, 'obtenerMenu']);
 //ruta de prueba
 Route::get('notificacion-prueba', [TestController::class, 'enviarNotificacion']);
+Route::get('enviar-whatsapp', [TestController::class, 'enviarNotificacionWhatsapp']);
+
 
