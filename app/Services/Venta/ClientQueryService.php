@@ -6,6 +6,7 @@ use App\Enums\Admin\Sync\StatusSync;
 use App\Models\Admin\SyncLog;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
+use App\Models\GpCondicionPago;
 use App\Models\GpUsuario;
 use App\Models\Ventas\TipoIdentificacion;
 use App\Services\Api\ApiGpService;
@@ -97,6 +98,7 @@ class ClientQueryService implements ClientQueryServiceInterface
         $cliente->suspendido = data_get($cupoDisponible, 'suspendido', 0);
         $cliente->cupo_disponible = number_format(data_get($cupoDisponible, 'cupoDisponibleGp', 0), 2, '.', ',');
         $cliente->cupo_asignado = number_format(data_get($cupoDisponible, 'cupoAsignado', 0), 2, '.', ',');
+        $cliente->es_cheque = GpCondicionPago::where('COND_ID', $cliente->CLI_CONDICION_PAGO)->value('es_cheque');
         $segmentos = $this->getSegmentClient($ruc);
         return compact('cliente', 'segmentos');
     }

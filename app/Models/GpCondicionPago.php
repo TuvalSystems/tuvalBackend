@@ -30,4 +30,17 @@ use Illuminate\Database\Eloquent\Model;
 class GpCondicionPago extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'COND_DIAS',
+        'COND_ID',
+        'COND_TIPO_DESCUENTO',
+        'COND_VALOR',
+        'es_cheque',
+        'estado',
+    ];
+
+    protected $casts = [
+        'es_cheque' => 'boolean'
+    ];
 }
