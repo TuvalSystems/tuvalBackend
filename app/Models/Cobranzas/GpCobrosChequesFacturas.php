@@ -61,12 +61,13 @@ class GpCobrosChequesFacturas extends Model
             GpCobro::class,
             'cobro_id',
             'id'
-        ); //->whereIn('estado', ['iniciado', 'revisado']);
+        )->whereNotIn('estado', ['rechazado', 'no_enviado']);
     }
 
     public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null, array $rcsPorExcluir = []): Builder
     {
         return $query->whereHas('cobroPendienteWeb', function ($q) use ($desde, $hasta, $rcsPorExcluir) {
+            $q->where('estado', '!=', 'rechazado');
             if ($desde && $hasta) {
                 $q->whereBetween('created_at', [$desde, $hasta]);
             }
