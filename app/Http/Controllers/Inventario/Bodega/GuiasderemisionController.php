@@ -44,7 +44,6 @@ class GuiasderemisionController extends Controller
         protected readonly DeliveryNoteSalesTransferServiceInterface $salesTransfer,
         protected readonly DeliveryNoteReplenishmentTransferServiceInterface $replenishment,
         protected readonly OrderGuideServiceInterface $orderGuideService
-
     ) {}
 
     public function consultarGuiaGeneradaV1(Request $request): JsonResponse
