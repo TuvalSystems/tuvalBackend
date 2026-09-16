@@ -53,7 +53,7 @@ class GpCobrosEfectivoFactura extends Model
     public function cobroPendienteWeb(): BelongsTo
     {
         return $this->belongsTo(GpCobro::class, 'cobro_id', 'id')
-            ->whereNotIn('estado', ['rechazado', 'no_enviado']);
+        ->whereNotIn('estado', ['rechazado', 'no_enviado']);
     }
 
     public function scopePendientesWeb(Builder $query, ?string $desde = null, ?string $hasta = null, array $rcsPorExcluir = []): Builder
