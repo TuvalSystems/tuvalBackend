@@ -20,6 +20,7 @@ use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteReplenishmentTransferS
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -41,7 +42,9 @@ class GuiasderemisionController extends Controller
         protected readonly DeliveryNoteDispatchServiceInterface $dispatch,
         protected readonly EntryServiceInterface $entryService,
         protected readonly DeliveryNoteSalesTransferServiceInterface $salesTransfer,
-        protected readonly DeliveryNoteReplenishmentTransferServiceInterface $replenishment
+        protected readonly DeliveryNoteReplenishmentTransferServiceInterface $replenishment,
+        protected readonly OrderGuideServiceInterface $orderGuideService
+
     ) {}
 
     public function consultarGuiaGeneradaV1(Request $request): JsonResponse
@@ -340,11 +343,12 @@ class GuiasderemisionController extends Controller
     }
 
 
-    public function duplicarGuiaSoloPapeles(int $id){
-        return $this->handleApiAction(function() use($id){
-        $data = $this->dispatch->replicateDeliveryNoteDispatch($id);
-        return $this->successResponse('Guía de Despacho Duplicada exitosamente', $data, 200);
-        },'despachos','duplicarGuiaSolopapeles');
+    public function duplicarGuiaSoloPapeles(int $id)
+    {
+        return $this->handleApiAction(function () use ($id) {
+            $data = $this->dispatch->replicateDeliveryNoteDispatch($id);
+            return $this->successResponse('Guía de Despacho Duplicada exitosamente', $data, 200);
+        }, 'despachos', 'duplicarGuiaSolopapeles');
     }
 
 
@@ -371,9 +375,10 @@ class GuiasderemisionController extends Controller
         }, 'guia_ventas', 'despacharGuiaRemisionVenta -GuiasderemisionController');
     }
 
-    public function generarPdfGuiaRemisionVenta(Request $request): Response{
+    public function generarPdfGuiaRemisionVenta(Request $request): Response
+    {
         return $this->handleDocumentAction(function () use ($request): Response {
-             $validated = $request->validate([
+            $validated = $request->validate([
                 'id' => 'required|integer|exists:gp_guia_remisions,id',
             ]);
             $data = $this->salesTransfer->generatePdfDeliveryNotesSalesTransfer($validated);
@@ -423,5 +428,27 @@ class GuiasderemisionController extends Controller
             $response   = $this->replenishment->receiveDeliveryNoteReplenishmentTransfer($payload, $user);
             return $this->buildSuccessResponse($response, 200);
         }, 'guia_ventas', 'recibirGuiaRemisionReposicion');
+    }
+
+
+    public function listadoGuiasRemisionSp(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validated = validator([
+                'bodegas' => $periodo ?? $request->query('bodegas'),
+                'periodo' => $pvCodigo ?? $request->query('periodo'),
+                'numeroGuia' => $despacho ?? $request->query('numeroGuia'),
+            ], [
+                'bodegas' => ['required', 'string'],
+                'periodo' => ['required', 'integer'],
+                'numeroGuia' => ['nullable', 'string'],
+            ])->validate();
+            $lista = $this->orderGuideService->fetchListDeliveryNoteSp(
+                $validated['periodo'],
+                $validated['bodegas'],
+                $validated['numeroGuia'] ?? null
+            );
+            return $this->successResponse("Listado Obtenido Correctamente", $lista);
+        }, 'guia_ventas', 'listadoGuiasRemisionSp');
     }
 }
