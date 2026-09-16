@@ -25,4 +25,16 @@ class OrderGuideService implements OrderGuideServiceInterface
             ]
         );
     }
+
+    public function fetchListDeliveryNoteSp(int $period, string $warehouse, ?string $numGuide = null): array
+    {
+        return DB::select(
+            'CALL sp_listado_guias_remision(?, ?, ?)',
+            [
+                $warehouse,
+                $period,
+                $numGuide
+            ]
+        );
+    }
 }
