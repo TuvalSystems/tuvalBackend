@@ -379,14 +379,12 @@ class ConsultasController extends Controller
         }
     }
 
-    public function obtenerCupoDisponibleCliente(string $ruc)
+    public function obtenerCupoDisponibleCliente(string $ruc): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($ruc): JsonResponse {
             $response = $this->clientService->getAvailabeCreditCustomer($ruc);
             return $this->successResponse('Cupo disponible obtenido correctamente', $response, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'laravel', 'obtenerCupoDisponibleCliente');
     }
 
     public function obtenerSucursalesCliente(Request $request): JsonResponse

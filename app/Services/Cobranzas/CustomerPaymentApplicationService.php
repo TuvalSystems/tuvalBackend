@@ -87,7 +87,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->sumPaymentAmount($payments);
+            $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
+            $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
+            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
 
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
@@ -101,7 +103,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->all();
 
             //funcion para validacion de documentos contabilizados que no son de web
-            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+            $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
+            $rcPayments             = array_values(array_unique(array_merge(
+                $this->filterGroupReceiptNumbers($payments),
+                $rcCheckPendings
+            )));
 
 
             //sumatoria de lo pendiente
@@ -132,6 +138,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     valorIngresado: $valorIngresado,
                     validation: $validation,
                     payments: $payments,
+                    checksPendings: $checksPendings,
                     pendingWebDetails: $pendingWebDetails,
                     devolutions: $devolutions
                 ),
@@ -162,7 +169,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->sumPaymentAmount($payments);
+            $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
+            $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
+            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -174,11 +183,15 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->values()
                 ->all();
             //funcion para validacion de documentos contabilizados que no son de web
-            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+            $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
+            $rcPayments             = array_values(array_unique(array_merge(
+                $this->filterGroupReceiptNumbers($payments),
+                $rcCheckPendings
+            )));
 
 
             //sumatoria de lo pendiente
-            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta , $rcPayments);
+            $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
             $sumPendingWeb          = $pendingWebResult['total'];
             $pendingWebDetails      = $pendingWebResult['details'];
             //sumatoria  de devoluciones pendeintes de procesar
@@ -205,6 +218,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     valorIngresado: $valorIngresado,
                     validation: $validation,
                     payments: $payments,
+                    checksPendings: $checksPendings,
                     pendingWebDetails: $pendingWebDetails,
                     devolutions: $devolutions
                 ),
@@ -236,7 +250,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->sumPaymentAmount($payments);
+            $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
+            $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
+            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -248,7 +264,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->values()
                 ->all();
             //funcion para validacion de documentos contabilizados que no son de web
-            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+            $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
+            $rcPayments             = array_values(array_unique(array_merge(
+                $this->filterGroupReceiptNumbers($payments),
+                $rcCheckPendings
+            )));
             //sumatoria de lo pendiente
             $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
             $sumPendingWeb          = $pendingWebResult['total'];
@@ -277,6 +297,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     valorIngresado: $valorIngresado,
                     validation: $validation,
                     payments: $payments,
+                    checksPendings: $checksPendings,
                     pendingWebDetails: $pendingWebDetails,
                     devolutions: $devolutions
                 ),
@@ -311,7 +332,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->sumPaymentAmount($payments);
+                $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
+                $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
+                $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -323,7 +346,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     ->values()
                     ->all();
                 //funcion para validacion de documentos contabilizados que no son de web
-                $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+                $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
+                $rcPayments             = array_values(array_unique(array_merge(
+                    $this->filterGroupReceiptNumbers($payments),
+                    $rcCheckPendings
+                )));
 
                 //sumatoria de lo pendiente
                 $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
@@ -353,6 +380,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                         valorIngresado: $valorIngresado,
                         validation: $validation,
                         payments: $payments,
+                        checksPendings: $checksPendings,
                         pendingWebDetails: $pendingWebDetails,
                         devolutions: $devolutions
                     ),
@@ -407,7 +435,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-                $sumPayments            = $this->sumPaymentAmount($payments);
+                $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
+                $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
+                $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -429,7 +459,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     ->all();
 
                 //funcion para validacion de documentos contabilizados que no son de web
-                $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+                $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
+                $rcPayments             = array_values(array_unique(array_merge(
+                    $this->filterGroupReceiptNumbers($payments),
+                    $rcCheckPendings
+                )));
 
                 //validacion de aplicacion doble del mismo rc a la misma factura
                 $hasDoubleApply         = $this->validateDoubleApply($applyDoc, $groupDocuments);
@@ -468,6 +502,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                         valorIngresado: $valorIngresado,
                         validation: $validation,
                         payments: $payments,
+                        checksPendings: $checksPendings,
                         pendingWebDetails: $pendingWebDetails,
                         devolutions: $devolutions
                     ),
@@ -502,10 +537,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $order              = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
-            $sumPayments            = $this->sumPaymentAmount($payments);
+            $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
+            $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
+            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
+
             $groupDocuments         = collect($othersPaymentDocs)
                 ->merge($devPaymentDocs)
                 ->map(fn($doc) => trim((string)$doc))
@@ -515,7 +553,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 ->all();
 
             //funcion para validacion de documentos contabilizados que no son de web
-            $rcPayments             = $this->filterGroupReceiptNumbers($payments);
+            $rcCheckPendings            = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
+            $rcPayments                 = array_values(array_unique(array_merge(
+                $this->filterGroupReceiptNumbers($payments),
+                $rcCheckPendings
+            )));
+
+
 
             //sumatoria de lo pendiente
             $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
@@ -545,10 +589,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     valorIngresado: $valorIngresado,
                     validation: $validation,
                     payments: $payments,
+                    checksPendings: $checksPendings,
                     pendingWebDetails: $pendingWebDetails,
                     devolutions: $devolutions
                 ),
             ]);
+
         }
         unset($ing);
 
@@ -604,13 +650,22 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         );
     }
 
+    protected function sumCheckPaymentPending(SupportCollection $checkPayment): float
+    {
+        return $this->money(
+            $checkPayment->sum(fn($payment) => $this->money(
+                data_get($payment, 'montoAplicado', 0)
+            ))
+        );
+    }
+
     protected function getInvoiceBalanceForValidation(array $item): float
     {
         return $this->money(
             data_get($item, 'montoOriginal')
-            ?? data_get($item, 'saldoFactura')
-            ?? data_get($item, 'saldoCliente')
-            ?? 0
+                ?? data_get($item, 'saldoFactura')
+                ?? data_get($item, 'saldoCliente')
+                ?? 0
         );
     }
 
@@ -618,9 +673,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     {
         return $this->money(
             data_get($item, 'montoOriginal')
-            ?? data_get($item, 'saldoFactura')
-            ?? data_get($item, 'saldoCliente')
-            ?? 0
+                ?? data_get($item, 'saldoFactura')
+                ?? data_get($item, 'saldoCliente')
+                ?? 0
         );
     }
 
@@ -628,8 +683,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     {
         return $this->money(
             data_get($item, 'saldoCliente')
-            ?? data_get($item, 'saldoFactura')
-            ?? 0
+                ?? data_get($item, 'saldoFactura')
+                ?? 0
         );
     }
 
@@ -807,6 +862,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             ->all();
     }
 
+    protected function filterGroupReciptNumbersCheckPayment(SupportCollection $checkPaymentsPendings): array
+    {
+        return $checkPaymentsPendings
+            ->filter(fn($payment) => (string) data_get($payment, 'documentoGp', '') === '')
+            ->pluck('numeroRecibo')
+            ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
+            ->filter(fn($doc) => !empty($doc))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     protected function formatReceiptNumber(?string $rc): ?string
     {
         if (empty($rc)) {
@@ -867,6 +934,15 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             'ruc'       => $ruc
         ]);
         return data_get($resp, 'data', []);
+    }
+
+    protected function getChecksPendingPayment(string $document, string $ruc)
+    {
+        $resp = $this->api->getListCustomerCheckPendingPayment([
+            'documento' => $document,
+            'ruc'       => $ruc
+        ]);
+        return data_get($resp, 'data');
     }
 
 
@@ -961,6 +1037,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         float $valorIngresado,
         array $validation,
         SupportCollection $payments,
+        SupportCollection $checksPendings,
         SupportCollection $pendingWebDetails,
         SupportCollection $devolutions
     ): array {
@@ -1000,6 +1077,23 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
             'detalles' => collect()
                 ->merge($this->mapGpPaymentDetails($payments))
+                ->merge($checksPendings->map(function ($payment) {
+                    return [
+                        'tipo_origen'      => 'GP_APLICADO',
+                        'tipo_pago'        => 'cheque',
+                        'codigo_tipo_pago' => null,
+                        'documento'        => data_get($payment, 'documentoGp'),
+                        'numero_recibo'    => $this->formatReceiptNumber(
+                            data_get($payment, 'numeroRecibo')
+                        ),
+                        'estado'           => data_get($payment, 'estado'),
+                        'monto'            => $this->money(
+                            data_get($payment, 'montoAplicado', 0)
+                        ),
+                        'fecha_documento'  => null,
+                        'fecha_aplicacion' => null,
+                    ];
+                }))
                 ->merge($pendingWebDetails)
                 ->merge($this->mapDevolutionDetails($devolutions))
                 ->values()

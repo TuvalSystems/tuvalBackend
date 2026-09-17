@@ -2,17 +2,13 @@
 
 namespace App\Http\Controllers\ventas;
 
-use App\Enums\Ventas\OrderStatus;
-use App\Enums\Ventas\TaxRateEnum;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\FuncionesController;
 use App\Http\Controllers\WebserviceController;
 use App\Models\GpCierreCaja;
 use App\Models\GpCobrosAplicacionFactura;
 use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaFactura;
 use App\Models\GpCobrosTarjetaMonto;
-use App\Models\GpPedido;
 use App\Models\GpRelacionPuntoVentaCaja;
 use App\Models\GpUsuario;
 use App\Traits\JsonResponseTrait;
@@ -29,10 +25,8 @@ use App\Models\Cobranzas\GpCobrosChequesMonto;
 use App\Models\Cobranzas\GpCobrosChequesFacturas;
 use App\Models\GpCliente;
 use App\Models\GpRelacionUsuarioCaja;
-use App\Models\GpCajaBancos;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
-use App\Exports\EstadodecuentaExport;
 use App\Http\Requests\Cobranzas\CobrosFacturas\RegisterCollectionRequest;
 use App\Models\GpCaja;
 use App\Models\GpPuntoVenta;
@@ -48,7 +42,6 @@ use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorService
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
-use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
 class CobranzasController extends Controller
@@ -81,7 +74,7 @@ class CobranzasController extends Controller
         ]);
     }
 
-   
+
 
 
     public function depositosporaprobar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

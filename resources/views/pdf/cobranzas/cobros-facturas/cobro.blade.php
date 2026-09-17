@@ -144,7 +144,7 @@
 
         $formatDate = function ($value) {
             if ($value instanceof \Carbon\CarbonInterface) {
-                return $value->format('Y-m-d');
+                return $value->format('Y-m-d H:i:s');
             }
 
             return $value ?: '';
