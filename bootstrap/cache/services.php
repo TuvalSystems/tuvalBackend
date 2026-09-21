@@ -292,6 +292,7 @@
     'App\\Services\\Venta\\Cotizaciones\\Contracts\\QuotationHistoryCreatorServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Pedidos\\Contracts\\InvoiceHistoryServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Services\\Venta\\Pedidos\\Contracts\\OrderGuideServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
+    'App\\Services\\Venta\\Cotizaciones\\Contracts\\DispatchTypeServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
     'App\\Repositories\\Devoluciones\\Contracts\\DevolucionRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\Pedidos\\Contracts\\OrderRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',
     'App\\Repositories\\Bodegas\\Contracts\\PurchaseReceipRepositoryInterface' => 'App\\Providers\\RepositoryServiceProvider',

@@ -24,7 +24,9 @@ use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\DispatchTypeServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
+use App\Services\Venta\Cotizaciones\DispatchTypeService;
 use App\Services\Venta\Cotizaciones\QuotationHistoryCreatorService;
 use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
@@ -63,8 +65,11 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 
         // historico de pedidos
         InvoiceHistoryServiceInterface::class => InvoiceHistoryService::class,
-        //sp de pedidos 
+        //sp de pedidos
         OrderGuideServiceInterface::class   => OrderGuideService::class,
+
+        //para el manejo de tipo de despachos
+        DispatchTypeServiceInterface::class => DispatchTypeService::class,
     ];
 
 

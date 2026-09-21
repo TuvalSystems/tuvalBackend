@@ -222,6 +222,16 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             /** lista de historio de facturas */
             Route::post('lista-facturas-historicas', [CotizacionesController::class, 'obtenerFacturasHistoricasCotizacion']);
+
+
+
+            /** tipo despachos */
+            Route::prefix('tipo-despachos')->group(function () {
+                Route::post('lista', [CotizacionesController::class, 'listaTipoDespacho']);
+                Route::post('crear-registro', [CotizacionesController::class, 'crearTipoDespacho']);
+                Route::put('actualizar-registro/{id}', [CotizacionesController::class, 'actualizarTipoDespacho']);
+                Route::post('actualizar-estado', [CotizacionesController::class, 'actualizarEstadoTipoDespacho']);
+            });
         });
 
         Route::group(['prefix' => 'reservas'], function () {

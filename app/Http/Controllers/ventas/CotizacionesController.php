@@ -26,6 +26,7 @@ use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\DispatchTypeServiceInterface;
 use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\File;
@@ -46,7 +47,8 @@ class CotizacionesController extends Controller
         protected readonly ClientQueryServiceInterface $clientService,
         protected readonly QuotationCreatorServiceInterface $quotationCreator,
         protected readonly CommercialVisibilityService $commercial,
-        protected readonly InvoiceHistoryServiceInterface $invoiceHistory
+        protected readonly InvoiceHistoryServiceInterface $invoiceHistory,
+        protected readonly DispatchTypeServiceInterface $dispatchType
     ) {}
 
     public function obtenerListaTipoIdentificacion(): JsonResponse
@@ -722,9 +724,9 @@ class CotizacionesController extends Controller
     }
 
 
-    public function ListaMotivosNoVenta() : JsonResponse
+    public function ListaMotivosNoVenta(): JsonResponse
     {
-        return $this->handleApiAction(function () : JsonResponse {
+        return $this->handleApiAction(function (): JsonResponse {
             $lista = $this->quotationService->getNonSalesReasons();
             return $this->successResponse('Lista Obtenida', $lista);
         }, self::LOG_CHANNEL, 'getlistNonSaleReasons');
@@ -903,5 +905,55 @@ class CotizacionesController extends Controller
             $data = $this->invoiceHistory->fetchInvoiceHistory($user, $clientId, $pvId, $pvCode, $filters);
             return $this->successResponse('Lista Obtenida Correctamente', $data);
         }, self::LOG_CHANNEL, 'obtenerFacturasHistoricasCotizacion');
+    }
+
+
+
+
+    /**
+     *
+     *  PROCESO DE TIPOS DE DESPACHO
+     */
+
+    public function listaTipoDespacho(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $filters = data_get($request, 'filters');
+            $user = $request->user();
+            $lista = $this->dispatchType->list($user, $filters);
+            return $this->successResponse('Lista Tipo Despacho Obtenida Correctamente', $lista);
+        }, self::LOG_CHANNEL, 'listaTipoDespacho');
+    }
+
+    public function crearTipoDespacho(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $info = data_get($request, 'payload');
+            $user = $request->user();
+            $this->dispatchType->create($info, $user);
+            return $this->buildSuccessResponse("Registro creado correctamente");
+        }, self::LOG_CHANNEL, 'crearTipoDespachp');
+    }
+
+    public function actualizarTipoDespacho(int $id, Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($id, $request): JsonResponse {
+            $info = data_get($request, 'payload');
+            $user = $request->user();
+            $this->dispatchType->update($id, $info, $user);
+            return $this->buildSuccessResponse('Registro actualizado correctamente');
+        }, self::LOG_CHANNEL, 'actualizarTipoDespacho');
+    }
+
+    public function actualizarEstadoTipoDespacho(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id' => 'required|integer|exists:tipo_despachos,id',
+            ]);
+            $id = data_get($validate, 'id');
+            $this->dispatchType->activeOrInactive($id);
+            return $this->buildSuccessResponse('Estado Actualizado Correctamente');
+        }, self::LOG_CHANNEL, 'actualizarEstadoTipoDespacho');
     }
 }
