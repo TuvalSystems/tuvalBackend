@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Ventas\DispatchTypeEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -17,6 +18,10 @@ return new class extends Migration
             $table->string('observacion')
                 ->comment('Observación detallada sobre la descripcion')
                 ->nullable();
+              $table->enum(
+                'responsable_pago',
+                array_column(DispatchTypeEnum::cases(), 'value')
+            );
             $table->foreignId('usuario_ingreso_id')->nullable()
                 ->comment('Usuario que realiza el ingreso del registro')
                 ->constrained('gp_usuarios')

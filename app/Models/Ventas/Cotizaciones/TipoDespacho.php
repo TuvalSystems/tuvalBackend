@@ -2,8 +2,10 @@
 
 namespace App\Models\Ventas\Cotizaciones;
 
+use App\Models\GpPuntoVenta;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class TipoDespacho extends Model
 {
@@ -31,4 +33,16 @@ class TipoDespacho extends Model
         'created_at'            => 'datetime:Y-m-d H:i:s',
         'updated_at'            => 'datetime:Y-m-d H:i:s',
     ];
+
+
+
+    public function puntosVenta(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            GpPuntoVenta::class,
+            'tipo_despacho_punto_ventas',
+            'tipo_despacho_id',
+            'pv_id'
+        )->withTimestamps();
+    }
 }

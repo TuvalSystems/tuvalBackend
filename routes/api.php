@@ -227,8 +227,11 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             /** tipo despachos */
             Route::prefix('tipo-despachos')->group(function () {
+
                 Route::post('lista', [CotizacionesController::class, 'listaTipoDespacho']);
+                Route::get('lista-punto-ventas', [CotizacionesController::class, 'obtenerListaPuntoVentaActivos']);
                 Route::post('crear-registro', [CotizacionesController::class, 'crearTipoDespacho']);
+                Route::post('obtener-detalle', [CotizacionesController::class, 'obtenerDetalleTipoDespacho']);
                 Route::put('actualizar-registro/{id}', [CotizacionesController::class, 'actualizarTipoDespacho']);
                 Route::post('actualizar-estado', [CotizacionesController::class, 'actualizarEstadoTipoDespacho']);
             });

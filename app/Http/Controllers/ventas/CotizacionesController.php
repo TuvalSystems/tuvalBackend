@@ -935,6 +935,18 @@ class CotizacionesController extends Controller
         }, self::LOG_CHANNEL, 'crearTipoDespachp');
     }
 
+    public function obtenerDetalleTipoDespacho(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'id' => 'required|integer|exists:tipo_despachos,id',
+            ]);
+            $id = data_get($validate, 'id');
+            $info = $this->dispatchType->getDetail($id);
+            return $this->successResponse('Información Obtenida Correctamente', $info);
+        }, self::LOG_CHANNEL, 'obtenerDetalleTipoDespacho');
+    }
+
     public function actualizarTipoDespacho(int $id, Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($id, $request): JsonResponse {
@@ -955,5 +967,13 @@ class CotizacionesController extends Controller
             $this->dispatchType->activeOrInactive($id);
             return $this->buildSuccessResponse('Estado Actualizado Correctamente');
         }, self::LOG_CHANNEL, 'actualizarEstadoTipoDespacho');
+    }
+
+    public function obtenerListaPuntoVentaActivos(): JsonResponse
+    {
+        return $this->handleApiAction(function () {
+            $lista = $this->dispatchType->getActivePointSales();
+            return $this->successResponse('Información Obtenida correctamente', $lista);
+        }, self::LOG_CHANNEL, 'obtenerListaPuntoVentaActivos');
     }
 }

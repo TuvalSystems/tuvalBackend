@@ -2,11 +2,14 @@
 
 namespace App\Services\Venta\Cotizaciones;
 
+use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
 use App\Models\Ventas\Cotizaciones\TipoDespacho;
 use App\Services\Venta\Cotizaciones\Contracts\DispatchTypeServiceInterface;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class DispatchTypeService implements DispatchTypeServiceInterface
 {
@@ -64,27 +67,60 @@ class DispatchTypeService implements DispatchTypeServiceInterface
 
     public function create(array $data, GpUsuario $user)
     {
-        $now =  Carbon::now();
-        $dpsType                    = new TipoDespacho();
-        $dpsType->descripcion       = data_get($data, 'descripcion');
-        $dpsType->observacion       = data_get($data, 'observacion');
-        $dpsType->responsable_pago   = data_get($data, 'responsable_pago');
-        $dpsType->usuario_ingreso_id = $user->id;
-        $dpsType->fecha_ingreso = $now;
-        $dpsType->save();
+        return DB::transaction(function () use ($data, $user) {
+
+            $dpsType = new TipoDespacho();
+
+            $dpsType->descripcion        = data_get($data, 'descripcion');
+            $dpsType->observacion        = data_get($data, 'observacion');
+            $dpsType->responsable_pago   = data_get($data, 'responsable_pago');
+            $dpsType->usuario_ingreso_id = $user->id;
+            $dpsType->fecha_ingreso      = now();
+
+            $dpsType->save();
+
+            $dpsType->puntosVenta()->sync(
+                data_get($data, 'punto_venta_ids', [])
+            );
+
+            return $dpsType->load('puntosVenta');
+        });
+    }
+
+
+    public function getDetail(int $id): TipoDespacho
+    {
+        return TipoDespacho::with([
+            'puntosVenta' => function ($query) {
+                $query
+                    ->select([
+                        'gp_punto_ventas.id',
+                        'gp_punto_ventas.PTO_VTA_ID as codigo',
+                        'gp_punto_ventas.PTO_VTA_DESCRIPCION as descripcion',
+                    ]);
+            }
+        ])->findOrFail($id);
     }
 
 
     public function update(int $id, array $data, GpUsuario $user)
     {
-        $now =  Carbon::now();
-        $dpsType                        = TipoDespacho::find($id);
-        $dpsType->descripcion           = data_get($data, 'descripcion');
-        $dpsType->observacion           = data_get($data, 'observacion');
-        $dpsType->responsable_pago       = data_get($data, 'responsable_pago');
-        $dpsType->usuario_modifica_id   = $user->id;
-        $dpsType->fecha_modificacion    = $now;
-        $dpsType->save();
+        return DB::transaction(function () use ($id, $data, $user) {
+
+            $dpsType = TipoDespacho::findOrFail($id);
+            $dpsType->descripcion          = data_get($data, 'descripcion');
+            $dpsType->observacion          = data_get($data, 'observacion');
+            $dpsType->responsable_pago     = data_get($data, 'responsable_pago');
+            $dpsType->usuario_modifica_id  = $user->id;
+            $dpsType->fecha_modificacion   = now();
+            $dpsType->save();
+
+            $dpsType->puntosVenta()->sync(
+                data_get($data, 'punto_venta_ids', [])
+            );
+
+            return $dpsType->load('puntosVenta');
+        });
     }
 
 
@@ -93,5 +129,17 @@ class DispatchTypeService implements DispatchTypeServiceInterface
         $dpsType = TipoDespacho::find($id);
         $dpsType->estado = $dpsType->estado === true ? false : true;
         $dpsType->save();
+    }
+
+
+    public function getActivePointSales(): Collection
+    {
+        return GpPuntoVenta::select([
+            'id',
+            'PTO_VTA_ID as codigo',
+            'PTO_VTA_DESCRIPCION as descripcion'
+        ])
+            ->where('PTO_VTA_ESTADO', 'ACTIVO')
+            ->get();
     }
 }
