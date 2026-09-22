@@ -1,12 +1,11 @@
 <?php
 
-namespace App\Services\Venta\Cotizaciones;
+namespace App\Services\Venta\TipoDespachos;
 
 use App\Models\GpPuntoVenta;
 use App\Models\GpUsuario;
-use App\Models\Ventas\Cotizaciones\TipoDespacho;
-use App\Services\Venta\Cotizaciones\Contracts\DispatchTypeServiceInterface;
-use Carbon\Carbon;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Services\Venta\TipoDespachos\Contracts\DispatchTypeServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;

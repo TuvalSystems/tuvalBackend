@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Ventas\Cotizaciones;
+namespace App\Models\Ventas\TipoDespachos;
 
 use App\Models\GpPuntoVenta;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

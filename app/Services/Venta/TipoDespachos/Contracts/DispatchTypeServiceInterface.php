@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\Venta\Cotizaciones\Contracts;
+namespace App\Services\Venta\TipoDespachos\Contracts;
 
 use App\Models\GpUsuario;
-use App\Models\Ventas\Cotizaciones\TipoDespacho;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 

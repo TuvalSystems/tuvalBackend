@@ -3,8 +3,8 @@
 namespace App\Services\User;
 
 use App\Models\GpUsuario;
-use App\Models\GpProveedor;
 use App\Models\GpPuntoVenta;
+use App\Models\Ventas\Proveedores\GpProveedor;
 use App\Traits\JsonResponseTrait;
 use App\Models\GpCondicionPago;
 use App\Services\Api\ApiGpService;

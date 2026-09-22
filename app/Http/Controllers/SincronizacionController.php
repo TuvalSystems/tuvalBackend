@@ -17,9 +17,8 @@ use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Models\GpRelacionPuntoVentaCaja;
 use App\Models\GpRelacionPuntoVentaIdVenta;
 use App\Models\GpRelacionUsuarioPuntoVenta;
+use App\Models\Ventas\Proveedores\GpProveedor;
 use App\Models\Ventas\Vendedores\GpVendedor;
-
-use App\Models\GpProveedor;
 use App\Models\GpClaseCliente;
 use App\Models\GpGrupoCliente;
 use App\Models\GpSubGrupoCliente;
@@ -29,7 +28,6 @@ use App\Models\GpCaja;
 use App\Models\GpCajaBancos;
 use App\Models\GpUnidadMedida;
 use App\Models\GpRelacionUsuarioCaja;
-
 use App\Services\Api\ApiGpService;
 use Illuminate\Support\Facades\Auth;
 
@@ -607,7 +605,7 @@ class SincronizacionController extends Controller
             $proveedor = GpProveedor::where('PROV_RUC', trim($data['PROV_RUC']))
                 ->first();
             if (!$proveedor) {
-                $proveedor = new GpProveedor;
+                $proveedor = new GpProveedor();
             }
             $proveedor->PROV_RUC = trim($data['PROV_RUC']);
             $proveedor->PROV_RAZON_SOCIAL = trim($data['PROV_RAZON_SOCIAL']);

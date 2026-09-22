@@ -10,6 +10,8 @@ use App\Services\Venta\ClientQueryService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Services\Venta\OrderJobService;
+use App\Services\Venta\TipoDespachos\Contracts\DispatchTypeServiceInterface;
+use App\Services\Venta\TipoDespachos\DispatchTypeService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Venta\QuotationService;
@@ -24,9 +26,7 @@ use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
-use App\Services\Venta\Cotizaciones\Contracts\DispatchTypeServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
-use App\Services\Venta\Cotizaciones\DispatchTypeService;
 use App\Services\Venta\Cotizaciones\QuotationHistoryCreatorService;
 use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
@@ -34,6 +34,8 @@ use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Services\Venta\Pedidos\InvoiceHistoryService;
 use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
 use App\Services\Venta\Pedidos\OrderGuideService;
+use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
+use App\Services\Venta\Proveedores\ProviderService;
 use App\Services\Venta\QuotationCreatorService;
 use App\Services\Venta\QuoteDraftService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -70,6 +72,7 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 
         //para el manejo de tipo de despachos
         DispatchTypeServiceInterface::class => DispatchTypeService::class,
+        ProviderServiceInterface::class => ProviderService::class,
     ];
 
 

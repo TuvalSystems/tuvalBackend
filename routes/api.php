@@ -26,7 +26,9 @@ use App\Http\Controllers\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\Inventario\Articulo\ArticuloController;
+use App\Http\Controllers\ventas\ProveedoresController;
 use App\Http\Controllers\ventas\ReservasController;
+use App\Http\Controllers\Ventas\TipoDespachosController;
 
 /*
 |--------------------------------------------------------------------------
@@ -155,6 +157,29 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
         //new routes
+        Route::group(['prefix' => 'ventas'], function () {
+
+            // rutas de tipo despacho
+            Route::prefix('tipo-despachos')->group(function () {
+                Route::post('lista', [TipoDespachosController::class, 'listaTipoDespacho']);
+                Route::get('lista-punto-ventas', [TipoDespachosController::class, 'obtenerListaPuntoVentaActivos']);
+                Route::post('crear-registro', [TipoDespachosController::class, 'crearTipoDespacho']);
+                Route::post('obtener-detalle', [TipoDespachosController::class, 'obtenerDetalleTipoDespacho']);
+                Route::put('actualizar-registro/{id}', [TipoDespachosController::class, 'actualizarTipoDespacho']);
+                Route::post('actualizar-estado', [TipoDespachosController::class, 'actualizarEstadoTipoDespacho']);
+            });
+
+            // rutas de proveedores
+            Route::prefix('proveedores')->group(function () {
+                Route::post('lista', [ProveedoresController::class, 'listaProveedores']);
+                Route::put('actualizar-estado-transportista/{id}', [ProveedoresController::class, 'actualizarEstadoTransportista']);
+                Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoProveedor']);
+
+            });
+        });
+
+
+
 
         Route::group(['prefix' => 'cotizaciones'], function () {
 
@@ -214,7 +239,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
             Route::post('recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
-            Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
+            // Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
             Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
 
             Route::get('obtener-lista-proyectos', [CotizacionesController::class, 'obtenerListaProyectosVenta']);
@@ -222,19 +247,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             /** lista de historio de facturas */
             Route::post('lista-facturas-historicas', [CotizacionesController::class, 'obtenerFacturasHistoricasCotizacion']);
-
-
-
-            /** tipo despachos */
-            Route::prefix('tipo-despachos')->group(function () {
-
-                Route::post('lista', [CotizacionesController::class, 'listaTipoDespacho']);
-                Route::get('lista-punto-ventas', [CotizacionesController::class, 'obtenerListaPuntoVentaActivos']);
-                Route::post('crear-registro', [CotizacionesController::class, 'crearTipoDespacho']);
-                Route::post('obtener-detalle', [CotizacionesController::class, 'obtenerDetalleTipoDespacho']);
-                Route::put('actualizar-registro/{id}', [CotizacionesController::class, 'actualizarTipoDespacho']);
-                Route::post('actualizar-estado', [CotizacionesController::class, 'actualizarEstadoTipoDespacho']);
-            });
         });
 
         Route::group(['prefix' => 'reservas'], function () {

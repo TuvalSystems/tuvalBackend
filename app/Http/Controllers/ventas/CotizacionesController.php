@@ -13,7 +13,6 @@ use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPuntoVenta;
 use App\Models\GpClienteSucursal;
-use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpCliente;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
@@ -26,14 +25,12 @@ use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
-use App\Services\Venta\Cotizaciones\Contracts\DispatchTypeServiceInterface;
 use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CotizacionesController extends Controller
@@ -48,7 +45,6 @@ class CotizacionesController extends Controller
         protected readonly QuotationCreatorServiceInterface $quotationCreator,
         protected readonly CommercialVisibilityService $commercial,
         protected readonly InvoiceHistoryServiceInterface $invoiceHistory,
-        protected readonly DispatchTypeServiceInterface $dispatchType
     ) {}
 
     public function obtenerListaTipoIdentificacion(): JsonResponse
@@ -371,100 +367,6 @@ class CotizacionesController extends Controller
         ]);
     }
 
-
-
-    public function guardardireccion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-
-        foreach ($data as $key => $direccion) {
-            if ($key != 'CLI_SUC_CORREO_ELECTRONICO_SRI')
-                $data[$key] = mb_strtoupper($direccion);
-            else
-                $data[$key] = strtolower($direccion);
-        }
-        $data['CLI_SUC_PROVINCIA'] = $data['CLI_SUC_PROVINCIA_NOMBRE'];
-        unset($data['CLI_SUC_PROVINCIA_NOMBRE']);
-
-        $dir = str_split($data['CLI_SUC_DIRECCION'], 61);
-
-        if (!isset($dir[1])) {
-            $dir[1] = '';
-        }
-        $parameters = array(
-            'CLI_DIR_RUC' => $data['CLI_SUC_RUC'],
-            'CLI_DIR_CONTACTO' => $data['CLI_SUC_CONTACTO'],
-            'CLI_DIR_ID_DIRECCION' => '',
-            'CLI_DIR_DIRECCION_1' => $dir[0],
-            'CLI_DIR_DIRECCION_2' => $dir[1],
-            'CLI_DIR_CIUDAD' => $data['CLI_SUC_CIUDAD'],
-            'CLI_DIR_PROVINCIA' => $data['CLI_SUC_PROVINCIA'],
-            'CLI_DIR_PAIS' => 'Ec',
-            'CLI_DIR_TERRITORIO' => $data['CLI_SUC_TERRITORIO'],
-            'CLI_DIR_TELEFONO_1' => $data['CLI_SUC_TELEFONO'],
-            'CLI_DIR_TELEFONO_2' => '',
-            'CLI_DIR_TELEFONO_3' => '',
-            'CLI_DIR_TELEFONO_4' => '',
-            'CLI_DIR_CORREO_ELECTRONICO_SRI' => $data['CLI_SUC_CORREO_ELECTRONICO_SRI'],
-            'CLI_DIR_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $data['CLI_SUC_CORREO_ELECTRONICO_SRI'],
-            'CLI_DIR_VENDEDOR' => $data['CLI_SUC_VENDEDOR'],
-            'CLI_DIR_PUNTO_VENTA' => $data['CLI_DIR_PUNTO_VENTA'],
-        );
-
-
-        $webservices = new WebserviceController;
-        $parameters = [
-            'Direccion_Cliente' => array($parameters)
-        ];
-        $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion', $parameters);
-        Log::channel(self::LOG_CHANNEL)->info('Nueva Direccion', $nuevaDireccion);
-        if (!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])) {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 409);
-        }
-        $CLI_SUC_ID_DIRECCION = explode('-', $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']);
-        if (!isset($CLI_SUC_ID_DIRECCION[1])) {
-            return response([
-                'error' => $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']
-            ], 409);
-        }
-        $direccion = new GpClienteSucursal;
-        $direccion->CLI_SUC_RUC = $data['CLI_SUC_RUC'];
-        $direccion->CLI_SUC_DESCRIPCION = $data['CLI_SUC_DESCRIPCION'];
-        $direccion->CLI_SUC_ID_DIRECCION = $CLI_SUC_ID_DIRECCION[1];
-        $direccion->CLI_SUC_DIRECCION = $data['CLI_SUC_DIRECCION'];
-        $direccion->CLI_SUC_CONTACTO = $data['CLI_SUC_CONTACTO'];
-        $direccion->CLI_SUC_REFERENCIA = $data['CLI_SUC_REFERENCIA'];
-        $direccion->CLI_SUC_VENDEDOR = $data['CLI_SUC_VENDEDOR'];
-        $direccion->CLI_SUC_TERRITORIO = $data['CLI_SUC_TERRITORIO'];
-        $direccion->CLI_SUC_CIUDAD = $data['CLI_SUC_CIUDAD'];
-        $direccion->CLI_SUC_PROVINCIA = $data['CLI_SUC_PROVINCIA'];
-        $direccion->CLI_SUC_PAIS = 'Ecuador';
-        $direccion->CLI_SUC_TELEFONO = $data['CLI_SUC_TELEFONO'];
-        $direccion->CLI_SUC_CORREO_ELECTRONICO_SRI = $data['CLI_SUC_CORREO_ELECTRONICO_SRI'];
-        $direccion->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = $data['CLI_SUC_CORREO_ELECTRONICO_SRI'];
-
-
-        if ($direccion->save()) {
-            $cliente = GpCliente::where('CLI_RUC', $data['CLI_SUC_RUC'])->get()->first();
-            $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-            $cliente->vendedor = $vendedor;
-            $sucursales = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
-            $cliente->sucursales = $sucursales;
-            $cliente->sucursalesfacturacion = $sucursales;
-
-            return response([
-                'success' => true,
-                'message' => 'Dirección de cliente guardado',
-                'cliente' => $cliente,
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 409);
-        }
-    }
 
     public function guardarcliente(Request $request)
     {
@@ -910,70 +812,6 @@ class CotizacionesController extends Controller
 
 
 
-    /**
-     *
-     *  PROCESO DE TIPOS DE DESPACHO
-     */
 
-    public function listaTipoDespacho(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $filters = data_get($request, 'filters');
-            $user = $request->user();
-            $lista = $this->dispatchType->list($user, $filters);
-            return $this->successResponse('Lista Tipo Despacho Obtenida Correctamente', $lista);
-        }, self::LOG_CHANNEL, 'listaTipoDespacho');
-    }
 
-    public function crearTipoDespacho(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $info = data_get($request, 'payload');
-            $user = $request->user();
-            $this->dispatchType->create($info, $user);
-            return $this->buildSuccessResponse("Registro creado correctamente");
-        }, self::LOG_CHANNEL, 'crearTipoDespachp');
-    }
-
-    public function obtenerDetalleTipoDespacho(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $validate = $request->validate([
-                'id' => 'required|integer|exists:tipo_despachos,id',
-            ]);
-            $id = data_get($validate, 'id');
-            $info = $this->dispatchType->getDetail($id);
-            return $this->successResponse('Información Obtenida Correctamente', $info);
-        }, self::LOG_CHANNEL, 'obtenerDetalleTipoDespacho');
-    }
-
-    public function actualizarTipoDespacho(int $id, Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($id, $request): JsonResponse {
-            $info = data_get($request, 'payload');
-            $user = $request->user();
-            $this->dispatchType->update($id, $info, $user);
-            return $this->buildSuccessResponse('Registro actualizado correctamente');
-        }, self::LOG_CHANNEL, 'actualizarTipoDespacho');
-    }
-
-    public function actualizarEstadoTipoDespacho(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $validate = $request->validate([
-                'id' => 'required|integer|exists:tipo_despachos,id',
-            ]);
-            $id = data_get($validate, 'id');
-            $this->dispatchType->activeOrInactive($id);
-            return $this->buildSuccessResponse('Estado Actualizado Correctamente');
-        }, self::LOG_CHANNEL, 'actualizarEstadoTipoDespacho');
-    }
-
-    public function obtenerListaPuntoVentaActivos(): JsonResponse
-    {
-        return $this->handleApiAction(function () {
-            $lista = $this->dispatchType->getActivePointSales();
-            return $this->successResponse('Información Obtenida correctamente', $lista);
-        }, self::LOG_CHANNEL, 'obtenerListaPuntoVentaActivos');
-    }
 }

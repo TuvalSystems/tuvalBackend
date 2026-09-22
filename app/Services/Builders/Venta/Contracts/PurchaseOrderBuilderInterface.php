@@ -5,8 +5,9 @@ namespace App\Services\Builders\Venta\Contracts;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
-use App\Models\GpProveedor;
 use App\Models\ordendecompra\GpOrdenDeCompra;
+use App\Models\Ventas\Proveedores\GpProveedor;
+
 
 interface PurchaseOrderBuilderInterface
 {
