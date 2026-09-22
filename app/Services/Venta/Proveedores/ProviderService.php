@@ -24,24 +24,26 @@ class ProviderService implements ProviderServiceInterface
             : 'desc';
 
         $allowedSorts = [
-            'id'           => 'prv.id',
-            'ruc'          => 'prv.PROV_RUC',
-            'razon_social' => 'prv.PROV_RAZON_SOCIAL',
-            'id_pricipal'  => 'prv.PROV_ID_DIRECCION'
+            'id'                => 'prv.id',
+            'ruc'               => 'prv.PROV_RUC',
+            'razon_social'      => 'prv.PROV_RAZON_SOCIAL',
+            'id_pricipal'       => 'prv.PROV_ID_DIRECCION',
+            'estado'            => 'prov.PROV_ESTADO',
+            'es_transportista'  => 'rv.es_transportista'
         ];
 
         $orderColumn = data_get($allowedSorts, $sortField, 'prv.created_at');
 
         $query = GpProveedor::query()
-            ->from('gp_proveedores as prv')
+            ->from('gp_proveedors as prv')
             ->select([
                 'prv.id',
                 'prv.PROV_RUC as ruc',
-                'prv.PROV_RAZON_SOCIALa as razon_social',
+                'prv.PROV_RAZON_SOCIAL as razon_social',
                 'prv.PROV_CLASE as clase',
                 'prv.PROV_ID_DIRECCION as id_principal',
                 'prv.PROV_CONTACTO as contacto',
-                'prv.PROV_DIRECCION as direccion',
+                'prv.PROV_DIRECCION_1 as direccion',
                 'prv.es_transportista',
                 'prv.PROV_ESTADO as estado',
                 'prv.created_at'
@@ -49,7 +51,7 @@ class ProviderService implements ProviderServiceInterface
 
         if ($search) {
             $query->where('prv.PROV_RUC', 'like', "%{$search}%")
-                ->orWhere('prv.PROV_RAZON_SOCIA', 'like', "%{$search}%")
+                ->orWhere('prv.PROV_RAZON_SOCIAL', 'like', "%{$search}%")
                 ->orWhere('prv.PROV_CLASE', 'like', "%{$search}%");
         }
 
