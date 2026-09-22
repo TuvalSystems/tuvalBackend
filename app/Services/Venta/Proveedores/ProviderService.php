@@ -28,8 +28,8 @@ class ProviderService implements ProviderServiceInterface
             'ruc'               => 'prv.PROV_RUC',
             'razon_social'      => 'prv.PROV_RAZON_SOCIAL',
             'id_pricipal'       => 'prv.PROV_ID_DIRECCION',
-            'estado'            => 'prov.PROV_ESTADO',
-            'es_transportista'  => 'rv.es_transportista'
+            'estado'            => 'prv.PROV_ESTADO',
+            'es_transportista'  => 'prv.es_transportista'
         ];
 
         $orderColumn = data_get($allowedSorts, $sortField, 'prv.created_at');
@@ -64,7 +64,7 @@ class ProviderService implements ProviderServiceInterface
 
     public function updateCarrierStatus(int $id, GpUsuario $user): void
     {
-        $prov                       = GpProveedor::find('id', $id);
+        $prov                       = GpProveedor::find($id);
         $prov->es_transportista     = $prov->es_transportista === true ? false : true;
         $prov->usuario_modifica_id  = $user->id;
         $prov->fecha_modificacion   = now();
@@ -73,7 +73,7 @@ class ProviderService implements ProviderServiceInterface
 
     public function updateStatus(int $id, GpUsuario $user): void
     {
-        $prov                       = GpProveedor::find('id', $id);
+        $prov                       = GpProveedor::find($id);
         $prov->PROV_ESTADO          = $prov->PROV_ESTADO === 'ACTIVO' ? 'ACTIVO' : 'INACTIVO';
         $prov->usuario_modifica_id  = $user->id;
         $prov->fecha_modificacion   = now();
