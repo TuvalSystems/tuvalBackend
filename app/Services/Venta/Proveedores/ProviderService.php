@@ -74,7 +74,7 @@ class ProviderService implements ProviderServiceInterface
     public function updateStatus(int $id, GpUsuario $user): void
     {
         $prov                       = GpProveedor::find($id);
-        $prov->PROV_ESTADO          = $prov->PROV_ESTADO === 'ACTIVO' ? 'ACTIVO' : 'INACTIVO';
+        $prov->PROV_ESTADO          = $prov->PROV_ESTADO === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
         $prov->usuario_modifica_id  = $user->id;
         $prov->fecha_modificacion   = now();
         $prov->save();
