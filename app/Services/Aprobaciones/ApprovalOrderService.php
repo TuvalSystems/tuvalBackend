@@ -610,7 +610,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
         $order->save();
         GpTrasladosVentas::where('pedido_id', $order->id)->delete();
-        $this->updateStockOnOrderApproval($order);
+        // $this->updateStockOnOrderApproval($order);
         $this->cleanDetailOrderStock($order);
         $notificationTitle = $isRejectedByStock
             ? 'Pedido rechazado por falta de stock'
@@ -675,7 +675,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             ),
         ];
         GpTrasladosVentas::where('pedido_id', $order->id)->delete();
-        $this->updateStockOnOrderApproval($order);
+        // $this->updateStockOnOrderApproval($order);
         $this->cleanDetailOrderStock($order);
 
         $this->createHistoryRecord(
