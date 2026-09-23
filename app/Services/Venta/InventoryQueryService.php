@@ -68,13 +68,13 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
 
 
-    public function getAvailableSpace($ruc)
+    public function getAvailableSpace(string $ruc)
     {
         $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
         $segmento = $this->getSegmentoCliente($ruc);
         $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
 
-        $cliente->suspendido = (float) $cupoDisponible['suspendido'] ?? 0;
+        $cliente->suspendido = (float) data_get($cupoDisponible, 'suspendido', 0);
         $cliente->cupo_disponible = number_format($cupoDisponible['cupoDisponibleGp'], 2, '.', ',');
         $cliente->cupo_asignado = number_format($cupoDisponible['cupoAsignado'], 2, '.', ',');
         return [
@@ -83,7 +83,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         ];
     }
 
-    public function getSegmentoCliente($ruc)
+    public function getSegmentoCliente(string $ruc)
     {
         $response = $this->apiGp->fetchClientSegment([
             'ruc' => $ruc,
@@ -659,9 +659,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function searchWithDetails(array $filters)
     {
-        $isItemL = $this->isSearchItemsL($filters);
+        $isItemL = data_get($filters, 'terminal', false);
         $articulos = $isItemL
-            ? GpArticulo::searchItemLModel($filters)
+            ? GpArticulo::searchItemLModel()
             : GpArticulo::searchItemModel($filters);
 
         if ($articulos->isEmpty()) {
@@ -721,25 +721,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 return count($articulo->precios) > 0;
             }
         )->sortBy('ART_CODIGO_ZAFIRO')->values();
-    }
-
-    public function isSearchItemsL(array $filters)
-    {
-        $campChecked = ['codigo3l', 'text_codigo', 'text_nombre', 'terminal'];
-        $valoresObjetivo = ['item l', 'items l', 'l'];
-
-        foreach ($campChecked as $camp) {
-            if (!isset($filters[$camp])) {
-                continue;
-            }
-
-            $normalizeCheck = strtolower(trim($filters[$camp]));
-            if (in_array($normalizeCheck, $valoresObjetivo, true)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
 

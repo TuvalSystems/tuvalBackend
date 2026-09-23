@@ -133,109 +133,51 @@ class GpArticulo extends Model
         'ART_TIPO_PRODUCTO'
     ];
 
-    public static function busqueda($buscar): Collection
-    {
-        $resultados = self::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
-            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'BNS-INACT')
-            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'CMP-GASTOS')
-            ->where('gp_articulos.ART_TIPO_COMPRA', '!=', 'L');
-        if (isset($buscar['codigo3l']) && $buscar['codigo3l'] != '') {
-            $resultados = $resultados->where('gp_articulos.ART_CODIGO_TRES_LETRAS', $buscar['codigo3l']);
-        }
-        if (isset($buscar['text_codigo']) && $buscar['text_codigo'] != '') {
-            if ($buscar['select_codigo'] == 'empieza') {
-                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', $buscar['text_codigo'] . '%');
-            }
-            if ($buscar['select_codigo'] == 'contiene') {
-                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $buscar['text_codigo'] . '%');
-            }
-            if ($buscar['select_codigo'] == 'termina') {
-                $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $buscar['text_codigo']);
-            }
-        }
-        if (isset($buscar['text_nombre']) && $buscar['text_nombre'] != '') {
-            if ($buscar['select_nombre'] == 'empieza') {
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'] . '%');
-            }
-            if ($buscar['select_nombre'] == 'contiene') {
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre'] . '%');
-            }
-            if ($buscar['select_nombre'] == 'termina') {
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre']);
-            }
-        }
-        if (isset($buscar['terminal']) && $buscar['terminal'] != '') {
-            $resultados = $resultados->where('gp_articulos.ART_CODIGO_ZAFIRO', 'LIKE', '%' . $buscar['terminal']);
-        }
-        $resultados->orderby('gp_articulos.ART_CODIGO_ZAFIRO', 'ASC')
-            ->limit(500);
-        //        print_r($resultados->toSql());
-//        die();
-        $resultados = $resultados->get(['gp_articulos.*', 'gp_unidad_medidas.UMEDIDA_BASE AS ART_PLAN_UMEDIDA']);
-        return $resultados;
-    }
-
-    public static function busquedaitemsl($buscar): Collection
-    {
-        $resultados = self::join('gp_unidad_medidas', 'gp_unidad_medidas.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
-            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'BNS-INACT')
-            ->where('gp_articulos.ART_CLASE_ARTICULO', '!=', 'CMP-GASTOS')
-            ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
-            ->where('gp_articulos.disponible', '=', 1);
-        if (isset($buscar['text_nombre']) && $buscar['text_nombre'] != '') {
-            if ($buscar['select_nombre'] == 'empieza') {
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', $buscar['text_nombre'] . '%');
-            }
-            if ($buscar['select_nombre'] == 'contiene') {
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre'] . '%');
-            }
-            if ($buscar['select_nombre'] == 'termina') {
-                $resultados = $resultados->where('gp_articulos.ART_DESCRIPCION', 'LIKE', '%' . $buscar['text_nombre']);
-            }
-        }
-        $resultados = $resultados
-            ->inRandomOrder()->limit(500)
-            ->get(['gp_articulos.*', 'gp_unidad_medidas.UMEDIDA_BASE AS ART_PLAN_UMEDIDA']);
-        return $resultados;
-    }
-
-
+    protected $casts = [
+        'ART_IMP_VTA' => 'float'
+    ];
     /** nuevo proceso para consulta de items L e items de busqueda normal */
 
 
-    /**
-     * Summary of searchItemLModel
-     * @param mixed $filters
-     * @return \Illuminate\Support\Collection
-     */
-    public static function searchItemLModel(array $filters): Collection
+
+    public static function searchItemLModel(): Collection
     {
-        $query = self::query()
+        $queryBase = self::query()
             ->select([
-                'gp_articulos.*',
+                'art.*',
                 'unm.UMEDIDA_BASE AS ART_PLAN_UMEDIDA'
             ])
-            ->join('gp_unidad_medidas as unm', 'unm.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
-            ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
-            ->where('gp_articulos.ART_TIPO_COMPRA', 'L')
-            ->where('gp_articulos.disponible', 1)
-            ->whereNotIn('gp_articulos.ART_CLASE_ARTICULO', ['BNS-INACT', 'CMP-GASTOS']);
+            ->from('gp_articulos as art')
+            ->join(
+                'gp_unidad_medidas as unm',
+                'unm.UMEDIDA_PLAN',
+                '=',
+                'art.ART_PLAN_UMEDIDA'
+            )
+            ->where('art.ART_ESTADO', 'ACTIVO')
+            ->where('art.ART_TIPO_COMPRA', 'L')
+            ->where('art.disponible', 1)
+            ->whereNotIn('art.ART_CLASE_ARTICULO', [
+                'BNS-INACT',
+                'CMP-GASTOS'
+            ]);
 
-        $textSearch = $filters['text_nombre'] ?? null;
-        if (!empty($textSearch)) {
-            $modo = $filters['select_nombre'] ?? 'contiene';
+        // Un artículo con impuesto 5
+        $item5 = (clone $queryBase)
+            ->where('art.ART_IMP_VTA', 5)
+            ->orderBy('art.ART_DESCRIPCION', 'asc')
+            ->first();
 
-            $patron = match ($modo) {
-                'empieza' => "$textSearch%",
-                'termina' => "%$textSearch",
-                default => "%$textSearch%"
-            };
+        // Un artículo con impuesto 15
+        $item15 = (clone $queryBase)
+            ->where('art.ART_IMP_VTA', 15)
+            ->orderBy('art.ART_DESCRIPCION', 'asc')
+            ->first();
 
-            $query->where('gp_articulos.ART_DESCRIPCION', 'like', $patron);
-        }
-        return $query->orderBy('gp_articulos.ART_DESCRIPCION', 'asc')->limit(500)->get();
+        return collect([
+            $item5,
+            $item15
+        ])->filter()->values();
     }
 
     public static function searchItemModel(array $filters): Collection
