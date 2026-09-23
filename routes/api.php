@@ -410,8 +410,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('territorios', [ConsultasController::class, 'territorios']);
             Route::get('puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);
             Route::get('cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
-            Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
-            Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
+            // Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
+            // Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
             Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
             Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
             Route::post('stock-exposicion', [ConsultasController::class, 'consultaStockExposicion']);

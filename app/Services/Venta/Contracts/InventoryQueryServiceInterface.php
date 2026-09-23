@@ -12,7 +12,7 @@ interface InventoryQueryServiceInterface
         public function fetchStockTransitReservations();
      public function fetchStockInTransitConsolidated();
     /** funcion para consulta de cupo de cliente */
-    public function getAvailableSpace($ruc);
+    public function getAvailableSpace(string $ruc);
     /** funcion de consulta de reservados  */
     public function listReservedInventory();
     public function listReservedWebInventory(?string $item);
