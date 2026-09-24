@@ -12,24 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('gp_cotizacion_detalles', function (Blueprint $table) {
-            $table->string('cod_categoria')->after('modificador');
-            $table->string('cod_linea')->after('cod_categoria');
-            $table->string('cod_clase')->after('cod_linea');
-            $table->string('resultado_configuracion_item_l')->after('cod_clase');
+            $table->string('cod_categoria')->nullable()->after('modificador');
+            $table->string('cod_linea')->nullable()->after('cod_categoria');
+            $table->string('cod_clase')->nullable()->after('cod_linea');
+            $table->string('resultado_configuracion_item_l')->nullable()->after('cod_clase');
         });
 
         Schema::table('hi_cotizacion_detalles', function (Blueprint $table) {
-            $table->string('cod_categoria')->after('modificador');
-            $table->string('cod_linea')->after('cod_categoria');
-            $table->string('cod_clase')->after('cod_linea');
-            $table->string('resultado_configuracion_item_l')->after('cod_clase');
+            $table->string('cod_categoria')->nullable()->after('modificador');
+            $table->string('cod_linea')->nullable()->after('cod_categoria');
+            $table->string('cod_clase')->nullable()->after('cod_linea');
+            $table->string('resultado_configuracion_item_l')->nullable()->after('cod_clase');
         });
 
         Schema::table('gp_pedido_detalles', function (Blueprint $table) {
-            $table->string('cod_categoria')->after('cancelado');
-            $table->string('cod_linea')->after('cod_categoria');
-            $table->string('cod_clase')->after('cod_linea');
-            $table->string('resultado_configuracion_item_l')->after('cod_clase');
+            $table->string('cod_categoria')->nullable()->after('cancelado');
+            $table->string('cod_linea')->nullable()->after('cod_categoria');
+            $table->string('cod_clase')->nullable()->after('cod_linea');
+            $table->string('resultado_configuracion_item_l')->nullable()->after('cod_clase');
         });
     }
 
