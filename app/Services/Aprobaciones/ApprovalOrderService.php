@@ -939,7 +939,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     {
         $order = GpPedido::findOrFail($id);
         $client = GpCliente::where('id', $order->cliente_id)
-            ->select(['id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_DIA_GRACIA_VTA_CREDITO'])
+            ->select(['id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_DIA_GRACIA_CHEQUE_A_FECHA'])
             ->first();
         return [
             'pedido'                            => $order,
