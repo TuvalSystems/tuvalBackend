@@ -615,7 +615,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'modificador'                   => $detail->modificador,
             'valor_original_l'              => $detail->valor_original_l,
             'validador_l'                   => $detail->validador_l,
-              'cod_categoria'               => $detail->cod_categoria,
+            'cod_categoria'                 => $detail->cod_categoria,
             'cod_linea'                     => $detail->cod_linea,
             'cod_clase'                     => $detail->cod_clase,
             'resultado_configuracion_item_l'=> $detail->resultado_configuracion_item_l,
