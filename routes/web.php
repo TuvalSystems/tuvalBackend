@@ -282,7 +282,8 @@ Route::group(['prefix' => 'inventario-web'], function () {
     Route::prefix('articulos')->group(function () {
         Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
         Route::get('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
-    });
+        Route::get('lista-alternativas', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
+        });
 });
 
 
