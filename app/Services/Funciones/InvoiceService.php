@@ -559,12 +559,16 @@ class InvoiceService implements InvoiceServiceInterface
                 'FAC_VTA_DET_TOTAL'             => number_format(($detalle->ART_VALOR - $detalle->ART_DESCUENTO) * $detalle->ART_CANTIDAD, 2, '.', ''),
 
                 //campos aidicionales para el envio a sp de creacion de facturas
-                'descripcionOrginal'            => $detalle->ART_DESCRIPCION_ORIGINAL,
-                'valorOrginal'                  => $detalle->ART_VALOR_ORIGINAL,
-                'descuentoOrginal'              => $detalle->descuento_original,
-                'descuento'                     => $detalle->descuento,
-                'pedidoId'                      => $pedido->id,
-                'detalleId'                     => $detalle->id
+                'descripcionOrginal'                => $detalle->ART_DESCRIPCION_ORIGINAL,
+                'valorOrginal'                      => $detalle->ART_VALOR_ORIGINAL,
+                'descuentoOrginal'                  => $detalle->descuento_original,
+                'descuento'                         => $detalle->descuento,
+                'pedidoId'                          => $pedido->id,
+                'detalleId'                         => $detalle->id,
+                'categoria'                         => $detalle->cod_categoria,
+                'linea'                             => $detalle->cod_linea,
+                'clase'                             => $detalle->cod_clase,
+                'configuracionItemL'                => $detalle->resultado_configuracion_item_l,
             ];
         })->toArray();
     }
