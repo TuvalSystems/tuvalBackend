@@ -107,7 +107,11 @@ class GpCotizacionDetalle extends Model
         'modificador',
         'CHECK_ALTERNATIVO',
         'valor_original_l',
-        'validador_l'
+        'validador_l',
+        'cod_categoria',
+        'cod_linea',
+        'cod_clase',
+        'resultado_configuracion_item_l'
     ];
 
 

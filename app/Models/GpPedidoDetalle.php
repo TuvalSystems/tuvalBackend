@@ -161,6 +161,10 @@ class GpPedidoDetalle extends Model
         'traslado',
         'valor_original_l',
         'validador_l',
+        'cod_categoria',
+        'cod_linea',
+        'cod_clase',
+        'resultado_configuracion_item_l',
         'import_job'
 
     ];
