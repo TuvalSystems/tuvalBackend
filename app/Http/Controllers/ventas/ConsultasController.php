@@ -38,31 +38,30 @@ class ConsultasController extends Controller
 
     public function buscarArticuloWeb(BusquedaArticuloRequest $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $data = $this->inventoryService->searchWithDetails($request->validated());
             return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+        }, 'cotizaciones', 'buscarArticuloWeb');
+    }
+
+    public function buscarArticuloL(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $items      = $request->input('items', []);
+            $porcentaje = $request->input('porcentaje');
+            $articulo   = $this->inventoryService->findAvailableTypeLArticle($items, $porcentaje);
+            return $this->successResponse('Información Obtenida correctamente.!', $articulo);
+        }, 'cotizaciones', 'buscarArticuloL');
     }
 
 
     public function consultarstock(Request $request): JsonResponse
     {
-        $data = $request->all();
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data = $request->all();
             $st = $this->inventoryService->getConsultStock($data);
             return $this->successResponse('Stock obtenido correctamente', $st, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'data' => $data
-            ]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
-        }
+        }, 'cotizaciones', 'buscarArticuloL');
     }
 
 

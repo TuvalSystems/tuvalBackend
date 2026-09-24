@@ -703,6 +703,29 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         )->sortBy('ART_CODIGO_ZAFIRO')->values();
     }
 
+    public function findAvailableTypeLArticle(
+        array $excludedArticleCodes,
+        float $taxPercentage
+    ): ?GpArticulo
+    {
+       $article =   GpArticulo::findAvailableTypeLArticle(
+            $excludedArticleCodes,
+            $taxPercentage
+        );
+        // $article->ART_TIPO_COMPRA         = 'L';
+        $article->ART_VALOR               = 0;
+        $article->ART_VALOR_ORIGINAL      = 0;
+        $article->ART_DESCRIPCION_ORIGINAL= $article->ART_DESCRIPCION;
+        $article->clasificacion_tuval     = '-';
+        $article->debe_resaltar           = false;
+        $article->proveedores             = [];
+        $article->descuento               = 0;
+        $article->descuento_original      = 0;
+        $article->modificador             = 0;
+        $article->imagenes                = [];
+        return $article;
+    }
+
 
     public function getApiPriceArticle($article)
     {

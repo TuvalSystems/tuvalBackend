@@ -135,6 +135,8 @@ Route::prefix('consultas')->group(function () {
     Route::get('stock-transito-transferencia-reservas', [ConsultasController::class, 'consultarStockTransitoReservas']);
     Route::get('stock-transito-consolidado', [ConsultasController::class, 'consultaTransitoConsolidado']);
     Route::get('buscararticulo-web', [ConsultasController::class, 'buscarArticuloWeb']);
+    Route::get('articulo/item-l', [ConsultasController::class, 'buscarArticuloL']);
+
     Route::get('reservados', [ConsultasController::class, 'reservados']);
     Route::get('reservasweb/{item?}', [ConsultasController::class, 'reservasweb']);
     Route::get('items_transferencia_venta', [ConsultasController::class, 'items_transferencia_venta']);

@@ -4,6 +4,7 @@ namespace App\Services\Aprobaciones;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\aprobacion\GpReglaAprobacion;
+use App\Models\GpCliente;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPedido;
@@ -937,12 +938,16 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     public function accountStatusClient(int $id): array
     {
         $order = GpPedido::findOrFail($id);
+        $client = GpCliente::where('id', $order->cliente_id)
+            ->select(['id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_DIA_GRACIA_VTA_CREDITO'])
+            ->first();
         return [
             'pedido'                            => $order,
             'cupoDisponible'                    => $this->functionService->getClientCheckAvailableQuota($order->CLI_RUC),
             'documentosVencidos'                => $this->functionService->getListClientDocumentExpired($order->CLI_RUC),
             'documentosSinSoporte'              => $this->functionService->getListClientDocumentWithoutSupport($order->CLI_RUC),
             'pendiente_aprobacion_comercial'    => $this->approvalFuntions->validatePendingCommercialApproval($order),
+            'cliente'                           => $client
         ];
     }
 

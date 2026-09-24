@@ -402,6 +402,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
             Route::post('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
             Route::post('articulos/lista', [ConsultasController::class, 'buscarArticuloWeb']);
+            Route::post('articulos/item-l', [ConsultasController::class, 'buscarArticuloL']);
         });
 
         Route::group(['prefix' => 'aprobaciones'], function () {
