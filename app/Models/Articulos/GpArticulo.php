@@ -163,7 +163,8 @@ class GpArticulo extends Model
             )
             ->whereNotIn('art.ART_CLASE_ARTICULO', [
                 'BNS-INACT',
-                'CMP-GASTOS'
+                'CMP-GASTOS',
+                'VTA-SERV'
             ])
             ->orderBy('art.ART_DESCRIPCION')
             ->first();
