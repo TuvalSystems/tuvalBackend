@@ -403,6 +403,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('articulos')->group(function () {
                 Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
                 Route::post('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
+                  Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
             });
         });
         Route::group(['prefix' => 'consultas'], function () {
@@ -427,6 +428,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
             Route::post('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
             Route::post('articulos/lista', [ConsultasController::class, 'buscarArticuloWeb']);
+            Route::post('articulos/item-l', [ConsultasController::class, 'buscarArticuloL']);
         });
 
         Route::group(['prefix' => 'aprobaciones'], function () {

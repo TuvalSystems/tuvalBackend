@@ -6,7 +6,6 @@ use App\Enums\Ventas\OrderStatus;
 use App\Models\GpPedido;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;

@@ -136,13 +136,12 @@ class GpArticulo extends Model
     protected $casts = [
         'ART_IMP_VTA' => 'float'
     ];
-    /** nuevo proceso para consulta de items L e items de busqueda normal */
-
-
-
-    public static function searchItemLModel(): Collection
+    public static function findAvailableTypeLArticle(
+        array $excludedArticleCodes,
+        float $taxPercentage
+    ): ?self
     {
-        $queryBase = self::query()
+        return self::query()
             ->select([
                 'art.*',
                 'unm.UMEDIDA_BASE AS ART_PLAN_UMEDIDA'
@@ -157,27 +156,18 @@ class GpArticulo extends Model
             ->where('art.ART_ESTADO', 'ACTIVO')
             ->where('art.ART_TIPO_COMPRA', 'L')
             ->where('art.disponible', 1)
+            ->where('art.ART_IMP_VTA', $taxPercentage)
+            ->when(
+                $excludedArticleCodes !== [],
+                fn ($query) => $query->whereNotIn('art.ART_CODIGO', $excludedArticleCodes)
+            )
             ->whereNotIn('art.ART_CLASE_ARTICULO', [
                 'BNS-INACT',
-                'CMP-GASTOS'
-            ]);
-
-        // Un artículo con impuesto 5
-        $item5 = (clone $queryBase)
-            ->where('art.ART_IMP_VTA', 5)
-            ->orderBy('art.ART_DESCRIPCION', 'asc')
+                'CMP-GASTOS',
+                'VTA-SERV'
+            ])
+            ->orderBy('art.ART_DESCRIPCION')
             ->first();
-
-        // Un artículo con impuesto 15
-        $item15 = (clone $queryBase)
-            ->where('art.ART_IMP_VTA', 15)
-            ->orderBy('art.ART_DESCRIPCION', 'asc')
-            ->first();
-
-        return collect([
-            $item5,
-            $item15
-        ])->filter()->values();
     }
 
     public static function searchItemModel(array $filters): Collection

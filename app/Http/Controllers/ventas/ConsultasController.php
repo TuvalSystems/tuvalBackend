@@ -4,25 +4,19 @@ namespace App\Http\Controllers\ventas;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCaja;
-use App\Models\GpCliente;
-use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpPuntoVenta;
 use App\Models\GpTerritorio;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpGrupoCliente;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpClienteSucursal;
 use App\Models\GpSubGrupoCliente;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\File;
 use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Http\Controllers\FuncionesController;
-use App\Http\Controllers\WebserviceController;
 use App\Http\Requests\Venta\Consultas\BusquedaArticuloRequest;
-use App\Models\Articulos\GpArticulo;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
@@ -44,31 +38,30 @@ class ConsultasController extends Controller
 
     public function buscarArticuloWeb(BusquedaArticuloRequest $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $data = $this->inventoryService->searchWithDetails($request->validated());
             return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+        }, 'cotizaciones', 'buscarArticuloWeb');
+    }
+
+    public function buscarArticuloL(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $items      = $request->input('items', []);
+            $porcentaje = $request->input('porcentaje');
+            $articulo   = $this->inventoryService->findAvailableTypeLArticle($items, $porcentaje);
+            return $this->successResponse('Información Obtenida correctamente.!', $articulo);
+        }, 'cotizaciones', 'buscarArticuloL');
     }
 
 
     public function consultarstock(Request $request): JsonResponse
     {
-        $data = $request->all();
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data = $request->all();
             $st = $this->inventoryService->getConsultStock($data);
             return $this->successResponse('Stock obtenido correctamente', $st, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'data' => $data
-            ]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
-        }
+        }, 'cotizaciones', 'buscarArticuloL');
     }
 
 

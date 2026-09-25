@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Inventario\Articulo;
 
 use App\Http\Controllers\Controller;
 use App\Services\Inventario\Articulo\Contracts\ArticleSegmentConfigServiceInterface;
+use App\Services\Inventario\Articulo\Contracts\ArticleServiceInterface;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
@@ -15,7 +16,8 @@ class ArticuloController extends Controller
     use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
         protected readonly ArticleSyncServiceInterface $service,
-        protected readonly ArticleSegmentConfigServiceInterface $serviceConfig
+        protected readonly ArticleSegmentConfigServiceInterface $serviceConfig,
+        protected readonly ArticleServiceInterface $articleService
     ) {}
 
     public function sincronizarDesdeApi(Request $request): JsonResponse
@@ -47,5 +49,22 @@ class ArticuloController extends Controller
             $resp       = $this->serviceConfig->getSegmentClassificationConfig($payload);
             return $this->successResponse('Datos Obtenido Correctamente', $resp, 200);
         }, 'laravel', 'obtenerClasificacionSegmentacion');
+    }
+
+
+    public function obtenerListaItemsFiltroSegmentacion(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'categoria' => 'required|string',
+                'clase'     => 'required|string',
+                'linea'     => 'required|string'
+            ]);
+            $categoria  = data_get($validate, 'categoria');
+            $clase      = data_get($validate, 'clase');
+            $linea      = data_get($validate, 'linea');
+            $lista      = $this->articleService->searchItemsByClasification($categoria, $linea, $clase);
+            return $this->successResponse('Lista Obtenida correctamente.', $lista);
+        }, 'laravel', 'obtenerListaItemsFiltroSegmentacion');
     }
 }

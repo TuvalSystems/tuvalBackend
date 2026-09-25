@@ -164,6 +164,7 @@ class ValidateStoreOrderRequest extends FormRequest
             'items.*.cod_categoria'         => ['nullable', 'string'],
             'items.*.cod_linea'             => ['nullable', 'string'],
             'items.*.cod_clase'             => ['nullable', 'string'],
+            'items.*.resultado_configuracion_item_l'   => ['nullable', 'string'],
             'items.*.nivel'                 => ['nullable', 'integer'],
 
             'items.*.tipo'                      => ['nullable', 'string', 'max:50'],

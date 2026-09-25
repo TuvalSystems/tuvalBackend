@@ -659,33 +659,17 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function searchWithDetails(array $filters)
     {
-        $isItemL = data_get($filters, 'terminal', false);
-        $articulos = $isItemL
-            ? GpArticulo::searchItemLModel()
-            : GpArticulo::searchItemModel($filters);
+        $articulos = GpArticulo::searchItemModel($filters);
 
         if ($articulos->isEmpty()) {
             return collect();
         }
-        $serviceTypes = ['VTA-SERV-L', 'VTA-BNS-L'];
-        $filtersArt = $articulos->reject(function ($art) use ($serviceTypes) {
-            return in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
-        });
-        $groupPrices = collect();
-        if ($filtersArt->isNotEmpty()) {
-            $codesApi = $filtersArt->pluck('ART_CODIGO')->implode(',') . ',';
-            $groupPrices = $this->getApiPriceArticle($codesApi);
-        }
-        $groupsByAbc = collect();
-        if ($filtersArt->isNotEmpty()) {
-            $codesList = $filtersArt->pluck('ART_CODIGO');
-            $groupsByAbc = $this->getApiSegmentsAbcItem($codesList);
-        }
-        return $articulos->map(function ($art) use ($filters,  $serviceTypes, $groupPrices, $groupsByAbc) {
-            $isService = in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
-            if ($isService) {
-                $art->ART_TIPO_COMPRA = 'L';
-            }
+
+        $articleCodes = $articulos->pluck('ART_CODIGO');
+        $groupPrices = $this->getApiPriceArticle($articleCodes->implode(',') . ',');
+        $groupsByAbc = $this->getApiSegmentsAbcItem($articleCodes);
+
+        return $articulos->map(function ($art) use ($filters, $groupPrices, $groupsByAbc) {
             $art->ART_VALOR = $art->ART_VALOR ?? 0;
             $myPrice = $groupPrices->get($art->ART_CODIGO, collect());
             $nivelPrecio = data_get($filters, 'nivel_precio', null);
@@ -699,28 +683,47 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 $art->precios = $myPrice->values();
             }
             //obtencion de abc
-            $myAbc = $groupsByAbc->get($art->ART_CODIGO, collect());
-            $classAbc = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
-            $art->clasificacion_tuval = $classAbc;
-            $art->debe_resaltar = $this->shouldHighlightSegment($classAbc);
-            $art->proveedores = [];
-            $art->descuento = 0;
-            $art->descuento_original = 0;
-            $art->modificador = 0;
-            $art->imagenes = $this->getImageArticle($art->ART_CODIGO_TRES_LETRAS);
-
+            $myAbc                      = $groupsByAbc->get($art->ART_CODIGO, collect());
+            $classAbc                   = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
+            $art->clasificacion_tuval   = $classAbc;
+            $art->debe_resaltar         = $this->shouldHighlightSegment($classAbc);
+            $art->proveedores           = [];
+            $art->descuento             = 0;
+            $art->descuento_original    = 0;
+            $art->modificador           = 0;
+            $art->imagenes              = $this->getImageArticle($art->ART_CODIGO_TRES_LETRAS);
             return $art;
         })->filter(
             function ($articulo) use ($filters) {
-                if ($articulo->ART_TIPO_COMPRA === 'L') {
-                    return true;
-                }
                 if (!empty($filters['nivel_precio'])) {
                     return $articulo->ART_VALOR >= 0;
                 }
                 return count($articulo->precios) > 0;
             }
         )->sortBy('ART_CODIGO_ZAFIRO')->values();
+    }
+
+    public function findAvailableTypeLArticle(
+        array $excludedArticleCodes,
+        float $taxPercentage
+    ): ?GpArticulo
+    {
+       $article =   GpArticulo::findAvailableTypeLArticle(
+            $excludedArticleCodes,
+            $taxPercentage
+        );
+        // $article->ART_TIPO_COMPRA         = 'L';
+        $article->ART_VALOR               = 0;
+        $article->ART_VALOR_ORIGINAL      = 0;
+        $article->ART_DESCRIPCION_ORIGINAL= $article->ART_DESCRIPCION;
+        $article->clasificacion_tuval     = '-';
+        $article->debe_resaltar           = false;
+        $article->proveedores             = [];
+        $article->descuento               = 0;
+        $article->descuento_original      = 0;
+        $article->modificador             = 0;
+        $article->imagenes                = [];
+        return $article;
     }
 
 

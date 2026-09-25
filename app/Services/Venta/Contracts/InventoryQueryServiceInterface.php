@@ -2,6 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
+use App\Models\Articulos\GpArticulo;
+
 interface InventoryQueryServiceInterface
 {
     // Define los métodos que debe implementar el servicio
@@ -21,6 +23,10 @@ interface InventoryQueryServiceInterface
      * @param array $filters
      */
     public function searchWithDetails(array $filters);
+    public function findAvailableTypeLArticle(
+        array $excludedArticleCodes,
+        float $taxPercentage
+    ): ?GpArticulo;
     public function fetchAllTerritories();
     public function fetchAllProvinces();
     public function fetchCitiesByProvince(string $provId);
