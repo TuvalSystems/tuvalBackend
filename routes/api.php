@@ -591,6 +591,9 @@ Route::group(['prefix' => 'consultas-externas'], function () {
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
     Route::get('pedidos-guias/{periodo?}/{pvCodigo?}/{despacho?}', [PedidosController::class, 'obtenerPedidosGuiasPorTipoDespacho']);
     Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionSp']);
+    Route::get('lista-guias-cabecera-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionCabeceraSp']);
+
+
 });
 
 // para la sincronizacion global de articulo 1 por registro

@@ -450,4 +450,25 @@ class GuiasderemisionController extends Controller
             return $this->successResponse("Listado Obtenido Correctamente", $lista);
         }, 'guia_ventas', 'listadoGuiasRemisionSp');
     }
+
+    public function listadoGuiasRemisionCabeceraSp(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validated = validator([
+                'bodegas' => $periodo ?? $request->query('bodegas'),
+                'periodo' => $pvCodigo ?? $request->query('periodo'),
+                'numeroGuia' => $despacho ?? $request->query('numeroGuia'),
+            ], [
+                'bodegas' => ['required', 'string'],
+                'periodo' => ['required', 'integer'],
+                'numeroGuia' => ['nullable', 'string'],
+            ])->validate();
+            $lista = $this->orderGuideService->fetchListdeliveryNoteHeader(
+                $validated['periodo'],
+                $validated['bodegas'],
+                $validated['numeroGuia'] ?? null
+            );
+            return $this->successResponse("Listado Obtenido Correctamente", $lista);
+        }, 'guia_ventas', 'listadoGuiasRemisionCabeceraSp');
+    }
 }

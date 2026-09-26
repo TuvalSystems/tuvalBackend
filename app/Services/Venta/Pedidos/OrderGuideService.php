@@ -37,4 +37,17 @@ class OrderGuideService implements OrderGuideServiceInterface
             ]
         );
     }
+
+    public function fetchListdeliveryNoteHeader(int $period, string $warehouse, ?string $numGuide = null): array
+    {
+        return DB::select(
+            'CALL sp_listado_guias_remision_all_documentos_cabecera(?,?,?)',
+            [
+
+                $warehouse,
+                $period,
+                $numGuide
+            ]
+        );
+    }
 }
