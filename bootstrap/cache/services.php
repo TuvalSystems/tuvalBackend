@@ -275,6 +275,7 @@
     'App\\Services\\Inventario\\Stock\\Contracts\\StockWarehouseServiceInterface' => 'App\\Providers\\Service\\BodegasServiceProvider',
     'App\\Services\\Inventario\\Articulo\\Contracts\\ArticleSyncServiceInterface' => 'App\\Providers\\Service\\BodegasServiceProvider',
     'App\\Services\\Inventario\\Articulo\\Contracts\\ArticleSegmentConfigServiceInterface' => 'App\\Providers\\Service\\BodegasServiceProvider',
+    'App\\Services\\Inventario\\Articulo\\Contracts\\ArticleServiceInterface' => 'App\\Providers\\Service\\BodegasServiceProvider',
     'App\\Services\\Funciones\\Contracts\\InvoiceServiceInterface' => 'App\\Providers\\Service\\FuncionServiceProvider',
     'App\\Services\\Funciones\\Contracts\\FunctionsServiceInterface' => 'App\\Providers\\Service\\FuncionServiceProvider',
     'App\\Services\\Venta\\Contracts\\QuotationServiceInterface' => 'App\\Providers\\Service\\VentaServiceProvider',
