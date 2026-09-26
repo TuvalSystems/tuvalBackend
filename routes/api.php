@@ -175,6 +175,14 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::put('actualizar-estado-transportista/{id}', [ProveedoresController::class, 'actualizarEstadoTransportista']);
                 Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoProveedor']);
 
+                //choferes transportistas
+                Route::prefix('choferes-transportista')->group(function () {
+                    Route::post('lista', [ProveedoresController::class, 'listaChoferTransportista']);
+                    Route::post('crear-registro', [ProveedoresController::class, 'crearRegistroChoferTransportista']);
+                    Route::get('obtener-detalle/{id}', [ProveedoresController::class, 'obtenerDetalleChoferTransportista']);
+                    Route::put('actualizar-registro/{id}', [ProveedoresController::class, 'actualizarRegistroChoferTransportista']);
+                    Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoChofeTransportista']);
+                });
             });
         });
 
@@ -403,7 +411,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('articulos')->group(function () {
                 Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
                 Route::post('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
-                  Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
+                Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
             });
         });
         Route::group(['prefix' => 'consultas'], function () {

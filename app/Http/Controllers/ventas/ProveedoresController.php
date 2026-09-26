@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
+use App\Services\Venta\Proveedores\Contracts\CarrierDriverServiceInterface;
 use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
@@ -15,7 +16,8 @@ class ProveedoresController extends Controller
     private const LOG_CHANNEL = 'cotizacion';
 
     public function __construct(
-        protected readonly ProviderServiceInterface $providerService
+        protected readonly ProviderServiceInterface $providerService,
+        protected readonly CarrierDriverServiceInterface $carrierService,
     ) {}
 
 
@@ -45,5 +47,55 @@ class ProveedoresController extends Controller
             $this->providerService->updateStatus($id, $user);
             return $this->buildSuccessResponse('Registro actualizado correctamente.!');
         }, self::LOG_CHANNEL, 'actualizarEstadoProveedor');
+    }
+
+
+    /**
+     *  transporte proveedores
+     */
+
+    public function listaChoferTransportista(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $filters  = data_get($request, 'filters', []);
+            $lista = $this->carrierService->listCarrierDrivers($filters);
+            return $this->successResponse('Información Obtenida correctamente.!', $lista);
+        }, self::LOG_CHANNEL, 'listaChoferTransportista');
+    }
+
+    public function crearRegistroChoferTransportista(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $data = $request->all();
+            $user = $request->user();
+            $this->carrierService->createRegisterCarrier($data, $user);
+            return $this->buildSuccessResponse('Registro creado exitosamente.!');
+        }, self::LOG_CHANNEL, 'crearRegistroChoferTransportista');
+    }
+
+    public function obtenerDetalleChoferTransportista(int $id): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
+            $info = $this->carrierService->getDetailCarrierDriver($id);
+            return $this->successResponse('Información obtenida correctamente.!', $info);
+        }, self::LOG_CHANNEL, 'obtenerDetalleChoferTransportista');
+    }
+
+    public function actualizarRegistroChoferTransportista(Request $request, int $id)
+    {
+        return $this->handleApiAction(function () use ($request, $id) {
+            $data = $request->all();
+            $user = $request->user();
+            $this->carrierService->updateRegisterCarrier($id, $data, $user);
+            return $this->buildSuccessResponse('Registro Actualizado correctamente.!');
+        }, self::LOG_CHANNEL, 'actualizarRegistroChoferTransportista');
+    }
+
+    public function actualizarEstadoChofeTransportista(int $id)
+    {
+        return $this->handleApiAction(function () use ($id) {
+            $this->carrierService->updateStatusCarrier($id);
+            return $this->buildSuccessResponse('Registro Actualizado correctamente.!');
+        }, self::LOG_CHANNEL, 'actualizarEstadoChofeTransportista');
     }
 }

@@ -5,7 +5,7 @@ namespace App\Models\Ventas\Proveedores;
 use App\Models\GpPedidoDetalleProveedores;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GpProveedor extends Model
 {
@@ -51,5 +51,11 @@ class GpProveedor extends Model
     public function detalleProveedores()
     {
         return $this->hasMany(GpPedidoDetalleProveedores::class, 'ID_PROVEEDOR', 'id');
+    }
+
+
+    public function choferesTransportistas(): HasMany
+    {
+        return $this->hasMany(ChoferTransportista::class, 'proveedor_id');
     }
 }

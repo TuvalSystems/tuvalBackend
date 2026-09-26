@@ -13,6 +13,27 @@ return new class extends Migration
     {
         Schema::create('chofer_transportistas', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('proveedor_id')
+                ->constrained('gp_proveedors')
+                ->restrictOnDelete();
+            $table->string('nombre');
+            $table->string('identificacion', 30);
+            $table->foreignId('tipo_identificacion_id')
+                ->nullable()
+                ->constrained('tipo_identificacions')
+                ->nullOnDelete();
+            $table->string('placa');
+            $table->boolean('estado')->default(1);
+            $table->foreignId('usuario_ingreso_id')
+                ->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
+            $table->dateTime('fecha_ingreso')->nullable();
+            $table->foreignId('usuario_modifica_id')
+                ->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
+            $table->dateTime('fecha_modificacion')->nullable();
             $table->timestamps();
         });
     }
