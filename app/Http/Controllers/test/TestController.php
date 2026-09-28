@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Notifications\User\TestUserNotification;
+use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
@@ -19,7 +20,9 @@ class TestController extends Controller
     use JsonResponseTrait, ExecuteApiTransactions;
     public function __construct(
         protected readonly PurchaseOrderServiceInterface $purchase,
-        protected readonly InvoiceServiceInterface $invoice
+        protected readonly InvoiceServiceInterface $invoice,
+        protected readonly CollectionGpSenderServiceInterface $sendCollectionService,
+
     ) {}
 
 
@@ -71,5 +74,14 @@ class TestController extends Controller
             'Notificación para la verificación de toast, llegue correctamente al usuario con perfiles administrador y desarrollador!',
             $data
         ));
+    }
+
+
+    public function testLiberarOrdenDespacho(int $id): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
+            $this->sendCollectionService->checkValidateDispatchInvoice($id);
+            return $this->buildSuccessResponse('Información obtenida correctamente.!');
+        }, 'cobranzas', 'testLiberarOrdenDespacho');
     }
 }

@@ -189,8 +189,6 @@ class CobranzasController extends Controller
 
 
 
-    // despues eliminar esta api
-
 
     public function consultacobrosanulados()
     {
@@ -607,96 +605,6 @@ class CobranzasController extends Controller
             'success' => true,
             'caja' => $data,
         ]);
-    }
-
-    //api migrada a servicio collectionInvoiceService
-    public function consultaretencion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'comprobante' => 'required',
-            'cliente_id' => 'required',
-        ]);
-
-        $cobro = GpCobrosRetenciones::join('gp_cobros', 'gp_cobros.id', 'gp_cobros_retenciones.cobro_id')
-            ->where('gp_cobros.cliente_id', $data['cliente_id'])
-            ->where('gp_cobros_retenciones.ret_comprobante', $data['comprobante'])
-            ->first();
-
-        if ($cobro) {
-            $response = [
-                'existe' => true,
-                'cobro' => $cobro,
-            ];
-        } else {
-            $response = [
-                'existe' => false,
-            ];
-        }
-
-        return response(
-            $response
-        );
-    }
-    // api migrada a servicio collectionInvoiceService
-    public function consultacheque(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'cheque' => [],
-            'cliente_id' => 'required',
-        ]);
-
-        $cobro = GpCobrosCheques::join('gp_cobros', 'gp_cobros.id', 'gp_cobros_cheques.cobro_id')
-            //->where('gp_cobros.cliente_id',$data['cliente_id'])
-            ->where('gp_cobros_cheques.cuenta', $data['cheque']['cuenta'])
-            ->where('gp_cobros_cheques.cheque', $data['cheque']['cheque'])
-            ->first();
-
-        if ($cobro) {
-            $response = [
-                'existe' => true,
-                'cobro' => $cobro,
-            ];
-        } else {
-            $response = [
-                'existe' => false,
-            ];
-        }
-
-        return response(
-            $response
-        );
-    }
-    // api migrada a servicio collectionInvoiceService
-    public function consultadeposito(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'deposito' => 'required',
-            'banco' => 'required',
-            'cliente_id' => 'required',
-        ]);
-
-        $cobro = GpCobrosDeposito::join('gp_cobros', 'gp_cobros.id', 'gp_cobros_depositos.cobro_id')
-            //->where('gp_cobros.cliente_id',$data['cliente_id'])
-            ->where('gp_cobros_depositos.banco', $data['banco'])
-            ->where('gp_cobros_depositos.comprobante', $data['deposito'])
-            ->where('gp_cobros_depositos.estado', '!=', 'rechazado')
-            ->select('gp_cobros.numero_recibo', 'gp_cobros_depositos.*')
-            ->first();
-
-        if ($cobro) {
-            $response = [
-                'existe' => true,
-                'cobro' => $cobro,
-            ];
-        } else {
-            $response = [
-                'existe' => false,
-            ];
-        }
-
-        return response(
-            $response
-        );
     }
 
     public function estadocaja($fechaActual = null, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -1489,4 +1397,5 @@ class CobranzasController extends Controller
             return $this->successResponse("Resumen de cierre de caja obtenido exitosamente", $response, 200);
         }, 'cobranzas', 'resumenCerrarCaja');
     }
+
 }
