@@ -175,7 +175,7 @@ class ClientQueryService implements ClientQueryServiceInterface
     }
 
 
-    protected function sendToGpNewAddress($params)
+    protected function sendToGpNewAddress(array $params)
     {
         $resp = $this->apiGp->storeNewAddressClient($params);
         $success = data_get($resp, 'success', false);
