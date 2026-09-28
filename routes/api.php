@@ -602,6 +602,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
         Route::group(['prefix' => 'admin'], function () {
             Route::post('lista-logs', [AdminController::class, 'ListaLogs']);
+            Route::get('detalle-logs/{id}', [AdminController::class, 'obtenerDetalleLog']);
             Route::post('app/versions/list', [AppController::class, 'index']);
             Route::post('app/versions', [AppController::class, 'store']);
             Route::patch('app/versions/{id}/active', [AppController::class, 'active']);
