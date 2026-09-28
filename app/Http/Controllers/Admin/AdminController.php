@@ -7,6 +7,7 @@ use App\Services\Admin\Contracts\AdminLogServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 class AdminController extends Controller
 {
@@ -20,5 +21,13 @@ class AdminController extends Controller
             $response = $this->admin->fetchListLogs($filters);
             return $this->successResponse('Listado de logs', $response, 200);
         }, 'laravel', 'listaLogs');
+    }
+
+    public function obtenerDetalleLog(int $id): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
+            $info = $this->admin->getDetail($id);
+            return $this->successResponse('Información Obtenida Correctamente.!', $info);
+        }, 'laravel', 'obtenerDetalleLog');
     }
 }

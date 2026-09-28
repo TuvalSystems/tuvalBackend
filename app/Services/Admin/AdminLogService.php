@@ -20,7 +20,7 @@ class AdminLogService implements AdminLogServiceInterface
                 'sl.message',
                 'sl.external_id',
                 'sl.local_id',
-                'sl.payload',
+                // 'sl.payload',
                 'sl.attempts',
                 'sl.status',
                 'sl.created_at',
@@ -29,6 +29,8 @@ class AdminLogService implements AdminLogServiceInterface
             $query->where(function ($q) use ($search) {
                 $q->where('sl.module', 'like', "%{$search}%")
                     ->orWhere('sl.action', 'like', "%{$search}%")
+                    ->orWhere('sl.local_id', 'like', "%{$search}%")
+                    ->orWhere('sl.external_id', 'like', "%{$search}%")
                     ->orWhere('sl.message', 'like', "%{$search}%")
                     ->orWhere('sl.external_id', 'like', "%{$search}%");
             });
@@ -59,5 +61,10 @@ class AdminLogService implements AdminLogServiceInterface
         }
         $query->orderBy(data_get($filters, 'sortField', 'created_at'), data_get($filters, 'sortOrder', 'desc'));
         return $query->paginate(data_get($filters, 'perpage', 10));
+    }
+
+    public function getDetail(int $id): SyncLog
+    {
+        return SyncLog::find($id);
     }
 }
