@@ -174,12 +174,13 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('lista', [ProveedoresController::class, 'listaProveedores']);
                 Route::put('actualizar-estado-transportista/{id}', [ProveedoresController::class, 'actualizarEstadoTransportista']);
                 Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoProveedor']);
+                Route::get('lista-proveedores-transportista', [ProveedoresController::class, 'listaProveedoresTransportistas']);
 
                 //choferes transportistas
                 Route::prefix('choferes-transportista')->group(function () {
                     Route::post('lista', [ProveedoresController::class, 'listaChoferTransportista']);
                     Route::post('crear-registro', [ProveedoresController::class, 'crearRegistroChoferTransportista']);
-                    Route::get('obtener-detalle/{id}', [ProveedoresController::class, 'obtenerDetalleChoferTransportista']);
+                    Route::post('obtener-detalle', [ProveedoresController::class, 'obtenerDetalleChoferTransportista']);
                     Route::put('actualizar-registro/{id}', [ProveedoresController::class, 'actualizarRegistroChoferTransportista']);
                     Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoChofeTransportista']);
                 });
@@ -626,8 +627,6 @@ Route::group(['prefix' => 'consultas-externas'], function () {
     Route::get('pedidos-guias/{periodo?}/{pvCodigo?}/{despacho?}', [PedidosController::class, 'obtenerPedidosGuiasPorTipoDespacho']);
     Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionSp']);
     Route::get('lista-guias-cabecera-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionCabeceraSp']);
-
-
 });
 
 // para la sincronizacion global de articulo 1 por registro

@@ -49,6 +49,13 @@ class ProveedoresController extends Controller
         }, self::LOG_CHANNEL, 'actualizarEstadoProveedor');
     }
 
+    public function listaProveedoresTransportistas(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
+            $lista = $this->providerService->listProviderTypeCarrier();
+            return $this->successResponse('Información Obtenida correctamente.!', $lista);
+        }, self::LOG_CHANNEL, 'listaProveedoresTransportistas');
+    }
 
     /**
      *  transporte proveedores
@@ -66,16 +73,20 @@ class ProveedoresController extends Controller
     public function crearRegistroChoferTransportista(Request $request)
     {
         return $this->handleApiAction(function () use ($request) {
-            $data = $request->all();
+            $data = $request->input('form', []);
             $user = $request->user();
             $this->carrierService->createRegisterCarrier($data, $user);
             return $this->buildSuccessResponse('Registro creado exitosamente.!');
         }, self::LOG_CHANNEL, 'crearRegistroChoferTransportista');
     }
 
-    public function obtenerDetalleChoferTransportista(int $id): JsonResponse
+    public function obtenerDetalleChoferTransportista(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($id): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'id' => 'required|integer'
+            ]);
+            $id = data_get($validated, 'id');
             $info = $this->carrierService->getDetailCarrierDriver($id);
             return $this->successResponse('Información obtenida correctamente.!', $info);
         }, self::LOG_CHANNEL, 'obtenerDetalleChoferTransportista');
@@ -84,7 +95,7 @@ class ProveedoresController extends Controller
     public function actualizarRegistroChoferTransportista(Request $request, int $id)
     {
         return $this->handleApiAction(function () use ($request, $id) {
-            $data = $request->all();
+            $data =  $request->input('form', []);
             $user = $request->user();
             $this->carrierService->updateRegisterCarrier($id, $data, $user);
             return $this->buildSuccessResponse('Registro Actualizado correctamente.!');

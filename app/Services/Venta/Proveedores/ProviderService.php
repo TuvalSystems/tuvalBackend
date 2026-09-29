@@ -5,6 +5,7 @@ namespace App\Services\Venta\Proveedores;
 use App\Models\GpUsuario;
 use App\Models\Ventas\Proveedores\GpProveedor;
 use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProviderService implements ProviderServiceInterface
@@ -78,5 +79,18 @@ class ProviderService implements ProviderServiceInterface
         $prov->usuario_modifica_id  = $user->id;
         $prov->fecha_modificacion   = now();
         $prov->save();
+    }
+
+
+    public function listProviderTypeCarrier(): Collection
+    {
+        return GpProveedor::select([
+            'id',
+            'PROV_RUC as ruc',
+            'PROV_RAZON_SOCIAL as razon_social'
+        ])
+        ->where('PROV_ESTADO', 'ACTIVO')
+        ->where('es_transportista', true)
+        ->get();
     }
 }

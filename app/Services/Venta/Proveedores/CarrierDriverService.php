@@ -7,6 +7,7 @@ use App\Models\Ventas\Proveedores\ChoferTransportista;
 use App\Services\Venta\Proveedores\Contracts\CarrierDriverServiceInterface;
 use App\Traits\CleansPayloadData;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class CarrierDriverService implements CarrierDriverServiceInterface
 {
@@ -26,14 +27,14 @@ class CarrierDriverService implements CarrierDriverServiceInterface
             : 'desc';
 
         $allowedSorts = [
-            'id'                => 'cht.id',
-            'identificacion'    => 'cht.identificacion',
-            'ruc'               => 'prv.PROV_RUC',
-            'razon_social'      => 'prv.PROV_RAZON_SOCIAL',
-            'nombre'            => 'cht.nombre',
-            'placa'             => 'cht.placa',
-            'estado'            => 'cht.estado',
-            'created_at'        => 'cht.created_at'
+            'id'                     => 'cht.id',
+            'identificacion'         => 'cht.identificacion',
+            'ruc_proveedor'          => 'prv.PROV_RUC',
+            'razon_social_proveedor' => 'prv.PROV_RAZON_SOCIAL',
+            'nombre'                 => 'cht.nombre',
+            'placa'                  => 'cht.placa',
+            'estado'                 => 'cht.estado',
+            'created_at'             => 'cht.created_at'
         ];
         $orderColumn = data_get($allowedSorts, $sortField, 'cht.created_at');
 
@@ -42,8 +43,8 @@ class CarrierDriverService implements CarrierDriverServiceInterface
             ->select([
                 'cht.id',
                 'cht.proveedor_id',
-                'prv.CLI_RUC as ruc_proveedor',
-                'prv.CLI_RAZON_SOCIAL as razon_social_proveedor',
+                'prv.PROV_RUC as ruc_proveedor',
+                'prv.PROV_RAZON_SOCIAL as razon_social_proveedor',
                 'tp.nombre as tipo_identificacion',
                 'cht.identificacion',
                 'cht.nombre',
@@ -56,7 +57,7 @@ class CarrierDriverService implements CarrierDriverServiceInterface
 
         if ($search) {
             $query->where('prv.PROV_RUC', 'like', "%{$search}%")
-                ->orWhere('prv.CLI_RAZON_SOCIAL', 'like', "%{$search}%")
+                ->orWhere('prv.PROV_RAZON_SOCIAL', 'like', "%{$search}%")
                 ->orWhere('cht.nombre', 'like', "%{$search}%")
                 ->orWhere('cht.placa', 'like', "%{$search}%");
         }
@@ -68,41 +69,66 @@ class CarrierDriverService implements CarrierDriverServiceInterface
     }
 
 
-    public function createRegisterCarrier(array $data, GpUsuario $user): void
+    public function createRegisterCarrier(array $data, GpUsuario $user): ChoferTransportista
     {
-        $cht = new ChoferTransportista();
-        $cht->proveedor_id              = $this->clean($data, 'proveedor_id');
-        $cht->nombre                    = $this->clean($data, 'nombre');
-        $cht->identificacion            = $this->clean($data, 'identificacion');
-        $cht->tipo_identificacion_id    = $this->clean($data, 'tipo_identificacion_id');
-        $cht->placa                     = $this->clean($data, 'placa');
-        $cht->usuario_ingreso_id        = $user->id;
-        $cht->fecha_ingreso             = now();
-        $cht->save();
+        return DB::transaction(function () use ($data, $user) {
+            $cht = new ChoferTransportista();
+            $cht->proveedor_id              = $this->clean($data, 'proveedor_id');
+            $cht->nombre                    = $this->clean($data, 'nombre');
+            $cht->identificacion            = $this->clean($data, 'identificacion');
+            $cht->tipo_identificacion_id    = $this->clean($data, 'tipo_identificacion_id');
+            $cht->placa                     = $this->clean($data, 'placa');
+            $cht->usuario_ingreso_id        = $user->id;
+            $cht->fecha_ingreso             = now();
+            $cht->save();
+
+            $cht->puntosVenta()->sync(
+                data_get($data, 'punto_venta_ids', [])
+            );
+
+            return $cht;
+        });
     }
 
     public function getDetailCarrierDriver(int $id): ChoferTransportista
     {
-        return ChoferTransportista::where('id', $id)->first();
+        return ChoferTransportista::with(['puntosVenta' => function ($query) {
+            $query
+                ->select([
+                    'gp_punto_ventas.id',
+                    'gp_punto_ventas.PTO_VTA_ID as codigo',
+                    'gp_punto_ventas.PTO_VTA_DESCRIPCION as descripcion',
+                ]);
+        }])->where('id', $id)->first();
     }
 
-    public function updateRegisterCarrier(int $id, array $data, GpUsuario $user): void
+    public function updateRegisterCarrier(int $id, array $data, GpUsuario $user): ChoferTransportista
     {
-        $cht = ChoferTransportista::find($id);
-        $cht->proveedor_id              = $this->clean($data, 'proveedor_id');
-        $cht->nombre                    = $this->clean($data, 'nombre');
-        $cht->identificacion            = $this->clean($data, 'identificacion');
-        $cht->tipo_identificacion_id    = $this->clean($data, 'tipo_identificacion_id');
-        $cht->placa                     = $this->clean($data, 'placa');
-        $cht->usuario_modifica_id       = $user->id;
-        $cht->fecha_modificacion        = now();
-        $cht->save();
+        return DB::transaction(function () use ($id, $data, $user) {
+            $cht = ChoferTransportista::find($id);
+            $cht->proveedor_id              = $this->clean($data, 'proveedor_id');
+            $cht->nombre                    = $this->clean($data, 'nombre');
+            $cht->identificacion            = $this->clean($data, 'identificacion');
+            $cht->tipo_identificacion_id    = $this->clean($data, 'tipo_identificacion_id');
+            $cht->placa                     = $this->clean($data, 'placa');
+            $cht->usuario_modifica_id       = $user->id;
+            $cht->fecha_modificacion        = now();
+            $cht->save();
+            $cht->puntosVenta()->sync(
+                data_get($data, 'punto_venta_ids', [])
+            );
+
+            return $cht;
+        });
     }
 
-    public function updateStatusCarrier(int $id): void
+    public function updateStatusCarrier(int $id): ChoferTransportista
     {
-        $cht         = ChoferTransportista::find($id);
-        $cht->estado = $cht->estado  === true ? false : true;
-        $cht->save();
+        return DB::transaction(function () use ($id) {
+            $cht         = ChoferTransportista::find($id);
+            $cht->estado = $cht->estado  === true ? false : true;
+            $cht->save();
+            return $cht;
+        });
     }
 }

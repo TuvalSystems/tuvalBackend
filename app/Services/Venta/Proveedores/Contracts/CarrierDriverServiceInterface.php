@@ -10,8 +10,8 @@ interface CarrierDriverServiceInterface
 {
     // Define los métodos
     public function listCarrierDrivers(array $filters): LengthAwarePaginator;
-    public function createRegisterCarrier(array $data, GpUsuario $user): void;
+    public function createRegisterCarrier(array $data, GpUsuario $user): ChoferTransportista;
     public function getDetailCarrierDriver(int $id): ChoferTransportista;
-    public function updateRegisterCarrier(int $id, array $data, GpUsuario $user): void;
-    public function updateStatusCarrier(int $id): void;
+    public function updateRegisterCarrier(int $id, array $data, GpUsuario $user): ChoferTransportista;
+    public function updateStatusCarrier(int $id): ChoferTransportista;
 }
