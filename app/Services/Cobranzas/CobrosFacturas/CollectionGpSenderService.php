@@ -1560,8 +1560,8 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
     {
         return  $payments
             ->filter(fn($payment) =>
-            (int) data_get($payment, 'tipoPago') !== 8
-                && blank(data_get($payment, 'numeroRecibo', '')))
+            // (int) data_get($payment, 'tipoPago') !== 8 &&
+            blank(data_get($payment, 'numeroRecibo', '')))
             ->values();
     }
 }
