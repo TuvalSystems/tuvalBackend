@@ -60,6 +60,7 @@ class InvoiceHistoryService implements InvoiceHistoryServiceInterface
                 $q->where('vhi.factura', 'like', '%' . $search . '%')
                     ->orWhere('vhi.codigo', 'like', '%' . $search . '%')
                     ->orWhere('vhi.item3l', 'like', '%' . $search . '%')
+                    ->orWhere('vhi.descripcion', 'like', '%' . $search . '%')
                 ;
             });
         }
