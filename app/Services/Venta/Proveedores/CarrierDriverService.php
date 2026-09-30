@@ -131,4 +131,13 @@ class CarrierDriverService implements CarrierDriverServiceInterface
             return $cht;
         });
     }
+
+    public function validateCarrierIdentify(string $identify, ?int $excludeId = null) : bool
+    {
+        return ChoferTransportista::where('identificacion', $identify)
+            ->when(
+                $excludeId,
+                fn($query) => $query->where('id', '!=', $excludeId)
+            )->exists();
+    }
 }

@@ -109,4 +109,22 @@ class ProveedoresController extends Controller
             return $this->buildSuccessResponse('Registro Actualizado correctamente.!');
         }, self::LOG_CHANNEL, 'actualizarEstadoChofeTransportista');
     }
+
+
+    public function validarIdentificacionChoferTransportista(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate = $request->validate([
+                'id'                => 'nullable|integer|exists:chofer_transportistas,id',
+                'identificacion'    => 'required|string'
+            ]);
+            $id = data_get($validate, 'id');
+            $identificacion = data_get($validate, 'identificacion');
+            $existe = $this->carrierService->validateCarrierIdentify($identificacion, $id);
+            if ($existe) {
+                return $this->buildExistResponse(true, 'El documento ya se encuentra registrado con anterioridad', 200);
+            }
+            return $this->buildExistResponse(false, 'El registro no existe, continue...', 200);
+        }, self::LOG_CHANNEL, 'validarIdentificacionChoferTransportista');
+    }
 }

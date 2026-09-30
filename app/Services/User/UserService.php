@@ -109,9 +109,9 @@ class UserService implements UserServiceInterface
             'home'                  => $this->menu->getFullMenuLayout($user->perfil_id)['home'],
             'puntosdeventa'         => $this->getUserSalesPoints($user->id),
             'puntodeventaselect'    => $this->getDefaultSalesPoint($user->id),
-            'formadepago'           => $this->getPaymentMethods(),
-            'condiciondepago'       => $this->getPaymentConditions(),
-            'proveedores'           => $this->getSuppliers(),
+            // 'formadepago'           => $this->getPaymentMethods(),
+            // 'condiciondepago'       => $this->getPaymentConditions(),
+            // 'proveedores'           => $this->getSuppliers(),
             'must_change_password'  => $user->must_change_password
         ];
     }
@@ -161,11 +161,12 @@ class UserService implements UserServiceInterface
 
     public function getUserSalesPoints(int $userId)
     {
-        return GpPuntoVenta::join('gp_relacion_usuario_punto_ventas', 'gp_punto_ventas.PTO_VTA_ID', '=', 'gp_relacion_usuario_punto_ventas.USER_PTO_VTA_PUNTO_VENTA')
-            ->where('gp_relacion_usuario_punto_ventas.user_id', $userId)
-            ->select('gp_punto_ventas.*')
+        return GpPuntoVenta::from('gp_punto_ventas as gpv')
+        ->join('gp_relacion_usuario_punto_ventas as gprupv', 'gpv.PTO_VTA_ID', '=', 'gprupv.USER_PTO_VTA_PUNTO_VENTA')
+            ->where('gprupv.user_id', $userId)
+            ->select(['gpv.id','gpv.PTO_VTA_ID', 'gpv.PTO_VTA_DESCRIPCION', 'gpv.lista_precios_defecto'])
             ->with('bodegas')
-            ->orderBy('gp_relacion_usuario_punto_ventas.orden', 'asc')
+            ->orderBy('gprupv.orden', 'asc')
             ->get()
             ->unique('PTO_VTA_ID')
             ->values();

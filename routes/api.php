@@ -183,6 +183,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                     Route::post('obtener-detalle', [ProveedoresController::class, 'obtenerDetalleChoferTransportista']);
                     Route::put('actualizar-registro/{id}', [ProveedoresController::class, 'actualizarRegistroChoferTransportista']);
                     Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoChofeTransportista']);
+                    Route::post('validar-identificacion', [ProveedoresController::class, 'validarIdentificacionChoferTransportista']);
                 });
             });
         });

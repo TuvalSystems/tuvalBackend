@@ -14,4 +14,5 @@ interface CarrierDriverServiceInterface
     public function getDetailCarrierDriver(int $id): ChoferTransportista;
     public function updateRegisterCarrier(int $id, array $data, GpUsuario $user): ChoferTransportista;
     public function updateStatusCarrier(int $id): ChoferTransportista;
+    public function validateCarrierIdentify(string $identify, ?int $excludeId = null) : bool;
 }
