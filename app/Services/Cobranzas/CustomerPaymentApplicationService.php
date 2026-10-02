@@ -92,6 +92,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
             $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
 
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -107,7 +111,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments             = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
 
 
@@ -173,6 +178,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
             $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
+
+
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -187,7 +199,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments             = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
 
 
@@ -254,6 +267,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
             $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -268,7 +286,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments             = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
             //sumatoria de lo pendiente
             $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
@@ -336,6 +355,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
                 $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
                 $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+                //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+                $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+                $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -350,7 +374,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
                 $rcPayments             = array_values(array_unique(array_merge(
                     $this->filterGroupReceiptNumbers($payments),
-                    $rcCheckPendings
+                    $rcCheckPendings,
+                    $rcPendingsAccounts
                 )));
 
                 //sumatoria de lo pendiente
@@ -439,6 +464,10 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
                 $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
                 $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+                //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+                $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+                $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -463,7 +492,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
                 $rcPayments             = array_values(array_unique(array_merge(
                     $this->filterGroupReceiptNumbers($payments),
-                    $rcCheckPendings
+                    $rcCheckPendings,
+                    $rcPendingsAccounts
+
                 )));
 
                 //validacion de aplicacion doble del mismo rc a la misma factura
@@ -541,6 +572,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
             $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -557,7 +593,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings            = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments                 = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
 
 
@@ -849,6 +886,17 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             ->all();
     }
 
+    protected function filterGroupDocumentsToPostPayments(SupportCollection $payments): array
+    {
+        return $payments
+            ->pluck('numeroRecibo')
+            ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
+            ->filter(fn($doc) => !empty($doc))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
 
     protected function filterGroupReceiptNumbers(SupportCollection $payments): array
     {
@@ -922,6 +970,15 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
     protected function getPaymentApplyGp(string $documento, string $ruc)
     {
         $resp = $this->api->getListCustomerPaymentApply([
+            'documento' => $documento,
+            'ruc'       => $ruc
+        ]);
+        return data_get($resp, 'data', []);
+    }
+
+    protected function getPaymentPendingGp(string $documento, string $ruc)
+    {
+        $resp = $this->api->getPendingAccountingDocument([
             'documento' => $documento,
             'ruc'       => $ruc
         ]);
