@@ -21,6 +21,7 @@ use App\Http\Controllers\test\TestController;
 use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\Inventario\Articulo\ArticuloController;
 use App\Http\Controllers\ventas\AprobacionesController;
+use App\Http\Controllers\ventas\ClienteController;
 use App\Http\Controllers\ventas\ReservasController;
 use Illuminate\Support\Facades\Mail;
 
@@ -301,3 +302,6 @@ Route::get('/test-mail', function () {
 
     return '¡Comando ejecutado! Revisa tu bandeja de entrada.';
 });
+
+
+Route::get('clientes/crear', [ClienteController::class, 'guardarCliente']);

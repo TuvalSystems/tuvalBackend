@@ -162,40 +162,11 @@ class ConsultasController extends Controller
         );
     }
 
-    public function buscarClientes(Request $request)
-    {
-        try {
-            $rq = $request->all();
-            $search = data_get($rq, 'search', null);
-            $tipo = data_get($rq, 'tipo', null);
-            $clientes = $this->clientService->getAllClients($search, $tipo);
-            return $this->successResponse('Clientes obtenidos correctamente', $clientes, 200);
-        } catch (\Throwable $th) {
-            return $this->errorResponse('Error al buscar clientes', $th->getMessage(), 500);
-        }
-    }
+   
 
-    public function obtenerCupoDisponibleCliente(string $ruc): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($ruc): JsonResponse {
-            $response = $this->clientService->getAvailabeCreditCustomer($ruc);
-            return $this->successResponse('Cupo disponible obtenido correctamente', $response, 200);
-        }, 'laravel', 'obtenerCupoDisponibleCliente');
-    }
+  
 
-    public function obtenerSucursalesCliente(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $validated = $request->validate([
-                'ruc' => 'required|string',
-                'tipo' => 'required|string'
-            ]);
-            $ruc = data_get($validated, 'ruc');
-            $tipo = data_get($validated, 'tipo');
-            $resp = $this->clientService->getCustomerBranches($ruc, $tipo);
-            return $this->successResponse('Sucursales obtenidas correctamente', $resp, 200);
-        }, 'laravel', 'obtenerSucursalesCliente');
-    }
+   
 
     public function cupodisponible(string $ruc)
     {

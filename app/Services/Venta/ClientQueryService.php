@@ -7,6 +7,8 @@ use App\Models\Admin\SyncLog;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCondicionPago;
+use App\Models\GpGrupoCliente;
+use App\Models\GpProspecto;
 use App\Models\GpUsuario;
 use App\Models\Ventas\TipoIdentificacion;
 use App\Services\Api\ApiGpService;
@@ -15,6 +17,7 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 class ClientQueryService implements ClientQueryServiceInterface
@@ -23,7 +26,8 @@ class ClientQueryService implements ClientQueryServiceInterface
     public function __construct(
         protected readonly ApiGpService $apiGp,
         protected readonly FunctionsServiceInterface $functionsService,
-        protected readonly ClientBuilderInterface $builder
+        protected readonly ClientBuilderInterface $builder,
+
     ) {
         // Inyecta dependencias si es necesario
     }
@@ -283,5 +287,36 @@ class ClientQueryService implements ClientQueryServiceInterface
     public function getListTypeDni()
     {
         return TipoIdentificacion::where('estado', 1)->get();
+    }
+
+
+    public function getAllSegments()
+    {
+        $resp = $this->apiGp->fetchAllSegments();
+        return data_get($resp, 'data', []);
+    }
+
+    public function getSubSegmentBySegment(int $coAtrPadre)
+    {
+        if (empty($coAtrPadre)) {
+            abort(404, 'Segmento no encontrado');
+        }
+        $resp = $this->apiGp->fetchSubSegmentsBySegment(['coAtrPadre' => $coAtrPadre]);
+        return data_get($resp, 'data', []);
+    }
+
+    public function validateHasExistenceDocument(string $document): bool
+    {
+        return GpCliente::where('CLI_RUC', trim($document))->exists();
+    }
+    public function validateHasExistenceProspect(string $document): bool
+    {
+        return GpProspecto::where('CLI_RUC', trim($document))->exists();
+    }
+
+
+    public function getListGrupCustomers():Collection
+    {
+        return GpGrupoCliente::orderBy('GRUPO_CODIGO')->get(['id', 'GRUPO_CODIGO']);
     }
 }

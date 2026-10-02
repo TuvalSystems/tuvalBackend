@@ -26,6 +26,7 @@ use App\Http\Controllers\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\Inventario\Articulo\ArticuloController;
+use App\Http\Controllers\ventas\ClienteController;
 use App\Http\Controllers\ventas\ProveedoresController;
 use App\Http\Controllers\ventas\ReservasController;
 use App\Http\Controllers\Ventas\TipoDespachosController;
@@ -186,6 +187,21 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                     Route::post('validar-identificacion', [ProveedoresController::class, 'validarIdentificacionChoferTransportista']);
                 });
             });
+
+            //rutas de clientes
+            Route::prefix('clientes')->group(function () {
+                Route::get('lista-tipo-identificaciones', [ClienteController::class, 'obtenerListaTipoIdentificacion']);
+                Route::get('lista-grupos', [ClienteController::class, 'obtenerListaGrupoClientes']);
+                Route::post('buscar-clientes', [ClienteController::class, 'buscarClientes']);
+                Route::get('cupo-disponible/{ruc}', [ClienteController::class, 'obtenerCupoDisponibleCliente']);
+                Route::post('sucursales', [ClienteController::class, 'obtenerSucursalesCliente']);
+                Route::post('segmentos', [ClienteController::class, 'obtenerListaSegmentos']);
+                Route::post('subsegmentos', [ClienteController::class, 'obtenerListaSubSegmentos']);
+                Route::post('validar-identificacion', [ClienteController::class, 'validarExistenciIdentificacion']);
+                Route::post('validar-identificacion-prospecto', [ClienteController::class, 'valdiarExitenciaIdentificacionProspecto']);
+
+                
+            });
         });
 
 
@@ -194,7 +210,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
         Route::group(['prefix' => 'cotizaciones'], function () {
 
 
-            Route::get('lista-tipo-identificaciones', [CotizacionesController::class, 'obtenerListaTipoIdentificacion']);
             Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'ListaMotivosNoVenta']);
             Route::put('guardar-registro-no-venta', [CotizacionesController::class, 'registrarOActualizarRecordatorioNoVenta']);
 
@@ -208,8 +223,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('detallecotizacion', [CotizacionesController::class, 'detallecotizacion']);
 
             /** Proceso Clientes */
-            Route::post('obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
-            Route::post('obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
+
             Route::post('validar-segmento-cliente', [CotizacionesController::class, 'validarSegmentoCliente']);
             Route::post('actualizar-segmento-cliente', [CotizacionesController::class, 'actualizarSegmentoCliente']);
             Route::post('guardarcliente', [CotizacionesController::class, 'guardarcliente']);
@@ -420,7 +434,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('consultastockcotizacion', [ConsultasController::class, 'consultastockcotizacion']);
             Route::post('territorios', [ConsultasController::class, 'territorios']);
             Route::get('puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);
-            Route::get('cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
+            // Route::get('cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
             // Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
             // Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
             Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
@@ -429,9 +443,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
             /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
-            Route::post('buscar-clientes', [ConsultasController::class, 'buscarClientes']);
-            Route::get('cliente/cupo-disponible/{ruc}', [ConsultasController::class, 'obtenerCupoDisponibleCliente']);
-            Route::post('cliente/sucursales', [ConsultasController::class, 'obtenerSucursalesCliente']);
 
 
             Route::post('new-territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
@@ -609,6 +620,14 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('app/versions', [AppController::class, 'store']);
             Route::patch('app/versions/{id}/active', [AppController::class, 'active']);
             Route::delete('app/versions/{id}', [AppController::class, 'destroy']);
+
+
+
+            /** lista de localizacion */
+            Route::get('regiones', [AdminController::class, 'listaRegiones']);
+            Route::post('provincias', [AdminController::class, 'listaProvincias']);
+            Route::post('cantones', [AdminController::class, 'listaCantones']);
+            Route::post('parroquias', [AdminController::class, 'listaParroquias']);
         });
 
 

@@ -68,8 +68,6 @@ interface QuotationServiceInterface
 
     /** procesos de cliente */
 
-    public function getAllSegments();
-    public function getSubSegmentBySegment(int $coAtrPadre);
     public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist(string $ruc);

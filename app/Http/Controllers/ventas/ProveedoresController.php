@@ -122,9 +122,9 @@ class ProveedoresController extends Controller
             $identificacion = data_get($validate, 'identificacion');
             $existe = $this->carrierService->validateCarrierIdentify($identificacion, $id);
             if ($existe) {
-                return $this->buildExistResponse(true, 'El documento ya se encuentra registrado con anterioridad', 200);
+                return $this->buildExistResponse(false, 'El numero de identificación ya se encuentra registrado con anterioridad', 200);
             }
-            return $this->buildExistResponse(false, 'El registro no existe, continue...', 200);
+            return $this->buildExistResponse(true, 'El registro no existe, continue...', 200);
         }, self::LOG_CHANNEL, 'validarIdentificacionChoferTransportista');
     }
 }

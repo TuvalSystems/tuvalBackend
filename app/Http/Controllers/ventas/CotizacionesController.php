@@ -47,12 +47,7 @@ class CotizacionesController extends Controller
         protected readonly InvoiceHistoryServiceInterface $invoiceHistory,
     ) {}
 
-    public function obtenerListaTipoIdentificacion(): JsonResponse
-    {
-        return $this->handleApiAction(function (): JsonResponse {
-            return $this->successResponse('Lista Obtenida', $this->clientService->getListTypeDni());
-        }, self::LOG_CHANNEL, 'obtenerListaTipoIdentificacion');
-    }
+   
 
 
     public function store(ValidateStoreQuotationRequest $request): JsonResponse
@@ -730,22 +725,7 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    public function obtenerListaSegmentos(): JsonResponse
-    {
-        return $this->handleApiAction(function (): JsonResponse {
-            $resp = $this->quotationService->getAllSegments();
-            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-        }, self::LOG_CHANNEL, 'obtenerListaSegmentos');
-    }
-
-    public function obtenerListaSubSegmentos(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $coAtrPadre = $request->get('segmento', null);
-            $resp       = $this->quotationService->getSubSegmentBySegment($coAtrPadre);
-            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-        }, self::LOG_CHANNEL, 'obtenerListaSubSegmentos');
-    }
+    
 
     public function validarSegmentoCliente(Request $request): JsonResponse
     {

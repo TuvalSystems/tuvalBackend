@@ -793,20 +793,7 @@ class QuotationService implements QuotationServiceInterface
 
 
     /** Seccion de clientes */
-    public function getAllSegments()
-    {
-        $resp = $this->apiGpService->fetchAllSegments();
-        return data_get($resp, 'data', []);
-    }
-
-    public function getSubSegmentBySegment(int $coAtrPadre)
-    {
-        if (empty($coAtrPadre)) {
-            abort(404, 'Segmento no encontrado');
-        }
-        $resp = $this->apiGpService->fetchSubSegmentsBySegment(['coAtrPadre' => $coAtrPadre]);
-        return data_get($resp, 'data', []);
-    }
+   
 
 
     public function storeClientQuotation(array $data, GpUsuario $user)
