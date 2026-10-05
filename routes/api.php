@@ -199,8 +199,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('subsegmentos', [ClienteController::class, 'obtenerListaSubSegmentos']);
                 Route::post('validar-identificacion', [ClienteController::class, 'validarExistenciIdentificacion']);
                 Route::post('validar-identificacion-prospecto', [ClienteController::class, 'valdiarExitenciaIdentificacionProspecto']);
+                Route::post('crear', [ClienteController::class, 'guardarCliente']);
 
-                
             });
         });
 
@@ -253,6 +253,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('prospecto')->group(function () {
                 Route::post('actualizar', [CotizacionesController::class, 'actualizarCotizacionPropectoV2']);
                 Route::post('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
+                Route::post('recuperar', [CotizacionesController::class, 'recuperarProspecto']);
             });
             Route::post('selectarticuloprospecto', [CotizacionesController::class, 'selectarticuloprospecto']);
             Route::post('llenarcotizacionprospecto', [CotizacionesController::class, 'llenarcotizacionprospecto']);

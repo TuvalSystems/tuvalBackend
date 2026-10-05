@@ -2,8 +2,6 @@
 
 namespace App\Services\Venta;
 
-use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCondicionPago;
@@ -14,11 +12,11 @@ use App\Models\Ventas\TipoIdentificacion;
 use App\Services\Api\ApiGpService;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Log;
+
 
 class ClientQueryService implements ClientQueryServiceInterface
 {
@@ -27,6 +25,7 @@ class ClientQueryService implements ClientQueryServiceInterface
         protected readonly ApiGpService $apiGp,
         protected readonly FunctionsServiceInterface $functionsService,
         protected readonly ClientBuilderInterface $builder,
+        protected readonly ClientGpSenderServiceInterface $clientJob
 
     ) {
         // Inyecta dependencias si es necesario
@@ -166,122 +165,16 @@ class ClientQueryService implements ClientQueryServiceInterface
 
     public function storeNewAddressClient(array $data, GpUsuario $userGp)
     {
-        $cliente        = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
+        $cliente        = GpCliente::findOrFail(data_get($data, 'cliente_id'));
         $email          = strtolower(data_get($data, 'email', ''));
         $textoEnvuelto  = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
         $dir            = explode("\n", $textoEnvuelto);
-        $payloadGp      = $this->builder->formPayloadNewAddress($data, $cliente, $dir, $email);
-        $respInfo       = $this->sendToGpNewAddress($payloadGp);
-        $identificador  = strtoupper(data_get($respInfo, 'identificador', ''));
-        $newBranches    = $this->builder->formPayloadNewSucursal($data, $cliente, $identificador, $email, $dir, $userGp);
-        $this->createRegisterBranchClient($newBranches,  1, $userGp->USERID, Carbon::parse($newBranches->fecha_hora_creacion)->format('Y-m-d H:i:s'), null, null, false);
-        return $newBranches;
+        $newBranch      = $this->builder->formPayloadNewSucursal($data, $cliente, null, $email, $dir, $userGp);
+        $newBranch->save();
+        $this->clientJob->syncBranch($newBranch->id);
+        return $newBranch->refresh();
     }
 
-
-    protected function sendToGpNewAddress(array $params)
-    {
-        $resp = $this->apiGp->storeNewAddressClient($params);
-        $success = data_get($resp, 'success', false);
-        if (!$success) {
-            abort(404, 'No se pudo crear la direccion del cliente');
-        }
-        return data_get($resp, 'data', []);
-    }
-
-
-    public function createRegisterBranchClient(GpClienteSucursal $data, int $mode, ?string $userIngreso = null, ?string $fechaCreacion = null,  ?string $userModificacion = null, ?string $fechaModificacion = null,  bool $autoRetry = true)
-    {
-        $data->refresh();
-        $params = [
-            'ruc'                   => $data->CLI_SUC_RUC,
-            'idDireccion'           => $data->CLI_SUC_ID_DIRECCION,
-            'direccion'             => $data->CLI_SUC_DIRECCION,
-            'estado'                => $data->estado === 1 ? "A" : "I",
-            'usuarioIngreso'        => $userIngreso,
-            'fechaIngreso'          => $fechaCreacion ?? "",
-            'usuarioModificacion'   => $userModificacion ?? "",
-            'fechaModificacion'     => $fechaModificacion ?? "",
-            'modo'                  => $mode
-        ];
-
-        $resp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
-        $status = data_get($resp, 'success', false);
-        $message = data_get($resp, 'message', '');
-        if (!$status && $mode === 2 && $autoRetry && $this->isNotFoundError($message)) {
-            Log::info('Registro no existe en GP (Error 900), intentando crear', [
-                'sucursal_id'       => $data->id,
-                'ruc'               => $data->CLI_SUC_RUC,
-                'id_direccion'      => $data->CLI_SUC_ID_DIRECCION,
-                'error_original'    => $message
-            ]);
-            $params['modo'] = 1;
-            $params['usuarioIngreso'] =  GpUsuario::where('id', $data->user_creator_id)->value('USERID')  ?? $userModificacion;
-            $params['fechaIngreso'] =   $data->fecha_hora_creacion ?? Carbon::parse($data->created_at)->format('Y-m-d H:i:s')  ?? Carbon::now()->format('Y-m-d H:i:s');
-
-            $retryResp = $this->apiGp->updateOrCreateRegisterBranchClient($params);
-            $retryStatus = data_get($retryResp, 'success', false);
-
-            if ($retryStatus) {
-                Log::info('✅ Registro creado exitosamente después de fallar actualización', [
-                    'sucursal_id' => $data->id,
-                    'ruc' => $data->CLI_SUC_RUC,
-                    'modo_usado' => 1
-                ]);
-                return;
-            }
-
-            $retryMessage = data_get($retryResp, 'message', 'Error desconocido en retry');
-            $this->logSyncError($data, $params, "Falló actualización (Error 900) y creación. Error creación: {$retryMessage}");
-            return;
-        }
-
-        // ❌ Cualquier otro error
-        if (!$status) {
-            $this->logSyncError($data, $params, $message);
-        }
-    }
-
-    private function logSyncError(GpClienteSucursal $data, array $params, string $message): void
-    {
-        SyncLog::logErrorSync(
-            'SucursalesGP',
-            'actualizar-o-crear-registro-sucursal-cliente',
-            'updateOrCreateRegisterBranchClient',
-            $message,
-            $data->CLI_SUC_RUC,
-            $data->id,
-            $params,
-            0,
-            StatusSync::FAILED
-        );
-    }
-
-    private function isNotFoundError(string $message): bool
-    {
-        // Patrón específico para tu API
-        if (str_contains($message, '[900]') && str_contains($message, 'No existe este registro')) {
-            return true;
-        }
-
-        // Otros patrones por si cambian el mensaje
-        $notFoundPatterns = [
-            'no existe este registro',
-            'error del sp [900]',
-            'not found',
-            'no encontrado',
-        ];
-
-        $messageLower = strtolower($message);
-
-        foreach ($notFoundPatterns as $pattern) {
-            if (str_contains($messageLower, strtolower($pattern))) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
 
     public function getListTypeDni()
@@ -313,7 +206,6 @@ class ClientQueryService implements ClientQueryServiceInterface
     {
         return GpProspecto::where('CLI_RUC', trim($document))->exists();
     }
-
 
     public function getListGrupCustomers():Collection
     {

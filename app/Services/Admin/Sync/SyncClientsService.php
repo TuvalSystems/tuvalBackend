@@ -2,13 +2,18 @@
 
 namespace App\Services\Admin\Sync;
 
+use App\Models\Admin\Canton;
+use App\Models\Admin\Provincia;
+use App\Models\Admin\Region;
 use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
 use App\Services\Api\Admin\ApiSync;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Traits\Sincronizacion\DetectsRealModelChanges;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class SyncClientsService implements SyncClientsServiceInterface
 {
@@ -31,15 +36,24 @@ class SyncClientsService implements SyncClientsServiceInterface
 
     public function handleClientSync(array $data)
     {
-        $ruc = trim(data_get($data, 'ruc', ''));
-        $client = GpCliente::where('CLI_RUC', $ruc)->first();
-        $isNew = !$client;
+        $ruc         = trim(data_get($data, 'ruc', ''));
+
+        if ($ruc === '') {
+            throw new InvalidArgumentException('Sincronización abortada: GP envió un cliente sin RUC.');
+        }
+
+        $client      = GpCliente::where('CLI_RUC', $ruc)->first();
+        $isNew       = !$client;
+        $regionId    = Region::where('nombre', trim(data_get($data, 'territorio')))->value('id');
+        $provinciaId = Provincia::where('nombre', trim(data_get($data, 'provincia')))->value('id');
+        $cantonId    = Canton::where('nombre', trim(data_get($data, 'ciudad')))->value('id');
+
 
         if ($isNew) {
             $client          = new GpCliente();
             $client->CLI_RUC = $ruc;
         }
-        $payload = $this->builder->formPayloadNewClientSync($data);
+        $payload = $this->builder->formPayloadNewClientSync($data, $regionId, $provinciaId, $cantonId);
         $client->fill($payload);
         if ($isNew) {
             $client->save();
@@ -77,6 +91,11 @@ class SyncClientsService implements SyncClientsServiceInterface
     {
         $ruc            = trim(data_get($data, 'cliente', ''));
         $descripcion    = trim(data_get($data, 'descripcion', ''));
+
+        if ($ruc === '') {
+            throw new InvalidArgumentException('Sincronización abortada: GP envió sucursales sin RUC de cliente.');
+        }
+
         $cliente        = GpCliente::where('CLI_RUC', trim($ruc))->first();
         if (!$cliente) {
             throw new \Exception("Sincronización abortada: El cliente RUC {$ruc} no existe en la base de datos local.");
@@ -85,33 +104,70 @@ class SyncClientsService implements SyncClientsServiceInterface
         $direcciones = data_get($data, 'direcciones', []);
         foreach ($direcciones as $dir) {
             $idDireccion = trim(data_get($dir, 'idDireccion', ''));
-            $sucursal = GpClienteSucursal::where('cliente_id', $cliente->id)
-                ->where('CLI_SUC_ID_DIRECCION', $idDireccion)
-                ->first();
+
+            if ($idDireccion === '') {
+                Log::channel('cron_process')->warning('Sucursal ignorada porque GP no envió idDireccion', [
+                    'ruc'       => $ruc,
+                    'direccion' => trim(data_get($dir, 'direccion', '')),
+                ]);
+                continue;
+            }
+
+            $regionId    = Region::where('nombre', trim(data_get($dir, 'territorio')))->value('id');
+            $provinciaId = Provincia::where('nombre', trim(data_get($dir, 'provincia')))->value('id');
+            $cantonId    = Canton::where('nombre', trim(data_get($dir, 'ciudad')))->value('id');
             $payload = $this->builder->formPayloadClientBranchesSync(
                 $cliente->id,
                 $ruc,
                 $descripcion,
-                $dir
+                $dir,
+                $regionId,
+                $provinciaId,
+                $cantonId
             );
-            if (!$sucursal) {
-                // INSERT — nueva sucursal
-                GpClienteSucursal::create($payload);
-                continue;
-            }
 
-            $sucursal->fill($payload);
-            if ($this->hasRealChanges($sucursal)) {
-                Log::channel('cron_process')->info('Cliente sucursal actualizado', [
-                    'ruc'     => $ruc,
-                    'changes' => $sucursal->getDirty(),
-                ]);
-                $sucursal->timestamps = true;
-                $sucursal->save();
-            } else {
+            DB::transaction(function () use ($cliente, $idDireccion, $dir, $payload, $ruc) {
+                $sucursal = GpClienteSucursal::where('cliente_id', $cliente->id)
+                    ->where('CLI_SUC_ID_DIRECCION', $idDireccion)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$sucursal) {
+                    $direccion = trim(data_get($dir, 'direccion', ''));
+
+                    if ($direccion !== '') {
+                        $sucursal = GpClienteSucursal::where('cliente_id', $cliente->id)
+                            ->where('enviado_gp', false)
+                            ->where(function ($query) {
+                                $query->whereNull('CLI_SUC_ID_DIRECCION')
+                                    ->orWhere('CLI_SUC_ID_DIRECCION', '');
+                            })
+                            ->whereRaw('TRIM(CLI_SUC_DIRECCION) = ?', [$direccion])
+                            ->orderBy('id')
+                            ->lockForUpdate()
+                            ->first();
+                    }
+                }
+
+                if (!$sucursal) {
+                    GpClienteSucursal::create($payload);
+                    return;
+                }
+
+                $sucursal->fill($payload);
+                if ($this->hasRealChanges($sucursal)) {
+                    Log::channel('cron_process')->info('Cliente sucursal actualizado', [
+                        'ruc'     => $ruc,
+                        'changes' => $sucursal->getDirty(),
+                    ]);
+                    $sucursal->timestamps = true;
+                    $sucursal->save();
+                    return;
+                }
+
                 $sucursal->timestamps = false;
                 $sucursal->save();
-            }
+            }, 3);
         }
     }
 

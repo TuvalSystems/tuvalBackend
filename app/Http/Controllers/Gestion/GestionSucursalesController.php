@@ -37,10 +37,10 @@ class GestionSucursalesController extends Controller
 
     public function actualizarEstadoSucursal(Request $request){
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $id = $request->input('id', null);
+            $id     = $request->input('id', null);
             $estado = $request->input('estado', null);
-            $user = $request->user();
-            $data = $this->clientBranchService->updateStatusClientBranches($id, $estado, $user);
+            $user   = $request->user();
+            $data   = $this->clientBranchService->updateStatusClientBranches($id, $estado, $user);
             return $this->successResponse('Datos Actualizados Correctamente', $data, 200);
         }, 'laravel', 'actualizarEstadoSucursal');
     }

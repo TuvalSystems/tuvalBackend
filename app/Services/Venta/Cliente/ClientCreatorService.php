@@ -2,22 +2,52 @@
 
 namespace App\Services\Venta\Cliente;
 
+use App\Jobs\Venta\Cliente\SendClientToGpJob;
+use App\Models\Admin\Canton;
+use App\Models\Admin\Provincia;
+use App\Models\Admin\Region;
+use App\Models\GpCliente;
 use App\Models\GpUsuario;
+use App\Models\Ventas\TipoIdentificacion;
 use App\Models\Ventas\Vendedores\GpVendedor;
+use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Venta\Cliente\Contracts\ClientCreatorServiceInterface;
+use Illuminate\Support\Facades\DB;
 
 class ClientCreatorService implements ClientCreatorServiceInterface
 {
-    public function __construct() {}
+    public function __construct(
+        protected readonly ClientBuilderInterface $builder
+    ) {}
 
     public function createClient(array $data, GpUsuario $user)
     {
-        $levelPrice = $this->getnivelPriceSeller($user);
-        $directions = $this->getDirections(data_get($data, 'direcciones'));
-        return  [
-            'nivelPrecio' => $levelPrice,
-            'direcciones' => $directions,
-        ];
+        $lvlPrice       = $this->getnivelPriceSeller($user);
+        $address        = $this->getDirectionWithLocationNames(data_get($data, 'direcciones'));
+        $directions     = $this->getDirections($address);
+        $principalDir   = data_get($address, '0');
+
+        $clientWeb = DB::transaction(function () use ($data, $lvlPrice, $directions, $principalDir, $user, $address) {
+            $identityType = TipoIdentificacion::where('id', data_get($data, 'tipo_identificacion_id'))
+                ->value('codigo');
+            $data = array_merge($data, [
+                'direccion1'            => data_get($directions, '0'),
+                'direccion2'            => data_get($directions, '1'),
+                'lvlPrice'              => $lvlPrice,
+                'tipo_identificacion'   => $identityType,
+                'direccionPrincipal'    => $principalDir
+            ]);
+
+            $clientWeb = $this->builder->formPayloadStoreClient($data, $user);
+            $clientWeb->save();
+
+            $this->createAndSyncClientAddresses($clientWeb, $user, $address);
+            return $clientWeb;
+        });
+
+        SendClientToGpJob::dispatchSync($clientWeb->id);
+
+        return $clientWeb->refresh()->load('sucursales');
     }
 
     protected function getnivelPriceSeller(GpUsuario $user)
@@ -37,10 +67,42 @@ class ClientCreatorService implements ClientCreatorServiceInterface
 
         return $seller->atributoValores->first()?->opcion?->codigo ?? 'GENERAL';
     }
-
-
-    public function getDirections(array $directions): array
+    protected function getDirections(array $directions): array
     {
         return collect($directions)->pluck('direccion')->values()->all();
+    }
+
+
+    protected  function getDirectionWithLocationNames(array $address)
+    {
+        $newAdd = [];
+        foreach ($address as $add) {
+            $region = Region::where('id', data_get($add, 'region_id'))
+                ->value('nombre');
+
+            $province = Provincia::where('id', data_get($add, 'provincia_id'))
+                ->value('nombre');
+
+            $canton = Canton::where('id', data_get($add, 'canton_id'))
+                ->value('nombre');
+            $newAdd[] = array_merge($add, [
+                'region'    => $region,
+                'provincia' => $province,
+                'canton'    => $canton,
+            ]);
+        }
+        return $newAdd;
+    }
+
+
+    /** creacion de las sucursales del cliente */
+
+    protected function createAndSyncClientAddresses(GpCliente $client, GpUsuario $user, array $address)
+    {
+        foreach ($address as $index => $add) {
+            $identifier = $index === 0 ? 'PRINCIPAL' : null;
+            $newAddress = $this->builder->formPayloadStoreAddressByClient($client, $user, $add, $identifier);
+            $newAddress->save();
+        }
     }
 }

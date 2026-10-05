@@ -252,7 +252,6 @@ class QuotationBuilder implements QuotationBuilderInterface
             'CLI_SUBSEGMENTO_ID'                    => $this->cleanNullable($data, 'CLI_SUBSEGMENTO_ID'),
             'user_creator_id'                       => $user->id,
             'fecha_hora_creacion'                   => Carbon::now()->toDateTimeString(),
-
         ];
     }
 

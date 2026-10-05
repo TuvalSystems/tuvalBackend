@@ -25,6 +25,7 @@ use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
 use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\File;
@@ -45,9 +46,10 @@ class CotizacionesController extends Controller
         protected readonly QuotationCreatorServiceInterface $quotationCreator,
         protected readonly CommercialVisibilityService $commercial,
         protected readonly InvoiceHistoryServiceInterface $invoiceHistory,
+        protected readonly ProspectQuoteServiceInterface $prospectService
     ) {}
 
-   
+
 
 
     public function store(ValidateStoreQuotationRequest $request): JsonResponse
@@ -363,15 +365,7 @@ class CotizacionesController extends Controller
     }
 
 
-    public function guardarcliente(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $data = $request->all();
-            $user = $request->user();
-            $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
-            return $this->successResponse('Cliente Guardado Correctamente', $cliente, 200);
-        }, self::LOG_CHANNEL, 'guardarcliente');
-    }
+
 
     public function guardarNuevaDireccionSucursal(Request $request)
     {
@@ -725,7 +719,7 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    
+
 
     public function validarSegmentoCliente(Request $request): JsonResponse
     {
@@ -792,6 +786,13 @@ class CotizacionesController extends Controller
 
 
 
-
-
+    /** prospecto  */
+    public function recuperarProspecto(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $documento = $request->input('documento');
+            $info = $this->prospectService->restoreProspectQuote($documento);
+            return $this->successResponse('Información Obtenida Correctamente', $info);
+        }, self::LOG_CHANNEL, 'recuperarProspecto');
+    }
 }

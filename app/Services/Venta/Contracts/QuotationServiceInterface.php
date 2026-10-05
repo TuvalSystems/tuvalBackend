@@ -68,7 +68,6 @@ interface QuotationServiceInterface
 
     /** procesos de cliente */
 
-    public function storeClientQuotation(array $data, GpUsuario $user);
 
     public function checkClientWithSegmentExist(string $ruc);
     public function updateClientWithSegment(string $cliente, int $segmentoId, int $subsegmentoId);

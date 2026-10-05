@@ -7,6 +7,7 @@ use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
 use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
+use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Traits\RegisterAudit;
 use Carbon\Carbon;
@@ -16,7 +17,10 @@ class ClientBranchService implements ClientBranchServiceInterface
 {
     use RegisterAudit;
 
-    public  function __construct(protected readonly ClientQueryServiceInterface $client) {}
+    public  function __construct(
+        protected readonly ClientQueryServiceInterface $client,
+        protected readonly ClientGpSenderServiceInterface $clientGp
+    ) {}
 
 
     public function listClientBranches(array $filters): LengthAwarePaginator
@@ -68,7 +72,7 @@ class ClientBranchService implements ClientBranchServiceInterface
         ];
     }
 
-    protected function hasBranchInProcessQuotes($branchId)
+    protected function hasBranchInProcessQuotes(int $branchId)
     {
         return GpCotizacion::where(function ($query) use ($branchId) {
             $query->where('sucursal_id', $branchId)
@@ -78,7 +82,7 @@ class ClientBranchService implements ClientBranchServiceInterface
             ->select(['id', 'cotizacion', 'estado'])->get();
     }
 
-    protected function hasBranchInProcessOrders($branchId)
+    protected function hasBranchInProcessOrders(int $branchId)
     {
         return GpPedido::where(function ($query) use ($branchId) {
             $query->where('sucursal_id', $branchId)
@@ -125,7 +129,7 @@ class ClientBranchService implements ClientBranchServiceInterface
     protected function updateStatusBranchInGp(GpClienteSucursal $branch, GpUsuario $userModificador): void
     {
         $fechaModificacion = Carbon::now()->format('Y-m-d H:i:s');
-        $this->client->createRegisterBranchClient(
+        $this->clientGp->createRegisterBranchClient(
             $branch,
             2,
             null,

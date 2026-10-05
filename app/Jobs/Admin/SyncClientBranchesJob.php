@@ -8,15 +8,17 @@ use App\Models\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Notification;
 
 use Throwable;
 
-class SyncClientBranchesJob implements ShouldQueue
+class SyncClientBranchesJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -31,6 +33,27 @@ class SyncClientBranchesJob implements ShouldQueue
     {
         $this->branch = $branch;
         $this->onQueue('sync-medium');
+    }
+
+    public function uniqueId(): string
+    {
+        return 'sync-client-branches:' . trim((string) data_get($this->branch, 'cliente')) . ':' . md5(json_encode($this->branch));
+    }
+
+    public function uniqueFor(): int
+    {
+        return 600;
+    }
+
+    public function middleware(): array
+    {
+        $ruc = trim((string) data_get($this->branch, 'cliente'));
+
+        return [
+            (new WithoutOverlapping("sync-client-branches-ruc:{$ruc}"))
+                ->releaseAfter(15)
+                ->expireAfter(300),
+        ];
     }
 
     public function handle(SyncClientsServiceInterface $service)

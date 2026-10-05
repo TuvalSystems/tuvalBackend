@@ -119,6 +119,10 @@ class GpCliente extends Model
         'CLI_MONTO_CREDITO'              => 'decimal:2',
         'CLI_FECHA_MODIFICACION'         => 'datetime:Y-m-d',
         'CLI_FECHA_CREACION'             => 'datetime:Y-m-d',
+        'created_at'                     => 'datetime:Y-m-d',
+        'updated_at'                     => 'datetime:Y-m-d',
+        'enviado_gp'                     => 'boolean',
+
     ];
     protected $fillable = [
         'tipo_identificacion',
@@ -162,7 +166,13 @@ class GpCliente extends Model
         'CLI_SEGMENTO_ID',
         'CLI_SUBSEGMENTO_ID',
         'user_creator_id',
-        'fecha_hora_creacion'
+        'fecha_hora_creacion',
+        'tipo_identificacion',
+        'tipo_identificacion_id',
+        'region_id',
+        'provincia_id',
+        'canton_id',
+        'enviado_gp'
     ];
 
 
@@ -175,6 +185,6 @@ class GpCliente extends Model
 
     public function sucursales()
     {
-        return $this->hasMany(GpClienteSucursal::class, 'CLI_SUC_RUC', 'CLI_RUC');
+        return $this->hasMany(GpClienteSucursal::class, 'cliente_id');
     }
 }

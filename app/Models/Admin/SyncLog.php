@@ -40,6 +40,30 @@ class SyncLog extends Model
         $attempts = 0,
         StatusSync $status = StatusSync::FAILED
     ) {
+        return self::logSync(
+            $module,
+            $action,
+            $method,
+            $message,
+            $externalId,
+            $localId,
+            $payload,
+            $attempts,
+            $status
+        );
+    }
+
+    public static function logSync(
+        $module,
+        $action,
+        $method,
+        $message,
+        $externalId = null,
+        $localId = null,
+        $payload = null,
+        $attempts = 0,
+        StatusSync $status = StatusSync::FAILED
+    ) {
         return self::create([
             'module'        => $module,
             'action'        => $action,
