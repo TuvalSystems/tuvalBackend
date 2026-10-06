@@ -168,7 +168,6 @@ class ClientBranchService implements ClientBranchServiceInterface
             'ciudad'        => $canton,
         ]);
         $email      = strtoupper(data_get($data, 'email'));
-        $dir        = data_get($data, 'direccion');
         $newBranch  = $this->builder->formPayloadNewSucursal($data, $client, null, $email, [], $user);
         $newBranch->save();
         $this->clientJob->syncBranch($newBranch->id);
