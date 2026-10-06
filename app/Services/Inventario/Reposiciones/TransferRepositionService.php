@@ -511,6 +511,12 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             - COALESCE(tr.trasladado, 0)
             AS pendiente
         ')
-            ])->get();
+            ])
+            ->whereRaw('
+            COALESCE(tr.cantidad, 0)
+            - COALESCE(tr.reservado, 0)
+            - COALESCE(tr.trasladado, 0) > 0
+        ')
+            ->get();
     }
 }
