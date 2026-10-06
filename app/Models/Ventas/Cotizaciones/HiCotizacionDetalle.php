@@ -40,6 +40,10 @@ class HiCotizacionDetalle extends Model
         'descuento',
         'descuento_original',
         'modificador',
+        'cod_categoria',
+        'cod_linea',
+        'cod_clase',
+        'resultado_configuracion_item_l'
     ];
 
     protected $casts = [

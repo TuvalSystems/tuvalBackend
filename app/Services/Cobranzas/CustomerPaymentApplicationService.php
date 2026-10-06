@@ -8,6 +8,7 @@ use App\Models\GpUsuario;
 use App\Repositories\Cobranzas\Contracts\WebInvoiceApplicationRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
+use App\Supports\Money;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
@@ -82,14 +83,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 continue;
             }
 
-            $valorIngresado         = $this->money(data_get($ret, 'total', 0));
+            $valorIngresado         = Money::normalize(data_get($ret, 'total', 0));
             $saldoFactura           = $this->getInvoiceBalanceForValidation($ret);
             $order                  = $this->applyRepository->getOrderWithDevolution($factura, $desde, $hasta);
 
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
-            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
+            $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
 
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
@@ -106,17 +111,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments             = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
 
 
             //sumatoria de lo pendiente
             $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
-            $sumPendingWeb          = $pendingWebResult['total'];
-            $pendingWebDetails      = $pendingWebResult['details'];
+            $sumPendingWeb          = data_get($pendingWebResult, 'total');
+            $pendingWebDetails      = data_get($pendingWebResult, 'details');
             //sumatoria  de devoluciones pendeintes de procesar
             $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
-            $sumDev                 = $this->money($devolutions->sum('total'));
+            $sumDev                 = Money::normalize($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -171,7 +177,14 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
-            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
+            $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
+
+
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -186,17 +199,18 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments             = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
 
 
             //sumatoria de lo pendiente
             $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
-            $sumPendingWeb          = $pendingWebResult['total'];
-            $pendingWebDetails      = $pendingWebResult['details'];
+            $sumPendingWeb          = data_get($pendingWebResult, 'total');
+            $pendingWebDetails      = data_get($pendingWebResult, 'details');
             //sumatoria  de devoluciones pendeintes de procesar
             $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
-            $sumDev                 = $this->money($devolutions->sum('total'));
+            $sumDev                 = Money::normalize($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation             = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -252,7 +266,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
-            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
+            $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -267,15 +286,16 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments             = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
             //sumatoria de lo pendiente
             $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
-            $sumPendingWeb          = $pendingWebResult['total'];
-            $pendingWebDetails      = $pendingWebResult['details'];
+            $sumPendingWeb          = data_get($pendingWebResult, 'total');
+            $pendingWebDetails      = data_get($pendingWebResult, 'details');
             //sumatoria  de devoluciones pendeintes de procesar
             $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
-            $sumDev                 = $this->money($devolutions->sum('total'));
+            $sumDev                 = Money::normalize($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation             = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -334,7 +354,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
                 $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
                 $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
-                $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
+                $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+                //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+                $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+                $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -349,16 +374,17 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
                 $rcPayments             = array_values(array_unique(array_merge(
                     $this->filterGroupReceiptNumbers($payments),
-                    $rcCheckPendings
+                    $rcCheckPendings,
+                    $rcPendingsAccounts
                 )));
 
                 //sumatoria de lo pendiente
                 $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
-                $sumPendingWeb          = $pendingWebResult['total'];
-                $pendingWebDetails      = $pendingWebResult['details'];
+                $sumPendingWeb          = data_get($pendingWebResult, 'total');
+                $pendingWebDetails      = data_get($pendingWebResult, 'details');
                 //sumatoria  de devoluciones pendeintes de procesar
                 $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
-                $sumDev                 = $this->money($devolutions->sum('total'));
+                $sumDev                 = Money::normalize($devolutions->sum('total'));
                 $devsInfo               = $this->formatInfoDevolutions($devolutions);
                 $validation = $this->buildInvoiceValidation(
                     $valorIngresado,
@@ -405,13 +431,13 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             if (empty($dataInvoices)) {
                 continue;
             }
-            $totalAmountToApply         = $this->money(
+            $totalAmountToApply         = Money::normalize(
                 collect($dataInvoices)->sum(
                     fn($invoice) => $this->getAppliedAmount($invoice, ['aplicarMontoAplicacion'])
                 )
             );
             $pendingApplicationDocument             = $this->getApplyDocumentsPendings($applyDoc, $cliente->CLI_RUC);
-            $gpApplicationBalance       = $this->money(data_get($pendingApplicationDocument, 'saldoCliente', 0));
+            $gpApplicationBalance       = Money::normalize(data_get($pendingApplicationDocument, 'saldoCliente', 0));
             if ($totalAmountToApply > $gpApplicationBalance) {
                 throw new \RuntimeException(
                     'El monto total a aplicar supera el saldo disponible en GP. ' .
@@ -437,7 +463,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
                 $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
                 $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
-                $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
+                $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+                //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+                $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+                $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
                 //filtros de documentos
                 $devPaymentDocs         = $this->filterGroupPayment($payments);
                 $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -462,7 +492,9 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 $rcCheckPendings        = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
                 $rcPayments             = array_values(array_unique(array_merge(
                     $this->filterGroupReceiptNumbers($payments),
-                    $rcCheckPendings
+                    $rcCheckPendings,
+                    $rcPendingsAccounts
+
                 )));
 
                 //validacion de aplicacion doble del mismo rc a la misma factura
@@ -470,11 +502,11 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
                 //sumatoria de lo pendiente
                 $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta,  $rcPayments);
-                $sumPendingWeb          = $pendingWebResult['total'];
-                $pendingWebDetails      = $pendingWebResult['details'];
+                $sumPendingWeb          = data_get($pendingWebResult, 'total');
+                $pendingWebDetails      = data_get($pendingWebResult, 'details');
                 //sumatoria  de devoluciones pendeintes de procesar
                 $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $groupDevs));
-                $sumDev                 = $this->money($devolutions->sum('total'));
+                $sumDev                 = Money::normalize($devolutions->sum('total'));
                 $devsInfo               = $this->formatInfoDevolutions($devolutions);
 
 
@@ -539,7 +571,12 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $payments               = collect($this->getPaymentApplyGp($facturaOrigen, $cliente->CLI_RUC));
             $checksPendings         = collect($this->getChecksPendingPayment($facturaOrigen, $cliente->CLI_RUC));
             $sumCheckPending        = $this->sumCheckPaymentPending($checksPendings);
-            $sumPayments            = $this->money($this->sumPaymentAmount($payments) + $sumCheckPending);
+            $sumPayments            = Money::normalize($this->sumPaymentAmount($payments) + $sumCheckPending);
+
+            //documentos pendientes de contabilizar en GP, ya se encuentran aplicados en web pero no se han contabilizado en GP, por lo que se deben omitir de la validacion de excedentes
+            $pendingAccountingDocs  = collect($this->getPaymentPendingGp($facturaOrigen, $cliente->CLI_RUC));
+            $rcPendingsAccounts     = $this->filterGroupDocumentsToPostPayments($pendingAccountingDocs);
+
             //filtros de documentos
             $devPaymentDocs         = $this->filterGroupPayment($payments);
             $othersPaymentDocs      = $this->filterGroupDocumentsPayments($payments);
@@ -556,18 +593,19 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $rcCheckPendings            = $this->filterGroupReciptNumbersCheckPayment($checksPendings);
             $rcPayments                 = array_values(array_unique(array_merge(
                 $this->filterGroupReceiptNumbers($payments),
-                $rcCheckPendings
+                $rcCheckPendings,
+                $rcPendingsAccounts
             )));
 
 
 
             //sumatoria de lo pendiente
             $pendingWebResult       = $this->getPendingWebNotAccountedByInvoice($factura, $groupDocuments, $desde, $hasta, $rcPayments);
-            $sumPendingWeb          = $pendingWebResult['total'];
-            $pendingWebDetails      = $pendingWebResult['details'];
+            $sumPendingWeb          = data_get($pendingWebResult, 'total');
+            $pendingWebDetails      = data_get($pendingWebResult, 'details');
             //sumatoria  de devoluciones pendeintes de procesar
             $devolutions            = collect($this->getDevolutions($order->devolucionesBloqueantes ?? new Collection(), $devPaymentDocs));
-            $sumDev                 = $this->money($devolutions->sum('total'));
+            $sumDev                 = Money::normalize($devolutions->sum('total'));
             $devsInfo               = $this->formatInfoDevolutions($devolutions);
             $validation = $this->buildInvoiceValidation(
                 $valorIngresado,
@@ -594,7 +632,6 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                     devolutions: $devolutions
                 ),
             ]);
-
         }
         unset($ing);
 
@@ -610,7 +647,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $cod        = data_get($dev, 'devolucion', 'N/A');
             $doc        = data_get($dev, 'DOC_GENERADO', 'N/A');
             $fecha      = Carbon::parse(data_get($dev, 'created_at'))->format('Y-m-d');
-            $total      = $this->money(data_get($dev, 'total', 0));
+            $total      = Money::normalize(data_get($dev, 'total', 0));
             return "{$userName} - {$cod} - {$doc} - {$fecha} - $" . number_format($total, 2, '.', '');
         })
             ->filter()
@@ -634,7 +671,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             $value = data_get($item, $field);
 
             if ($value !== null && trim((string) $value) !== '') {
-                return $this->money($value);
+                return Money::normalize($value);
             }
         }
 
@@ -643,8 +680,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     protected function sumPaymentAmount(SupportCollection $payments): float
     {
-        return $this->money(
-            $payments->sum(fn($payment) => $this->money(
+        return Money::normalize(
+            $payments->sum(fn($payment) => Money::normalize(
                 data_get($payment, 'valorCobro', data_get($payment, 'collectionAmount', 0))
             ))
         );
@@ -652,8 +689,8 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     protected function sumCheckPaymentPending(SupportCollection $checkPayment): float
     {
-        return $this->money(
-            $checkPayment->sum(fn($payment) => $this->money(
+        return Money::normalize(
+            $checkPayment->sum(fn($payment) => Money::normalize(
                 data_get($payment, 'montoAplicado', 0)
             ))
         );
@@ -661,7 +698,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     protected function getInvoiceBalanceForValidation(array $item): float
     {
-        return $this->money(
+        return Money::normalize(
             data_get($item, 'montoOriginal')
                 ?? data_get($item, 'saldoFactura')
                 ?? data_get($item, 'saldoCliente')
@@ -671,7 +708,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     protected function getInvoiceOriginalAmount(array $item): float
     {
-        return $this->money(
+        return Money::normalize(
             data_get($item, 'montoOriginal')
                 ?? data_get($item, 'saldoFactura')
                 ?? data_get($item, 'saldoCliente')
@@ -681,7 +718,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
     protected function getInvoiceCustomerBalance(array $item): float
     {
-        return $this->money(
+        return Money::normalize(
             data_get($item, 'saldoCliente')
                 ?? data_get($item, 'saldoFactura')
                 ?? 0
@@ -697,7 +734,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             return null;
         }
 
-        return $this->money($value);
+        return Money::normalize($value);
     }
 
     protected function getInvoiceDueDate(array $item): mixed
@@ -713,41 +750,41 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
         int|float|string|null $sumDev,
         int|float|string|null $saldoActualFactura = null
     ): array {
-        $valorIngresado       = $this->money($valorIngresado);
-        $montoOriginalFactura = $this->money($montoOriginalFactura);
-        $sumPayments          = $this->money($sumPayments);
-        $sumPendingWeb        = $this->money($sumPendingWeb);
-        $sumDev               = $this->money($sumDev);
-        $saldoActualFactura   = $saldoActualFactura === null ? null : $this->money($saldoActualFactura);
+        $valorIngresado       = Money::normalize($valorIngresado);
+        $montoOriginalFactura = Money::normalize($montoOriginalFactura);
+        $sumPayments          = Money::normalize($sumPayments);
+        $sumPendingWeb        = Money::normalize($sumPendingWeb);
+        $sumDev               = Money::normalize($sumDev);
+        $saldoActualFactura   = $saldoActualFactura === null ? null : Money::normalize($saldoActualFactura);
 
-        $totalNoContabilizado = $this->money($sumPendingWeb + $sumDev);
+        $totalNoContabilizado = Money::normalize($sumPendingWeb + $sumDev);
 
-        $totalApply = $this->money(
+        $totalApply = Money::normalize(
             $sumPayments + $totalNoContabilizado
         );
 
         $saldoBase = $montoOriginalFactura;
 
-        $saldoDisponibleGp = $this->money(
+        $saldoDisponibleGp = Money::normalize(
             max($saldoBase - $totalApply, 0)
         );
 
         $saldoDisponible = $saldoDisponibleGp;
 
         if ($saldoActualFactura !== null) {
-            $saldoDisponibleDraft = $this->money(
+            $saldoDisponibleDraft = Money::normalize(
                 max($saldoActualFactura - $totalNoContabilizado, 0)
             );
-            $saldoDisponible = $this->money(
+            $saldoDisponible = Money::normalize(
                 min($saldoDisponibleGp, $saldoDisponibleDraft)
             );
         }
 
-        $priceRecommend = $this->money(
+        $priceRecommend = Money::normalize(
             min($valorIngresado, $saldoDisponible)
         );
 
-        $excessValue = $this->money(
+        $excessValue = Money::normalize(
             max($valorIngresado - $saldoDisponible, 0)
         );
 
@@ -849,6 +886,17 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             ->all();
     }
 
+    protected function filterGroupDocumentsToPostPayments(SupportCollection $payments): array
+    {
+        return $payments
+            ->pluck('numeroRecibo')
+            ->map(fn($doc) => trim((string) $this->formatReceiptNumber($doc)))
+            ->filter(fn($doc) => !empty($doc))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
 
     protected function filterGroupReceiptNumbers(SupportCollection $payments): array
     {
@@ -914,22 +962,23 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
             ->values();
 
         return [
-            'total'   => $this->money($details->sum('monto')),
+            'total'   => Money::normalize($details->sum('monto')),
             'details' => $details,
         ];
-    }
-
-    protected function money(int|float|string|null $value, int $decimals = 2): float
-    {
-        if ($value === null || trim((string) $value) === '') {
-            return 0.00;
-        }
-        return round((float) $value, $decimals);
     }
 
     protected function getPaymentApplyGp(string $documento, string $ruc)
     {
         $resp = $this->api->getListCustomerPaymentApply([
+            'documento' => $documento,
+            'ruc'       => $ruc
+        ]);
+        return data_get($resp, 'data', []);
+    }
+
+    protected function getPaymentPendingGp(string $documento, string $ruc)
+    {
+        $resp = $this->api->getPendingAccountingDocument([
             'documento' => $documento,
             'ruc'       => $ruc
         ]);
@@ -1053,19 +1102,19 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
 
                 'monto_original_factura'       => $this->getInvoiceOriginalAmount($item),
                 'saldo_cliente'                => $this->getInvoiceCustomerBalance($item),
-                'valor_a_aplicar'              => $this->money($valorIngresado),
+                'valor_a_aplicar'              => Money::normalize($valorIngresado),
 
-                'sum_payments_gp'              => $this->money(data_get($validation, 'sumPayments', 0)),
-                'sum_pending_web'              => $this->money(data_get($validation, 'sumPendingWeb', 0)),
-                'sum_devolutions'              => $this->money(data_get($validation, 'sumDevolutions', 0)),
-                'total_apply'                  => $this->money(data_get($validation, 'totalApply', 0)),
+                'sum_payments_gp'              => Money::normalize(data_get($validation, 'sumPayments', 0)),
+                'sum_pending_web'              => Money::normalize(data_get($validation, 'sumPendingWeb', 0)),
+                'sum_devolutions'              => Money::normalize(data_get($validation, 'sumDevolutions', 0)),
+                'total_apply'                  => Money::normalize(data_get($validation, 'totalApply', 0)),
 
-                'saldo_factura'                => $this->money(data_get($validation, 'saldoFactura', 0)),
-                'saldo_base'                   => $this->money(data_get($validation, 'saldoBase', 0)),
-                'saldo_disponible'             => $this->money(data_get($validation, 'saldoDisponible', 0)),
-                'total_pending_not_accounted'  => $this->money(data_get($validation, 'totalPendingNotAccounted', 0)),
-                'excess_value'                 => $this->money(data_get($validation, 'excessValue', 0)),
-                'price_recommend'              => $this->money(data_get($validation, 'priceRecommend', 0)),
+                'saldo_factura'                => Money::normalize(data_get($validation, 'saldoFactura', 0)),
+                'saldo_base'                   => Money::normalize(data_get($validation, 'saldoBase', 0)),
+                'saldo_disponible'             => Money::normalize(data_get($validation, 'saldoDisponible', 0)),
+                'total_pending_not_accounted'  => Money::normalize(data_get($validation, 'totalPendingNotAccounted', 0)),
+                'excess_value'                 => Money::normalize(data_get($validation, 'excessValue', 0)),
+                'price_recommend'              => Money::normalize(data_get($validation, 'priceRecommend', 0)),
 
                 'has_excess'                   => (bool) data_get($validation, 'hasExcess', false),
                 'has_double_apply'             => (bool) data_get($validation, 'hasDoubleApply', false),
@@ -1087,7 +1136,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                             data_get($payment, 'numeroRecibo')
                         ),
                         'estado'           => data_get($payment, 'estado'),
-                        'monto'            => $this->money(
+                        'monto'            => Money::normalize(
                             data_get($payment, 'montoAplicado', 0)
                         ),
                         'fecha_documento'  => null,
@@ -1111,7 +1160,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 'documento'         => data_get($payment, 'documentoCobro'),
                 'numero_recibo'     => $this->formatReceiptNumber(data_get($payment, 'numeroRecibo')),
                 'estado'            => null,
-                'monto'             => $this->money(data_get($payment, 'valorCobro', data_get($payment, 'collectionAmount', 0))),
+                'monto'             => Money::normalize(data_get($payment, 'valorCobro', data_get($payment, 'collectionAmount', 0))),
                 'fecha_documento'   => data_get($payment, 'documentoFecha'),
                 'fecha_aplicacion'  => data_get($payment, 'fechaAplicacion'),
             ];
@@ -1139,7 +1188,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 'codigo_tipo_pago'  => null,
                 'documento'         => $factura,
                 'numero_recibo'     => $this->formatReceiptNumber($numeroRecibo),
-                'monto'             => $this->money(data_get($item, $amountField, 0)),
+                'monto'             => Money::normalize(data_get($item, $amountField, 0)),
                 'fecha_documento'   => data_get($item, 'created_at')
                     ? Carbon::parse(data_get($item, 'created_at'))->toDateString()
                     : null,
@@ -1159,7 +1208,7 @@ class CustomerPaymentApplicationService implements CustomerPaymentApplicationSer
                 'documento'         => data_get($dev, 'DOC_GENERADO'),
                 'numero_recibo'     => data_get($dev, 'devolucion'),
                 'estado'            => data_get($dev, 'estado'),
-                'monto'             => $this->money(data_get($dev, 'total', 0)),
+                'monto'             => Money::normalize(data_get($dev, 'total', 0)),
 
                 'fecha_documento'   => data_get($dev, 'created_at')
                     ? Carbon::parse(data_get($dev, 'created_at'))->toDateString()

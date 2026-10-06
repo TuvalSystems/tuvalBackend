@@ -122,29 +122,34 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         $det = new GpCotizacionDetalle();
         $det->fill([
-            'cotizacion_id'                 => $cotizacionId,
-            'ART_CODIGO'                    => $item['ART_CODIGO'],
-            'ART_DESCRIPCION'               => trim(str_replace('  ', ' ', $item['ART_DESCRIPCION'])),
-            'ART_DESCRIPCION_ORIGINAL'      => $item['ART_DESCRIPCION_ORIGINAL'],
-            'CHECK_ALTERNATIVO'             => $item['CHECK_ALTERNATIVO'] ?? 0,
-            'ART_CODIGO_TRES_LETRAS'        => $item['ART_CODIGO_TRES_LETRAS'],
-            'ART_DECIMAL_CANTIDAD'          => (int) $item['ART_DECIMAL_CANTIDAD'],
-            'ART_PLAN_UMEDIDA'              => $item['ART_PLAN_UMEDIDA'],
-            'ART_MARCA'                     => $item['ART_MARCA'],
-            'ART_MATERIAL'                  => $item['ART_MATERIAL'],
-            'ART_PESO'                      => $item['ART_PESO'],
-            'ART_TIPO_COMPRA'               => $item['ART_TIPO_COMPRA'],
-            'ART_VALOR'                     => (float) $item['ART_VALOR'],
-            'ART_VALOR_ORIGINAL'            => (float) $item['ART_VALOR_ORIGINAL'],
-            'ART_DESCUENTO'                 => (float) $item['ART_DESCUENTO'],
-            'ART_IVA'                       => (float) $item['ART_IVA'],
-            'ART_CANTIDAD'                  => (float) $totalLines,
-            'ART_STOCK'                     => (float) $item['ART_STOCK'],
-            'ART_IMP_VTA'                   => (float) $item['ART_IMP_VTA'],
-            'ART_COSTO_PROMEDIO'            => (float) $item['ART_COSTO_PROMEDIO'],
-            'descuento'                     => (float) $item['descuento'],
-            'descuento_original'            => (float) $item['descuento_original'],
-            'modificador'                   => (float) $item['modificador'],
+            'cotizacion_id'                     => $cotizacionId,
+            'ART_CODIGO'                        => data_get($item, 'ART_CODIGO'),
+            'ART_DESCRIPCION'                   => trim(str_replace('  ', ' ', data_get($item, 'ART_DESCRIPCION'))),
+            'ART_DESCRIPCION_ORIGINAL'          => data_get($item, 'ART_DESCRIPCION_ORIGINAL'),
+            'CHECK_ALTERNATIVO'                 => data_get($item, 'CHECK_ALTERNATIVO', 0),
+            'ART_CODIGO_TRES_LETRAS'            => data_get($item, 'ART_CODIGO_TRES_LETRAS'),
+            'ART_DECIMAL_CANTIDAD'              => (int) data_get($item, 'ART_DECIMAL_CANTIDAD'),
+            'ART_PLAN_UMEDIDA'                  => data_get($item, 'ART_PLAN_UMEDIDA'),
+            'ART_MARCA'                         => data_get($item, 'ART_MARCA'),
+            'ART_MATERIAL'                      => data_get($item, 'ART_MATERIAL'),
+            'ART_PESO'                          => data_get($item, 'ART_PESO'),
+            'ART_TIPO_COMPRA'                   => data_get($item, 'ART_TIPO_COMPRA'),
+            'ART_VALOR'                         => (float) data_get($item, 'ART_VALOR'),
+            'ART_VALOR_ORIGINAL'                => (float) data_get($item, 'ART_VALOR_ORIGINAL'),
+            'ART_DESCUENTO'                     => (float) data_get($item, 'ART_DESCUENTO'),
+            'ART_IVA'                           => (float) data_get($item, 'ART_IVA'),
+            'ART_CANTIDAD'                      => (float) $totalLines,
+            'ART_STOCK'                         => (float) data_get($item, 'ART_STOCK'),
+            'ART_IMP_VTA'                       => (float) data_get($item, 'ART_IMP_VTA'),
+            'ART_COSTO_PROMEDIO'                => (float) data_get($item, 'ART_COSTO_PROMEDIO'),
+            'descuento'                         => (float) data_get($item, 'descuento'),
+            'descuento_original'                => (float) data_get($item, 'descuento_original'),
+            'modificador'                       => (float) data_get($item, 'modificador'),
+            'cod_categoria'                     => data_get($item, 'cod_categoria'),
+            'cod_linea'                         => data_get($item, 'cod_linea'),
+            'cod_clase'                         => data_get($item, 'cod_clase'),
+            'resultado_configuracion_item_l'    => data_get($item, 'resultado_configuracion_item_l'),
+
         ]);
         return $det;
     }
@@ -362,6 +367,11 @@ class QuotationBuilder implements QuotationBuilderInterface
             'modificador'                   => (float)data_get($articles, 'modificador'),
             'valor_original_l'              => (float)data_get($articles, 'valor_original_l', 0),
             'validador_l'                   => data_get($articles, 'validador_l', false),
+            'cod_categoria'                 => data_get($articles, 'cod_categoria'),
+            'cod_linea'                     => data_get($articles, 'cod_linea'),
+            'cod_clase'                     => data_get($articles, 'cod_clase'),
+            'resultado_configuracion_item_l' => data_get($articles, 'resultado_configuracion_item_l'),
+
         ]);
 
         return $qd;
@@ -464,30 +474,35 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         $qd = new GpCotizacionDetalle();
         $qd->fill([
-            'cotizacion_id'                 => $quoteId,
-            'ART_CODIGO'                    => data_get($art, 'ART_CODIGO'),
-            'ART_DESCRIPCION'               => data_get($art, 'ART_DESCRIPCION'),
-            'ART_DESCRIPCION_ORIGINAL'      => data_get($art, 'ART_DESCRIPCION'),
-            'CHECK_ALTERNATIVO'             => data_get($art, 'CHECK_ALTERNATIVO', 0),
-            'ART_CODIGO_TRES_LETRAS'        => data_get($art, 'ART_CODIGO_TRES_LETRAS'),
-            'ART_DECIMAL_CANTIDAD'          => data_get($art, 'ART_DECIMAL_CANTIDAD'),
-            'ART_PLAN_UMEDIDA'              => data_get($art, 'ART_PLAN_UMEDIDA'),
-            'ART_MARCA'                     => data_get($art, 'ART_MARCA'),
-            'ART_MATERIAL'                  => data_get($art, 'ART_MATERIAL'),
-            'ART_PESO'                      => data_get($art, 'ART_PESO'),
-            'ART_TIPO_COMPRA'               => data_get($art, 'ART_TIPO_COMPRA'),
-            'ART_VALOR'                     => (float)data_get($art, 'ART_VALOR'),
-            'ART_VALOR_ORIGINAL'            => (float)data_get($art, 'ART_VALOR_ORIGINAL'),
-            'ART_DESCUENTO'                 => 0,
-            'ART_IVA'                       => (float)data_get($art, 'ART_IMP_VTA'),
-            'ART_CANTIDAD'                  => (float) round(data_get($art, 'ART_CANTIDAD'), (int)data_get($art, 'ART_DECIMAL_CANTIDAD')),
-            'ART_STOCK'                     => data_get($art, 'ART_STOCK', 0),
-            'ART_IMP_VTA'                   => (float)data_get($art, 'ART_IMP_VTA'),
-            'ART_COSTO_PROMEDIO'            => (float)data_get($art, 'ART_COSTO_PROMEDIO'),
-            'descuento'                     => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
-            'descuento_original'            => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
-            'modificador'                   => 0,
-            'valor_original_l'              => 0,
+            'cotizacion_id'                     => $quoteId,
+            'ART_CODIGO'                        => data_get($art, 'ART_CODIGO'),
+            'ART_DESCRIPCION'                   => data_get($art, 'ART_DESCRIPCION'),
+            'ART_DESCRIPCION_ORIGINAL'          => data_get($art, 'ART_DESCRIPCION'),
+            'CHECK_ALTERNATIVO'                 => data_get($art, 'CHECK_ALTERNATIVO', 0),
+            'ART_CODIGO_TRES_LETRAS'            => data_get($art, 'ART_CODIGO_TRES_LETRAS'),
+            'ART_DECIMAL_CANTIDAD'              => data_get($art, 'ART_DECIMAL_CANTIDAD'),
+            'ART_PLAN_UMEDIDA'                  => data_get($art, 'ART_PLAN_UMEDIDA'),
+            'ART_MARCA'                         => data_get($art, 'ART_MARCA'),
+            'ART_MATERIAL'                      => data_get($art, 'ART_MATERIAL'),
+            'ART_PESO'                          => data_get($art, 'ART_PESO'),
+            'ART_TIPO_COMPRA'                   => data_get($art, 'ART_TIPO_COMPRA'),
+            'ART_VALOR'                         => (float)data_get($art, 'ART_VALOR'),
+            'ART_VALOR_ORIGINAL'                => (float)data_get($art, 'ART_VALOR_ORIGINAL'),
+            'ART_DESCUENTO'                     => 0,
+            'ART_IVA'                           => (float)data_get($art, 'ART_IMP_VTA'),
+            'ART_CANTIDAD'                      => (float) round(data_get($art, 'ART_CANTIDAD'), (int)data_get($art, 'ART_DECIMAL_CANTIDAD')),
+            'ART_STOCK'                         => data_get($art, 'ART_STOCK', 0),
+            'ART_IMP_VTA'                       => (float)data_get($art, 'ART_IMP_VTA'),
+            'ART_COSTO_PROMEDIO'                => (float)data_get($art, 'ART_COSTO_PROMEDIO'),
+            'descuento'                         => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
+            'descuento_original'                => (float)data_get($cliente, 'CLI_DSTO_COMERCIAL'),
+            'modificador'                       => 0,
+            'valor_original_l'                  => 0,
+            'cod_categoria'                     => data_get($art, 'cod_categoria'),
+            'cod_linea'                         => data_get($art, 'cod_linea'),
+            'cod_clase'                         => data_get($art, 'cod_clase'),
+            'resultado_configuracion_item_l'    => data_get($art, 'resultado_configuracion_item_l'),
+
         ]);
         $qd->save();
     }
@@ -569,7 +584,7 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-    public function formPayloadHistoryDetailQuote(int $cotId,int $detId, int $hCotId, GpCotizacionDetalle $detail): HiCotizacionDetalle
+    public function formPayloadHistoryDetailQuote(int $cotId, int $detId, int $hCotId, GpCotizacionDetalle $detail): HiCotizacionDetalle
     {
         $nHDetail = new HiCotizacionDetalle();
         $nHDetail->fill([
@@ -599,7 +614,11 @@ class QuotationBuilder implements QuotationBuilderInterface
             'descuento_original'            => $detail->descuento_original,
             'modificador'                   => $detail->modificador,
             'valor_original_l'              => $detail->valor_original_l,
-            'validador_l'                   => $detail->validador_l
+            'validador_l'                   => $detail->validador_l,
+            'cod_categoria'                 => $detail->cod_categoria,
+            'cod_linea'                     => $detail->cod_linea,
+            'cod_clase'                     => $detail->cod_clase,
+            'resultado_configuracion_item_l'=> $detail->resultado_configuracion_item_l,
         ]);
         return $nHDetail;
     }

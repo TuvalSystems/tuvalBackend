@@ -167,6 +167,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'items.*.cod_linea'             => ['nullable', 'string'],
             'items.*.cod_clase'             => ['nullable', 'string'],
             'items.*.nivel'                 => ['nullable', 'integer'],
+            'items.*.resultado_configuracion_item_l'   => ['nullable', 'string'],
 
             'items.*.tipo'                      => ['nullable', 'string', 'max:50'],
             'items.*.ART_IMP_VTA'               => ['nullable', 'numeric'],
@@ -175,7 +176,6 @@ class ValidateStoreQuotationRequest extends FormRequest
             'items.*.valor_original_l'          => ['nullable', 'numeric'],
             'items.*.imagenes'                  => ['nullable', 'array'],
             'items.*.imagenes.*'                => ['nullable', 'string'],
-
 
             'items.*.stock'                 => ['nullable', 'array'],
             'items.*.proveedores'           => ['nullable', 'array'],

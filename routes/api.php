@@ -378,6 +378,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('articulos')->group(function () {
                 Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
                 Route::post('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
+                  Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
             });
         });
         Route::group(['prefix' => 'consultas'], function () {
@@ -385,8 +386,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('territorios', [ConsultasController::class, 'territorios']);
             Route::get('puntodeventacaja', [ConsultasController::class, 'puntodeventacaja']);
             Route::get('cupodisponible/{ruc}', [ConsultasController::class, 'cupodisponible']);
-            Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
-            Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
+            // Route::post('buscararticulo', [ConsultasController::class, 'buscararticulo']);
+            // Route::post('buscarcliente', [ConsultasController::class, 'buscarcliente']);
             Route::post('consultarstock', [ConsultasController::class, 'consultarstock']);
             Route::post('consulta-stock-transito', [ConsultasController::class, 'consultaItemTransito']);
             Route::post('stock-exposicion', [ConsultasController::class, 'consultaStockExposicion']);
@@ -402,6 +403,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
             Route::post('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
             Route::post('articulos/lista', [ConsultasController::class, 'buscarArticuloWeb']);
+            Route::post('articulos/item-l', [ConsultasController::class, 'buscarArticuloL']);
         });
 
         Route::group(['prefix' => 'aprobaciones'], function () {
@@ -567,6 +569,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
         Route::group(['prefix' => 'admin'], function () {
             Route::post('lista-logs', [AdminController::class, 'ListaLogs']);
+            Route::get('detalle-logs/{id}', [AdminController::class, 'obtenerDetalleLog']);
             Route::post('app/versions/list', [AppController::class, 'index']);
             Route::post('app/versions', [AppController::class, 'store']);
             Route::patch('app/versions/{id}/active', [AppController::class, 'active']);

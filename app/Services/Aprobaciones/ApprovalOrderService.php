@@ -4,6 +4,7 @@ namespace App\Services\Aprobaciones;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\aprobacion\GpReglaAprobacion;
+use App\Models\GpCliente;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPedido;
@@ -13,6 +14,7 @@ use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
 use App\Models\GpUsuario;
 use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Ventas\Cotizaciones\HiCotizacion;
 use App\Notifications\User\UserNotification;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\ApiGpService;
@@ -114,7 +116,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         }
 
         $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->firstOrFail();
-        $motivosDetalle = $this->validateOrdersDetailToApprove($data['items'], $ptoVenta, $dsctGlobalCliente);
+        $motivosDetalle = $this->validateOrdersDetailToApprove($data['items'], $ptoVenta, $dsctGlobalCliente, $quoteOrigin?->id);
         if (!empty($motivosDetalle)) {
             $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
         }
@@ -122,13 +124,17 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         return $this->approvalFuntions->finalizeApprovalReasons($motivosAprobacionComercial);
     }
 
-    protected function validateOrdersDetailToApprove(array $detalles, GpPuntoVenta $ptoVta, float $dsctGlobalCliente): array
+    protected function validateOrdersDetailToApprove(array $detalles, GpPuntoVenta $ptoVta, float $dsctGlobalCliente, ?int $quotationId = null): array
     {
         $detailMotivos = [];
 
         // Pre-cargar detalles de BD
         $ids = collect($detalles)->pluck('detalle_id')->filter();
         $dbDetails = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+        $approvedHistory = $quotationId ? HiCotizacion::with(['detalles', 'detalleProveedores'])
+            ->where('cot_id', $quotationId)
+            ->where('aprobado_comercial', 'yes')
+            ->orderByDesc('co_his')->orderByDesc('id')->first() : null;
 
         foreach ($detalles as $detalle) {
             $detailId = data_get($detalle, 'detalle_id');
@@ -216,10 +222,19 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                     }
                 }
 
-                /** validacion del precio total del proveedor <= precio de $300 */
+                // Comparar con la última versión aprobada, aunque la cotización se haya guardado después.
                 $providersDetail = data_get($detalle, 'proveedores', []);
                 foreach ($providersDetail as $provider) {
                     $valorProvider = round(data_get($provider, 'TOTAL', 0), 4);
+                    $totalApproved = $this->getApprovedProviderTotal($approvedHistory, $detalle, $provider, $detalles);
+                    if ($totalApproved !== null) {
+                        if ($valorProvider < $totalApproved) {
+                            $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                                "El valor total del proveedor ({$valorProvider}) disminuyó respecto al aprobado en la cotización ({$totalApproved})."
+                            );
+                        }
+                        continue;
+                    }
                     if ($valorProvider < 300) {
                         $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
                             "El valor total del proveedor ({$valorProvider}) está por debajo del límite permitido de $300."
@@ -230,6 +245,36 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         }
 
         return $detailMotivos;
+    }
+
+    protected function getApprovedProviderTotal(?HiCotizacion $history, array $detail, array $provider, array $details): ?float
+    {
+        if (!$history || !data_get($provider, 'ID_PROVEEDOR')) {
+            return null;
+        }
+
+        $detailId = data_get($detail, 'detalle_id');
+        $historicalDetails = $history->detalles->where('det_id', $detailId);
+        if (!$detailId || $historicalDetails->isEmpty()) {
+            // Al guardar la cotización se recrean los IDs. Usar el artículo solo si es inequívoco.
+            $article = trim((string) data_get($detail, 'ART_CODIGO', ''));
+            if ($article === '' || collect($details)->filter(fn($row) => trim((string) data_get($row, 'ART_CODIGO', '')) === $article)->count() !== 1) {
+                return null;
+            }
+            $historicalDetails = $history->detalles->filter(fn($row) => trim((string) $row->ART_CODIGO) === $article);
+        }
+        if ($historicalDetails->count() !== 1) {
+            return null;
+        }
+
+        $providers = $history->detalleProveedores
+            ->where('hi_cot_det_id', $historicalDetails->first()->id)
+            ->where('ID_PROVEEDOR', data_get($provider, 'ID_PROVEEDOR'));
+        if ($providers->count() !== 1 || !is_numeric($providers->first()->TOTAL)) {
+            return null;
+        }
+
+        return round((float) $providers->first()->TOTAL, 4);
     }
 
     /** funcion de validacion de stock de articulos de pedidos  */
@@ -937,12 +982,16 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     public function accountStatusClient(int $id): array
     {
         $order = GpPedido::findOrFail($id);
+        $client = GpCliente::where('id', $order->cliente_id)
+            ->select(['id', 'CLI_RUC', 'CLI_RAZON_SOCIAL', 'CLI_DIA_GRACIA_CHEQUE_A_FECHA'])
+            ->first();
         return [
             'pedido'                            => $order,
             'cupoDisponible'                    => $this->functionService->getClientCheckAvailableQuota($order->CLI_RUC),
             'documentosVencidos'                => $this->functionService->getListClientDocumentExpired($order->CLI_RUC),
             'documentosSinSoporte'              => $this->functionService->getListClientDocumentWithoutSupport($order->CLI_RUC),
             'pendiente_aprobacion_comercial'    => $this->approvalFuntions->validatePendingCommercialApproval($order),
+            'cliente'                           => $client
         ];
     }
 

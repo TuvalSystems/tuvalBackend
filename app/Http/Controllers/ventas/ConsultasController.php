@@ -4,25 +4,19 @@ namespace App\Http\Controllers\ventas;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCaja;
-use App\Models\GpCliente;
-use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpPuntoVenta;
 use App\Models\GpTerritorio;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Models\GpGrupoCliente;
 use App\Models\GpPedidoDetalle;
-use App\Models\GpClienteSucursal;
 use App\Models\GpSubGrupoCliente;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\File;
 use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Http\Controllers\FuncionesController;
-use App\Http\Controllers\WebserviceController;
 use App\Http\Requests\Venta\Consultas\BusquedaArticuloRequest;
-use App\Models\Articulos\GpArticulo;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\reposicion\GpTrasladosReposicion;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
@@ -42,178 +36,32 @@ class ConsultasController extends Controller
         protected readonly ClientQueryServiceInterface $clientService
     ) {}
 
-    public function buscararticulo(Request $request): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
-    {
-        $busqueda = $request->validate([
-            'puntodeventaselect' => '',
-            'nivel_precio' => '',
-            'codigo3l' => '',
-            'text_codigo' => '',
-            'select_codigo' => '',
-            'select_nombre' => '',
-            'text_nombre' => '',
-            'terminal' => '',
-        ]);
-        if (isset($busqueda['puntodeventaselect']) && $busqueda['puntodeventaselect'] != '') {
-
-            $funciones = new FuncionesController();
-            $clave = false;
-
-            if (
-                strtolower($busqueda['codigo3l']) == 'item l' || strtolower($busqueda['codigo3l']) == 'items l' ||
-                strtolower($busqueda['text_codigo']) == 'item l' || strtolower($busqueda['text_codigo']) == 'items l' ||
-                strtolower($busqueda['text_nombre']) == 'item l' || strtolower($busqueda['text_nombre']) == 'items l' ||
-                strtolower($busqueda['terminal']) == 'item l' || strtolower($busqueda['terminal']) == 'items l' ||
-                strtolower($busqueda['terminal']) == 'l'
-            ) {
-                $articulosL = GpArticulo::busquedaitemsl($busqueda);
-                $articulos = array();
-                foreach ($articulosL as $key => $articulo) {
-                    // $articulo->disponible = $funciones->checkarticulodisponible($articulo);
-                    // if (!$articulo->disponible) {
-                    //     unset($articulosL[$key]);
-                    //     continue;
-                    // }
-                    $articulos[] = $articulo;
-
-                    // if (count($articulos) == 10)
-                    //     break;
-                }
-
-                $clave = true;
-            } else {
-                $articulos = GpArticulo::busqueda($busqueda);
-            }
-
-
-
-
-            if (!count($articulos)) {
-                return response([
-                    'error' => 'No existen resultados'
-                ], 409);
-            }
-
-
-
-            $consulta_precio = array();
-            foreach ($articulos as $articulo) {
-
-                if ($articulo->ART_CLASE_ARTICULO != 'VTA-SERV-L' && $articulo->ART_CLASE_ARTICULO != 'VTA-BNS-L') {
-                    $consulta_precio[] = array(
-                        'ART_CODIGO' => $articulo->ART_CODIGO,
-                    );
-                }
-            }
-
-            if (!$clave)
-                $articulos = $articulos->values();
-
-            $webservices = new WebserviceController;
-            $precios = $webservices->listaprecios($consulta_precio);
-            $lista_precios_general = array();
-            foreach ($precios as $precio) {
-                $lista_precios_general[$precio['LST_PRC_ARTICULO']][$precio['LST_PRC_ID']] = $precio;
-            }
-
-            foreach ($articulos as $key => $articulo) {
-
-                if (!$clave) {
-                    $articulo->disponible = $funciones->checkarticulodisponible($articulo);
-                    if (!$articulo->disponible) {
-                        unset($articulos[$key]);
-                        continue;
-                    }
-                }
-
-
-                if ($articulo->ART_CLASE_ARTICULO == 'VTA-SERV-L' || $articulo->ART_CLASE_ARTICULO == 'VTA-BNS-L') {
-                    $articulo->ART_TIPO_COMPRA = 'L';
-                }
-                if (isset($busqueda['nivel_precio'])) {
-
-                    if (isset($lista_precios_general[$articulo->ART_CODIGO])) {
-                        $articulo->ART_VALOR = (float) number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
-                        $articulo->ART_VALOR_ORIGINAL = (float) number_format($lista_precios_general[$articulo->ART_CODIGO][$busqueda['nivel_precio']]['LST_PRC_VALOR'], 4, '.', '');
-                    } else {
-                        $articulo->ART_VALOR = 0;
-                        $articulo->ART_VALOR_ORIGINAL = 0;
-                    }
-                    $articulo->ART_DESCRIPCION_ORIGINAL = $articulo->ART_DESCRIPCION;
-                } else {
-                    unset($lista_precios_general[$articulo->ART_CODIGO]['LST_PRC_ARTICULO']);
-                    unset($lista_precios_general[$articulo->ART_CODIGO]['LST_PRC_AUTENTIFICACION']);
-                    unset($lista_precios_general[$articulo->ART_CODIGO]['LST_PRC_MONEDA']);
-
-                    if (isset($lista_precios_general[$articulo->ART_CODIGO])) {
-                        $articulo->precios = $lista_precios_general[$articulo->ART_CODIGO];
-                    } else {
-                        $articulo->precios = array();
-                    }
-                }
-
-                $articulo->proveedores = array();
-                $articulo->descuento = 0;
-                $articulo->descuento_original = 0;
-                $articulo->modificador = 0;
-                $imagenes = array();
-
-                for ($i = 1; $i <= 3; $i++) {
-                    $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-
-                    if (File::exists($file)) {
-                        $imagenes[] = env('APP_URL') . '/' . $file;
-                    }
-                }
-
-                $articulo->imagenes = $imagenes;
-            }
-            if (!$clave)
-                $articulos = $articulos->values();
-
-            // Filtrar artículos que no tienen valor y los quita y solo muestra los que si tienen valor
-            // $articulos = $articulos->filter(function ($articulo) {
-            //     return $articulo->ART_VALOR > 0;
-            // })->values();
-
-            return response([
-                'success' => true,
-                'articulos' => $articulos
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al buscar'
-            ], 409);
-        }
-    }
-
     public function buscarArticuloWeb(BusquedaArticuloRequest $request): JsonResponse
     {
-        try {
+        return $this->handleApiAction(function () use ($request) {
             $data = $this->inventoryService->searchWithDetails($request->validated());
             return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+        }, 'cotizaciones', 'buscarArticuloWeb');
+    }
+
+    public function buscarArticuloL(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $items      = $request->input('items', []);
+            $porcentaje = $request->input('porcentaje');
+            $articulo   = $this->inventoryService->findAvailableTypeLArticle($items, $porcentaje);
+            return $this->successResponse('Información Obtenida correctamente.!', $articulo);
+        }, 'cotizaciones', 'buscarArticuloL');
     }
 
 
     public function consultarstock(Request $request): JsonResponse
     {
-        $data = $request->all();
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data = $request->all();
             $st = $this->inventoryService->getConsultStock($data);
             return $this->successResponse('Stock obtenido correctamente', $st, 200);
-        } catch (\Throwable $e) {
-            Log::error('Error al consultar Stock (getConsultStock)', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'data' => $data
-            ]);
-            return $this->buildErrorResponse('Stock insuficiente', 500);
-        }
+        }, 'cotizaciones', 'buscarArticuloL');
     }
 
 
@@ -312,58 +160,6 @@ class ConsultasController extends Controller
         return response(
             $stock_general
         );
-    }
-
-    public function buscarcliente(Request $request): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
-    {
-        $data = $request->validate([
-            'busqueda' => '',
-            'tipo' => '',
-        ]);
-        $busqueda = $data['busqueda'];
-        if (isset($busqueda) && $busqueda != '') {
-            $buscar = '%' . str_replace(' ', '%', $busqueda) . '%';
-
-
-
-            $clientes = GpCliente::where('CLI_RUC', '!=', '9999999999999')
-                ->where('CLI_RUC', 'LIKE', $buscar)
-                ->orWhere('CLI_RAZON_SOCIAL', 'LIKE', $buscar)
-                ->orWhere('CLI_NOMBRE_CORTO', 'LIKE', $buscar)
-                ->orWhere('CLI_CORREO_ELECT_SRI', 'LIKE', $buscar)
-                ->limit(100)
-                ->get();
-
-            foreach ($clientes as $key => $cliente) {
-
-                $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-                $cliente->vendedor = $vendedor;
-
-                $sucursales = GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
-                    ->where('CLI_SUC_RUC', $cliente->CLI_RUC)->where('estado', 1);
-                // if ($data['tipo'] !== 'consulta') {
-                //     $sucursales->where('gp_cliente_sucursals.estado', 1);
-                // }
-                $sucursales = $sucursales->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
-                    ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC')
-                    ->get();
-
-                $cliente->sucursales = $sucursales;
-                $cliente->sucursalesfacturacion = $sucursales;
-            }
-
-            $clientes = $clientes->toArray();
-            $clientes = array_values($clientes);
-
-            return response([
-                'success' => true,
-                'clientes' => $clientes
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al buscar'
-            ], 409);
-        }
     }
 
     public function buscarClientes(Request $request)

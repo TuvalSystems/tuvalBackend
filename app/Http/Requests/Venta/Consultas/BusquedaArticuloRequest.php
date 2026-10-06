@@ -31,7 +31,7 @@ class BusquedaArticuloRequest extends FormRequest
             'select_codigo'         => 'nullable|string',
             'select_nombre'         => 'nullable|string',
             'text_nombre'           => 'nullable|string',
-            'terminal'              => 'nullable|string',
+            // 'terminal'              => 'nullable|boolean',
         ];
     }
 

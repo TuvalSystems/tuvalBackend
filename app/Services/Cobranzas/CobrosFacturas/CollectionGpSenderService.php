@@ -30,9 +30,11 @@ use App\Notifications\User\UserNotification;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Builders\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationBuilderInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
+use App\Supports\Money;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class CollectionGpSenderService implements CollectionGpSenderServiceInterface
@@ -44,6 +46,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
     private const SYNC_LOG_MODULE = 'CollectionGpSenderService';
     private const SYNC_LOG_ACTION_PREFIX = 'enviar';
+    private const DISPATCH_RELEASE_LOG_ACTION = 'validar_liberacion_automatica_despacho';
 
     public function __construct(
         protected readonly CollectionRegistrationBuilderInterface $collectBuilder,
@@ -105,7 +108,6 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         } finally {
             $lock->release();
         }
-
     }
 
 
@@ -708,8 +710,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         array $headerPayload,
         array $invoiceDatailPayload,
         ?int $paymentRecordId = null
-    )
-    {
+    ) {
         $payload = [
             'cabecera'  => $headerPayload,
             'detalle'   => $invoiceDatailPayload
@@ -731,8 +732,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         array $header,
         array $detail,
         ?int $paymentRecordId = null
-    )
-    {
+    ) {
         $payload = [
             'cabecera'  => $header,
             'detalle'   => $detail
@@ -756,8 +756,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         array $check,
         array $detail,
         ?int $paymentRecordId = null
-    )
-    {
+    ) {
         $payload = [
             'cabecera' => $header,
             'cheques'  => $check,
@@ -780,8 +779,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         string $paymentMethod,
         array $applicationPayload,
         ?int $paymentRecordId = null
-    )
-    {
+    ) {
         return $this->sendGpApiRequest(
             $collection,
             $paymentMethod,
@@ -1153,16 +1151,16 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
 
 
     /** funcion para verificar si libera o no ordenes de despacho */
-    private function checkValidateDispatchInvoice(int $collectionId): void
+    public function checkValidateDispatchInvoice(int $collectionId): void
     {
         $collection = GpCobro::query()
-            ->select(['id', 'estado'])
+            ->select(['id', 'cliente_id', 'estado'])
             ->find($collectionId);
 
         if (!$collection || $collection->estado !== CollectionStatusEnum::ENVIADO->value) {
             return;
         }
-
+        $clientRuc = GpCliente::where('id', $collection->cliente_id)->value('CLI_RUC');
         $currentCollectionPayments = $this->getAppliedInvoicePaymentRows($collectionId);
         $invoices = $currentCollectionPayments
             ->pluck('factura')
@@ -1177,9 +1175,14 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $orders = $this->getOrdersByInvoices($invoices)
             ->keyBy(fn(GpPedido $order) => $this->normalizeInvoice($order->factura));
 
-        $paymentsByInvoice = $this->getAppliedInvoicePaymentRows(null, $invoices)
-            ->groupBy('factura')
-            ->map(fn(SupportCollection $payments) => round((float) $payments->sum('monto'), 2));
+        $appliedInvoicePayments = $this->getAppliedInvoicePaymentRows(null, $invoices);
+        $paymentsByInvoice = $appliedInvoicePayments->groupBy('factura');
+        $receiptsByCollection = GpCobro::query()
+            ->whereIn(
+                'id',
+                $appliedInvoicePayments->pluck('cobro_id')->filter()->unique()
+            )
+            ->pluck('numero_recibo', 'id');
 
         foreach ($invoices as $invoice) {
             $order = $orders->get($invoice);
@@ -1188,14 +1191,55 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 continue;
             }
 
-            $orderTotal = round((float) $order->total, 2);
-            $appliedAmount = round((float) ($paymentsByInvoice->get($invoice) ?? 0), 2);
-            $retentionTolerance = round($orderTotal * CollectionConstants::RETENTION_TOLERANCE, 2);
-            $pendingAmount = round($orderTotal - $appliedAmount, 2);
+            $dispatchOrder = $this->getPendingDispatchOrder($order->id);
 
-            if ($pendingAmount <= $retentionTolerance) {
-                $this->releaseDispatchForOrder($order->id);
+            if (!$dispatchOrder) {
+                continue;
             }
+
+            //documentos contabilizados
+            $docsPayment        = collect($this->getPaymentApplyGp($order->factura, $clientRuc));
+            $payments           = $this->filterApplicablePayments($docsPayment);
+            $sumApplyPayments   = Money::normalize($payments->sum('valorCobro'));
+            $webPayments        = $paymentsByInvoice->get($invoice, collect());
+
+            $orderTotal         = round((float) $order->total, 2);
+            $appliedAmount      = Money::normalize($webPayments->sum('monto'));
+            $retentionTolerance = round($orderTotal * CollectionConstants::RETENTION_TOLERANCE, 2);
+            $pendingAmount      = round($orderTotal - ($appliedAmount + $sumApplyPayments), 2);
+            $porcentilTolerance = (bool) ($pendingAmount <= $retentionTolerance);
+
+            $historyPayload = $this->buildDispatchReleaseHistoryPayload(
+                $collectionId,
+                $order,
+                $dispatchOrder,
+                $invoice,
+                $webPayments,
+                $payments,
+                $receiptsByCollection,
+                $orderTotal,
+                $appliedAmount,
+                $sumApplyPayments,
+                $retentionTolerance,
+                $pendingAmount,
+                $porcentilTolerance
+            );
+
+            DB::transaction(function () use (
+                $dispatchOrder,
+                $historyPayload,
+                $porcentilTolerance
+            ) {
+                if ($porcentilTolerance) {
+                    $this->releaseDispatchOrder($dispatchOrder);
+                }
+
+                $this->logDispatchReleaseValidation(
+                    $dispatchOrder,
+                    $historyPayload,
+                    $porcentilTolerance
+                );
+            });
         }
     }
 
@@ -1208,7 +1252,9 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             ->concat($this->getCashInvoicePayments($collectionId, $invoices))
             ->concat($this->getCardInvoicePayments($collectionId, $invoices))
             ->concat($this->getRetentionInvoicePayments($collectionId, $invoices))
-            ->filter(fn(array $payment) => $payment['factura'] !== null && $payment['monto'] > 0)
+            ->filter(fn(array $payment) =>
+            !blank(data_get($payment, 'factura'))
+                && data_get($payment, 'monto', 0) > 0)
             ->values();
     }
 
@@ -1379,22 +1425,143 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             ->get();
     }
 
-    private function releaseDispatchForOrder(int $orderId): void
+    private function getPendingDispatchOrder(int $orderId): ?GpOrdenDespacho
     {
-        $dispatchOrder = GpOrdenDespacho::query()
+        return GpOrdenDespacho::query()
             ->where('pedido_id', $orderId)
             ->where('estado', 'pendiente')
             ->first();
+    }
 
-        if (!$dispatchOrder) {
-            return;
-        }
-
+    private function releaseDispatchOrder(GpOrdenDespacho $dispatchOrder): void
+    {
         if (!$dispatchOrder->fecha_hora_liberacion) {
             $dispatchOrder->fecha_hora_liberacion = now()->format('Y-m-d H:i:s');
         }
 
         $dispatchOrder->estado = 'liberada';
         $dispatchOrder->save();
+    }
+
+    private function buildDispatchReleaseHistoryPayload(
+        int $collectionId,
+        GpPedido $order,
+        GpOrdenDespacho $dispatchOrder,
+        string $invoice,
+        SupportCollection $webPayments,
+        SupportCollection $gpPayments,
+        SupportCollection $receiptsByCollection,
+        float $orderTotal,
+        float $webTotal,
+        float $gpTotal,
+        float $retentionTolerance,
+        float $pendingAmount,
+        bool $released
+    ): array {
+        return [
+            'cabecera' => [
+                'cobro_id_disparador'          => $collectionId,
+                'pedido_id'                    => $order->id,
+                'pedido'                       => $order->pedido,
+                'orden_despacho_id'            => $dispatchOrder->id,
+                'orden_despacho'               => $dispatchOrder->orden,
+                'numero_factura'               => $invoice,
+                'total_pedido'                 => Money::normalize($orderTotal),
+                'total_considerado_web'        => Money::normalize($webTotal),
+                'total_considerado_api'        => Money::normalize($gpTotal),
+                'total_considerado'            => Money::normalize($webTotal + $gpTotal),
+                'porcentaje_colchon_retencion' => CollectionConstants::RETENTION_TOLERANCE,
+                'valor_colchon_retencion'      => Money::normalize($retentionTolerance),
+                'saldo_pendiente'              => Money::normalize($pendingAmount),
+                'cumple_tolerancia'            => $released,
+                'liberada'                     => $released,
+                'fecha_evaluacion'              => now()->format('Y-m-d H:i:s'),
+            ],
+            'detalle' => $webPayments
+                ->map(fn(array $payment) => [
+                    'origen'         => 'web',
+                    'documento'      => $receiptsByCollection->get(data_get($payment, 'cobro_id')),
+                    'numero_factura' => data_get($payment, 'factura', $invoice),
+                    'monto'          => Money::normalize(data_get($payment, 'monto', 0)),
+                    'metodo_pago'    => data_get($payment, 'tipo'),
+                    'cobro_id'       => data_get($payment, 'cobro_id'),
+                    'origen_id'      => data_get($payment, 'origen_id'),
+                ])
+                ->concat($gpPayments->map(fn($payment) => [
+                    'origen'            => 'gp',
+                    'documento'         => data_get($payment, 'documentoCobro')
+                        ?? data_get($payment, 'numeroRecibo'),
+                    'numero_recibo'     => data_get($payment, 'numeroRecibo'),
+                    'numero_factura'    => $invoice,
+                    'monto'             => Money::normalize(
+                        data_get($payment, 'valorCobro', data_get($payment, 'collectionAmount', 0))
+                    ),
+                    'metodo_pago'       => $this->mapGpPaymentMethod(data_get($payment, 'tipoPago')),
+                    'codigo_tipo_pago'  => data_get($payment, 'tipoPago'),
+                    'fecha_documento'   => data_get($payment, 'documentoFecha'),
+                    'fecha_aplicacion'  => data_get($payment, 'fechaAplicacion'),
+                ]))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function mapGpPaymentMethod(mixed $paymentType): string
+    {
+        return match ((int) $paymentType) {
+            1       => 'factura',
+            2       => 'pago_programado',
+            3       => 'nota_debito',
+            4       => 'cargo_financiero',
+            5       => 'reparacion_servicio',
+            6       => 'garantia',
+            7       => 'nota_credito',
+            8       => 'devolucion',
+            9       => 'pago',
+            default => 'desconocido',
+        };
+    }
+
+    private function logDispatchReleaseValidation(
+        GpOrdenDespacho $dispatchOrder,
+        array $payload,
+        bool $released
+    ): void {
+        SyncLog::create([
+            'module'      => self::SYNC_LOG_MODULE,
+            'action'      => self::DISPATCH_RELEASE_LOG_ACTION,
+            'method'      => 'checkValidateDispatchInvoice',
+            'message'     => $released
+                ? 'Orden de despacho liberada automáticamente.'
+                : 'La orden de despacho no cumple la tolerancia para liberación automática.',
+            'external_id' => $dispatchOrder->orden,
+            'local_id'    => $dispatchOrder->id,
+            'payload'     => $payload,
+            'attempts'    => 0,
+            'status'      => StatusSync::SUCCESS,
+        ]);
+    }
+
+
+    /** proceso para obtener los documentos aplicados y obtener los documentos que no son
+     * contabiliados por el web, sino por gp
+     */
+    protected function getPaymentApplyGp(string $documento, string $ruc)
+    {
+        $resp = $this->api->getListCustomerPaymentApply([
+            'documento' => $documento,
+            'ruc'       => $ruc
+        ]);
+        return data_get($resp, 'data', []);
+    }
+
+
+    protected function filterApplicablePayments(SupportCollection $payments): SupportCollection
+    {
+        return  $payments
+            ->filter(fn($payment) =>
+            // (int) data_get($payment, 'tipoPago') !== 8 &&
+            blank(data_get($payment, 'numeroRecibo', '')))
+            ->values();
     }
 }

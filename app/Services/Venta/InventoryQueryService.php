@@ -68,13 +68,13 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
 
 
-    public function getAvailableSpace($ruc)
+    public function getAvailableSpace(string $ruc)
     {
         $cliente = GpCliente::where('CLI_RUC', $ruc)->first();
         $segmento = $this->getSegmentoCliente($ruc);
         $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
 
-        $cliente->suspendido = (float) $cupoDisponible['suspendido'] ?? 0;
+        $cliente->suspendido = (float) data_get($cupoDisponible, 'suspendido', 0);
         $cliente->cupo_disponible = number_format($cupoDisponible['cupoDisponibleGp'], 2, '.', ',');
         $cliente->cupo_asignado = number_format($cupoDisponible['cupoAsignado'], 2, '.', ',');
         return [
@@ -83,7 +83,7 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         ];
     }
 
-    public function getSegmentoCliente($ruc)
+    public function getSegmentoCliente(string $ruc)
     {
         $response = $this->apiGp->fetchClientSegment([
             'ruc' => $ruc,
@@ -659,33 +659,17 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
     public function searchWithDetails(array $filters)
     {
-        $isItemL = $this->isSearchItemsL($filters);
-        $articulos = $isItemL
-            ? GpArticulo::searchItemLModel($filters)
-            : GpArticulo::searchItemModel($filters);
+        $articulos = GpArticulo::searchItemModel($filters);
 
         if ($articulos->isEmpty()) {
             return collect();
         }
-        $serviceTypes = ['VTA-SERV-L', 'VTA-BNS-L'];
-        $filtersArt = $articulos->reject(function ($art) use ($serviceTypes) {
-            return in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
-        });
-        $groupPrices = collect();
-        if ($filtersArt->isNotEmpty()) {
-            $codesApi = $filtersArt->pluck('ART_CODIGO')->implode(',') . ',';
-            $groupPrices = $this->getApiPriceArticle($codesApi);
-        }
-        $groupsByAbc = collect();
-        if ($filtersArt->isNotEmpty()) {
-            $codesList = $filtersArt->pluck('ART_CODIGO');
-            $groupsByAbc = $this->getApiSegmentsAbcItem($codesList);
-        }
-        return $articulos->map(function ($art) use ($filters,  $serviceTypes, $groupPrices, $groupsByAbc) {
-            $isService = in_array($art->ART_CLASE_ARTICULO, $serviceTypes);
-            if ($isService) {
-                $art->ART_TIPO_COMPRA = 'L';
-            }
+
+        $articleCodes = $articulos->pluck('ART_CODIGO');
+        $groupPrices = $this->getApiPriceArticle($articleCodes->implode(',') . ',');
+        $groupsByAbc = $this->getApiSegmentsAbcItem($articleCodes);
+
+        return $articulos->map(function ($art) use ($filters, $groupPrices, $groupsByAbc) {
             $art->ART_VALOR = $art->ART_VALOR ?? 0;
             $myPrice = $groupPrices->get($art->ART_CODIGO, collect());
             $nivelPrecio = data_get($filters, 'nivel_precio', null);
@@ -699,22 +683,18 @@ class InventoryQueryService implements InventoryQueryServiceInterface
                 $art->precios = $myPrice->values();
             }
             //obtencion de abc
-            $myAbc = $groupsByAbc->get($art->ART_CODIGO, collect());
-            $classAbc = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
-            $art->clasificacion_tuval = $classAbc;
-            $art->debe_resaltar = $this->shouldHighlightSegment($classAbc);
-            $art->proveedores = [];
-            $art->descuento = 0;
-            $art->descuento_original = 0;
-            $art->modificador = 0;
-            $art->imagenes = $this->getImageArticle($art->ART_CODIGO_TRES_LETRAS);
-
+            $myAbc                      = $groupsByAbc->get($art->ART_CODIGO, collect());
+            $classAbc                   = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
+            $art->clasificacion_tuval   = $classAbc;
+            $art->debe_resaltar         = $this->shouldHighlightSegment($classAbc);
+            $art->proveedores           = [];
+            $art->descuento             = 0;
+            $art->descuento_original    = 0;
+            $art->modificador           = 0;
+            $art->imagenes              = $this->getImageArticle($art->ART_CODIGO_TRES_LETRAS);
             return $art;
         })->filter(
             function ($articulo) use ($filters) {
-                if ($articulo->ART_TIPO_COMPRA === 'L') {
-                    return true;
-                }
                 if (!empty($filters['nivel_precio'])) {
                     return $articulo->ART_VALOR >= 0;
                 }
@@ -723,23 +703,27 @@ class InventoryQueryService implements InventoryQueryServiceInterface
         )->sortBy('ART_CODIGO_ZAFIRO')->values();
     }
 
-    public function isSearchItemsL(array $filters)
+    public function findAvailableTypeLArticle(
+        array $excludedArticleCodes,
+        float $taxPercentage
+    ): ?GpArticulo
     {
-        $campChecked = ['codigo3l', 'text_codigo', 'text_nombre', 'terminal'];
-        $valoresObjetivo = ['item l', 'items l', 'l'];
-
-        foreach ($campChecked as $camp) {
-            if (!isset($filters[$camp])) {
-                continue;
-            }
-
-            $normalizeCheck = strtolower(trim($filters[$camp]));
-            if (in_array($normalizeCheck, $valoresObjetivo, true)) {
-                return true;
-            }
-        }
-
-        return false;
+       $article =   GpArticulo::findAvailableTypeLArticle(
+            $excludedArticleCodes,
+            $taxPercentage
+        );
+        // $article->ART_TIPO_COMPRA         = 'L';
+        $article->ART_VALOR               = 0;
+        $article->ART_VALOR_ORIGINAL      = 0;
+        $article->ART_DESCRIPCION_ORIGINAL= $article->ART_DESCRIPCION;
+        $article->clasificacion_tuval     = '-';
+        $article->debe_resaltar           = false;
+        $article->proveedores             = [];
+        $article->descuento               = 0;
+        $article->descuento_original      = 0;
+        $article->modificador             = 0;
+        $article->imagenes                = [];
+        return $article;
     }
 
 
