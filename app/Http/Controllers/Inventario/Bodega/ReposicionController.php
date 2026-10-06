@@ -15,11 +15,13 @@ use App\Models\despachos\GpGuiaRemisionTransferencia;
 use App\Models\GpUsuario;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\Log;
 
 class ReposicionController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
+
 
 
     public function __construct(
@@ -272,5 +274,13 @@ class ReposicionController extends Controller
             ]);
             return $this->errorResponse('Error al recibir la reposicion', $e->getMessage(), 500);
         }
+    }
+
+
+    public function obtenerReposicionesPendientes(){
+        return $this->handleApiAction(function(){
+        $lista = $this->transferRepositionService->getPendingRepositions();
+        return $this->successResponse('Información Obtenida Correctamente.!', $lista);
+        }, 'stack', 'obtenerReposicionesPendientes');
     }
 }

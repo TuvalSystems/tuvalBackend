@@ -654,4 +654,5 @@ Route::group(['prefix' => 'inventario'], function () {
     Route::prefix('articulos')->group(function () {
         Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
     });
+    Route::get('reposiciones-pendientes', [ReposicionController::class, 'obtenerReposicionesPendientes']);
 });

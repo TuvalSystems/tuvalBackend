@@ -307,7 +307,6 @@ class TransferRepositionService implements TransferRepositionServiceInterface
 
             return $item;
         })->values()->all();
-
     }
 
 
@@ -487,5 +486,37 @@ class TransferRepositionService implements TransferRepositionServiceInterface
             ->exists();
 
         return !$hayPendientes;
+    }
+
+
+    /**
+     *  api para consulta de documentos pendientes de transferencia de reposicion
+     *
+     */
+    public function getPendingRepositions()
+    {
+
+        return GpTrasladosReposicion::query()
+            ->from('gp_traslados_reposicions as tr')
+            ->select([
+                'tr.Documento as documento',
+                'tr.ART_CODIGO as codigo',
+                'tr.ART_CODIGO_TRES_LETRAS AS codigo3l',
+                'tr.ART_PESO as peso',
+                'tr.bodega_origen as origen',
+                'tr.bodega_destino as destino',
+                DB::raw('
+            COALESCE(tr.cantidad, 0)
+            -  COALESCE(tr.reservado, 0)
+            - COALESCE(tr.trasladado, 0)
+            AS pendiente
+        ')
+            ])
+            ->whereRaw('
+            COALESCE(tr.cantidad, 0)
+            - COALESCE(tr.reservado, 0)
+            - COALESCE(tr.trasladado, 0) > 0
+        ')
+            ->get();
     }
 }
