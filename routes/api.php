@@ -201,6 +201,9 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('validar-identificacion-prospecto', [ClienteController::class, 'valdiarExitenciaIdentificacionProspecto']);
                 Route::post('crear', [ClienteController::class, 'guardarCliente']);
 
+                Route::prefix('sucursales')->group(function () {
+                    Route::post('crear', [ClienteController::class, 'crearNuevaDireccion']);
+                });
             });
         });
 
@@ -227,7 +230,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('validar-segmento-cliente', [CotizacionesController::class, 'validarSegmentoCliente']);
             Route::post('actualizar-segmento-cliente', [CotizacionesController::class, 'actualizarSegmentoCliente']);
             Route::post('guardarcliente', [CotizacionesController::class, 'guardarcliente']);
-            Route::post('guardar-nueva-direccion-sucursal', [CotizacionesController::class, 'guardarNuevaDireccionSucursal']);
+
 
 
 
@@ -445,10 +448,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
 
-
-            Route::post('new-territorios', [ConsultasController::class, 'obtenerListaTerritorio']);
-            Route::post('provincias', [ConsultasController::class, 'obtenerListaProvincias']);
-            Route::post('ciudades', [ConsultasController::class, 'obtenerListaCiudadesPorProvincia']);
             Route::post('articulos/lista', [ConsultasController::class, 'buscarArticuloWeb']);
             Route::post('articulos/item-l', [ConsultasController::class, 'buscarArticuloL']);
         });

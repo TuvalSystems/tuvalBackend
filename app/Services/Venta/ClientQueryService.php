@@ -163,21 +163,7 @@ class ClientQueryService implements ClientQueryServiceInterface
 
     /** proceso para crear la nueva direccion del cliente - sucursal */
 
-    public function storeNewAddressClient(array $data, GpUsuario $userGp)
-    {
-        $cliente        = GpCliente::findOrFail(data_get($data, 'cliente_id'));
-        $email          = strtolower(data_get($data, 'email', ''));
-        $textoEnvuelto  = wordwrap(data_get($data, 'direccion', ''), 61, "\n", true);
-        $dir            = explode("\n", $textoEnvuelto);
-        $newBranch      = $this->builder->formPayloadNewSucursal($data, $cliente, null, $email, $dir, $userGp);
-        $newBranch->save();
-        $this->clientJob->syncBranch($newBranch->id);
-        return $newBranch->refresh();
-    }
-
-
-
-    public function getListTypeDni()
+   public function getListTypeDni()
     {
         return TipoIdentificacion::where('estado', 1)->get();
     }

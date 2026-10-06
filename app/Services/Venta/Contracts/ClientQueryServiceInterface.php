@@ -11,7 +11,6 @@ interface ClientQueryServiceInterface
     public function getAllClients(string $term, ?string $type = null);
     public function getAvailabeCreditCustomer(string $ruc): array;
     public function getCustomerBranches(string $ruc, ?string $type = null): mixed;
-    public function storeNewAddressClient(array $data, GpUsuario $user);
     public function getListTypeDni();
     public function getAllSegments();
     public function getSubSegmentBySegment(int $coAtrPadre);

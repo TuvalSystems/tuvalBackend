@@ -761,30 +761,6 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
 
 
-
-    public function fetchAllTerritories()
-    {
-        return GpTerritorio::orderBy('TERRITORIO_CODIGO', 'desc')->get();
-    }
-
-    public function fetchAllProvinces()
-    {
-        return GpProvinciaCiudadParroquia::selectRaw('MIN(id) as id, provincia')
-            ->groupBy('provincia')
-            ->orderBy('provincia', 'asc')
-            ->get();
-    }
-
-    public function fetchCitiesByProvince(string $provId)
-    {
-        return GpProvinciaCiudadParroquia::selectRaw('MIN(id) as id, ciudad')
-            ->where('provincia', $provId)
-            ->groupBy('ciudad')
-            ->orderBy('ciudad', 'asc')
-            ->get();
-    }
-
-
     /**
      *  funcion para consultar stock reservados por item
      *

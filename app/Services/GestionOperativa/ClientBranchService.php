@@ -2,10 +2,15 @@
 
 namespace App\Services\GestionOperativa;
 
+use App\Models\Admin\Canton;
+use App\Models\Admin\Provincia;
+use App\Models\Admin\Region;
+use App\Models\GpCliente;
 use App\Models\GpClienteSucursal;
 use App\Models\GpCotizacion;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
+use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
 use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
@@ -13,13 +18,18 @@ use App\Traits\RegisterAudit;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 
+
 class ClientBranchService implements ClientBranchServiceInterface
 {
     use RegisterAudit;
 
     public  function __construct(
         protected readonly ClientQueryServiceInterface $client,
-        protected readonly ClientGpSenderServiceInterface $clientGp
+        protected readonly ClientGpSenderServiceInterface $clientGp,
+        protected readonly ClientBuilderInterface $builder,
+        protected readonly ClientGpSenderServiceInterface $clientJob
+
+
     ) {}
 
 
@@ -138,5 +148,30 @@ class ClientBranchService implements ClientBranchServiceInterface
             $fechaModificacion,
             true
         );
+    }
+
+
+    public function createClientBranch(array $data, GpUsuario $user) : GpClienteSucursal
+    {
+        $client = GpCliente::where('id', data_get($data, 'cliente_id'))->first();
+        $region = Region::where('id', data_get($data, 'region_id'))
+            ->value('nombre');
+
+        $province = Provincia::where('id', data_get($data, 'provincia_id'))
+            ->value('nombre');
+
+        $canton = Canton::where('id', data_get($data, 'canton_id'))
+            ->value('nombre');
+        $data = array_merge($data, [
+            'territorio'    => $region,
+            'provincia'     => $province,
+            'ciudad'        => $canton,
+        ]);
+        $email      = strtoupper(data_get($data, 'email'));
+        $dir        = data_get($data, 'direccion');
+        $newBranch  = $this->builder->formPayloadNewSucursal($data, $client, null, $email, [], $user);
+        $newBranch->save();
+        $this->clientJob->syncBranch($newBranch->id);
+        return $newBranch->refresh();
     }
 }

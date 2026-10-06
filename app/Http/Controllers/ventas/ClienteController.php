@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ventas;
 
 use App\Http\Controllers\Controller;
 use App\Models\GpUsuario;
+use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
 use App\Services\Venta\Cliente\Contracts\ClientCreatorServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
@@ -17,7 +18,8 @@ class ClienteController extends Controller
     private const LOG_CHANNEL = 'stack';
     public function __construct(
         protected readonly ClientQueryServiceInterface $clientService,
-        protected readonly ClientCreatorServiceInterface $clientCreatorService
+        protected readonly ClientCreatorServiceInterface $clientCreatorService,
+        protected readonly ClientBranchServiceInterface $branchService
     ) {}
 
 
@@ -120,5 +122,15 @@ class ClienteController extends Controller
             $cliente = $this->clientCreatorService->createClient($data, $usuario);
             return $this->successResponse("Cliente creado con exito.!", $cliente);
         }, self::LOG_CHANNEL, 'guardarCliente');
+    }
+
+
+    public function crearNuevaDireccion(Request $request){
+        return $this->handleDocumentAction(function() use($request){
+        $data = $request->input('form', []);
+        $user = $request->user();
+        $sucursal = $this->branchService->createClientBranch($data, $user);
+        return $this->successResponse('Dirección creada con exito.!', $sucursal);
+        }, self::LOG_CHANNEL, 'crearNuevaDireccion');
     }
 }

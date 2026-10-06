@@ -65,6 +65,9 @@ class ClientBuilder implements ClientBuilderInterface
             'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $email,
             'user_creator_id'       => $user->id,
             'fecha_hora_creacion'   => Carbon::now()->toDateTimeString(),
+            'region_id'             => data_get($data, 'region_id'),
+            'provincia_id'          => data_get($data, 'provincia_id'),
+            'canton_id'             => data_get($data, 'canton_id'),
         ]);
         return $nw;
     }

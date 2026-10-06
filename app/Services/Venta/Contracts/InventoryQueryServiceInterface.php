@@ -27,9 +27,6 @@ interface InventoryQueryServiceInterface
         array $excludedArticleCodes,
         float $taxPercentage
     ): ?GpArticulo;
-    public function fetchAllTerritories();
-    public function fetchAllProvinces();
-    public function fetchCitiesByProvince(string $provId);
     public function listReservedStockForItems(string $items);
     public function getArticleExposition(string $artCode, string $pvCode);
 }

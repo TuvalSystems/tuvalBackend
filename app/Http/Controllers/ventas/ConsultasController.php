@@ -557,37 +557,4 @@ class ConsultasController extends Controller
         );
     }
 
-
-
-    public function obtenerListaTerritorio()
-    {
-        try {
-            $info = $this->inventoryService->fetchAllTerritories();
-            return $this->successResponse('Información obtenido correctamente', $info, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
-    public function obtenerListaProvincias()
-    {
-        try {
-            $info = $this->inventoryService->fetchAllProvinces();
-            return $this->successResponse('Información obtenido correctamente', $info, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
-
-
-    public function obtenerListaCiudadesPorProvincia(Request $request)
-    {
-        try {
-            $provId = data_get($request->all(), 'provincia');
-            $info = $this->inventoryService->fetchCitiesByProvince($provId);
-            return $this->successResponse('Información obtenido correctamente', $info, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
-    }
 }

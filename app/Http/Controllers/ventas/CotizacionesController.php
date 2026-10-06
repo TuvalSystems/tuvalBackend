@@ -365,18 +365,6 @@ class CotizacionesController extends Controller
     }
 
 
-
-
-    public function guardarNuevaDireccionSucursal(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $data = data_get($request->all(), 'form', []);
-            $user = $request->user();
-            $sucursal = $this->clientService->storeNewAddressClient($data, $user);
-            return $this->successResponse('Información Obtenida Correctamente', $sucursal, 200);
-        }, self::LOG_CHANNEL, 'guardarNuevaDireccionSucursal');
-    }
-
     public function detallecotizacion(Request $request)
     {
         return $this->handleApiAction(function () use ($request) {
