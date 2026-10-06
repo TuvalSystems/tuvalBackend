@@ -506,9 +506,10 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 'tr.bodega_origen as origen',
                 'tr.bodega_destino as destino',
                 DB::raw('
-            COALESCE(tr.reservado, 0)
+            COALESCE(tr.cantidad, 0)
+            -  COALESCE(tr.reservado, 0)
             - COALESCE(tr.trasladado, 0)
-            - COALESCE(tr.cantidad, 0) AS pendiente
+            AS pendiente
         ')
             ])->get();
     }
