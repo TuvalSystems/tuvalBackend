@@ -17,4 +17,5 @@ interface DispatchTypeServiceInterface
     public function update(int $id, array $data, GpUsuario $user);
     public function activeOrInactive(int $id);
     public function getActivePointSales(): Collection;
+    public function getDispatchTypesByPaymentResponsible(string $paymentResponsible): Collection;
 }

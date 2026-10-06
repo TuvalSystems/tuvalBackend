@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\ventas;
 
+use App\Enums\Ventas\DispatchTypeEnum;
 use App\Http\Controllers\Controller;
 use App\Services\Venta\TipoDespachos\Contracts\DispatchTypeServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rules\Enum;
 
 class TipoDespachosController extends Controller
 {
@@ -78,5 +80,17 @@ class TipoDespachosController extends Controller
             $lista = $this->dispatchType->getActivePointSales();
             return $this->successResponse('Información Obtenida correctamente', $lista);
         }, self::LOG_CHANNEL, 'obtenerListaPuntoVentaActivos');
+    }
+
+    public function obtenerTipoDespachoPorResponsable(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'tipo' => ['required', 'string', new Enum(DispatchTypeEnum::class)],
+            ]);
+            $paymentResponsible = $validated['tipo'];
+            $lista = $this->dispatchType->getDispatchTypesByPaymentResponsible($paymentResponsible);
+            return $this->successResponse('Información obtenida correctamente', $lista);
+        }, self::LOG_CHANNEL, 'obtenerTipoDespachoPorResponsable');
     }
 }

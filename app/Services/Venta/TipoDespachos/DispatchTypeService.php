@@ -141,4 +141,10 @@ class DispatchTypeService implements DispatchTypeServiceInterface
             ->where('PTO_VTA_ESTADO', 'ACTIVO')
             ->get();
     }
+
+
+    public function getDispatchTypesByPaymentResponsible(string $paymentResponsible): Collection
+    {
+        return TipoDespacho::where('responsable_pago', $paymentResponsible)->get(['id', 'descripcion']);
+    }
 }

@@ -168,6 +168,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('obtener-detalle', [TipoDespachosController::class, 'obtenerDetalleTipoDespacho']);
                 Route::put('actualizar-registro/{id}', [TipoDespachosController::class, 'actualizarTipoDespacho']);
                 Route::post('actualizar-estado', [TipoDespachosController::class, 'actualizarEstadoTipoDespacho']);
+                Route::post('lista-tipo-despacho-responsable', [TipoDespachosController::class, 'obtenerTipoDespachoPorResponsable']);
+
             });
 
             // rutas de proveedores
