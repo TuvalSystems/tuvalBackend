@@ -104,9 +104,9 @@ class OrderBuilder implements OrderBuilderInterface
             'descuento'                         => data_get($item, 'descuento'),
             'descuento_original'                => data_get($item, 'descuento_original'),
             'modificador'                       => data_get($item, 'modificador'),
-            'cod_categoria'                     => data_get($item, 'cod_categoria'),
-            'cod_linea'                         => data_get($item, 'cod_linea'),
-            'cod_clase'                         => data_get($item, 'cod_clase'),
+            'cod_categoria'                     => data_get($item, 'cod_categoria', null),
+            'cod_linea'                         => data_get($item, 'cod_linea', null),
+            'cod_clase'                         => data_get($item, 'cod_clase', null),
             'resultado_configuracion_item_l'    => data_get($item, 'resultado_configuracion_item_l'),
         ]);
         return $det;
