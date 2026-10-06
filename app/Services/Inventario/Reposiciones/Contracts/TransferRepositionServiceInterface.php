@@ -15,4 +15,5 @@ interface TransferRepositionServiceInterface
     public function getDetailReceivedReposition($guideId);
 
     public function processReceivedRepositionWeb($guideId, GpUsuario $user);
+    public function getPendingRepositions();
 }
