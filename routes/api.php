@@ -591,7 +591,6 @@ Route::group(['prefix' => 'consultas-externas'], function () {
     Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionSp']);
     Route::get('lista-guias-cabecera-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionCabeceraSp']);
 
-
 });
 
 // para la sincronizacion global de articulo 1 por registro
@@ -599,4 +598,7 @@ Route::group(['prefix' => 'inventario'], function () {
     Route::prefix('articulos')->group(function () {
         Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
     });
+    Route::get('reposiciones-pendientes', [ReposicionController::class, 'obtenerReposicionesPendientes']);
+
+
 });
