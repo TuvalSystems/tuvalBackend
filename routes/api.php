@@ -169,7 +169,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::put('actualizar-registro/{id}', [TipoDespachosController::class, 'actualizarTipoDespacho']);
                 Route::post('actualizar-estado', [TipoDespachosController::class, 'actualizarEstadoTipoDespacho']);
                 Route::post('lista-tipo-despacho-responsable', [TipoDespachosController::class, 'obtenerTipoDespachoPorResponsable']);
-
             });
 
             // rutas de proveedores
@@ -178,7 +177,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::put('actualizar-estado-transportista/{id}', [ProveedoresController::class, 'actualizarEstadoTransportista']);
                 Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoProveedor']);
                 Route::get('lista-proveedores-transportista', [ProveedoresController::class, 'listaProveedoresTransportistas']);
-
+                Route::get('lista-proveedores-activos', [ProveedoresController::class, 'listaProveedoresActivos']);
                 //choferes transportistas
                 Route::prefix('choferes-transportista')->group(function () {
                     Route::post('lista', [ProveedoresController::class, 'listaChoferTransportista']);

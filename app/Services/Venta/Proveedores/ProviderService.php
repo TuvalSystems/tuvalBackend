@@ -89,8 +89,17 @@ class ProviderService implements ProviderServiceInterface
             'PROV_RUC as ruc',
             'PROV_RAZON_SOCIAL as razon_social'
         ])
-        ->where('PROV_ESTADO', 'ACTIVO')
-        ->where('es_transportista', true)
-        ->get();
+            ->where('PROV_ESTADO', 'ACTIVO')
+            ->where('es_transportista', true)
+            ->get();
+    }
+
+
+    public function getAllProviders(): Collection
+    {
+        return GpProveedor::select(['id', 'PROV_RAZON_SOCIAL as razon_social'])
+            ->where('PROV_CLASE', '!=', 'PR-EXT')
+            ->where('PROV_ESTADO', 'ACTIVO')
+            ->orderBy('PROV_RAZON_SOCIAL')->get();
     }
 }

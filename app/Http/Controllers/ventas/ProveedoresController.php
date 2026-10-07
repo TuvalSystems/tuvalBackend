@@ -57,6 +57,14 @@ class ProveedoresController extends Controller
         }, self::LOG_CHANNEL, 'listaProveedoresTransportistas');
     }
 
+    public function listaProveedoresActivos()
+    {
+        return $this->handleApiAction(function () {
+            $lista = $this->providerService->getAllProviders();
+            return $this->successResponse('Información Obtenida correctamente.!', $lista);
+        }, self::LOG_CHANNEL, 'listaProveedoresActivos');
+    }
+
     /**
      *  transporte proveedores
      */
