@@ -85,7 +85,8 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
         $docs->map(function ($item) {
             $codeAccess = $item->claveacceso;
             $resp = $this->consultApiSeedBilling($codeAccess);
-            $canResend = trim(data_get($resp, 'status')) !== 'ANU';
+            $estado = strtoupper(trim((string) data_get($resp, 'data.estado', '')));
+            $canResend = $estado !== 'ANU';
             if ($canResend) {
                 $this->apiResponseSeedBelling($codeAccess);
             }
@@ -183,8 +184,8 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
             }
 
             $resp       = $this->consultApiSeedBilling($codeAccess);
-            $status     = strtoupper(trim((string) data_get($resp, 'status', '')));
-            $canResend  = $status !== 'ANU';
+            $estado     = strtoupper(trim((string) data_get($resp, 'data.estado', '')));
+            $canResend  = $estado !== 'ANU';
             if (!$canResend) {
                 return;
             }
