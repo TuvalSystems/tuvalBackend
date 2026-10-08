@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Cobranzas;
 
+use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
 use App\Models\Cobranzas\GpCobrosCheques;
 use App\Models\Cobranzas\GpCobrosDeposito;
 use App\Models\Cobranzas\GpCobrosEfectivoMonto;
@@ -29,6 +30,7 @@ class CollectionRepository implements CollectionRepositoryInterface
                     ->on('gcaf.cobro_id', '=', 'gp_cobros_aplicacion_montos.cobro_id');
             })
             ->where('gcc.caja_id', $boxId)
+            ->where('gcc.estado', CollectionStatusEnum::ENVIADO->value)
             ->whereDate('gcc.fecha', $date)
             ->select(
                 'gp_cobros_aplicacion_montos.*',
@@ -53,6 +55,7 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->join('gp_clientes as gcl', 'gcl.id', 'gcc.cliente_id')
             ->join('gp_caja_bancos as gcb', 'gcb.id', 'gcd.banco_id')
             ->where('gcc.caja_id', $boxId)
+            ->where('gcc.estado', CollectionStatusEnum::ENVIADO->value)
             ->whereDate('gcc.fecha', $date)
             ->withSum('depositosFactura as totalAplicado', 'monto')
             ->select(
@@ -78,6 +81,7 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->join('gp_caja_bancos as gcb', 'gcb.id', 'gcc.banco_id')
             ->where('gc.caja_id', $boxId)
             ->whereDate('gc.fecha', $date)
+            ->where('gcc.estado', CollectionStatusEnum::ENVIADO->value)
             ->withSum('chequesFacturas as totalAplicado', 'monto');
         if ($posfechados) {
             $query->whereRaw('DATE(gcc.fecha_vencimiento) > DATE(gc.fecha)');
@@ -105,6 +109,7 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->join('gp_clientes as gcl', 'gcl.id', 'gc.cliente_id')
             ->where('gc.caja_id', $boxId)
             ->whereDate('gc.fecha', $date)
+            ->where('gcc.estado', CollectionStatusEnum::ENVIADO->value)
             ->withSum('efectivoFactura as totalAplicado', 'monto')
             ->select(
                 'gce.*',
@@ -124,6 +129,7 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->from('gp_cobros_retenciones as gcr')
             ->join('gp_cobros as gc', 'gc.id', 'gcr.cobro_id')
             ->join('gp_clientes as gcl', 'gcl.id', 'gc.cliente_id')
+            ->where('gcc.estado', CollectionStatusEnum::ENVIADO->value)
             ->where('gc.caja_id', $boxId)
             ->whereDate('gc.fecha', $date)
             ->select(
@@ -145,6 +151,7 @@ class CollectionRepository implements CollectionRepositoryInterface
             ->join('gp_clientes as gcl', 'gcl.id', 'gc.cliente_id')
             ->where('gc.caja_id', $boxId)
             ->whereDate('gc.fecha', $date)
+            ->where('gcc.estado', CollectionStatusEnum::ENVIADO->value)
             ->withSum('cobroEfectivoFactura as totalAplicado', 'monto')
             ->select(
                 'gct.*',
