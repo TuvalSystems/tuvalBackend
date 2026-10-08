@@ -130,17 +130,21 @@ class GpArticulo extends Model
         'cod_linea',
         'cod_clase',
         'import_job',
-        'ART_TIPO_PRODUCTO'
+        'ART_TIPO_PRODUCTO',
+        'es_servicio_logistico'
     ];
 
     protected $casts = [
-        'ART_IMP_VTA' => 'float'
+        'ART_IMP_VTA'           => 'float',
+        'es_servicio_logistico' => 'boolean',
+        'created_at'            => 'datetime:Y-m-d H:i:s',
+        'updated_at'            => 'datetime:Y-m-d H:i:s',
+
     ];
     public static function findAvailableTypeLArticle(
         array $excludedArticleCodes,
         float $taxPercentage
-    ): ?self
-    {
+    ): ?self {
         return self::query()
             ->select([
                 'art.*',
@@ -156,10 +160,11 @@ class GpArticulo extends Model
             ->where('art.ART_ESTADO', 'ACTIVO')
             ->where('art.ART_TIPO_COMPRA', 'L')
             ->where('art.disponible', 1)
+            ->where('art.es_servicio_logistico', false)
             ->where('art.ART_IMP_VTA', $taxPercentage)
             ->when(
                 $excludedArticleCodes !== [],
-                fn ($query) => $query->whereNotIn('art.ART_CODIGO', $excludedArticleCodes)
+                fn($query) => $query->whereNotIn('art.ART_CODIGO', $excludedArticleCodes)
             )
             ->whereNotIn('art.ART_CLASE_ARTICULO', [
                 'BNS-INACT',
@@ -180,6 +185,7 @@ class GpArticulo extends Model
             ->join('gp_unidad_medidas as unm', 'unm.UMEDIDA_PLAN', '=', 'gp_articulos.ART_PLAN_UMEDIDA')
             ->where('gp_articulos.ART_ESTADO', 'ACTIVO')
             ->where('gp_articulos.ART_TIPO_COMPRA', '!=', 'L') // Aquí excluimos los items 'L'
+            ->where('gp_articulos.es_servicio_logistico', false) // filtro para paqueteria
             ->whereNotIn('gp_articulos.ART_CLASE_ARTICULO', ['BNS-INACT', 'CMP-GASTOS']);
         if (!empty($filters['codigo3l'])) {
             $query->where('gp_articulos.ART_CODIGO_TRES_LETRAS', $filters['codigo3l']);

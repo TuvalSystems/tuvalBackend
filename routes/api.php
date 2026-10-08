@@ -430,9 +430,11 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
         Route::group(['prefix' => 'inventario'], function () {
             Route::prefix('articulos')->group(function () {
+                Route::post('lista', [ArticuloController::class, 'listaArticulos']);
                 Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
                 Route::post('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
                 Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
+                Route::post('actualizar-servicio-logistico', [ArticuloController::class, 'actualizarServicioLogistico']);
             });
         });
         Route::group(['prefix' => 'consultas'], function () {

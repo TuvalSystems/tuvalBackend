@@ -14,11 +14,33 @@ use Illuminate\Http\Request;
 class ArticuloController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
+    private const LOG_CHANNEL = 'cotizacion';
+
     public function __construct(
         protected readonly ArticleSyncServiceInterface $service,
         protected readonly ArticleSegmentConfigServiceInterface $serviceConfig,
         protected readonly ArticleServiceInterface $articleService
     ) {}
+
+
+    public function listaArticulos(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $filtros = $request->input('filters',  []);
+            $lista = $this->articleService->listArticles($filtros);
+            return $this->successResponse('Información Obtenida Correctamente.!', $lista);
+        }, self::LOG_CHANNEL, 'listaArticulos');
+    }
+
+    public function actualizarServicioLogistico(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $id     = $request->input('id');
+            $user   = $request->user();
+            $this->articleService->updateLogisticService($id, $user);
+            return $this->buildSuccessResponse('Registro actualizado correctamente.!');
+        }, self::LOG_CHANNEL, 'actualizarServicioLogistico');
+    }
 
     public function sincronizarDesdeApi(Request $request): JsonResponse
     {
@@ -26,7 +48,7 @@ class ArticuloController extends Controller
             $payload = $request->all();
             $resp = $this->service->createOrUpdateArticle($payload);
             return $this->successResponse('Articulo creado o actualizado con exito.', $resp, 200);
-        }, 'laravel', 'sincronizarDesdeApi');
+        }, self::LOG_CHANNEL, 'sincronizarDesdeApi');
     }
 
     public function obtenerConfiguracionColorSegmento(): JsonResponse
@@ -34,7 +56,7 @@ class ArticuloController extends Controller
         return  $this->handleApiAction(function (): JsonResponse {
             $resp = $this->service->getConfigColorsWithSegment();
             return $this->successResponse('Articulo creado o actualizado con exito.', $resp, 200);
-        }, 'laravel', 'sincronizarDesdeApi');
+        }, self::LOG_CHANNEL, 'sincronizarDesdeApi');
     }
 
 
@@ -48,7 +70,7 @@ class ArticuloController extends Controller
             ]);
             $resp       = $this->serviceConfig->getSegmentClassificationConfig($payload);
             return $this->successResponse('Datos Obtenido Correctamente', $resp, 200);
-        }, 'laravel', 'obtenerClasificacionSegmentacion');
+        }, self::LOG_CHANNEL, 'obtenerClasificacionSegmentacion');
     }
 
 
@@ -65,6 +87,6 @@ class ArticuloController extends Controller
             $linea      = data_get($validate, 'linea');
             $lista      = $this->articleService->searchItemsByClasification($categoria, $linea, $clase);
             return $this->successResponse('Lista Obtenida correctamente.', $lista);
-        }, 'laravel', 'obtenerListaItemsFiltroSegmentacion');
+        }, self::LOG_CHANNEL, 'obtenerListaItemsFiltroSegmentacion');
     }
 }
