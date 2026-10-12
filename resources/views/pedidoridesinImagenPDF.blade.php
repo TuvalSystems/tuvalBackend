@@ -267,6 +267,10 @@
                             <td>Nota Cliente:</td>
                             <td>{{ $nota_cliente }}</td>
                         </tr>
+                         <tr>
+                            <td>Ruc Proveedor:</td>
+                            <td>0993113557001</td>
+                        </tr>
                     </table>
                     <!-- formas de pago -->
                     <table class="table2" width="100%" style="margin-top: 10px;">
