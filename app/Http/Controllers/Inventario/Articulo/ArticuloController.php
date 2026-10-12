@@ -89,4 +89,12 @@ class ArticuloController extends Controller
             return $this->successResponse('Lista Obtenida correctamente.', $lista);
         }, self::LOG_CHANNEL, 'obtenerListaItemsFiltroSegmentacion');
     }
+
+    public function obtenerArticuloLogistico() : JsonResponse
+    {
+        return $this->handleApiAction(function ()  : JsonResponse{
+            $item = $this->articleService->getLogisticServiceArticle();
+            return $this->successResponse('Item logístico obtenido correctamente', $item);
+        }, self::LOG_CHANNEL, 'obtenerArticuloLogistico');
+    }
 }

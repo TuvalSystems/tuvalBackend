@@ -80,4 +80,19 @@ class ArticleService implements ArticleServiceInterface
         // $prov->fecha_modificacion   = now();
         $prov->save();
     }
+
+
+    /** busqueda de articulo de logistica para paqueteria */
+    public function getLogisticServiceArticle(): GpArticulo
+    {
+        $article = GpArticulo::where('es_servicio_logistico', true)
+            ->where('ART_ESTADO', 'ACTIVO')
+            ->firstOrFail();
+        $article->setAttribute('ART_VALOR', 0);
+        $article->setAttribute('ART_VALOR_ORIGINAL', 0);
+        $article->setAttribute('ART_DESCRIPCION_ORIGINAL', $article->ART_DESCRIPCION);
+        $article->setAttribute('descuento', 0);
+        $article->setAttribute('descuento_original', 0);
+        return $article;
+    }
 }
