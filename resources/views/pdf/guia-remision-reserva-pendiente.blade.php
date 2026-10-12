@@ -193,6 +193,10 @@
                                         <td>CONTRIBUYENTE ESPECIAL NRO.</td>
                                         <td>176</td>
                                     </tr>
+                                    <tr>
+                                        <td>Ruc Proveedor:</td>
+                                        <td>0993113557001</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
