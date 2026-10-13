@@ -270,26 +270,26 @@
             </thead>
             <tbody>
                 @foreach ($detalle as $key => $value)
-                    <tr>
-                        <td class="nowrap">
-                            @if($value['ART_IMP_VTA'] == 5)
-                                *
-                            @endif
-                            {{$value['ART_CODIGO']}}
-                        </td>
-                        <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
-                        <td class="text-right">{{$value['devuelto']}}</td>
-                        <td>{{$value['ART_DESCRIPCION']}}
-                            @if($value['CHECK_ALTERNATIVO'] === 1)
-                                <span class="text-danger" style="color: red;">(Alternativa)</span>
-                            @endif
-                        </td>
-                        <td class="text-right">${{ number_format($value['ART_DESCUENTO'], 2, '.', '')}}</td>
-                        <td class="text-right">${{ $value['ART_VALOR'] }}</td>
-                        <td class="text-right">
-                            ${{ number_format(($value['ART_VALOR'] - $value['ART_DESCUENTO']) * $value['devuelto'], 2, '.', '') }}
-                        </td>
-                    </tr>
+                <tr>
+                    <td class="nowrap">
+                        @if($value['ART_IMP_VTA'] == 5)
+                        *
+                        @endif
+                        {{$value['ART_CODIGO']}}
+                    </td>
+                    <td>{{$value['ART_PLAN_UMEDIDA']}}</td>
+                    <td class="text-right">{{$value['devuelto']}}</td>
+                    <td>{{$value['ART_DESCRIPCION']}}
+                        @if($value['CHECK_ALTERNATIVO'] === 1)
+                        <span class="text-danger" style="color: red;">(Alternativa)</span>
+                        @endif
+                    </td>
+                    <td class="text-right">${{ number_format($value['ART_DESCUENTO'], 2, '.', '')}}</td>
+                    <td class="text-right">${{ $value['ART_VALOR'] }}</td>
+                    <td class="text-right">
+                        ${{ number_format(($value['ART_VALOR'] - $value['ART_DESCUENTO']) * $value['devuelto'], 2, '.', '') }}
+                    </td>
+                </tr>
                 @endforeach
             </tbody>
         </table>
@@ -308,15 +308,19 @@
                             <td>Usuario:</td>
                             <td>{{$pedido['USERNAME']}}</td>
                         </tr>
+                        <tr>
+                            <td>Ruc Proveedor:</td>
+                            <td>0993113557001</td>
+                        </tr>
                     </table>
                 </td>
                 <td style="vertical-align: top">
                     <table class="table2" align="right" style="margin-right: 10px;">
                         @foreach($tipoimpuesto as $key => $tipo)
-                            <tr>
-                                <td><b>SUBTOTAL {{ (int) $key}}%: </b></td>
-                                <td class="text-right">${{ number_format($tipo, 2, '.', '')}}</td>
-                            </tr>
+                        <tr>
+                            <td><b>SUBTOTAL {{ (int) $key}}%: </b></td>
+                            <td class="text-right">${{ number_format($tipo, 2, '.', '')}}</td>
+                        </tr>
                         @endforeach
                         <tr>
                             <td><b>DESCUENTO: </b></td>
@@ -327,10 +331,10 @@
                             <td class="text-right">${{ number_format($subtotalmenosdescuento, 2, '.', '') }}</td>
                         </tr>
                         @foreach($sumaimpuesto as $key => $impuesto)
-                            <tr>
-                                <td><b>IMPUESTOS {{ (int) $key}}%: </b></td>
-                                <td class="text-right">${{ number_format($impuesto, 2, '.', '')}}</td>
-                            </tr>
+                        <tr>
+                            <td><b>IMPUESTOS {{ (int) $key}}%: </b></td>
+                            <td class="text-right">${{ number_format($impuesto, 2, '.', '')}}</td>
+                        </tr>
                         @endforeach
                         <tr>
                             <td><b>TOTAL: </b></td>

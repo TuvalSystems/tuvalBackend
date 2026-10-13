@@ -364,6 +364,10 @@
                             <td>Forma de pago SRI:</td>
                             <td>{{ $formadepagoSRI }}</td>
                         </tr>
+                         <tr>
+                            <td>Ruc Proveedor:</td>
+                            <td>0993113557001</td>
+                        </tr>
                     </table>
                 </td>
                 <td style="vertical-align: top">
