@@ -22,7 +22,7 @@ class CotizacionBorradorController extends Controller
                 'data'      => 'required|array'
             ]);
             $user = $request->user();
-            $this->draft->sync($request->input('draft_id'), $request->input('pto_vta_id'), $request->input('data'), $user);
+            $this->draft->sync($request->input('draft_id'),$request->input('pv_id'), $request->input('pto_vta_id'), $request->input('data'), $user);
             return $this->buildSuccessResponse('Proceso realizado correctamente', 200);
         }, 'laravel', 'CotizacionBorradorController.sync');
     }
@@ -45,10 +45,10 @@ class CotizacionBorradorController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $request->validate([
-                'pto_vta_id'  => 'required|string',
+                'pv_id'  => 'required|integer',
             ]);
             $user = $request->user();
-            $data = $this->draft->listDrafts($request->input('pto_vta_id'), $user);
+            $data = $this->draft->listDrafts($request->input('pv_id'), $user);
             return $this->successResponse('Listado de borradores', $data, 200);
         }, 'laravel', 'CotizacionBorradorController.listarBorradores');
     }

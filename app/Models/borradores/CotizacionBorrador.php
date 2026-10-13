@@ -2,6 +2,7 @@
 
 namespace App\Models\borradores;
 
+use App\Models\GpPuntoVenta;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,7 @@ class CotizacionBorrador extends Model
     protected $fillable = [
         'user_id',
         'draft_id',
+        'pv_id',
         'punto_venta_id',
         'data',
     ];
@@ -54,5 +56,9 @@ class CotizacionBorrador extends Model
     public function prunable(): Builder
     {
        return static::query()->where('updated_at', '<', now()->subDays(60));
+    }
+
+    public function puntoVenta(){
+        return $this->belongsTo(GpPuntoVenta::class, 'pv_id', 'id');
     }
 }

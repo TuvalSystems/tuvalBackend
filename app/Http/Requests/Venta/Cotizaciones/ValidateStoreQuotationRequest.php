@@ -98,6 +98,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'vendedor_nombres'                          => ['nullable', 'string', 'max:255'],
             'vendedor_apellidos'                        => ['nullable', 'string', 'max:255'],
             // -- logica de ubicacion y bodegas despacho
+            'pv_id'                                     => ['required', 'integer'],
             'punto_venta_id'                            => ['required', 'string'],
             'bodega_facturacion'                        => ['required', 'string'],
 
@@ -181,7 +182,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'items.*.proveedores'           => ['nullable', 'array'],
 
             //flete detalle
-            'items.*.monto_flete'           => ['nullable', 'numeric']
+            'items.*.monto_flete'           => ['nullable', 'numeric'],
 
             // --- VALIDACIÓN DE IMÁGENES (AGREGADO) ---
             // Validamos 'imagenes' porque así lo llamaste en el formData.append
