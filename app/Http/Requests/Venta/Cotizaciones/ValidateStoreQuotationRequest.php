@@ -68,8 +68,8 @@ class ValidateStoreQuotationRequest extends FormRequest
             'mode'                      => ['required'],
             // -- datos del cliente
             'cliente_id'                => ['required', 'integer', 'exists:gp_clientes,id'], // Corregido sintaxis array
-            'ruc'                       => ['required', 'string', 'max:20'],
-            'razon_social'              => ['required', 'string', 'max:255'],
+            // 'ruc'                       => ['required', 'string', 'max:20'],
+            // 'razon_social'              => ['required', 'string', 'max:255'],
             'correo_electronico_sri' => [
                 'nullable', // 1. Permite que sea null o vacío
                 'string',
@@ -94,9 +94,9 @@ class ValidateStoreQuotationRequest extends FormRequest
                     }
                 },
             ],
-            'vendedor_id'                               => ['required', 'string'],
-            'vendedor_nombres'                          => ['nullable', 'string', 'max:255'],
-            'vendedor_apellidos'                        => ['nullable', 'string', 'max:255'],
+            // 'vendedor_id'                               => ['required', 'string'],
+            // 'vendedor_nombres'                          => ['nullable', 'string', 'max:255'],
+            // 'vendedor_apellidos'                        => ['nullable', 'string', 'max:255'],
             // -- logica de ubicacion y bodegas despacho
             'pv_id'                                     => ['required', 'integer'],
             'punto_venta_id'                            => ['required', 'string'],
@@ -131,12 +131,14 @@ class ValidateStoreQuotationRequest extends FormRequest
             'modificador_global'                        => ['nullable', 'numeric'],
 
             'peso'                                      => ['nullable', 'numeric'],
+            'peso_flete'                                => ['nullable', 'numeric'],
             'descuento_articulo'                        => ['nullable', 'numeric'],
             'descuento_original'                        => ['nullable', 'numeric'],
             // --- VALIDACIÓN DE ITEMS -    --
             'items'                                     => ['required', 'array', 'min:1'],
 
             'items.*.id'                                => ['nullable', 'integer'],
+            'items.*.art_id'                            => ['nullable', 'integer'],
             'items.*.detalle_id'                        => ['nullable', 'integer'],
             'items.*.cotizacion_id'                     => ['nullable', 'integer', 'exists:gp_cotizacions,id'],
             'items.*.id_temp'                           => ['nullable', 'string', 'max:100'],
@@ -170,19 +172,21 @@ class ValidateStoreQuotationRequest extends FormRequest
             'items.*.nivel'                             => ['nullable', 'integer'],
             'items.*.resultado_configuracion_item_l'    => ['nullable', 'string'],
 
-            'items.*.tipo'                      => ['nullable', 'string', 'max:50'],
-            'items.*.ART_IMP_VTA'               => ['nullable', 'numeric'],
-            'items.*.ART_MARCA'                 => ['nullable', 'string', 'max:100'],
-            'items.*.ART_MATERIAL'              => ['nullable', 'string', 'max:100'],
-            'items.*.valor_original_l'          => ['nullable', 'numeric'],
-            'items.*.imagenes'                  => ['nullable', 'array'],
-            'items.*.imagenes.*'                => ['nullable', 'string'],
+            'items.*.tipo'                              => ['nullable', 'string', 'max:50'],
+            'items.*.ART_IMP_VTA'                       => ['nullable', 'numeric'],
+            'items.*.ART_MARCA'                         => ['nullable', 'string', 'max:100'],
+            'items.*.ART_MATERIAL'                      => ['nullable', 'string', 'max:100'],
+            'items.*.valor_original_l'                  => ['nullable', 'numeric'],
+            'items.*.imagenes'                          => ['nullable', 'array'],
+            'items.*.imagenes.*'                        => ['nullable', 'string'],
 
-            'items.*.stock'                 => ['nullable', 'array'],
-            'items.*.proveedores'           => ['nullable', 'array'],
+            'items.*.stock'                             => ['nullable', 'array'],
+            'items.*.proveedores'                       => ['nullable', 'array'],
 
             //flete detalle
-            'items.*.monto_flete'           => ['nullable', 'numeric'],
+            'items.*.monto_flete'                       => ['nullable', 'numeric'],
+            'items.*.precio_sin_flete'                  => ['required', 'numeric', 'min:0'],
+
 
             // --- VALIDACIÓN DE IMÁGENES (AGREGADO) ---
             // Validamos 'imagenes' porque así lo llamaste en el formData.append

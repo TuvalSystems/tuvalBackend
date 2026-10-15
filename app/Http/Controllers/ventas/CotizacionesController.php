@@ -7,8 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\GpCronLog;
 use App\Models\GpProspecto;
 use App\Traits\JsonResponseTrait;
-use App\Models\GpTempCart;
-use App\Models\GpTempCartStock;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPuntoVenta;
@@ -17,7 +15,6 @@ use App\Models\GpCliente;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
-use App\Http\Controllers\FuncionesController;
 use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
@@ -28,7 +25,6 @@ use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
 use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
-use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -71,85 +67,6 @@ class CotizacionesController extends Controller
             return $this->buildSuccessResponse($msg, 200);
         }, self::LOG_CHANNEL, 'CotizacionesController@store');
     }
-    public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $user = $request->user();
-        $data = $request->validate([
-            'cliente_id' => '',
-            'puntodeventa_id' => '',
-            'sucursal_id' => '',
-            'articulo' => []
-        ]);
-        $user = GpUsuario::where('id', $user->id)->first();
-        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
-            $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
-        }
-        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV-L')
-            $data['articulo']['ART_TIPO_COMPRA'] = 'L';
-        $articulo = new GpTempCart;
-        $articulo->sucursal_id = $data['sucursal_id'];
-        $articulo->cliente_id = $data['cliente_id'];
-        $articulo->puntodeventa_id = $data['puntodeventa_id'];
-        $articulo->user_id = $user->id;
-        $articulo->USERID = $user->USERID;
-        $articulo->ART_CODIGO = $data['articulo']['ART_CODIGO'];
-        $articulo->ART_DESCRIPCION = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION']));
-        $articulo->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION_ORIGINAL']));
-        $articulo->ART_CODIGO_TRES_LETRAS = $data['articulo']['ART_CODIGO_TRES_LETRAS'];
-        $articulo->ART_DECIMAL_CANTIDAD = $data['articulo']['ART_DECIMAL_CANTIDAD'];
-        $articulo->ART_PLAN_UMEDIDA = $data['articulo']['ART_PLAN_UMEDIDA'];
-        $articulo->ART_MARCA = $data['articulo']['ART_MARCA'];
-        $articulo->ART_MATERIAL = $data['articulo']['ART_MATERIAL'];
-        $articulo->ART_PESO = $data['articulo']['ART_PESO'];
-        $articulo->ART_TIPO_COMPRA = $data['articulo']['ART_TIPO_COMPRA'];
-        $articulo->ART_VALOR = $data['articulo']['ART_VALOR'];
-        $articulo->ART_VALOR_ORIGINAL = $data['articulo']['ART_VALOR_ORIGINAL'];
-        $articulo->ART_CANTIDAD = 0;
-        $articulo->ART_IVA = 0;
-        $articulo->ART_DESCUENTO = 0;
-        $articulo->ART_STOCK = $data['articulo']['ART_STOCK'];
-        $articulo->ART_IMP_VTA = $data['articulo']['ART_IMP_VTA'];
-        $articulo->ART_COSTO_PROMEDIO = $data['articulo']['ART_COSTO_PROMEDIO'];
-        $articulo->descuento = $data['articulo']['descuento'];
-        $articulo->descuento_original = $data['articulo']['descuento_original'];
-        $articulo->modificador = $data['articulo']['modificador'];
-        $orden = GpTempCart::where('sucursal_id', $data['sucursal_id'])
-            ->where('cliente_id', $data['cliente_id'])
-            ->where('puntodeventa_id', $data['puntodeventa_id'])
-            ->orderBy('orden', 'DESC')
-            ->first();
-        if (!$orden) {
-            $orden = new \stdClass();
-            $orden->orden = 0;
-        }
-        $articulo->orden = $orden->orden + 1;
-        $articulo->save();
-        $array_stock = array();
-        foreach ($data['articulo']['stock'] as $stockbodega) {
-            $stock = new GpTempCartStock;
-            $stock->id_tempcart = $articulo->id;
-            $stock->STO_ART_BODEGA = $stockbodega['STO_ART_BODEGA'];
-            $stock->STO_ART_STOCK_DISPONIBLE = $stockbodega['STO_ART_STOCK_DISPONIBLE'];
-            $stock->seleccionado = 0;
-            $stock->save();
-            $array_stock[] = $stock;
-        }
-        $articulo->proveedores = array();
-        $articulo->stock = $array_stock;
-        $imagenes = array();
-        for ($i = 1; $i <= 3; $i++) {
-            $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-            if (File::exists($file)) {
-                $imagenes[] = env('APP_URL') . '/' . $file;
-            }
-        }
-        $articulo->imagenes = $imagenes;
-        return response([
-            'success' => true,
-            'articulo' => $articulo,
-        ]);
-    }
-
 
 
     public function selectarticuloprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -240,6 +157,7 @@ class CotizacionesController extends Controller
             foreach ($data['cotizacion'] as $det) {
                 $detalle = new GpCotizacionDetalle;
                 $detalle->cotizacion_id = $cotizacion->id;
+                $detalle->art_id        = $det['art_id'];
                 $detalle->ART_CODIGO = $det['ART_CODIGO'];
                 $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
                 $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
@@ -567,37 +485,6 @@ class CotizacionesController extends Controller
         return response([
             'success' => true,
             'message' => 'Todo guardado'
-        ]);
-    }
-
-    public function checkrucprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->validate([
-            'CLI_RUC' => '',
-        ]);
-
-        $cliente = GpCliente::where('CLI_RUC', trim($data['CLI_RUC']))->first();
-        if ($cliente) {
-            $data['cliente_id'] = $cliente->id;
-            $funciones = new FuncionesController();
-            $cliente = $funciones->getcliente($data);
-
-            return response([
-                'success' => true,
-                'cliente' => $cliente
-            ]);
-        }
-
-        $prospecto = GpProspecto::where('CLI_RUC', trim($data['CLI_RUC']))->first();
-        if ($prospecto) {
-            return response([
-                'success' => true,
-                'prospecto' => $prospecto
-            ]);
-        }
-
-        return response([
-            'success' => false,
         ]);
     }
 

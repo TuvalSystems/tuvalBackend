@@ -198,6 +198,14 @@ class GpPedido extends Model implements HasMedia
         'pendiente_salida'  => 'boolean'
     ];
     protected $fillable = [
+        'pv_id',
+        'vendedor_id',
+        'tipo_despacho_id',
+        'responsable_flete',
+        'proveedor_despacho_id',
+        'peso',
+        'peso_flete',
+        'monto_flete',
         'pedido',
         'factura',
         'factura_origen',

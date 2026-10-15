@@ -86,7 +86,7 @@ class ApprovalService implements ApprovalServiceInterface
         $nivelCliente           = $this->approvalFuntions->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
         $nivelCotizacion        = $this->approvalFuntions->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
         $rebajaCotizacion       = $this->approvalFuntions->getPorcentilDiscount('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
-        $prcCLienteDescuento    = $this->approvalFuntions->getPorcentilDiscountCommercialCliente($data['CLI_RUC']);
+        $prcCLienteDescuento    = $this->approvalFuntions->getPorcentilDiscountCommercialCliente($data['cliente_id']);
 
         /** este descuento global lo utilizamos para calcular el descuento de la cabecera y del detalle de la cotizacion  */
         $dsctGlobalCliente = (float) $prcCLienteDescuento - (float) $rebajaCotizacion;
@@ -151,7 +151,7 @@ class ApprovalService implements ApprovalServiceInterface
             $refDescripcion =  $detailOrigin ? $detailOrigin->ART_DESCRIPCION : data_get($detalle, 'ART_DESCRIPCION_ORIGINAL');
 
             // 3. Valor de Referencia
-            $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
+            $refValor = $detailOrigin ? $detailOrigin->precio_sin_flete : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
             $validatorExistenceItemL = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', false);
 
             if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
@@ -166,7 +166,7 @@ class ApprovalService implements ApprovalServiceInterface
                     $detailMotivos[]    = $this->approvalFuntions->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva...' vs Original: '$descRef...'");
                 }
 
-                $price          = round((float)$detalle['ART_VALOR'], 4);
+                $price          = round((float)$detalle['precio_sin_flete'], 4);
                 $priceOrigin    = round((float)$refValor, 4);
                 if ($price != $priceOrigin) {
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ha cambiado. Nuevo: {$price} vs Original: $priceOrigin");
@@ -178,7 +178,7 @@ class ApprovalService implements ApprovalServiceInterface
                 $valorOriginal  = (float) $refValor;
                 $porcMaxSubida  = (float) $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
                 $precioLimite   = $valorOriginal * (1 + ($porcMaxSubida / 100));
-                $precioActual   = (float) $detalle['ART_VALOR'];
+                $precioActual   = (float) $detalle['precio_sin_flete'];
                 if ($precioActual > $precioLimite) {
                     $exceso = $precioActual - $precioLimite;
                     $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
@@ -192,12 +192,12 @@ class ApprovalService implements ApprovalServiceInterface
         // validaciones para tipo L
         if ($detalle['ART_TIPO_COMPRA'] == 'L') {
             if (!$validatorExistenceItemL) {
-                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
-                        "El ítem {$artCode} requiere aprobación por estar clasificado como ítem L."
-                    );
+                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                    "El ítem {$artCode} requiere aprobación por estar clasificado como ítem L."
+                );
             }
             $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
-            $valor          = round(data_get($detalle, 'ART_VALOR', 0), 4);
+            $valor          = round(data_get($detalle, 'precio_sin_flete', 0), 4);
 
             if ($valorOriginalL > $valor) {
                 $detailMotivos[]    = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");
@@ -264,7 +264,7 @@ class ApprovalService implements ApprovalServiceInterface
         $nivelCliente           = $this->approvalFuntions->getNivelFormaPago('DESC_FORMA_PAGO_CONDICION_PAGO', $data['COND_ID_ORIGINAL']);
         $nivelCotizacion        = $this->approvalFuntions->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
         $rebajaCotizacion       = $this->approvalFuntions->getPorcentilDiscount('DESC_FORMA_PAGO_CODIGO', $data['DESC_FORMA_PAGO_CODIGO']);
-        $prcCLienteDescuento    = $this->approvalFuntions->getPorcentilDiscountCommercialCliente($cotizacion->CLI_RUC);
+        $prcCLienteDescuento    = $this->approvalFuntions->getPorcentilDiscountCommercialCliente($cotizacion->cliente_id);
         $dsctGlobalCliente      = (float) $prcCLienteDescuento - (float) $rebajaCotizacion;
         if (!$nivelCliente) {
             $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Forma de pago no encontrada en la base de datos.");
@@ -306,7 +306,7 @@ class ApprovalService implements ApprovalServiceInterface
             $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse("Porcentaje de descuento general diferente a la original: $data[porcentage_descuento] > $data[porcentage_descuentooriginal]");
         }
 
-        $ptoVenta       = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
+        $ptoVenta       = GpPuntoVenta::where('id', $data['pv_id'])->first();
         $motivosDetalle = $this->validateReservedDetailQuotationType($data['detallecotizacion'], $ptoVenta,  $dsctGlobalCliente);
         if (!empty($motivosDetalle)) {
             $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
@@ -326,25 +326,26 @@ class ApprovalService implements ApprovalServiceInterface
 
             // 1. DEFINIR LA "VERDAD" ORIGINAL (Normalización)
             // La lógica es: Si existe en BD, esa es la verdad. Si no (es nuevo), confiamos en el 'original' que envía el front.
-            $valorOriginalReal      = $detOriginal ? $detOriginal->ART_VALOR : $detalle['ART_VALOR_ORIGINAL'];
-            $descOriginalReal       = $detOriginal ? $detOriginal->ART_DESCRIPCION : $detalle['ART_DESCRIPCION_ORIGINAL'];
-            $descuentoOriginalReal  = $detOriginal ? $detOriginal->descuento : $detalle['descuento_original'];
-            $validatorExistenceItemL = $detOriginal ? $detOriginal->validador_l : data_get($detalle, 'validador_l', false);
-            $artCode        = data_get($detalle, 'ART_CODIGO');
+            $valorOriginalReal          = (float)($detOriginal ? $detOriginal->precio_sin_flete : data_get($detalle, 'ART_VALOR_ORIGINAL'));
+            $descOriginalReal           = trim($detOriginal ? $detOriginal->ART_DESCRIPCION : data_get($detalle, 'ART_DESCRIPCION_ORIGINAL'));
+            $descuentoOriginalReal      = $detOriginal ? $detOriginal->descuento : data_get($detalle, 'descuento_original');
+            $validatorExistenceItemL    = $detOriginal ? $detOriginal->validador_l : data_get($detalle, 'validador_l', false);
+            $artCode                    = data_get($detalle, 'ART_CODIGO');
 
 
+            $discount       = (float) data_get($detalle, 'descuento');
+            $discountOrigin = (float) data_get($detalle, 'descuento_original');
+            $price          = (float) data_get($detalle, 'precio_sin_flete');
+            $priceOrigin    = (float) data_get($detalle, 'ART_VALOR_ORIGINAL');
             //validaciones del descuento en caso de que sea pedido
-            if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente && $detalle['descuento'] != $descuentoOriginalReal) {
+            if ($discount != $discountOrigin && $discount != $dsctGlobalCliente && $discount != $descuentoOriginalReal) {
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
             }
 
-            if ($detalle['ART_VALOR'] != $detalle['ART_VALOR_ORIGINAL'] && $detalle['ART_VALOR'] != $valorOriginalReal) {
-                // Mensaje genérico de cambio
-                $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: {$detalle['ART_VALOR_ORIGINAL']}";
-
-                // Si quieres mantener el mensaje específico que tenías para items existentes:
+            if ($price != $priceOrigin && $price != $valorOriginalReal) {
+                $mensaje = "El valor del producto ha cambiado. Nuevo: {$price} vs Original: {$priceOrigin}";
                 if ($detOriginal) {
-                    $mensaje = "El valor del producto ha cambiado. Nuevo: {$detalle['ART_VALOR']} vs Original: $valorOriginalReal";
+                    $mensaje = "El valor del producto ha cambiado. Nuevo: {$price} vs Original: $valorOriginalReal";
                 }
                 $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse($mensaje);
             }
@@ -360,12 +361,10 @@ class ApprovalService implements ApprovalServiceInterface
                     $porcMaxSubida  = $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
                     $factor         = 1 + ($porcMaxSubida / 100);
                     $precioLimite   = $valorOriginalReal * $factor;
-                    $precioActual   = $detalle['ART_VALOR'];
-                    if ($precioActual > $precioLimite) {
-                        $exceso = $precioActual - $precioLimite;
+                    if ($price > $precioLimite) {
+                        $exceso = $price - $precioLimite;
                         $excesoPct = round(($exceso / $valorOriginalReal) * 100, 2);
-
-                        $detailMotivos[] =  $this->approvalFuntions->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                        $detailMotivos[] =  $this->approvalFuntions->requiredApprovalResponse("El valor del producto ({$price}) supera el límite permitido de {$porcMaxSubida}% "
                             . "(límite: {$precioLimite}), excede en {$exceso} "
                             . "({$excesoPct}% sobre el valor original).");
                     }
@@ -380,7 +379,7 @@ class ApprovalService implements ApprovalServiceInterface
                     );
                 }
                 $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
-                $valor          = round(data_get($detalle, 'ART_VALOR', 0), 4);
+                $valor          = round(data_get($detalle, 'precio_sin_flete', 0), 4);
 
                 if ($valorOriginalL > $valor) {
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");

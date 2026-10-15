@@ -81,6 +81,10 @@ class OrderBuilder implements OrderBuilderInterface
         $det = new GpPedidoDetalle();
         $det->fill([
             'pedido_id'                         => $orderId,
+            'art_id'                            => data_get($item, 'art_id'),
+            'monto_flete'                       => data_get($item, 'monto_flete') ?? 0,
+            'precio_sin_flete'                  => data_get($item, 'precio_sin_flete') ?? 0,
+            'lista_precio'                      => data_get($item, 'lista_precio'),
             'orden'                             => $i + 1,
             'ART_CODIGO'                        => data_get($item, 'ART_CODIGO'),
             'ART_DESCRIPCION'                   => data_get($item, 'ART_DESCRIPCION'),
@@ -128,7 +132,8 @@ class OrderBuilder implements OrderBuilderInterface
             'TOTALCONIMPUESTO'      => (float)data_get($provider, 'TOTALCONIMPUESTO', 0),
             'NOTA'                  => data_get($provider, 'NOTA', ''),
             'recibido'              => $recibido,
-            'MARGEN'                => (float)data_get($provider, 'MARGEN', 0)
+            'MARGEN'                => (float)data_get($provider, 'MARGEN', 0),
+            'proveedor_entrega'     => data_get($provider, 'proveedor_entrega')
         ]);
 
         return $prov;
@@ -161,6 +166,14 @@ class OrderBuilder implements OrderBuilderInterface
     {
         $od = new GpPedido();
         $od->fill([
+            'pv_id'                             => $ptoVta->id,
+            'vendedor_id'                       => data_get($extras, 'vendedor_id'),
+            'tipo_despacho_id'                  => data_get($data, 'tipo_despacho_id'),
+            'responsable_flete'                 => data_get($data, 'responsable_flete'),
+            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id'),
+            'peso'                              => data_get($data, 'peso') ?? 0,
+            'peso_flete'                        => data_get($data, 'peso_flete') ?? 0,
+            'monto_flete'                       => data_get($data, 'monto_flete') ?? 0,
             'cotizacion_id'                     => data_get($data, 'cotizacion_id'),
             'user_id'                           => $user->id,
             'USERID'                            => $user->USERID,
@@ -172,7 +185,7 @@ class OrderBuilder implements OrderBuilderInterface
             'factura_siguiente_mes'             => data_get($data, 'factura_siguiente_mes'),
             'impuesto'                          => TaxRateEnum::IVA_15->value,
             'BOD_BODEGA'                        => data_get($data, 'bodega_facturacion'),
-            'PTO_VTA_ID'                        => data_get($data, 'punto_venta_id'),
+            'PTO_VTA_ID'                        => $ptoVta->PTO_VTA_ID,
             'PTO_VTA_DESCRIPCION'               => $ptoVta->PTO_VTA_DESCRIPCION,
             'DESC_FORMA_PAGO_CODIGO'            => data_get($data, 'forma_pago_id'),
             'CLI_RUC'                           => data_get($data, 'ruc'),

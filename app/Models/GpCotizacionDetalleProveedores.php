@@ -59,5 +59,6 @@ class GpCotizacionDetalleProveedores extends Model
         'TOTALCONIMPUESTO',
         'NOTA',
         'MARGEN',
+        'proveedor_entrega'
     ];
 }

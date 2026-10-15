@@ -83,6 +83,10 @@ class GpCotizacionDetalle extends Model
     ];
 
     protected $fillable = [
+        'art_id',
+        'monto_flete',
+        'precio_sin_flete',
+        'lista_precio',
         'cotizacion_id',
         'ART_CODIGO',
         'ART_DESCRIPCION',

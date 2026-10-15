@@ -264,12 +264,12 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('guardarcotizacionprospecto', [CotizacionesController::class, 'guardarcotizacionprospecto']);
             // Route::post('limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
             Route::post('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
-            Route::post('selectarticulo', [CotizacionesController::class, 'selectarticulo']);
+            // Route::post('selectarticulo', [CotizacionesController::class, 'selectarticulo']);
 
 
             Route::post('recuperarcotizacionprospecto', [CotizacionesController::class, 'recuperarcotizacionprospecto']);
             // Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
-            Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
+            // Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
 
             Route::get('obtener-lista-proyectos', [CotizacionesController::class, 'obtenerListaProyectosVenta']);
 
@@ -436,6 +436,8 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
                 Route::post('actualizar-servicio-logistico', [ArticuloController::class, 'actualizarServicioLogistico']);
                 Route::get('item-logistico', [ArticuloController::class, 'obtenerArticuloLogistico']);
+                Route::post('item-l', [ArticuloController::class, 'buscarArticuloL']);
+                 Route::post('items-detalle', [ArticuloController::class, 'buscarArticuloWeb']);
             });
         });
         Route::group(['prefix' => 'consultas'], function () {
@@ -449,8 +451,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
 
-            Route::post('articulos/lista', [ConsultasController::class, 'buscarArticuloWeb']);
-            Route::post('articulos/item-l', [ConsultasController::class, 'buscarArticuloL']);
+
         });
 
         Route::group(['prefix' => 'aprobaciones'], function () {

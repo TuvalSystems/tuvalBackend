@@ -20,6 +20,14 @@ class HiCotizacion extends Model
     protected $table = 'hi_cotizacion';
 
     protected $fillable = [
+        'pv_id',
+        'vendedor_id',
+        'tipo_despacho_id',
+        'responsable_flete',
+        'proveedor_despacho_id',
+        'peso',
+        'peso_flete',
+        'monto_flete',
         'cot_id',
         'co_his',
         'cotizacion',

@@ -94,6 +94,12 @@ class Kernel extends ConsoleKernel
 
     private function scheduleSynchronizations(Schedule $schedule)
     {
+        $schedule->command('sync:client-configurations')
+            ->timezone(self::TIMEZONE)
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground();
+
         $syncCommands = [
             'sync:clients',
             'sync:client-branches',

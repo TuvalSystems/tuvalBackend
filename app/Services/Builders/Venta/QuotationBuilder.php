@@ -16,6 +16,8 @@ use App\Models\Ventas\Cotizaciones\HiCotizacion;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalle;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleProveedores;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleStock;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Traits\CleansPayloadData;
 use Carbon\Carbon;
@@ -169,126 +171,13 @@ class QuotationBuilder implements QuotationBuilderInterface
     }
 
 
-
-
-    public function formPayloadSendClientGp(array $data, string $nivelPrice): array
-    {
-        $lines = str_split($data['CLI_DIRECCION'], 61);
-        $line1 = $lines[0] ?? '';
-        $line2 = $lines[1] ?? '';
-        return [
-            'ruc'                   => $this->clean($data, 'CLI_RUC'),
-            'razonSocial'           => $this->clean($data, 'CLI_RAZON_SOCIAL'),
-            'nombreCorto'           => $this->clean($data, 'CLI_NOMBRE_CORTO'),
-            'clase'                 => 'LOCAL',
-            'prioridad'             => '1',
-            'contacto'              =>  $this->clean($data, 'CLI_CONTACTO'),
-            'direccion1'            => trim($line1),
-            'direccion2'            => trim($line2),
-            'ciudad'                => $this->clean($data, 'CLI_CIUDAD'),
-            'provincia'             => $this->clean($data, 'CLI_PROVINCIA_NOMBRE'),
-            'pais'                  => 'Ec',
-            'territorio'            => $this->clean($data, 'CLI_TERRITORIO'),
-            'telefono1'             => $this->clean($data, 'CLI_TELEFONO_1'),
-            'telefono2'             => $this->clean($data, 'CLI_TELEFONO_2'),
-            'telefono3'             => $this->clean($data, 'CLI_TELEFONO_3'),
-            'telefono4'             => $this->clean($data, 'CLI_TELEFONO_4'),
-            'correoSri'             => $this->cleanLower($data, 'CLI_CORREO_ELECT_SRI'),
-            'correoNotificacion'    => $this->cleanLower($data, 'CLI_CORREO_ELECT_NOTIFICACION_INTERNA'),
-            'vendedor'              => $this->clean($data, 'CLI_VENDEDOR'),
-            'grupo'                 => $this->clean($data, 'CLI_GRUPO_NOMBRE'),
-            'subGrupo'              => $this->clean($data, 'CLI_SUBGRUPO'),
-            'descComercial'         => '25',
-            'condPago'              => 'CONTADO',
-            'nivelPrecio'           => $nivelPrice,
-            'puntoVenta'            => $this->clean($data, 'CLI_PUNTO_VENTA'),
-            'tipoId'                => $this->clean($data, 'CLI_TIPO_ID'),
-        ];
-    }
-
-    public function formPayloadClientWeb(array $data, string $nivelPrecio,  GpUsuario $user): array
-    {
-        $now = now()->toDateTimeString();
-        return [
-            'tipo_identificacion'                   => $this->clean($data, 'CLI_TIPO_ID'),
-            'CLI_RUC'                               => $this->clean($data, 'CLI_RUC'),
-            'CLI_RAZON_SOCIAL'                      => $this->clean($data, 'CLI_RAZON_SOCIAL'),
-            'CLI_NOMBRE_CORTO'                      => $this->clean($data, 'CLI_NOMBRE_CORTO'),
-            'CLI_CLASE'                             => 'LOCAL',
-            'CLI_PRIORIDAD'                         => '1',
-            'CLI_ID_DIRECCION'                      => 'PRINCIPAL',
-            'CLI_CONTACTO'                          => $this->clean($data, 'CLI_CONTACTO'),
-            'CLI_DIRECCION'                         => $this->clean($data, 'CLI_DIRECCION'),
-            'CLI_CIUDAD'                            => $this->clean($data, 'CLI_CIUDAD'),
-            'CLI_PROVINCIA'                         => $this->clean($data, 'CLI_PROVINCIA_NOMBRE'),
-            'CLI_TERRITORIO'                        => $this->clean($data, 'CLI_TERRITORIO'),
-            'CLI_ESTADO'                            => 'ACTIVO',
-            'CLI_SUSPENDIDO'                        => 'NO',
-            'CLI_TELEFONO_1'                        => $this->clean($data, 'CLI_TELEFONO_1'),
-            'CLI_TELEFONO_2'                        => $this->clean($data, 'CLI_TELEFONO_2'),
-            'CLI_TELEFONO_3'                        => $this->clean($data, 'CLI_TELEFONO_3'),
-            'CLI_TELEFONO_4'                        => $this->clean($data, 'CLI_TELEFONO_4'),
-            'CLI_FECHA_MODIFICACION'                => $now,
-            'CLI_FECHA_CREACION'                    => $now,
-            'CLI_CORREO_ELECT_SRI'                  => $this->cleanLower($data, 'CLI_CORREO_ELECT_SRI'),
-            'CLI_CORREO_ELECT_NOTIFICACION_INTERNA' => $this->cleanLower($data, 'CLI_CORREO_ELECT_NOTIFICACION_INTERNA'),
-            'CLI_IMPUESTO'                          => TaxRateEnum::IVA_15->value,
-            'CLI_DIRECCION_ENVIO'                   => 'PRINCIPAL',
-            'CLI_DIRECCION_FACTURA'                 => 'PRINCIPAL',
-            'CLI_VENDEDOR'                          => $this->clean($data, 'CLI_VENDEDOR'),
-            'CLI_DSTO_COMERCIAL'                    => 25,
-            'CLI_CONDICION_PAGO'                    => 'CONTADO',
-            'CLI_DIA_GRACIA_VTA_CREDITO'            => 0,
-            'CLI_DIA_GRACIA_CHEQUE_A_FECHA'         => 0,
-            'CLI_NIVEL_PRECIO'                      => $nivelPrecio,
-            'CLI_TIPO_CREDITO'                      => 'SIN CREDITO',
-            'CLI_MONTO_CREDITO'                     => 0,
-            'CLI_GRUPO_ECONOMICO'                   => '',
-            'CLI_GRUPO'                             => $this->clean($data, 'CLI_GRUPO_NOMBRE'),
-            'CLI_SUBGRUPO'                          => $this->clean($data, 'CLI_SUBGRUPO', ''),
-            'CLI_DIA_MAXIMO_MES_FACTURACION'        => 0,
-            'CLI_FACTURA_POSTERIOR_AL_DESPACHO'     => 'NO',
-            'CLI_SEGMENTO_ID'                       => $this->cleanNullable($data, 'CLI_SEGMENTO_ID'),
-            'CLI_SUBSEGMENTO_ID'                    => $this->cleanNullable($data, 'CLI_SUBSEGMENTO_ID'),
-            'user_creator_id'                       => $user->id,
-            'fecha_hora_creacion'                   => Carbon::now()->toDateTimeString(),
-        ];
-    }
-
-    public function formPayloadClientSucursal(array $data, int $clientId, GpUsuario $user): array
-    {
-        return [
-            'cliente_id'                                        => $clientId,
-            'CLI_SUC_RUC'                                       => $this->clean($data, 'CLI_RUC'),
-            'CLI_SUC_DESCRIPCION'                               => $this->clean($data, 'CLI_RAZON_SOCIAL'),
-            'CLI_SUC_ID_DIRECCION'                              => 'PRINCIPAL',
-            'CLI_SUC_DIRECCION'                                 => $this->clean($data, 'CLI_DIRECCION'),
-            'CLI_SUC_CONTACTO'                                  => $this->clean($data, 'CLI_CONTACTO'),
-            'CLI_SUC_REFERENCIA'                                => $this->clean($data, 'CLI_CONTACTO'),
-            'CLI_SUC_VENDEDOR'                                  => $this->clean($data, 'CLI_VENDEDOR'),
-            'CLI_SUC_TERRITORIO'                                => $this->clean($data, 'CLI_TERRITORIO'),
-            'CLI_SUC_CIUDAD'                                    => $this->clean($data, 'CLI_CIUDAD'),
-            'CLI_SUC_PROVINCIA'                                 => $this->clean($data, 'CLI_PROVINCIA_NOMBRE'),
-            'CLI_SUC_PAIS'                                      => 'Ecuador',
-            'CLI_SUC_TELEFONO'                                  => $this->clean($data, 'CLI_TELEFONO_1'),
-            'CLI_SUC_CORREO_ELECTRONICO_SRI'                    => $this->cleanLower($data, 'CLI_CORREO_ELECT_SRI'),
-            'CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA'   => $this->cleanLower($data, 'CLI_CORREO_ELECT_SRI'),
-            'user_creator_id'                                   => $user->id,
-            'fecha_hora_creacion'                               => Carbon::now()->toDateTimeString(),
-        ];
-    }
-
-
-
-
-
     /** proces de creacion de cotizacion */
 
-    public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio, string $tipoDespacho): GpCotizacion
+    public function formPayloadHeaderQuotation(GpCotizacion $quotation,  GpUsuario $user, GpCliente $client,  TipoDespacho $typeDispatch, GpVendedor $seller, GpPuntoVenta $pointSales,  array $data, array $requiredApprovalCommercial, string $motivoLimpio): GpCotizacion
     {
         return $quotation->fill([
             'estado'                            => $requiredApprovalCommercial['estado'],
-            'cliente_id'                        => data_get($data, 'cliente_id', null),
+            'cliente_id'                        => $client->id,
             'user_id'                           => $user->id,
             'sucursal_id'                       => data_get($data, 'direccion_entrega_id'),
             'sucursal_facturacion_id'           => data_get($data, 'direccion_facturacion_id'),
@@ -296,19 +185,21 @@ class QuotationBuilder implements QuotationBuilderInterface
             'factura_a_demanda'                 => data_get($data, 'factura_a_demanda'),
             'factura_siguiente_mes'             => data_get($data, 'factura_siguiente_mes'),
             'BOD_BODEGA'                        => data_get($data, 'bodega_facturacion'),
-            'PTO_VTA_ID'                        => data_get($data, 'punto_venta_id'),
-            'PTO_VTA_DESCRIPCION'               => $puntoVenta->PTO_VTA_DESCRIPCION ?? '',
+            'pv_id'                             => $pointSales->id,
+            'PTO_VTA_ID'                        => $pointSales->PTO_VTA_ID,
+            'PTO_VTA_DESCRIPCION'               => $pointSales->PTO_VTA_DESCRIPCION ?? '',
             'USERID'                            => $user->USERID,
             'DESC_FORMA_PAGO_CODIGO'            => data_get($data, 'forma_pago_id', null),
-            'CLI_RUC'                           => data_get($data, 'ruc'),
-            'CLI_RAZON_SOCIAL'                  => data_get($data, 'razon_social'),
+            'CLI_RUC'                           => $client->CLI_RUC,
+            'CLI_RAZON_SOCIAL'                  => $client->CLI_RAZON_SOCIAL,
             'CLI_CORREO_ELECT_SRI'              => data_get($data, 'correo_electronico_sri'),
             'COND_ID'                           => data_get($data, 'condicion_pago_id'),
             'COND_ID_ORIGINAL'                  => data_get($data, 'condicion_pago_original_id'),
-            'VEND_ID'                           => data_get($data, 'vendedor_id'),
-            'VEND_NOMBRES'                      => data_get($data, 'vendedor_nombres'),
-            'VEND_APELLIDOS'                    => data_get($data, 'vendedor_apellidos'),
-            'despacho'                          => $tipoDespacho,
+            'vendedor_id'                       => $seller->id,
+            'VEND_ID'                           => $seller->VEND_ID,
+            'VEND_NOMBRES'                      => $seller->VEND_NOMBRES,
+            'VEND_APELLIDOS'                    => $seller->VEND_APELLIDOS,
+            'despacho'                          => $typeDispatch->descripcion,
             'orden_de_compra'                   => data_get($data, 'orden_de_compra'),
             'porcentage_descuento'              => data_get($data, 'descuento_articulo'),
             'porcentage_descuentooriginal'      => data_get($data, 'descuento_original'),
@@ -332,16 +223,28 @@ class QuotationBuilder implements QuotationBuilderInterface
             'origen'                            => data_get($data, 'origen', 'cotizacion'),
             'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
             'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
-            'proyecto'                          => data_get($data, 'proyecto', null)
+            'proyecto'                          => data_get($data, 'proyecto', null),
+
+            //paqueteria
+            'responsable_flete'                 => data_get($data, 'responsable_flete'),
+            'tipo_despacho_id'                  => $typeDispatch->id,
+            'monto_flete'                       => data_get($data, 'monto_flete'),
+            'peso'                              => data_get($data, 'peso'),
+            'peso_flete'                        => data_get($data, 'peso_flete'),
+            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id')
+
+
+
 
         ]);
     }
 
-    public function formPayloadDetailQuotation(int $quotationId, array $articles): GpCotizacionDetalle
+    public function formPayloadDetailQuotation(int $quotationId, array $articles, string $lvlPrice): GpCotizacionDetalle
     {
         $qd = new GpCotizacionDetalle();
         $qd->fill([
             'cotizacion_id'                 => $quotationId,
+            'art_id'                        => data_get($articles, 'art_id'),
             'ART_CODIGO'                    => data_get($articles, 'ART_CODIGO'),
             'ART_DESCRIPCION'               => data_get($articles, 'ART_DESCRIPCION'),
             'ART_DESCRIPCION_ORIGINAL'      => data_get($articles, 'ART_DESCRIPCION_ORIGINAL'),
@@ -371,6 +274,10 @@ class QuotationBuilder implements QuotationBuilderInterface
             'cod_clase'                     => data_get($articles, 'cod_clase'),
             'resultado_configuracion_item_l' => data_get($articles, 'resultado_configuracion_item_l'),
 
+            //campos de paqueteria
+            'monto_flete'                   => data_get($articles, 'monto_flete', 0),
+            'precio_sin_flete'              => data_get($articles, 'precio_sin_flete', 0),
+            'lista_precio'                  => $lvlPrice,
         ]);
 
         return $qd;
@@ -392,7 +299,8 @@ class QuotationBuilder implements QuotationBuilderInterface
             'TOTAL'                 => (float)data_get($provider, 'TOTAL'),
             'TOTALCONIMPUESTO'      => (float)data_get($provider, 'TOTALCONIMPUESTO'),
             'NOTA'                  => data_get($provider, 'NOTA'),
-            'MARGEN'                => data_get($provider, 'MARGEN', 0)
+            'MARGEN'                => data_get($provider, 'MARGEN', 0),
+            'proveedor_entrega'     => data_get($provider, 'proveedor_entrega')
         ]);
 
         return $prov;
@@ -520,6 +428,10 @@ class QuotationBuilder implements QuotationBuilderInterface
             'co_his'                            => $version,
             'cotizacion'                        => $quote->cotizacion,
             'user_id'                           => $quote->user_id,
+            'pv_id'                             => $quote->pv_id,
+            'tipo_despacho_id'                  => $quote->tipo_despacho_id,
+            'proveedor_despacho_id'             => $quote->proveedor_despacho_id,
+            'vendedor_id'                       => $quote->vendedor_id,
             'sucursal_id'                       => $quote->sucursal_id,
             'sucursal_facturacion_id'           => $quote->sucursal_facturacion_id,
             'cliente_id'                        => $quote->cliente_id,
@@ -577,7 +489,12 @@ class QuotationBuilder implements QuotationBuilderInterface
             'pedido_generado_at'                => $quote->pedido_generado_at,
             'user_rechazo_id'                   => $quote->user_rechazo_id,
             'fe_rechazo'                        => $quote->fe_rechazo,
-            'proyecto'                          => $quote->proyecto
+            'proyecto'                          => $quote->proyecto,
+            //paqueteria
+            'peso'                              => $quote->peso,
+            'peso_flete'                        => $quote->peso_flete,
+            'monto_flete'                       => $quote->monto_flete,
+            'responsable_flete'                 => $quote->responsable_flete,
         ]);
         return $hi;
     }
@@ -587,37 +504,41 @@ class QuotationBuilder implements QuotationBuilderInterface
     {
         $nHDetail = new HiCotizacionDetalle();
         $nHDetail->fill([
-            'hi_cot_id'                     => $hCotId,
-            'cot_id'                        => $cotId,
-            'det_id'                        => $detId,
-            'ART_CODIGO'                    => $detail->ART_CODIGO,
-            'ART_DESCRIPCION'               => $detail->ART_DESCRIPCION,
-            'ART_DESCRIPCION_ORIGINAL'      => $detail->ART_DESCRIPCION_ORIGINAL,
-            'CHECK_ALTERNATIVO'             => $detail->CHECK_ALTERNATIVO,
-            'ART_CODIGO_TRES_LETRAS'        => $detail->ART_CODIGO_TRES_LETRAS,
-            'ART_DECIMAL_CANTIDAD'          => $detail->ART_DECIMAL_CANTIDAD,
-            'ART_PLAN_UMEDIDA'              => $detail->ART_PLAN_UMEDIDA,
-            'ART_MARCA'                     => $detail->ART_MARCA,
-            'ART_MATERIAL'                  => $detail->ART_MATERIAL,
-            'ART_PESO'                      => $detail->ART_PESO,
-            'ART_TIPO_COMPRA'               => $detail->ART_TIPO_COMPRA,
-            'ART_VALOR'                     => $detail->ART_VALOR,
-            'ART_VALOR_ORIGINAL'            => $detail->ART_VALOR_ORIGINAL,
-            'ART_DESCUENTO'                 => $detail->ART_DESCUENTO,
-            'ART_IVA'                       => $detail->ART_IVA,
-            'ART_CANTIDAD'                  => $detail->ART_CANTIDAD,
-            'ART_STOCK'                     => $detail->ART_STOCK,
-            'ART_IMP_VTA'                   => $detail->ART_IMP_VTA,
-            'ART_COSTO_PROMEDIO'            => $detail->ART_COSTO_PROMEDIO,
-            'descuento'                     => $detail->descuento,
-            'descuento_original'            => $detail->descuento_original,
-            'modificador'                   => $detail->modificador,
-            'valor_original_l'              => $detail->valor_original_l,
-            'validador_l'                   => $detail->validador_l,
-            'cod_categoria'                 => $detail->cod_categoria,
-            'cod_linea'                     => $detail->cod_linea,
-            'cod_clase'                     => $detail->cod_clase,
-            'resultado_configuracion_item_l'=> $detail->resultado_configuracion_item_l,
+            'hi_cot_id'                         => $hCotId,
+            'cot_id'                            => $cotId,
+            'det_id'                            => $detId,
+            'art_id'                            => $detail->art_id,
+            'ART_CODIGO'                        => $detail->ART_CODIGO,
+            'ART_DESCRIPCION'                   => $detail->ART_DESCRIPCION,
+            'ART_DESCRIPCION_ORIGINAL'          => $detail->ART_DESCRIPCION_ORIGINAL,
+            'CHECK_ALTERNATIVO'                 => $detail->CHECK_ALTERNATIVO,
+            'ART_CODIGO_TRES_LETRAS'            => $detail->ART_CODIGO_TRES_LETRAS,
+            'ART_DECIMAL_CANTIDAD'              => $detail->ART_DECIMAL_CANTIDAD,
+            'ART_PLAN_UMEDIDA'                  => $detail->ART_PLAN_UMEDIDA,
+            'ART_MARCA'                         => $detail->ART_MARCA,
+            'ART_MATERIAL'                      => $detail->ART_MATERIAL,
+            'ART_PESO'                          => $detail->ART_PESO,
+            'ART_TIPO_COMPRA'                   => $detail->ART_TIPO_COMPRA,
+            'ART_VALOR'                         => $detail->ART_VALOR,
+            'ART_VALOR_ORIGINAL'                => $detail->ART_VALOR_ORIGINAL,
+            'ART_DESCUENTO'                     => $detail->ART_DESCUENTO,
+            'ART_IVA'                           => $detail->ART_IVA,
+            'ART_CANTIDAD'                      => $detail->ART_CANTIDAD,
+            'ART_STOCK'                         => $detail->ART_STOCK,
+            'ART_IMP_VTA'                       => $detail->ART_IMP_VTA,
+            'ART_COSTO_PROMEDIO'                => $detail->ART_COSTO_PROMEDIO,
+            'descuento'                         => $detail->descuento,
+            'descuento_original'                => $detail->descuento_original,
+            'modificador'                       => $detail->modificador,
+            'valor_original_l'                  => $detail->valor_original_l,
+            'validador_l'                       => $detail->validador_l,
+            'cod_categoria'                     => $detail->cod_categoria,
+            'cod_linea'                         => $detail->cod_linea,
+            'cod_clase'                         => $detail->cod_clase,
+            'resultado_configuracion_item_l'    => $detail->resultado_configuracion_item_l,
+            'monto_flete'                       => $detail->monto_flete,
+            'precio_sin_flete'                  => $detail->precio_sin_flete,
+            'lista_precio'                      => $detail->lista_precio,
         ]);
         return $nHDetail;
     }
@@ -640,6 +561,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'TOTALCONIMPUESTO'      => $prov->TOTALCONIMPUESTO,
             'NOTA'                  => $prov->NOTA,
             'MARGEN'                => $prov->MARGEN,
+            'proveedor_entrega'     => $prov->proveedor_entrega
         ]);
         return $nHProv;
     }

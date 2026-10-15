@@ -74,6 +74,7 @@ class GpPuntoVenta extends Model
     use HasFactory;
 
     protected $fillable = [
+        'codigo_local',
         'PTO_VTA_ID',
         'PTO_VTA_DESCRIPCION',
         'PTO_VTA_DIRECCION_1',

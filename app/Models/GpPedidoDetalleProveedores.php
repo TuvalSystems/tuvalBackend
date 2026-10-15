@@ -72,16 +72,16 @@ class GpPedidoDetalleProveedores extends Model
         'NOTA',
         'recibido',
         'MARGEN',
-
+        'proveedor_entrega'
     ];
 
     protected $casts = [
-        'CANTIDAD' => 'float',
-        'COSTO_UNITARIO' => 'float',
-        'IMPUESTO' => 'float',
-        'TOTAL' => 'float',
-        'TOTALCONIMPUESTO' => 'float',
-        'MARGEN' => 'float',
+        'CANTIDAD'          => 'float',
+        'COSTO_UNITARIO'    => 'float',
+        'IMPUESTO'          => 'float',
+        'TOTAL'             => 'float',
+        'TOTALCONIMPUESTO'  => 'float',
+        'MARGEN'            => 'float',
     ];
 
     public function pedidodetalle(){

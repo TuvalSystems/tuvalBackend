@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Inventario\Articulo;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Venta\Consultas\BusquedaArticuloRequest;
 use App\Services\Inventario\Articulo\Contracts\ArticleSegmentConfigServiceInterface;
 use App\Services\Inventario\Articulo\Contracts\ArticleServiceInterface;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
@@ -90,9 +91,30 @@ class ArticuloController extends Controller
         }, self::LOG_CHANNEL, 'obtenerListaItemsFiltroSegmentacion');
     }
 
-    public function obtenerArticuloLogistico() : JsonResponse
+
+    public function buscarArticuloWeb(BusquedaArticuloRequest $request): JsonResponse
     {
-        return $this->handleApiAction(function ()  : JsonResponse{
+        return $this->handleApiAction(function () use ($request) {
+            $data = $this->articleService->searchArticlesWithDetails($request->validated());
+            return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
+        }, self::LOG_CHANNEL, 'buscarArticuloWeb');
+    }
+
+
+    public function buscarArticuloL(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $items      = $request->input('items', []);
+            $porcentaje = $request->input('porcentaje');
+            $articulo   = $this->articleService->findAvailableTypeLArticle($items, $porcentaje);
+            return $this->successResponse('Información Obtenida correctamente.!', $articulo);
+        }, self::LOG_CHANNEL, 'buscarArticuloL');
+    }
+
+
+    public function obtenerArticuloLogistico(): JsonResponse
+    {
+        return $this->handleApiAction(function (): JsonResponse {
             $item = $this->articleService->getLogisticServiceArticle();
             return $this->successResponse('Item logístico obtenido correctamente', $item);
         }, self::LOG_CHANNEL, 'obtenerArticuloLogistico');

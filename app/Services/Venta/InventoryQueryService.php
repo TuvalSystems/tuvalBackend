@@ -2,14 +2,10 @@
 
 namespace App\Services\Venta;
 
-use App\Enums\bodegas\AbcSegment;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\Articulos\GpArticulo;
 use App\Models\GpCliente;
-use App\Models\GpProvinciaCiudadParroquia;
 use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\GpTerritorio;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
@@ -17,7 +13,6 @@ use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 
 class InventoryQueryService implements InventoryQueryServiceInterface
 {
@@ -657,106 +652,9 @@ class InventoryQueryService implements InventoryQueryServiceInterface
 
 
 
-    public function searchWithDetails(array $filters)
-    {
-        $articulos = GpArticulo::searchItemModel($filters);
-
-        if ($articulos->isEmpty()) {
-            return collect();
-        }
-
-        $articleCodes = $articulos->pluck('ART_CODIGO');
-        $groupPrices = $this->getApiPriceArticle($articleCodes->implode(',') . ',');
-        $groupsByAbc = $this->getApiSegmentsAbcItem($articleCodes);
-
-        return $articulos->map(function ($art) use ($filters, $groupPrices, $groupsByAbc) {
-            $art->ART_VALOR = $art->ART_VALOR ?? 0;
-            $myPrice = $groupPrices->get($art->ART_CODIGO, collect());
-            $nivelPrecio = data_get($filters, 'nivel_precio', null);
-            if ($nivelPrecio) {
-                $precioEncontrado = $myPrice->firstWhere('idLista', $nivelPrecio);
-                $valor = $precioEncontrado ? data_get($precioEncontrado, 'valor', 0) : 0;
-                $art->ART_VALOR = (float) round($valor, 4);
-                $art->ART_VALOR_ORIGINAL = $art->ART_VALOR;
-                $art->ART_DESCRIPCION_ORIGINAL = $art->ART_DESCRIPCION;
-            } else {
-                $art->precios = $myPrice->values();
-            }
-            //obtencion de abc
-            $myAbc                      = $groupsByAbc->get($art->ART_CODIGO, collect());
-            $classAbc                   = ($myAbc && $myAbc->isNotEmpty()) ? data_get($myAbc->first(), 'tuval', '-') : '-';
-            $art->clasificacion_tuval   = $classAbc;
-            $art->debe_resaltar         = $this->shouldHighlightSegment($classAbc);
-            $art->proveedores           = [];
-            $art->descuento             = 0;
-            $art->descuento_original    = 0;
-            $art->modificador           = 0;
-            $art->imagenes              = $this->getImageArticle($art->ART_CODIGO_TRES_LETRAS);
-            return $art;
-        })->filter(
-            function ($articulo) use ($filters) {
-                if (!empty($filters['nivel_precio'])) {
-                    return $articulo->ART_VALOR >= 0;
-                }
-                return count($articulo->precios) > 0;
-            }
-        )->sortBy('ART_CODIGO_ZAFIRO')->values();
-    }
-
-    public function findAvailableTypeLArticle(
-        array $excludedArticleCodes,
-        float $taxPercentage
-    ): ?GpArticulo
-    {
-       $article =   GpArticulo::findAvailableTypeLArticle(
-            $excludedArticleCodes,
-            $taxPercentage
-        );
-        // $article->ART_TIPO_COMPRA         = 'L';
-        $article->ART_VALOR               = 0;
-        $article->ART_VALOR_ORIGINAL      = 0;
-        $article->ART_DESCRIPCION_ORIGINAL= $article->ART_DESCRIPCION;
-        $article->clasificacion_tuval     = '-';
-        $article->debe_resaltar           = false;
-        $article->proveedores             = [];
-        $article->descuento               = 0;
-        $article->descuento_original      = 0;
-        $article->modificador             = 0;
-        $article->imagenes                = [];
-        return $article;
-    }
 
 
-    public function getApiPriceArticle($article)
-    {
-        $response = $this->stockWarehouseService->fetchListPricesArticle($article);
-        return  collect($response)->groupBy('item');
-    }
 
-    public function getApiSegmentsAbcItem($articles)
-    {
-        $itemList = is_iterable($articles) ? collect($articles)->values()->toArray() : [$articles];
-        $response = $this->stockWarehouseService->fetchListSegmentsAbc($itemList);
-        return  collect($response)->groupBy('item');
-    }
-
-    public function getImageArticle(string $codArt)
-    {
-        $images = [];
-        for ($i = 1; $i <= 3; $i++) {
-            $path = "images/productos/{$codArt}_{$i}.jpg";
-            $pathAbsolute = public_path($path);
-            if (File::exists($pathAbsolute)) {
-                $images[] = asset($path);
-            }
-        }
-        return $images;
-    }
-
-    public function shouldHighlightSegment(?string $clase): bool
-    {
-        return AbcSegment::shouldHighlight($clase);
-    }
 
 
 

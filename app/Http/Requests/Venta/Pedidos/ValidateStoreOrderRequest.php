@@ -61,8 +61,8 @@ class ValidateStoreOrderRequest extends FormRequest
             'mode'                      => ['required'],
             // -- datos del cliente
             'cliente_id'                => ['required', 'integer', 'exists:gp_clientes,id'], // Corregido sintaxis array
-            'ruc'                       => ['required', 'string', 'max:20'],
-            'razon_social'              => ['required', 'string', 'max:255'],
+            'ruc'                       => ['nullable', 'string', 'max:20'],
+            'razon_social'              => ['nullable', 'string', 'max:255'],
             'correo_electronico_sri' => [
                 'nullable', // 1. Permite que sea null o vacío
                 'string',
@@ -92,16 +92,20 @@ class ValidateStoreOrderRequest extends FormRequest
                     }
                 },
             ],
-            'vendedor_id'               => ['required', 'string'],
+            'vendedor_id'               => ['nullable', 'string'],
             'vendedor_nombres'          => ['nullable', 'string', 'max:255'],
             'vendedor_apellidos'        => ['nullable', 'string', 'max:255'],
             // -- logica de ubicacion y bodegas despacho
             'punto_venta_id'            => ['required', 'string'],
+            'pv_id'                     => ['required', 'integer', 'exists:gp_punto_ventas,id'],
+            'responsable_flete'         => ['required', 'string'],
+            'tipo_despacho_id'          => ['required', 'integer', 'exists:tipo_despachos,id'],
+            'proveedor_despacho_id'     => ['nullable', 'integer', 'exists:gp_proveedors,id'],
+            'monto_flete'               => ['nullable', 'numeric'],
             'bodega_facturacion'        => ['required', 'string'],
-            'tipo_entrega'              => ['required', 'in:retiro,despacho'],
-            'fecha_entrega'             => ['required_if:tipo_entrega,despacho'],
+            'fecha_entrega'             => ['nullable', 'string'],
             'direccion_facturacion_id'  => ['required'],
-            'direccion_entrega_id'      => ['required_if:tipo_entrega,despacho'],
+            'direccion_entrega_id'      => ['nullable', 'integer'],
 
             // --- Booleanos (Facturación) ---
             'factura_posterior_despacho' => ['required', 'boolean'],
@@ -128,12 +132,17 @@ class ValidateStoreOrderRequest extends FormRequest
             'modificador_global'        => ['nullable', 'numeric'],
 
             'peso'                      => ['nullable', 'numeric'],
+            'peso_flete'                => ['nullable', 'numeric'],
             'descuento_articulo'        => ['nullable', 'numeric'],
             'descuento_original'        => ['nullable', 'numeric'],
             // --- VALIDACIÓN DE ITEMS -    --
             'items'                         => ['required', 'array', 'min:1'],
 
             'items.*.id'                    => ['nullable', 'integer'],
+            'items.*.art_id'                => ['nullable', 'integer', 'exists:gp_articulos,id'],
+            'items.*.monto_flete'           => ['nullable', 'numeric'],
+            'items.*.precio_sin_flete'      => ['required', 'numeric', 'min:0'],
+            'items.*.lista_precio'          => ['nullable', 'string'],
             'items.*.detalle_id'            => ['nullable', 'integer'],
             'items.*.cotizacion_id'         => ['nullable', 'integer', 'exists:gp_cotizacions,id'],
             'items.*.id_temp'               => ['nullable', 'string', 'max:100'],

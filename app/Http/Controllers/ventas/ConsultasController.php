@@ -36,23 +36,8 @@ class ConsultasController extends Controller
         protected readonly ClientQueryServiceInterface $clientService
     ) {}
 
-    public function buscarArticuloWeb(BusquedaArticuloRequest $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $data = $this->inventoryService->searchWithDetails($request->validated());
-            return $this->successResponse('Articulos obtenidos correctamente', $data, 200);
-        }, 'cotizaciones', 'buscarArticuloWeb');
-    }
 
-    public function buscarArticuloL(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $items      = $request->input('items', []);
-            $porcentaje = $request->input('porcentaje');
-            $articulo   = $this->inventoryService->findAvailableTypeLArticle($items, $porcentaje);
-            return $this->successResponse('Información Obtenida correctamente.!', $articulo);
-        }, 'cotizaciones', 'buscarArticuloL');
-    }
+
 
 
     public function consultarstock(Request $request): JsonResponse
@@ -162,11 +147,11 @@ class ConsultasController extends Controller
         );
     }
 
-   
 
-  
 
-   
+
+
+
 
     public function cupodisponible(string $ruc)
     {
@@ -182,41 +167,7 @@ class ConsultasController extends Controller
         }
     }
 
-    public function territorios(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
-    {
-        $territorios = GpTerritorio::get()->toArray();
-
-        $provincia_ciudad = GpProvinciaCiudadParroquia::orderby('provincia', 'ASC')->get()->toArray();
-        $provincia_arr = array();
-        foreach ($provincia_ciudad as $pc) {
-            $provincia_arr[$pc['provincia']]['provincia'] = $pc['provincia'];
-            $provincia_arr[$pc['provincia']]['ciudades'][$pc['ciudad']] = $pc['ciudad'];
-        }
-        $provincia_arr = array_values($provincia_arr);
-
-        foreach ($provincia_arr as $key => $provincia) {
-            $provincia_arr[$key]['ciudades'] = array_values($provincia['ciudades']);
-        }
-
-        $grupos = GpGrupoCliente::orderby('GRUPO_CODIGO', 'ASC')->get()->toArray();
-        $subgrupos = GpSubGrupoCliente::orderby('GRUPO_CODIGO', 'ASC')->get()->toArray();
-        $grupos_arr = array();
-        foreach ($grupos as $grupo) {
-            $grupos_arr[$grupo['GRUPO_CODIGO']]['GRUPO_CODIGO'] = $grupo['GRUPO_CODIGO'];
-            $grupos_arr[$grupo['GRUPO_CODIGO']]['GRUPO_DESCRIPCION'] = $grupo['GRUPO_DESCRIPCION'];
-            foreach ($subgrupos as $subgrupo) {
-                if ($subgrupo['GRUPO_CODIGO'] == $grupo['GRUPO_CODIGO'])
-                    $grupos_arr[$grupo['GRUPO_CODIGO']]['subgrupos'][] = $subgrupo;
-            }
-        }
-
-        return response([
-            'success' => true,
-            'territorios' => $territorios,
-            'provincias_ciudades' => $provincia_arr,
-            'grupos_subgrupos' => array_values($grupos_arr),
-        ]);
-    }
+ 
 
     public function puntodeventacaja(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
     {

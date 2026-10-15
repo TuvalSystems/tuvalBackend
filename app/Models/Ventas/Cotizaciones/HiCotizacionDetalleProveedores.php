@@ -28,6 +28,7 @@ class HiCotizacionDetalleProveedores extends Model
         'TOTALCONIMPUESTO',
         'MARGEN',
         'NOTA',
+        'proveedor_entrega'
     ];
 
     protected $casts = [

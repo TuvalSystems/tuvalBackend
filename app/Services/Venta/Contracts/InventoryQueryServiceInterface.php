@@ -11,22 +11,14 @@ interface InventoryQueryServiceInterface
     public function getConsultItemTransito($data);
     public function fetchStockInTransit();
     public function fetchStockInTransitTransfers();
-        public function fetchStockTransitReservations();
-     public function fetchStockInTransitConsolidated();
+    public function fetchStockTransitReservations();
+    public function fetchStockInTransitConsolidated();
     /** funcion para consulta de cupo de cliente */
     public function getAvailableSpace(string $ruc);
     /** funcion de consulta de reservados  */
     public function listReservedInventory();
     public function listReservedWebInventory(?string $item);
-    /**
-     * funcion encargada de buscar articulos
-     * @param array $filters
-     */
-    public function searchWithDetails(array $filters);
-    public function findAvailableTypeLArticle(
-        array $excludedArticleCodes,
-        float $taxPercentage
-    ): ?GpArticulo;
+
     public function listReservedStockForItems(string $items);
     public function getArticleExposition(string $artCode, string $pvCode);
 }

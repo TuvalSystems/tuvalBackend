@@ -130,6 +130,10 @@ class GpPedidoDetalle extends Model
 
 
     protected $fillable = [
+        'art_id',
+        'monto_flete',
+        'precio_sin_flete',
+        'lista_precio',
         'pedido_id',
         'orden',
         'ART_CODIGO',
