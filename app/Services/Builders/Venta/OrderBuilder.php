@@ -80,13 +80,14 @@ class OrderBuilder implements OrderBuilderInterface
             'tipo_despacho_id'              => data_get($data, 'tipo_despacho_id', null),
             'responsable_flete'             => data_get($data, 'responsable_flete', null),
             'proveedor_despacho_id'         => data_get($data, 'proveedor_despacho_id', null),
-            'peso'                          => data_get($data, 'peso', 0),
-            'peso_flete'                    => data_get($data, 'peso_flete', 0),
-            'monto_flete'                   => data_get($data, 'monto_flete', 0),
+            'peso'                          => data_get($data, 'peso') ?? 0,
+            'peso_flete'                    => data_get($data, 'peso_flete') ?? 0,
+            'monto_flete'                   => data_get($data, 'monto_flete') ?? 0,
             'usuario_flete_id'              => data_get($data, 'monto_flete')  > 0 ?  data_get($infoCreator, 'user.id') : null,
             'fecha_flete'                   => data_get($data, 'monto_flete')  > 0 ? now() : null,
             'fecha_flete_autorizacion'      => $freightAuthorization['fecha_flete_autorizacion'],
             'usuario_flete_autorizador_id'  => $freightAuthorization['usuario_flete_autorizador_id'],
+            'facturar_ahora'                => data_get($data, 'facturar_ahora') ?? false,
         ]);
 
         return $newOrder;
@@ -190,7 +191,7 @@ class OrderBuilder implements OrderBuilderInterface
             'vendedor_id'                       => data_get($extras, 'vendedor_id'),
             'tipo_despacho_id'                  => data_get($data, 'tipo_despacho_id'),
             'responsable_flete'                 => data_get($data, 'responsable_flete'),
-            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id'),
+            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id', null),
             'peso'                              => data_get($data, 'peso') ?? 0,
             'peso_flete'                        => data_get($data, 'peso_flete') ?? 0,
             'monto_flete'                       => data_get($data, 'monto_flete') ?? 0,
@@ -246,6 +247,7 @@ class OrderBuilder implements OrderBuilderInterface
             'fecha_flete'                       => data_get($data, 'monto_flete')  > 0 ? now() : null,
             'fecha_flete_autorizacion'          => $freightAuthorization['fecha_flete_autorizacion'],
             'usuario_flete_autorizador_id'      => $freightAuthorization['usuario_flete_autorizador_id'],
+            'facturar_ahora'                    => data_get($data, 'facturar_ahora') ?? false,
         ]);
         return $od;
     }
@@ -305,6 +307,7 @@ class OrderBuilder implements OrderBuilderInterface
             'modificador_global'                => data_get($data, 'modificador_global', 0),
             'fe_facturacion_reserva'            => data_get($data, 'facturacion_reserva'),
             'pedido_origen'                     => data_get($data, 'pedido'),
+            'facturar_ahora'                    => data_get($data, 'facturar_ahora') ?? false,
         ]);
 
         return $od;

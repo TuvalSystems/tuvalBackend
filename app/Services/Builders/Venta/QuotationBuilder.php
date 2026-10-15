@@ -80,6 +80,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'factura_posterior_despacho'        => $data['factura_posterior_despacho'],
             'factura_a_demanda'                 => $data['factura_a_demanda'],
             'factura_siguiente_mes'             => $data['factura_siguiente_mes'],
+            'facturar_ahora'                    => data_get($data, 'facturar_ahora') ?? false,
             'BOD_BODEGA'                        => $data['BOD_BODEGA'],
             'PTO_VTA_ID'                        => $data['PTO_VTA_ID'],
             'PTO_VTA_DESCRIPCION'               => $pv->PTO_VTA_DESCRIPCION ?? '',
@@ -121,6 +122,9 @@ class QuotationBuilder implements QuotationBuilderInterface
             'tipo_despacho_id', 'proveedor_despacho_id', 'responsable_flete',
             'peso', 'peso_flete', 'monto_flete',
         ]));
+        foreach (['peso', 'peso_flete', 'monto_flete'] as $field) {
+            $cot->setAttribute($field, $cot->getAttribute($field) ?? 0);
+        }
         $cot->fill($freightAuthorization);
         $cot->fill([
             'usuario_flete_id' => $source?->usuario_flete_id,
@@ -240,14 +244,15 @@ class QuotationBuilder implements QuotationBuilderInterface
             //paqueteria
             'responsable_flete'                 => data_get($data, 'responsable_flete'),
             'tipo_despacho_id'                  => $typeDispatch->id,
-            'monto_flete'                       => data_get($data, 'monto_flete'),
-            'peso'                              => data_get($data, 'peso'),
-            'peso_flete'                        => data_get($data, 'peso_flete'),
-            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id'),
+            'monto_flete'                       => data_get($data, 'monto_flete') ?? 0,
+            'peso'                              => data_get($data, 'peso') ?? 0,
+            'peso_flete'                        => data_get($data, 'peso_flete') ?? 0,
+            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id', null),
             'usuario_flete_id'                  => data_get($data, 'monto_flete') > 0 ? $user->id : null,
             'fecha_flete'                       => data_get($data, 'monto_flete') > 0 ? now() : null,
             'fecha_flete_autorizacion'          => $freightAuthorization['fecha_flete_autorizacion'],
             'usuario_flete_autorizador_id'      => $freightAuthorization['usuario_flete_autorizador_id'],
+            'facturar_ahora'                    => data_get($data, 'facturar_ahora',false),
         ]);
     }
 
@@ -442,7 +447,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'user_id'                           => $quote->user_id,
             'pv_id'                             => $quote->pv_id,
             'tipo_despacho_id'                  => $quote->tipo_despacho_id,
-            'proveedor_despacho_id'             => $quote->proveedor_despacho_id,
+            'proveedor_despacho_id'             => $quote->proveedor_despacho_id ?? null,
             'vendedor_id'                       => $quote->vendedor_id,
             'sucursal_id'                       => $quote->sucursal_id,
             'sucursal_facturacion_id'           => $quote->sucursal_facturacion_id,
@@ -503,14 +508,15 @@ class QuotationBuilder implements QuotationBuilderInterface
             'fe_rechazo'                        => $quote->fe_rechazo,
             'proyecto'                          => $quote->proyecto,
             //paqueteria
-            'peso'                              => $quote->peso,
-            'peso_flete'                        => $quote->peso_flete,
-            'monto_flete'                       => $quote->monto_flete,
+            'peso'                              => $quote->peso ?? 0,
+            'peso_flete'                        => $quote->peso_flete ?? 0,
+            'monto_flete'                       => $quote->monto_flete ?? 0,
             'responsable_flete'                 => $quote->responsable_flete,
             'usuario_flete_id'                  => $quote->usuario_flete_id,
             'fecha_flete'                       => $quote->fecha_flete,
             'fecha_flete_autorizacion'          => $quote->fecha_flete_autorizacion,
             'usuario_flete_autorizador_id'      => $quote->usuario_flete_autorizador_id,
+            'facturar_ahora'                    => $quote->facturar_ahora,
         ]);
         return $hi;
     }

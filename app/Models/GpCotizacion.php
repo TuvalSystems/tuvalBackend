@@ -177,6 +177,7 @@ class GpCotizacion extends Model implements HasMedia
         'has_service_items'         => 'boolean',
         'has_reserva'               => 'boolean',
         'validate_duplicate_items'  => 'boolean',
+        'facturar_ahora'            => 'boolean'
     ];
     protected $fillable = [
         'pv_id',
@@ -248,7 +249,8 @@ class GpCotizacion extends Model implements HasMedia
         'usuario_flete_id',
         'fecha_flete',
         'usuario_flete_autorizador_id',
-        'fecha_flete_autorizacion'
+        'fecha_flete_autorizacion',
+        'facturar_ahora'
     ];
 
     /**

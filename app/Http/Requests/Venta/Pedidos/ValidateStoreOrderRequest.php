@@ -28,6 +28,7 @@ class ValidateStoreOrderRequest extends FormRequest
             'factura_posterior_despacho' => filter_var($this->factura_posterior_despacho, FILTER_VALIDATE_BOOLEAN),
             'factura_a_demanda'          => filter_var($this->factura_a_demanda, FILTER_VALIDATE_BOOLEAN),
             'factura_siguiente_mes'      => filter_var($this->factura_siguiente_mes, FILTER_VALIDATE_BOOLEAN),
+            'facturar_ahora'             => filter_var($this->facturar_ahora, FILTER_VALIDATE_BOOLEAN),
         ]);
 
         $fieldsToNull = [
@@ -40,11 +41,21 @@ class ValidateStoreOrderRequest extends FormRequest
             'nota_cliente',
             'nota_operaciones',
             'forma_pago_id',
-            'correo_electronico_sri'
+            'correo_electronico_sri',
+            'proveedor_despacho_id',
+            'proyecto',
+            'monto_flete',
+            'peso',
+            'peso_flete',
+            'usuario_flete_autorizador_id',
+            'fecha_flete_autorizacion',
         ];
 
         foreach ($fieldsToNull as $field) {
             $value = $this->$field;
+            if (is_string($value)) {
+                $value = trim($value);
+            }
             if ($value === 'false' || $value === 'null' || $value === '' || $value === 'undefined') {
                 $this->merge([$field => null]);
             } else {
@@ -113,6 +124,7 @@ class ValidateStoreOrderRequest extends FormRequest
             'factura_posterior_despacho' => ['required', 'boolean'],
             'factura_a_demanda'          => ['required', 'boolean'],
             'factura_siguiente_mes'      => ['required', 'boolean'],
+            'facturar_ahora'             => ['required', 'boolean'],
 
             'registro_copia'             => ['nullable', 'integer'],
             // -- pago

@@ -93,7 +93,8 @@ class HiCotizacion extends Model
         'usuario_flete_id',
         'fecha_flete',
         'usuario_flete_autorizador_id',
-        'fecha_flete_autorizacion'
+        'fecha_flete_autorizacion',
+        'facturar_ahora'
     ];
 
     protected $casts = [
@@ -132,6 +133,7 @@ class HiCotizacion extends Model
         'fe_facturacion_reserva'            => 'datetime',
         'pedido_generado_at'                => 'datetime',
         'fe_rechazo'                        => 'datetime',
+        'facturar_ahora'                    => 'boolean'
     ];
 
     public function cotizacionOriginal()

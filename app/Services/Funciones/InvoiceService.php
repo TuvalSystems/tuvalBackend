@@ -232,6 +232,11 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->factura_a_demanda          = 0;
         $pedido->factura_siguiente_mes      = 0;
 
+        // La facturación inmediata tiene prioridad sobre la modalidad del cliente.
+        if ($pedido->facturar_ahora) {
+            return;
+        }
+
         if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') {
             $pedido->factura_posterior_despacho = 1;
 
@@ -248,6 +253,10 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function processInvoiceDecision(GpPedido $pedido): bool
     {
+        if ($pedido->facturar_ahora) {
+            return false;
+        }
+
         if (!$pedido->factura_posterior_despacho) {
             return false;
         }
@@ -289,7 +298,7 @@ class InvoiceService implements InvoiceServiceInterface
         $estado             = self::STATUS_PENDING;
         $fechaLiberacion    = null;
         $esContado          = $pedido->COND_ID == 'CONTADO';
-        $bloqueoFactura     = $pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
+        $bloqueoFactura     = !$pedido->facturar_ahora && $pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
 
         // 3. Solo si NO es contado y NO hay bloqueo de factura, evaluamos liberarlo
         if (!$esContado && !$bloqueoFactura) {
@@ -483,6 +492,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
     {
+        // En factura a demanda, la fecha de reserva prevalece sobre facturar_ahora.
         if ($pedido->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value) {
             return true;
         }

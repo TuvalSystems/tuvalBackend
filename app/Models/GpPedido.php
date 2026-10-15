@@ -195,7 +195,8 @@ class GpPedido extends Model implements HasMedia
     protected $appends = ['msg_registro_copia', 'check_traslado_venta'];
     protected $casts = [
         'estado'            => OrderStatus::class,
-        'pendiente_salida'  => 'boolean'
+        'pendiente_salida'  => 'boolean',
+        'facturar_ahora'    => 'boolean'
     ];
     protected $fillable = [
         'pv_id',
@@ -279,7 +280,9 @@ class GpPedido extends Model implements HasMedia
         'usuario_flete_id',
         'fecha_flete',
         'usuario_flete_autorizador_id',
-        'fecha_flete_autorizacion'
+        'fecha_flete_autorizacion',
+
+        'facturar_ahora'
     ];
 
 
