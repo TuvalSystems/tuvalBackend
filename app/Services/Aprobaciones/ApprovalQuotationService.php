@@ -12,6 +12,8 @@ use App\Models\GpRegistroCopia;
 use App\Models\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
+use App\Services\Aprobaciones\Utils\FreightApproval;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
 use App\Traits\RegisterAudit;
@@ -35,6 +37,12 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
         $registroVolverAPedir = null;
         $quoteId = data_get($data, 'cotizacion_id', null);
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
+        $dispatchType = TipoDespacho::find(data_get($data, 'tipo_despacho_id'));
+        if (FreightApproval::requiresApprovalForType($dispatchType) && !FreightApproval::hasValidApproval($data, $quoteOrigin)) {
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse(
+                "Requiere aprobación de flete por tipo de despacho: {$dispatchType->descripcion}."
+            );
+        }
         $idRegistroCopiaInput = data_get($data, 'registro_copia', null);
 
         if ($quoteOrigin) {
@@ -382,6 +390,15 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             'estado'                            => 'aprobado',
             'fecha_hora_aprobacion_comercial'   => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
+        if (
+            FreightApproval::requiresApprovalForType(TipoDespacho::find($quote->tipo_despacho_id))
+            && !FreightApproval::hasValidApproval($quote->getAttributes(), $quote)
+        ) {
+            $quote->fill([
+                'usuario_flete_autorizador_id' => $gpUser->id,
+                'fecha_flete_autorizacion'  => $quote->fecha_hora_aprobacion_comercial,
+            ]);
+        }
         $camposModificados = array_keys($quote->getDirty());
         $oldQuote = [
             'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),

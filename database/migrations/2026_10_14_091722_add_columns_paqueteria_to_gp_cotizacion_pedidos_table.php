@@ -33,6 +33,17 @@ return new class extends Migration
             $table->decimal('peso', 11, 2)->default(0)->after('modificador_global');
             $table->decimal('peso_flete', 11, 2)->default(0)->after('peso');
             $table->decimal('monto_flete', 11, 2)->default(0)->after('peso_flete');
+
+            $table->foreignId('usuario_flete_id')
+                ->after('peso_flete')->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
+            $table->dateTime('fecha_flete')->nullable()->after('usuario_flete_id');
+            $table->dateTime('fecha_flete_autorizacion')->nullable()->after('fecha_flete');
+            $table->foreignId('usuario_flete_autorizador_id')
+                ->after('fecha_flete_autorizacion')->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
         });
 
         Schema::table('gp_cotizacion_detalles', function (Blueprint $table) {
@@ -66,6 +77,16 @@ return new class extends Migration
             $table->decimal('peso', 11, 2)->default(0)->after('total');
             $table->decimal('peso_flete', 11, 2)->default(0)->after('peso');
             $table->decimal('monto_flete', 11, 2)->default(0)->after('peso_flete');
+            $table->foreignId('usuario_flete_id')
+                ->after('peso_flete')->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
+            $table->dateTime('fecha_flete')->nullable()->after('usuario_flete_id');
+            $table->dateTime('fecha_flete_autorizacion')->nullable()->after('fecha_flete');
+            $table->foreignId('usuario_flete_autorizador_id')
+                ->after('fecha_flete_autorizacion')->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
         });
         Schema::table('hi_cotizacion_detalles', function (Blueprint $table) {
             $table->foreignId('art_id')
@@ -99,6 +120,16 @@ return new class extends Migration
             $table->decimal('peso', 11, 2)->default(0)->after('modificador_global');
             $table->decimal('peso_flete', 11, 2)->default(0)->after('peso');
             $table->decimal('monto_flete', 11, 2)->default(0)->after('peso_flete');
+            $table->foreignId('usuario_flete_id')
+                ->after('peso_flete')->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
+            $table->dateTime('fecha_flete')->nullable()->after('usuario_flete_id');
+            $table->dateTime('fecha_flete_autorizacion')->nullable()->after('fecha_flete');
+            $table->foreignId('usuario_flete_autorizador_id')
+                ->after('fecha_flete_autorizacion')->nullable()
+                ->constrained('gp_usuarios')
+                ->nullOnDelete();
         });
         Schema::table('gp_pedido_detalles', function (Blueprint $table) {
             $table->foreignId('art_id')
@@ -131,7 +162,7 @@ return new class extends Migration
             ->limit(1);
 
         // Sin coincidencia, la subconsulta devuelve NULL; no se crean IDs inexistentes.
-        DB::table($table)->update([$column => DB::raw('('.$query->toSql().')')]);
+        DB::table($table)->update([$column => DB::raw('(' . $query->toSql() . ')')]);
     }
 
     /**
@@ -149,10 +180,12 @@ return new class extends Migration
         foreach (['gp_pedidos', 'hi_cotizacion', 'gp_cotizacions'] as $table) {
             Schema::table($table, function (Blueprint $table) {
                 $table->dropConstrainedForeignId('pv_id');
+                $table->dropConstrainedForeignId('usuario_flete_id');
+                $table->dropConstrainedForeignId('usuario_flete_autorizador_id');
                 $table->dropConstrainedForeignId('vendedor_id');
                 $table->dropConstrainedForeignId('tipo_despacho_id');
                 $table->dropConstrainedForeignId('proveedor_despacho_id');
-                $table->dropColumn(['responsable_flete', 'peso', 'peso_flete', 'monto_flete']);
+                $table->dropColumn(['responsable_flete', 'peso', 'peso_flete', 'monto_flete', 'fecha_flete', 'fecha_flete_autorizacion']);
             });
         }
     }

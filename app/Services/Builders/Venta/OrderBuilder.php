@@ -5,6 +5,8 @@ namespace App\Services\Builders\Venta;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Models\GpPedido;
+use App\Models\GpCotizacion;
+use App\Services\Aprobaciones\Utils\FreightApproval;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
@@ -17,6 +19,8 @@ class OrderBuilder implements OrderBuilderInterface
 
     public function formPayloadOrderDemand(array $infoCreator, array $data, array  $approvalComercial, GpPuntoVenta $puntoVenta, string  $requiereAprobacionCrediticia): GpPedido
     {
+        $quote = GpCotizacion::find(data_get($infoCreator, 'cotizacion_id'));
+        $freightAuthorization = FreightApproval::authorizationFields($data, $quote);
         $newOrder           = new GpPedido();
         $subtotalBruto      = (float)  data_get($data, 'subtotal', 0) + (float) data_get($data, 'descuento', 0);
         $descuento          = (float) data_get($data, 'descuento', 0);
@@ -69,6 +73,20 @@ class OrderBuilder implements OrderBuilderInterface
             'origen'                        => data_get($infoCreator, 'origen'),
             'fe_facturacion_reserva'        => data_get($infoCreator, 'fecha_reserva'),
             'modificador_global'            => data_get($data, 'modificador_global', 0),
+
+            //nuevos campos
+            'pv_id'                         => $puntoVenta->id,
+            'vendedor_id'                   => data_get($data, 'vendedor_id'),
+            'tipo_despacho_id'              => data_get($data, 'tipo_despacho_id', null),
+            'responsable_flete'             => data_get($data, 'responsable_flete', null),
+            'proveedor_despacho_id'         => data_get($data, 'proveedor_despacho_id', null),
+            'peso'                          => data_get($data, 'peso', 0),
+            'peso_flete'                    => data_get($data, 'peso_flete', 0),
+            'monto_flete'                   => data_get($data, 'monto_flete', 0),
+            'usuario_flete_id'              => data_get($data, 'monto_flete')  > 0 ?  data_get($infoCreator, 'user.id') : null,
+            'fecha_flete'                   => data_get($data, 'monto_flete')  > 0 ? now() : null,
+            'fecha_flete_autorizacion'      => $freightAuthorization['fecha_flete_autorizacion'],
+            'usuario_flete_autorizador_id'  => $freightAuthorization['usuario_flete_autorizador_id'],
         ]);
 
         return $newOrder;
@@ -164,6 +182,8 @@ class OrderBuilder implements OrderBuilderInterface
 
     public function formPayloadOrderV2(array $data, GpUsuario $user, GpPuntoVenta $ptoVta,  array $requiredApprovalCommercial, array $extras): GpPedido
     {
+        $quote = GpCotizacion::find(data_get($data, 'cotizacion_id'));
+        $freightAuthorization = FreightApproval::authorizationFields($data, $quote);
         $od = new GpPedido();
         $od->fill([
             'pv_id'                             => $ptoVta->id,
@@ -220,8 +240,12 @@ class OrderBuilder implements OrderBuilderInterface
             'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
             'origen'                            => data_get($extras, 'origen'),
             'modificador_global'                => data_get($data, 'modificador_global', 0),
-            'fe_facturacion_reserva'            =>  data_get($extras, 'facturacion_reserva'),
+            'fe_facturacion_reserva'            => data_get($extras, 'facturacion_reserva'),
             'proyecto'                          => data_get($data, 'proyecto', null),
+            'usuario_flete_id'                  => data_get($data, 'monto_flete') > 0 ? $user->id : null,
+            'fecha_flete'                       => data_get($data, 'monto_flete')  > 0 ? now() : null,
+            'fecha_flete_autorizacion'          => $freightAuthorization['fecha_flete_autorizacion'],
+            'usuario_flete_autorizador_id'      => $freightAuthorization['usuario_flete_autorizador_id'],
         ]);
         return $od;
     }

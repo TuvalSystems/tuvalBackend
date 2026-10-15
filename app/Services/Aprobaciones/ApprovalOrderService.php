@@ -19,6 +19,8 @@ use App\Notifications\User\UserNotification;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
+use App\Services\Aprobaciones\Utils\FreightApproval;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
@@ -53,6 +55,13 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         $quoteId = data_get($data, 'cotizacion_id', null);
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
         $motivosAprobacionComercial = [];
+
+        $dispatchType = TipoDespacho::find(data_get($data, 'tipo_despacho_id'));
+        if (FreightApproval::requiresApprovalForType($dispatchType) && !FreightApproval::hasValidApproval($data, $quoteOrigin)) {
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse(
+                "Requiere aprobación de flete por tipo de despacho: {$dispatchType->descripcion}."
+            );
+        }
 
         $rgCopy = GpRegistroCopia::where('cotizacion_destino', $quoteId)->where('tipo', 'volver_a_pedir')->where('destino_aprobado', false)->first();
         if ($rgCopy) {
@@ -494,8 +503,17 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             'aprobado_comercial'                => 'yes',
             'aprobador_comercial_id'            => $user->id,
             'fecha_hora_aprobacion_comercial'   => Carbon::now()->format('Y-m-d H:i:s'),
-            'aprobado_comercial_mensaje'        => $msg
+            'aprobado_comercial_mensaje'        => $msg,
         ]);
+        if (
+            FreightApproval::requiresApprovalForType(TipoDespacho::find($order->tipo_despacho_id))
+            && !FreightApproval::hasValidApproval($order->getAttributes(), $order)
+        ) {
+            $order->fill([
+                'usuario_flete_autorizador_id' => $user->id,
+                'fecha_flete_autorizacion' => $order->fecha_hora_aprobacion_comercial,
+            ]);
+        }
         $camposModificados = array_keys($order->getDirty());
         $oldOrder = [
             'pedido_anterior' => Arr::only(

@@ -210,6 +210,8 @@ class ValidateStoreQuotationRequest extends FormRequest
             'tipo_despacho_id'          => ['required', 'integer'],
             'proveedor_despacho_id'     => ['nullable', 'integer'],
             'monto_flete'               => ['nullable', 'numeric'],
+            'usuario_flete_autorizador_id' => ['nullable', 'integer', 'exists:gp_usuarios,id'],
+            'fecha_flete_autorizacion'     => ['nullable', 'date'],
         ];
     }
 
@@ -223,6 +225,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'imagenes_nuevas'       => 'nuevas imágenes',
             'imagenes_nuevas.*'     => 'nueva imagen',
             'cotizacion_id'         => 'ID de cotización',
+            'tipo_despacho_id'      => 'Tipo de despacho'
         ];
     }
 }

@@ -275,7 +275,11 @@ class GpPedido extends Model implements HasMedia
         'fecha_hora_aprobacion_comercial',
         'fecha_hora_aprobacion_crediticia',
         'import_job',
-        'proyecto'
+        'proyecto',
+        'usuario_flete_id',
+        'fecha_flete',
+        'usuario_flete_autorizador_id',
+        'fecha_flete_autorizacion'
     ];
 
 
@@ -293,7 +297,8 @@ class GpPedido extends Model implements HasMedia
     {
         return $this->belongsTo(GpClienteSucursal::class, 'sucursal_id');
     }
-    public function direccionFacturacion(){
+    public function direccionFacturacion()
+    {
         return $this->belongsTo(GpClienteSucursal::class, 'sucursal_facturacion_id');
     }
 
@@ -352,7 +357,8 @@ class GpPedido extends Model implements HasMedia
         return $this->hasMany(GpOrdenDespacho::class, 'pedido_id');
     }
 
-    public function puntoVenta(){
+    public function puntoVenta()
+    {
         return $this->belongsTo(GpPuntoVenta::class, 'PTO_VTA_ID', 'PTO_VTA_ID');
     }
 

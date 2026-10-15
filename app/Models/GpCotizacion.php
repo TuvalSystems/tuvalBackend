@@ -244,7 +244,11 @@ class GpCotizacion extends Model implements HasMedia
         'modificador_global',
         'fecha_hora_aprobacion_comercial',
         'proyecto',
-        'import_job'
+        'import_job',
+        'usuario_flete_id',
+        'fecha_flete',
+        'usuario_flete_autorizador_id',
+        'fecha_flete_autorizacion'
     ];
 
     /**

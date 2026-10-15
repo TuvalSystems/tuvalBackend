@@ -102,6 +102,8 @@ class ValidateStoreOrderRequest extends FormRequest
             'tipo_despacho_id'          => ['required', 'integer', 'exists:tipo_despachos,id'],
             'proveedor_despacho_id'     => ['nullable', 'integer', 'exists:gp_proveedors,id'],
             'monto_flete'               => ['nullable', 'numeric'],
+            'usuario_flete_autorizador_id' => ['nullable', 'integer', 'exists:gp_usuarios,id'],
+            'fecha_flete_autorizacion'     => ['nullable', 'date'],
             'bodega_facturacion'        => ['required', 'string'],
             'fecha_entrega'             => ['nullable', 'string'],
             'direccion_facturacion_id'  => ['required'],

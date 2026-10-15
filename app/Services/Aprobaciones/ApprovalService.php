@@ -17,6 +17,8 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Traits\RegisterAudit;
+use App\Services\Aprobaciones\Utils\FreightApproval;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
 
 
 class ApprovalService implements ApprovalServiceInterface
@@ -42,8 +44,14 @@ class ApprovalService implements ApprovalServiceInterface
     {
         $motivosAprobacionComercial = [];
         $registroVolverAPedir = null;
-        $quoteId = data_get($data, 'cotizacion_id', null);
+        $quoteId = data_get($data, 'cotizacion_id') ?? data_get($data, 'id');
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
+        $dispatchType = TipoDespacho::find(data_get($data, 'tipo_despacho_id'));
+        if (FreightApproval::requiresApprovalForType($dispatchType) && !FreightApproval::hasValidApproval($data, $quoteOrigin)) {
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse(
+                "Requiere aprobación de flete por tipo de despacho: {$dispatchType->descripcion}."
+            );
+        }
         $idRegistroCopiaInput = data_get($data, 'registro_copia');
         if ($quoteOrigin) {
             $registroVolverAPedir = GpRegistroCopia::where('cotizacion_destino', $quoteOrigin->id)
@@ -240,6 +248,13 @@ class ApprovalService implements ApprovalServiceInterface
         $motivosAprobacionComercial = [];
         $quoteId = data_get($data, 'id', null);
         $cotizacion = GpCotizacion::find($quoteId);
+
+        $dispatchType = TipoDespacho::find(data_get($data, 'tipo_despacho_id'));
+        if (FreightApproval::requiresApprovalForType($dispatchType) && !FreightApproval::hasValidApproval($data, $cotizacion)) {
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse(
+                "Requiere aprobación de flete por tipo de despacho: {$dispatchType->descripcion}."
+            );
+        }
 
         $rgCopy = GpRegistroCopia::where('cotizacion_destino', $quoteId)->where('tipo', 'volver_a_pedir')->where('destino_aprobado', false)->first();
         if ($rgCopy) {

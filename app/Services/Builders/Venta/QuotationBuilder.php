@@ -20,6 +20,7 @@ use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Traits\CleansPayloadData;
+use App\Services\Aprobaciones\Utils\FreightApproval;
 use Carbon\Carbon;
 
 class QuotationBuilder implements QuotationBuilderInterface
@@ -60,7 +61,8 @@ class QuotationBuilder implements QuotationBuilderInterface
 
     public function fromPayloadReservedToQuotation(array $data, array $requiereApproval, GpUsuario $user, string $origen): GpCotizacion
     {
-
+        $source = GpCotizacion::find(data_get($data, 'cotizacion_id') ?? data_get($data, 'id'));
+        $freightAuthorization = FreightApproval::authorizationFields($data, $source);
         $cot = new GpCotizacion();
         $pv = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
 
@@ -114,6 +116,15 @@ class QuotationBuilder implements QuotationBuilderInterface
             'impuesto'                          => TaxRateEnum::IVA_15->value,
             'origen'                            => $origen,
             'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
+        ]);
+        $cot->fill(\Illuminate\Support\Arr::only($data, [
+            'tipo_despacho_id', 'proveedor_despacho_id', 'responsable_flete',
+            'peso', 'peso_flete', 'monto_flete',
+        ]));
+        $cot->fill($freightAuthorization);
+        $cot->fill([
+            'usuario_flete_id' => $source?->usuario_flete_id,
+            'fecha_flete' => $source?->fecha_flete,
         ]);
         return $cot;
     }
@@ -175,6 +186,7 @@ class QuotationBuilder implements QuotationBuilderInterface
 
     public function formPayloadHeaderQuotation(GpCotizacion $quotation,  GpUsuario $user, GpCliente $client,  TipoDespacho $typeDispatch, GpVendedor $seller, GpPuntoVenta $pointSales,  array $data, array $requiredApprovalCommercial, string $motivoLimpio): GpCotizacion
     {
+        $freightAuthorization = FreightApproval::authorizationFields($data, $quotation);
         return $quotation->fill([
             'estado'                            => $requiredApprovalCommercial['estado'],
             'cliente_id'                        => $client->id,
@@ -231,11 +243,11 @@ class QuotationBuilder implements QuotationBuilderInterface
             'monto_flete'                       => data_get($data, 'monto_flete'),
             'peso'                              => data_get($data, 'peso'),
             'peso_flete'                        => data_get($data, 'peso_flete'),
-            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id')
-
-
-
-
+            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id'),
+            'usuario_flete_id'                  => data_get($data, 'monto_flete') > 0 ? $user->id : null,
+            'fecha_flete'                       => data_get($data, 'monto_flete') > 0 ? now() : null,
+            'fecha_flete_autorizacion'          => $freightAuthorization['fecha_flete_autorizacion'],
+            'usuario_flete_autorizador_id'      => $freightAuthorization['usuario_flete_autorizador_id'],
         ]);
     }
 
@@ -495,6 +507,10 @@ class QuotationBuilder implements QuotationBuilderInterface
             'peso_flete'                        => $quote->peso_flete,
             'monto_flete'                       => $quote->monto_flete,
             'responsable_flete'                 => $quote->responsable_flete,
+            'usuario_flete_id'                  => $quote->usuario_flete_id,
+            'fecha_flete'                       => $quote->fecha_flete,
+            'fecha_flete_autorizacion'          => $quote->fecha_flete_autorizacion,
+            'usuario_flete_autorizador_id'      => $quote->usuario_flete_autorizador_id,
         ]);
         return $hi;
     }

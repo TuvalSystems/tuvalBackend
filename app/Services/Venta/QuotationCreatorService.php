@@ -15,6 +15,7 @@ use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
+use App\Services\Aprobaciones\Utils\FreightApproval;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
@@ -108,7 +109,12 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     {
         $requiereAprobacion = $this->approval->approveQuotation($data);
         if ($quotation->exists) {
-            $this->mantenerAprobacionSiSigueValida($quotation, $requiereAprobacion);
+            $dispatchType = TipoDespacho::find(data_get($data, 'tipo_despacho_id'));
+            if (FreightApproval::requiresApprovalForType($dispatchType) && !FreightApproval::hasValidApproval($data, $quotation)) {
+                $this->resetToPending($requiereAprobacion);
+            } else {
+                $this->mantenerAprobacionSiSigueValida($quotation, $requiereAprobacion);
+            }
         } else {
             $requiereAprobacion['estado'] = ($requiereAprobacion['requiere'] === 'yes') ? 'espera' : 'aprobado';
             $requiereAprobacion['aprobado'] = 'no';
