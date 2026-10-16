@@ -83,13 +83,16 @@ class ProviderService implements ProviderServiceInterface
     }
 
 
-    public function listProviderTypeCarrier(): Collection
+    public function listProviderTypeCarrier(int $pvId): Collection
     {
-        return GpProveedor::select([
-            'id',
-            'PROV_RUC as ruc',
-            'PROV_RAZON_SOCIAL as razon_social'
-        ])
+        return GpProveedor::whereHas('puntosVenta', function ($q) use ($pvId) {
+            $q->where('gp_punto_ventas.id', $pvId);
+        })
+            ->select([
+                'id',
+                'PROV_RUC as ruc',
+                'PROV_RAZON_SOCIAL as razon_social'
+            ])
             ->where('PROV_ESTADO', 'ACTIVO')
             ->where('es_transportista', true)
             ->get();

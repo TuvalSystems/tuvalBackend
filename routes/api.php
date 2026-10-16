@@ -176,7 +176,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('lista', [ProveedoresController::class, 'listaProveedores']);
                 Route::put('actualizar-estado-transportista/{id}', [ProveedoresController::class, 'actualizarEstadoTransportista']);
                 Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoProveedor']);
-                Route::get('lista-proveedores-transportista', [ProveedoresController::class, 'listaProveedoresTransportistas']);
+                Route::post('lista-proveedores-transportista', [ProveedoresController::class, 'listaProveedoresTransportistas']);
                 Route::get('lista-proveedores-activos', [ProveedoresController::class, 'listaProveedoresActivos']);
                 Route::post('detalle', [ProveedoresController::class, 'obtenerDetalleProveedor']);
                 Route::post('sincronizar-punto-ventas', [ProveedoresController::class, 'sincronizarPuntoVentaPorProveedor']);

@@ -2,12 +2,10 @@
 
 namespace App\Models\Ventas\Proveedores;
 
-use App\Models\GpPuntoVenta;
 use App\Models\Ventas\TipoIdentificacion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ChoferTransportista extends Model
 {
@@ -49,13 +47,5 @@ class ChoferTransportista extends Model
         return $this->belongsTo(TipoIdentificacion::class);
     }
 
-    public function puntosVenta(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            GpPuntoVenta::class,
-            'chofer_transportista_punto_ventas',
-            'chft_id',
-            'pv_id'
-        )->withTimestamps();
-    }
+
 }

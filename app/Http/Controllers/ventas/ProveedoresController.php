@@ -49,10 +49,11 @@ class ProveedoresController extends Controller
         }, self::LOG_CHANNEL, 'actualizarEstadoProveedor');
     }
 
-    public function listaProveedoresTransportistas(): JsonResponse
+    public function listaProveedoresTransportistas(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function (): JsonResponse {
-            $lista = $this->providerService->listProviderTypeCarrier();
+        return $this->handleApiAction(function () use($request): JsonResponse {
+            $pvId = $request->input('pv_id');
+            $lista = $this->providerService->listProviderTypeCarrier($pvId);
             return $this->successResponse('Información Obtenida correctamente.!', $lista);
         }, self::LOG_CHANNEL, 'listaProveedoresTransportistas');
     }

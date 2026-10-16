@@ -22,6 +22,7 @@ class CarrierDriverService implements CarrierDriverServiceInterface
         $search     = data_get($filters, 'search', '');
         $perpage    = data_get($filters, 'perpage', 10);
         $sortField  = data_get($filters, 'sortField', 'created_at');
+        $pvId       = data_get($filters, 'pv_id');
         $sortOrder  = strtolower(data_get($filters, 'sortOrder', 'desc')) === 'asc'
             ? 'asc'
             : 'desc';
@@ -55,14 +56,23 @@ class CarrierDriverService implements CarrierDriverServiceInterface
             ->join('gp_proveedors as prv', 'prv.id', '=', 'cht.proveedor_id')
             ->join('tipo_identificacions as tp', 'tp.id', '=', 'cht.tipo_identificacion_id');
 
-        if ($search) {
-            $query->where('prv.PROV_RUC', 'like', "%{$search}%")
-                ->orWhere('prv.PROV_RAZON_SOCIAL', 'like', "%{$search}%")
-                ->orWhere('cht.nombre', 'like', "%{$search}%")
-                ->orWhere('cht.placa', 'like', "%{$search}%");
+        if ($pvId) {
+            $query->whereExists(function ($query) use ($pvId) {
+                $query->selectRaw('1')
+                    ->from('proveedores_punto_ventas as ppv')
+                    ->whereColumn('ppv.prov_id', 'prv.id')
+                    ->where('ppv.pv_id', $pvId);
+            });
         }
 
-
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('prv.PROV_RUC', 'like', "%{$search}%")
+                    ->orWhere('prv.PROV_RAZON_SOCIAL', 'like', "%{$search}%")
+                    ->orWhere('cht.nombre', 'like', "%{$search}%")
+                    ->orWhere('cht.placa', 'like', "%{$search}%");
+            });
+        }
         return $query
             ->orderBy($orderColumn, $sortOrder)
             ->paginate($perpage);
@@ -81,25 +91,13 @@ class CarrierDriverService implements CarrierDriverServiceInterface
             $cht->usuario_ingreso_id        = $user->id;
             $cht->fecha_ingreso             = now();
             $cht->save();
-
-            $cht->puntosVenta()->sync(
-                data_get($data, 'punto_venta_ids', [])
-            );
-
             return $cht;
         });
     }
 
     public function getDetailCarrierDriver(int $id): ChoferTransportista
     {
-        return ChoferTransportista::with(['puntosVenta' => function ($query) {
-            $query
-                ->select([
-                    'gp_punto_ventas.id',
-                    'gp_punto_ventas.PTO_VTA_ID as codigo',
-                    'gp_punto_ventas.PTO_VTA_DESCRIPCION as descripcion',
-                ]);
-        }])->where('id', $id)->first();
+        return ChoferTransportista::where('id', $id)->first();
     }
 
     public function updateRegisterCarrier(int $id, array $data, GpUsuario $user): ChoferTransportista
@@ -114,9 +112,7 @@ class CarrierDriverService implements CarrierDriverServiceInterface
             $cht->usuario_modifica_id       = $user->id;
             $cht->fecha_modificacion        = now();
             $cht->save();
-            $cht->puntosVenta()->sync(
-                data_get($data, 'punto_venta_ids', [])
-            );
+
 
             return $cht;
         });
@@ -132,7 +128,7 @@ class CarrierDriverService implements CarrierDriverServiceInterface
         });
     }
 
-    public function validateCarrierIdentify(string $identify, ?int $excludeId = null) : bool
+    public function validateCarrierIdentify(string $identify, ?int $excludeId = null): bool
     {
         return ChoferTransportista::where('identificacion', $identify)
             ->when(

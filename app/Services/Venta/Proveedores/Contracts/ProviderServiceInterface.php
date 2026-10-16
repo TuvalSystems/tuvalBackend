@@ -13,7 +13,7 @@ interface ProviderServiceInterface
     public function listProviders(array $filters, GpUsuario $user): LengthAwarePaginator;
     public function updateCarrierStatus(int $id, GpUsuario $user): void;
     public function updateStatus(int $id, GpUsuario $user): void;
-    public function listProviderTypeCarrier(): Collection;
+    public function listProviderTypeCarrier(int $pvId): Collection;
     public function getAllProviders(): Collection;
     public function getDetailProvider(int $id) : GpProveedor;
     public function syncPotinSalesByProvider(int $id, array $pvIds) : GpProveedor;
