@@ -178,6 +178,9 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoProveedor']);
                 Route::get('lista-proveedores-transportista', [ProveedoresController::class, 'listaProveedoresTransportistas']);
                 Route::get('lista-proveedores-activos', [ProveedoresController::class, 'listaProveedoresActivos']);
+                Route::post('detalle', [ProveedoresController::class, 'obtenerDetalleProveedor']);
+                Route::post('sincronizar-punto-ventas', [ProveedoresController::class, 'sincronizarPuntoVentaPorProveedor']);
+
                 //choferes transportistas
                 Route::prefix('choferes-transportista')->group(function () {
                     Route::post('lista', [ProveedoresController::class, 'listaChoferTransportista']);
@@ -437,7 +440,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('actualizar-servicio-logistico', [ArticuloController::class, 'actualizarServicioLogistico']);
                 Route::get('item-logistico', [ArticuloController::class, 'obtenerArticuloLogistico']);
                 Route::post('item-l', [ArticuloController::class, 'buscarArticuloL']);
-                 Route::post('items-detalle', [ArticuloController::class, 'buscarArticuloWeb']);
+                Route::post('items-detalle', [ArticuloController::class, 'buscarArticuloWeb']);
             });
         });
         Route::group(['prefix' => 'consultas'], function () {
@@ -450,8 +453,6 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
             /** nuevas api para proceso de consulta de cliente para crear cotizaciones */
-
-
         });
 
         Route::group(['prefix' => 'aprobaciones'], function () {

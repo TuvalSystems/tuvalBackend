@@ -57,9 +57,9 @@ class ProveedoresController extends Controller
         }, self::LOG_CHANNEL, 'listaProveedoresTransportistas');
     }
 
-    public function listaProveedoresActivos()
+    public function listaProveedoresActivos(): JsonResponse
     {
-        return $this->handleApiAction(function () {
+        return $this->handleApiAction(function (): JsonResponse {
             $lista = $this->providerService->getAllProviders();
             return $this->successResponse('Información Obtenida correctamente.!', $lista);
         }, self::LOG_CHANNEL, 'listaProveedoresActivos');
@@ -78,9 +78,9 @@ class ProveedoresController extends Controller
         }, self::LOG_CHANNEL, 'listaChoferTransportista');
     }
 
-    public function crearRegistroChoferTransportista(Request $request)
+    public function crearRegistroChoferTransportista(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $data = $request->input('form', []);
             $user = $request->user();
             $this->carrierService->createRegisterCarrier($data, $user);
@@ -100,9 +100,9 @@ class ProveedoresController extends Controller
         }, self::LOG_CHANNEL, 'obtenerDetalleChoferTransportista');
     }
 
-    public function actualizarRegistroChoferTransportista(Request $request, int $id)
+    public function actualizarRegistroChoferTransportista(Request $request, int $id): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request, $id) {
+        return $this->handleApiAction(function () use ($request, $id): JsonResponse {
             $data =  $request->input('form', []);
             $user = $request->user();
             $this->carrierService->updateRegisterCarrier($id, $data, $user);
@@ -110,18 +110,18 @@ class ProveedoresController extends Controller
         }, self::LOG_CHANNEL, 'actualizarRegistroChoferTransportista');
     }
 
-    public function actualizarEstadoChofeTransportista(int $id)
+    public function actualizarEstadoChofeTransportista(int $id): JsonResponse
     {
-        return $this->handleApiAction(function () use ($id) {
+        return $this->handleApiAction(function () use ($id): JsonResponse {
             $this->carrierService->updateStatusCarrier($id);
             return $this->buildSuccessResponse('Registro Actualizado correctamente.!');
         }, self::LOG_CHANNEL, 'actualizarEstadoChofeTransportista');
     }
 
 
-    public function validarIdentificacionChoferTransportista(Request $request)
+    public function validarIdentificacionChoferTransportista(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validate([
                 'id'                => 'nullable|integer|exists:chofer_transportistas,id',
                 'identificacion'    => 'required|string'
@@ -134,5 +134,31 @@ class ProveedoresController extends Controller
             }
             return $this->buildExistResponse(true, 'El registro no existe, continue...', 200);
         }, self::LOG_CHANNEL, 'validarIdentificacionChoferTransportista');
+    }
+
+
+    public function obtenerDetalleProveedor(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request) : JsonResponse{
+            $validate = $request->validate([
+                'id'               => 'required|exists:gp_proveedors,id',
+            ]);
+            $id = data_get($validate, 'id');
+            $detalle = $this->providerService->getDetailProvider($id);
+            return $this->successResponse('Detalle obtenido correctamente', $detalle);
+        }, self::LOG_CHANNEL, 'obtenerDetalleProveedor');
+    }
+
+    public function sincronizarPuntoVentaPorProveedor(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
+                'id'               => 'required|exists:gp_proveedors,id',
+            ]);
+            $id     = data_get($validate, 'id');
+            $pvIds  = $request->input('punto_venta_ids');
+            $prov   = $this->providerService->syncPotinSalesByProvider($id, $pvIds);
+            return $this->successResponse('Proveedor sincronizado correctamente', $prov);
+        }, self::LOG_CHANNEL, 'sincronizarPuntoVentaPorProveedor');
     }
 }

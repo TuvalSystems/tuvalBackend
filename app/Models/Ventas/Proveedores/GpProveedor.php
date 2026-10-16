@@ -3,8 +3,10 @@
 namespace App\Models\Ventas\Proveedores;
 
 use App\Models\GpPedidoDetalleProveedores;
+use App\Models\GpPuntoVenta;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GpProveedor extends Model
@@ -57,5 +59,15 @@ class GpProveedor extends Model
     public function choferesTransportistas(): HasMany
     {
         return $this->hasMany(ChoferTransportista::class, 'proveedor_id');
+    }
+
+    public function puntosVenta(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            GpPuntoVenta::class,
+            'proveedores_punto_ventas',
+            'prov_id',
+            'pv_id'
+        )->withTimestamps();
     }
 }

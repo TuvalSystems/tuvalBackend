@@ -86,10 +86,12 @@ class TipoDespachosController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $validated = $request->validate([
-                'tipo' => ['required', 'string', new Enum(DispatchTypeEnum::class)],
+                'tipo'  => ['required', 'string', new Enum(DispatchTypeEnum::class)],
+                'pv_id' => ['required', 'exists:gp_punto_ventas,id']
             ]);
-            $paymentResponsible = $validated['tipo'];
-            $lista = $this->dispatchType->getDispatchTypesByPaymentResponsible($paymentResponsible);
+            $paymentResponsible = data_get($validated,'tipo');
+            $pvId  = data_get($validated, 'pv_id');
+            $lista = $this->dispatchType->getDispatchTypesByPaymentResponsible($pvId, $paymentResponsible);
             return $this->successResponse('Información obtenida correctamente', $lista);
         }, self::LOG_CHANNEL, 'obtenerTipoDespachoPorResponsable');
     }

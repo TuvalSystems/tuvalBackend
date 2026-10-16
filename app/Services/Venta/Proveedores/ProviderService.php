@@ -7,6 +7,7 @@ use App\Models\Ventas\Proveedores\GpProveedor;
 use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ProviderService implements ProviderServiceInterface
 {
@@ -95,11 +96,36 @@ class ProviderService implements ProviderServiceInterface
     }
 
 
+    public function getDetailProvider(int $id): GpProveedor
+    {
+        return GpProveedor::with([
+            'puntosVenta' => function ($query) {
+                $query
+                    ->select([
+                        'gp_punto_ventas.id',
+                        'gp_punto_ventas.PTO_VTA_ID as codigo',
+                        'gp_punto_ventas.PTO_VTA_DESCRIPCION as descripcion',
+                    ]);
+            }
+        ])->findOrFail($id);
+    }
+
+
     public function getAllProviders(): Collection
     {
         return GpProveedor::select(['id', 'PROV_RAZON_SOCIAL as razon_social'])
             ->where('PROV_CLASE', '!=', 'PR-EXT')
             ->where('PROV_ESTADO', 'ACTIVO')
             ->orderBy('PROV_RAZON_SOCIAL')->get();
+    }
+
+
+    public function syncPotinSalesByProvider(int $id, array $pvIds): GpProveedor
+    {
+        return DB::transaction(function () use ($id, $pvIds) {
+            $prov = GpProveedor::find($id);
+            $prov->puntosVenta()->sync($pvIds);
+            return $prov;
+        });
     }
 }

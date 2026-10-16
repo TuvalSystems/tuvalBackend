@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Ventas\Proveedores\ChoferTransportista;
+use App\Models\Ventas\Proveedores\GpProveedor;
 use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -161,6 +162,16 @@ class GpPuntoVenta extends Model
             'chofer_transportista_punto_ventas',
             'pv_id',
             'chft_id'
+        )->withTimestamps();
+    }
+
+    public function proveedores()
+    {
+        return $this->belongsToMany(
+            GpProveedor::class,
+            'proveedores_punto_ventas',
+            'pv_id',
+            'prov_id'
         )->withTimestamps();
     }
 }

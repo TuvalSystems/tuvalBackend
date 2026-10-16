@@ -13,9 +13,9 @@ interface DispatchTypeServiceInterface
 
     public function list(GpUsuario $user, array $filters = []): LengthAwarePaginator;
     public function create(array $data, GpUsuario $user);
-    public function getDetail(int $id) : TipoDespacho;
+    public function getDetail(int $id): TipoDespacho;
     public function update(int $id, array $data, GpUsuario $user);
     public function activeOrInactive(int $id);
     public function getActivePointSales(): Collection;
-    public function getDispatchTypesByPaymentResponsible(string $paymentResponsible): Collection;
+    public function getDispatchTypesByPaymentResponsible(int $pvId, string $paymentResponsible): Collection;
 }

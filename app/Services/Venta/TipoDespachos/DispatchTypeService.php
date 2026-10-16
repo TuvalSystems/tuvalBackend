@@ -143,8 +143,12 @@ class DispatchTypeService implements DispatchTypeServiceInterface
     }
 
 
-    public function getDispatchTypesByPaymentResponsible(string $paymentResponsible): Collection
+    public function getDispatchTypesByPaymentResponsible(int $pvId, string $paymentResponsible): Collection
     {
-        return TipoDespacho::where('responsable_pago', $paymentResponsible)->get(['id', 'descripcion']);
+        return TipoDespacho::whereHas('puntosVenta', function ($q) use ($pvId) {
+            $q->where('gp_punto_ventas.id', $pvId);
+        })
+            ->where('responsable_pago', $paymentResponsible)
+            ->get(['id', 'descripcion']);
     }
 }
