@@ -2,7 +2,8 @@
 
 namespace App\Services\Api\Core;
 
-use Illuminate\Support\Facades\Log;
+use App\Enums\Admin\Sync\StatusSync;
+use App\Models\Admin\SyncLog;
 use Illuminate\Support\Facades\Http;
 
 class SeedBillingHttpClient
@@ -29,6 +30,7 @@ class SeedBillingHttpClient
         bool $includeCredentials = true
     ) {
         $url = null;
+        $result = null;
         try {
             if (empty($endpoint)) {
                 throw new \InvalidArgumentException("Endpoint '{$endpoint}' no definido en configuración.");
@@ -65,34 +67,40 @@ class SeedBillingHttpClient
             };
 
             // ✅ Manejo de respuesta
-            return $this->normalizeResponse($response, $successKeyword);
+            return $result = $this->normalizeResponse($response, $successKeyword);
         } catch (\InvalidArgumentException $e) {
-            Log::warning("Petición inválida a SeedBilling: {$e->getMessage()}", [
-                'urlKey'    => $endpoint,
-                'method'    => $method,
-                'data'      => $data,
-            ]);
-
-            return [
+            return $result = [
                 'success'       => false,
                 'message'       => 'Error interno de petición con SeedBilling: ' . $e->getMessage(),
                 'respuesta'     => 'ERROR_INTERNO',
                 'data'          => [],
             ];
-        } catch (\Exception $e) {
-            Log::error("Error al realizar petición a SeedBilling: {$e->getMessage()}", [
-                'url'           => $url,
-                'method'        => $method ?? null,
-                'data'          => $data,
-            ]);
-
-            return [
+        } catch (\Throwable $e) {
+            return $result = [
                 'success'       => false,
                 'message'       => 'Error interno de conexión con SeedBilling: ' . $e->getMessage(),
                 'respuesta'     => 'ERROR_INTERNO',
                 'data'          => [],
             ];
+        } finally {
+            $this->logResponse($endpoint, $method, $url, $data, $result);
         }
+    }
+
+    protected function logResponse(string $endpoint, string $method, ?string $url, array $data, ?array $result): void
+    {
+        // No almacenar el token que se agrega al payload HTTP.
+        unset($data['token']);
+        SyncLog::logErrorSync(
+            module: 'seedbilling',
+            action: $endpoint,
+            method: $method,
+            message: $result['message'] ?? 'Sin respuesta de Seedbilling',
+            externalId: $data['claveAcceso'] ?? null,
+            payload: ['url' => $url, 'request' => $data, 'response' => $result],
+            attempts: 1,
+            status: !empty($result['success']) ? StatusSync::SUCCESS : StatusSync::FAILED,
+        );
     }
 
 
