@@ -295,6 +295,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'monto_flete'                   => data_get($articles, 'monto_flete', 0),
             'precio_sin_flete'              => data_get($articles, 'precio_sin_flete', 0),
             'lista_precio'                  => $lvlPrice,
+            'es_servicio_logistico'        => data_get($articles, 'es_servicio_logistico'),
         ]);
 
         return $qd;
@@ -561,6 +562,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'monto_flete'                       => $detail->monto_flete,
             'precio_sin_flete'                  => $detail->precio_sin_flete,
             'lista_precio'                      => $detail->lista_precio,
+             'es_servicio_logistico'            => $detail->es_servicio_logistico,
         ]);
         return $nHDetail;
     }

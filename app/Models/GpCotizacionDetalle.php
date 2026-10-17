@@ -79,7 +79,8 @@ class GpCotizacionDetalle extends Model
     use HasFactory;
 
     protected $casts = [
-        'validador_l' => 'boolean',
+        'validador_l'           => 'boolean',
+        'es_servicio_logistico' => 'boolean'
     ];
 
     protected $fillable = [
@@ -115,7 +116,8 @@ class GpCotizacionDetalle extends Model
         'cod_categoria',
         'cod_linea',
         'cod_clase',
-        'resultado_configuracion_item_l'
+        'resultado_configuracion_item_l',
+        'es_servicio_logistico'
     ];
 
 

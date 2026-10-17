@@ -125,7 +125,8 @@ class GpPedidoDetalle extends Model
         'trasladado'                => 'float',
         'devuelto'                  => 'float',
         'cancelado'                 => 'float',
-        'validador_l'               => 'boolean'
+        'validador_l'               => 'boolean',
+        'es_servicio_logistico'     => 'boolean'
     ];
 
 
@@ -169,7 +170,8 @@ class GpPedidoDetalle extends Model
         'cod_linea',
         'cod_clase',
         'resultado_configuracion_item_l',
-        'import_job'
+        'import_job',
+        'es_servicio_logistico'
 
     ];
 

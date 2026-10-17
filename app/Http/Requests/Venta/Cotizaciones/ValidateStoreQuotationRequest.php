@@ -195,6 +195,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             //flete detalle
             'items.*.monto_flete'                       => ['nullable', 'numeric'],
             'items.*.precio_sin_flete'                  => ['required', 'numeric', 'min:0'],
+            'items.*.es_servicio_logistico'              => ['required', 'boolean'],
 
 
             // --- VALIDACIÓN DE IMÁGENES (AGREGADO) ---

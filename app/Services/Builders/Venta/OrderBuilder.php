@@ -131,6 +131,7 @@ class OrderBuilder implements OrderBuilderInterface
             'cod_linea'                         => data_get($item, 'cod_linea', null),
             'cod_clase'                         => data_get($item, 'cod_clase', null),
             'resultado_configuracion_item_l'    => data_get($item, 'resultado_configuracion_item_l'),
+             'es_servicio_logistico'            => data_get($item, 'es_servicio_logistico'),
         ]);
         return $det;
     }
