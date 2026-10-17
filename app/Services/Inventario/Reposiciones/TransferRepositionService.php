@@ -495,7 +495,6 @@ class TransferRepositionService implements TransferRepositionServiceInterface
      */
     public function getPendingRepositions()
     {
-
         return GpTrasladosReposicion::query()
             ->from('gp_traslados_reposicions as tr')
             ->select([

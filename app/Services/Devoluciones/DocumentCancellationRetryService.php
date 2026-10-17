@@ -3,6 +3,8 @@
 namespace App\Services\Devoluciones;
 
 use App\Enums\devoluciones\InvoiceAnulationStatus;
+use App\Enums\Admin\Sync\StatusSync;
+use App\Models\Admin\SyncLog;
 use App\Mail\Devoluciones\FacturasNoAnuladasMail;
 use App\Models\devoluciones\GpFacturaAnulada;
 use App\Models\GpPedido;
@@ -10,7 +12,6 @@ use App\Services\Api\ApiSeedBillingService;
 use App\Services\Devoluciones\Contracts\DocumentCancellationRetryServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class DocumentCancellationRetryService implements DocumentCancellationRetryServiceInterface
@@ -44,19 +45,17 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
 
     protected function getYesterdayCancellations(): Collection
     {
-        $startDate = Carbon::yesterday()->startOfDay();
-        $endDate = Carbon::yesterday()->endOfDay();
+        $endDate = Carbon::today();
+        $startDate = $endDate->copy()->subDay();
         return  GpFacturaAnulada::with([
             'gpPedido:id,pedido,factura,fecha_factura,PTO_VTA_ID,CLI_RUC,CLI_RAZON_SOCIAL',
             'gpPedido.puntoVenta:PTO_VTA_ID,PTO_VTA_DIAS_MAXIMO_PARA_ANULACION',
             'gpDevolucion:id,devolucion,DOC_GENERADO,fecha_NC'
-        ])->whereBetween('created_at', [
-            $startDate,
-            $endDate
-        ])->get();
+        ])->where('created_at', '>=', $startDate)
+            ->where('created_at', '<', $endDate)->get();
     }
 
-    protected function isWithinCancellationDeadline(GpPedido $pedido)
+    protected function isWithinCancellationDeadline(?GpPedido $pedido)
     {
 
         $fechaFactura = data_get($pedido, 'fecha_factura', null);
@@ -73,8 +72,8 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
         $diaLimite = $ptoVta->PTO_VTA_DIAS_MAXIMO_PARA_ANULACION;
 
         $fechaLimite = Carbon::parse($fechaFactura)
-            ->addMonth()
             ->startOfMonth()
+            ->addMonth()
             ->day($diaLimite)
             ->endOfDay();
         return now()->lte($fechaLimite);
@@ -82,15 +81,7 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
 
     protected function retryValidCancellations(Collection $docs)
     {
-        $docs->map(function ($item) {
-            $codeAccess = $item->claveacceso;
-            $resp = $this->consultApiSeedBilling($codeAccess);
-            $estado = strtoupper(trim((string) data_get($resp, 'data.estado', '')));
-            $canResend = $estado !== 'ANU';
-            if ($canResend) {
-                $this->apiResponseSeedBelling($codeAccess);
-            }
-        });
+        $this->resendCancellationWithError($docs, 'handleCancellationRetries');
     }
 
     protected function consultApiSeedBilling(string $codeAccess)
@@ -113,21 +104,19 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
             return;
         }
         $invoices = $docs->map(function ($itm) {
+            $this->logCancellation($itm, 'No se puede reenviar: plazo vencido o datos del pedido/punto de venta incompletos.', method: 'handleCancellationRetries');
             return [
-                'ruc'                   => $itm->gpPedido->CLI_RUC,
-                'razon_social'          => $itm->gpPedido->CLI_RAZON_SOCIAL,
-                'pedido'                => $itm->gpPedido->pedido,
-                'factura'               => $itm->gpPedido->factura,
+                'ruc'                   => data_get($itm, 'gpPedido.CLI_RUC'),
+                'razon_social'          => data_get($itm, 'gpPedido.CLI_RAZON_SOCIAL'),
+                'pedido'                => data_get($itm, 'gpPedido.pedido'),
+                'factura'               => data_get($itm, 'gpPedido.factura'),
                 'clave_acceso'          => $itm->claveacceso,
-                'fecha_factura'         => $itm->gpPedido->fecha_factura,
-                'dias_max_anulacion'    => $itm->gpPedido->puntoVenta->PTO_VTA_DIAS_MAXIMO_PARA_ANULACION,
-                'devolucion'            => $itm->gpDevolucion->devolucion,
+                'fecha_factura'         => data_get($itm, 'gpPedido.fecha_factura'),
+                'dias_max_anulacion'    => data_get($itm, 'gpPedido.puntoVenta.PTO_VTA_DIAS_MAXIMO_PARA_ANULACION'),
+                'devolucion'            => data_get($itm, 'gpDevolucion.devolucion'),
             ];
         })->values();
 
-        Log::info('documentos formateados', [
-            'formateados' => $invoices
-        ]);
         if ($invoices->isNotEmpty()) {
             $email = 'sistemas_desarrollo@tuvalsa.com';
             // Mail::to($email)->send(new FacturasNoAnuladasMail($invoices));
@@ -142,62 +131,95 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
 
     public function handleSendCancellationsWithError()
     {
-        $docs = $this->getCancellationsOnDay()->map(function ($item) {
-            $item->can_resend = $this->isWithinCancellationDeadline($item->gpPedido);
-            return $item;
-        })->values();
-        $docsCanSend = $docs->where('can_resend', 1);
-        $this->resendCancellationWithError($docsCanSend);
+        $this->resendCancellationWithError($this->getCancellationsOnDay());
     }
 
     protected function getCancellationsOnDay(): Collection
     {
-        $startDate  = Carbon::now()->startOfDay();
-        $endDate    = Carbon::now()->endOfDay();
-        $msg = 'COMPROBANTE ENVIADO PARA SER ANULADO';
+        $startDate = Carbon::today();
+        $endDate = $startDate->copy()->addDay();
+        $completedResponses = ['COMPROBANTE ENVIADO PARA SER ANULADO', 'ANU'];
         return GpFacturaAnulada::with([
             'gpPedido:id,pedido,factura,fecha_factura,PTO_VTA_ID,CLI_RUC,CLI_RAZON_SOCIAL',
             'gpPedido.puntoVenta:PTO_VTA_ID,PTO_VTA_DIAS_MAXIMO_PARA_ANULACION',
             'gpDevolucion:id,devolucion,DOC_GENERADO,fecha_NC'
-        ])->where(function ($q) use ($msg) {
-            $q->where('resp_seedbilling', '!=', $msg)
+        ])->where(function ($q) use ($completedResponses) {
+            $q->whereNotIn('resp_seedbilling', $completedResponses)
                 ->orWhereNull('resp_seedbilling')
                 ->orWhere('resp_seedbilling', '');
-        })->whereBetween('created_at', [
-            $startDate,
-            $endDate
-        ])->get();
+        })->where('created_at', '>=', $startDate)
+            ->where('created_at', '<', $endDate)->get();
     }
 
-    protected function resendCancellationWithError(Collection $docs)
+    protected function resendCancellationWithError(Collection $docs, string $method = 'handleSendCancellationsWithError')
     {
 
-        $docs->map(function ($item) {
+        $docs->each(function ($item) use ($method) {
             $codeAccess = trim((string) $item->claveacceso);
             if ($codeAccess === '') {
-                Log::warning('No se puede reenviar anulación porque no tiene clave de acceso', [
-                    'factura_anulada_id' => $item->id,
-                    'pedido' => $item->pedido ?? null,
-                    'factura' => $item->factura ?? null,
-                ]);
+                $this->logCancellation($item, 'No se puede reenviar: falta la clave de acceso.', method: $method);
                 return;
             }
 
-            $resp       = $this->consultApiSeedBilling($codeAccess);
-            $estado     = strtoupper(trim((string) data_get($resp, 'data.estado', '')));
-            $canResend  = $estado !== 'ANU';
-            if (!$canResend) {
+            if (!$this->isWithinCancellationDeadline($item->gpPedido)) {
+                $this->logCancellation($item, 'No se puede reenviar: plazo vencido o datos del pedido/punto de venta incompletos.', method: $method);
                 return;
             }
 
-            $resp =  $this->apiResponseSeedBelling($codeAccess);
-            $message = data_get($resp, 'respuesta', null);
-            GpFacturaAnulada::where('id', $item->id)->update(
-                [
-                    'estado' => InvoiceAnulationStatus::ENVIADA,
-                    'resp_seedbilling' => $message
-                ]
-            );
+            try {
+                $resp       = $this->consultApiSeedBilling($codeAccess);
+                if (!data_get($resp, 'success', false)) {
+                    $this->logCancellation($item, 'Falló la consulta a Seedbilling; no se reenvía.', $resp, StatusSync::FAILED, $method);
+                    return;
+                }
+                $estado     = strtoupper(trim((string) data_get($resp, 'data.estado', '')));
+                if ($estado === '') {
+                    $this->logCancellation($item, 'Consulta sin estado del comprobante; no se reenvía.', $resp, method: $method);
+                    return;
+                }
+                $canResend  = $estado !== 'ANU';
+                if (!$canResend) {
+                    $item->update([
+                        'estado' => InvoiceAnulationStatus::ENVIADA,
+                        'resp_seedbilling' => 'ANU',
+                    ]);
+                    $this->logCancellation($item, 'Seedbilling confirma que el comprobante ya está anulado.', $resp, StatusSync::SUCCESS, $method);
+                    return;
+                }
+
+                $resp =  $this->apiResponseSeedBelling($codeAccess);
+                $message = data_get($resp, 'respuesta', null);
+                $item->update(
+                    [
+                        'estado' => data_get($resp, 'success', false)
+                            ? InvoiceAnulationStatus::ENVIADA : InvoiceAnulationStatus::PENDIENTE,
+                        'resp_seedbilling' => $message ?: data_get($resp, 'message', 'Sin respuesta de Seedbilling'),
+                    ]
+                );
+                $this->logCancellation(
+                    $item,
+                    data_get($resp, 'success', false) ? 'Solicitud de anulación aceptada por Seedbilling.' : 'Falló el envío de la anulación a Seedbilling.',
+                    $resp,
+                    data_get($resp, 'success', false) ? StatusSync::SUCCESS : StatusSync::FAILED,
+                    $method,
+                );
+            } catch (\Throwable $e) {
+                $this->logCancellation($item, $e->getMessage(), null, StatusSync::FAILED, $method);
+            }
         });
+    }
+
+    protected function logCancellation(GpFacturaAnulada $item, string $message, ?array $response = null, StatusSync $status = StatusSync::WARNING, string $method = 'handleSendCancellationsWithError'): void
+    {
+        SyncLog::logErrorSync(
+            module: 'devoluciones',
+            action: 'retry_seedbilling_cancellation',
+            method: $method,
+            message: $message,
+            externalId: $item->claveacceso,
+            localId: $item->id,
+            payload: ['pedido_id' => $item->pedido_id, 'devolucion_id' => $item->devolucion_id, 'request' => ['claveAcceso' => trim((string) $item->claveacceso)], 'response' => $response],
+            status: $status,
+        );
     }
 }
