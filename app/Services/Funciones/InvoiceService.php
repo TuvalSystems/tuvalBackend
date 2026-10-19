@@ -446,6 +446,10 @@ class InvoiceService implements InvoiceServiceInterface
             'detalle' => $detallePedido
         ];
 
+        Log::channel('invoice')->info('información enviada', [
+            $params
+        ]);
+
         $result = $this->apiGpProcessInvoice->storeDocumentInvoiceVta($params);
         if ($result['success'] === false) {
             throw new \Exception("Error al facturar el pedido {$pedido->pedido}: {$result['message']}");
